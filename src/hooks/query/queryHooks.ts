@@ -1,0 +1,121 @@
+//---------------------------------------------------------
+// Imports
+//---------------------------------------------------------
+import {query_get_bfd_all} from 'connector/instance/bfd';
+import {query_get_conntrack_all} from 'connector/instance/conn_track';
+import {query_get_endpoint_all} from 'connector/instance/endpoint';
+import {query_get_fdb_all} from 'connector/instance/fdb';
+import {query_get_firewall_rules} from 'connector/instance/firewall';
+import {query_get_ipv4_all} from 'connector/instance/ip';
+import {query_get_load_balancer_config_all} from 'connector/instance/load_balancer';
+import {query_get_mirror_all} from 'connector/instance/mirror';
+import {query_get_port_all} from 'connector/instance/port';
+import {query_get_qos_policy_all} from 'connector/instance/qos';
+import {query_get_route_all} from 'connector/instance/route_attr';
+import {query_get_session_all} from 'connector/instance/session';
+import {query_get_ulcl_all} from 'connector/instance/session_ulcl';
+import {query_get_ha_state_all, query_get_inst_logs, query_get_metadata} from 'connector/instance/status';
+import {query_get_vlan_all} from 'connector/instance/vlan';
+import {query_get_vxlan_all} from 'connector/instance/vxlan';
+import {IPostParamFieldDesc} from 'types/global';
+import {IInstance} from 'types/oam';
+import {useQueryInstanceData} from './common';
+
+//---------------------------------------------------------
+// Functions
+//---------------------------------------------------------
+export function useMetadata(instance: IInstance | null, api_endpoint: string) {
+	const {data, isFetched} = useQueryInstanceData(['metadata'], query_get_metadata, instance, true, true);
+
+	const get_param_fields = (url: string): Record<string, IPostParamFieldDesc> | undefined => data?.[url]?.fields;
+
+	const get_param_desc_by_path = (url: string, path?: string[]): IPostParamFieldDesc | undefined => {
+		let current: any = get_param_fields(url);
+		if (!path || path.length === 0) return current;
+
+		for (const segment of path) {
+			if (!current || typeof current !== 'object') return undefined;
+			else {
+				current = current.properties?.[segment] ?? current[segment];
+				if (!current) return undefined;
+			}
+		}
+
+		return current as IPostParamFieldDesc;
+	};
+
+	return {
+		full_metadata: data,
+		is_fetched: isFetched,
+		param_fields: get_param_fields(api_endpoint),
+		get_param: (path?: string[]) => get_param_desc_by_path(api_endpoint, path),
+	};
+}
+
+export function useBFD(instance: IInstance | null) {
+	return useQueryInstanceData(['bfd'], query_get_bfd_all, instance);
+}
+
+export function useConntrack(instance: IInstance | null) {
+	return useQueryInstanceData(['conntrack'], query_get_conntrack_all, instance, true);
+}
+
+export function useEndpoints(instance: IInstance | null) {
+	return useQueryInstanceData(['endpoints'], query_get_endpoint_all, instance);
+}
+
+export function useFDB(instance: IInstance | null) {
+	return useQueryInstanceData(['fdb'], query_get_fdb_all, instance);
+}
+
+export function useFirewallRules(instance: IInstance | null) {
+	return useQueryInstanceData(['firewall'], query_get_firewall_rules, instance);
+}
+
+export function useHAState(instance: IInstance | null) {
+	return useQueryInstanceData(['ha_state'], query_get_ha_state_all, instance);
+}
+
+export function useIPAttr(instance: IInstance | null) {
+	return useQueryInstanceData(['ip_attr'], query_get_ipv4_all, instance);
+}
+
+export function useLoadBalancerConfig(instance: IInstance | null) {
+	return useQueryInstanceData(['lb_data'], query_get_load_balancer_config_all, instance);
+}
+
+export function useMirrors(instance: IInstance | null) {
+	return useQueryInstanceData(['mirrors'], query_get_mirror_all, instance);
+}
+
+export function usePortAttr(instance: IInstance | null) {
+	return useQueryInstanceData(['port_attr'], query_get_port_all, instance);
+}
+
+export function useQOSPolicies(instance: IInstance | null) {
+	return useQueryInstanceData(['qos'], query_get_qos_policy_all, instance);
+}
+
+export function useRouteAttr(instance: IInstance | null) {
+	return useQueryInstanceData(['route_attr'], query_get_route_all, instance);
+}
+
+export function useSessionAttr(instance: IInstance | null) {
+	return useQueryInstanceData(['session_attr'], query_get_session_all, instance);
+}
+
+export function useInstLogs(instance: IInstance | null) {
+	return useQueryInstanceData(['inst_logs'], query_get_inst_logs, instance);
+}
+
+export function useULCLAttr(instance: IInstance | null) {
+	return useQueryInstanceData(['ulcl_attr'], query_get_ulcl_all, instance);
+}
+
+export function useVLANAttr(instance: IInstance | null) {
+	return useQueryInstanceData(['vlan_attr'], query_get_vlan_all, instance);
+}
+
+export function useVxlanAttr(instance: IInstance | null) {
+	return useQueryInstanceData(['vxlan_attr'], query_get_vxlan_all, instance);
+}

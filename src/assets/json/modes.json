@@ -1,0 +1,9 @@
+[
+	{"id": 0, "name": "DNAT", "send_value": 0},
+	{"id": 1, "name": "onearm", "send_value": 1},
+	{"id": 2, "name": "fullnat", "send_value": 2},
+	{"id": 3, "name": "dsr", "send_value": 3},
+	{"id": 4, "name": "fullproxy", "send_value": 4},
+	{"id": 5, "name": "hostonearm", "send_value": 5},
+	{"id": 6, "name": "default", "send_value": 6}
+]

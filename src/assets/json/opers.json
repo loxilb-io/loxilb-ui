@@ -1,0 +1,5 @@
+[
+	{"id": 0, "name": "create", "send_value": 0},
+	{"id": 1, "name": "attachEP", "send_value": 1},
+	{"id": 2, "name": "detachEP", "send_value": 2}
+]

@@ -1,0 +1,8 @@
+GET https://oam.loxilb.io:20379/netlox/v1/config/cistate/all
+
+###
+
+GET https://oam-1.loxilb.io/oam/alerts?page=1&limit=10
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6Im5ldGxveCIsImV4cCI6MTc0OTE3NDM2Mn0.lOS-ahj-6IM9i6ZXu8in-1ecnYD7bwNYYbISovkQbUM
+
+###

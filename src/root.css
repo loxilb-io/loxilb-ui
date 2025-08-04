@@ -1,0 +1,9 @@
+* {
+	/*border: 1px solid red;*/
+	text-decoration-line: none;
+	user-select: none;
+}
+
+#file {
+	display: none;
+}
