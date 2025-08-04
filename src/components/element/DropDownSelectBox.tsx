@@ -1,0 +1,59 @@
+//---------------------------------------------------------
+// Imports
+//---------------------------------------------------------
+import {FormControl, InputLabel, MenuItem, Select, SelectChangeEvent} from '@mui/material';
+import {t} from 'i18next';
+import {useEffect, useState} from 'react';
+import {IEnumItem} from 'types/global';
+
+//---------------------------------------------------------
+// Functional Component
+//---------------------------------------------------------
+export default function DropDownSelectBox(props: {label: string; item_list: IEnumItem[]; value: any; onChange: (value: any) => void; disabled?: boolean}) {
+	const {label, item_list, value, disabled, onChange} = props;
+
+	const [cur_idx, set_cur_idx] = useState<number>(0);
+
+	useEffect(() => {
+		const foundIndex = item_list.findIndex(item => item.send_value === value);
+		if (foundIndex !== -1) {
+			set_cur_idx(foundIndex);
+		} else {
+			const noneIndex = item_list.findIndex(item => item.name.toLowerCase() === 'none');
+			if (noneIndex !== -1) {
+				set_cur_idx(noneIndex);
+				onChange(item_list[noneIndex].send_value);
+			}
+		}
+	}, [value, item_list]);
+
+	const handleChange = (event: SelectChangeEvent<number>) => {
+		const item_index = event.target.value as number;
+		set_cur_idx(item_index);
+
+		const send_value = item_list[item_index]?.send_value;
+		onChange(send_value);
+	};
+
+	const is_disabled = disabled || item_list.length === 0;
+
+	return (
+		<FormControl fullWidth size="small" disabled={is_disabled}>
+			<InputLabel>{label}</InputLabel>
+
+			{item_list.length > 0 ? (
+				<Select label={label} value={cur_idx} onChange={handleChange} fullWidth disabled={is_disabled}>
+					{item_list.map((item, index) => (
+						<MenuItem key={index} value={index}>
+							{item.name}
+						</MenuItem>
+					))}
+				</Select>
+			) : (
+				<Select label={label} value="0" disabled>
+					<MenuItem value="0">{t('No items available')}</MenuItem>
+				</Select>
+			)}
+		</FormControl>
+	);
+}

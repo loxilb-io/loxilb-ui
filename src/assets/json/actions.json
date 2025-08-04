@@ -1,0 +1,4 @@
+[
+	{"id": 0, "name": "accept", "send_value": "accept"},
+	{"id": 1, "name": "reject", "send_value": "reject"}
+]

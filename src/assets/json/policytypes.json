@@ -1,0 +1,4 @@
+[
+	{"id": 0, "name": "import", "send_value": "import"},
+	{"id": 1, "name": "export", "send_value": "export"}
+]

@@ -1,0 +1,9 @@
+[
+	{"id": 0, "name": "tcp", "send_value": "tcp"},
+	{"id": 1, "name": "udp", "send_value": "udp"},
+	{"id": 2, "name": "sctp", "send_value": "sctp"},
+	{"id": 3, "name": "http", "send_value": "http"},
+	{"id": 4, "name": "https", "send_value": "https"},
+	{"id": 5, "name": "ping", "send_value": "ping"},
+	{"id": 6, "name": "none", "send_value": ""}
+]

@@ -1,0 +1,56 @@
+//---------------------------------------------------------
+// Imports
+//---------------------------------------------------------
+import {Box, Breadcrumbs, Typography} from '@mui/material';
+import {get_menu_name_from_path, get_menu_root, get_root_url} from 'common';
+import SimpleButton from 'components/element/SimpleButton';
+import useLocalStorageState from 'hooks/localStorageHook';
+import {useInstanceName} from 'hooks/query/instanceHook';
+import {Link} from 'react-router-dom';
+import {MENU_LIST} from 'types/menu';
+
+//---------------------------------------------------------
+// Component
+//---------------------------------------------------------
+export default function TopNavMenu() {
+	const [_, set_is_open] = useLocalStorageState('is_open_side_menu', true);
+	const instance_name = useInstanceName();
+
+	const url = window.location.pathname;
+	const root_url = get_root_url() + '/instance/';
+
+	const depth_1_name = get_menu_name_from_path(MENU_LIST, url, root_url, 1);
+	const depth_2_name = get_menu_name_from_path(MENU_LIST, url, root_url, 2);
+
+	return (
+		<Box width="100%" display="flex" alignItems="center" justifyContent="flex-start" borderBottom={'1px solid #e0e0e0'} padding="5px 16px">
+			<SimpleButton type="menu" onClick={() => set_is_open(prev => !prev)} />
+
+			<Box id="navigation" paddingLeft="16px">
+				<Breadcrumbs>
+					{instance_name && (
+						<Typography variant="body2" color="primary">
+							{instance_name}
+						</Typography>
+					)}
+
+					{depth_1_name && (
+						<Link to={get_menu_root(depth_1_name) + `?name=${instance_name}`}>
+							<Typography variant="body2" color="primary">
+								{depth_1_name}
+							</Typography>
+						</Link>
+					)}
+
+					{depth_2_name && (
+						<Link to={get_menu_root(depth_2_name) + `?name=${instance_name}`}>
+							<Typography variant="body2" color="primary">
+								{depth_2_name}
+							</Typography>
+						</Link>
+					)}
+				</Breadcrumbs>
+			</Box>
+		</Box>
+	);
+}

@@ -1,0 +1,97 @@
+//---------------------------------------------------------
+// Imports
+//---------------------------------------------------------
+import {IProcessInfo} from 'types/process';
+
+//---------------------------------------------------------
+// Dummy Data
+//---------------------------------------------------------
+export const dummyData: IProcessInfo = {
+	processAttr: [
+		{
+			pid: '1',
+			user: 'root',
+			priority: '20',
+			nice: '0',
+			virtMemory: '225892',
+			residentSize: '9124',
+			sharedMemory: '6824',
+			status: 'S',
+			CPUUsage: '0.0',
+			MemoryUsage: '0.1',
+			time: '0:01.23',
+			command: '/sbin/init',
+		},
+		{
+			pid: '854',
+			user: 'mysql',
+			priority: '20',
+			nice: '0',
+			virtMemory: '1458232',
+			residentSize: '325644',
+			sharedMemory: '12468',
+			status: 'S',
+			CPUUsage: '2.5',
+			MemoryUsage: '8.4',
+			time: '5:23.45',
+			command: 'mysqld',
+		},
+		{
+			pid: '1256',
+			user: 'www-data',
+			priority: '20',
+			nice: '0',
+			virtMemory: '985664',
+			residentSize: '245788',
+			sharedMemory: '8456',
+			status: 'R',
+			CPUUsage: '1.8',
+			MemoryUsage: '6.2',
+			time: '3:45.67',
+			command: 'nginx: worker process',
+		},
+		{
+			pid: '2458',
+			user: 'redis',
+			priority: '20',
+			nice: '0',
+			virtMemory: '654321',
+			residentSize: '154268',
+			sharedMemory: '4562',
+			status: 'S',
+			CPUUsage: '0.8',
+			MemoryUsage: '3.2',
+			time: '2:12.34',
+			command: 'redis-server',
+		},
+		{
+			pid: '3562',
+			user: 'mongodb',
+			priority: '20',
+			nice: '0',
+			virtMemory: '2564897',
+			residentSize: '456789',
+			sharedMemory: '15678',
+			status: 'S',
+			CPUUsage: '3.2',
+			MemoryUsage: '12.5',
+			time: '8:56.78',
+			command: 'mongod',
+		},
+		{
+			pid: '4521',
+			user: 'elasticsearch',
+			priority: '20',
+			nice: '0',
+			virtMemory: '4562314',
+			residentSize: '856421',
+			sharedMemory: '25641',
+			status: 'S',
+			CPUUsage: '4.5',
+			MemoryUsage: '15.8',
+			time: '12:34.56',
+			command:
+				'java -Xms2g -Xmx2g -XX:+UseConcMarkSweepGC -XX:CMSInitiatingOccupancyFraction=75 -XX:+UseCMSInitiatingOccupancyOnly -Des.networkaddress.cache.ttl=60 -Des.networkaddress.cache.negative.ttl=10 -XX:+AlwaysPreTouch -Xss1m -Djava.awt.headless=true -Dfile.encoding=UTF-8 -Djna.nosys=true -XX:-OmitStackTraceInFastThrow -Dio.netty.noUnsafe=true -Dio.netty.noKeySetOptimization=true -Dio.netty.recycler.maxCapacityPerThread=0 -Dlog4j.shutdownHookEnabled=false -Dlog4j2.disable.jmx=true -Djava.io.tmpdir=/tmp/elasticsearch -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=data -XX:ErrorFile=logs/hs_err_pid%p.log -Xlog:gc*,gc+age=trace,safepoint:file=logs/gc.log:utctime,pid,tags:filecount=32,filesize=64m -Djava.locale.providers=COMPAT -Des.path.home=/usr/share/elasticsearch -Des.path.conf=/etc/elasticsearch -cp /usr/share/elasticsearch/lib/* org.elasticsearch.bootstrap.Elasticsearch',
+		},
+	],
+};

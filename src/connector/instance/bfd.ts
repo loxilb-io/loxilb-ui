@@ -1,0 +1,27 @@
+//---------------------------------------------------------
+// Imports
+//---------------------------------------------------------
+import {IBFDAttribute, IBfdInput} from 'types/bfd';
+import {IInstance} from 'types/oam';
+import {ApiResult} from '../fetcher/fetcher_base';
+import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
+
+//---------------------------------------------------------
+// API Caller Functions
+//---------------------------------------------------------
+export async function query_get_bfd_all(instance: IInstance): Promise<IBFDAttribute[]> {
+	const resp = await GET_INST(instance, `/config/bfd/all`);
+	return (resp.data?.Attr as IBFDAttribute[]) ?? [];
+}
+
+export async function request_create_bfd(instance: IInstance, param: IBfdInput): Promise<ApiResult> {
+	const resp = await POST_INST(instance, `/config/bfd`, param);
+	if (resp.code !== 200) return {status: 'error', error: `Failed to create bfd: ${resp.message}`};
+	else return {status: 'success'};
+}
+
+export async function request_delete_bfd(instance: IInstance, remoteIp: string): Promise<ApiResult> {
+	const resp = await DELETE_INST(instance, `/config/bfd/remoteIP/${remoteIp}`);
+	if (resp.code !== 200) return {status: 'error', error: `Failed to delete bfd: ${resp.message}`};
+	else return {status: 'success'};
+}

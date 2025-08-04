@@ -1,0 +1,6 @@
+[
+	{"id": 0, "name": "Plain", "send_value": 0},
+	{"id": 1, "name": "https", "send_value": 1},
+	{"id": 2, "name": "tls", "send_value": 2},
+	{"id": 3, "name": "e2ehttps", "send_value": 3}
+]

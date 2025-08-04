@@ -1,0 +1,50 @@
+//---------------------------------------------------------
+// Imports
+//---------------------------------------------------------
+import mirrortypes from 'assets/json/mirrortypes.json';
+import DataTable from 'components/table/DataTable';
+import {useInstanceName} from 'hooks/query/instanceHook';
+import {IDataTableColumnDef} from 'types/global';
+import {IMirrorConfiguration} from 'types/mirror';
+
+//---------------------------------------------------------
+// Functional Component
+//---------------------------------------------------------
+export default function MirrorTable(props: {data: IMirrorConfiguration; selected_rows: number[]; onChangeSelectedRows: any; onAdd?: any; onDelete?: any}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete} = props;
+
+	const type_name_set = mirrortypes.map(type => type.name);
+
+	const cols: IDataTableColumnDef[] = [
+		{data_key: 'mirrorIdent', header: 'Name', width: 'wide'},
+		{data_key: 'type', header: 'Type', tooltip: 'Classification by mirroring method or mode of operation (ingress/egress/bidirectional)'},
+		{data_key: 'attachment', header: 'Attachment', width: 'wide', type: 'link'},
+		{data_key: 'sync', header: 'Sync', type: 'state'},
+	];
+
+	//targetObject: {
+	//	attachment: 1,
+	//	mirrObjName: 'api-server-1',
+	//},
+	// Attachment는 1,2 로 1은 mirrObjName이 Interface이름, 2는 mirrObjName이 LB Rule이름으로 정함
+
+	const inst_name = useInstanceName();
+
+	const rows = data.mirrAttr.map((item, index) => {
+		return {
+			id: index,
+			mirrorIdent: item.mirrorIdent,
+			type: item.mirrorInfo.type ? `${item.mirrorInfo.type}(${type_name_set[item.mirrorInfo.type]})` : '',
+			attachment: {
+				data: `${item.targetObject.attachment}(${item.targetObject.mirrObjName})`,
+				url:
+					item.targetObject.attachment === 1
+						? `/instance/network/port?name=${inst_name}&port=${item.targetObject.mirrObjName}`
+						: `/instance/traffic/lb?name=${inst_name}&rule=${item.targetObject.mirrObjName}`,
+			},
+			sync: item.sync,
+		};
+	});
+
+	return <DataTable name={'Mirror'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} />;
+}

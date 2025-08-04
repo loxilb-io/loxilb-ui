@@ -1,0 +1,60 @@
+//---------------------------------------------------------
+// Imports
+//---------------------------------------------------------
+import {TextField} from '@mui/material';
+import {isValidPort} from 'common';
+import {t} from 'i18next';
+import {useEffect, useState} from 'react';
+
+function getPortValidationError(port: string | number): string | null {
+	if (!port && port !== 0) return null;
+
+	const portStr = typeof port === 'string' ? port.trim() : String(port);
+
+	if (portStr === '') return null;
+	else if (!isValidPort(Number(portStr))) return t('Invalid port number.');
+	else return null;
+}
+
+//---------------------------------------------------------
+// Component
+//---------------------------------------------------------
+export default function PortBox(props: {label: string; value: number | null | undefined; disabled?: boolean; onChange: (val: number) => void}) {
+	const {label, value, disabled, onChange} = props;
+	const [error, setError] = useState<string | null>(null);
+
+	const handleChange = (val: string) => {
+		const trimmedVal = val.trim();
+		const validationError = getPortValidationError(trimmedVal);
+		setError(validationError);
+		if (validationError) return;
+		onChange(Number(trimmedVal));
+	};
+
+	useEffect(() => {
+		if (value) {
+			const validationError = getPortValidationError(value);
+			setError(validationError);
+		} else setError(null);
+	}, [value]);
+
+	useEffect(() => {
+		if (disabled) onChange(-1);
+	}, [disabled]);
+
+	return (
+		<TextField
+			label={label}
+			size="small"
+			type="number"
+			fullWidth
+			value={value}
+			disabled={disabled}
+			onChange={e => handleChange(e.target.value)}
+			placeholder={t('0-65535')}
+			error={!!error}
+			helperText={error}
+			slotProps={{inputLabel: {shrink: true}}}
+		/>
+	);
+}

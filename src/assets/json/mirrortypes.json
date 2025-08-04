@@ -1,0 +1,5 @@
+[
+	{"id": 0, "name": "SPAN", "send_value": 0},
+	{"id": 1, "name": "RSPAN", "send_value": 1},
+	{"id": 2, "name": "ERSPAN", "send_value": 2}
+]
