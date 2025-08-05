@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {Stack} from '@mui/material';
+import {Stack, RadioGroup, FormControlLabel, Radio} from '@mui/material';
 import SingleTextField from 'components/element/SingleTextField';
 import ValueBunch from 'components/element/ValueBunch';
 import FirewallInputForm from 'components/input/FirewallInputForm';
@@ -23,26 +23,34 @@ function OptionPannel(props: {name: string; data: IOptions}) {
 	const {name, data} = props;
 
 	return (
-		<SubTitlePannel title={name} sub_title={t('Details')}>
+		<SubTitlePannel title={t('Details')} sub_title={''}>
 			<Stack spacing={2}>
-				<ValueBunch name={t('Default Settings')}>
-					<SingleTextField label={t('FW Mark')} value={data.fwMark.toString()} />
-					<SingleTextField label={t('On Default')} value={data.onDefault.toString()} />
-					<SingleTextField label={t('Record')} value={data.record.toString()} />
-				</ValueBunch>
-
 				<ValueBunch name={t('Traffic Action')}>
-					<SingleTextField label={t('Allow')} value={data.allow.toString()} />
-					<SingleTextField label={t('Drop')} value={data.drop.toString()} />
-					<SingleTextField label={t('Trap')} value={data.trap.toString()} />
-					<SingleTextField label={t('Redirect')} value={data.redirect.toString()} />
-					<SingleTextField label={t('Redirect Port Name')} value={data.redirectPortName} />
+					<RadioGroup row name="traffic-action" value={(() => {
+					  if (data.allow) return 'allow';
+					  if (data.drop) return 'drop';
+					  if (data.trap) return 'trap';
+					  if (data.redirect) return 'redirect';
+					  return '';
+					})()}>
+						<FormControlLabel value="allow" control={<Radio disabled sx={{color: 'black', '&.Mui-checked': {color: 'black'}}} />} label={t('Allow')} sx={{color: 'black', '& .MuiFormControlLabel-label': {color: 'black'}}} />
+						<FormControlLabel value="drop" control={<Radio disabled sx={{color: 'black', '&.Mui-checked': {color: 'black'}}} />} label={t('Drop')} sx={{color: 'black', '& .MuiFormControlLabel-label': {color: 'black'}}} />
+						<FormControlLabel value="trap" control={<Radio disabled sx={{color: 'black', '&.Mui-checked': {color: 'black'}}} />} label={t('Trap')} sx={{color: 'black', '& .MuiFormControlLabel-label': {color: 'black'}}} />
+						<FormControlLabel value="redirect" control={<Radio disabled sx={{color: 'black', '&.Mui-checked': {color: 'black'}}} />} label={t('Redirect')} sx={{color: 'black', '& .MuiFormControlLabel-label': {color: 'black'}}} />
+					</RadioGroup>
 				</ValueBunch>
-
-				<ValueBunch name={t('SNAT')}>
-					<SingleTextField label={t('Do Snat')} value={data.doSnat.toString()} />
-					<SingleTextField label={t('To IP')} value={data.toIP} />
-					<SingleTextField label={t('To Port')} value={data.toPort.toString()} />
+				<ValueBunch name={t('Settings')}>
+					<SingleTextField label={t('FW Mark')} value={data.fwMark != null ? data.fwMark.toString() : ""} />
+					<SingleTextField label={t('On Default')} value={data.onDefault != null ? data.onDefault.toString() : ""} />
+					<SingleTextField label={t('Record')} value={data.record != null ? data.record.toString() : ""} />
+				</ValueBunch>
+				<ValueBunch name={t('ACTION: SNAT')}>
+					<SingleTextField label={t('Do Snat')} value={data.doSnat != null ? data.doSnat.toString() : ""} />
+					<SingleTextField label={t('To IP')} value={data.toIP != null ? data.toIP : ""} />
+					<SingleTextField label={t('To Port')} value={data.toPort != null ? data.toPort.toString() : ""} />
+				</ValueBunch>
+				<ValueBunch name={t('ACTION: Redirect')}>
+					<SingleTextField label={t('Port Name')} value={data.redirectPortName != null ? data.redirectPortName : ""} />
 				</ValueBunch>
 			</Stack>
 		</SubTitlePannel>
@@ -110,7 +118,7 @@ export default function FirewallPage() {
 
 			{selected_rows.length === 1 && (
 				<LowerSection>
-					<OptionPannel name={fw_info.fwAttr[selected_rows[0]].ruleArguments.portName} data={fw_info.fwAttr[selected_rows[0]].opts} />
+					<OptionPannel name={""} data={fw_info.fwAttr[selected_rows[0]].opts} />					
 				</LowerSection>
 			)}
 		</Fragment>

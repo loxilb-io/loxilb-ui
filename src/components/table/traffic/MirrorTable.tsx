@@ -12,7 +12,6 @@ import {IMirrorConfiguration} from 'types/mirror';
 //---------------------------------------------------------
 export default function MirrorTable(props: {data: IMirrorConfiguration; selected_rows: number[]; onChangeSelectedRows: any; onAdd?: any; onDelete?: any}) {
 	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete} = props;
-
 	const type_name_set = mirrortypes.map(type => type.name);
 
 	const cols: IDataTableColumnDef[] = [
@@ -29,22 +28,37 @@ export default function MirrorTable(props: {data: IMirrorConfiguration; selected
 	// Attachment는 1,2 로 1은 mirrObjName이 Interface이름, 2는 mirrObjName이 LB Rule이름으로 정함
 
 	const inst_name = useInstanceName();
+	const getUniqueKey = (item: any) => {
+		return [
+			item.mirrorIdent || '',
+			item.targetObject.attachment || '',
+			item.targetObject.mirrObjName || ''
+		].join('-');
+	};
 
-	const rows = data.mirrAttr.map((item, index) => {
-		return {
-			id: index,
-			mirrorIdent: item.mirrorIdent,
-			type: item.mirrorInfo.type ? `${item.mirrorInfo.type}(${type_name_set[item.mirrorInfo.type]})` : '',
-			attachment: {
-				data: `${item.targetObject.attachment}(${item.targetObject.mirrObjName})`,
-				url:
-					item.targetObject.attachment === 1
-						? `/instance/network/port?name=${inst_name}&port=${item.targetObject.mirrObjName}`
-						: `/instance/traffic/lb?name=${inst_name}&rule=${item.targetObject.mirrObjName}`,
-			},
-			sync: item.sync,
-		};
-	});
+	const rows = data.mirrAttr
+		? [...data.mirrAttr]
+			.sort((a, b) => {
+				const keyA = getUniqueKey(a);
+				const keyB = getUniqueKey(b);
+				return keyA.localeCompare(keyB);
+			})
+			.map((item, index) => {
+				return {
+					id: index,
+					mirrorIdent: item.mirrorIdent,
+					type: item.mirrorInfo.type ? `${item.mirrorInfo.type}(${type_name_set[item.mirrorInfo.type]})` : '',
+					attachment: {
+						data: `${item.targetObject.attachment}(${item.targetObject.mirrObjName})`,
+						url:
+							item.targetObject.attachment === 1
+								? `/instance/network/port?name=${inst_name}&port=${item.targetObject.mirrObjName}`
+								: `/instance/traffic/lb?name=${inst_name}&rule=${item.targetObject.mirrObjName}`,
+					},
+					sync: item.sync,
+				};
+			})
+		: undefined
 
-	return <DataTable name={'Mirror'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} />;
+	return <DataTable name={'Mirror'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} />;
 }

@@ -60,6 +60,7 @@ src/
 ```bash
 git clone <YOUR_REPO_URL>
 cd rabbit
+npm install dotenv-cli --save-dev
 npm i
 npm start
 ```

@@ -21,23 +21,37 @@ export default function RouteTable(props: {data: IRouteData; selected_rows: numb
 		{data_key: 'usages', header: 'Usages', type: 'multi-line', align: 'right', width: 'medium'},
 	];
 
-	const rows = data.routeAttr.map((item, index) => {
-		return {
-			id: index,
-			destinationIPNet: item.destinationIPNet,
-			gateway: item.gateway,
-			hardwareMark: item.hardwareMark,
-			protocol: item.protocol,
-			flags: item.flags,
-			usages: get_transfer_amount_str(item.statistic.bytes, item.statistic.packets),
-		};
-	});
+	const getUniqueKey = (item: any) => {
+		return [
+			item.destinationIPNet
+		].join('-');
+	};
+
+	const rows = data.routeAttr
+		? [...data.routeAttr]
+			.sort((a, b) => {
+				const keyA = getUniqueKey(a);
+				const keyB = getUniqueKey(b);
+				return keyA.localeCompare(keyB);
+			})
+			.map((item, index) => {
+				return {
+					id: index,
+					destinationIPNet: item.destinationIPNet,
+					gateway: item.gateway,
+					hardwareMark: item.hardwareMark,
+					protocol: item.protocol,
+					flags: item.flags,
+					usages: get_transfer_amount_str(item.statistic.bytes, item.statistic.packets),
+				};
+			})
+		: undefined
 
 	return (
 		<DataTable
 			name={'Route'}
 			columns={cols}
-			rows={rows}
+			rows={rows || []}
 			selected_rows={selected_rows}
 			onChangeSelectedRows={onChangeSelectedRows}
 			onAdd={onAdd}

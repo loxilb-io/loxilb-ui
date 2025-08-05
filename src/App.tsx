@@ -135,7 +135,7 @@ export default function App() {
 										<Route path="lb" element={<LoadBalancerPage />} />
 										<Route path="mirror" element={<MirrorPage />} />
 										<Route path="qos" element={<QoSPage />} />
-										<Route path="telecom" element={<TelecomPage />} />
+										{/* <Route path="telecom" element={<TelecomPage />} /> */}
 									</Route>
 
 									<Route path="status" element={<Outlet />}>

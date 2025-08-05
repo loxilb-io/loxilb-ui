@@ -12,7 +12,7 @@ export default function BFDTable(props: {data: IBFDAttribureInfo; selected_rows:
 	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete} = props;
 
 	const cols: IDataTableColumnDef[] = [
-		{data_key: 'instance', header: 'Instance', width: 'wide', tooltip: 'Displays the instance or node where this service or rule is applied.'},
+		{data_key: 'instance', header: 'Instance', width: 'medium', tooltip: 'Displays the instance or node where this service or rule is applied.'},
 		{data_key: 'remoteIp', header: 'Remote IP', width: 'wide', tooltip: 'Target IP address used for the endpoint or destination in load balancing.'},
 		{data_key: 'sourceIP', header: 'Source IP', width: 'wide', tooltip: 'Source IP address used in NAT or filtering rules.'},
 		{data_key: 'port', header: 'Port', width: 'medium', tooltip: 'Network port number used to forward or filter traffic.'},
@@ -20,18 +20,35 @@ export default function BFDTable(props: {data: IBFDAttribureInfo; selected_rows:
 		{data_key: 'state', header: 'State', type: 'state', width: 'full', tooltip: 'Indicates whether the component or service is active or inactive.'},
 	];
 
-	const rows = data.Attr.map((item, index) => {
-		return {
-			id: index,
-			instance: item.instance,
-			remoteIp: item.remoteIp,
-			sourceIP: item.sourceIP,
-			port: item.port,
-			interval: item.interval,
-			state: item.state,
-		};
-	});
+	const getUniqueKey = (item: any) => {
+		return [
+			item.instance || '',
+			item.remoteIp || '',
+			item.sourceIP || '',
+			item.port|| ''
+		].join('-');
+	};
+
+	const rows = data.Attr
+		? [...data.Attr]
+			.sort((a, b) => {
+				const keyA = getUniqueKey(a);
+				const keyB = getUniqueKey(b);
+				return keyA.localeCompare(keyB);
+			})
+			.map((item, index) => {
+				return {
+					id: index,
+					instance: item.instance,
+					remoteIp: item.remoteIp,
+					sourceIP: item.sourceIP,
+					port: item.port,
+					interval: item.interval,
+					state: item.state,
+				};
+			})
+		: undefined
 
 	const name = 'Instance of Bidirectional Forwarding Detection';
-	return <DataTable name={name} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} />;
+	return <DataTable name={name} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} />;
 }

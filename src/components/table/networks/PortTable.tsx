@@ -24,31 +24,45 @@ export default function PortTable(props: {data: IPortInfo; selected_rows: number
 		//{data_key: 'rx_tx_error', header: 'RX/TX errors', align: 'right', width: 'wide'},
 	];
 
-	const rows = data.portAttr.map((item, index) => {
-		const hw = item.portHardwareInformation ?? {};
-		const l3 = item.portL3Information ?? {};
-		const stat = item.portStatisticInformation ?? {};
+	const getUniqueKey = (item: any) => {
+		return [
+			item.portNo
+		].join('-');
+	};
 
-		return {
-			id: index,
-			name: item.portName,
-			port: item.portNo,
-			mac: hw.macAddress ?? '',
-			link: `${hw.link ? 'Link' : 'No Link'}/${hw.state ? 'Up' : 'Down'}`,
-			route: l3.routed ? 'Routed' : 'Not Routed',
-			ipv4: Array.isArray(l3.IPv4Address) ? l3.IPv4Address.join(', ') : '',
-			ipv6: Array.isArray(l3.IPv6Address) ? l3.IPv6Address.join(', ') : '',
-			rx_tx_byte: `${stat.rxBytes ?? 0} / ${stat.txBytes ?? 0}`,
-			rx_tx_packet: `${stat.rxPackets ?? 0} / ${stat.txPackets ?? 0}`,
-			rx_tx_error: `${stat.rxErrors ?? 0} / ${stat.txErrors ?? 0}`,
-		};
-	});
+	const rows = data.portAttr
+		? [...data.portAttr]
+			.sort((a, b) => {
+				const keyA = getUniqueKey(a);
+				const keyB = getUniqueKey(b);
+				return keyA.localeCompare(keyB);
+			})	
+			.map((item, index) => {
+				const hw = item.portHardwareInformation ?? {};
+				const l3 = item.portL3Information ?? {};
+				const stat = item.portStatisticInformation ?? {};
+
+				return {
+					id: index,
+					name: item.portName,
+					port: item.portNo,
+					mac: hw.macAddress ?? '',
+					link: `${hw.link ? 'Link' : 'No Link'}/${hw.state ? 'Up' : 'Down'}`,
+					route: l3.routed ? 'Routed' : 'Not Routed',
+					ipv4: Array.isArray(l3.IPv4Address) ? l3.IPv4Address.join(', ') : '',
+					ipv6: Array.isArray(l3.IPv6Address) ? l3.IPv6Address.join(', ') : '',
+					rx_tx_byte: `${stat.rxBytes ?? 0} / ${stat.txBytes ?? 0}`,
+					rx_tx_packet: `${stat.rxPackets ?? 0} / ${stat.txPackets ?? 0}`,
+					rx_tx_error: `${stat.rxErrors ?? 0} / ${stat.txErrors ?? 0}`,
+				};
+			})
+		: undefined
 
 	return (
 		<DataTable
 			name={'Port'}
 			columns={cols}
-			rows={rows}
+			rows={rows || []}
 			selected_rows={selected_rows}
 			onChangeSelectedRows={onChangeSelectedRows}
 			hideIdColumn

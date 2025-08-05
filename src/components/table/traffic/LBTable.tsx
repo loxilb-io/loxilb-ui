@@ -29,32 +29,50 @@ export default function LBTable(props: {data: ILBData; selected_rows: number[]; 
 		{data_key: 'endpoints', header: 'Endpoints', width: 'wide'},
 	];
 
-	const rows = data.lbAttr.map((item, index) => {
-		const mark = item.serviceArguments.block ?? 0;
-		const timeout = item.serviceArguments.probeTimeout ?? 1800;
+	const getUniqueKey = (item: any) => {
+		return [
+			item.serviceArguments.externalIP || '',
+			item.serviceArguments.port || '',
+			item.serviceArguments.protocol || ''
+		].join('-');
+	};
 
-		const sel = item.serviceArguments.sel ?? -1;
-		const mode = item.serviceArguments.mode ?? -1;
+	// Generate rows and sort by unique key (externalIP, port, protocol)
+	const rows = data.lbAttr
+		? [...data.lbAttr]
+			.sort((a, b) => {
+				const keyA = getUniqueKey(a);
+				const keyB = getUniqueKey(b);
+				return keyA.localeCompare(keyB);
+			})
+			.map((item, index) => {
+				const mark = item.serviceArguments.block ?? 0;
+				const timeout = item.serviceArguments.probeTimeout ?? 1800;
 
-		const sel_value = sel_list.find(item => item.id === sel)?.send_value || '';
-		const mode_value = mode_list.find(item => item.id === mode)?.send_value || '';
+				const sel = item.serviceArguments.sel ?? -1;
+				const mode = item.serviceArguments.mode ?? -1;
 
-		return {
-			id: index,
-			externalIP: item.serviceArguments.externalIP,
-			port: item.serviceArguments.port,
-			protocol: item.serviceArguments.protocol,
-			name: item.serviceArguments.name,
-			mark: mark,
-			sel: sel_value,
-			mode: mode_value,
-			probeTimeout: timeout,
-			monitor: item.serviceArguments.monitor ? 'Enabled' : 'Disabled',
-			endpoints: item.endpoints.length,
-		};
-	});
+				const sel_value = sel_list.find(item2 => item2.id === sel)?.send_value || '';
+				const mode_value = mode_list.find(item2 => item2.id === mode)?.send_value || '';
+
+				return {
+					id: index,
+					externalIP: item.serviceArguments.externalIP,
+					port: item.serviceArguments.port,
+					protocol: item.serviceArguments.protocol,
+					name: item.serviceArguments.name,
+					mark: mark,
+					sel: sel_value,
+					mode: mode_value,
+					probeTimeout: timeout,
+					monitor: item.serviceArguments.monitor ? 'Enabled' : 'Disabled',
+					endpoints: item.endpoints.length,
+					// Unique key for sorting
+					_uniqueKey: `${item.serviceArguments.externalIP || ''}_${item.serviceArguments.port || ''}_${item.serviceArguments.protocol || ''}`,
+				}})
+		: undefined;
 
 	return (
-		<DataTable name={'Load Balancer'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} />
+	   <DataTable name={'Load Balancer'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} />
 	);
 }

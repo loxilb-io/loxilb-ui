@@ -20,16 +20,30 @@ export default function VLANTable(props: {data: IVlanData; selected_rows: number
 		{data_key: 'outbounds', header: 'Outbounds', type: 'multi-line', align: 'right', width: 'wide'},
 	];
 
-	const rows = data.vlanAttr.map((item, index) => {
-		return {
-			id: index,
-			vid: item.vid,
-			dev: item.dev,
-			member: item.member.map(member => `${member.dev}${member.tagged ? '(tagged)' : '(untagged)'}`).join(', '),
-			inbounds: get_transfer_amount_str(item.vlanStatistic.inBytes, item.vlanStatistic.inPackets),
-			outbounds: get_transfer_amount_str(item.vlanStatistic.outBytes, item.vlanStatistic.outPackets),
-		};
-	});
+	const getUniqueKey = (item: any) => {
+		return [
+			item.vid
+		].join('-');
+	};
 
-	return <DataTable name={'VLAN'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} />;
+	const rows = data.vlanAttr
+		? [...data.vlanAttr]
+			.sort((a, b) => {
+				const keyA = getUniqueKey(a);
+				const keyB = getUniqueKey(b);
+				return keyA.localeCompare(keyB);
+			})
+			.map((item, index) => {	
+				return {
+					id: index,
+					vid: item.vid,
+					dev: item.dev,
+					member: item.member.map(member => `${member.dev}${member.tagged ? '(tagged)' : '(untagged)'}`).join(', '),
+					inbounds: get_transfer_amount_str(item.vlanStatistic.inBytes, item.vlanStatistic.inPackets),
+					outbounds: get_transfer_amount_str(item.vlanStatistic.outBytes, item.vlanStatistic.outPackets),
+				};
+			})
+		: undefined
+
+	return <DataTable name={'VLAN'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} />;
 }
