@@ -48,29 +48,29 @@ export const MENU_LIST: IMenuItem[] = [
 				name: 'Mirror',
 				path: 'mirror',
 			},
-			{
-				name: 'Telecom',
-				path: 'telecom',
-			},
+			// {
+			// 	name: 'Telecom',
+			// 	path: 'telecom',
+			// },
 		],
 	},
 	{
 		name: 'Networks',
 		icon: CloudIcon,
 		path: 'network',
-		items: [
+		items: [			
 			{
-				name: 'Interface',
-				path: 'bfd',
-			},
+				name: 'Port',
+				path: 'port',
+			},			
 			{
 				name: 'VLAN',
 				path: 'vlan',
 			},
-			{
-				name: 'VxLAN',
-				path: 'vxlan',
-			},
+			// {
+			// 	name: 'VxLAN',
+			// 	path: 'vxlan',
+			// },
 			{
 				name: 'FDB(MAC Address Table)',
 				path: 'fdb',
@@ -86,6 +86,10 @@ export const MENU_LIST: IMenuItem[] = [
 			{
 				name: 'IP Route',
 				path: 'route',
+			},
+			{
+				name: 'BFD',
+				path: 'bfd',
 			},
 			{
 				name: 'BGP',
@@ -108,10 +112,6 @@ export const MENU_LIST: IMenuItem[] = [
 						path: 'neighbor',
 					},
 				],
-			},
-			{
-				name: 'Port',
-				path: 'port',
 			},
 		],
 	},

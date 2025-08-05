@@ -173,10 +173,10 @@ export default function InstanceSettingPage() {
 			<LogLevelSelector />
 
 			<Divider />
-
+{/* 
 			{!is_updated && !is_updating && <FirmwareAvailablePannel handleUpdate={handleUpdate} />}
 			{!is_updated && is_updating && <FirmwareUpdatingPannel />}
-			{is_updated && <FirmwareResultPannel is_success={is_success} />}
+			{is_updated && <FirmwareResultPannel is_success={is_success} />} */}
 		</Stack>
 	);
 }

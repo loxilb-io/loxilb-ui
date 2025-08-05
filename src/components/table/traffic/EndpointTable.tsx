@@ -21,18 +21,34 @@ export default function EndpointTable(props: {data: IEndpointAttr; selected_rows
 		{data_key: 'inactiveReTries', header: 'Retries'},
 	];
 
-	const rows = data.Attr.map((item, index) => {
-		return {
-			id: index,
-			name: item.name,
-			hostName: item.hostName,
-			inactiveReTries: item.inactiveReTries,
-			probeType: item.probeType,
-			currState: item.currState,
-			probeDuration: item.probeDuration,
-			probePort: item.probePort,
-		};
-	});
+	const getUniqueKey = (item: any) => {
+		return [
+			item.hostName || '',
+			item.probeType || '',
+			item.probePort || ''
+		].join('-');
+	};
 
-	return <DataTable name={'Endpoint'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} />;
+	const rows = data.Attr
+		? [...data.Attr]
+			.sort((a, b) => {
+				const keyA = getUniqueKey(a);
+				const keyB = getUniqueKey(b);
+				return keyA.localeCompare(keyB);
+			})
+			.map((item, index) => {
+			return {
+				id: index,
+				name: item.name,
+				hostName: item.hostName,
+				inactiveReTries: item.inactiveReTries,
+				probeType: item.probeType,
+				currState: item.currState,
+				probeDuration: item.probeDuration,
+				probePort: item.probePort,
+			};
+		})
+	: undefined
+
+	return <DataTable name={'Endpoint'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} />;
 }

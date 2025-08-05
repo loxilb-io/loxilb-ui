@@ -103,3 +103,7 @@ release.zip
 
 # Deployment scripts specific outputs
 deploy-output/
+
+.claude/
+.serena/
+

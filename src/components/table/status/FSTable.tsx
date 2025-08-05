@@ -19,16 +19,31 @@ export default function FSTable(props: {data: IFilesystemInfo; selected_rows: nu
 		{data_key: 'usage', header: 'Current Usage', width: 'wide', type: 'usage'},
 	];
 
-	const rows = data.filesystemAttr.map((item, index) => {
-		return {
-			id: index,
-			fileSystem: item.fileSystem,
-			type: item.type,
-			size: item.size,
-			avail: item.avail,
-			usage: {amount: parseFloat(item.used).toFixed(1), percent: parseFloat(item.usePercent).toFixed(1) + '%'},
-		};
-	});
+	const getUniqueKey = (item: any) => {
+		return [
+			item.fileSystem || '',
+			item.type || ''
+		].join('-');
+	};
 
-	return <DataTable name={'File System'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} hideMenuBar disableSelect />;
+	const rows = data.filesystemAttr
+		? [...data.filesystemAttr]
+			.sort((a, b) => {
+				const keyA = getUniqueKey(a);
+				const keyB = getUniqueKey(b);
+				return keyA.localeCompare(keyB);
+			})
+			.map((item, index) => {
+				return {
+					id: index,
+					fileSystem: item.fileSystem,
+					type: item.type,
+					size: item.size,
+					avail: item.avail,
+					usage: {amount: parseFloat(item.used).toFixed(1), percent: parseFloat(item.usePercent).toFixed(1) + '%'},
+				};
+			})
+		: undefined
+
+	return <DataTable name={'File System'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} hideMenuBar disableSelect />;
 }

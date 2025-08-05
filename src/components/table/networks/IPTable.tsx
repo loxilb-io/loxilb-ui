@@ -17,18 +17,33 @@ export default function IPTable(props: {data: IIpData; selected_rows: number[]; 
 		{data_key: 'sync', header: 'Synced', width: 'medium', tooltip: 'Synced with the IP address', type: 'sync'},
 	];
 
-	const rows = data.ipAttr.map((item, index) => ({
-		id: index,
-		dev: item.dev,
-		ipAddress: item.ipAddress.join(', '),
-		sync: item.sync,
-	}));
+	const getUniqueKey = (item: any) => {
+		return [
+			item.dev || '',
+			item.ipAddress.join(', ') || ''
+		].join('-');
+	};
+
+	const rows = data.ipAttr
+		? [...data.ipAttr]
+			.sort((a, b) => {
+				const keyA = getUniqueKey(a);
+				const keyB = getUniqueKey(b);
+				return keyA.localeCompare(keyB);
+			})
+			.map((item, index) => ({
+				id: index,
+				dev: item.dev,
+				ipAddress: item.ipAddress.join(', '),
+				sync: item.sync,
+			}))
+		: undefined;
 
 	return (
 		<DataTable
 			name={'IP Address'}
 			columns={cols}
-			rows={rows}
+			rows={rows || []}
 			selected_rows={selected_rows}
 			onChangeSelectedRows={onChangeSelectedRows}
 			onAdd={onAdd}

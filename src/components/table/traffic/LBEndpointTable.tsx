@@ -19,16 +19,31 @@ export default function LBEndpointTable(props: {data: IEndpoint[]; selected_rows
 		{data_key: 'counter', header: 'Counter', width: 'wide'},
 	];
 
-	const rows = data.map((item, index) => {
-		return {
-			id: index,
-			endpointIP: item.endpointIP,
-			weight: item.weight,
-			targetPort: item.targetPort,
-			state: item.state,
-			counter: item.counter,
-		};
-	});
+	const getUniqueKey = (item: any) => {
+		return [
+			item.endpointIP || '',
+			item.targetPort || ''			
+		].join('-');
+	};
 
-	return <DataTable name={'Load Balancer Endpoint'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} />;
+	const rows = data
+		? [...data]
+			.sort((a, b) => {
+				const keyA = getUniqueKey(a);
+				const keyB = getUniqueKey(b);
+				return keyA.localeCompare(keyB);
+			})
+			.map((item, index) => {
+				return {
+					id: index,
+					endpointIP: item.endpointIP,
+					weight: item.weight,
+					targetPort: item.targetPort,
+					state: item.state,
+					counter: item.counter,
+				};
+			})
+		: undefined
+
+	return <DataTable name={'Load Balancer Endpoint'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} />;
 }
