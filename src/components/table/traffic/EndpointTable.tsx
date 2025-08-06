@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import { getStableHash } from 'common';
 import DataTable from 'components/table/DataTable';
 import {IEndpointAttr} from 'types/endpoint';
 import {IDataTableColumnDef} from 'types/global';
@@ -21,34 +22,30 @@ export default function EndpointTable(props: {data: IEndpointAttr; selected_rows
 		{data_key: 'inactiveReTries', header: 'Retries'},
 	];
 
-	const getUniqueKey = (item: any) => {
-		return [
-			item.hostName || '',
-			item.probeType || '',
-			item.probePort || ''
-		].join('-');
-	};
+   // Hash function for endpoint
+   const getHashKey = (item: any) => {
+	   const str = `${item.name || ''}_${item.hostName || ''}_${item.probePort || ''}_${item.probeType || ''}`;
+	   return getStableHash(str);
+   };
 
-	const rows = data.Attr
-		? [...data.Attr]
-			.sort((a, b) => {
-				const keyA = getUniqueKey(a);
-				const keyB = getUniqueKey(b);
-				return keyA.localeCompare(keyB);
-			})
-			.map((item, index) => {
-			return {
-				id: index,
-				name: item.name,
-				hostName: item.hostName,
-				inactiveReTries: item.inactiveReTries,
-				probeType: item.probeType,
-				currState: item.currState,
-				probeDuration: item.probeDuration,
-				probePort: item.probePort,
-			};
-		})
-	: undefined
+   const rows = data.Attr
+	   ? (() => {
+		   const sorted = [...data.Attr].sort((a, b) => getHashKey(a) - getHashKey(b));
+		   return sorted.map((item, index) => {
+			   return {
+				   id: index,
+				   name: item.name,
+				   hostName: item.hostName,
+				   inactiveReTries: item.inactiveReTries,
+				   probeType: item.probeType,
+				   currState: item.currState,
+				   probeDuration: item.probeDuration,
+				   probePort: item.probePort,
+				   _uniqueKey: getHashKey(item),
+			   };
+		   });
+	   })()
+	   : undefined;
 
 	return <DataTable name={'Endpoint'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} />;
 }

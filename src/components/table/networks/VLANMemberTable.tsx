@@ -16,13 +16,25 @@ export default function VLANMemberTable(props: {data: IMember[]; selected_rows: 
 		{data_key: 'tag', header: 'Tagged', width: 'medium'},
 	];
 
-	const rows: any[] = data.map((item, index) => {
-		return {
-			id: index,
-			dev: item.dev,
-			tag: item.tagged ? 'Yes' : 'No',
-		};
-	});
+   // Hash function for VLAN member
+   const getHashKey = (item: IMember) => {
+	   const str = `${item.dev || ''}_${item.tagged ? 'tagged' : 'untagged'}`;
+	   let hash = 0;
+	   for (let i = 0; i < str.length; i++) {
+		   hash = ((hash << 5) - hash) + str.charCodeAt(i);
+		   hash |= 0;
+	   }
+	   return hash >>> 0;
+   };
+   const sorted = data ? [...data].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
+   const rows: any[] = sorted.map((item, index) => {
+	   return {
+		   id: index,
+		   dev: item.dev,
+		   tag: item.tagged ? 'Yes' : 'No',
+		   _uniqueKey: getHashKey(item),
+	   };
+   });
 
 	return (
 		<DataTable name={'VLAN Member'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} />

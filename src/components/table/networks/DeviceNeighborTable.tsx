@@ -4,6 +4,7 @@
 import DataTable from 'components/table/DataTable';
 import {INeighborData} from 'types/device_neighbor';
 import {IDataTableColumnDef} from 'types/global';
+import {getStableHash} from 'common';
 
 //---------------------------------------------------------
 // Functional Component
@@ -17,29 +18,21 @@ export default function DeviceNeighborTable(props: {data: INeighborData; selecte
 		{data_key: 'dev', header: 'Interface', width: 'wide'},
 	];
 
-	const getUniqueKey = (item: any) => {
-		return [
-			item.ipAddress || '',
-			item.macAddress || ''
-		].join('-');
-	};
+   // Use global hash function for Device Neighbor entry
+	const getHashKey = (item: any) => getStableHash(`${item.dev || ''}_${item.ipAddress || ''}`);
 
-	const rows = data.neighborAttr
-		? [...data.neighborAttr]
-			.sort((a, b) => {
-				const keyA = getUniqueKey(a);
-				const keyB = getUniqueKey(b);
-				return keyA.localeCompare(keyB);
-			})
-			.map((item, index) => {
-				return {
-					id: index,
-					ipAddress: item.ipAddress,
-					dev: item.dev,
-					macAddress: item.macAddress,
-				};
-			})
-		: undefined
+	const rows = data.neighborAttr && Array.isArray(data.neighborAttr)
+		? (() => {
+			const sorted = [...data.neighborAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
+			return sorted.map((item, index) => ({
+				id: index,
+				dev: item.dev,
+				ipAddress: item.ipAddress,
+				macAddress: item.macAddress,
+				_uniqueKey: getHashKey(item),
+			}));
+		})()
+		: [];
 
 	return (
 		<DataTable

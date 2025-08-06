@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {get_transfer_amount_str} from 'common';
+import {get_transfer_amount_str, getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IDataTableColumnDef} from 'types/global';
 import {IRouteData} from 'types/route_attr';
@@ -21,31 +21,24 @@ export default function RouteTable(props: {data: IRouteData; selected_rows: numb
 		{data_key: 'usages', header: 'Usages', type: 'multi-line', align: 'right', width: 'medium'},
 	];
 
-	const getUniqueKey = (item: any) => {
-		return [
-			item.destinationIPNet
-		].join('-');
-	};
+   // Use global hash function for Route entry
+   const getHashKey = (item: any) => getStableHash(`${item.destinationIPNet || ''}`);
 
-	const rows = data.routeAttr
-		? [...data.routeAttr]
-			.sort((a, b) => {
-				const keyA = getUniqueKey(a);
-				const keyB = getUniqueKey(b);
-				return keyA.localeCompare(keyB);
-			})
-			.map((item, index) => {
-				return {
-					id: index,
-					destinationIPNet: item.destinationIPNet,
-					gateway: item.gateway,
-					hardwareMark: item.hardwareMark,
-					protocol: item.protocol,
-					flags: item.flags,
-					usages: get_transfer_amount_str(item.statistic.bytes, item.statistic.packets),
-				};
-			})
-		: undefined
+   const rows = data.routeAttr && Array.isArray(data.routeAttr)
+	   ? (() => {
+		   const sorted = [...data.routeAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
+		   return sorted.map((item) => ({
+			   id: getHashKey(item),
+			   destinationIPNet: item.destinationIPNet,
+			   gateway: item.gateway,
+			   hardwareMark: item.hardwareMark,
+			   protocol: item.protocol,
+			   flags: item.flags,
+			   usages: get_transfer_amount_str(item.statistic.bytes, item.statistic.packets),
+			   _uniqueKey: getHashKey(item),
+		   }));
+	   })()
+	   : [];
 
 	return (
 		<DataTable

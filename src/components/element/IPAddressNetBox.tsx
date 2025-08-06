@@ -2,20 +2,20 @@
 // Imports
 //---------------------------------------------------------
 import {TextField} from '@mui/material';
-import {isValidIPAddress} from 'common';
+import {isValidIPAddressCidr} from 'common';
 import {t} from 'i18next';
 import {useEffect, useState} from 'react';
 
 function getIPValidationError(ip: string): string | null {
 	if (!ip) return null;
-	else if (!isValidIPAddress(ip)) return t('Invalid IP address format.');
+	else if (!isValidIPAddressCidr(ip)) return t('Invalid IP address format.');
 	else return null;
 }
 
 //---------------------------------------------------------
 // Component
 //---------------------------------------------------------
-export default function IPAddressBox(props: {label: string; value: string; disabled?: boolean; onChange: (val: string) => void; error?: boolean; helperText?: string}) {
+export default function IPAddressCidrBox(props: {label: string; value: string; disabled?: boolean; onChange: (val: string) => void; error?: boolean; helperText?: string}) {
 	const {label, value, disabled, onChange, error: externalError, helperText: externalHelperText} = props;
 
 	const [error, setError] = useState<string | null>(null);
@@ -53,7 +53,7 @@ export default function IPAddressBox(props: {label: string; value: string; disab
 			value={localValue}
 			disabled={disabled}
 			onChange={e => handleChange(e.target.value)}
-			placeholder={'192.168.0.1'}
+			placeholder={'192.168.0.1/24'}
 			error={externalError !== undefined ? !!externalError : !!error || showRequired}
 			helperText={externalHelperText !== undefined ? externalHelperText : error}
 			slotProps={{inputLabel: {shrink: true}}}

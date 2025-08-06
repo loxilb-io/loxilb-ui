@@ -27,47 +27,47 @@ export default function FirewallRuleArgsForm(props: {value: IRuleArguments; onCh
 			</Typography>
 
 			<HorizontalStack>
-				<ParamBox label={t('Source IP')} value={value.sourceIP} onChange={handleChange('sourceIP')} param_desc={{...params?.sourceIP, type: 'ipaddress'}} />
+			   <ParamBox label={t('Source IP')} value={value?.sourceIP ?? ''} onChange={handleChange('sourceIP')} param_desc={{...params?.sourceIP, type: 'ipaddress'}} />
 
 				<HorizontalStack>
-					<ParamBox label={t('Port Min')} value={value.minSourcePort} onChange={handleChange('minSourcePort')} param_desc={{...params?.minSourcePort, type: 'port'}} />
-					<ParamBox label={t('Port Max')} value={value.maxSourcePort} onChange={handleChange('maxSourcePort')} param_desc={{...params?.maxSourcePort, type: 'port'}} />
+				   <ParamBox label={t('Port Min')} value={value?.minSourcePort ?? ''} onChange={handleChange('minSourcePort')} param_desc={{...params?.minSourcePort, type: 'port'}} />
+				   <ParamBox label={t('Port Max')} value={value?.maxSourcePort ?? ''} onChange={handleChange('maxSourcePort')} param_desc={{...params?.maxSourcePort, type: 'port'}} />
 				</HorizontalStack>
 			</HorizontalStack>
 
 			<HorizontalStack>
 				<ParamBox
 					label={t('Destination IP')}
-					value={value.destinationIP}
+				   value={value?.destinationIP ?? ''}
 					onChange={handleChange('destinationIP')}
 					param_desc={{...params?.destinationIP, type: 'ipaddress'}}
 				/>
 
 				<HorizontalStack>
-					<ParamBox
-						label={t('Port Min')}
-						value={value.minDestinationPort}
-						onChange={handleChange('minDestinationPort')}
-						param_desc={{...params?.minDestinationPort, type: 'port'}}
-					/>
-					<ParamBox
-						label={t('Port Max')}
-						value={value.maxDestinationPort}
-						onChange={handleChange('maxDestinationPort')}
-						param_desc={{...params?.maxDestinationPort, type: 'port'}}
-					/>
+				   <ParamBox
+					   label={t('Port Min')}
+					   value={value?.minDestinationPort ?? ''}
+					   onChange={handleChange('minDestinationPort')}
+					   param_desc={{...params?.minDestinationPort, type: 'port'}}
+				   />
+				   <ParamBox
+					   label={t('Port Max')}
+					   value={value?.maxDestinationPort ?? ''}
+					   onChange={handleChange('maxDestinationPort')}
+					   param_desc={{...params?.maxDestinationPort, type: 'port'}}
+				   />
 				</HorizontalStack>
 			</HorizontalStack>
 
 			<HorizontalStack>
 				<ParamBox
 					label={t('Protocol')}
-					value={value.protocol}
+				   value={value?.protocol ?? ''}
 					onChange={(event: any) => handleChange('protocol')(event.target?.value ?? event)}
 					param_desc={{...params?.protocol, enum: protocol_list}}
 				/>
-				<ParamBox label={t('Port Name')} value={value.portName} onChange={handleChange('portName')} param_desc={params?.portName} />
-				<ParamBox label={t('Preference')} value={value.preference} onChange={handleChange('preference')} param_desc={params?.preference} />
+			   <ParamBox label={t('Port Name')} value={value?.portName ?? ''} onChange={handleChange('portName')} param_desc={params?.portName} />
+			   <ParamBox label={t('Preference')} value={value?.preference ?? ''} onChange={handleChange('preference')} param_desc={params?.preference} />
 			</HorizontalStack>
 		</Stack>
 	);

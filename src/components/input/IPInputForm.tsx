@@ -31,11 +31,12 @@ export default function IpInputForm(props: {onChange: (data: IIpAttributeInput) 
 		return uniqueDevices.map((device, index) => ({id: index, name: device, send_value: device}));
 	}, [portData]);
 
+
 	if (!form) return null;
 	return (
 		<NewBox item_name={t('IP Address')}>
-			<ParamBox label={t('Device Name')} value={form.dev} onChange={handleChange('dev')} param_desc={{...params?.deviceList, enum: deviceList}} />
-			<ParamBox label={t('IP Address')} value={form.ipAddress} onChange={handleChange('ipAddress')} param_desc={{...params?.ipAddress, type: 'ipaddress'}} />
+		   <ParamBox label={t('Device Name')} value={form?.dev ?? ''} onChange={handleChange('dev')} param_desc={{...params?.deviceList, enum: deviceList}} />
+		   <ParamBox label={t('IP Address')} value={form?.ipAddress ?? ''} onChange={handleChange('ipAddress')} param_desc={{...params?.ipAddress, type: 'ipaddress_cidr'}} />
 		</NewBox>
 	);
 }

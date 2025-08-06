@@ -4,6 +4,7 @@
 import DataTable from 'components/table/DataTable';
 import {IBFDAttribureInfo} from 'types/bfd';
 import {IDataTableColumnDef} from 'types/global';
+import {getStableHash} from 'common';
 
 //---------------------------------------------------------
 // Functional Component
@@ -20,34 +21,24 @@ export default function BFDTable(props: {data: IBFDAttribureInfo; selected_rows:
 		{data_key: 'state', header: 'State', type: 'state', width: 'full', tooltip: 'Indicates whether the component or service is active or inactive.'},
 	];
 
-	const getUniqueKey = (item: any) => {
-		return [
-			item.instance || '',
-			item.remoteIp || '',
-			item.sourceIP || '',
-			item.port|| ''
-		].join('-');
-	};
+   // Use global hash function for BFD entry
+   const getHashKey = (item: any) => getStableHash(`${item.instance || ''}_${item.remoteIp || ''}_${item.sourceIP || ''}_${item.port || ''}`);
 
-	const rows = data.Attr
-		? [...data.Attr]
-			.sort((a, b) => {
-				const keyA = getUniqueKey(a);
-				const keyB = getUniqueKey(b);
-				return keyA.localeCompare(keyB);
-			})
-			.map((item, index) => {
-				return {
-					id: index,
-					instance: item.instance,
-					remoteIp: item.remoteIp,
-					sourceIP: item.sourceIP,
-					port: item.port,
-					interval: item.interval,
-					state: item.state,
-				};
-			})
-		: undefined
+   const rows = data.Attr && Array.isArray(data.Attr)
+	   ? (() => {
+		   const sorted = [...data.Attr].sort((a, b) => getHashKey(a) - getHashKey(b));
+		   return sorted.map((item, index) => ({
+			   id: index,
+			   instance: item.instance,
+			   remoteIp: item.remoteIp,
+			   sourceIP: item.sourceIP,
+			   port: item.port,
+			   interval: item.interval,
+			   state: item.state,
+			   _uniqueKey: getHashKey(item),
+		   }));
+	   })()
+	   : [];
 
 	const name = 'Instance of Bidirectional Forwarding Detection';
 	return <DataTable name={name} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} />;

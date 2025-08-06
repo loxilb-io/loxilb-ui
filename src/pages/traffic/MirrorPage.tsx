@@ -14,6 +14,7 @@ import {usePopUp} from 'hooks/popupHook';
 import {useMirrors} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {Fragment, useRef, useState} from 'react';
+import React from 'react';
 import {IMirrorAttribute, IMirrorConfiguration} from 'types/mirror';
 
 //---------------------------------------------------------
@@ -23,7 +24,7 @@ function DetailPanel(props: {name: string; data: IMirrorAttribute}) {
 	const {name, data} = props;
 
 	// 0(SPAN), 1(RSPAN), 2(ERSPAN)
-	const type = data.mirrorInfo.type;
+	const type = data.mirrorInfo.type || 0;
 
 	return (
 		<SubTitlePannel title={name} sub_title={t('Details')}>
@@ -62,10 +63,40 @@ export default function MirrorPage() {
 	const {data, refetch} = useMirrors(inst);
 	const mirror_info: IMirrorConfiguration = {mirrAttr: data ?? []};
 
-	const [selected_rows, set_selected_rows] = useState<number[]>([]);
-	const {openPopUp, enableYes} = usePopUp();
-
-	const handleSelectionChange = (selection: any) => set_selected_rows(selection);
+   const [selected_rows, set_selected_rows] = useState<number[]>([]);
+   // Track selected mirrorIdent for synchronization
+   const [selected_mirrorIdent, set_selected_mirrorIdent] = useState<string | null>(null);
+   const {openPopUp, enableYes} = usePopUp();
+   // Hash function for mirror
+   const getHashKey = (item: IMirrorAttribute) => {
+	   const str = `${item.mirrorIdent || ''}_${item.targetObject.attachment || ''}_${item.targetObject.mirrObjName || ''}`;
+	   let hash = 0;
+	   for (let i = 0; i < str.length; i++) {
+		   hash = ((hash << 5) - hash) + str.charCodeAt(i);
+		   hash |= 0;
+	   }
+	   return hash >>> 0;
+   };
+   // Sorted mirrors
+   const sortedAttr = mirror_info.mirrAttr ? [...mirror_info.mirrAttr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
+   // Find selected index in sortedAttr
+   let selected_index = -1;
+   if (selected_rows.length === 1 && mirror_info.mirrAttr) {
+	   const original = mirror_info.mirrAttr[selected_rows[0]];
+	   selected_index = sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
+   } else if (selected_mirrorIdent) {
+	   selected_index = sortedAttr.findIndex(attr => attr.mirrorIdent === selected_mirrorIdent);
+   }
+   // Selection handler: map sorted index back to original
+   const handleSelectionChange = (indices: number[]) => {
+	   if (indices.length === 1 && mirror_info.mirrAttr) {
+		   const sortedItem = sortedAttr[indices[0]];
+		   const originalIndex = mirror_info.mirrAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
+		   set_selected_rows(originalIndex !== -1 ? [originalIndex] : []);
+	   } else {
+		   set_selected_rows([]);
+	   }
+   };
 
 	const handleDelete = async () => {
 		if (!inst) return;
@@ -75,7 +106,9 @@ export default function MirrorPage() {
 		if (res.status === 'success') {
 			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
 			set_selected_rows([]);
-			refetch();
+			setTimeout(() => {
+				refetch();
+			}, 1000);
 		} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
 	};
 
@@ -88,7 +121,8 @@ export default function MirrorPage() {
 				key={Date.now()}
 				onChange={data => {
 					instanceRef.current = data;
-					enableYes(!!data && data.mirrorIdent !== '');
+					enableYes(data.isValid);
+					// enableYes(!!data && data.mirrorIdent !== '');
 				}}
 			/>
 		);
@@ -104,22 +138,40 @@ export default function MirrorPage() {
 				const res = await request_create_mirror(inst, instanceRef.current);
 				if (res.status === 'success') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
-					refetch();
+					setTimeout(() => {
+						refetch();
+					}, 1000);
 				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: res.error}), t('OK'));
 			},
 			true,
 		);
 	};
 
-	return (
-		<Fragment>
-			<MirrorTable data={mirror_info} selected_rows={selected_rows} onChangeSelectedRows={handleSelectionChange} onAdd={handleAdd} onDelete={handleDelete} />
+   // Synchronize selected_mirrorIdent with selected_rows
+   React.useEffect(() => {
+	   if (!mirror_info.mirrAttr || mirror_info.mirrAttr.length === 0) return;
+	   if (selected_rows.length === 1) {
+		   const mirrorIdent = mirror_info.mirrAttr[selected_rows[0]].mirrorIdent;
+		   set_selected_mirrorIdent(mirrorIdent);
+	   } else if (selected_mirrorIdent !== null) {
+		   set_selected_mirrorIdent(null);
+	   }
+   }, [mirror_info, selected_rows, selected_mirrorIdent]);
 
-			{selected_rows.length === 1 && (
-				<LowerSection>
-					<DetailPanel name={mirror_info.mirrAttr[selected_rows[0]].mirrorIdent} data={mirror_info.mirrAttr[selected_rows[0]]} />
-				</LowerSection>
-			)}
-		</Fragment>
-	);
+   return (
+	   <Fragment>
+		   <MirrorTable
+			   data={{mirrAttr: sortedAttr}}
+			   selected_rows={selected_index !== -1 ? [selected_index] : []}
+			   onChangeSelectedRows={handleSelectionChange}
+			   onAdd={handleAdd}
+			   onDelete={handleDelete}
+		   />
+		   {selected_index !== -1 && (
+			   <LowerSection>
+				   <DetailPanel name={sortedAttr[selected_index].mirrorIdent} data={sortedAttr[selected_index]} />
+			   </LowerSection>
+		   )}
+	   </Fragment>
+   );
 }

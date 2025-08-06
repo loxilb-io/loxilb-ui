@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import { getStableHash } from 'common';
 import VLanInputForm from 'components/input/VLanInputForm';
 import VLanMemberInputForm from 'components/input/VLanMemberInputForm';
 import LowerSection from 'components/layout/LowerSection';
@@ -12,6 +13,7 @@ import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useVLANAttr} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
+import React from 'react';
 import {Fragment, useRef, useState} from 'react';
 import {IMember, IVlanData, IVlanInput, IVlanMemberInput} from 'types/vlan';
 
@@ -85,10 +87,35 @@ export default function VLANPage() {
 	const {data, refetch} = useVLANAttr(inst); // IVlanAttribute[]
 	const vlan_info: IVlanData = {vlanAttr: data ?? []};
 
-	const [selected_rows, set_selected_rows] = useState<any[]>([]);
-	const {openPopUp, enableYes} = usePopUp();
-
-	const handleSelectionChange = (selection: any) => set_selected_rows(selection);
+   const [selected_rows, set_selected_rows] = useState<number[]>([]);
+   // Track selected vid for synchronization
+   const [selected_vid, set_selected_vid] = useState<number | null>(null);
+   const {openPopUp, enableYes} = usePopUp();
+   // Hash function for VLAN
+   const getHashKey = (item: any) => {
+	   const str = `${item.vid || ''}_${item.dev || ''}`;
+	   return getStableHash(str);
+   };
+   // Sorted VLANs
+   const sortedAttr = vlan_info.vlanAttr ? [...vlan_info.vlanAttr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
+   // Find selected index in sortedAttr
+   let selected_index = -1;
+   if (selected_rows.length === 1 && vlan_info.vlanAttr) {
+	   const original = vlan_info.vlanAttr[selected_rows[0]];
+	   selected_index = sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
+   } else if (selected_vid !== null) {
+	   selected_index = sortedAttr.findIndex(attr => attr.vid === selected_vid);
+   }
+   // Selection handler: map sorted index back to original
+   const handleSelectionChange = (indices: number[]) => {
+	   if (indices.length === 1 && vlan_info.vlanAttr) {
+		   const sortedItem = sortedAttr[indices[0]];
+		   const originalIndex = vlan_info.vlanAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
+		   set_selected_rows(originalIndex !== -1 ? [originalIndex] : []);
+	   } else {
+		   set_selected_rows([]);
+	   }
+   };
 
 	const handleDelete = async () => {
 		if (!inst) return;
@@ -98,7 +125,9 @@ export default function VLANPage() {
 		if (res.status === 'success') {
 			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
 			set_selected_rows([]);
-			refetch();
+			setTimeout(() => {
+				refetch();
+			}, 1000);
 		} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
 	};
 
@@ -127,27 +156,46 @@ export default function VLANPage() {
 				const res = await request_create_vlan(inst, instanceRef.current);
 				if (res.status === 'success') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
-					refetch();
+					// Wait 1 second before refetching to allow backend to apply changes
+					setTimeout(() => {
+						refetch();
+					}, 1000);
 				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: res.error}), t('OK'));
 			},
 			true,
 		);
 	};
 
-	return (
-		<Fragment>
-			<VLANTable data={vlan_info} selected_rows={selected_rows} onChangeSelectedRows={handleSelectionChange} onAdd={handleAdd} onDelete={handleDelete} />
+   // Synchronize selected_vid with selected_rows
+   React.useEffect(() => {
+	   if (!vlan_info.vlanAttr || vlan_info.vlanAttr.length === 0) return;
+	   if (selected_rows.length === 1) {
+		   const vid = vlan_info.vlanAttr[selected_rows[0]].vid;
+		   set_selected_vid(vid);
+	   } else if (selected_vid !== null) {
+		   set_selected_vid(null);
+	   }
+   }, [vlan_info, selected_rows, selected_vid]);
 
-			{selected_rows.length === 1 && (
-				<LowerSection>
-					<MemberView
-						name={vlan_info.vlanAttr[selected_rows[0]].dev}
-						vid={vlan_info.vlanAttr[selected_rows[0]].vid}
-						data={vlan_info.vlanAttr[selected_rows[0]].member}
-						refetch={refetch}
-					/>
-				</LowerSection>
-			)}
-		</Fragment>
-	);
+   return (
+	   <Fragment>
+		   <VLANTable
+			   data={{vlanAttr: sortedAttr}}
+			   selected_rows={selected_index !== -1 ? [selected_index] : []}
+			   onChangeSelectedRows={handleSelectionChange}
+			   onAdd={handleAdd}
+			   onDelete={handleDelete}
+		   />
+		   {selected_index !== -1 && (
+			   <LowerSection>
+				   <MemberView
+					   name={sortedAttr[selected_index].dev}
+					   vid={sortedAttr[selected_index].vid}
+					   data={sortedAttr[selected_index].member}
+					   refetch={refetch}
+				   />
+			   </LowerSection>
+		   )}
+	   </Fragment>
+   );
 }

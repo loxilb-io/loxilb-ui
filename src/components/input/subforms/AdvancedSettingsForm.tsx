@@ -28,18 +28,18 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 	);
 
 	return (
-		<AccordionBox title={t('Advanced Settings')}>
-			<Stack spacing={2}>
-				<HorizontalStack>
-					<ParamBox label={t('SEL')} value={value.sel} onChange={handleChange('sel')} param_desc={{...params?.sel, enum: sel_list}} />
-					<ParamBox label={t('Oper')} value={value.oper} onChange={handleChange('oper')} param_desc={{...params?.oper, enum: oper_list}} />
-				</HorizontalStack>
+	   <AccordionBox title={t('Advanced Settings')}>
+			   <Stack spacing={2}>
+					   <HorizontalStack>
+							   <ParamBox label={t('SEL')} value={value?.sel ?? ''} onChange={handleChange('sel')} param_desc={{...params?.sel, enum: sel_list}} />
+							   <ParamBox label={t('Oper')} value={value?.oper ?? ''} onChange={handleChange('oper')} param_desc={{...params?.oper, enum: oper_list}} />
+					   </HorizontalStack>
 
-				<HorizontalStack>
-					<ParamBox label={t('Mode')} value={value.mode} onChange={handleChange('mode')} param_desc={{...params?.mode, enum: mode_list}} />
-					<ParamBox label={t('Inactive Timeout')} value={value.inactiveTimeOut} onChange={handleChange('inactiveTimeOut')} param_desc={params?.inactiveTimeOut} />
-				</HorizontalStack>
-			</Stack>
-		</AccordionBox>
+					   <HorizontalStack>
+							   <ParamBox label={t('Mode')} value={value?.mode ?? ''} onChange={handleChange('mode')} param_desc={{...params?.mode, enum: mode_list}} />
+							   <ParamBox label={t('Inactive Timeout')} value={value?.inactiveTimeOut ?? ''} onChange={handleChange('inactiveTimeOut')} param_desc={params?.inactiveTimeOut} />
+					   </HorizontalStack>
+			   </Stack>
+	   </AccordionBox>
 	);
 }

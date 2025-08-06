@@ -6,20 +6,39 @@ import NewBox from 'components/layout/NewBox';
 import useFormWithParams from 'hooks/inputFormHook';
 import {t} from 'i18next';
 import {IFdbAttribute} from 'types/fdb';
+import {useInstanceFromURL} from 'hooks/instanceHook';
+import {usePortAttr} from 'hooks/query/queryHooks';
+import {useMemo, useState} from 'react';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
 export default function FdbInputForm(props: {onChange: (data: IFdbAttribute) => void}) {
 	const {onChange} = props;
-
 	const {form, params, handleChange} = useFormWithParams<IFdbAttribute>('IFdbAttribute', onChange);
+
+	const inst = useInstanceFromURL();
+	const {data: portData} = usePortAttr(inst);
+	const ports = useMemo(
+		() => portData?.map((port, index) => ({
+			id: index,
+			name: `${port.portName} (Port ${port.portNo})`,
+			send_value: port.portName,
+			param: port.portName
+		})) || [],
+		[portData]
+	);
 
 	if (!form) return null;
 	return (
 		<NewBox item_name={t('FDB Entry')}>
-			<ParamBox label={t('Device Name')} value={form.dev} onChange={handleChange('dev')} param_desc={params?.dev} />
-			<ParamBox label={t('MAC Address')} value={form.macAddress} onChange={handleChange('macAddress')} param_desc={{...params?.macAddress, type: 'macaddress'}} />
+		   <ParamBox 
+			   label={t('Device Name')}
+			   value={form?.dev ?? ''}
+			   param_desc={{...params?.dev, type: 'string', enum: ports}}
+			   onChange={handleChange('dev')}
+		   />
+			<ParamBox label={t('MAC Address')} value={form?.macAddress ?? ''} onChange={handleChange('macAddress')} param_desc={{...params?.macAddress, type: 'macaddress'}} />
 		</NewBox>
 	);
 }

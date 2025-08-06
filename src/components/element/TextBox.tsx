@@ -14,16 +14,18 @@ const mapMetaTypeToInputType = (metaType?: string): string => {
 // Component
 //---------------------------------------------------------
 export default function TextBox(props: {
-	label: string;
-	multiline?: boolean;
-	minRows?: number;
-	value: string | number | undefined;
-	type?: string;
-	format?: string;
-	disabled?: boolean;
-	onChange: (val: string | number) => void;
+   label: string;
+   multiline?: boolean;
+   minRows?: number;
+   value: string | number | undefined;
+   type?: string;
+   format?: string;
+   disabled?: boolean;
+   onChange: (val: string | number) => void;
+   error?: boolean;
+   helperText?: string;
 }) {
-	const {label, multiline, minRows, value, type = 'string', format, disabled, onChange} = props;
+   const {label, multiline, minRows, value, type = 'string', format, disabled, onChange, error, helperText} = props;
 
 	const inputType = mapMetaTypeToInputType(type);
 	const max = format ? MAX_VALUE_BY_FORMAT[format] : undefined;
@@ -44,25 +46,27 @@ export default function TextBox(props: {
 		onChange(parsed);
 	};
 
-	useEffect(() => {
-		if (disabled) onChange('');
-	}, [disabled]);
+	// useEffect(() => {
+	// 	if (disabled) onChange('');
+	// }, [disabled]);
 
 	return (
-		<TextField
-			label={label}
-			size="small"
-			fullWidth
-			multiline={multiline}
-			minRows={minRows}
-			value={value === undefined || value === null ? '' : value}
-			type={inputType}
-			disabled={disabled}
-			onChange={handleChange}
-			slotProps={{
-				inputLabel: {shrink: true},
-				...(inputType === 'number' ? {htmlInput: {min: 0, ...(max !== undefined ? {max} : {})}} : max !== undefined ? {htmlInput: {max}} : {}),
-			}}
-		/>
+   <TextField
+	   label={label}
+	   size="small"
+	   fullWidth
+	   multiline={multiline}
+	   minRows={minRows}
+	   value={value === undefined || value === null ? '' : value}
+	   type={inputType}
+	   disabled={disabled}
+	   onChange={handleChange}
+	   error={!!error}
+	   helperText={helperText}
+	   slotProps={{
+		   inputLabel: {shrink: true},
+		   ...(inputType === 'number' ? {htmlInput: {min: 0, ...(max !== undefined ? {max} : {})}} : max !== undefined ? {htmlInput: {max}} : {}),
+	   }}
+   />
 	);
 }

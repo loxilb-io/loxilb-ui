@@ -7,28 +7,32 @@ import {t} from 'i18next';
 import {useEffect, useState} from 'react';
 
 function getPortValidationError(port: string | number): string | null {
-	if (!port && port !== 0) return null;
+	if (port === undefined || port === null || port === '') return null;
 
 	const portStr = typeof port === 'string' ? port.trim() : String(port);
 
 	if (portStr === '') return null;
-	else if (!isValidPort(Number(portStr))) return t('Invalid port number.');
+	const portNum = Number(portStr);
+	if (portNum === 0) return t('Invalid port number.');
+	else if (!isValidPort(portNum)) return t('Invalid port number.');
 	else return null;
 }
 
 //---------------------------------------------------------
 // Component
 //---------------------------------------------------------
-export default function PortBox(props: {label: string; value: number | null | undefined; disabled?: boolean; onChange: (val: number) => void}) {
-	const {label, value, disabled, onChange} = props;
+export default function PortBox(props: {label: string; value: number | null | undefined; disabled?: boolean; onChange: (val: number) => void; error?: boolean; helperText?: string}) {
+	const {label, value, disabled, onChange, error: externalError, helperText: externalHelperText} = props;
+
 	const [error, setError] = useState<string | null>(null);
 
 	const handleChange = (val: string) => {
 		const trimmedVal = val.trim();
+		
 		const validationError = getPortValidationError(trimmedVal);
 		setError(validationError);
-		if (validationError) return;
-		onChange(Number(trimmedVal));
+		
+		if (!validationError) onChange(Number(trimmedVal));
 	};
 
 	useEffect(() => {
@@ -52,8 +56,8 @@ export default function PortBox(props: {label: string; value: number | null | un
 			disabled={disabled}
 			onChange={e => handleChange(e.target.value)}
 			placeholder={t('0-65535')}
-			error={!!error}
-			helperText={error}
+			error={externalError !== undefined ? !!externalError : !!error}
+			helperText={externalHelperText !== undefined ? externalHelperText : error}
 			slotProps={{inputLabel: {shrink: true}}}
 		/>
 	);

@@ -91,28 +91,28 @@ export const MENU_LIST: IMenuItem[] = [
 				name: 'BFD',
 				path: 'bfd',
 			},
-			{
-				name: 'BGP',
-				path: 'bgp',
-				items: [
-					{
-						name: 'Defined Sets',
-						path: 'set',
-					},
-					{
-						name: 'Definition',
-						path: 'def',
-					},
-					{
-						name: 'Apply',
-						path: 'apply',
-					},
-					{
-						name: 'Neighbors',
-						path: 'neighbor',
-					},
-				],
-			},
+			// {
+			// 	name: 'BGP',
+			// 	path: 'bgp',
+			// 	items: [
+			// 		{
+			// 			name: 'Defined Sets',
+			// 			path: 'set',
+			// 		},
+			// 		{
+			// 			name: 'Definition',
+			// 			path: 'def',
+			// 		},
+			// 		{
+			// 			name: 'Apply',
+			// 			path: 'apply',
+			// 		},
+			// 		{
+			// 			name: 'Neighbors',
+			// 			path: 'neighbor',
+			// 		},
+			// 	],
+			// },
 		],
 	},
 	{

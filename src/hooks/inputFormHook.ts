@@ -5,6 +5,70 @@ import {INPUT_PARAM_LIST} from 'types/input_base';
 import {useMetadata} from './query/queryHooks';
 
 //---------------------------------------------------------
+// Validation function
+function validateForm<T>(form: T, params: Record<string, IPostParamFieldDesc>): { errors: Record<string, string>, isValid: boolean } {
+	const errors: Record<string, any> = {};
+	let valid = true;
+	Object.keys(params).forEach(key => {
+		const param = params[key];
+		const value = (form as any)[key];
+
+		// Required check
+		if (param.required && (value === undefined || value === '' || value === null || (Array.isArray(value) && value.length === 0))) {
+			errors[key] = 'Required';
+			valid = false;
+		}
+
+		// Integer type check
+		if (param.type === 'integer' && value !== undefined && value !== null && typeof value !== 'number') {
+			errors[key] = 'Must be a number';
+			valid = false;
+		}
+
+		// Enum check
+		if (param.enum && value !== undefined && value !== null && !param.enum.includes(value)) {
+			errors[key] = 'Invalid value';
+			valid = false;
+		}
+
+		// Object type: recursively validate (always, even if value is missing)
+		if (param.type === 'object' && param.properties) {
+			const childValidation = validateForm(value || {}, param.properties);
+			errors[key] = childValidation.errors;
+			if (!childValidation.isValid) valid = false;
+		} else if (!param.type && typeof param === 'object' && !Array.isArray(param) && param !== null) {
+			// Only recurse if param is a map of field descriptors
+			const isFieldMap = Object.values(param).every(v => typeof v === 'object' && v !== null && ('type' in v || 'properties' in v));
+			if (isFieldMap) {
+				const childValidation = validateForm(value || {}, param as unknown as Record<string, IPostParamFieldDesc>);
+				errors[key] = childValidation.errors;
+				if (!childValidation.isValid) valid = false;
+			}
+		}
+
+		// Array type: validate each item
+		if (param.type === 'array' && param.items && Array.isArray(value)) {
+			errors[key] = [];
+			value.forEach((item: any, idx: number) => {
+				let itemErrors, itemValid;
+				if (param.items && (param.items as any).properties) {
+					// Array of objects
+					const itemValidation = validateForm(item, (param.items as any).properties);
+					itemErrors = itemValidation.errors;
+					itemValid = itemValidation.isValid;
+				} else {
+					// Array of primitives
+					const itemValidation = validateForm({ value: item }, { value: param.items as IPostParamFieldDesc });
+					itemErrors = itemValidation.errors.value;
+					itemValid = itemValidation.isValid;
+				}
+				errors[key][idx] = itemErrors;
+				if (!itemValid) valid = false;
+			});
+		}
+	});
+	return { errors, isValid: valid };
+}
 // Helper Functions
 //---------------------------------------------------------
 function isSchemaObject(param: any): boolean {
@@ -61,10 +125,10 @@ export function getDefaultValueFromParams<T>(params: any, depth: number = 0): T 
 		}
 
 		// 중첩 구조 처리
-		if (!param.type && (param.properties || param.items)) {
-			result[key] = param.properties ? getDefaultValueFromParams(param.properties, depth + 1) : getArrayDefault(param.items, depth + 1);
-			continue;
-		}
+		// if (!param.type && (param.properties || param.items)) {
+		// 	result[key] = param.properties ? getDefaultValueFromParams(param.properties, depth + 1) : getArrayDefault(param.items, depth + 1);
+		// 	continue;
+		// }
 
 		// enum 처리
 		if (param.enum?.length) {
@@ -73,11 +137,11 @@ export function getDefaultValueFromParams<T>(params: any, depth: number = 0): T 
 		}
 
 		// description에서 기본값 추출
-		const descDefault = getDescriptionDefault(param);
-		if (descDefault !== null) {
-			result[key] = descDefault;
-			continue;
-		}
+		// const descDefault = getDescriptionDefault(param);
+		// if (descDefault !== null) {
+		// 	result[key] = descDefault;
+		// 	continue;
+		// }
 
 		// 타입별 기본값
 		switch (param.type) {
@@ -128,33 +192,45 @@ export default function useFormWithParams<T>(paramType: string, onChange?: (data
 		return {};
 	}, [is_fetched, key.path, get_param, param_fields]);
 
-	const initialValue = useMemo(() => getDefaultValueFromParams<T>(params), [params]);
-	const [form, setForm] = useState<T>(initialValue);
+   const initialValue = useMemo(() => getDefaultValueFromParams<T>(params), [params]);
+   const [form, setForm] = useState<T>(initialValue);
+   const [errors, setErrors] = useState<Record<string, string>>({});
+   const [isValid, setIsValid] = useState<boolean>(true);
 
-	useEffect(() => {
-		if (is_fetched) setForm(getDefaultValueFromParams<T>(params));
-	}, [is_fetched, params]);
+   useEffect(() => {
+	   if (is_fetched) setForm(getDefaultValueFromParams<T>(params));
+   }, [is_fetched, params]);
 
-	const handleChange = useCallback(
-		(field: keyof T) => (value: any) => {
-			if (!Object.keys(params).length) return;
+   useEffect(() => {
+	   if (form && params) {
+		   const validation = validateForm(form, params);
+		   setErrors(validation.errors);
+		   setIsValid(validation.isValid);
+	   }
+   }, [form, params]);
 
-			const processedValue = params[field as string]?.type === 'integer' || typeof field === 'number' ? Number(value) : value;
-			const newForm = {...(form || ({} as T)), [field]: processedValue} as T;
-			setForm(newForm);
-			if (onChange) onChange(newForm);
-		},
-		[form, onChange, params],
-	);
+   const handleChange = useCallback(
+	   (field: keyof T) => (value: any) => {
+		   if (!Object.keys(params).length) return;
 
-	const handleObjectChange = useCallback(
-		(partialData: Partial<T>) => {
-			const newForm = {...(form || ({} as T)), ...partialData} as T;
-			setForm(newForm);
-			if (onChange) onChange(newForm);
-		},
-		[form, onChange],
-	);
+		   const processedValue = params[field as string]?.type === 'integer' || typeof field === 'number' ? Number(value) : value;
+		   const newForm = {...(form || ({} as T)), [field]: processedValue} as T;
+		   setForm(newForm);
+		   if (onChange) onChange(newForm);
+	   },
+	   [form, onChange, params],
+   );
 
-	return is_fetched ? {form, params, handleChange, handleObjectChange} : {form: undefined, params: undefined, handleChange: () => {}, handleObjectChange: () => {}};
+   const handleObjectChange = useCallback(
+	   (partialData: Partial<T>) => {
+		   const newForm = {...(form || ({} as T)), ...partialData} as T;
+		   setForm(newForm);
+		   if (onChange) onChange(newForm);
+	   },
+	   [form, onChange],
+   );
+
+   return is_fetched
+	   ? {form, params, handleChange, handleObjectChange, errors, isValid}
+	   : {form: undefined, params: undefined, handleChange: () => {}, handleObjectChange: () => {}, errors: {}, isValid: false};
 }

@@ -8,8 +8,8 @@ import InstanceInputForm from 'components/input/InstanceInputForm';
 import {request_create_instance} from 'connector/oam/oam';
 import {usePopUp} from 'hooks/popupHook';
 import {useInstances} from 'hooks/query/oamHooks';
-import {t} from 'i18next';
-import {useRef, useState} from 'react';
+import {useTranslation} from 'react-i18next';
+import {useRef, useState, useEffect} from 'react';
 import {IInstanceInput} from 'types/oam';
 
 //---------------------------------------------------------
@@ -19,6 +19,8 @@ export default function InstanceCardAdd() {
 	const [is_hover, set_is_hover] = useState(false);
 	const {openPopUp} = usePopUp();
 	const {refetch} = useInstances();
+	const { t, i18n } = useTranslation();
+	const [languageKey, setLanguageKey] = useState(0);
 
 	const instanceRef = useRef<IInstanceInput | null>(null);
 
@@ -35,6 +37,10 @@ export default function InstanceCardAdd() {
 			}
 		});
 	};
+
+	useEffect(() => {
+			setLanguageKey(prev => prev + 1);
+		}, [i18n.language]);
 
 	return (
 		<Card

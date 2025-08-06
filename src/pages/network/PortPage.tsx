@@ -12,6 +12,7 @@ import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePortAttr} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {Fragment, useState} from 'react';
+import React from 'react';
 import {useSearchParams} from 'react-router-dom';
 import {IPortHardwareInfo, IPortInfo, IPortL2Info, IPortL3Info, IPortSoftwareInfo} from 'types/port';
 
@@ -99,56 +100,88 @@ export default function PortPage() {
 	const [searchParams] = useSearchParams();
 	const url_param = searchParams.get('port') ?? '';
 
-	const [cur_tab_idx, set_cur_tab_idx] = useState(0);
-	const [selected_rows, set_selected_rows] = useState<number[]>([]);
+   const [cur_tab_idx, set_cur_tab_idx] = useState(0);
+   const [selected_rows, set_selected_rows] = useState<number[]>([]);
+   // Track selected portNo for synchronization
+   const [selected_portNo, set_selected_portNo] = useState<number | null>(null);
 
-	const tabs = [t('Software'), t('Hardware'), t('Layer 2'), t('Layer 3')];
+   const tabs = [t('Software'), t('Hardware'), t('Layer 2'), t('Layer 3')];
 
-	const handleChangeRows = (rows: number[]) => {
-		if (rows.length === 0) {
-			set_selected_rows([]);
-			set_cur_tab_idx(0);
-		} else {
-			const max_idx = port_info.portAttr.length;
-			const valid_rows = rows.filter(row => row < max_idx);
+   // Hash function for port
+   const getHashKey = (item: any) => {
+	   const str = `${item.portNo || ''}_${item.portName || ''}`;
+	   let hash = 0;
+	   for (let i = 0; i < str.length; i++) {
+		   hash = ((hash << 5) - hash) + str.charCodeAt(i);
+		   hash |= 0;
+	   }
+	   return hash >>> 0;
+   };
+   // Sorted ports
+   const sortedAttr = port_info.portAttr ? [...port_info.portAttr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
+   // Find selected index in sortedAttr
+   let selected_index = -1;
+   if (selected_rows.length === 1 && port_info.portAttr) {
+	   const original = port_info.portAttr[selected_rows[0]];
+	   selected_index = sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
+   } else if (selected_portNo !== null) {
+	   selected_index = sortedAttr.findIndex(attr => attr.portNo === selected_portNo);
+   }
+   // Selection handler: map sorted index back to original
+   const handleChangeRows = (indices: number[]) => {
+	   if (indices.length === 1 && port_info.portAttr) {
+		   const sortedItem = sortedAttr[indices[0]];
+		   const originalIndex = port_info.portAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
+		   set_selected_rows(originalIndex !== -1 ? [originalIndex] : []);
+		   set_cur_tab_idx(0);
+	   } else {
+		   set_selected_rows([]);
+		   set_cur_tab_idx(0);
+	   }
+   };
 
-			if (valid_rows.length === 0) {
-				set_selected_rows([]);
-				set_cur_tab_idx(0);
-			} else {
-				set_selected_rows(valid_rows);
-				set_cur_tab_idx(0);
-			}
-		}
-	};
+   // Synchronize selected_portNo with selected_rows
+   // (useEffect required for correct selection after sorting)
+   React.useEffect(() => {
+	   if (!port_info.portAttr || port_info.portAttr.length === 0) return;
+	   if (selected_rows.length === 1) {
+		   const portNo = port_info.portAttr[selected_rows[0]].portNo;
+		   set_selected_portNo(portNo);
+	   } else if (selected_portNo !== null) {
+		   set_selected_portNo(null);
+	   }
+   }, [port_info, selected_rows, selected_portNo]);
 
-	return (
-		<Fragment>
-			<PortTable data={port_info} selected_rows={selected_rows} onChangeSelectedRows={handleChangeRows} />
+   return (
+	   <Fragment>
+		   <PortTable
+			   data={{portAttr: sortedAttr}}
+			   selected_rows={selected_index !== -1 ? [selected_index] : []}
+			   onChangeSelectedRows={handleChangeRows}
+		   />
+		   {selected_index !== -1 && sortedAttr.length > selected_index && (
+			   <LowerSection>
+				   <TabView title={sortedAttr[selected_index].portName} sub_title={t('Details')} tabs={tabs} onChangeTab={set_cur_tab_idx}>
+					   <Box id="sub-menu" marginTop="20px" padding="10px">
+						   <Box role="tabpanel" hidden={cur_tab_idx !== 0}>
+							   <SoftwarePanel sw_info={sortedAttr[selected_index].portSoftwareInformation} />
+						   </Box>
 
-			{selected_rows.length === 1 && port_info.portAttr.length > selected_rows[0] && (
-				<LowerSection>
-					<TabView title={port_info.portAttr[selected_rows[0]].portName} sub_title={t('Details')} tabs={tabs} onChangeTab={set_cur_tab_idx}>
-						<Box id="sub-menu" marginTop="20px" padding="10px">
-							<Box role="tabpanel" hidden={cur_tab_idx !== 0}>
-								<SoftwarePanel sw_info={port_info.portAttr[selected_rows[0]].portSoftwareInformation} />
-							</Box>
+						   <Box role="tabpanel" hidden={cur_tab_idx !== 1}>
+							   <HardwarePanel hw_info={sortedAttr[selected_index].portHardwareInformation} />
+						   </Box>
 
-							<Box role="tabpanel" hidden={cur_tab_idx !== 1}>
-								<HardwarePanel hw_info={port_info.portAttr[selected_rows[0]].portHardwareInformation} />
-							</Box>
+						   <Box role="tabpanel" hidden={cur_tab_idx !== 2}>
+							   <Layer2Panel l2_info={sortedAttr[selected_index].portL2Information} />
+						   </Box>
 
-							<Box role="tabpanel" hidden={cur_tab_idx !== 2}>
-								<Layer2Panel l2_info={port_info.portAttr[selected_rows[0]].portL2Information} />
-							</Box>
-
-							<Box role="tabpanel" hidden={cur_tab_idx !== 3}>
-								<Layer3Panel l3_info={port_info.portAttr[selected_rows[0]].portL3Information} />
-							</Box>
-						</Box>
-					</TabView>
-				</LowerSection>
-			)}
-		</Fragment>
-	);
+						   <Box role="tabpanel" hidden={cur_tab_idx !== 3}>
+							   <Layer3Panel l3_info={sortedAttr[selected_index].portL3Information} />
+						   </Box>
+					   </Box>
+				   </TabView>
+			   </LowerSection>
+		   )}
+	   </Fragment>
+   );
 }

@@ -3,6 +3,7 @@
 //---------------------------------------------------------
 import {get_transfer_amount_str} from 'common';
 import DataTable from 'components/table/DataTable';
+import { get } from 'http';
 import {IDataTableColumnDef} from 'types/global';
 import {IVlanData} from 'types/vlan';
 
@@ -20,30 +21,34 @@ export default function VLANTable(props: {data: IVlanData; selected_rows: number
 		{data_key: 'outbounds', header: 'Outbounds', type: 'multi-line', align: 'right', width: 'wide'},
 	];
 
-	const getUniqueKey = (item: any) => {
-		return [
-			item.vid
-		].join('-');
-	};
+   // Hash function for VLAN
+   const getHashKey = (item: any) => {
+	   const str = `${item.vid || ''}_${item.dev || ''}`;
+	   let hash = 0;
+	   for (let i = 0; i < str.length; i++) {
+		   hash = ((hash << 5) - hash) + str.charCodeAt(i);
+		   hash |= 0;
+	   }
+	   return hash >>> 0;
+   };
 
-	const rows = data.vlanAttr
-		? [...data.vlanAttr]
-			.sort((a, b) => {
-				const keyA = getUniqueKey(a);
-				const keyB = getUniqueKey(b);
-				return keyA.localeCompare(keyB);
-			})
-			.map((item, index) => {	
-				return {
-					id: index,
-					vid: item.vid,
-					dev: item.dev,
-					member: item.member.map(member => `${member.dev}${member.tagged ? '(tagged)' : '(untagged)'}`).join(', '),
-					inbounds: get_transfer_amount_str(item.vlanStatistic.inBytes, item.vlanStatistic.inPackets),
-					outbounds: get_transfer_amount_str(item.vlanStatistic.outBytes, item.vlanStatistic.outPackets),
-				};
-			})
-		: undefined
+   const rows = data.vlanAttr
+	   ? (() => {
+		   const sorted = [...data.vlanAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
+		   return sorted.map((item, index) => {
+			   return {
+				//    id: getHashKey(item),
+				   id: index,
+				   vid: item.vid,
+				   dev: item.dev,
+				   member: item.member.map(member => `${member.dev}${member.tagged ? '(tagged)' : '(untagged)'}`).join(', '),
+				   inbounds: get_transfer_amount_str(item.vlanStatistic.inBytes, item.vlanStatistic.inPackets),
+				   outbounds: get_transfer_amount_str(item.vlanStatistic.outBytes, item.vlanStatistic.outPackets),
+				   _uniqueKey: getHashKey(item),
+			   };
+		   });
+	   })()
+	   : undefined;
 
 	return <DataTable name={'VLAN'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} />;
 }

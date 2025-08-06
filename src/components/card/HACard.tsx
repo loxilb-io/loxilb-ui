@@ -15,7 +15,7 @@ import CardBase from './CardBase';
 export default function HACard(props: {instance: IInstance | null}) {
 	const {instance} = props;
 
-	const inst_name = instance?.ci_name ?? '';
+	const inst_name = instance?.name ?? '';
 	const jump_url = `/instance/status/ha?name=${inst_name}`;
 
 	const {data} = useHAState(instance); // IVipAttribute[]

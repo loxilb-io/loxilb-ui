@@ -25,38 +25,39 @@ export default function ConntrackTable(props: {data: ICtData; selected_rows: num
 		{data_key: 'usage', header: 'Usages', align: 'right', width: 'wide'},
 	];
 
-	const getUniqueKey = (item: any) => {
-		return [
-			item.sourceIP || '',
-			item.sourcePort || '',
-			item.destinationIP || '',
-			item.destinationPort || '',
-			item.protocol || '',
-			item.conntrackState || '',
-			item.conntrackAct || ''
-		].join('-');
-	};
+   // Simple hash function for composite key
+   const getHashKey = (item: any) => {
+	   const str = `${item.sourcePort || ''}_${item.destinationIP || ''}_${item.destinationPort || ''}_${item.protocol || ''}_${item.conntrackState || ''}_${item.conntrackAct || ''}`;
+	   let hash = 0;
+	   for (let i = 0; i < str.length; i++) {
+		   hash = ((hash << 5) - hash) + str.charCodeAt(i);
+		   hash |= 0; // Convert to 32bit integer
+	   }
+	   return hash >>> 0; // Convert to unsigned 32-bit integer (always positive)
+   };
 
-	const rows = data.ctAttr
-		? [...data.ctAttr]
-			.sort((a, b) => {
-				const keyA = getUniqueKey(a);
-				const keyB = getUniqueKey(b);
-				return keyA.localeCompare(keyB);
-			})
-			.map((item, index) => {
-				return {
-					id: index,
-					servename: {data: item.servName, url: `/instance/traffic/lb?name=${inst_name}&servName=${item.servName}`, toString: () => item.servName},
-					source: get_ip_port_str(item.sourceIP, item.sourcePort),
-					destination: get_ip_port_str(item.destinationIP, item.destinationPort),
-					protocol: item.protocol,
-					conntrackState: item.conntrackState,
-					conntrackAct: item.conntrackAct,
-					usage: item.bytes && item.packets ? `${get_size_str(item.bytes)} / ${item.packets} pkts` : ' ',
-				};
-			})
-		: undefined;
+   const rows = data.ctAttr
+	   ? (() => {
+		   const sorted = [...data.ctAttr].sort((a, b) => {
+			   const keyA = getHashKey(a);
+			   const keyB = getHashKey(b);
+			   return keyA - keyB;
+		   });
+		   return sorted.map((item, index) => {
+			   return {
+				   id: index,
+				   servename: {data: item.servName, url: `/instance/traffic/lb?name=${inst_name}&servName=${item.servName}`, toString: () => item.servName},
+				   source: get_ip_port_str(item.sourceIP, item.sourcePort),
+				   destination: get_ip_port_str(item.destinationIP, item.destinationPort),
+				   protocol: item.protocol,
+				   conntrackState: item.conntrackState,
+				   conntrackAct: item.conntrackAct,
+				   usage: item.bytes && item.packets ? `${get_size_str(item.bytes)} / ${item.packets} pkts` : ' ',
+				   _uniqueKey: getHashKey(item),
+			   };
+		   });
+	   })()
+	   : undefined;
 
 	return <DataTable name={'Connection Track'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} />;
 }

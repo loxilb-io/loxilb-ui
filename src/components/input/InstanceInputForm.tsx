@@ -23,20 +23,20 @@ export default function InstanceInputForm(props: {onChange: (data: IInstanceInpu
 				{t('Please enter the instance information')}
 			</Typography>
 
-			<ParamBox label={t('Name')} value={form.name} onChange={handleChange('name')} param_desc={params?.name} />
+		   <ParamBox label={t('Name')} value={form?.name ?? ''} onChange={handleChange('name')} param_desc={params?.name} />
 
-			<HorizontalStack>
-				<ParamBox label={t('Container Image')} value={form.cimage} onChange={handleChange('cimage')} param_desc={params?.cimage} />
-				<ParamBox label={t('Tag')} value={form.ctag} onChange={handleChange('ctag')} param_desc={params?.ctag} />
-			</HorizontalStack>
+		   <HorizontalStack>
+			   <ParamBox label={t('Container Image')} value={form?.cimage ?? ''} onChange={handleChange('cimage')} param_desc={params?.cimage} />
+			   <ParamBox label={t('Tag')} value={form?.ctag ?? ''} onChange={handleChange('ctag')} param_desc={params?.ctag} />
+		   </HorizontalStack>
 
-			<HorizontalStack>
-				<ParamBox label={t('Host')} value={form.host} onChange={handleChange('host')} param_desc={params?.host} />
-				<ParamBox label={t('Port')} value={form.port} onChange={handleChange('port')} param_desc={{...params?.port, type: 'port'}} />
-			</HorizontalStack>
+		   <HorizontalStack>
+			   <ParamBox label={t('Host')} value={form?.host ?? ''} onChange={handleChange('host')} param_desc={params?.host} />
+			   <ParamBox label={t('Port')} value={form?.port ?? ''} onChange={handleChange('port')} param_desc={{...params?.port, type: 'port'}} />
+		   </HorizontalStack>
 
-			<ParamBox label={t('Version')} value={form.version} onChange={handleChange('version')} param_desc={params?.version} />
-			<ParamBox label={t('Description')} value={form.description} onChange={handleChange('description')} param_desc={params?.description} multiline minRows={3} />
+		   <ParamBox label={t('Version')} value={form?.version ?? ''} onChange={handleChange('version')} param_desc={params?.version} />
+		   <ParamBox label={t('Description')} value={form?.description ?? ''} onChange={handleChange('description')} param_desc={params?.description} multiline minRows={3} />
 		</Stack>
 	);
 }

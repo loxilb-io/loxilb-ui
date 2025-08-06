@@ -5,7 +5,7 @@ import {ArrowDropDown, ArrowDropUp} from '@mui/icons-material';
 import {Collapse, List, ListItemButton, ListItemIcon, ListItemText} from '@mui/material';
 import {get_menu_name_from_path, get_root_url, get_url_from_2_depth_name, get_url_from_3_depth_name} from 'common';
 import useMenuState from 'hooks/menuHook';
-import {t} from 'i18next';
+import {useTranslation} from 'react-i18next';
 import {Fragment, useEffect} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {IMenuItem, MENU_LIST} from 'types/menu';
@@ -14,7 +14,8 @@ import {IMenuItem, MENU_LIST} from 'types/menu';
 // Functional Component
 //---------------------------------------------------------
 export default function SlideMenuItem(props: {name: string; item: Omit<IMenuItem, 'name'>; path: string[]; depth: number; instance_name: string}) {
-	const {name: top_name, item, path, depth, instance_name} = props;
+const {name: top_name, item, path, depth, instance_name} = props;
+const { t } = useTranslation();
 
 	const url = window.location.pathname;
 	const root_url = get_root_url() + '/instance/';
@@ -76,20 +77,20 @@ export default function SlideMenuItem(props: {name: string; item: Omit<IMenuItem
 					</ListItemIcon>
 				)}
 
-				<ListItemText primary={t(top_name)} slotProps={{primary: {variant: depth === 0 ? 'subtitle1' : 'subtitle2'}}} />
+			   <ListItemText primary={t(top_name)} slotProps={{primary: {variant: depth === 0 ? 'subtitle1' : 'subtitle2'}}} />
 
 				{item.items && item.items.length > 0 && (getMenuState(path) ? <ArrowDropDown /> : <ArrowDropUp />)}
 			</ListItemButton>
 
-			{item.items && item.items.length > 0 && (
-				<Collapse in={getMenuState(path)} timeout="auto" unmountOnExit>
-					<List component="div" disablePadding>
-						{item.items.map((child, index) => (
-							<SlideMenuItem key={index} name={t(child.name)} item={child} path={[...path, child.name]} depth={depth + 1} instance_name={instance_name} />
-						))}
-					</List>
-				</Collapse>
-			)}
+		   {item.items && item.items.length > 0 && (
+			   <Collapse in={getMenuState(path)} timeout="auto" unmountOnExit>
+				   <List component="div" disablePadding>
+					   {item.items.map((child, index) => (
+						   <SlideMenuItem key={index} name={child.name} item={child} path={[...path, child.name]} depth={depth + 1} instance_name={instance_name} />
+					   ))}
+				   </List>
+			   </Collapse>
+		   )}
 		</Fragment>
 	);
 }

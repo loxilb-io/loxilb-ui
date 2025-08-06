@@ -2,6 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {Stack, RadioGroup, FormControlLabel, Radio} from '@mui/material';
+import { getStableHash } from 'common';
 import SingleTextField from 'components/element/SingleTextField';
 import ValueBunch from 'components/element/ValueBunch';
 import FirewallInputForm from 'components/input/FirewallInputForm';
@@ -14,6 +15,7 @@ import {usePopUp} from 'hooks/popupHook';
 import {useFirewallRules} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {Fragment, useRef, useState} from 'react';
+import React from 'react';
 import {IFirewallRule, IFirewallRules, IOptions} from 'types/firewall';
 
 //---------------------------------------------------------
@@ -63,10 +65,38 @@ export default function FirewallPage() {
 	const {data, refetch} = useFirewallRules(inst);
 	const fw_info: IFirewallRules = {fwAttr: data ?? []};
 
-	const [selected_rows, set_selected_rows] = useState<number[]>([]);
-	const {openPopUp, enableYes} = usePopUp();
+   const [selected_rows, set_selected_rows] = useState<number[]>([]);
+   // Track selected rule for synchronization
+   const [selected_portName, set_selected_portName] = useState<string | null>(null);
+   const {openPopUp, enableYes} = usePopUp();
+   
+   // Hash function for firewall rule
+   const getHashKey = (item: IFirewallRule) => {
+	   const str = `${item.ruleArguments.portName || ''}_${item.ruleArguments.sourceIP || ''}_${item.ruleArguments.minSourcePort || ''}_${item.ruleArguments.maxSourcePort || ''}_${item.ruleArguments.destinationIP || ''}_${item.ruleArguments.minDestinationPort || ''}_${item.ruleArguments.maxDestinationPort || ''}_${item.ruleArguments.protocol || ''}`;
+		return getStableHash(str);
+   };
+   
+   // Sorted firewall rules
+   const sortedAttr = fw_info.fwAttr ? [...fw_info.fwAttr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
+   const instanceRef = useRef<IFirewallRule | null>(null);
+   let selected_index = -1;
 
-	const handleSelectionChange = (selection: any) => set_selected_rows(selection);
+   if (selected_rows.length === 1 && fw_info.fwAttr) {
+	   const original = fw_info.fwAttr[selected_rows[0]];
+	   selected_index = sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
+   } else if (selected_portName) {
+	   selected_index = sortedAttr.findIndex(attr => attr.ruleArguments.portName === selected_portName);
+   }
+   // Selection handler: map sorted index back to original
+   const handleSelectionChange = (indices: number[]) => {
+	   if (indices.length === 1 && fw_info.fwAttr) {
+		   const sortedItem = sortedAttr[indices[0]];
+		   const originalIndex = fw_info.fwAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
+		   set_selected_rows(originalIndex !== -1 ? [originalIndex] : []);
+	   } else {
+		   set_selected_rows([]);
+	   }
+   };
 
 	const handleDelete = async () => {
 		if (!inst) return;
@@ -76,11 +106,12 @@ export default function FirewallPage() {
 		if (res.status === 'success') {
 			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
 			set_selected_rows([]);
-			refetch();
+			setTimeout(() => {
+				refetch();
+			}, 1000);
 		} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
 	};
 
-	const instanceRef = useRef<IFirewallRule | null>(null);
 	const handleAdd = () => {
 		if (!inst) return;
 
@@ -89,7 +120,8 @@ export default function FirewallPage() {
 				key={Date.now()}
 				onChange={data => {
 					instanceRef.current = data;
-					enableYes(!!data && data.ruleArguments && data.ruleArguments.portName !== '');
+					enableYes(data.isValid);
+					// enableYes(!!data && data.ruleArguments && data.ruleArguments.portName !== '');
 				}}
 			/>
 		);
@@ -105,22 +137,40 @@ export default function FirewallPage() {
 				const res = await request_create_firewall_rule(inst, instanceRef.current);
 				if (res.status === 'success') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
-					refetch();
+					setTimeout(() => {
+						refetch();
+					}, 1000);
 				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: res.error}), t('OK'));
 			},
 			true,
 		);
 	};
 
-	return (
-		<Fragment>
-			<FirewallTable data={fw_info} selected_rows={selected_rows} onChangeSelectedRows={handleSelectionChange} onAdd={handleAdd} onDelete={handleDelete} />
+   // Synchronize selected_portName with selected_rows
+   React.useEffect(() => {
+	   if (!fw_info.fwAttr || fw_info.fwAttr.length === 0) return;
+	   if (selected_rows.length === 1) {
+		   const portName = fw_info.fwAttr[selected_rows[0]].ruleArguments.portName;
+		   set_selected_portName(portName);
+	   } else if (selected_portName !== null) {
+		   set_selected_portName(null);
+	   }
+   }, [fw_info, selected_rows, selected_portName]);
 
-			{selected_rows.length === 1 && (
-				<LowerSection>
-					<OptionPannel name={""} data={fw_info.fwAttr[selected_rows[0]].opts} />					
-				</LowerSection>
-			)}
-		</Fragment>
-	);
+   return (
+	   <Fragment>
+		   <FirewallTable
+			   data={{fwAttr: sortedAttr}}
+			   selected_rows={selected_index !== -1 ? [selected_index] : []}
+			   onChangeSelectedRows={handleSelectionChange}
+			   onAdd={handleAdd}
+			   onDelete={handleDelete}
+		   />
+		   {selected_index !== -1 && (
+			   <LowerSection>
+				   <OptionPannel name={""} data={sortedAttr[selected_index].opts} />
+			   </LowerSection>
+		   )}
+	   </Fragment>
+   );
 }

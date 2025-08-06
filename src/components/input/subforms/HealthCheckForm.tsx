@@ -48,30 +48,30 @@ export default function HealthCheckForm(props: {value: IServiceArguments; onChan
 						param_desc={params?.probereq}
 						disabled={!isProbeReqRespEnabled}
 					/>
-					<ParamBox
-						label={t('Probe Response')}
-						value={value.proberesp}
-						onChange={handleChange('proberesp')}
-						param_desc={params?.proberesp}
-						disabled={!isProbeReqRespEnabled}
-					/>
+				   <ParamBox
+					   label={t('Probe Response')}
+					   value={value?.proberesp ?? ''}
+					   onChange={handleChange('proberesp')}
+					   param_desc={params?.proberesp}
+					   disabled={!isProbeReqRespEnabled}
+				   />
 				</HorizontalStack>
 
 				<HorizontalStack>
-					<ParamBox
-						label={t('Probe Timeout')}
-						value={value.probeTimeout}
-						onChange={handleChange('probeTimeout')}
-						param_desc={params?.probeTimeout}
-						disabled={!isProbeTimeoutRetriesEnabled}
-					/>
-					<ParamBox
-						label={t('Probe Retries')}
-						value={value.probeRetries}
-						onChange={handleChange('probeRetries')}
-						param_desc={params?.probeRetries}
-						disabled={!isProbeTimeoutRetriesEnabled}
-					/>
+				   <ParamBox
+					   label={t('Probe Timeout')}
+					   value={value?.probeTimeout ?? ''}
+					   onChange={handleChange('probeTimeout')}
+					   param_desc={params?.probeTimeout}
+					   disabled={!isProbeTimeoutRetriesEnabled}
+				   />
+				   <ParamBox
+					   label={t('Probe Retries')}
+					   value={value?.probeRetries ?? ''}
+					   onChange={handleChange('probeRetries')}
+					   param_desc={params?.probeRetries}
+					   disabled={!isProbeTimeoutRetriesEnabled}
+				   />
 				</HorizontalStack>
 			</Stack>
 		</AccordionBox>

@@ -4,6 +4,7 @@
 import DataTable from 'components/table/DataTable';
 import {IFdbData} from 'types/fdb';
 import {IDataTableColumnDef} from 'types/global';
+import {getStableHash} from 'common';
 
 //---------------------------------------------------------
 // Functional Component
@@ -16,29 +17,23 @@ export default function FDBTable(props: {data: IFdbData; selected_rows: number[]
 		{data_key: 'macAddress', header: 'MAC Address', width: 'wide'},
 	];
 
-	const getUniqueKey = (item: any) => {
-		return [
-			item.dev || '',
-			item.macAddress || ''
-		].join('-');
-	};
+   // Use global hash function for FDB entry
+   const getHashKey = (item: any) => getStableHash(`${item.dev || ''}_${item.macAddress || ''}`);
 
-	const rows = data.fdbAttr
-		? [...data.fdbAttr]
-			.sort((a, b) => {
-				const keyA = getUniqueKey(a);
-				const keyB = getUniqueKey(b);
-				return keyA.localeCompare(keyB);
-			})
-			.map((item, index) => {
-				return {
-					id: index,
-					dev: item.dev,
-					macAddress: item.macAddress,
-					description: '',
-				};
-			})
-		: undefined
+   const rows = data.fdbAttr
+	   ? (() => {
+		   const sorted = [...data.fdbAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
+		   return sorted.map((item) => {
+			   return {
+				   id: getHashKey(item),
+				   dev: item.dev,
+				   macAddress: item.macAddress,
+				   description: '',
+				   _uniqueKey: getHashKey(item),
+			   };
+		   });
+	   })()
+	   : undefined;
 
 	return (
 		<DataTable
