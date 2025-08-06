@@ -2,6 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {Stack} from '@mui/material';
+import { getStableHash } from 'common';
 import SingleTextBox from 'components/element/SingleTextBox';
 import EndpointInputForm from 'components/input/EndpointInputForm';
 import HorizontalStack from 'components/layout/HorizontalStack';
@@ -13,7 +14,7 @@ import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useEndpoints} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
-import {Fragment, useRef, useState} from 'react';
+import {Fragment, useEffect, useRef, useState} from 'react';
 import {IEndpointAttr, IEndpointInput, IEndpointItem} from 'types/endpoint';
 
 //---------------------------------------------------------
@@ -54,19 +55,61 @@ export default function EndpointPage() {
 	const ep_info: IEndpointAttr = {Attr: data ?? []};
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
+	const [selected_key, set_selected_key] = useState<string | null>(null);
 	const {openPopUp, enableYes} = usePopUp();
 
-	const handleSelectionChange = (selection: any) => set_selected_rows(selection);
+	// Hash function for endpoint
+	const getHashKey = (item: any) => {
+		const str = `${item.name || ''}_${item.hostName || ''}_${item.probePort || ''}_${item.probeType || ''}`;
+		return getStableHash(str);
+	};
+
+	// Sorted endpoints
+	const sortedAttr = ep_info.Attr ? [...ep_info.Attr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
+
+	// Find selected index in sortedAttr
+	let selected_index = -1;
+	if (selected_rows.length === 1 && ep_info.Attr) {
+		const original = ep_info.Attr[selected_rows[0]];
+		selected_index = sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
+	} else if (selected_key) {
+		selected_index = sortedAttr.findIndex(attr => getHashKey(attr).toString() === selected_key);
+	}
+
+	// Selection handler: map sorted index back to original
+	const handleSelectionChange = (indices: number[]) => {
+		if (indices.length === 1 && ep_info.Attr) {
+			const sortedItem = sortedAttr[indices[0]];
+			const originalIndex = ep_info.Attr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
+			set_selected_rows(originalIndex !== -1 ? [originalIndex] : []);
+		} else {
+			set_selected_rows([]);
+		}
+	};
+
+	const [selectedItem, setSelectedItem] = useState<IEndpointItem | null>(null);
+	useEffect(() => {
+		if (!ep_info || ep_info.Attr.length === 0) return;
+		if (selected_rows.length === 1) {
+			const item = ep_info.Attr[selected_rows[0]];
+			set_selected_key(getHashKey(item).toString());
+			setSelectedItem(item ?? null);
+		} else if (selected_key !== null) {
+			set_selected_key(null);
+			setSelectedItem(null);
+		}
+	}, [ep_info, selected_rows, selected_key]);
 
 	const handleDelete = async () => {
-		if (!inst) return;
+		if (!inst || !selectedItem) return;
 
-		const item = ep_info.Attr[selected_rows[0]];
-		const res = await request_delete_endpoint_by_ip(inst, item);
+		const res = await request_delete_endpoint_by_ip(inst, selectedItem);
 		if (res.status === 'success') {
 			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
 			set_selected_rows([]);
-			refetch();
+			setTimeout(() => {
+				refetch();
+			}, 1000);
 		} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
 	};
 
@@ -79,7 +122,8 @@ export default function EndpointPage() {
 				key={Date.now()}
 				onChange={data => {
 					instanceRef.current = data;
-					enableYes(!!data && data.hostName !== '');
+					// enableYes(!!data && data.hostName !== '');
+					enableYes(data.isValid)
 				}}
 			/>
 		);
@@ -95,7 +139,9 @@ export default function EndpointPage() {
 				const res = await request_create_endpoint(inst, instanceRef.current);
 				if (res.status === 'success') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
-					refetch();
+					setTimeout(() => {
+						refetch();
+					}, 1000);
 				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: res.error}), t('OK'));
 			},
 			true,
@@ -104,11 +150,17 @@ export default function EndpointPage() {
 
 	return (
 		<Fragment>
-			<EndpointTable data={ep_info} selected_rows={selected_rows} onChangeSelectedRows={handleSelectionChange} onAdd={handleAdd} onDelete={handleDelete} />
+			<EndpointTable
+				data={{Attr: sortedAttr}}
+				selected_rows={selected_index !== -1 ? [selected_index] : []}
+				onChangeSelectedRows={handleSelectionChange}
+				onAdd={handleAdd}
+				onDelete={handleDelete}
+			/>
 
-			{selected_rows.length === 1 && (
+			{selected_index !== -1 && selectedItem && (
 				<LowerSection>
-					<ProbeInfoPanel name={ep_info.Attr[selected_rows[0]].name} data={ep_info.Attr[selected_rows[0]]} />
+					<ProbeInfoPanel name={sortedAttr[selected_index].name} data={sortedAttr[selected_index]} />
 				</LowerSection>
 			)}
 		</Fragment>

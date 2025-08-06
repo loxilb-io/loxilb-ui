@@ -8,21 +8,36 @@ import {t} from 'i18next';
 import {IFirewallRule} from 'types/firewall';
 import FirewallOptionsForm from './subforms/FirewallOptionsForm';
 import FirewallRuleArgsForm from './subforms/FirewallRuleArgsForm';
+import React from 'react';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function FirewallInputForm(props: {onChange: (data: IFirewallRule) => void}) {
-	const {onChange} = props;
+interface FirewallInputFormProps {
+	onChange: (data: IFirewallRule & { isValid?: boolean; errors?: any }) => void;
+	onValidation?: (isValid: boolean) => void;
+}
 
-	const {form, params, handleChange} = useFormWithParams<IFirewallRule>('IFirewallRule', onChange);
+export default function FirewallInputForm(props: FirewallInputFormProps) {
+	const {onChange, onValidation} = props;
+	const {form, params, handleChange, errors, isValid} = useFormWithParams<IFirewallRule>('IFirewallRule');
+
+	// Notify parent of validation state and form data
+	React.useEffect(() => {
+		if (form) {
+			onChange({ ...form, isValid, errors });
+		}
+		if (onValidation) {
+			onValidation(isValid);
+		}
+	}, [form, isValid, errors, onChange, onValidation]);
 
 	if (!form) return null;
 	return (
 		<NewBox item_name={t('Firewall Rule')}>
-			<FirewallRuleArgsForm value={form.ruleArguments} onChange={handleChange('ruleArguments')} params={params?.ruleArguments} />
-			<Divider />
-			<FirewallOptionsForm value={form.opts} onChange={handleChange('opts')} params={params?.opts} />
+		   <FirewallRuleArgsForm value={form?.ruleArguments ?? {}} onChange={handleChange('ruleArguments')} params={params?.ruleArguments} />
+		   <Divider />
+		   <FirewallOptionsForm value={form?.opts ?? {}} onChange={handleChange('opts')} params={params?.opts} />
 		</NewBox>
 	);
 }

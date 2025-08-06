@@ -24,39 +24,42 @@ export default function PortTable(props: {data: IPortInfo; selected_rows: number
 		//{data_key: 'rx_tx_error', header: 'RX/TX errors', align: 'right', width: 'wide'},
 	];
 
-	const getUniqueKey = (item: any) => {
-		return [
-			item.portNo
-		].join('-');
-	};
+   // Hash function for port
+   const getHashKey = (item: any) => {
+	   const str = `${item.portNo || ''}_${item.portName || ''}`;
+	   let hash = 0;
+	   for (let i = 0; i < str.length; i++) {
+		   hash = ((hash << 5) - hash) + str.charCodeAt(i);
+		   hash |= 0;
+	   }
+	   return hash >>> 0;
+   };
 
-	const rows = data.portAttr
-		? [...data.portAttr]
-			.sort((a, b) => {
-				const keyA = getUniqueKey(a);
-				const keyB = getUniqueKey(b);
-				return keyA.localeCompare(keyB);
-			})	
-			.map((item, index) => {
-				const hw = item.portHardwareInformation ?? {};
-				const l3 = item.portL3Information ?? {};
-				const stat = item.portStatisticInformation ?? {};
+   const rows = data.portAttr
+	   ? (() => {
+		   const sorted = [...data.portAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
+		   return sorted.map((item, index) => {
+			   const hw = item.portHardwareInformation ?? {};
+			   const l3 = item.portL3Information ?? {};
+			   const stat = item.portStatisticInformation ?? {};
 
-				return {
-					id: index,
-					name: item.portName,
-					port: item.portNo,
-					mac: hw.macAddress ?? '',
-					link: `${hw.link ? 'Link' : 'No Link'}/${hw.state ? 'Up' : 'Down'}`,
-					route: l3.routed ? 'Routed' : 'Not Routed',
-					ipv4: Array.isArray(l3.IPv4Address) ? l3.IPv4Address.join(', ') : '',
-					ipv6: Array.isArray(l3.IPv6Address) ? l3.IPv6Address.join(', ') : '',
-					rx_tx_byte: `${stat.rxBytes ?? 0} / ${stat.txBytes ?? 0}`,
-					rx_tx_packet: `${stat.rxPackets ?? 0} / ${stat.txPackets ?? 0}`,
-					rx_tx_error: `${stat.rxErrors ?? 0} / ${stat.txErrors ?? 0}`,
-				};
-			})
-		: undefined
+			   return {
+				   id: index,
+				   name: item.portName,
+				   port: item.portNo,
+				   mac: hw.macAddress ?? '',
+				   link: `${hw.link ? 'Link' : 'No Link'}/${hw.state ? 'Up' : 'Down'}`,
+				   route: l3.routed ? 'Routed' : 'Not Routed',
+				   ipv4: Array.isArray(l3.IPv4Address) ? l3.IPv4Address.join(', ') : '',
+				   ipv6: Array.isArray(l3.IPv6Address) ? l3.IPv6Address.join(', ') : '',
+				   rx_tx_byte: `${stat.rxBytes ?? 0} / ${stat.txBytes ?? 0}`,
+				   rx_tx_packet: `${stat.rxPackets ?? 0} / ${stat.txPackets ?? 0}`,
+				   rx_tx_error: `${stat.rxErrors ?? 0} / ${stat.txErrors ?? 0}`,
+				   _uniqueKey: getHashKey(item),
+			   };
+		   });
+	   })()
+	   : undefined;
 
 	return (
 		<DataTable

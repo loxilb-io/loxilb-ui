@@ -28,37 +28,38 @@ export default function MirrorTable(props: {data: IMirrorConfiguration; selected
 	// Attachment는 1,2 로 1은 mirrObjName이 Interface이름, 2는 mirrObjName이 LB Rule이름으로 정함
 
 	const inst_name = useInstanceName();
-	const getUniqueKey = (item: any) => {
-		return [
-			item.mirrorIdent || '',
-			item.targetObject.attachment || '',
-			item.targetObject.mirrObjName || ''
-		].join('-');
-	};
+   // Hash function for mirror
+   const getHashKey = (item: any) => {
+	   const str = `${item.mirrorIdent || ''}_${item.targetObject.attachment || ''}_${item.targetObject.mirrObjName || ''}`;
+	   let hash = 0;
+	   for (let i = 0; i < str.length; i++) {
+		   hash = ((hash << 5) - hash) + str.charCodeAt(i);
+		   hash |= 0;
+	   }
+	   return hash >>> 0;
+   };
 
-	const rows = data.mirrAttr
-		? [...data.mirrAttr]
-			.sort((a, b) => {
-				const keyA = getUniqueKey(a);
-				const keyB = getUniqueKey(b);
-				return keyA.localeCompare(keyB);
-			})
-			.map((item, index) => {
-				return {
-					id: index,
-					mirrorIdent: item.mirrorIdent,
-					type: item.mirrorInfo.type ? `${item.mirrorInfo.type}(${type_name_set[item.mirrorInfo.type]})` : '',
-					attachment: {
-						data: `${item.targetObject.attachment}(${item.targetObject.mirrObjName})`,
-						url:
-							item.targetObject.attachment === 1
-								? `/instance/network/port?name=${inst_name}&port=${item.targetObject.mirrObjName}`
-								: `/instance/traffic/lb?name=${inst_name}&rule=${item.targetObject.mirrObjName}`,
-					},
-					sync: item.sync,
-				};
-			})
-		: undefined
+   const rows = data.mirrAttr
+	   ? (() => {
+		   const sorted = [...data.mirrAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
+		   return sorted.map((item, index) => {
+			   return {
+				   id: index,
+				   mirrorIdent: item.mirrorIdent,
+				   type: item.mirrorInfo.type ? `${item.mirrorInfo.type}(${type_name_set[item.mirrorInfo.type]})` : '0',
+				   attachment: {
+					   data: `${item.targetObject.attachment}(${item.targetObject.mirrObjName})`,
+					   url:
+						   item.targetObject.attachment === 1
+							   ? `/instance/network/port?name=${inst_name}&port=${item.targetObject.mirrObjName}`
+							   : `/instance/traffic/lb?name=${inst_name}&rule=${item.targetObject.mirrObjName}`,
+				   },
+				   sync: item.sync,
+				   _uniqueKey: getHashKey(item),
+			   };
+		   });
+	   })()
+	   : undefined;
 
 	return <DataTable name={'Mirror'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} />;
 }

@@ -4,12 +4,20 @@
 import {Box, Button, Modal, Stack, Typography} from '@mui/material';
 import {is_open_popup_atom} from 'atoms';
 import {useRecoilState} from 'recoil';
+import {useTranslation} from 'react-i18next';
+import {useEffect} from 'react';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
 export default function PopUp() {
 	const [props, set_props] = useRecoilState(is_open_popup_atom);
+	const {i18n} = useTranslation();
+
+	// Force re-render when language changes to update popup content
+	useEffect(() => {
+		// This ensures the popup re-renders with new language
+	}, [i18n.language]);
 
 	const style = {
 		position: 'absolute',

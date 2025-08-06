@@ -102,27 +102,27 @@ export default function MirrorInfoInputForm(props: {value: IMirrorInfo; onChange
 	return (
 		<Stack spacing={2}>
 			<HorizontalStack>
-				<ParamBox label={t('Type')} value={value.type} onChange={handleChangeType} param_desc={{...params?.type, enum: typeList}} />
-				<ParamBox label={t('Port')} value={value.port} onChange={handleChange('port')} disabled={!isPortEnabled} param_desc={{...params?.port, enum: portList}} />
-				<ParamBox label={t('VLAN')} value={value.vlan} onChange={handleChange('vlan')} param_desc={params?.vlan} disabled={!isVlanEnabled} />
-				<ParamBox label={t('Tunnel ID')} value={value.tunnelID} onChange={handleChange('tunnelID')} param_desc={params?.tunnelID} disabled={!isTunnelEnabled} />
+			   <ParamBox label={t('Type')} value={value?.type ?? ''} onChange={handleChangeType} param_desc={{...params?.type, enum: typeList}} />
+			   <ParamBox label={t('Port')} value={value?.port ?? ''} onChange={handleChange('port')} disabled={!isPortEnabled} param_desc={{...params?.port, enum: portList}} />
+			   <ParamBox label={t('VLAN')} value={value?.vlan ?? ''} onChange={handleChange('vlan')} param_desc={params?.vlan} disabled={!isVlanEnabled} />
+			   <ParamBox label={t('Tunnel ID')} value={value?.tunnelID ?? ''} onChange={handleChange('tunnelID')} param_desc={params?.tunnelID} disabled={!isTunnelEnabled} />
 			</HorizontalStack>
 
 			<HorizontalStack>
-				<ParamBox
-					label={t('Source IP')}
-					value={value.sourceIP}
-					onChange={handleChange('sourceIP')}
-					param_desc={{...params?.sourceIP, type: 'ipaddress'}}
-					disabled={!isSourceIPEnabled}
-				/>
-				<ParamBox
-					label={t('Remote IP')}
-					value={value.remoteIP}
-					onChange={handleChange('remoteIP')}
-					param_desc={{...params?.remoteIP, type: 'ipaddress'}}
-					disabled={!isRemoteIPEnabled}
-				/>
+			   <ParamBox
+				   label={t('Source IP')}
+				   value={value?.sourceIP ?? ''}
+				   onChange={handleChange('sourceIP')}
+				   param_desc={{...params?.sourceIP, type: 'ipaddress'}}
+				   disabled={!isSourceIPEnabled}
+			   />
+			   <ParamBox
+				   label={t('Remote IP')}
+				   value={value?.remoteIP ?? ''}
+				   onChange={handleChange('remoteIP')}
+				   param_desc={{...params?.remoteIP, type: 'ipaddress'}}
+				   disabled={!isRemoteIPEnabled}
+			   />
 			</HorizontalStack>
 		</Stack>
 	);

@@ -8,6 +8,17 @@ import {IMenuItem, MENU_LIST} from 'types/menu';
 //---------------------------------------------------------
 // Global Functions
 //---------------------------------------------------------
+// Common hash function for stable sorting
+//---------------------------------------------------------
+export function getStableHash(str: string): number {
+	let hash = 0;
+	for (let i = 0; i < str.length; i++) {
+		hash = ((hash << 5) - hash) + str.charCodeAt(i);
+		hash |= 0;
+	}
+	return hash >>> 0;
+}
+
 export function is_logged_in(): boolean {
 	return !!localStorage.getItem('access_token');
 }
@@ -367,9 +378,32 @@ export function isValidIPv6(ip: string): boolean {
 	return ipv6Regex.test(ip);
 }
 
+// Validate IPv4 CIDR (e.g., 192.168.1.1/24)
+export function isValidIPv4Cidr(cidr: string): boolean {
+	const match = cidr.match(/^([0-9.]+)\/(\d{1,2})$/);
+	if (!match) return false;
+	const ip = match[1];
+	const mask = Number(match[2]);
+	return isValidIPv4(ip) && mask >= 0 && mask <= 32;
+}
+
+// Validate IPv6 CIDR (e.g., 2001:db8::/64)
+export function isValidIPv6Cidr(cidr: string): boolean {
+	const match = cidr.match(/^([0-9a-fA-F:]+)\/(\d{1,3})$/);
+	if (!match) return false;
+	const ip = match[1];
+	const mask = Number(match[2]);
+	return isValidIPv6(ip) && mask >= 0 && mask <= 128;
+}
+
 export function isValidIPAddress(ip: string): boolean {
 	if (!ip || typeof ip !== 'string') return false;
 	return isValidIPv4(ip) || isValidIPv6(ip);
+}
+
+export function isValidIPAddressCidr(ip: string): boolean {
+	if (!ip || typeof ip !== 'string') return false;
+	return isValidIPv4Cidr(ip) || isValidIPv6Cidr(ip);
 }
 
 export function isValidPort(port: string | number): boolean {

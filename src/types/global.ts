@@ -36,7 +36,7 @@ export interface IBaseFormDialogProps<T extends Record<string, IFormField> & Fie
 export interface IPostParamFieldDesc {
 	description?: string;
 	required?: boolean;
-	type: 'string' | 'integer' | 'boolean' | 'array' | 'object' | 'ipaddress' | 'macaddress' | 'port';
+	type: 'string' | 'integer' | 'boolean' | 'array' | 'object' | 'ipaddress' | 'ipaddress_cidr' | 'macaddress' | 'port';
 	enum?: string[] | IEnumItem[];
 	format?: string;
 

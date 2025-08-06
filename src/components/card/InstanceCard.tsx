@@ -9,8 +9,8 @@ import InstanceInputForm from 'components/input/InstanceInputForm';
 import {request_delete_instance, request_update_instance} from 'connector/oam/oam';
 import {usePopUp} from 'hooks/popupHook';
 import {useInstances} from 'hooks/query/oamHooks';
-import {t} from 'i18next';
-import {useRef, useState} from 'react';
+import {useTranslation} from 'react-i18next';
+import {useRef, useState, useEffect} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {IVipAttribute} from 'types/ha';
 import {IInstance, IInstanceInput} from 'types/oam';
@@ -20,15 +20,21 @@ import {IInstance, IInstanceInput} from 'types/oam';
 //---------------------------------------------------------
 export default function InstanceCard(props: {instance_info: IInstance; ha: IVipAttribute}) {
 	const {instance_info, ha} = props;
+	const { t, i18n } = useTranslation();
 
 	const navigate = useNavigate();
 	const [elevation, set_elevation] = useState(3);
 	const {openPopUp} = usePopUp();
 	const {refetch} = useInstances();
+	const [languageKey, setLanguageKey] = useState(0);
 
 	const instanceRef = useRef<IInstanceInput | null>(null);
 
 	const default_instance_url = `/instance/dashboard?name=${instance_info.name}`;
+
+	useEffect(() => {
+        setLanguageKey(prev => prev + 1);
+    }, [i18n.language]);
 
 	const handleModify = () => {
 		const content = (

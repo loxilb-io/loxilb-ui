@@ -23,10 +23,10 @@ export default function FirewallOptionsForm(props: {value: IOptions; onChange: (
 			</Typography>
 
 			<HorizontalStack>
-				<ParamBox label={t('Allow')} value={value.allow} onChange={handleChange('allow')} param_desc={{...params?.allow, type: 'boolean'}} />
-				<ParamBox label={t('Drop')} value={value.drop} onChange={handleChange('drop')} param_desc={{...params?.drop, type: 'boolean'}} />
-				<ParamBox label={t('Trap')} value={value.trap} onChange={handleChange('trap')} param_desc={{...params?.trap, type: 'boolean'}} />
-				<ParamBox label={t('Record')} value={value.record} onChange={handleChange('record')} param_desc={{...params?.record, type: 'boolean'}} />
+			   <ParamBox label={t('Allow')} value={value?.allow ?? ''} onChange={handleChange('allow')} param_desc={{...params?.allow, type: 'boolean'}} />
+			   <ParamBox label={t('Drop')} value={value?.drop ?? ''} onChange={handleChange('drop')} param_desc={{...params?.drop, type: 'boolean'}} />
+			   <ParamBox label={t('Trap')} value={value?.trap ?? ''} onChange={handleChange('trap')} param_desc={{...params?.trap, type: 'boolean'}} />
+			   <ParamBox label={t('Record')} value={value?.record ?? ''} onChange={handleChange('record')} param_desc={{...params?.record, type: 'boolean'}} />
 			</HorizontalStack>
 
 			<Typography variant="subtitle1" color="textSecondary">
@@ -34,25 +34,25 @@ export default function FirewallOptionsForm(props: {value: IOptions; onChange: (
 			</Typography>
 
 			<HorizontalStack>
-				<ParamBox label={t('Redirect')} value={value.redirect} onChange={handleChange('redirect')} param_desc={{...params?.redirect, type: 'boolean'}} />
-				<ParamBox label={t('Do SNAT')} value={value.doSnat} onChange={handleChange('doSnat')} param_desc={{...params?.doSnat, type: 'boolean'}} />
-				<ParamBox
-					label={t('Port Name')}
-					value={value.redirectPortName}
-					onChange={handleChange('redirectPortName')}
-					param_desc={{...params?.redirectPortName, type: 'string'}}
-				/>
+			   <ParamBox label={t('Redirect')} value={value?.redirect ?? ''} onChange={handleChange('redirect')} param_desc={{...params?.redirect, type: 'boolean'}} />
+			   <ParamBox label={t('Do SNAT')} value={value?.doSnat ?? ''} onChange={handleChange('doSnat')} param_desc={{...params?.doSnat, type: 'boolean'}} />
+			   <ParamBox
+				   label={t('Port Name')}
+				   value={value?.redirectPortName ?? ''}
+				   onChange={handleChange('redirectPortName')}
+				   param_desc={{...params?.redirectPortName, type: 'string'}}
+			   />
 			</HorizontalStack>
 
 			<HorizontalStack>
-				<ParamBox label={t('To IP')} value={value.toIP} onChange={handleChange('toIP')} param_desc={{...params?.toIP, type: 'ipaddress'}} />
-				<ParamBox label={t('To Port')} value={value.toPort} onChange={handleChange('toPort')} param_desc={{...params?.toPort, type: 'port'}} />
+			   <ParamBox label={t('To IP')} value={value?.toIP ?? ''} onChange={handleChange('toIP')} param_desc={{...params?.toIP, type: 'ipaddress'}} />
+			   <ParamBox label={t('To Port')} value={value?.toPort ?? ''} onChange={handleChange('toPort')} param_desc={{...params?.toPort, type: 'port'}} />
 			</HorizontalStack>
 
 			<HorizontalStack>
-				<ParamBox label={t('fwMark')} value={value.fwMark} onChange={handleChange('fwMark')} param_desc={params?.fwMark} />
-				<ParamBox label={t('Counter')} value={value.counter} onChange={handleChange('counter')} param_desc={params?.counter} />
-				<ParamBox label={t('On Default')} value={value.onDefault} onChange={handleChange('onDefault')} param_desc={{...params?.onDefault, type: 'boolean'}} />
+			   <ParamBox label={t('fwMark')} value={value?.fwMark ?? ''} onChange={handleChange('fwMark')} param_desc={params?.fwMark} />
+			   <ParamBox label={t('Counter')} value={value?.counter ?? ''} onChange={handleChange('counter')} param_desc={params?.counter} />
+			   <ParamBox label={t('On Default')} value={value?.onDefault ?? ''} onChange={handleChange('onDefault')} param_desc={{...params?.onDefault, type: 'boolean'}} />
 			</HorizontalStack>
 		</Box>
 	);

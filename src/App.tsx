@@ -34,7 +34,7 @@ import BGPDefinitionPage from 'pages/network/BGPDefinitionPage';
 import BGPNeighborPage from 'pages/network/BGPNeighborPage';
 import NeighborPage from 'pages/network/DeviceNeighborPage';
 import FDBPage from 'pages/network/FDBPage';
-import BFDPage from 'pages/network/InterfacePage';
+import BFDPage from 'pages/network/BFDPage';
 import IPPage from 'pages/network/IPPage';
 import PortPage from 'pages/network/PortPage';
 import RoutePage from 'pages/network/RoutePage';

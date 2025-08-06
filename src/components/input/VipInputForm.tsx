@@ -18,9 +18,9 @@ export default function VipInputForm(props: {onChange: (data: IVipAttribute) => 
 	if (!form) return null;
 	return (
 		<NewBox item_name={t('HA VIP')}>
-			<ParamBox label={t('Instance Name')} value={form.instance} param_desc={params?.instance} onChange={handleChange('instance')} />
-			<ParamBox label={t('State')} value={form.state} param_desc={params?.state} onChange={handleChange('state')} />
-			<ParamBox label={t('VIP Address')} value={form.vip} param_desc={params?.vip} onChange={handleChange('vip')} />
+		   <ParamBox label={t('Instance Name')} value={form?.instance ?? ''} param_desc={params?.instance} onChange={handleChange('instance')} />
+		   <ParamBox label={t('State')} value={form?.state ?? ''} param_desc={params?.state} onChange={handleChange('state')} />
+		   <ParamBox label={t('VIP Address')} value={form?.vip ?? ''} param_desc={params?.vip} onChange={handleChange('vip')} />
 		</NewBox>
 	);
 }

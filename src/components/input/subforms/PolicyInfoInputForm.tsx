@@ -24,18 +24,18 @@ export default function PolicyInfoInputForm(props: {value: IPolicyInfo; onChange
 	return (
 		<Stack spacing={2}>
 			<HorizontalStack>
-				<ParamBox label={t('Type')} value={value.type} onChange={handleChange('type')} param_desc={{...params?.type, enum: types}} />
-				<ParamBox label={t('Color Aware')} value={value.colorAware} onChange={handleChange('colorAware')} param_desc={params?.colorAware} />
+			   <ParamBox label={t('Type')} value={value?.type ?? ''} onChange={handleChange('type')} param_desc={{...params?.type, enum: types}} />
+			   <ParamBox label={t('Color Aware')} value={value?.colorAware ?? ''} onChange={handleChange('colorAware')} param_desc={params?.colorAware} />
 			</HorizontalStack>
 
 			<HorizontalStack>
-				<ParamBox label={t('Committed Info Rate')} value={value.committedInfoRate} onChange={handleChange('committedInfoRate')} param_desc={params?.committedInfoRate} />
-				<ParamBox label={t('Peak Info Rate')} value={value.peakInfoRate} onChange={handleChange('peakInfoRate')} param_desc={params?.peakInfoRate} />
+			   <ParamBox label={t('Committed Info Rate')} value={value?.committedInfoRate ?? ''} onChange={handleChange('committedInfoRate')} param_desc={params?.committedInfoRate} />
+			   <ParamBox label={t('Peak Info Rate')} value={value?.peakInfoRate ?? ''} onChange={handleChange('peakInfoRate')} param_desc={params?.peakInfoRate} />
 			</HorizontalStack>
 
 			<HorizontalStack>
-				<ParamBox label={t('Committed Block Size')} value={value.committedBlkSize} onChange={handleChange('committedBlkSize')} param_desc={params?.committedBlkSize} />
-				<ParamBox label={t('Excess Block Size')} value={value.excessBlkSize} onChange={handleChange('excessBlkSize')} param_desc={params?.excessBlkSize} />
+			   <ParamBox label={t('Committed Block Size')} value={value?.committedBlkSize ?? ''} onChange={handleChange('committedBlkSize')} param_desc={params?.committedBlkSize} />
+			   <ParamBox label={t('Excess Block Size')} value={value?.excessBlkSize ?? ''} onChange={handleChange('excessBlkSize')} param_desc={params?.excessBlkSize} />
 			</HorizontalStack>
 		</Stack>
 	);

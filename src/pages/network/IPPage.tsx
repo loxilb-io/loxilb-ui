@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {isValidIPAddress} from 'common';
+import {getStableHash, isValidIPAddressCidr} from 'common';
 import ChipField from 'components/element/ChipField';
 import IpInputForm from 'components/input/IPInputForm';
 import LowerSection from 'components/layout/LowerSection';
@@ -13,7 +13,7 @@ import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useIPAttr} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
-import {Fragment, useRef, useState} from 'react';
+import {Fragment, useRef, useState, useEffect} from 'react';
 import {IIpAttribute, IIpAttributeInput, IIpData} from 'types/ip';
 
 //---------------------------------------------------------
@@ -36,39 +36,66 @@ export default function IPPage() {
 	const ip_info: IIpData = {ipAttr: data ?? []};
 	const instanceRef = useRef<IIpAttributeInput | null>(null);
 
-	const [selected_rows, set_selected_rows] = useState<any[]>([]);
+	const [selected_rows, set_selected_rows] = useState<number[]>([]);
+	const [selected_key, set_selected_key] = useState<string | null>(null);
 	const {openPopUp, enableYes} = usePopUp();
 
-	const handleSelectionChange = (selection: any) => set_selected_rows(selection);
-	const handleDelete = async () => {
-		if (!inst) return;
-		const item = ip_info.ipAttr[selected_rows[0]];
+	// Hash function for IP entry
+	 const getHashKey = (item: any) => {
+		   const str = `${item.dev || ''}_${item.ipAddress.join(', ') || ''}`;
+		   return getStableHash(str);
+	   };
 
-		// "192.168.223.1/24" → ip: "192.168.223.1", mask: 24
+	// Sorted IP entries
+	const sortedAttr = ip_info.ipAttr ? [...ip_info.ipAttr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
+
+	// Find selected index in sortedAttr
+	let selected_index = -1;
+	if (selected_rows.length === 1 && ip_info.ipAttr) {
+		const original = ip_info.ipAttr[selected_rows[0]];
+		selected_index = sortedAttr.findIndex(attr => String(getHashKey(attr)) === String(getHashKey(original)));
+	} else if (selected_key) {
+		selected_index = sortedAttr.findIndex(attr => String(getHashKey(attr)) === selected_key);
+	}
+
+	// Selection handler: map sorted index back to original
+	const handleSelectionChange = (indices: number[]) => {
+		if (indices.length === 1 && ip_info.ipAttr) {
+			const sortedItem = sortedAttr[indices[0]];
+			const originalIndex = ip_info.ipAttr.findIndex(attr => String(getHashKey(attr)) === String(getHashKey(sortedItem)));
+			set_selected_rows(originalIndex !== -1 ? [originalIndex] : []);
+		} else {
+			set_selected_rows([]);
+		}
+	};
+
+	const handleDelete = async () => {
+		if (!inst || selected_rows.length !== 1) return;
+		const item = ip_info.ipAttr[selected_rows[0]];
+		if (!item || !item.ipAddress || !item.ipAddress[0]) return;
 		const cidr = item.ipAddress[0];
 		const [ip, maskStr] = cidr.split('/');
 		const mask = parseInt(maskStr, 10);
-
 		const res = await request_delete_ipv4(inst, ip, mask, item.dev);
 		if (res.status === 'success') {
 			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
 			set_selected_rows([]);
-			refetch();
+			setTimeout(() => {
+				refetch();
+			}, 1000);
 		} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
 	};
 
 	const handleAdd = () => {
 		if (!inst) return;
-
 		const input_form = (
 			<IpInputForm
 				onChange={data => {
 					instanceRef.current = data;
-					enableYes(!data.dev && isValidIPAddress(data.ipAddress));
+					enableYes(!!data.dev && isValidIPAddressCidr(data.ipAddress));
 				}}
 			/>
 		);
-
 		openPopUp(
 			'',
 			input_form,
@@ -79,21 +106,40 @@ export default function IPPage() {
 				const res = await request_create_ipv4(inst, instanceRef.current);
 				if (res.status === 'success') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
-					refetch();
+					setTimeout(() => {
+						refetch();
+					}, 1000);
 				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: res.error}), t('OK'));
 			},
 			true,
 		);
 	};
 
+	// Synchronize selected_key with selected_rows
+	useEffect(() => {
+		if (!ip_info.ipAttr || ip_info.ipAttr.length === 0) return;
+		if (selected_rows.length === 1) {
+			const item = ip_info.ipAttr[selected_rows[0]];
+			set_selected_key(String(getHashKey(item)));
+		} else if (selected_key !== null) {
+			set_selected_key(null);
+		}
+	}, [ip_info, selected_rows, selected_key]);
+
 	return (
 		<Fragment>
-			<IPTable data={ip_info} selected_rows={selected_rows} onChangeSelectedRows={handleSelectionChange} onAdd={handleAdd} onDelete={handleDelete} />
+			<IPTable
+				data={{ipAttr: sortedAttr}}
+				selected_rows={selected_index !== -1 ? [selected_index] : []}
+				onChangeSelectedRows={handleSelectionChange}
+				onAdd={handleAdd}
+				onDelete={handleDelete}
+			/>
 
-			{selected_rows.length === 1 && (
+			{selected_index !== -1 && (
 				<LowerSection>
-					{false && <AddressPannel name={ip_info.ipAttr[selected_rows[0]].dev} data={ip_info.ipAttr[selected_rows[0]]} />}
-					<IPAddressView device_name={ip_info.ipAttr[selected_rows[0]].dev} />
+					{false && <AddressPannel name={sortedAttr[selected_index].dev} data={sortedAttr[selected_index]} />}
+					<IPAddressView device_name={sortedAttr[selected_index].dev} />
 				</LowerSection>
 			)}
 		</Fragment>

@@ -2,6 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import protocols from 'assets/json/protocols.json';
+import { getStableHash } from 'common';
 import DataTable from 'components/table/DataTable';
 import {useMemo} from 'react';
 import {IFirewallRules} from 'types/firewall';
@@ -42,47 +43,38 @@ export default function FirewallTable(props: {data: IFirewallRules; selected_row
 		{data_key: 'counter', header: 'Counter', width: 'medium'},
 	];
 
-	const getUniqueKey = (item: any) => {
-		return [
-			item.ruleArguments.portName || '',
-			item.ruleArguments.sourceIP || '',
-			item.ruleArguments.minSourcePort || '',
-			item.ruleArguments.maxSourcePort || '',
-			item.ruleArguments.destinationIP || '',
-			item.ruleArguments.minDestinationPort || '',
-			item.ruleArguments.maxDestinationPort || '',
-			item.ruleArguments.protocol || ''
-		].join('-');
-	};
+   // Hash function for firewall rule
+   const getHashKey = (item: any) => {
+	   const str = `${item.ruleArguments.portName || ''}_${item.ruleArguments.sourceIP || ''}_${item.ruleArguments.minSourcePort || ''}_${item.ruleArguments.maxSourcePort || ''}_${item.ruleArguments.destinationIP || ''}_${item.ruleArguments.minDestinationPort || ''}_${item.ruleArguments.maxDestinationPort || ''}_${item.ruleArguments.protocol || ''}`;
+	   return getStableHash(str);
+   };
 
-	const rows = data.fwAttr
-		? [...data.fwAttr]
-			.sort((a, b) => {
-				const keyA = getUniqueKey(a);
-				const keyB = getUniqueKey(b);
-				return keyA.localeCompare(keyB);
-			})
-			.map((item, index) => {
-				const protocol_id: number = item.ruleArguments.protocol;
-				const protocol_name = protocol_list.find(p => p.id === protocol_id)?.name || 'Unknown';
-				const minSourcePort = item.ruleArguments.minSourcePort ? item.ruleArguments.minSourcePort.toString() : '';
-				const maxSourcePort = item.ruleArguments.maxSourcePort ? item.ruleArguments.maxSourcePort.toString() : '';
-				const minDestinationPort = item.ruleArguments.minDestinationPort ? item.ruleArguments.minDestinationPort.toString() : '';
-				const maxDestinationPort = item.ruleArguments.maxDestinationPort ? item.ruleArguments.maxDestinationPort.toString() : '';
+   const rows = data.fwAttr
+	   ? (() => {
+		   const sorted = [...data.fwAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
+		   return sorted.map((item, index) => {
+			   const protocol_id: number = item.ruleArguments.protocol;
+			   const protocol_name = protocol_list.find(p => p.id === protocol_id)?.name || 'Unknown';
+			   const minSourcePort = item.ruleArguments.minSourcePort ? item.ruleArguments.minSourcePort.toString() : '';
+			   const maxSourcePort = item.ruleArguments.maxSourcePort ? item.ruleArguments.maxSourcePort.toString() : '';
+			   const minDestinationPort = item.ruleArguments.minDestinationPort ? item.ruleArguments.minDestinationPort.toString() : '';
+			   const maxDestinationPort = item.ruleArguments.maxDestinationPort ? item.ruleArguments.maxDestinationPort.toString() : '';
 
-				return {
-					id: index,
-					portName: item.ruleArguments.portName ? item.ruleArguments.portName : '',
-					sourceIP: item.ruleArguments.sourceIP ? item.ruleArguments.sourceIP : '',
-					sourcePort: `${minSourcePort}-${maxSourcePort}`, // CIDR format
-					destinationIP: item.ruleArguments.destinationIP,
-					destinationPort: `${minDestinationPort}-${maxDestinationPort}`, // CIDR format
-					protocol: protocol_name,
-					preference: item.ruleArguments.preference ? item.ruleArguments.preference.toString() : '',
-					counter: item.opts.counter ? item.opts.counter : '',
-				};
-			})
-		: undefined
+			   return {
+				   id: index, 
+				   portName: item.ruleArguments.portName ? item.ruleArguments.portName : '',
+				   sourceIP: item.ruleArguments.sourceIP ? item.ruleArguments.sourceIP : '',
+				   sourcePort: `${minSourcePort}-${maxSourcePort}`,
+				   destinationIP: item.ruleArguments.destinationIP,
+				   destinationPort: `${minDestinationPort}-${maxDestinationPort}`,
+				   protocol: protocol_name,
+				   preference: item.ruleArguments.preference ? item.ruleArguments.preference.toString() : '',
+				   counter: item.opts.counter ? item.opts.counter : '',
+				   _uniqueKey: getHashKey(item),
+			   };
+		   });
+	   })()
+	   : undefined;
 
 	return <DataTable name={'Firewall'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} />;
 }
