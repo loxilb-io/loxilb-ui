@@ -6,12 +6,16 @@ import {SimpleTable} from 'components/table/SimpleTable';
 import {useOAMLogs} from 'hooks/query/oamHooks';
 import {t} from 'i18next';
 import CardBase from './CardBase';
+import { useInstanceFromURL } from 'hooks/instanceHook';
+import { useInstanceLogs } from 'hooks/query/instanceHook';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
 export default function SystemLogCard() {
-	const {data: log_list} = useOAMLogs(); // ILog[]
+	const inst = useInstanceFromURL();
+	const {data: log_list} = useInstanceLogs(inst);
+	// const {data: log_list} = useOAMLogs(); // ILog[]
 
 	const table_col = [
 		{

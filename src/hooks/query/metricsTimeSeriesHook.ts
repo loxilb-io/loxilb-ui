@@ -12,10 +12,14 @@ import {
 	query_get_metrics_newflowcount,
 	query_get_metrics_service_dist_traffic,
 	query_get_metrics_traffic,
+	// Advanced Metrics
+	query_get_live_metrics,
+	query_get_cache_stats,
+	query_metrics_health,
 } from 'connector/instance/metrics';
 
 import {ICtData} from 'types/conn_track';
-import {IServiceDistTrafficData} from 'types/metrics';
+import {IServiceDistTrafficData, ILiveMetricsResponse, ICacheStatsResponse, IHealthResponse} from 'types/metrics';
 import {createTimeSeriesHook} from './common';
 
 //---------------------------------------------------------
@@ -65,6 +69,79 @@ export const useHostCountSeries = createTimeSeriesHook('hostcount-series', 'host
 	healthy_host_count: raw.healthy_host_count,
 	unhealthy_host_count: raw.unhealthy_host_count,
 }));
+
+//---------------------------------------------------------
+// Advanced Metrics Time Series Hooks
+//---------------------------------------------------------
+
+/**
+ * Live metrics time series (cache-based, critical metrics only)
+ */
+export const useLiveMetricsCriticalSeries = createTimeSeriesHook(
+	'live-metrics-critical-series',  // seriesKey: unique identifier for this hook
+	'live-metrics-critical', 		 // metricsKey: query key for React Query
+	(instance) => query_get_live_metrics(instance, 1), // fetcher: API call function
+	raw => ({											// wrapData: data transformation function
+		critical: raw.critical ?? {},
+		total_metrics: raw.total_metrics ?? 0,
+		cache_enabled: raw.cache_enabled ?? false,
+		response_time_ms: raw.response_time_ms ?? 0,
+		source: raw.source ?? 'fallback',
+	})
+);
+
+/**
+ * Live metrics time series (cache-based, all metrics)
+ */
+export const useLiveMetricsFullSeries = createTimeSeriesHook(
+	'live-metrics-full-series', 
+	'live-metrics-full', 
+	(instance) => query_get_live_metrics(instance, 2),
+	raw => ({
+		critical: raw.critical ?? {},
+		important: raw.important ?? {},
+		total_metrics: raw.total_metrics ?? 0,
+		cache_enabled: raw.cache_enabled ?? false,
+		response_time_ms: raw.response_time_ms ?? 0,
+		source: raw.source ?? 'fallback',
+	})
+);
+
+/**
+ * Cache statistics time series
+ */
+export const useCacheStatsSeries = createTimeSeriesHook(
+	'cache-stats-series', 
+	'cache-stats', 
+	query_get_cache_stats,
+	raw => ({
+		enabled: raw.enabled ?? false,
+		total_buffers: raw.total_buffers ?? 0,
+		total_memory_bytes: raw.total_memory_bytes ?? 0,
+		average_utilization: raw.average_utilization ?? 0,
+		phase1_metrics_count: raw.phase1_metrics_count ?? 0,
+		phase2_metrics_count: raw.phase2_metrics_count ?? 0,
+		memory_usage_mb: raw.total_memory_bytes ? (raw.total_memory_bytes / (1024 * 1024)) : 0,
+	})
+);
+
+/**
+ * System health time series
+ */
+export const useSystemHealthSeries = createTimeSeriesHook(
+	'system-health-series', 
+	'system-health', 
+	query_metrics_health,
+	raw => ({
+		status: raw.status ?? 'unhealthy',
+		cache_enabled: raw.cache_enabled ?? false,
+		total_buffers: raw.total_buffers ?? 0,
+		memory_usage_mb: raw.memory_usage_mb ?? 0,
+		average_utilization: raw.average_utilization ?? 0,
+		is_healthy: raw.status === 'healthy',
+		is_degraded: raw.status === 'degraded',
+	})
+);
 
 export const useNewFlowSeries = createTimeSeriesHook('newflowcount-series', 'newflowcount', query_get_metrics_newflowcount, raw => ({new_flow_count: raw.new_flow_count}));
 
