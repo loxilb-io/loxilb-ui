@@ -2,7 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {CurveType, LineChart} from '@mui/x-charts';
-import {extract_data_by_timestamp, getUnitFromSeries} from 'common';
+import {extract_data_by_timestamp, getUnitFromSeries, formatNumberForAxis} from 'common';
 import {chart_color} from 'theme';
 import {ITimelineDataSet} from 'types/global';
 
@@ -36,12 +36,7 @@ export default function SimpleLineGraph(props: {data: ITimelineDataSet}) {
 	];
 
 	const y_axis_value_formatter = (value: number) => {
-		if (value === 0) return '0';
-		if (value < 1_000) return value.toFixed(0);
-		if (value < 1_000_000) return (value / 1_000).toFixed(0) + 'K';
-		if (value < 1_000_000_000) return (value / 1_000_000).toFixed(0) + 'M';
-		if (value < 1_000_000_000_000) return (value / 1_000_000_000).toFixed(0) + 'B';
-		else return (value / 1_000_000_000_000).toFixed(0) + 'T';
+		return formatNumberForAxis(value);
 	};
 
 	const max_y = Math.max(...y_values_1, 0);

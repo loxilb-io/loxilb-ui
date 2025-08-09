@@ -1,0 +1,1648 @@
+swagger: "2.0"
+info:
+  title: "LoxiLB Enterprise REST API"
+  description: |
+    Comprehensive REST API for LoxiLB Enterprise providing backup management, 
+    compression operations, alert management, and live metrics access. 
+    All endpoints follow a unified response format with success/error status, 
+    message, and data fields.
+  version: "3.1.0"
+  contact:
+    name: "LoxiLB Team"
+    url: "https://github.com/loxilb-io/loxilb"
+    email: "support@loxilb.io"
+  license:
+    name: "Apache 2.0"
+    url: "https://www.apache.org/licenses/LICENSE-2.0.html"
+
+host: "localhost:8080"
+basePath: "/netlox/v1/api/v1"
+schemes:
+  - http
+  - https
+
+produces:
+  - application/json
+consumes:
+  - application/json
+
+tags:
+  - name: "Backup Management"
+    description: "Database backup creation, listing, restoration, and statistics"
+  - name: "Compression Management" 
+    description: "Data compression operations, candidates analysis, and statistics"
+  - name: "Alert Management"
+    description: "Alert rules management and active alerts monitoring"
+  - name: "Live Metrics"
+    description: "Real-time metrics from cache and historical data from database"
+  - name: "Information"
+    description: "API information and health checks"
+
+paths:
+  #----------------------------------------------
+  # Backup Management API
+  #----------------------------------------------
+  '/backup/create':
+    post:
+      summary: Create a new backup
+      description: |
+        Creates a new backup of the LoxiLB database. Supports different backup types:
+        - 'full': Complete database backup (default)
+        - 'incremental': Only changes since last backup
+        - 'selective': Backup specific tables or data ranges
+      operationId: createBackup
+      tags:
+        - Backup Management
+      parameters:
+        - name: backup_request
+          in: body
+          description: Backup creation parameters (optional - defaults to full backup)
+          required: false
+          schema:
+            $ref: '#/definitions/CreateBackupRequest'
+      responses:
+        '200':
+          description: Backup created successfully
+          schema:
+            $ref: '#/definitions/BackupResponse'
+        '500':
+          description: Internal server error - backup creation failed
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '503':
+          description: Backup service not available
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  '/backup/list':
+    get:
+      summary: List all available backups
+      description: |
+        Retrieves a list of all available backups with their metadata including
+        size, creation time, type, and path information.
+      operationId: listBackups
+      tags:
+        - Backup Management
+      responses:
+        '200':
+          description: Backups retrieved successfully
+          schema:
+            $ref: '#/definitions/BackupListResponse'
+        '500':
+          description: Internal server error - failed to list backups
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '503':
+          description: Backup service not available
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  '/backup/restore':
+    post:
+      summary: Restore from backup
+      description: |
+        Restores the database from a specified backup file. This operation will
+        replace current data with backup data. Backup path must be provided.
+      operationId: restoreBackup
+      tags:
+        - Backup Management
+      parameters:
+        - name: restore_request
+          in: body
+          description: Backup restoration parameters
+          required: true
+          schema:
+            $ref: '#/definitions/RestoreBackupRequest'
+      responses:
+        '200':
+          description: Backup restored successfully
+          schema:
+            $ref: '#/definitions/RestoreResponse'
+        '400':
+          description: Invalid request parameters - backup_path required
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: Internal server error - restore failed
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '503':
+          description: Backup service not available
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  '/backup/stats':
+    get:
+      summary: Get backup system statistics
+      description: |
+        Retrieves comprehensive statistics about the backup system including
+        total backups, success rates, storage usage, and recent backup activity.
+      operationId: getBackupStats
+      tags:
+        - Backup Management
+      responses:
+        '200':
+          description: Backup statistics retrieved successfully
+          schema:
+            $ref: '#/definitions/BackupStatsResponse'
+        '500':
+          description: Internal server error - failed to get statistics
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '503':
+          description: Backup service not available
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  #----------------------------------------------
+  # Compression Management API
+  #----------------------------------------------
+  '/compression/run':
+    post:
+      summary: Run data compression
+      description: |
+        Executes compression operation on old data to optimize storage.
+        Can be forced to run immediately or follow normal scheduling.
+        Returns compression statistics upon completion.
+      operationId: runCompression
+      tags:
+        - Compression Management
+      parameters:
+        - name: compression_request
+          in: body
+          description: Compression operation parameters (optional - defaults to normal mode)
+          required: false
+          schema:
+            $ref: '#/definitions/RunCompressionRequest'
+      responses:
+        '200':
+          description: Compression completed successfully
+          schema:
+            $ref: '#/definitions/CompressionResponse'
+        '500':
+          description: Internal server error - compression failed
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '503':
+          description: Compression service not available
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  '/compression/stats':
+    get:
+      summary: Get compression system statistics
+      description: |
+        Retrieves comprehensive statistics about the compression system including
+        compression ratios, space saved, operation history, and performance metrics.
+      operationId: getCompressionStats
+      tags:
+        - Compression Management
+      responses:
+        '200':
+          description: Compression statistics retrieved successfully
+          schema:
+            $ref: '#/definitions/CompressionStatsResponse'
+        '500':
+          description: Internal server error - failed to get statistics
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '503':
+          description: Compression service not available
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  '/compression/candidates':
+    get:
+      summary: Get compression candidates analysis
+      description: |
+        Analyzes the database to identify data that could benefit from compression.
+        Returns detailed information about potential space savings and recommended actions.
+      operationId: getCompressionCandidates
+      tags:
+        - Compression Management
+      responses:
+        '200':
+          description: Compression candidates retrieved successfully
+          schema:
+            $ref: '#/definitions/CompressionCandidatesResponse'
+        '500':
+          description: Internal server error - analysis failed
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '503':
+          description: Compression service not available
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  '/compression/estimate':
+    get:
+      summary: Get compression savings estimate
+      description: |
+        Estimates potential space savings from compression without actually
+        performing the compression operation. Useful for planning and optimization.
+      operationId: getCompressionEstimate
+      tags:
+        - Compression Management
+      responses:
+        '200':
+          description: Compression estimate retrieved successfully
+          schema:
+            $ref: '#/definitions/CompressionEstimateResponse'
+        '500':
+          description: Internal server error - estimation failed
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '503':
+          description: Compression service not available
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  #----------------------------------------------
+  # Alert Management API
+  #----------------------------------------------
+  '/alerts/rules':
+    post:
+      summary: Create a new alert rule
+      description: |
+        Creates a new alert rule with specified conditions and thresholds.
+        Rules can monitor various metrics and trigger alerts when conditions are met.
+      operationId: createAlertRule
+      tags:
+        - Alert Management
+      parameters:
+        - name: rule_request
+          in: body
+          description: Alert rule creation parameters
+          required: true
+          schema:
+            $ref: '#/definitions/CreateAlertRuleRequest'
+      responses:
+        '200':
+          description: Alert rule created successfully
+          schema:
+            $ref: '#/definitions/AlertRuleResponse'
+        '400':
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '409':
+          description: Rule name already exists
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '503':
+          description: Alert service not available
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    get:
+      summary: List alert rules
+      description: |
+        Retrieves a list of all alert rules with optional filtering by
+        enabled status, metric name, or severity level.
+      operationId: listAlertRules
+      tags:
+        - Alert Management
+      parameters:
+        - name: enabled
+          in: query
+          description: Filter by enabled status
+          required: false
+          type: boolean
+        - name: metric_name
+          in: query
+          description: Filter by metric name
+          required: false
+          type: string
+        - name: severity
+          in: query
+          description: Filter by severity level
+          required: false
+          type: string
+        - name: limit
+          in: query
+          description: Maximum number of rules to return
+          required: false
+          type: integer
+        - name: offset
+          in: query
+          description: Number of rules to skip for pagination
+          required: false
+          type: integer
+      responses:
+        '200':
+          description: Alert rules retrieved successfully
+          schema:
+            $ref: '#/definitions/AlertRulesListResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '503':
+          description: Alert service not available
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  '/alerts/rules/{rule_id}':
+    get:
+      summary: Get specific alert rule
+      description: |
+        Retrieves a specific alert rule by its ID including all configuration
+        details and metadata.
+      operationId: getAlertRule
+      tags:
+        - Alert Management
+      parameters:
+        - name: rule_id
+          in: path
+          description: The unique identifier of the alert rule
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Alert rule retrieved successfully
+          schema:
+            $ref: '#/definitions/AlertRuleResponse'
+        '404':
+          description: Alert rule not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '503':
+          description: Alert service not available
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    
+    put:
+      summary: Update alert rule
+      description: |
+        Updates an existing alert rule with new configuration. All fields
+        are optional and only provided fields will be updated.
+      operationId: updateAlertRule
+      tags:
+        - Alert Management
+      parameters:
+        - name: rule_id
+          in: path
+          description: The unique identifier of the alert rule
+          required: true
+          type: string
+        - name: rule_update
+          in: body
+          description: Updated alert rule parameters
+          required: true
+          schema:
+            $ref: '#/definitions/UpdateAlertRuleRequest'
+      responses:
+        '200':
+          description: Alert rule updated successfully
+          schema:
+            $ref: '#/definitions/AlertRuleResponse'
+        '400':
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '404':
+          description: Alert rule not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '503':
+          description: Alert service not available
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    
+    delete:
+      summary: Delete alert rule
+      description: |
+        Deletes an alert rule and all associated alerts. This action cannot
+        be undone and will stop monitoring for this rule immediately.
+      operationId: deleteAlertRule
+      tags:
+        - Alert Management
+      parameters:
+        - name: rule_id
+          in: path
+          description: The unique identifier of the alert rule
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Alert rule deleted successfully
+          schema:
+            $ref: '#/definitions/DeleteResponse'
+        '404':
+          description: Alert rule not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '503':
+          description: Alert service not available
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  '/alerts/all':
+    get:
+      summary: Get all alerts
+      description: |
+        Retrieves all alerts (both active and resolved) with optional filtering
+        by status, severity, rule name, or metric name. Supports pagination.
+      operationId: getAllAlerts
+      tags:
+        - Alert Management
+      parameters:
+        - name: status
+          in: query
+          description: Filter by alert status
+          required: false
+          type: string
+        - name: severity
+          in: query
+          description: Filter by alert severity
+          required: false
+          type: string
+        - name: rule_name
+          in: query
+          description: Filter by rule name
+          required: false
+          type: string
+        - name: metric_name
+          in: query
+          description: Filter by metric name
+          required: false
+          type: string
+        - name: limit
+          in: query
+          description: Maximum number of results to return
+          required: false
+          type: integer
+        - name: offset
+          in: query
+          description: Number of results to skip for pagination
+          required: false
+          type: integer
+      responses:
+        '200':
+          description: All alerts retrieved successfully
+          schema:
+            $ref: '#/definitions/AllAlertsResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '503':
+          description: Alert service not available
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  '/alerts/active':
+    get:
+      summary: Get active alerts
+      description: |
+        Retrieves all currently active alerts that have been triggered
+        by the alert rules.
+      operationId: getActiveAlerts
+      tags:
+        - Alert Management
+      responses:
+        '200':
+          description: Active alerts retrieved successfully
+          schema:
+            $ref: '#/definitions/ActiveAlertsResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '503':
+          description: Alert service not available
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  '/alerts/stats':
+    get:
+      summary: Get alert system statistics
+      description: |
+        Retrieves comprehensive statistics about the alert system including
+        rule counts, alert frequencies, and system performance.
+      operationId: getAlertStats
+      tags:
+        - Alert Management
+      responses:
+        '200':
+          description: Alert statistics retrieved successfully
+          schema:
+            $ref: '#/definitions/AlertStatsResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '503':
+          description: Alert service not available
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  '/alerts/resolve':
+    post:
+      summary: Manually resolve an alert
+      description: |
+        Manually resolves one or more active alerts. This action marks the
+        alerts as resolved and stops any ongoing notifications.
+      operationId: resolveAlert
+      tags:
+        - Alert Management
+      parameters:
+        - name: resolve_request
+          in: body
+          description: Alert resolution parameters
+          required: true
+          schema:
+            $ref: '#/definitions/ResolveAlertRequest'
+      responses:
+        '200':
+          description: Alert(s) resolved successfully
+          schema:
+            $ref: '#/definitions/ResolveAlertResponse'
+        '400':
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '404':
+          description: Alert(s) not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '503':
+          description: Alert service not available
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    put:
+      summary: Manually resolve an alert (alternative method)
+      description: |
+        Alternative PUT method to manually resolve one or more active alerts.
+        Functionally identical to the POST method.
+      operationId: resolveAlertPut
+      tags:
+        - Alert Management
+      parameters:
+        - name: resolve_request
+          in: body
+          description: Alert resolution parameters
+          required: true
+          schema:
+            $ref: '#/definitions/ResolveAlertRequest'
+      responses:
+        '200':
+          description: Alert(s) resolved successfully
+          schema:
+            $ref: '#/definitions/ResolveAlertResponse'
+        '400':
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '404':
+          description: Alert(s) not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '503':
+          description: Alert service not available
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  '/alerts/alert/{alert_id}':
+    get:
+      summary: Get specific alert by ID
+      description: |
+        Retrieves detailed information about a specific alert including
+        its status, metadata, rule information, and resolution details.
+      operationId: getAlert
+      tags:
+        - Alert Management
+      parameters:
+        - name: alert_id
+          in: path
+          description: The unique identifier of the alert
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Alert retrieved successfully
+          schema:
+            $ref: '#/definitions/AlertResponse'
+        '404':
+          description: Alert not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '503':
+          description: Alert service not available
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  '/alerts/metric/{metric_name}':
+    get:
+      summary: Get alerts by metric name
+      description: |
+        Retrieves all alert rules associated with a specific metric name.
+        This endpoint provides a way to see all monitoring rules for a particular metric.
+      operationId: getAlertsByMetric
+      tags:
+        - Alert Management
+      parameters:
+        - name: metric_name
+          in: path
+          description: The name of the metric
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Alert rules for metric retrieved successfully
+          schema:
+            $ref: '#/definitions/AlertRulesListResponse'
+        '404':
+          description: No alert rules found for metric
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '503':
+          description: Alert service not available
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  #----------------------------------------------
+  # Live Metrics API
+  #----------------------------------------------
+  '/metrics/live':
+    get:
+      summary: Get live metrics data
+      description: |
+        Retrieves real-time metrics data from the cache. Returns the most
+        current values for all tracked metrics.
+      operationId: getLiveMetrics
+      tags:
+        - Live Metrics
+      parameters:
+        - name: metric_names
+          in: query
+          description: Comma-separated list of metric names to retrieve
+          required: false
+          type: string
+        - name: format
+          in: query
+          description: Response format (json or prometheus)
+          required: false
+          type: string
+      responses:
+        '200':
+          description: Live metrics retrieved successfully
+          schema:
+            $ref: '#/definitions/LiveMetricsResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  '/metrics/cache/stats':
+    get:
+      summary: Get cache statistics
+      description: |
+        Retrieves comprehensive statistics about the metrics cache system
+        including hit rates, memory usage, and performance metrics.
+      operationId: getCacheStats
+      tags:
+        - Live Metrics
+      responses:
+        '200':
+          description: Cache statistics retrieved successfully
+          schema:
+            $ref: '#/definitions/CacheStatsResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  '/metrics/history/{metric_name}':
+    get:
+      summary: Get metric history
+      description: |
+        Retrieves historical data for a specific metric over a specified
+        time range with configurable aggregation intervals.
+      operationId: getMetricHistory
+      tags:
+        - Live Metrics
+      parameters:
+        - name: metric_name
+          in: path
+          description: Name of the metric
+          required: true
+          type: string
+        - name: start_time
+          in: query
+          description: Start timestamp (Unix epoch)
+          required: false
+          type: integer
+        - name: end_time
+          in: query
+          description: End timestamp (Unix epoch)
+          required: false
+          type: integer
+        - name: interval
+          in: query
+          description: Aggregation interval in seconds
+          required: false
+          type: integer
+      responses:
+        '200':
+          description: Metric history retrieved successfully
+          schema:
+            $ref: '#/definitions/MetricHistoryResponse'
+        '404':
+          description: Metric not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  '/metrics/value/{metric_name}':
+    get:
+      summary: Get current metric value
+      description: |
+        Retrieves the current value for a specific metric.
+      operationId: getCurrentMetricValue
+      tags:
+        - Live Metrics
+      parameters:
+        - name: metric_name
+          in: path
+          description: Name of the metric
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Current metric value retrieved successfully
+          schema:
+            $ref: '#/definitions/MetricValueResponse'
+        '404':
+          description: Metric not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  #----------------------------------------------
+  # Database Query API (Enhanced)
+  #----------------------------------------------
+  '/metrics/db/query':
+    get:
+      summary: Query historical metrics from database
+      description: |
+        Advanced database query with cursor-based pagination, filtering, and smart routing.
+        Supports JSON and CSV output formats.
+      operationId: queryMetricsDatabase
+      tags:
+        - Live Metrics
+      parameters:
+        - name: time_start
+          in: query
+          description: Start timestamp (Unix epoch)
+          required: true
+          type: integer
+        - name: time_end
+          in: query
+          description: End timestamp (Unix epoch)
+          required: true
+          type: integer
+        - name: metrics
+          in: query
+          description: Comma-separated list of metric names
+          required: false
+          type: string
+        - name: services
+          in: query
+          description: Comma-separated list of service names
+          required: false
+          type: string
+        - name: cursor
+          in: query
+          description: Pagination cursor
+          required: false
+          type: string
+        - name: limit
+          in: query
+          description: Maximum number of records to return
+          required: false
+          type: integer
+        - name: format
+          in: query
+          description: Response format (json or csv)
+          required: false
+          type: string
+      responses:
+        '200':
+          description: Database query executed successfully
+          schema:
+            $ref: '#/definitions/DatabaseQueryResponse'
+        '400':
+          description: Invalid query parameters
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  '/metrics/db/aggregate':
+    get:
+      summary: Get aggregated metrics from database
+      description: |
+        Retrieves aggregated metrics data with configurable time intervals
+        and aggregation functions. Supports grouping by service or endpoint.
+      operationId: aggregateMetricsDatabase
+      tags:
+        - Live Metrics
+      parameters:
+        - name: time_start
+          in: query
+          description: Start timestamp (Unix epoch)
+          required: true
+          type: integer
+        - name: time_end
+          in: query
+          description: End timestamp (Unix epoch)
+          required: true
+          type: integer
+        - name: metrics
+          in: query
+          description: Comma-separated list of metric names
+          required: false
+          type: string
+        - name: interval
+          in: query
+          description: Aggregation interval in seconds
+          required: false
+          type: integer
+        - name: function
+          in: query
+          description: Aggregation function (avg, sum, min, max, count)
+          required: false
+          type: string
+        - name: group_by
+          in: query
+          description: Grouping field (service, endpoint)
+          required: false
+          type: string
+      responses:
+        '200':
+          description: Aggregated metrics retrieved successfully
+          schema:
+            $ref: '#/definitions/AggregatedMetricsResponse'
+        '400':
+          description: Invalid aggregation parameters
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  '/metrics/db/batch':
+    post:
+      summary: Batch query multiple metrics
+      description: |
+        Executes multiple metric queries in a single request for improved performance.
+      operationId: batchQueryDatabase
+      tags:
+        - Live Metrics
+      parameters:
+        - name: batch_request
+          in: body
+          description: Batch query parameters
+          required: true
+          schema:
+            $ref: '#/definitions/BatchQueryRequest'
+      responses:
+        '200':
+          description: Batch query executed successfully
+          schema:
+            $ref: '#/definitions/BatchQueryResponse'
+        '400':
+          description: Invalid batch request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  #----------------------------------------------
+  # Unified Metrics API (Smart Routing)
+  #----------------------------------------------
+  '/metrics/query':
+    get:
+      summary: Unified metrics query with smart routing
+      description: |
+        Intelligent query routing that automatically selects the best data source.
+        For recent data (within 1 hour), serves from cache. For historical data, uses database.
+      operationId: unifiedMetricsQuery
+      tags:
+        - Live Metrics
+      parameters:
+        - name: time_start
+          in: query
+          description: Start timestamp (Unix epoch)
+          required: false
+          type: integer
+        - name: time_end
+          in: query
+          description: End timestamp (Unix epoch)
+          required: false
+          type: integer
+        - name: metrics
+          in: query
+          description: Comma-separated list of metric names
+          required: false
+          type: string
+        - name: source
+          in: query
+          description: Force data source (cache or db)
+          required: false
+          type: string
+      responses:
+        '200':
+          description: Unified query executed successfully
+          schema:
+            $ref: '#/definitions/UnifiedQueryResponse'
+        '400':
+          description: Invalid query parameters
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  '/metrics/historical':
+    get:
+      summary: Historical metrics (database-only)
+      description: |
+        Retrieves historical metrics data exclusively from database storage.
+        Optimized for long-term data analysis and reporting.
+      operationId: historicalMetrics
+      tags:
+        - Live Metrics
+      parameters:
+        - name: time_start
+          in: query
+          description: Start timestamp (Unix epoch)
+          required: true
+          type: integer
+        - name: time_end
+          in: query
+          description: End timestamp (Unix epoch)
+          required: true
+          type: integer
+        - name: metrics
+          in: query
+          description: Comma-separated list of metric names
+          required: false
+          type: string
+      responses:
+        '200':
+          description: Historical metrics retrieved successfully
+          schema:
+            $ref: '#/definitions/HistoricalMetricsResponse'
+        '400':
+          description: Invalid time range parameters
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  '/metrics/live/advanced':
+    get:
+      summary: Advanced live metrics (cache-only)
+      description: |
+        Retrieves real-time metrics exclusively from cache with advanced filtering
+        and enhanced performance optimizations. Supports phase-based metrics loading.
+      operationId: advancedLiveMetrics
+      tags:
+        - Live Metrics
+      parameters:
+        - name: metrics
+          in: query
+          description: Comma-separated list of metric names
+          required: false
+          type: string
+        - name: phase
+          in: query
+          description: Metrics loading phase (1 for critical, 2 for all)
+          required: false
+          type: integer
+        - name: format
+          in: query
+          description: Response format (json or prometheus)
+          required: false
+          type: string
+      responses:
+        '200':
+          description: Advanced live metrics retrieved successfully
+          schema:
+            $ref: '#/definitions/AdvancedLiveMetricsResponse'
+        '400':
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  '/metrics/health':
+    get:
+      summary: Metrics system health check
+      description: |
+        Comprehensive health check for the metrics system including cache,
+        database, and API component status.
+      operationId: metricsHealth
+      tags:
+        - Live Metrics
+      responses:
+        '200':
+          description: Metrics system health retrieved successfully
+          schema:
+            $ref: '#/definitions/MetricsHealthResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+#----------------------------------------------
+# Schema Definitions
+#----------------------------------------------
+definitions:
+  #----------------------------------------------
+  # Common Response Structure
+  #----------------------------------------------
+  LoxiLBAPIResponse:
+    type: object
+    properties:
+      success:
+        type: boolean
+        description: Indicates if the operation was successful
+      message:
+        type: string
+        description: Human-readable message about the operation result
+      timestamp:
+        type: integer
+        description: Unix timestamp when the response was generated
+      data:
+        type: object
+        description: The actual response data (structure varies by endpoint)
+    required:
+      - success
+      - message
+
+  ErrorResponse:
+    type: object
+    properties:
+      success:
+        type: boolean
+        description: Always false for error responses
+      message:
+        type: string
+        description: Error message
+      timestamp:
+        type: integer
+        description: Unix timestamp when the error occurred
+      error:
+        type: string
+        description: Detailed error information
+      details:
+        type: string
+        description: Additional error details
+    required:
+      - success
+      - message
+      - error
+
+  #----------------------------------------------
+  # Backup Management Schemas
+  #----------------------------------------------
+  CreateBackupRequest:
+    type: object
+    properties:
+      type:
+        type: string
+        description: Type of backup to create (full, incremental, selective)
+        enum: ["full", "incremental", "selective"]
+        default: "full"
+    required: []
+
+  BackupResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            type: object
+            description: Backup information including ID, path, and metadata
+
+  BackupListResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            type: array
+            description: List of available backups
+            items:
+              type: object
+          count:
+            type: integer
+            description: Total number of backups
+
+  RestoreBackupRequest:
+    type: object
+    properties:
+      backup_path:
+        type: string
+        description: Path to the backup file to restore
+    required:
+      - backup_path
+
+  RestoreResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+
+  BackupStatsResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            type: object
+            description: Backup system statistics
+
+  #----------------------------------------------
+  # Compression Management Schemas
+  #----------------------------------------------
+  RunCompressionRequest:
+    type: object
+    properties:
+      force:
+        type: boolean
+        description: Force compression even if recently run
+        default: false
+    required: []
+
+  CompressionResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          stats:
+            type: object
+            description: Compression statistics after operation
+
+  CompressionStatsResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            type: object
+            description: Comprehensive compression statistics
+
+  CompressionCandidatesResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            type: object
+            description: Analysis of compression candidates
+
+  CompressionEstimateResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            type: object
+            description: Estimated compression savings
+
+  #----------------------------------------------
+  # Alert Management Schemas
+  #----------------------------------------------
+  CreateAlertRuleRequest:
+    type: object
+    properties:
+      name:
+        type: string
+        description: Unique name for the alert rule
+      metric_name:
+        type: string
+        description: Name of the metric to monitor
+      condition:
+        type: string
+        description: Comparison operator (gt, lt, eq, ne, gte, lte)
+        enum: ["gt", "lt", "eq", "ne", "gte", "lte"]
+      threshold:
+        type: number
+        description: Threshold value for the alert
+      duration:
+        type: integer
+        description: Duration in seconds before alert triggers
+      severity:
+        type: string
+        description: Severity level of the alert
+        enum: ["critical", "warning", "info"]
+      message:
+        type: string
+        description: Alert message template
+      enabled:
+        type: boolean
+        description: Whether the rule is enabled
+        default: true
+    required:
+      - name
+      - metric_name
+      - condition
+      - threshold
+      - severity
+
+  UpdateAlertRuleRequest:
+    type: object
+    properties:
+      name:
+        type: string
+        description: Name of the alert rule
+      metric_name:
+        type: string
+        description: Name of the metric to monitor
+      condition:
+        type: string
+        description: Condition operator for threshold comparison
+        enum: ["gt", "lt", "eq", "ne", "gte", "lte"]
+      threshold:
+        type: number
+        description: Threshold value for the alert
+      duration:
+        type: integer
+        description: Duration in seconds before alert triggers
+      severity:
+        type: string
+        description: Severity level of the alert
+        enum: ["critical", "warning", "info"]
+      message:
+        type: string
+        description: Alert message template
+      enabled:
+        type: boolean
+        description: Whether the rule is enabled
+    required: []
+
+  AlertRuleResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            type: object
+            description: Alert rule details
+
+  AlertRulesListResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            type: array
+            description: List of alert rules
+            items:
+              type: object
+
+  ActiveAlertsResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            type: array
+            description: List of active alerts
+            items:
+              type: object
+
+  AllAlertsResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            type: array
+            description: List of all alerts (active and resolved)
+            items:
+              type: object
+
+  AlertStatsResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            type: object
+            description: Alert system statistics
+
+  ResolveAlertRequest:
+    type: object
+    properties:
+      alert_ids:
+        type: array
+        description: List of alert IDs to resolve
+        items:
+          type: string
+        minItems: 1
+      rule_name:
+        type: string
+        description: Resolve all alerts for a specific rule name (alternative to alert_ids)
+      reason:
+        type: string
+        description: Optional reason for manual resolution
+      resolved_by:
+        type: string
+        description: Identifier of the user or system resolving the alert
+    required:
+      - resolved_by
+
+  ResolveAlertResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            type: object
+            description: Resolution result details
+
+  AlertResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            type: object
+            description: Alert details
+
+  DeleteResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+
+  #----------------------------------------------
+  # Live Metrics Schemas
+  #----------------------------------------------
+  LiveMetricsResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            $ref: '#/definitions/LiveMetricsData'
+
+  LiveMetricsData:
+    type: object
+    properties:
+      timestamp:
+        type: integer
+        description: Timestamp when metrics were collected
+      critical:
+        type: object
+        description: Critical metrics
+      important:
+        type: object
+        description: Important metrics (phase 2 only)
+      total_metrics:
+        type: integer
+        description: Total number of metrics returned
+      cache_enabled:
+        type: boolean
+        description: Whether cache is enabled
+      phase:
+        type: integer
+        description: Metrics loading phase
+
+  CacheStatsResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            type: object
+            description: Cache performance statistics
+
+  MetricHistoryResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            type: array
+            description: Historical metric data points
+            items:
+              $ref: '#/definitions/MetricDataPoint'
+
+  MetricValueResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            $ref: '#/definitions/MetricDataPoint'
+
+  MetricDataPoint:
+    type: object
+    properties:
+      timestamp:
+        type: integer
+        description: Unix timestamp when the metric was recorded
+      metric_name:
+        type: string
+        description: Name of the metric
+      value:
+        type: number
+        description: Metric value
+      labels:
+        type: object
+        description: Metric labels/tags
+      service_name:
+        type: string
+        description: Name of the service that generated the metric
+
+  #----------------------------------------------
+  # Enhanced Database and Unified API Schemas
+  #----------------------------------------------
+  DatabaseQueryResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            type: array
+            description: Query result data
+            items:
+              $ref: '#/definitions/MetricDataPoint'
+          cursor:
+            type: string
+            description: Pagination cursor for next page
+          has_more:
+            type: boolean
+            description: Whether more data is available
+
+  AggregatedMetricsResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            type: array
+            description: Aggregated metric data
+            items:
+              type: object
+
+  BatchQueryRequest:
+    type: object
+    properties:
+      queries:
+        type: array
+        description: List of queries to execute
+        items:
+          $ref: '#/definitions/QueryRequestItem'
+    required:
+      - queries
+
+  QueryRequestItem:
+    type: object
+    properties:
+      time_start:
+        type: integer
+        description: Start timestamp (Unix epoch)
+      time_end:
+        type: integer
+        description: End timestamp (Unix epoch)
+      metrics:
+        type: array
+        description: List of metric names to query
+        items:
+          type: string
+      services:
+        type: array
+        description: List of service names to filter
+        items:
+          type: string
+      cursor:
+        type: string
+        description: Pagination cursor
+      limit:
+        type: integer
+        description: Maximum number of records to return
+      format:
+        type: string
+        description: Response format (json or csv)
+        enum: ["json", "csv"]
+    required:
+      - time_start
+      - time_end
+
+  BatchQueryResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            type: array
+            description: Results for each query in the batch
+            items:
+              type: object
+
+  UnifiedQueryResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            type: array
+            description: Unified query results
+            items:
+              $ref: '#/definitions/MetricDataPoint'
+          source:
+            type: string
+            description: Data source used (cache or database)
+          query_time_ms:
+            type: integer
+            description: Query execution time in milliseconds
+
+  HistoricalMetricsResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            type: array
+            description: Historical metrics data
+            items:
+              $ref: '#/definitions/MetricDataPoint'
+
+  AdvancedLiveMetricsResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            $ref: '#/definitions/LiveMetricsData'
+
+  MetricsHealthResponse:
+    allOf:
+      - $ref: '#/definitions/LoxiLBAPIResponse'
+      - type: object
+        properties:
+          data:
+            type: object
+            description: Metrics system health status
+
+# Security definitions
+securityDefinitions:
+  BearerAuth:
+    type: apiKey
+    name: Authorization
+    in: header
+    description: "Enter JWT token in format: Bearer {token}"
+
+security:
+  - BearerAuth: []

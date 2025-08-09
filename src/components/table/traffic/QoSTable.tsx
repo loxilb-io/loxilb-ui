@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {get_size_str, get_speed_rate_str, getStableHash} from 'common';
+import {get_size_str, formatRate, getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {useInstanceName} from 'hooks/query/instanceHook';
 import {t} from 'i18next';
@@ -39,7 +39,7 @@ export default function QoSTable(props: {data: IPolicyConfiguration; selected_ro
 				   id: index,
 				   policyIdent: item.policyIdent,
 				   type: item.policyInfo.type,
-				   rate: `${get_speed_rate_str(item.policyInfo.committedInfoRate)} / ${get_speed_rate_str(item.policyInfo.peakInfoRate)}`,
+				   rate: `${formatRate(item.policyInfo.committedInfoRate, 'bps')} / ${formatRate(item.policyInfo.peakInfoRate, 'bps')}`,
 				   blocksize: `${get_size_str(item.policyInfo.committedBlkSize)} / ${get_size_str(item.policyInfo.excessBlkSize)}`,
 				   attachment: {
 					   data: `${item.targetObject.attachment}(${item.targetObject.polObjName})`,

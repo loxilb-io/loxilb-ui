@@ -106,4 +106,5 @@ deploy-output/
 
 .claude/
 .serena/
+.vscode/
 

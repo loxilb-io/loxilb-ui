@@ -47,6 +47,21 @@ export function is_mobile_device(): boolean {
 	return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
 }
 
+/**
+ * Format bytes to human readable string
+ */
+export function formatBytes(bytes: number, decimals: number = 2): string {
+	if (!bytes || bytes === 0) return '0 Bytes';
+
+	const k = 1024;
+	const dm = decimals < 0 ? 0 : decimals;
+	const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+	const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+	return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
 export const prevent_scroll = {
 	overflowX: 'hidden',
 	overflowY: 'hidden',
@@ -234,6 +249,48 @@ export function get_speed_rate_str(value: number): string {
 	else if (value >= 1000000) return `${(value / 1000000).toFixed(2)} Mbps`;
 	else if (value >= 1000) return `${(value / 1000).toFixed(2)} Kbps`;
 	else return `${value} bps`;
+}
+
+export function get_packet_rate_str(value: number): string {
+	if (value >= 1000000) return `${(value / 1000000).toFixed(2)} Mpps`;
+	else if (value >= 1000) return `${(value / 1000).toFixed(2)} Kpps`;
+	else return `${value.toFixed(2)} pps`;
+}
+
+export function formatRate(rate: number, unit: 'bps' | 'pps'): string {
+	return unit === 'bps' ? get_speed_rate_str(rate) : get_packet_rate_str(rate);
+}
+
+export function detectRateUnit(dataKey: string): 'bps' | 'pps' | 'bytes' | 'packets' {
+	const key = dataKey.toLowerCase();
+	if (key.includes('rate') || key.includes('_per_sec') || key.includes('bps')) return 'bps';
+	if (key.includes('pps') || key.includes('packet') && key.includes('rate')) return 'pps';
+	if (key.includes('packet')) return 'packets';
+	return 'bytes';
+}
+
+export function formatRateForAxis(value: number, unit: 'bps' | 'pps'): string {
+	if (value === 0) return '0';
+	
+	if (unit === 'bps') {
+		if (value >= 1e9) return `${(value / 1e9).toFixed(0)}G`;
+		if (value >= 1e6) return `${(value / 1e6).toFixed(0)}M`;
+		if (value >= 1e3) return `${(value / 1e3).toFixed(0)}K`;
+		return value.toFixed(0);
+	} else {
+		if (value >= 1e6) return `${(value / 1e6).toFixed(0)}M`;
+		if (value >= 1e3) return `${(value / 1e3).toFixed(0)}K`;
+		return value.toFixed(0);
+	}
+}
+
+export function formatNumberForAxis(value: number): string {
+	if (value === 0) return '0';
+	if (value < 1_000) return value.toFixed(0);
+	if (value < 1_000_000) return (value / 1_000).toFixed(0) + 'K';
+	if (value < 1_000_000_000) return (value / 1_000_000).toFixed(0) + 'M';
+	if (value < 1_000_000_000_000) return (value / 1_000_000_000).toFixed(0) + 'B';
+	else return (value / 1_000_000_000_000).toFixed(0) + 'T';
 }
 
 export function get_size_str(value: number): string {
