@@ -31,7 +31,61 @@ export function forced_relocation_to_login() {
 }
 
 export function save_local_storage(name: string, value: string) {
-	localStorage.setItem(name, value);
+	try {
+		localStorage.setItem(name, value);
+	} catch (error) {
+		if (error instanceof DOMException && (
+			error.code === 22 || // QUOTA_EXCEEDED_ERR
+			error.code === 1014 || // NS_ERROR_DOM_QUOTA_REACHED (Firefox)
+			error.name === 'QuotaExceededError'
+		)) {
+			console.warn('localStorage quota exceeded, clearing old time series data');
+			clearOldTimeSeriesData();
+			// Try again after clearing
+			try {
+				localStorage.setItem(name, value);
+			} catch (retryError) {
+				console.error('Failed to save to localStorage even after cleanup:', retryError);
+			}
+		} else {
+			console.error('Error saving to localStorage:', error);
+		}
+	}
+}
+
+function clearOldTimeSeriesData() {
+	const keysToRemove: string[] = [];
+	
+	// Find all time series keys (they contain '-series_' or end with specific patterns)
+	for (let i = 0; i < localStorage.length; i++) {
+		const key = localStorage.key(i);
+		if (key && (
+			key.includes('-series_') || 
+			key.includes('-full-series_') ||
+			key.includes('cache-stats-series_') ||
+			key.includes('live-metrics-')
+		)) {
+			keysToRemove.push(key);
+		}
+	}
+	
+	// Remove oldest entries first (keep only the most recent ones)
+	keysToRemove.forEach(key => {
+		try {
+			const data = localStorage.getItem(key);
+			if (data) {
+				const parsed = JSON.parse(data);
+				if (Array.isArray(parsed)) {
+					// Keep only the last 50 data points to reduce storage
+					const trimmed = parsed.slice(-50);
+					localStorage.setItem(key, JSON.stringify(trimmed));
+				}
+			}
+		} catch (error) {
+			// If we can't parse or trim, just remove the key
+			localStorage.removeItem(key);
+		}
+	});
 }
 
 export function get_local_storage(name: string): string | null {
@@ -248,16 +302,16 @@ export function get_speed_rate_str(value: number): string {
 	if (value >= 1000000000) return `${(value / 1000000000).toFixed(2)} Gbps`;
 	else if (value >= 1000000) return `${(value / 1000000).toFixed(2)} Mbps`;
 	else if (value >= 1000) return `${(value / 1000).toFixed(2)} Kbps`;
-	else return `${value} bps`;
+	else return `${value.toFixed(0)} bps`;
 }
 
 export function get_packet_rate_str(value: number): string {
 	if (value >= 1000000) return `${(value / 1000000).toFixed(2)} Mpps`;
 	else if (value >= 1000) return `${(value / 1000).toFixed(2)} Kpps`;
-	else return `${value.toFixed(2)} pps`;
+	else return `${value.toFixed(0)} pps`;
 }
 
-export function formatRate(rate: number, unit: 'bps' | 'pps'): string {
+export function formatRate(rate: number, unit: 'bps' | 'pps' | 'eps' | 'fps'): string {
 	return unit === 'bps' ? get_speed_rate_str(rate) : get_packet_rate_str(rate);
 }
 
@@ -269,7 +323,7 @@ export function detectRateUnit(dataKey: string): 'bps' | 'pps' | 'bytes' | 'pack
 	return 'bytes';
 }
 
-export function formatRateForAxis(value: number, unit: 'bps' | 'pps'): string {
+export function formatRateForAxis(value: number, unit: 'bps' | 'pps' | 'eps' | 'fps'): string {
 	if (value === 0) return '0';
 	
 	if (unit === 'bps') {
@@ -316,21 +370,46 @@ export function getMaxFromFormat(fieldMeta?: IPostParamFieldDesc): number | unde
 	return MAX_VALUE_BY_FORMAT[fieldMeta.format];
 }
 
+// Helper function to normalize log levels from new API format
+function normalizeLogLevel(level: string): string {
+	switch (level.toUpperCase()) {
+		case 'ERR': return 'ERROR';
+		case 'DBG': return 'DEBUG';
+		case 'WARN': return 'WARNING';
+		case 'INFO': return 'INFO';
+		case 'CRITICAL': return 'CRITICAL';
+		default: return level;
+	}
+}
+
 export function parse_log_line(line: string): ILog | null {
-	// Example log line:
-	// ERROR: 2025/05/25 09:15:18 logging.go:51: go-rest-api/internal/services.(*LoxiLBService).FetchLoxiLBInstances.func1: Failed to fetch LoxiLB instances: sql: database is closed
+	// Example log line from new API:
+	// INFO: 2025/08/17 09:00:00 ebpf unload - lo
+	// DBG:  2025/08/17 09:00:00 RootCA cert loaded  
+	// ERR:  2025/08/17 09:00:03 nlp: RT add failed-rt exists
 
-	const regex = /^(ERROR|INFO|WARNING|DEBUG|CRITICAL): (\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}) ([^:]+): (.+)$/;
+	// Primary regex for new API format: LEVEL: DATE TIME message (with flexible spacing)
+	const newApiRegex = /^(ERR|INFO|WARN|DBG|CRITICAL):\s*(\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2})\s+(.+)$/;
+	
+	const newMatch = line.match(newApiRegex);
+	if (newMatch) {
+		const [, level, timestamp, message] = newMatch;
+		return {
+			id: 0,
+			created_at: timestamp,
+			timestamp,
+			level: normalizeLogLevel(level),
+			message: message.trim(),
+			programname: '',
+			host: '',
+		};
+	}
 
-	const match = line.match(regex);
-	if (!match) {
-		// fallback: 좀 더 포괄적인 버전 시도
-		const fallbackRegex = /^(ERROR|INFO|WARNING|DEBUG|CRITICAL): (\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}) (.+?): (.+)$/;
-		const fallbackMatch = line.match(fallbackRegex);
-		if (!fallbackMatch) return null;
-
-		const [, level, timestamp, programLoc, message] = fallbackMatch;
-
+	// Legacy regex for old format: LEVEL: DATE TIME file:line: message
+	const legacyRegex = /^(ERROR|INFO|WARNING|DEBUG|CRITICAL): (\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}) ([^:]+): (.+)$/;
+	const legacyMatch = line.match(legacyRegex);
+	if (legacyMatch) {
+		const [, level, timestamp, programLoc, message] = legacyMatch;
 		return {
 			id: 0,
 			created_at: timestamp,
@@ -342,17 +421,8 @@ export function parse_log_line(line: string): ILog | null {
 		};
 	}
 
-	const [, level, timestamp, programLoc, message] = match;
-
-	return {
-		id: 0, // ID is not provided in the log line, set to 0 or handle as needed
-		created_at: timestamp,
-		timestamp,
-		level,
-		message,
-		programname: programLoc.trim().split(' ')[0],
-		host: '',
-	};
+	// If no pattern matches, return null
+	return null;
 }
 
 export function parse_log_lines(lines: string[]): ILog[] {

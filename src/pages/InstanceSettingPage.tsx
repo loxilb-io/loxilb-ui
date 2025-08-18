@@ -9,8 +9,9 @@ import ValueBunch from 'components/element/ValueBunch';
 import {request_post_log_level} from 'connector/instance/status';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
+import {useLogLevel} from 'hooks/query/statusHook';
 import {t} from 'i18next';
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import {LevelType, LevelTypeList} from 'types/log';
 
 //---------------------------------------------------------
@@ -117,10 +118,19 @@ function FirmwareResultPannel(props: {is_success: boolean}) {
 }
 
 function LogLevelSelector() {
-	const [selected_level, set_selected_level] = useState('warning');
-
 	const inst = useInstanceFromURL();
 	const {openPopUp} = usePopUp();
+	const {data: logLevelData} = useLogLevel(inst);
+	
+	// Initialize with fetched log level or default to 'warning'
+	const [selected_level, set_selected_level] = useState<LevelType>('warning');
+	
+	// Update selected_level when data is fetched
+	useEffect(() => {
+		if (logLevelData?.logLevel) {
+			set_selected_level(logLevelData.logLevel as LevelType);
+		}
+	}, [logLevelData]);
 
 	const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
 		if (!inst) return;

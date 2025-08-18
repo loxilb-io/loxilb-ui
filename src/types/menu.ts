@@ -5,6 +5,7 @@ import CloudIcon from '@mui/icons-material/Cloud';
 import MonitorIcon from '@mui/icons-material/Monitor';
 import RouteIcon from '@mui/icons-material/Route';
 import WysiwygIcon from '@mui/icons-material/Wysiwyg';
+import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import {SvgIconTypeMap} from '@mui/material';
 import {OverridableComponent} from '@mui/material/OverridableComponent';
 
@@ -47,6 +48,18 @@ export const MENU_LIST: IMenuItem[] = [
 			{
 				name: 'Mirror',
 				path: 'mirror',
+			},			
+			{
+				name: 'Alerts',
+				path: 'alerts',
+			},
+			{
+				name: 'Topology',
+				path: 'topology',
+			},
+			{
+				name: 'nTop Analytics',
+				path: 'ntop',
 			},
 			// {
 			// 	name: 'Telecom',
@@ -112,6 +125,29 @@ export const MENU_LIST: IMenuItem[] = [
 			// 			path: 'neighbor',
 			// 		},
 			// 	],
+			// },
+		],
+	},
+	{
+		name: 'Managers',
+		icon: ManageAccountsIcon,
+		path: 'managers',
+		items: [
+			{
+				name: 'Alert Manager',
+				path: 'alert',
+			},
+			{
+				name: 'Backup Manager',
+				path: 'backup',
+			},
+			// {
+			// 	name: 'Advanced Metrics',
+			// 	path: 'metrics',
+			// },
+			// {
+			// 	name: 'Compression Manager',
+			// 	path: 'compression',
 			// },
 		],
 	},

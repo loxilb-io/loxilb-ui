@@ -16,6 +16,7 @@ export interface SimpleResponse {
 	code: number;
 	data: any;
 	message: string;
+	headers?: Headers;
 }
 
 export type ApiResult = {
@@ -102,15 +103,28 @@ async function handle_response(response: any): Promise<SimpleResponse> {
 		try {
 			const cc = response.clone();
 			const resp_json = await cc.json();
-			// !!! console.log(response.url, response.status, resp_json);
-			console.log(response.url, response.status);
-			return {code: response.status, data: resp_json, message: response.statusText || resp_json.result};
+			return {
+				code: response.status, 
+				data: resp_json, 
+				message: response.statusText || resp_json.result,
+				headers: response.headers
+			};
 		} catch (error) {
-			return {code: response.status, data: null, message: response.statusText};
+			return {
+				code: response.status, 
+				data: null, 
+				message: response.statusText,
+				headers: response.headers
+			};
 		}
 	}
 
-	return {code: response.status, data: null, message: response.statusText};
+	return {
+		code: response.status, 
+		data: null, 
+		message: response.statusText,
+		headers: response.headers
+	};
 }
 
 async function fetch_json(url: string, options?: RequestOptions): Promise<SimpleResponse> {

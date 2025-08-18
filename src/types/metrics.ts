@@ -140,11 +140,82 @@ export interface IRequestCountPerClient {
 
 /**
  * Live Metrics Response from cache
+ * Based on actual API response structure
  */
 export interface ILiveMetricsResponse {
 	timestamp: number;
 	critical: Record<string, number>;
 	important?: Record<string, number>;
+	total_metrics: number;
+	cache_enabled: boolean;
+	response_time_ms: number;
+	source: 'cache' | 'fallback';
+	phase: 1 | 2;
+}
+
+/**
+ * Strongly typed Live Metrics Response with known metric names
+ * Use this when you need type safety for specific metrics
+ */
+export interface ITypedLiveMetricsResponse {
+	timestamp: number;
+	critical: {
+		// Connection tracking metrics
+		active_conntrack_count?: number;
+		active_flow_count_tcp?: number;
+		active_flow_count_udp?: number;
+		active_flow_count_sctp?: number;
+		inactive_flow_count?: number;
+		new_flow_count?: number;
+		
+		// Load balancer metrics
+		lb_rule_count?: number;
+		lb_rules_per_service?: number;
+		total_requests?: number;
+		total_requests_per_service?: number;
+		total_errors?: number;
+		
+		// Endpoint health metrics
+		healthy_endpoints_count?: number;
+		unhealthy_endpoints_count?: number;
+		endpoint_health?: number;
+		
+		// Firewall metrics
+		firewall_rules_count?: number;
+		total_fw_drops?: number;
+		total_fw_drops_per_rule?: number;
+	};
+	important?: {
+		// Traffic processing metrics
+		processed_bytes_total?: number;
+		processed_packets_total?: number;
+		processed_tcp_bytes?: number;
+		processed_udp_bytes?: number;
+		processed_sctp_bytes?: number;
+		processed_tcp_packets?: number;
+		processed_udp_packets?: number;
+		processed_sctp_packets?: number;
+		
+		// RPS Calculator metrics
+		rps_1m_avg?: number;
+		rps_1m_peak?: number;
+		rps_bps?: number;
+		rps_pps?: number;
+		rps_eps?: number;
+		rps_requests?: number;
+		rps_time_window?: number;
+		rps_trend_score?: number;
+		rps_tcp_bps?: number;
+		rps_udp_bps?: number;
+		rps_sctp_bps?: number;
+		rps_tcp_pps?: number;
+		rps_udp_pps?: number;
+		rps_sctp_pps?: number;
+		
+		// LB interaction RPS metrics
+		rps_lb_interaction_bps?: number;
+		rps_lb_interaction_pps?: number;
+	};
 	total_metrics: number;
 	cache_enabled: boolean;
 	response_time_ms: number;

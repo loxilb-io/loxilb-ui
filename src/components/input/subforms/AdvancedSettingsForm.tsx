@@ -1,6 +1,7 @@
-import {Stack} from '@mui/material';
+import {Box, Stack} from '@mui/material';
 import modes from 'assets/json/modes.json';
 import opers from 'assets/json/opers.json';
+import securities from 'assets/json/securities.json';
 import sels from 'assets/json/sels.json';
 import AccordionBox from 'components/element/AccordionBox';
 import ParamBox from 'components/element/ParamBox';
@@ -19,6 +20,7 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 	const sel_list: IEnumItem[] = sels;
 	const oper_list: IEnumItem[] = opers;
 	const mode_list: IEnumItem[] = modes;
+	const security_list: IEnumItem[] = securities;
 
 	const handleChange = useCallback(
 		(field: keyof IServiceArguments) => (newValue: any) => {
@@ -28,7 +30,7 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 	);
 
 	return (
-	   <AccordionBox title={t('Advanced Settings')}>
+	   <AccordionBox title={t('Advanced Settings (LB Algo, NAT modes, etc)')}>
 			   <Stack spacing={2}>
 					   <HorizontalStack>
 							   <ParamBox label={t('SEL')} value={value?.sel ?? ''} onChange={handleChange('sel')} param_desc={{...params?.sel, enum: sel_list}} />
@@ -38,6 +40,16 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 					   <HorizontalStack>
 							   <ParamBox label={t('Mode')} value={value?.mode ?? ''} onChange={handleChange('mode')} param_desc={{...params?.mode, enum: mode_list}} />
 							   <ParamBox label={t('Inactive Timeout')} value={value?.inactiveTimeOut ?? ''} onChange={handleChange('inactiveTimeOut')} param_desc={params?.inactiveTimeOut} />
+					   </HorizontalStack>
+
+					   <HorizontalStack>
+								<ParamBox label={t('Security')} value={value?.security ?? ''} onChange={handleChange('security')} param_desc={{...params?.security, enum: security_list}} disabled={value?.mode !== 4} />
+								<ParamBox label={t('Block')} value={value?.block ?? ''} onChange={handleChange('block')} param_desc={params?.block} />
+						</HorizontalStack>
+
+						<HorizontalStack>
+							   <ParamBox label={t('BGP')} value={value?.bgp ?? ''} onChange={handleChange('bgp')} param_desc={params?.bgp} />
+							   <Box width="100%" id="empty-spacer" />
 					   </HorizontalStack>
 			   </Stack>
 	   </AccordionBox>

@@ -8,6 +8,7 @@ import {ITimeSeriesPoint} from 'types/global';
 import {IInstance} from 'types/oam';
 
 export const MAX_DURATION_MS = 24 * 60 * 60 * 1000;
+export const MAX_DATA_POINTS = 100; // Limit number of data points to prevent storage overflow
 export const POLLING_INTERVAL_MS = parseInt(process.env.REACT_APP_REPATCH_INTERVAL || '1000');
 
 //---------------------------------------------------------
@@ -15,7 +16,14 @@ export const POLLING_INTERVAL_MS = parseInt(process.env.REACT_APP_REPATCH_INTERV
 //---------------------------------------------------------
 function pruneOld<T>(arr: ITimeSeriesPoint<T>[]): ITimeSeriesPoint<T>[] {
 	const now = Date.now();
-	return arr.filter(item => now - item.timestamp <= MAX_DURATION_MS);
+	const timeFiltered = arr.filter(item => now - item.timestamp <= MAX_DURATION_MS);
+	
+	// Also limit by max data points to prevent storage overflow
+	if (timeFiltered.length > MAX_DATA_POINTS) {
+		return timeFiltered.slice(-MAX_DATA_POINTS);
+	}
+	
+	return timeFiltered;
 }
 
 function appendSeries<T>(prev: ITimeSeriesPoint<T>[], newPoint: {timestamp: number; data: T}): ITimeSeriesPoint<T>[] {

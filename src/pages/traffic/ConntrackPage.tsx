@@ -1,8 +1,10 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {Stack, Typography} from '@mui/material';
-import SimpleLineGraph from 'components/element/SimpleLineGraph';
+import {Box, Stack, Typography} from '@mui/material';
+import {formatRate} from 'common';
+import RateLineGraph from 'components/element/RateLineGraph';
+import RateTooltip from 'components/element/RateTooltip';
 import SingleTextBox from 'components/element/SingleTextBox';
 import HorizontalStack from 'components/layout/HorizontalStack';
 import LowerSection from 'components/layout/LowerSection';
@@ -20,57 +22,109 @@ import {IInstance} from 'types/oam';
 //---------------------------------------------------------
 // Sub Component
 //---------------------------------------------------------
-function ConntrackPanel(props: {instance: IInstance | null; name: string; data: ICtAttribute}) {
-	const {instance, name, data} = props;
-
+function ConntrackPanel(props: {instance: IInstance | null; data: ICtAttribute}) {
+	const {instance, data} = props;
 	const now = Date.now();
-
 	const timeseries: ITimeSeriesPoint<ICtData>[] = useConntrackSeries(instance);
+
+	// Helper function to match connections based on five key attributes
+	const matchesConnection = (attr: ICtAttribute, target: ICtAttribute) => {
+		const matches = attr.destinationIP === target.destinationIP &&
+			   attr.sourceIP === target.sourceIP &&
+			   attr.destinationPort === target.destinationPort &&
+			   attr.sourcePort === target.sourcePort &&
+			   attr.protocol === target.protocol;
+		
+		return matches;
+	};
+
+	// Calculate rates from cumulative data (like DeltaTrafficCard)
+	const calculateDeltaRates = (cumulativePoints: ITimeSeriesPoint<number>[]) => {
+		if (cumulativePoints.length < 2) return [];
+		
+		// Use recent points only for better visualization
+		const recentPoints = cumulativePoints.slice(-30); // Last 30 points
+		
+		return recentPoints.slice(1).map((point, index) => {
+			const prevPoint = recentPoints[index]; // index already offset by slice(1)
+			const deltaValue = (point.data ?? 0) - (prevPoint.data ?? 0);
+			const deltaTime = (point.timestamp - prevPoint.timestamp) / 1000; // Convert ms to seconds
+			const rate = deltaTime > 0 ? deltaValue / deltaTime : 0;
+
+			return {
+				timestamp: point.timestamp,
+				data: Math.max(rate, 0), // Ensure non-negative values
+			};
+		});
+	};
+
+	// Extract cumulative byte data for the specific connection
+	const cumulativeBytes = timeseries?.map(point => {
+		const attr = point.data.ctAttr.find(attr => matchesConnection(attr, data));
+		return {
+			timestamp: point.timestamp,
+			data: attr?.bytes ?? 0,
+		};
+	}) ?? [
+		{
+			timestamp: now,
+			data: data?.bytes ?? 0,
+		},
+	];
 
 	const traffic_data: ITimelineDataSet<number> = {
 		label: 'Traffic',
-		values: timeseries?.map(point => {
-			const attr = point.data.ctAttr.find(attr => attr.servName === name);
-			return {
-				timestamp: point.timestamp,
-				data: attr?.bytes ?? 0,
-			};
-		}) ?? [
-			{
-				timestamp: now,
-				data: data?.bytes ?? 0,
-			},
-		],
+		values: calculateDeltaRates(cumulativeBytes),
 	};
+
+	// Extract cumulative packet data for the specific connection
+	const cumulativePackets = timeseries?.map(point => {
+		const attr = point.data.ctAttr.find(attr => matchesConnection(attr, data));
+		return {
+			timestamp: point.timestamp,
+			data: attr?.packets ?? 0,
+		};
+	}) ?? [
+		{
+			timestamp: now,
+			data: data?.packets ?? 0,
+		},
+	];
 
 	const packets_data: ITimelineDataSet<number> = {
 		label: 'Packets',
-		values: timeseries?.map(point => {
-			const attr = point.data.ctAttr.find(attr => attr.servName === name);
-			return {
-				timestamp: point.timestamp,
-				data: attr?.packets ?? 0,
-			};
-		}) ?? [
-			{
-				timestamp: now,
-				data: data?.packets ?? 0,
-			},
-		],
+		values: calculateDeltaRates(cumulativePackets),
 	};
 
+	// Calculate current rates (latest values)
+	const currentTrafficRate = traffic_data.values.length > 0 ? traffic_data.values[traffic_data.values.length - 1].data*8 : 0;
+	const currentPacketRate = packets_data.values.length > 0 ? packets_data.values[packets_data.values.length - 1].data : 0;
+
 	return (
-		<SubTitlePannel title={name} sub_title={t('Details')}>
+		<SubTitlePannel title={`${data.sourceIP}_${data.sourcePort} → ${data.destinationIP}_${data.destinationPort}`} sub_title={t('Details')}>
 			<SingleTextBox label={t('Conntrack Act')} value={data.conntrackAct} />
 			<HorizontalStack align="flex-start">
 				<Stack spacing={2}>
 					<SingleTextBox label={t('Source')} value={`${data.sourceIP}:${data.sourcePort}`} />
 					<SingleTextBox label={t('Destination')} value={`${data.destinationIP}:${data.destinationPort}`} />
+					<SingleTextBox label={t('Current Bytes')} value={`${(data.bytes ?? 0).toLocaleString()} bytes`} />
+					<SingleTextBox label={t('Current Packets')} value={`${(data.packets ?? 0).toLocaleString()} packets`} />
 				</Stack>
 
 				{traffic_data && (
 					<Stack alignItems="center">
-						<SimpleLineGraph data={traffic_data} />
+						{/* Current Rate Display - Same style as DeltaTrafficCard */}
+						<Box display="flex" justifyContent="space-between" alignItems="center" width="100%" mb={1}>
+							<Typography variant="caption" color="textSecondary">
+								{t('Current Rate')}
+							</Typography>
+							<RateTooltip rate={currentTrafficRate} unit={'bps'} title={t('Traffic Rate')}>
+								<Typography variant="body2" fontWeight="bold" color="primary" sx={{cursor: 'help'}}>
+									{formatRate(currentTrafficRate, 'bps')}
+								</Typography>
+							</RateTooltip>
+						</Box>
+						<RateLineGraph data={traffic_data} unit={'bps'} />
 						<Typography variant="caption" color="textSecondary">
 							{t('Traffic (bps)')}
 						</Typography>
@@ -79,7 +133,18 @@ function ConntrackPanel(props: {instance: IInstance | null; name: string; data: 
 
 				{packets_data && (
 					<Stack alignItems="center">
-						<SimpleLineGraph data={packets_data} />
+						{/* Current Rate Display - Same style as DeltaTrafficCard */}
+						<Box display="flex" justifyContent="space-between" alignItems="center" width="100%" mb={1}>
+							<Typography variant="caption" color="textSecondary">
+								{t('Current Rate')}
+							</Typography>
+							<RateTooltip rate={currentPacketRate} unit={'pps'} title={t('Packet Rate')}>
+								<Typography variant="body2" fontWeight="bold" color="primary" sx={{cursor: 'help'}}>
+									{formatRate(currentPacketRate, 'pps')}
+								</Typography>
+							</RateTooltip>
+						</Box>
+						<RateLineGraph data={packets_data} unit={'pps'} />
 						<Typography variant="caption" color="textSecondary">
 							{t('Packets (pps)')}
 						</Typography>
@@ -155,7 +220,7 @@ export default function ConntrackPage() {
 		   />
 		   {selected_attr && (
 			   <LowerSection>
-				   <ConntrackPanel instance={inst} name={selected_attr.servName} data={selected_attr} />
+				   <ConntrackPanel instance={inst} data={selected_attr} />
 			   </LowerSection>
 		   )}
 	   </Fragment>

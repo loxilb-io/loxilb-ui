@@ -39,8 +39,8 @@ export default function FirewallTable(props: {data: IFirewallRules; selected_row
 		{data_key: 'sourcePort', header: 'Source Port'},
 		{data_key: 'destinationPort', header: 'Dest. Port'},
 		{data_key: 'protocol', header: 'Protocol', width: 'medium'},
-		{data_key: 'preference', header: 'Preference', width: 'medium'},
-		{data_key: 'counter', header: 'Counter', width: 'medium'},
+		{data_key: 'preference', header: 'Preference', width: 'medium', tooltip: 'User preference for ordering. (Lower value indicates higher priority)	'},
+		{data_key: 'counter', header: 'Counter', width: 'medium', tooltip: 'Packet:Byte counter for the rule'},
 	];
 
    // Hash function for firewall rule

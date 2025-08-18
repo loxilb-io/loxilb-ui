@@ -23,12 +23,12 @@ export default function LBTable(props: {data: ILBData; selected_rows: number[]; 
 		{data_key: 'port', header: 'Port'},
 		{data_key: 'protocol', header: 'Protocol'},
 		{data_key: 'name', header: 'Service Name', width: 'wide'},
-		{data_key: 'mark', header: 'Mark'},
-		{data_key: 'sel', header: 'Sel'},
-		{data_key: 'mode', header: 'Mode'},
-		{data_key: 'probeTimeout', header: 'Timeout'},
+		{data_key: 'sel', header: 'Sel', tooltip: 'value for load balance algorithim(0-rr, 1-hash, 2-priority, 3-persist, 4-lc, 5-n2, 6-n3, 0-default)', width: 'narrow'},
+		{data_key: 'mode', header: 'Mode', tooltip: 'value for NAT mode (0-DNAT,1-onearm, 2-fullnat, 3-dsr, 4-fullproxy, 5-hostonearm, 0-default)', width: 'narrow'},
 		{data_key: 'monitor', header: 'Monitor'},
+		{data_key: 'probeTimeout', header: 'Timeout (Sec)'},		
 		{data_key: 'endpoints', header: 'Endpoints', width: 'wide'},
+		{data_key: 'mark', header: 'Mark'},
 	];
 
    // Simple hash function for composite key
@@ -46,11 +46,11 @@ export default function LBTable(props: {data: ILBData; selected_rows: number[]; 
 			   const mark = item.serviceArguments.block ?? 0;
 			   const timeout = item.serviceArguments.probeTimeout ?? 1800;
 
-			   const sel = item.serviceArguments.sel ?? -1;
-			   const mode = item.serviceArguments.mode ?? -1;
+			   const sel = item.serviceArguments.sel ?? 0;
+			   const mode = item.serviceArguments.mode ?? 0;
 
-			   const sel_value = sel_list.find(item2 => item2.id === sel)?.send_value || '';
-			   const mode_value = mode_list.find(item2 => item2.id === mode)?.send_value || '';
+			   const sel_value = sel_list.find(item2 => item2.id === sel)?.name || '';
+			   const mode_value = mode_list.find(item2 => item2.id === mode)?.name || '';
 
 			   return {
 				   id: index, // Use hash as row ID
