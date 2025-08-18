@@ -16,12 +16,12 @@ export default function ConntrackTable(props: {data: ICtData; selected_rows: num
 	const inst_name = useInstanceName();
 
 	const cols: IDataTableColumnDef[] = [
-		{data_key: 'servename', header: 'Service Name', type: 'link', width: 'super_wide'},
+		{data_key: 'servename', header: 'Service Name', type: 'link', width: 'wide'},
 		{data_key: 'source', header: 'Source', width: 'wide'},
 		{data_key: 'destination', header: 'Destination', width: 'wide'},
 		{data_key: 'protocol', header: 'Protocol', width: 'medium'},
 		{data_key: 'conntrackState', header: 'State', width: 'medium'},
-		{data_key: 'conntrackAct', header: 'Act', width: 'wide'},
+		{data_key: 'conntrackAct', header: 'Act', width: 'medium'},
 		{data_key: 'usage', header: 'Usages', align: 'right', width: 'wide'},
 	];
 

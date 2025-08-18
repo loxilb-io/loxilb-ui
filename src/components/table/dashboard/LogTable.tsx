@@ -21,34 +21,67 @@ export default function LogTable(props: {data: ILog[]; selected_rows: number[]; 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'timestamp', header: 'Date Time', width: 'wide'},
 		{data_key: 'level', header: 'Level', type: 'log-level', width: 'medium'},
-		{data_key: 'programname', header: 'Program', width: 'medium'},
-		{data_key: 'message', header: 'Message', width: 'super_wide'},
+		// {data_key: 'programname', header: 'Program', width: 'medium'},
+		{data_key: 'message', header: 'Message', width: 'full'},
 	];
 
 	const filteredData = useMemo(() => {
-		if (!startDatetimeStr || !endDatetimeStr) return [];
+		// First, sort all data by timestamp descending (newest first)
+		const sortedData = data.sort((a, b) => {
+			try {
+				const aTimestamp = a.timestamp.replace(/\//g, '-');
+				const bTimestamp = b.timestamp.replace(/\//g, '-');
+				const aDate = new Date(aTimestamp + 'Z');
+				const bDate = new Date(bTimestamp + 'Z');
+				return bDate.getTime() - aDate.getTime(); // Descending order (newest first)
+			} catch (error) {
+				return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+			}
+		});
 
+		// If no date filter is set, return sorted data
+		if (!startDatetimeStr || !endDatetimeStr) return sortedData;
+
+		// Apply date filtering if date range is selected
 		const start = new Date(startDatetimeStr).getTime();
 		const end = new Date(endDatetimeStr).getTime();
 
-		return data
-			.filter(item => {
+		return sortedData.filter(item => {
+			try {
+				// Handle UTC timestamp properly for filtering
+				const timestamp = item.timestamp.replace(/\//g, '-');
+				const utcDate = new Date(timestamp + 'Z');
+				const ts = utcDate.getTime();
+				return ts >= start && ts <= end;
+			} catch (error) {
+				// Fallback to original behavior
 				const ts = new Date(item.timestamp).getTime();
 				return ts >= start && ts <= end;
-			})
-			.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+			}
+		});
 	}, [data, startDatetimeStr, endDatetimeStr]);
 
 	const rows = filteredData.map((item, index) => {
-		const date_time_str = new Date(item.timestamp).toLocaleString();
+		// Convert UTC timestamp to local timezone
+		let date_time_str: string;
+		try {
+			// Handle format like "2025/08/17 09:00:00" as UTC
+			const timestamp = item.timestamp.replace(/\//g, '-'); // Convert 2025/08/17 to 2025-08-17
+			const utcDate = new Date(timestamp + 'Z'); // Add Z to explicitly mark as UTC
+			date_time_str = utcDate.toLocaleString();
+		} catch (error) {
+			// Fallback to original behavior if parsing fails
+			date_time_str = new Date(item.timestamp).toLocaleString();
+		}
+		
 		return {
 			id: index,
 			timestamp: date_time_str,
-			level: `${item.severity}/${item.level}`,
+			level: item.level, // Just show the level, not severity/level
 			host: item.host,
-			programname: item.programname,
+			// programname: item.programname,
 			message: item.message,
-			facility: item.facility,
+			// facility: item.facility,
 		};
 	});
 

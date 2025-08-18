@@ -41,18 +41,25 @@ import RoutePage from 'pages/network/RoutePage';
 import VLANPage from 'pages/network/VLANPage';
 import VxLANPage from 'pages/network/VXLANPage';
 
+import AlertManagementPage from 'pages/traffic/AlertManagementPage';
 import ConntrackPage from 'pages/traffic/ConntrackPage';
 import EndpointPage from 'pages/traffic/EndpointPage';
 import FirewallPage from 'pages/traffic/FirewallPage';
 import LoadBalancerPage from 'pages/traffic/LBRulePage';
 import MirrorPage from 'pages/traffic/MirrorPage';
+import NetworkTopologyPage from 'pages/traffic/NetworkTopologyPage';
+import NTopPage from 'pages/traffic/NTopPage';
 import QoSPage from 'pages/traffic/QoSPage';
-import TelecomPage from 'pages/traffic/TelecomPage';
+// import TelecomPage from 'pages/traffic/TelecomPage';
 
 import DevicePage from 'pages/status/DevicePage';
 import FileSystemPage from 'pages/status/FileSystemPage';
 import HAPage from 'pages/status/HAPage';
 import ProcessPage from 'pages/status/ProcessPage';
+
+import AlertManagerPage from 'pages/managers/AlertManagerPage';
+import BackupManagerPage from 'pages/managers/BackupManagerPage';
+import AdvancedMetricsPage from 'pages/AdvancedMetricsPage';
 
 import {MAX_DURATION_MS} from 'hooks/query/common';
 import LogPage from 'pages/status/LogPage';
@@ -129,12 +136,15 @@ export default function App() {
 									</Route>
 
 									<Route path="traffic" element={<Outlet />}>
-										<Route path="ct" element={<ConntrackPage />} />
+										<Route path="alerts" element={<AlertManagementPage />} />
+									<Route path="ct" element={<ConntrackPage />} />
 										<Route path="endpoint" element={<EndpointPage />} />
 										<Route path="fw" element={<FirewallPage />} />
 										<Route path="lb" element={<LoadBalancerPage />} />
 										<Route path="mirror" element={<MirrorPage />} />
 										<Route path="qos" element={<QoSPage />} />
+										<Route path="topology" element={<NetworkTopologyPage />} />
+										<Route path="ntop" element={<NTopPage />} />
 										{/* <Route path="telecom" element={<TelecomPage />} /> */}
 									</Route>
 
@@ -144,6 +154,12 @@ export default function App() {
 										<Route path="ha" element={<HAPage />} />
 										<Route path="process" element={<ProcessPage />} />
 										<Route path="logs" element={<LogPage />} />
+									</Route>
+
+									<Route path="managers" element={<Outlet />}>
+										<Route path="alert" element={<AlertManagerPage />} />
+										<Route path="backup" element={<BackupManagerPage />} />
+										<Route path="metrics" element={<AdvancedMetricsPage />} />
 									</Route>
 
 									<Route path="settings" element={<InstanceSettingPage />} />

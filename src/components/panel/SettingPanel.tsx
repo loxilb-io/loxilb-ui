@@ -19,8 +19,8 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 	const sel_list: IEnumItem[] = sels;
 	const mode_list: IEnumItem[] = modes;
 
-	const sel = serviceArguments.sel ?? -1;
-	const mode = serviceArguments.mode ?? -1;
+	const sel = serviceArguments.sel ?? 0;
+	const mode = serviceArguments.mode ?? 0;
 
 	const selValue = sel_list.find(item => item.id === sel)?.name || '';
 	const modeValue = mode_list.find(item => item.id === mode)?.name || '';
@@ -38,11 +38,11 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 					<SingleTextBox label={t('Port')} value={serviceArguments.port} />
 					<SingleTextBox label={t('Port Max')} value={serviceArguments.portMax} />
 					<SingleTextBox label={t('Protocol')} value={serviceArguments.protocol} />
-					<SingleTextBox label={t('BGP')} value={serviceArguments.bgp} />
-					<SingleTextBox label={t('SEL')} value={selValue} />
-					<SingleTextBox label={t('Mode')} value={modeValue} />
-					<SingleTextBox label={t('Block')} value={blockValue} />
-					<SingleTextBox label={t('SNAT')} value={serviceArguments.snat} />
+					<SingleTextBox label={t('BGP')} value={serviceArguments.bgp ?? false} tooltip='Flag to enable BGP'/>
+					<SingleTextBox label={t('SEL')} value={selValue} tooltip='Value for load balance algorithim(0-rr, 1-hash, 2-priority, 3-persist, 4-lc, 5-n2, 6-n3, 0-default)'/>
+					<SingleTextBox label={t('Mode')} value={modeValue} tooltip="Value for load balance algorithim(0-rr, 1-hash, 2-priority, 3-persist, 4-lc, 5-n2, 6-n3, 0-default)"/>
+					<SingleTextBox label={t('Block')} value={blockValue} tooltip='Value for Firewall block (0-disabled, Other-Firewall number)' />
+					<SingleTextBox label={t('SNAT')} value={serviceArguments.snat ?? false} tooltip='Flag to enable SNAT' />
 				</Grid2>
 			</ValueBunch>
 
@@ -54,18 +54,18 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 					<SingleTextBox label={t('Response')} value={serviceArguments.proberesp} />
 					<SingleTextBox label={t('Timeout')} value={timeoutValue} />
 					<SingleTextBox label={t('Retries')} value={serviceArguments.probeRetries} />
-					<SingleTextBox label={t('Monitoring')} value={serviceArguments.monitor} />
+					<SingleTextBox label={t('Monitoring')} value={serviceArguments.monitor ?? false} />
 				</Grid2>
 			</ValueBunch>
 
 			<ValueBunch name={t('Kubernetes Information')}>
 				<Grid2 container spacing={2}>
-					<SingleTextBox label={t('Managed')} value={serviceArguments.managed} />
-					<SingleTextBox label={t('Security')} value={serviceArguments.security} />
-					<SingleTextBox label={t('Host')} value={serviceArguments.host} />
-					<SingleTextBox label={t('Proxy Protocol v2')} value={serviceArguments.proxyprotocolv2} />
-					<SingleTextBox label={t('Egress')} value={serviceArguments.egress} />
-					<SingleTextBox label={t('Operation')} value={serviceArguments.oper} />
+					<SingleTextBox label={t('Managed')} value={serviceArguments.managed ?? false} tooltip='Kubernetes Load Balancer externally managed rule or not' />
+					<SingleTextBox label={t('Security')} value={serviceArguments.security} tooltip='Value for Security mode (0-Plain, 1-https, 1-tls, 2-e2ehttps, 0-default) in fullproxy mode'/>
+					<SingleTextBox label={t('Host')} value={serviceArguments.host} tooltip='Ingress specific host URL path'/>
+					<SingleTextBox label={t('Proxy Protocol v2')} value={serviceArguments.proxyprotocolv2} tooltip='Flag to enable proxy protocol v2' />
+					<SingleTextBox label={t('Egress')} value={serviceArguments.egress} tooltip='Flag to indicate an egress rule'/>
+					<SingleTextBox label={t('Operation')} value={serviceArguments.oper} tooltip='End-point specific op (0-create, 1-attachEP, 2-detachEP)'/>
 				</Grid2>
 			</ValueBunch>
 		</Stack>

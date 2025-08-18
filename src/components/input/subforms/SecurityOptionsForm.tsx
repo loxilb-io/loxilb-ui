@@ -25,19 +25,18 @@ export default function SecurityOptionsForm(props: {value: IServiceArguments; on
 		<AccordionBox title={t('Behavioral & Security Options')}>
 			<Stack spacing={2}>
 				<Stack spacing={1} direction="row" alignItems="center">
-   <ParamBox label={t('BGP')} value={value?.bgp ?? ''} onChange={handleChange('bgp')} param_desc={params?.bgp} />
-   <ParamBox label={t('SNAT')} value={value?.snat ?? ''} onChange={handleChange('snat')} param_desc={params?.snat} />
-   <ParamBox label={t('Managed')} value={value?.managed ?? ''} onChange={handleChange('managed')} param_desc={params?.managed} />
+   					<ParamBox label={t('BGP')} value={value?.bgp ?? ''} onChange={handleChange('bgp')} param_desc={params?.bgp} />
+   					{/* <ParamBox label={t('SNAT')} value={value?.snat ?? ''} onChange={handleChange('snat')} param_desc={params?.snat} /> */}
 				</Stack>
 
-				<Stack spacing={1} direction="row" alignItems="center">
-   <ParamBox label={t('Egress')} value={value?.egress ?? ''} onChange={handleChange('egress')} param_desc={params?.egress} />
-   <ParamBox label={t('Proxy Protocol v2')} value={value?.proxyprotocolv2 ?? ''} onChange={handleChange('proxyprotocolv2')} param_desc={params?.proxyprotocolv2} />
-				</Stack>
+				{/* <Stack spacing={1} direction="row" alignItems="center">
+   					<ParamBox label={t('Egress')} value={value?.egress ?? ''} onChange={handleChange('egress')} param_desc={params?.egress} />
+   					<ParamBox label={t('Proxy Protocol v2')} value={value?.proxyprotocolv2 ?? ''} onChange={handleChange('proxyprotocolv2')} param_desc={params?.proxyprotocolv2} />
+				</Stack> */}
 
 				<HorizontalStack>
-   <ParamBox label={t('Security')} value={value?.security ?? ''} onChange={handleChange('security')} param_desc={{...params?.security, enum: security_list}} />
-   <ParamBox label={t('Block')} value={value?.block ?? ''} onChange={handleChange('block')} param_desc={params?.block} />
+   					<ParamBox label={t('Security')} value={value?.security ?? ''} onChange={handleChange('security')} param_desc={{...params?.security, enum: security_list}} />
+   					<ParamBox label={t('Block')} value={value?.block ?? ''} onChange={handleChange('block')} param_desc={params?.block} />
 				</HorizontalStack>
 			</Stack>
 		</AccordionBox>

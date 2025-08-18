@@ -1,0 +1,17 @@
+# Docker Compose for HTTP-only deployment (no SSL)
+services:
+  loxilb-ui:
+    build: .
+    ports:
+      - "3000:80"    # HTTP only
+    restart: unless-stopped
+    environment:
+      - SSL_MODE=disabled
+    volumes:
+      - ./logs:/var/log/nginx
+    networks:
+      - loxilb-network
+
+networks:
+  loxilb-network:
+    driver: bridge

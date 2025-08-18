@@ -56,8 +56,8 @@ export default function EndpointInputForm(props: LEndpointInputFormProps) {
 		   </HorizontalStack>
 
 		   <HorizontalStack>
-			   <ParamBox label={t('Probe Request')} value={form?.probeReq ?? ''} onChange={handleChange('probeReq')} param_desc={params?.probeReq} />
-			   <ParamBox label={t('Probe Response')} value={form?.probeResp ?? ''} onChange={handleChange('probeResp')} param_desc={params?.probeResp} />
+			   <ParamBox label={t('Probe Request')} value={form?.probeReq ?? ''} onChange={handleChange('probeReq')} param_desc={params?.probeReq} disabled={!["udp", "http", "https"].includes(form?.probeType || '')} />
+			   <ParamBox label={t('Probe Response')} value={form?.probeResp ?? ''} onChange={handleChange('probeResp')} param_desc={params?.probeResp} disabled={!["udp", "http", "https"].includes(form?.probeType || '')} />
 		   </HorizontalStack>
 		</NewBox>
 	);

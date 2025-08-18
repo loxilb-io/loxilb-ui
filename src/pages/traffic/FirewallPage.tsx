@@ -42,12 +42,12 @@ function OptionPannel(props: {name: string; data: IOptions}) {
 					</RadioGroup>
 				</ValueBunch>
 				<ValueBunch name={t('Settings')}>
-					<SingleTextField label={t('FW Mark')} value={data.fwMark != null ? data.fwMark.toString() : ""} />
-					<SingleTextField label={t('On Default')} value={data.onDefault != null ? data.onDefault.toString() : ""} />
-					<SingleTextField label={t('Record')} value={data.record != null ? data.record.toString() : ""} />
+					<SingleTextField label={t('FW Mark')} value={data.fwMark != null ? data.fwMark.toString() : ""} tooltip='Set a fw mark for any matching LB rule'/>
+					<SingleTextField label={t('On Default')} value={data.onDefault != null ? data.onDefault.toString() : "Flase"} />
+					<SingleTextField label={t('Record')} value={data.record != null ? data.record.toString() : "False"} tooltip='Record or dump for matching rule'/>
 				</ValueBunch>
 				<ValueBunch name={t('ACTION: SNAT')}>
-					<SingleTextField label={t('Do Snat')} value={data.doSnat != null ? data.doSnat.toString() : ""} />
+					<SingleTextField label={t('Do Snat')} value={data.doSnat != null ? data.doSnat.toString() : "False"} />
 					<SingleTextField label={t('To IP')} value={data.toIP != null ? data.toIP : ""} />
 					<SingleTextField label={t('To Port')} value={data.toPort != null ? data.toPort.toString() : ""} />
 				</ValueBunch>
