@@ -138,13 +138,15 @@ export const TextCell = (params: any) => (
 );
 
 export const LogLevelCell = (params: any) => {
-	const serverity = params.value.split('/')[0];
-	const level = params.value.split('/')[1];
-
+	// Handle both old format (severity/level) and new format (just level)
+	const value = params.value || '';
+	const parts = value.split('/');
+	const level = parts.length > 1 ? parts[1] : parts[0]; // If split by /, use second part, otherwise use first part
+	
 	type IconColor = 'success' | 'error' | 'info' | 'warning' | 'secondary' | 'primary' | 'disabled' | 'action' | 'inherit';
 
 	const color = ((): IconColor => {
-		switch (level) {
+		switch (level?.toUpperCase()) {
 			case 'INFO':
 				return 'info';
 			case 'WARNING':
@@ -164,7 +166,7 @@ export const LogLevelCell = (params: any) => {
 		<Box height="100%" display="flex" alignItems="center" gap="5px">
 			<CircleIcon color={color} sx={{fontSize: '16px'}} />
 			<Typography variant="body2" color={color}>
-				{`${level}(${serverity})`}
+				{level?.toUpperCase() || 'UNKNOWN'}
 			</Typography>
 		</Box>
 	);

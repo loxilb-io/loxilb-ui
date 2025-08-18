@@ -8,6 +8,7 @@ import {useMetrics} from 'hooks/query/metricsHook';
 import {t} from 'i18next';
 import {useEffect, useMemo, useState} from 'react';
 import {IInstance} from 'types/oam';
+import {IEndpointDistributionTraffic, IEndpointDistributionEntry} from 'types/metrics';
 import CardBase from './CardBase';
 
 //---------------------------------------------------------
@@ -22,15 +23,15 @@ export default function EndpointCard(props: {instance: IInstance | null}) {
 	const [cur_key, set_cur_key] = useState(key_list[0] || '');
 
 	const chart_data = useMemo(() => {
-		const entries = endpointSnapshot?.[cur_key] ?? [];
-		const used_items = entries.map((entry, index) => ({
+		const entries: IEndpointDistributionEntry[] = endpointSnapshot?.[cur_key] ?? [];
+		const used_items = entries.map((entry: IEndpointDistributionEntry, index: number) => ({
 			id: index,
 			label: entry.dip ?? t('none'),
 			value: entry.ratio * 100,
 		}));
 
 		return used_items;
-	}, [endpointSnapshot, cur_key]);
+	}, [endpointSnapshot, cur_key, t]);
 
 	const handleChange = (index: number) => {
 		set_cur_key(key_list[index]);
@@ -46,7 +47,7 @@ export default function EndpointCard(props: {instance: IInstance | null}) {
 				<PieChartWithTitle data={chart_data} />
 
 				<Box width="120px">
-					<DropDownMenu label={t('Targets')} item_list={key_list} onMenuChange={handleChange} />
+					<DropDownMenu label={t('Namespaces')} item_list={key_list} onMenuChange={handleChange} />
 				</Box>
 			</Box>
 		</CardBase>

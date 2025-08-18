@@ -58,62 +58,62 @@ import {GET_INST, POST_INST, PUT_INST, DELETE_INST} from '../fetcher/fetcher_ins
 // API Caller Functions
 //---------------------------------------------------------
 export async function query_get_metrics_endpoint(instance: IInstance): Promise<IEndpointDistributionTraffic> {
-	const resp = await GET_INST(instance, `/metrics/epdisttraffic`);
+	const resp = await GET_INST(instance, `/api/v1/metrics/epdisttraffic`);
 	return (resp.data as IEndpointDistributionTraffic) ?? {};
 }
 
 export async function query_get_metrics_service_dist_traffic(instance: IInstance): Promise<IServiceDistTrafficData> {
-	const resp = await GET_INST(instance, `/metrics/servicedisttraffic`);
+	const resp = await GET_INST(instance, `/api/v1/metrics/servicedisttraffic`);
 	return (resp.data as IServiceDistTrafficData) ?? {};
 }
 
 export async function query_get_metrics_traffic(instance: IInstance): Promise<IProcessedTraffic> {
-	const resp = await GET_INST(instance, `/metrics/processedtraffic`);
+	const resp = await GET_INST(instance, `/api/v1/metrics/processedtraffic`);
 	return (resp.data as IProcessedTraffic) ?? {};
 }
 
 export async function query_get_metrics_error(instance: IInstance): Promise<IErrorCount> {
-	const resp = await GET_INST(instance, `/metrics/errorcount`);
+	const resp = await GET_INST(instance, `/api/v1/metrics/errorcount`);
 	return (resp.data as IErrorCount) ?? {};
 }
 
 export async function query_get_metrics_fwdrops(instance: IInstance): Promise<IFirewallDropReport> {
-	const resp = await GET_INST(instance, `/metrics/fwdrops`);
+	const resp = await GET_INST(instance, `/api/v1/metrics/fwdrops`);
 	return (resp.data as IFirewallDropReport) ?? {};
 }
 
 export async function query_get_metrics_lbrules(instance: IInstance): Promise<ILBRuleCount> {
-	const resp = await GET_INST(instance, `/metrics/lbrulecount`);
+	const resp = await GET_INST(instance, `/api/v1/metrics/lbrulecount`);
 	return (resp.data as ILBRuleCount) ?? {};
 }
 
 export async function query_get_metrics_netflow(instance: IInstance): Promise<INetworkFlowStats> {
-	const resp = await GET_INST(instance, `/metrics/flowcount`);
+	const resp = await GET_INST(instance, `/api/v1/metrics/flowcount`);
 	return (resp.data as INetworkFlowStats) ?? {};
 }
 
 export async function query_get_metrics_req_count(instance: IInstance): Promise<IRequestCount> {
-	const resp = await GET_INST(instance, `/metrics/requestcount`);
+	const resp = await GET_INST(instance, `/api/v1/metrics/requestcount`);
 	return (resp.data as IRequestCount) ?? {};
 }
 
 export async function query_get_metrics_req_count_per_client(instance: IInstance): Promise<IRequestCountPerClient> {
-	const resp = await GET_INST(instance, `/metrics/reqcountperclient`);
+	const resp = await GET_INST(instance, `/api/v1/metrics/reqcountperclient`);
 	return (resp.data as IRequestCountPerClient) ?? {};
 }
 
 export async function query_get_metrics_hostcount(instance: IInstance): Promise<IHostCount> {
-	const resp = await GET_INST(instance, `/metrics/hostcount`);
+	const resp = await GET_INST(instance, `/api/v1/metrics/hostcount`);
 	return (resp.data as IHostCount) ?? {};
 }
 
 export async function query_get_metrics_newflowcount(instance: IInstance): Promise<INewFlowCount> {
-	const resp = await GET_INST(instance, `/metrics/newflowcount`);
+	const resp = await GET_INST(instance, `/api/v1/metrics/newflowcount`);
 	return (resp.data as INewFlowCount) ?? {};
 }
 
 export async function query_get_metrics_lbprocessedtraffic(instance: IInstance): Promise<ILBProcessedTraffic> {
-	const resp = await GET_INST(instance, `/metrics/lbprocessedtraffic`);
+	const resp = await GET_INST(instance, `/api/v1/metrics/lbprocessedtraffic`);
 	return (resp.data as ILBProcessedTraffic) ?? {};
 }
 
@@ -127,7 +127,7 @@ export async function query_get_metrics_lbprocessedtraffic(instance: IInstance):
  * @param phase - Metrics phase (1: Critical only, 2: Critical + Important)
  */
 export async function query_get_live_metrics(instance: IInstance, phase: 1 | 2 = 2): Promise<ILiveMetricsResponse> {
-	const resp = await GET_INST(instance, `/metrics/live`, { phase });
+	const resp = await GET_INST(instance, `/api/v1/metrics/live`, { phase });
 	return (resp.data as ILiveMetricsResponse) ?? {};
 }
 
@@ -136,7 +136,7 @@ export async function query_get_live_metrics(instance: IInstance, phase: 1 | 2 =
  * @param instance - LoxiLB instance
  */
 export async function query_get_cache_stats(instance: IInstance): Promise<ICacheStatsResponse> {
-	const resp = await GET_INST(instance, `/metrics/cache/stats`);
+	const resp = await GET_INST(instance, `/api/v1/metrics/cache/stats`);
 	return (resp.data as ICacheStatsResponse) ?? {};
 }
 
@@ -147,7 +147,7 @@ export async function query_get_cache_stats(instance: IInstance): Promise<ICache
  * @param count - Number of historical entries (1-1000)
  */
 export async function query_get_metric_history(instance: IInstance, metricName: string, count: number = 10): Promise<IMetricHistoryResponse> {
-	const resp = await GET_INST(instance, `/metrics/history/${metricName}`, { count });
+	const resp = await GET_INST(instance, `/api/v1/metrics/history/${metricName}`, { count });
 	return (resp.data as IMetricHistoryResponse) ?? {};
 }
 
@@ -157,7 +157,7 @@ export async function query_get_metric_history(instance: IInstance, metricName: 
  * @param metricName - Name of the metric
  */
 export async function query_get_metric_value(instance: IInstance, metricName: string): Promise<IMetricValueResponse> {
-	const resp = await GET_INST(instance, `/metrics/value/${metricName}`);
+	const resp = await GET_INST(instance, `/api/v1/metrics/value/${metricName}`);
 	return (resp.data as IMetricValueResponse) ?? {};
 }
 
@@ -167,7 +167,7 @@ export async function query_get_metric_value(instance: IInstance, metricName: st
  * @param params - Query parameters
  */
 export async function query_metrics_database(instance: IInstance, params: IMetricsQueryParams): Promise<IQueryResponse> {
-	const resp = await GET_INST(instance, `/metrics/db/query`, params);
+	const resp = await GET_INST(instance, `/api/v1/metrics/db/query`, params);
 	return (resp.data as IQueryResponse) ?? {};
 }
 
@@ -177,7 +177,7 @@ export async function query_metrics_database(instance: IInstance, params: IMetri
  * @param params - Aggregation parameters
  */
 export async function query_metrics_aggregate(instance: IInstance, params: IMetricsAggregateParams): Promise<IQueryResponse> {
-	const resp = await GET_INST(instance, `/metrics/db/aggregate`, params);
+	const resp = await GET_INST(instance, `/api/v1/metrics/db/aggregate`, params);
 	return (resp.data as IQueryResponse) ?? {};
 }
 
@@ -187,7 +187,7 @@ export async function query_metrics_aggregate(instance: IInstance, params: IMetr
  * @param params - Unified query parameters
  */
 export async function query_unified_metrics(instance: IInstance, params: IUnifiedMetricsParams): Promise<ILiveMetricsResponse | IQueryResponse> {
-	const resp = await GET_INST(instance, `/metrics/query`, params);
+	const resp = await GET_INST(instance, `/api/v1/metrics/query`, params);
 	return resp.data ?? {};
 }
 
@@ -197,7 +197,7 @@ export async function query_unified_metrics(instance: IInstance, params: IUnifie
  * @param params - Historical query parameters
  */
 export async function query_historical_metrics(instance: IInstance, params: IHistoricalMetricsParams): Promise<IQueryResponse> {
-	const resp = await GET_INST(instance, `/metrics/historical`, params);
+	const resp = await GET_INST(instance, `/api/v1/metrics/historical`, params);
 	return (resp.data as IQueryResponse) ?? {};
 }
 
@@ -211,7 +211,7 @@ export async function query_advanced_live_metrics(instance: IInstance, phase: 1 
 	const params: any = { phase };
 	if (metrics) params.metrics = metrics;
 	
-	const resp = await GET_INST(instance, `/metrics/live/advanced`, params);
+	const resp = await GET_INST(instance, `/api/v1/metrics/live/advanced`, params);
 	return (resp.data as ILiveMetricsResponse) ?? {};
 }
 
@@ -220,7 +220,7 @@ export async function query_advanced_live_metrics(instance: IInstance, phase: 1 
  * @param instance - LoxiLB instance
  */
 export async function query_metrics_health(instance: IInstance): Promise<IHealthResponse> {
-	const resp = await GET_INST(instance, `/metrics/health`);
+	const resp = await GET_INST(instance, `/api/v1/metrics/health`);
 	return (resp.data as IHealthResponse) ?? {};
 }
 

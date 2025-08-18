@@ -14,7 +14,7 @@ import {query_get_qos_policy_all} from 'connector/instance/qos';
 import {query_get_route_all} from 'connector/instance/route_attr';
 import {query_get_session_all} from 'connector/instance/session';
 import {query_get_ulcl_all} from 'connector/instance/session_ulcl';
-import {query_get_ha_state_all, query_get_inst_logs, query_get_metadata} from 'connector/instance/status';
+import {query_get_ha_state_all, query_get_metadata} from 'connector/instance/status';
 import {query_get_vlan_all} from 'connector/instance/vlan';
 import {query_get_vxlan_all} from 'connector/instance/vxlan';
 import {IPostParamFieldDesc} from 'types/global';
@@ -104,9 +104,7 @@ export function useSessionAttr(instance: IInstance | null) {
 	return useQueryInstanceData(['session_attr'], query_get_session_all, instance);
 }
 
-export function useInstLogs(instance: IInstance | null) {
-	return useQueryInstanceData(['inst_logs'], query_get_inst_logs, instance);
-}
+
 
 export function useULCLAttr(instance: IInstance | null) {
 	return useQueryInstanceData(['ulcl_attr'], query_get_ulcl_all, instance);

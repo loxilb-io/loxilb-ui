@@ -1,0 +1,18 @@
+# Docker Compose for HTTPS-only deployment with self-signed certificates
+services:
+  loxilb-ui:
+    build: .
+    ports:
+      - "3000:80"    # HTTP (redirects to HTTPS)
+      - "3443:443"   # HTTPS
+    restart: unless-stopped
+    environment:
+      - SSL_MODE=enabled
+    volumes:
+      - ./logs:/var/log/nginx
+    networks:
+      - loxilb-network
+
+networks:
+  loxilb-network:
+    driver: bridge
