@@ -73,37 +73,65 @@ export async function query_get_metadata(instance: IInstance): Promise<any> {
 }
 
 export async function request_post_log_level(instance: IInstance, level: LevelType): Promise<ApiResult> {
-	/*
-	curl -X 'POST' \
-  'http://0.0.0.0:11111/netlox/v1/config/params' \
-  -H 'accept: application/json' \
-  -H 'Content-Type: application/json' \
-  -d '{
-  "logLevel": "debug"
-}'
-
-해당 POST로 확인 완료
-Log level변경시 참고 바랍니다.
-/config/params.fields.logLevel.enum에 정리되어있습니다. 
-	*/
 	const resp = await POST_INST(instance, `/config/params`, {logLevel: level});
 	if (resp.code !== 200) return {status: 'error', error: resp.message};
 	else return {status: 'success'};
 }
 
-export async function query_get_inst_logs(instance: IInstance): Promise<ILog[]> {
-	//[
-	//	"ERROR: 2025/05/25 07:23:58 logging.go:51: main.main.func1: Reconnection failed: could not connect to database after 5 retries: %!w(<nil>)",
-	//	...
-	//]
-	const resp = await GET_INST(instance, `/logs`);
+export async function query_get_log_level(instance: IInstance): Promise<any> {
+	const resp = await GET_INST(instance, `/config/params`);
+	return (resp.data as any) ?? {};
+}
+
+// Map UI level names to API level codes
+function mapLevelToApiCode(level: string): string {
+	switch (level.toLowerCase()) {
+		case 'debug': return 'DBG';
+		case 'info': return 'INFO';
+		case 'error': return 'ERR';
+		case 'warning': return 'WARN';
+		case 'critical': return 'CRITICAL';
+		default: return level.toUpperCase();
+	}
+}
+
+export async function query_get_inst_logs(instance: IInstance, options?: {
+	lines?: number;
+	level?: string;
+	keyword?: string;
+	cursor?: string;
+	enableAutoRefresh?: boolean;
+}): Promise<{logs: ILog[], next_cursor?: string, has_more: boolean, count?: number}> {
+	// Build query parameters for single request
+	const params = new URLSearchParams();
+	// Default to 1000 logs per request
+	params.append('lines', (options?.lines || 1000).toString());
+	// Convert UI level to API level code
+	if (options?.level) params.append('level', mapLevelToApiCode(options.level));
+	if (options?.keyword) params.append('keyword', options.keyword);
+	if (options?.cursor) params.append('cursor', options.cursor);
+	
+	const queryString = params.toString();
+	const endpoint = `/logs${queryString ? `?${queryString}` : ''}`;
+	
+	const resp = await GET_INST(instance, endpoint);
 
 	const log_strings = resp.data.logs as string[] | undefined;
-	if (!log_strings) return [];
-	else {
-		const res: ILog[] = parse_log_lines(log_strings);
-		return res;
-	}
+	if (!log_strings) return {logs: [], has_more: false};
+	
+	const logs: ILog[] = parse_log_lines(log_strings);
+	
+	// Get pagination info from response body
+	const next_cursor = resp.data.next_cursor || undefined;
+	const has_more = resp.data.has_more || false;
+	const count = resp.data.log_count || undefined;
+	
+	return {
+		logs,
+		next_cursor,
+		has_more,
+		count
+	};
 }
 
 export async function query_get_inst_log_archives(instance: IInstance): Promise<ILogArchiveList> {

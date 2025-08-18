@@ -10,7 +10,7 @@ import {ReactNode} from 'react';
 //---------------------------------------------------------
 export default function RateTooltip(props: {
 	rate: number;
-	unit: 'bps' | 'pps';
+	unit: 'bps' | 'pps' | 'eps' | 'fps';
 	children: ReactNode;
 	title?: string;
 }) {

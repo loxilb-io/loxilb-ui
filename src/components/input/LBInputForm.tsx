@@ -42,9 +42,8 @@ export default function LBInputForm(props: LBInputFormProps) {
 
 			<Stack width="100%" height="100%" padding="15px 5px" spacing={2} sx={{overflowY: 'auto'}}>
 			   <BasicSettingsForm value={form?.serviceArguments ?? {}} onChange={handleChange('serviceArguments')} params={params?.serviceArguments} />
-			   <HealthCheckForm value={form?.serviceArguments ?? {}} onChange={handleChange('serviceArguments')} params={params?.serviceArguments} />
-			   <SecurityOptionsForm value={form?.serviceArguments ?? {}} onChange={handleChange('serviceArguments')} params={params?.serviceArguments} />
 			   <AdvancedSettingsForm value={form?.serviceArguments ?? {}} onChange={handleChange('serviceArguments')} params={params?.serviceArguments} />
+			   <HealthCheckForm value={form?.serviceArguments ?? {}} onChange={handleChange('serviceArguments')} params={params?.serviceArguments} />
 			   <SecondaryIPListInputForm values={form?.secondaryIPs ?? []} onChange={handleChange('secondaryIPs')} description={params?.secondaryIPs?.description} />
 			   <AllowedSourcesListInputForm values={form?.allowedSources ?? []} onChange={handleChange('allowedSources')} description={params?.allowedSources?.description} />
 			   <EndpointListForm values={form?.endpoints ?? []} onChange={handleChange('endpoints')} params={params?.endpoints} />

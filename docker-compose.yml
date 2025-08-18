@@ -1,0 +1,33 @@
+services:
+  loxilb-ui:
+    build: .
+    ports:
+      - "3000:80"    # HTTP port
+      - "3443:443"   # HTTPS port
+    restart: unless-stopped
+    environment:
+      # SSL_MODE options: 
+      # - "enabled" (default): HTTPS with HTTP redirect + self-signed certs (auto-generated)
+      # - "disabled": HTTP only
+      # - "commercial": HTTPS with commercial certificates (must be provided)
+      - SSL_MODE=enabled
+    volumes:
+      # Optional: Mount logs for debugging
+      - ./logs:/var/log/nginx
+      # Optional: Mount SSL certificates directory for commercial certs
+      # Uncomment the line below and place your cert.pem and key.pem in ./ssl/
+      # - ./ssl:/etc/nginx/ssl
+    networks:
+      - loxilb-network
+
+  # Optional: Add your backend service here
+  # loxilb-backend:
+  #   image: your-backend-image:latest
+  #   ports:
+  #     - "8080:8080"
+  #   networks:
+  #     - loxilb-network
+
+networks:
+  loxilb-network:
+    driver: bridge

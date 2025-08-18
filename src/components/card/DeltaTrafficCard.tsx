@@ -15,7 +15,10 @@ import CardBase from './CardBase';
 // Helper Functions
 //---------------------------------------------------------
 const calculateDeltaRate = (points: ITimeSeriesPoint<IProcessedTraffic>[], dataKey: keyof IProcessedTraffic) => {
-	if (points.length < 2) return [];
+	if (points.length < 2) {
+		console.log(`[calculateDeltaRate] Not enough points: ${points.length}`);
+		return [];
+	}
 
 	return points.slice(1).map((point, index) => {
 		const prevPoint = points[index]; // index is already offset by slice(1)
@@ -42,7 +45,13 @@ export default function DeltaTrafficCard(props: {
 	const {title, points, data_key, unit = 'bps'} = props;
 
 	// Calculate delta rates from cumulative values
-	const deltaRates = useMemo(() => calculateDeltaRate(points, data_key), [points, data_key]);
+	const deltaRates = useMemo(() => {		
+		// Limit to last 60 points for better performance and visualization
+		const recentPoints = points.slice(-60);
+		const result = calculateDeltaRate(recentPoints, data_key);
+		
+		return result;
+	}, [points, data_key]);
 
 	const traffic_data = {
 		label: unit === 'bps' ? t('Traffic (bps)') : t('Packets (pps)'),

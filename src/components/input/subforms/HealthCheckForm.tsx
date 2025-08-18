@@ -30,13 +30,13 @@ export default function HealthCheckForm(props: {value: IServiceArguments; onChan
 				</HorizontalStack>
 
 				<HorizontalStack>
-					<ParamBox label={t('Probe Type')} value={value.probetype} onChange={handleChange('probetype')} param_desc={{...params?.probetype}} />
+					<ParamBox label={t('Probe Type')} value={value.probetype} onChange={handleChange('probetype')} param_desc={{...params?.probetype}} disabled={!value.monitor} />
 					<ParamBox
 						label={t('Probe Port')}
 						value={value.probeport}
 						onChange={handleChange('probeport')}
 						param_desc={{...params?.probeport, type: 'port'}}
-						disabled={!isProbePortEnabled}
+						disabled={!value.monitor || !isProbePortEnabled}
 					/>
 				</HorizontalStack>
 
@@ -46,14 +46,14 @@ export default function HealthCheckForm(props: {value: IServiceArguments; onChan
 						value={value.probereq}
 						onChange={handleChange('probereq')}
 						param_desc={params?.probereq}
-						disabled={!isProbeReqRespEnabled}
+						disabled={!value.monitor || !isProbeReqRespEnabled()}
 					/>
 				   <ParamBox
 					   label={t('Probe Response')}
 					   value={value?.proberesp ?? ''}
 					   onChange={handleChange('proberesp')}
 					   param_desc={params?.proberesp}
-					   disabled={!isProbeReqRespEnabled}
+					   disabled={!value.monitor || !isProbeReqRespEnabled()}
 				   />
 				</HorizontalStack>
 
@@ -63,14 +63,14 @@ export default function HealthCheckForm(props: {value: IServiceArguments; onChan
 					   value={value?.probeTimeout ?? ''}
 					   onChange={handleChange('probeTimeout')}
 					   param_desc={params?.probeTimeout}
-					   disabled={!isProbeTimeoutRetriesEnabled}
+					   disabled={!value.monitor || !isProbeTimeoutRetriesEnabled}
 				   />
 				   <ParamBox
 					   label={t('Probe Retries')}
 					   value={value?.probeRetries ?? ''}
 					   onChange={handleChange('probeRetries')}
 					   param_desc={params?.probeRetries}
-					   disabled={!isProbeTimeoutRetriesEnabled}
+					   disabled={!value.monitor || !isProbeTimeoutRetriesEnabled}
 				   />
 				</HorizontalStack>
 			</Stack>
