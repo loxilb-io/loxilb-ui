@@ -199,46 +199,6 @@ export default function AlertManagementPage() {
 		);
 	}, [inst, selected_rows, alert_info, openPopUp, refetch, enableYes]);
 
-	// Manual alert creation handler
-	const handleAdd = useCallback(() => {
-		if (!inst) return;
-
-		// Manual alert creation form
-		const input_form = (
-			<ManualAlertForm
-				key={Date.now()}
-				onChange={data => {
-					instanceRef.current = data.request;
-					enableYes(data.isValid);
-				}}
-			/>
-		);
-
-		openPopUp(
-			'',
-			input_form,
-			t('Create Manual Alert'),
-			t('Cancel'),
-			async () => {
-				if (!instanceRef.current) return;
-
-				try {
-					const res = await createManualAlert(inst, instanceRef.current);
-					if (res.success) {
-						openPopUp(t('Success'), t('Manual alert created successfully.'), t('OK'));
-						setTimeout(() => {
-							refetch();
-						}, 1000);
-					} else {
-						openPopUp(t('Error'), t('Failed to create alert. {{error}}', { error: res.message }), t('OK'));
-					}
-				} catch (error) {
-					openPopUp(t('Error'), t('Failed to create alert. Please try again.'), t('OK'));
-				}
-			},
-			true,
-		);
-	}, [inst, openPopUp, refetch, enableYes]);
 
 	// URL-based alert selection
 	useEffect(() => {
@@ -311,11 +271,6 @@ export default function AlertManagementPage() {
 							</Button>
 						)}
 					</Stack>
-
-					{/* Action Buttons */}
-					<Button variant="contained" onClick={handleAdd}>
-						{t('Create Manual Alert')}
-					</Button>
 				</Stack>
 
 				{/* Active Filters Display */}

@@ -1,0 +1,190 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loxilb-ui
+  namespace: loxilb-system
+  labels:
+    app: loxilb-ui
+    component: frontend
+    version: v1.0.0
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: loxilb-ui
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: loxilb-ui
+        component: frontend
+        version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "false"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "80"
+    spec:
+      # Init container to setup nginx config and SSL certs
+      initContainers:
+      - name: nginx-config-setup
+        image: alpine:latest
+        command: ["/bin/sh"]
+        args:
+          - -c
+          - |
+            echo "Setting up nginx configuration for SSL_MODE=$SSL_MODE"
+            
+            # Copy appropriate config based on SSL_MODE
+            if [ "$SSL_MODE" = "enabled" ] || [ "$SSL_MODE" = "https" ] || [ "$SSL_MODE" = "ssl" ]; then
+              echo "Using HTTPS configuration"
+              cp /configs/https.conf /nginx-conf/default.conf
+              
+              # Generate self-signed SSL certificate if not exists
+              if [ ! -f "/ssl/cert.pem" ] || [ ! -f "/ssl/key.pem" ]; then
+                echo "Generating self-signed SSL certificate..."
+                apk add --no-cache openssl
+                mkdir -p /ssl
+                openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+                  -keyout /ssl/key.pem \
+                  -out /ssl/cert.pem \
+                  -subj "/C=US/ST=State/L=City/O=LoxiLB/CN=loxilb-ui"
+                chmod 600 /ssl/key.pem
+                chmod 644 /ssl/cert.pem
+                echo "SSL certificate generated"
+              fi
+            else
+              echo "Using HTTP configuration"
+              cp /configs/http.conf /nginx-conf/default.conf
+            fi
+            
+            echo "Configuration setup complete"
+        env:
+        - name: SSL_MODE
+          valueFrom:
+            configMapKeyRef:
+              name: loxilb-ui-config
+              key: SSL_MODE
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /configs
+        - name: nginx-conf-dir
+          mountPath: /nginx-conf
+        - name: nginx-ssl-dir
+          mountPath: /ssl
+        
+      containers:
+      - name: loxilb-ui
+        # image: ghcr.io/loxilb-io/loxilb-ui:latest  # Replace with your image
+        image: kongseokhwan/loxilb-ui:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        - name: https
+          containerPort: 443
+          protocol: TCP
+        # No environment variables needed - nginx config is static in ConfigMap
+        
+        # Add secrets if needed
+        # - name: OAUTH_CLIENT_ID
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: loxilb-ui-secrets
+        #       key: OAUTH_GOOGLE_CLIENT_ID
+        
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        
+        # Resource limits
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        
+        # Security context
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 101  # nginx user
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+        
+        # Volume mounts
+        volumeMounts:
+        - name: nginx-conf-dir
+          mountPath: /etc/nginx/conf.d
+        - name: nginx-ssl-dir
+          mountPath: /etc/nginx/ssl
+        - name: tmp-volume
+          mountPath: /tmp
+        - name: var-cache-nginx
+          mountPath: /var/cache/nginx
+        - name: var-run
+          mountPath: /var/run
+      
+      # Volumes
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: loxilb-ui-config
+      - name: nginx-conf-dir
+        emptyDir: {}
+      - name: nginx-ssl-dir
+        emptyDir: {}
+      - name: tmp-volume
+        emptyDir: {}
+      - name: var-cache-nginx
+        emptyDir: {}
+      - name: var-run
+        emptyDir: {}
+      
+      # Security context for pod
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+      
+      # Node selection (optional)
+      nodeSelector:
+        kubernetes.io/os: linux
+      
+      # Tolerations (optional)
+      tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
+      
+      # Pod disruption budget
+      terminationGracePeriodSeconds: 30

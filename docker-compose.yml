@@ -11,6 +11,12 @@ services:
       # - "disabled": HTTP only
       # - "commercial": HTTPS with commercial certificates (must be provided)
       - SSL_MODE=enabled
+      
+      # Backend Configuration - Change these for your backend
+      - BACKEND_URL=https://oam-1.loxilb.io
+      - BACKEND_HOST=oam-1.loxilb.io
+      - FRONTEND_URL=http://localhost:3000
+      - PUBLIC_PATH=/netlox
     volumes:
       # Optional: Mount logs for debugging
       - ./logs:/var/log/nginx

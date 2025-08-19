@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: loxilb-system
+  labels:
+    name: loxilb-system
+    app.kubernetes.io/name: loxilb
+    app.kubernetes.io/component: system
+  annotations:
+    description: "LoxiLB Load Balancer System"
