@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: loxilb-ui-pdb
+  namespace: loxilb-system
+  labels:
+    app: loxilb-ui
+    component: frontend
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: loxilb-ui
+      component: frontend

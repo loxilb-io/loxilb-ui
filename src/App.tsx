@@ -18,7 +18,8 @@ import NavLayout from 'components/layout/NavLayout';
 import ScrollToTop from 'components/layout/ScrollToTop';
 import PopUp from 'components/modal/PopUp';
 
-import LoginPage from 'pages/LoginPage';
+import LoginPage from './pages/LoginPage';
+import OAuthCallbackPage from 'pages/OAuthCallbackPage';
 import Page404 from 'pages/Page404';
 import Page500 from 'pages/Page500';
 import PageCORS from 'pages/PageCORS';
@@ -114,6 +115,7 @@ export default function App() {
 								<Route path="/cors" element={<PageCORS />} />
 
 								<Route path="/login" element={<LoginPage />} />
+								<Route path="/oauth/callback" element={<OAuthCallbackPage />} />
 								<Route path="/instance" element={<InstancePage />} />
 								<Route path="/system" element={<SystemPage />} />
 

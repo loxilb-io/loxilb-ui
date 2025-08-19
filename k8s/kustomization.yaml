@@ -1,0 +1,40 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Namespace for all resources
+namespace: loxilb-system
+
+# Resources to deploy
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+  - pdb.yaml
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/name: loxilb-ui
+  app.kubernetes.io/version: v1.0.0
+  app.kubernetes.io/component: frontend
+  app.kubernetes.io/part-of: loxilb
+
+# Image replacements (for different environments)
+images:
+  - name: ghcr.io/loxilb-io/loxilb-ui
+    newTag: latest  # Change this for different versions
+
+# ConfigMap generator (alternative to configmap.yaml)
+# configMapGenerator:
+#   - name: loxilb-ui-config
+#     literals:
+#       - REACT_APP_API_URL="/api/oam"
+#       - REACT_APP_ENV="production"
+#       - REACT_APP_PUBLIC_URL="/netlox"
+#       - REACT_APP_REPATCH_INTERVAL="5000"
+
+# Patches for environment-specific changes
+patchesStrategicMerge:
+  # - production-patches.yaml  # Create this for production overrides

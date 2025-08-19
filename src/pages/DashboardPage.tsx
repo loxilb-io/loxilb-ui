@@ -142,7 +142,7 @@ export default function DashboardPage() {
 		
 		// === ROW 11: SECURITY AND DIAGNOSTICS ===
 		// {i: 'req-counter', x: 0, y: 20, w: 6, h: 1}, // Request counter
-		{i: 'system-log', x: 0, y: 20, w: 12, h: 3}, // System logs
+		{i: 'system-log', x: 0, y: 20, w: 12, h: 2}, // System logs
 	];
 
 	const [layout, set_layout] = useState<Layout[] | null>(null);
