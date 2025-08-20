@@ -27,7 +27,7 @@ export async function query_get_instance_list(): Promise<IInstance[]> {
 
 export async function request_create_instance(param: IInstanceInput): Promise<ApiResult> {
 	const resp = await POST_OAM(`/loxilbs`, param);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to create instance: ${resp.message}`};
+	if (resp.code !== 201 && resp.code !== 200) return {status: 'error', error: `Failed to create instance: ${resp.message}`};
 	else return {status: 'success'};
 }
 
