@@ -2,41 +2,109 @@
 // Imports
 //---------------------------------------------------------
 import {Stack, Typography} from '@mui/material';
+import React from 'react';
 import ParamBox from 'components/element/ParamBox';
 import HorizontalStack from 'components/layout/HorizontalStack';
-import useFormWithParams from 'hooks/inputFormHook';
 import {t} from 'i18next';
 import {IInstanceInput} from 'types/oam';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function InstanceInputForm(props: {onChange: (data: IInstanceInput) => void}) {
-	const {onChange} = props;
+export default function InstanceInputForm(props: {
+	onChange: (data: IInstanceInput & {isValid: boolean}) => void;
+	initialValues?: Partial<IInstanceInput>;
+}) {
+	const {onChange, initialValues} = props;
+	
+	// Initialize form with initial values or defaults
+	const [form, setForm] = React.useState<IInstanceInput>({
+		name: initialValues?.name || '',
+		cimage: initialValues?.cimage || 'ghcr.io/loxilb-io/loxilb',
+		ctag: initialValues?.ctag || 'latest',
+		host: initialValues?.host || '',
+		port: initialValues?.port || '8091',
+		version: initialValues?.version || '',
+		description: initialValues?.description || ''
+	});
 
-	const {form, params, handleChange} = useFormWithParams<IInstanceInput>('IInstanceInput', onChange);
+	// Validate required fields
+	const isValid = React.useMemo(() => {
+		return !!(form.name?.toString().trim() && 
+		         form.cimage?.toString().trim() && 
+		         form.ctag?.toString().trim() && 
+		         form.host?.toString().trim() && 
+		         form.port?.toString().trim() && 
+		         form.version?.toString().trim());
+	}, [form]);
 
-	if (!form) return null;
+	// Notify parent when form or validation changes
+	React.useEffect(() => {
+		onChange({...form, isValid});
+	}, [form, isValid, onChange]);
+
+	const handleChange = (field: keyof IInstanceInput) => (value: string | number) => {
+		// Ensure all values are stored as strings to match IInstanceInput interface
+		setForm(prev => ({...prev, [field]: String(value || '')}));
+	};
+
 	return (
 		<Stack spacing={2}>
 			<Typography variant="body1" color="text.secondary">
 				{t('Please enter the instance information')}
 			</Typography>
 
-		   <ParamBox label={t('Name')} value={form?.name ?? ''} onChange={handleChange('name')} param_desc={params?.name} />
+		   <ParamBox 
+		   	label={t('Name')} 
+		   	value={form.name} 
+		   	onChange={handleChange('name')} 
+		   	param_desc={{type: 'string', required: true}} 
+		   />
 
 		   <HorizontalStack>
-			   <ParamBox label={t('Container Image')} value={form?.cimage ?? ''} onChange={handleChange('cimage')} param_desc={params?.cimage} />
-			   <ParamBox label={t('Tag')} value={form?.ctag ?? ''} onChange={handleChange('ctag')} param_desc={params?.ctag} />
+			   <ParamBox 
+			   	label={t('Container Image')} 
+			   	value={form.cimage} 
+			   	onChange={handleChange('cimage')} 
+			   	param_desc={{type: 'string', required: true}} 
+			   />
+			   <ParamBox 
+			   	label={t('Tag')} 
+			   	value={form.ctag} 
+			   	onChange={handleChange('ctag')} 
+			   	param_desc={{type: 'string', required: true}} 
+			   />
 		   </HorizontalStack>
 
 		   <HorizontalStack>
-			   <ParamBox label={t('Host')} value={form?.host ?? ''} onChange={handleChange('host')} param_desc={params?.host} />
-			   <ParamBox label={t('Port')} value={form?.port ?? ''} onChange={handleChange('port')} param_desc={{...params?.port, type: 'port'}} />
+			   <ParamBox 
+			   	label={t('Host')} 
+			   	value={form.host} 
+			   	onChange={handleChange('host')} 
+			   	param_desc={{type: 'string', required: true}} 
+			   />
+			   <ParamBox 
+			   	label={t('Port')} 
+			   	value={form.port} 
+			   	onChange={handleChange('port')} 
+			   	param_desc={{type: 'port', required: true}} 
+			   />
 		   </HorizontalStack>
 
-		   <ParamBox label={t('Version')} value={form?.version ?? ''} onChange={handleChange('version')} param_desc={params?.version} />
-		   <ParamBox label={t('Description')} value={form?.description ?? ''} onChange={handleChange('description')} param_desc={params?.description} multiline minRows={3} />
+		   <ParamBox 
+		   	label={t('Version')} 
+		   	value={form.version} 
+		   	onChange={handleChange('version')} 
+		   	param_desc={{type: 'string', required: true}} 
+		   />
+		   <ParamBox 
+		   	label={t('Description')} 
+		   	value={form.description} 
+		   	onChange={handleChange('description')} 
+		   	param_desc={{type: 'string', required: false}} 
+		   	multiline 
+		   	minRows={3} 
+		   />
 		</Stack>
 	);
 }

@@ -91,8 +91,23 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 
 		return resp;
 	} catch (error: any) {
-		if (error instanceof TypeError && error.message.includes('Failed to fetch')) move_cors();
-		else move_500(500, error.message);
+		// Only redirect to CORS page for actual CORS-related errors, not general network failures
+		if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+			// Check if this is likely a CORS issue vs network issue
+			// CORS errors typically happen immediately, network errors after timeout
+			const isCorsError = error.message.includes('CORS') || 
+							   error.message.includes('cross-origin') ||
+							   error.message.includes('preflight');
+			
+			if (isCorsError) {
+				move_cors();
+			} else {
+				// For network failures, don't redirect - let React Query handle retries
+				console.warn('Network request failed:', error.message);
+			}
+		} else {
+			move_500(500, error.message);
+		}
 		throw error; // Re-throw the error for further handling if needed
 	}
 }

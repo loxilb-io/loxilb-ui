@@ -14,12 +14,13 @@ import {useRef, useState, useEffect} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {IVipAttribute} from 'types/ha';
 import {IInstance, IInstanceInput} from 'types/oam';
+import {IInstanceHealth} from 'hooks/query/healthHook';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function InstanceCard(props: {instance_info: IInstance; ha: IVipAttribute}) {
-	const {instance_info, ha} = props;
+export default function InstanceCard(props: {instance_info: IInstance; ha: IVipAttribute; health?: IInstanceHealth | null}) {
+	const {instance_info, ha, health} = props;
 	const { t, i18n } = useTranslation();
 
 	const navigate = useNavigate();
@@ -31,14 +32,30 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 	const instanceRef = useRef<IInstanceInput | null>(null);
 
 	const default_instance_url = `/instance/dashboard?name=${instance_info.name}`;
+	
+	// Determine if instance is healthy and clickable
+	const isHealthy = health?.isHealthy !== false; // Default to healthy if health is not available yet
+	const isDisabled = !isHealthy;
 
 	useEffect(() => {
         setLanguageKey(prev => prev + 1);
     }, [i18n.language]);
 
 	const handleModify = () => {
+		// Extract current instance data to pre-fill the form
+		const currentInstanceData = {
+			name: instance_info.name,
+			cimage: instance_info.cimage,
+			ctag: instance_info.ctag,
+			host: instance_info.host,
+			port: instance_info.port.toString(),
+			version: instance_info.version,
+			description: instance_info.description || ''
+		};
+
 		const content = (
 			<InstanceInputForm
+				initialValues={currentInstanceData}
 				onChange={data => {
 					instanceRef.current = data;
 				}}
@@ -60,8 +77,13 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 		openPopUp(t('WARNING!! Delete Instance'), t('Are you sure you want to delete this instance? This action cannot be undone.'), t('Delete'), t('Cancel'), async () => {
 			const res = await request_delete_instance(instance_info.id);
 			if (res.status === 'success') {
-				openPopUp(t('Success'), t('Instance deleted successfully.'), t('OK'));
-				refetch();
+				// First refresh the instance list
+				await refetch();
+				// Then show success message and navigate to instances page
+				openPopUp(t('Success'), t('Instance deleted successfully.'), t('OK'), '', () => {
+					// Ensure we're on the instances page after deletion
+					navigate('/instance', { replace: true });
+				});
 			} else {
 				const error_message = res.error || t('Failed to delete instance');
 				openPopUp(t('Error'), error_message, t('OK'));
@@ -69,13 +91,31 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 		});
 	};
 
+	const handleCardClick = () => {
+		if (isDisabled) {
+			openPopUp(
+				t('Instance Unavailable'),
+				t('This instance is currently down or unreachable. Please check the instance status and try again.'),
+				t('OK')
+			);
+		} else {
+			navigate(default_instance_url);
+		}
+	};
+
 	return (
 		<Card
-			sx={{width: '260px', height: '400px', cursor: 'pointer'}}
-			elevation={elevation}
-			onMouseOver={() => set_elevation(5)}
-			onMouseOut={() => set_elevation(3)}
-			onClick={() => navigate(default_instance_url)}
+			sx={{
+				width: '260px', 
+				height: '400px', 
+				cursor: isDisabled ? 'not-allowed' : 'pointer',
+				opacity: isDisabled ? 0.6 : 1,
+				backgroundColor: isDisabled ? 'grey.100' : 'background.paper'
+			}}
+			elevation={isDisabled ? 1 : elevation}
+			onMouseOver={() => !isDisabled && set_elevation(5)}
+			onMouseOut={() => !isDisabled && set_elevation(3)}
+			onClick={handleCardClick}
 		>
 			<CardContent>
 				<Stack gap="8px">
@@ -131,6 +171,20 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 
 						<Typography variant="caption" color="text.disabled">
 							{ha?.state ?? t('Unknown')}
+						</Typography>
+					</Box>
+
+					<Box display="flex" justifyContent="space-between">
+						<Typography variant="caption" color="text.secondary">
+							{t('Health Status')}
+						</Typography>
+
+						<Typography 
+							variant="caption" 
+							color={isHealthy ? 'success.main' : 'error.main'}
+							sx={{ fontWeight: 'bold' }}
+						>
+							{health === null ? t('Checking...') : (isHealthy ? t('Healthy') : t('Down'))}
 						</Typography>
 					</Box>
 

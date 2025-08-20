@@ -165,3 +165,40 @@ export async function download_inst_log_archive(instance: IInstance | null, file
 
 	URL.revokeObjectURL(downloadUrl);
 }
+
+export async function query_instance_health(instance: IInstance): Promise<{isHealthy: boolean; error?: string}> {
+	try {
+		// Use direct fetch instead of GET_INST to avoid global error handlers
+		const access_token = load_token();
+		const base_url = instance.api_endpoint;
+		const full_url = `${base_url}/version`;
+		
+		const response = await fetch(full_url, {
+			method: 'GET',
+			headers: {
+				Authorization: `Bearer ${access_token}`,
+				'Content-Type': 'application/json',
+			},
+			// Add timeout for health checks
+			signal: AbortSignal.timeout(5000)
+		});
+
+		if (response.ok) {
+			return {isHealthy: true};
+		} else {
+			return {isHealthy: false, error: `Health check failed with status ${response.status}`};
+		}
+	} catch (error) {
+		// Handle network errors gracefully without triggering CORS redirect
+		if (error instanceof Error) {
+			if (error.name === 'AbortError') {
+				return {isHealthy: false, error: 'Health check timeout'};
+			} else if (error.message.includes('Failed to fetch')) {
+				return {isHealthy: false, error: 'Instance unreachable'};
+			} else {
+				return {isHealthy: false, error: error.message};
+			}
+		}
+		return {isHealthy: false, error: 'Unknown error'};
+	}
+}

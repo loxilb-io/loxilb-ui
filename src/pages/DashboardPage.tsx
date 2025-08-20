@@ -31,17 +31,24 @@ import SystemGaugesCard from 'components/card/SystemGaugesCard';
 import TopConsumersCard from 'components/card/TopConsumersCard';
 import PerformanceRankingCard from 'components/card/PerformanceRankingCard';
 import {useInstanceFromURL} from 'hooks/instanceHook';
+import {useInstanceHealth} from 'hooks/query/healthHook';
 import {t} from 'i18next';
-import {useEffect, useState} from 'react';
+import {useEffect, useState, useMemo} from 'react';
 import RGL, {Layout} from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
+import {Alert, AlertTitle, CircularProgress} from '@mui/material';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
 export default function DashboardPage() {
 	const inst = useInstanceFromURL();
+	
+	// Check instance health to prevent polling down instances (only on page load, no automatic polling)
+	const {health, isLoading: healthLoading, refetch: refreshHealth} = useInstanceHealth(inst, true);
+	const isInstanceDown = health?.isHealthy === false;
 
 	// RealTimeRateCard components will handle their own metrics fetching and time series accumulation
 
@@ -170,6 +177,44 @@ export default function DashboardPage() {
 			set_layout(DEFAULT_LAYOUT);
 		}
 	}, []);
+
+	// Show error state if instance is down
+	if (isInstanceDown) {
+		return (
+			<Box width="100%" height="100%" display="flex" flexDirection="column" alignItems="center" justifyContent="center" padding="40px">
+				<Alert severity="error" sx={{ width: '100%', maxWidth: '600px', mb: 3 }}>
+					<AlertTitle>{t('Instance Unavailable')}</AlertTitle>
+					{t('The instance "{{name}}" is currently down or unreachable. Dashboard metrics cannot be loaded.', { name: inst?.name || 'Unknown' })}
+				</Alert>
+				<Typography variant="body2" color="text.secondary" textAlign="center" sx={{ mb: 3 }}>
+					{t('Please check the instance status and return to the dashboard once the instance is healthy.')}
+				</Typography>
+				<Button
+					variant="outlined"
+					onClick={() => refreshHealth()}
+					disabled={healthLoading}
+					startIcon={healthLoading ? <CircularProgress size={16} /> : <RefreshIcon />}
+				>
+					{healthLoading ? t('Checking...') : t('Recheck Health')}
+				</Button>
+			</Box>
+		);
+	}
+
+	// Show loading state while checking health
+	if (inst && health === null && healthLoading) {
+		return (
+			<Box width="100%" height="100%" display="flex" flexDirection="column" alignItems="center" justifyContent="center" padding="40px">
+				<CircularProgress size={48} sx={{ mb: 3 }} />
+				<Typography variant="h6" gutterBottom>
+					{t('Checking Instance Status...')}
+				</Typography>
+				<Typography variant="body2" color="text.secondary" textAlign="center">
+					{t('Verifying that "{{name}}" is accessible before loading dashboard.', { name: inst?.name || 'Unknown' })}
+				</Typography>
+			</Box>
+		);
+	}
 
 	return (
 		<Box width="100%" height="100%">
