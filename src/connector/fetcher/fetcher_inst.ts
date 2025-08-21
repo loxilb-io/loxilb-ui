@@ -3,6 +3,7 @@
 //---------------------------------------------------------
 import {filterUnusedParams} from 'common';
 import {IInstance} from 'types/oam';
+import {getProxiedUrl} from 'utils/apiProxy';
 import {DELETE, GET, PATCH, POST, PUT, SimpleResponse} from './fetcher_base';
 
 //---------------------------------------------------------
@@ -11,31 +12,44 @@ import {DELETE, GET, PATCH, POST, PUT, SimpleResponse} from './fetcher_base';
 export async function GET_INST(instance: IInstance, url: string, params?: Record<string, any>): Promise<SimpleResponse> {
 	const base_url = instance.api_endpoint;
 	const full_url = `${base_url}${url}`;
-	return await GET(full_url, params);
+	
+	// Use the new OAM proxy pattern with instance ID
+	const proxied_url = getProxiedUrl(full_url, instance.id);
+	return await GET(proxied_url, params);
 }
 
-export async function POST_INST(instance: IInstance, url: string, data?: any): Promise<SimpleResponse> {
+export async function POST_INST(instance: IInstance, url: string, data?: any, contentType?: 'application/json' | 'multipart/form-data'): Promise<SimpleResponse> {
 	const base_url = instance.api_endpoint;
 	const full_url = `${base_url}${url}`;
-
-	const filteredData = filterUnusedParams(data);
-	return await POST(full_url, filteredData);
+	
+	// Use the new OAM proxy pattern with instance ID
+	const proxied_url = getProxiedUrl(full_url, instance.id);
+	return await POST(proxied_url, data, contentType);
 }
 
 export async function PUT_INST(instance: IInstance, url: string, data: any): Promise<SimpleResponse> {
 	const base_url = instance.api_endpoint;
 	const full_url = `${base_url}${url}`;
-	return await PUT(full_url, data);
+	
+	// Use the new OAM proxy pattern with instance ID
+	const proxied_url = getProxiedUrl(full_url, instance.id);
+	return await PUT(proxied_url, data);
 }
 
 export async function PATCH_INST(instance: IInstance, url: string, data?: any, contentType?: 'application/json' | 'multipart/form-data'): Promise<SimpleResponse> {
 	const base_url = instance.api_endpoint;
 	const full_url = `${base_url}${url}`;
-	return await PATCH(full_url, data, contentType);
+	
+	// Use the new OAM proxy pattern with instance ID
+	const proxied_url = getProxiedUrl(full_url, instance.id);
+	return await PATCH(proxied_url, data, contentType);
 }
 
 export async function DELETE_INST(instance: IInstance, url: string, data?: any, contentType?: 'application/json' | 'multipart/form-data'): Promise<SimpleResponse> {
 	const base_url = instance.api_endpoint;
 	const full_url = `${base_url}${url}`;
-	return await DELETE(full_url, data, contentType);
+	
+	// Use the new OAM proxy pattern with instance ID
+	const proxied_url = getProxiedUrl(full_url, instance.id);
+	return await DELETE(proxied_url, data, contentType);
 }

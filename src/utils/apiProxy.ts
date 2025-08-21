@@ -5,9 +5,10 @@
 /**
  * Converts a direct API URL to use the nginx proxy to avoid CORS issues
  * @param url - The original API URL (e.g., "http://instance-server:8080/api/endpoint")
- * @returns The proxied URL (e.g., "/api/proxy/http://instance-server:8080/api/endpoint")
+ * @param instanceId - The instance ID for OAM proxy routing (optional)
+ * @returns The proxied URL (e.g., "/api/oam/loxilbs/123/netlox/v1/endpoint")
  */
-export function getProxiedUrl(url: string): string {
+export function getProxiedUrl(url: string, instanceId?: string | number): string {
     // If the URL is already relative (starts with /), return as-is
     if (url.startsWith('/')) {
         return url;
@@ -18,8 +19,20 @@ export function getProxiedUrl(url: string): string {
         return url;
     }
     
-    // In production (Docker), use the proxy to avoid CORS issues
+    // In production (Docker), use the OAM proxy to avoid CORS issues
     if (url.startsWith('http://') || url.startsWith('https://')) {
+        // If instanceId is provided, use the new OAM proxy pattern
+        if (instanceId) {
+            // Extract the path from the original URL (everything after /netlox/v1/)
+            const netloxMatch = url.match(/.*\/netlox\/v1\/(.*)$/);
+            if (netloxMatch) {
+                const endpoint = netloxMatch[1];
+                return `/api/oam/loxilbs/${instanceId}/netlox/v1/${endpoint}`;
+            }
+            // Fallback: if it doesn't match netlox pattern, use the old proxy method
+            return `/api/proxy/${url}`;
+        }
+        // Legacy: use the old proxy method for backward compatibility
         return `/api/proxy/${url}`;
     }
     

@@ -37,7 +37,7 @@
 		"typescript": "^4.9.5",
 		"web-vitals": "^2.1.4"
 	},
-	"scripts": {
+	"scripts": {		
 		"start": "HTTPS=true WDS_SOCKET_PORT=0 HOST=0.0.0.0 dotenv -e .env.development react-scripts start",
 		"build": "dotenv -e .env.local react-scripts build",
 		"build:dev": "dotenv -e .env.development react-scripts build",
