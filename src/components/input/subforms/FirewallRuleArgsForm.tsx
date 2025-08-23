@@ -27,7 +27,7 @@ export default function FirewallRuleArgsForm(props: {value: IRuleArguments; onCh
 			</Typography>
 
 			<HorizontalStack>
-			   <ParamBox label={t('Source IP')} value={value?.sourceIP ?? ''} onChange={handleChange('sourceIP')} param_desc={{...params?.sourceIP, type: 'ipaddress'}} />
+			   <ParamBox label={t('Source IP')} value={value?.sourceIP ?? ''} onChange={handleChange('sourceIP')} param_desc={{...params?.sourceIP, type: 'ipaddress_cidr'}} />
 
 				<HorizontalStack>
 				   <ParamBox label={t('Port Min')} value={value?.minSourcePort ?? ''} onChange={handleChange('minSourcePort')} param_desc={{...params?.minSourcePort, type: 'port'}} />
@@ -40,7 +40,7 @@ export default function FirewallRuleArgsForm(props: {value: IRuleArguments; onCh
 					label={t('Destination IP')}
 				   value={value?.destinationIP ?? ''}
 					onChange={handleChange('destinationIP')}
-					param_desc={{...params?.destinationIP, type: 'ipaddress'}}
+				param_desc={{...params?.destinationIP, type: 'ipaddress_cidr'}}
 				/>
 
 				<HorizontalStack>

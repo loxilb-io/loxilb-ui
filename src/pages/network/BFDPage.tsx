@@ -23,28 +23,51 @@ export default function BFDPage() {
 	const attr_info: IBFDAttribureInfo = {Attr: data ?? []};
 
    const [selected_rows, set_selected_rows] = useState<number[]>([]);
+   // Track selected BFD entry key for synchronization
+   const [selected_key, set_selected_key] = useState<string | null>(null);
    const {openPopUp, enableYes} = usePopUp();
-   // Use global hash function for BFD entry
-   const getHashKey = (item: any) => getStableHash(`${item.instance || ''}_${item.remoteIp || ''}_${item.sourceIP || ''}_${item.port || ''}`);
-   // Selection handler: synchronize using hash-based indices
-   const handleSelectionChange = (selection: number[]) => set_selected_rows(selection);
-   const handleDelete = async () => {
-	   if (!inst || selected_rows.length === 0) return;
-	   // Find the item by hash
-	   const selectedHash = selected_rows[0];
-	   const item = attr_info.Attr.find(
-		   (row: any) => getHashKey(row) === selectedHash
-	   );
-	   if (!item) return;
-	   const res = await request_delete_bfd(inst, item.remoteIp);
-	   if (res.status === 'success') {
-		   openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
+   
+   // Hash function for BFD entry
+   const getHashKey = (item: any) => {
+	   const str = `${item.instance || ''}_${item.remoteIp || ''}_${item.sourceIP || ''}_${item.port || ''}`;
+	   return getStableHash(str);
+   };
+   
+   // Sorted BFD entries
+   const sortedAttr = attr_info.Attr ? [...attr_info.Attr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
+   
+   // Find selected index in sortedAttr
+   let selected_index = -1;
+   if (selected_rows.length === 1 && attr_info.Attr) {
+	   const original = attr_info.Attr[selected_rows[0]];
+	   selected_index = sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
+   } else if (selected_key) {
+	   selected_index = sortedAttr.findIndex(attr => `${attr.instance}_${attr.remoteIp}_${attr.sourceIP}_${attr.port}` === selected_key);
+   }
+   
+   // Selection handler: map sorted index back to original
+   const handleSelectionChange = (indices: number[]) => {
+	   if (indices.length === 1 && attr_info.Attr) {
+		   const sortedItem = sortedAttr[indices[0]];
+		   const originalIndex = attr_info.Attr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
+		   set_selected_rows(originalIndex !== -1 ? [originalIndex] : []);
+	   } else {
 		   set_selected_rows([]);
-		   setTimeout(() => {
+	   }
+   };
+	const handleDelete = async () => {
+		if (!inst) return;
+
+		const item = attr_info.Attr[selected_rows[0]];
+		const res = await request_delete_bfd(inst, item.remoteIp);
+		if (res.status === 'success') {
+			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
+			set_selected_rows([]);
+			setTimeout(() => {
 				refetch();
 			}, 1000);
-	   } else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
-   };
+		} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
+	};
 
    const instanceRef = useRef<IBfdInput | null>(null);
    const handleAdd = () => {
@@ -80,6 +103,22 @@ export default function BFDPage() {
 	   );
    };
 
+   // Synchronize selected_key with selected_rows
+   React.useEffect(() => {
+	   if (!attr_info.Attr || attr_info.Attr.length === 0) return;
+	   if (selected_rows.length === 1) {
+		   const item = attr_info.Attr[selected_rows[0]];
+		   set_selected_key(`${item.instance}_${item.remoteIp}_${item.sourceIP}_${item.port}`);
+	   } else if (selected_key !== null) {
+		   set_selected_key(null);
+	   }
+   }, [attr_info, selected_rows, selected_key]);
 
-   return <BFDTable data={attr_info} selected_rows={selected_rows} onChangeSelectedRows={handleSelectionChange} onAdd={handleAdd} onDelete={handleDelete} />;
+   return <BFDTable
+	   data={{Attr: sortedAttr}}
+	   selected_rows={selected_index !== -1 ? [selected_index] : []}
+	   onChangeSelectedRows={handleSelectionChange}
+	   onAdd={handleAdd}
+	   onDelete={handleDelete}
+   />;
 }

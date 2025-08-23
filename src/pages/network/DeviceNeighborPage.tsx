@@ -10,6 +10,7 @@ import {usePopUp} from 'hooks/popupHook';
 import {useDeviceNeighbors} from 'hooks/query/deviceHooks';
 import {t} from 'i18next';
 import {useRef, useState} from 'react';
+import React from 'react';
 import {INeighborAttr, INeighborData} from 'types/device_neighbor';
 
 //---------------------------------------------------------
@@ -22,27 +23,51 @@ export default function DeviceNeighborPage() {
 	const neighbor_info: INeighborData = {neighborAttr: data ?? []};
 
    const [selected_rows, set_selected_rows] = useState<number[]>([]);
-	const {openPopUp, enableYes} = usePopUp();
-
-   // Synchronize selection using hash-based indices
-   const handleSelectionChange = (selection: number[]) => set_selected_rows(selection);
-   const handleDelete = async () => {
-	   if (!inst || selected_rows.length === 0) return;
-	   // Find the item by hash
-	   const selectedHash = selected_rows[0];
-	   const item = neighbor_info.neighborAttr.find(
-		   (row: any) => getStableHash(`${row.dev || ''}_${row.ipAddress || ''}`) === selectedHash
-	   );
-	   if (!item) return;
-	   const res = await request_delete_device_neighbor(inst, item.ipAddress, item.dev);
-	   if (res.status === 'success') {
-		   openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
+   // Track selected dev/ipAddress for synchronization
+   const [selected_key, set_selected_key] = useState<string | null>(null);
+   const {openPopUp, enableYes} = usePopUp();
+   
+   // Hash function for Device Neighbor entry
+   const getHashKey = (item: any) => {
+	   const str = `${item.dev || ''}_${item.ipAddress || ''}`;
+	   return getStableHash(str);
+   };
+   
+   // Sorted neighbor entries
+   const sortedAttr = neighbor_info.neighborAttr ? [...neighbor_info.neighborAttr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
+   
+   // Find selected index in sortedAttr
+   let selected_index = -1;
+   if (selected_rows.length === 1 && neighbor_info.neighborAttr) {
+	   const original = neighbor_info.neighborAttr[selected_rows[0]];
+	   selected_index = sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
+   } else if (selected_key) {
+	   selected_index = sortedAttr.findIndex(attr => `${attr.dev}_${attr.ipAddress}` === selected_key);
+   }
+   
+   // Selection handler: map sorted index back to original
+   const handleSelectionChange = (indices: number[]) => {
+	   if (indices.length === 1 && neighbor_info.neighborAttr) {
+		   const sortedItem = sortedAttr[indices[0]];
+		   const originalIndex = neighbor_info.neighborAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
+		   set_selected_rows(originalIndex !== -1 ? [originalIndex] : []);
+	   } else {
 		   set_selected_rows([]);
-		   setTimeout(() => {
+	   }
+   };
+	const handleDelete = async () => {
+		if (!inst) return;
+
+		const item = neighbor_info.neighborAttr[selected_rows[0]];
+		const res = await request_delete_device_neighbor(inst, item.ipAddress, item.dev);
+		if (res.status === 'success') {
+			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
+			set_selected_rows([]);
+			setTimeout(() => {
 				refetch();
 			}, 1000);
-	   } else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
-   };
+		} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
+	};
 
 	const instanceRef = useRef<INeighborAttr | null>(null);
 	const handleAdd = () => {
@@ -78,5 +103,22 @@ export default function DeviceNeighborPage() {
 		);
 	};
 
-   return <DeviceNeighborTable data={neighbor_info} selected_rows={selected_rows} onChangeSelectedRows={handleSelectionChange} onAdd={handleAdd} onDelete={handleDelete} />;
+   // Synchronize selected_key with selected_rows
+   React.useEffect(() => {
+	   if (!neighbor_info.neighborAttr || neighbor_info.neighborAttr.length === 0) return;
+	   if (selected_rows.length === 1) {
+		   const item = neighbor_info.neighborAttr[selected_rows[0]];
+		   set_selected_key(`${item.dev}_${item.ipAddress}`);
+	   } else if (selected_key !== null) {
+		   set_selected_key(null);
+	   }
+   }, [neighbor_info, selected_rows, selected_key]);
+
+   return <DeviceNeighborTable
+	   data={{neighborAttr: sortedAttr}}
+	   selected_rows={selected_index !== -1 ? [selected_index] : []}
+	   onChangeSelectedRows={handleSelectionChange}
+	   onAdd={handleAdd}
+	   onDelete={handleDelete}
+   />;
 }

@@ -18,6 +18,7 @@ export const dummyData: IInstance[] = [
 		id: 1,
 		name: 'Instance-01',
 		port: '8080',
+		protocol: 'https',
 		version: '1.0.0',
 	},
 	{
@@ -29,7 +30,8 @@ export const dummyData: IInstance[] = [
 		host: 'server2.example.com',
 		id: 2,
 		name: 'Instance-02',
-		port: '8081',
+		port: '8080',
+		protocol: 'https',
 		version: '1.1.0',
 	},
 	{
@@ -41,7 +43,8 @@ export const dummyData: IInstance[] = [
 		host: 'server3.example.com',
 		id: 3,
 		name: 'Instance-03',
-		port: '8082',
+		port: '8080',
+		protocol: 'https',
 		version: '1.0.5',
 	},
 	{
@@ -53,7 +56,8 @@ export const dummyData: IInstance[] = [
 		host: 'server4.example.com',
 		id: 4,
 		name: 'Instance-04',
-		port: '8083',
+		port: '8080',
+		protocol: 'https',
 		version: '2.0.0',
 	},
 	{
@@ -65,7 +69,8 @@ export const dummyData: IInstance[] = [
 		host: 'server5.example.com',
 		id: 5,
 		name: 'Instance-05',
-		port: '8084',
+		port: '8080',
+		protocol: 'https',
 		version: '1.2.0',
 	},
 	{
@@ -77,7 +82,8 @@ export const dummyData: IInstance[] = [
 		host: 'server6.example.com',
 		id: 6,
 		name: 'Instance-06',
-		port: '8085',
+		port: '8080',
+		protocol: 'https',
 		version: '1.3.0',
 	},
 	{
@@ -89,7 +95,8 @@ export const dummyData: IInstance[] = [
 		host: 'server7.example.com',
 		id: 7,
 		name: 'Instance-07',
-		port: '8086',
+		port: '8080',
+		protocol: 'https',
 		version: '1.1.5',
 	},
 	{
@@ -101,7 +108,8 @@ export const dummyData: IInstance[] = [
 		host: 'server8.example.com',
 		id: 8,
 		name: 'Instance-08',
-		port: '8087',
+		port: '8080',
+		protocol: 'https',
 		version: '2.1.0',
 	},
 	{
@@ -113,7 +121,8 @@ export const dummyData: IInstance[] = [
 		host: 'server9.example.com',
 		id: 9,
 		name: 'Instance-09',
-		port: '8088',
+		port: '8080',
+		protocol: 'https',
 		version: '1.4.0',
 	},
 	{
@@ -125,7 +134,8 @@ export const dummyData: IInstance[] = [
 		host: 'server10.example.com',
 		id: 10,
 		name: 'Instance-10',
-		port: '8089',
+		port: '8080',
+		protocol: 'https',
 		version: '1.5.0',
 	},
 ];

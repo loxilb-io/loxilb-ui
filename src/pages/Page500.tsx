@@ -25,10 +25,10 @@ export default function Page500() {
 			<Stack width="100%" maxWidth="400px" alignItems="center" spacing={2}>
 				<Box component="img" src={Image503} alt="500" width="100%" maxWidth="250px" />
 
-				<Typography variant="h6">{t('Over Capacity')}</Typography>
+				<Typography variant="h6">{t('LoxiLB Server Down')}</Typography>
 
 				<Typography variant="body2" whiteSpace="pre-wrap" textAlign="center" width="100%">
-					{t('This can happen when the site is experiencing high load. Please wait a moment and try again.')}
+					{t('This can happen when the LoxiLB is disconnected or internal error. Please wait a moment and try again.')}
 				</Typography>
 
 				{code && (

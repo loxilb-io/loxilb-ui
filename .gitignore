@@ -108,3 +108,5 @@ deploy-output/
 .serena/
 .vscode/
 
+*.log
+

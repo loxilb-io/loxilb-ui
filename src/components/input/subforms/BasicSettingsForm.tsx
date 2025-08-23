@@ -4,9 +4,10 @@
 import {Stack} from '@mui/material';
 import AccordionBox from 'components/element/AccordionBox';
 import ParamBox from 'components/element/ParamBox';
+import DropDownSelectBox from 'components/element/DropDownSelectBox';
 import HorizontalStack from 'components/layout/HorizontalStack';
 import {t} from 'i18next';
-import {Fragment, useCallback} from 'react';
+import React, {Fragment, useCallback} from 'react';
 import {IServiceArguments} from 'types/load_balancer';
 
 //---------------------------------------------------------
@@ -17,6 +18,13 @@ export default function BasicSettingsForm(props: {value: IServiceArguments; onCh
 
 	const handleChange = useCallback((field: keyof IServiceArguments) => (newValue: any) => onChange({...value, [field]: newValue}), [value, onChange]);
 
+	// Ensure protocol has a default value when undefined
+	React.useEffect(() => {
+		if (!value?.protocol) {
+			onChange({...value, protocol: 'tcp'});
+		}
+	}, [value, onChange]);
+
 	return (
 		<Fragment>
 	   <ParamBox label={t('Rule Name')} value={value?.name ?? ''} onChange={handleChange('name')} param_desc={params?.name} />
@@ -24,7 +32,16 @@ export default function BasicSettingsForm(props: {value: IServiceArguments; onCh
 	   <AccordionBox title={t('Basic Settings(*)')}>
 			   <Stack spacing={2}>
 					   <HorizontalStack>
-							   <ParamBox label={t('Protocol')} value={value?.protocol ?? ''} onChange={handleChange('protocol')} param_desc={params?.protocol} />
+							   <DropDownSelectBox 
+							   	label={t('Protocol')} 
+							   	value={value?.protocol ?? 'tcp'} 
+							   	onChange={handleChange('protocol')} 
+							   	item_list={[
+							   		{id: 1, name: 'TCP', send_value: 'tcp'},
+							   		{id: 2, name: 'UDP', send_value: 'udp'},
+							   		{id: 3, name: 'SCTP', send_value: 'sctp'}
+							   	]}
+							   />
 							   <ParamBox label={t('Host')} value={value?.host ?? ''} onChange={handleChange('host')} param_desc={params?.host} />
 					   </HorizontalStack>
 
