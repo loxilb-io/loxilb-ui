@@ -8,7 +8,7 @@ import {t} from 'i18next';
 import {IFdbAttribute} from 'types/fdb';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePortAttr} from 'hooks/query/queryHooks';
-import {useMemo, useState} from 'react';
+import {useMemo, useState, useEffect} from 'react';
 
 //---------------------------------------------------------
 // Functional Component
@@ -28,6 +28,14 @@ export default function FdbInputForm(props: {onChange: (data: IFdbAttribute) => 
 		})) || [],
 		[portData]
 	);
+
+	// Set default device name when ports are loaded and form.dev is empty
+	useEffect(() => {
+		if (ports.length > 0 && (!form?.dev || form.dev === '')) {
+			const devHandler = handleChange('dev');
+			if (devHandler) devHandler(ports[0].send_value);
+		}
+	}, [ports, form?.dev, handleChange]);
 
 	if (!form) return null;
 	return (

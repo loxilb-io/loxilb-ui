@@ -14,25 +14,25 @@ export function getProxiedUrl(url: string, instanceId?: string | number): string
         return url;
     }
     
-    // In development mode, return the original URL (let the dev server handle CORS)
+    // If instanceId is provided, always use the new OAM proxy pattern
+    if (instanceId && (url.startsWith('http://') || url.startsWith('https://'))) {
+        // Extract the path from the original URL (everything after /netlox/v1/)
+        const netloxMatch = url.match(/.*\/netlox\/v1\/(.*)$/);
+        if (netloxMatch) {
+            const endpoint = netloxMatch[1];
+            return `/api/oam/loxilbs/${instanceId}/netlox/v1/${endpoint}`;
+        }
+        // Fallback: if it doesn't match netlox pattern, use the old proxy method
+        return `/api/proxy/${url}`;
+    }
+    
+    // In development mode without instanceId, return the original URL (let the dev server handle CORS)
     if (process.env.NODE_ENV === 'development') {
         return url;
     }
     
-    // In production (Docker), use the OAM proxy to avoid CORS issues
+    // In production (Docker), use the proxy to avoid CORS issues
     if (url.startsWith('http://') || url.startsWith('https://')) {
-        // If instanceId is provided, use the new OAM proxy pattern
-        if (instanceId) {
-            // Extract the path from the original URL (everything after /netlox/v1/)
-            const netloxMatch = url.match(/.*\/netlox\/v1\/(.*)$/);
-            if (netloxMatch) {
-                const endpoint = netloxMatch[1];
-                return `/api/oam/loxilbs/${instanceId}/netlox/v1/${endpoint}`;
-            }
-            // Fallback: if it doesn't match netlox pattern, use the old proxy method
-            return `/api/proxy/${url}`;
-        }
-        // Legacy: use the old proxy method for backward compatibility
         return `/api/proxy/${url}`;
     }
     

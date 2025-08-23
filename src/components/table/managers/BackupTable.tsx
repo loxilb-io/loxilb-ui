@@ -58,7 +58,7 @@ export default function BackupTable(props: BackupTableProps) {
 		}
 	};
 
-	// Generate rows and sort by hash key
+	// Generate rows and sort by hash key (for consistent initial display)
 	const rows = data.backups
 		? (() => {
 			const sorted = [...data.backups].sort((a, b) => getHashKey(a) - getHashKey(b));
@@ -77,7 +77,8 @@ export default function BackupTable(props: BackupTableProps) {
 					size: item.size_bytes ? formatBytes(item.size_bytes) : '-',
 					priority: item.priority?.toUpperCase() || 'NORMAL',
 					compressed: item.is_compressed ? 'Yes' : 'No',
-					created_at: item.created ? new Date(item.created).toLocaleString() : '-',
+					created_at: item.created ? new Date(item.created).toISOString().replace('T', ' ').substring(0, 19) : '-',
+					_created_timestamp: item.created ? new Date(item.created).getTime() : 0, // Raw timestamp for sorting
 					_uniqueKey: getHashKey(item),
 				};
 			});

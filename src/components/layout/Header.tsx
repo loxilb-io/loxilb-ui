@@ -67,8 +67,8 @@ export default function Header() {
 					<InstanceIcon />
 					<VerticalDivider />
 
-					<SettingIcon />
-					<VerticalDivider />
+					{/* <SettingIcon />
+					<VerticalDivider /> */}
 
 					<AlertsIcon />
 					<VerticalDivider />

@@ -20,6 +20,7 @@ export interface IInstanceInput {
 	host: string;
 	name: string;
 	port: string;
+	protocol: string;
 	version: string;
 }
 
@@ -34,5 +35,6 @@ export interface IInstance {
 	id: number;
 	name: string;
 	port: string;
+	protocol: string;
 	version: string;
 }

@@ -4,6 +4,7 @@
 import {Stack, Typography} from '@mui/material';
 import React from 'react';
 import ParamBox from 'components/element/ParamBox';
+import DropDownSelectBox from 'components/element/DropDownSelectBox';
 import HorizontalStack from 'components/layout/HorizontalStack';
 import {t} from 'i18next';
 import {IInstanceInput} from 'types/oam';
@@ -24,6 +25,7 @@ export default function InstanceInputForm(props: {
 		ctag: initialValues?.ctag || 'latest',
 		host: initialValues?.host || '',
 		port: initialValues?.port || '8091',
+		protocol: initialValues?.protocol || 'https',
 		version: initialValues?.version || '',
 		description: initialValues?.description || ''
 	});
@@ -35,6 +37,7 @@ export default function InstanceInputForm(props: {
 		         form.ctag?.toString().trim() && 
 		         form.host?.toString().trim() && 
 		         form.port?.toString().trim() && 
+		         form.protocol?.toString().trim() && 
 		         form.version?.toString().trim());
 	}, [form]);
 
@@ -77,19 +80,28 @@ export default function InstanceInputForm(props: {
 		   </HorizontalStack>
 
 		   <HorizontalStack>
-			   <ParamBox 
-			   	label={t('Host')} 
-			   	value={form.host} 
-			   	onChange={handleChange('host')} 
-			   	param_desc={{type: 'string', required: true}} 
-			   />
-			   <ParamBox 
-			   	label={t('Port')} 
-			   	value={form.port} 
-			   	onChange={handleChange('port')} 
-			   	param_desc={{type: 'port', required: true}} 
-			   />
-		   </HorizontalStack>
+		   <ParamBox 
+		   	label={t('Host')} 
+		   	value={form.host} 
+		   	onChange={handleChange('host')} 
+		   	param_desc={{type: 'string', required: true}} 
+		   />
+		   <ParamBox 
+		   	label={t('Port')} 
+		   	value={form.port} 
+		   	onChange={handleChange('port')} 
+		   	param_desc={{type: 'port', required: true}} 
+		   />
+		   <DropDownSelectBox 
+		   	label={t('Protocol')} 
+		   	value={form.protocol} 
+		   	onChange={handleChange('protocol')} 
+		   	item_list={[
+		   		{id: 1, name: 'HTTP', send_value: 'http'},
+		   		{id: 2, name: 'HTTPS', send_value: 'https'}
+		   	]}
+		   />
+	   </HorizontalStack>
 
 		   <ParamBox 
 		   	label={t('Version')} 

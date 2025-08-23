@@ -29,7 +29,14 @@ export async function request_delete_endpoint_by_ip(instance: IInstance, item: I
 	*/
 
 	//const resp = await DELETE_INST(instance, `/config/endpoint/epipaddress/${item.hostName}`, {name: item.name, probe_type: item.probeType, probe_port: item.probePort});
-	const curl_with_query = `/config/endpoint/epipaddress/${item.hostName}?name=${item.name}&probe_type=${item.probeType}&probe_port=${item.probePort}`;
+	// Build query parameters conditionally, omitting null/undefined values
+	const queryParams = [];
+	if (item.name) queryParams.push(`name=${item.name}`);
+	if (item.probeType) queryParams.push(`probe_type=${item.probeType}`);
+	if (item.probePort) queryParams.push(`probe_port=${item.probePort}`);
+	
+	const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
+	const curl_with_query = `/config/endpoint/epipaddress/${item.hostName}${queryString}`;
 	const resp = await DELETE_INST(instance, curl_with_query);
 
 	if (resp.code !== 200 || resp.message.includes('error') || resp.message.includes('referred')) return {status: 'error', error: `"${resp.message}"`};

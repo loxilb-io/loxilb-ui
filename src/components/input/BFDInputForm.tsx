@@ -20,8 +20,8 @@ export default function BFDInputForm(props: {onChange: (data: IBfdInput) => void
 	return (
 		<NewBox item_name={t('BFD Configuration')}>
 		   <ParamBox label={t('Instance')} value={form?.instance ?? ''} onChange={handleChange('instance')} param_desc={params?.instance} />
-		   <ParamBox label={t('Remote IP')} value={form?.remoteIp ?? ''} onChange={handleChange('remoteIp')} param_desc={{...params?.remoteIp, type: 'ipaddress'}} />
-		   <ParamBox label={t('Source IP')} value={form?.sourceIp ?? ''} onChange={handleChange('sourceIp')} param_desc={{...params?.sourceIp, type: 'ipaddress'}} />
+		   <ParamBox label={t('Remote IP')} value={form?.remoteIp ?? ''} onChange={handleChange('remoteIp')} param_desc={{...params?.remoteIp, type: 'ipaddress', description: 'Remote source IP address for BFD session'}} />
+		   <ParamBox label={t('Source IP')} value={form?.sourceIp ?? ''} onChange={handleChange('sourceIp')} param_desc={{...params?.sourceIp, type: 'ipaddress', description: 'Local source IP address for BFD session'}} />
 		   <HorizontalStack>
 			   <ParamBox label={t('Interval (μs)')} value={form?.interval ?? ''} onChange={handleChange('interval')} param_desc={params?.interval} />
 			   <ParamBox label={t('Retry Count')} value={form?.retryCount ?? ''} onChange={handleChange('retryCount')} param_desc={params?.retryCount} />
