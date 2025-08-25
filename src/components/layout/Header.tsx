@@ -68,10 +68,10 @@ export default function Header() {
 					<VerticalDivider />
 
 					{/* <SettingIcon />
-					<VerticalDivider /> */}
+					<VerticalDivider />
 
 					<AlertsIcon />
-					<VerticalDivider />
+					<VerticalDivider /> */}
 
 					<LanguageIcon />
 					<VerticalDivider />
