@@ -11,6 +11,7 @@ import {ILog, ILogArchiveList, LevelType} from 'types/log';
 import {IInstance} from 'types/oam';
 import {IProcessAttribute} from 'types/process';
 import {GET_INST, POST_INST} from '../fetcher/fetcher_inst';
+import { getApiBaseUrl } from 'utils/apiProxy';
 
 //---------------------------------------------------------
 // API Caller Functions
@@ -56,8 +57,39 @@ export async function query_get_device_status(instance: IInstance): Promise<ISys
 }
 
 export async function query_get_ha_state_all(instance: IInstance): Promise<IVipAttribute[]> {
-	const resp = await GET_INST(instance, `/config/cistate/all`); // cluster instance state
-	return (resp.data?.Attr as IVipAttribute[]) ?? [];
+    // Perform a direct fetch to avoid global redirect handlers on 5xx
+    try {
+        const access_token = load_token();
+        let oam_base_url = getApiBaseUrl();
+        // Ensure we use a same-origin relative URL to avoid CORS in the browser
+        if (oam_base_url.startsWith('http://') || oam_base_url.startsWith('https://')) {
+            try {
+                const u = new URL(oam_base_url);
+                oam_base_url = u.pathname.replace(/\/$/, '') || '/api/oam';
+            } catch {}
+        }
+        const url = `${oam_base_url}/loxilbs/${instance.id}/netlox/v1/config/cistate/all`;
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                Authorization: access_token ? `Bearer ${access_token}` : '',
+                'Content-Type': 'application/json'
+            },
+            signal: AbortSignal.timeout(5000)
+        });
+
+        if (!response.ok) {
+            // When instance is down (e.g., 502), return empty to keep UI running
+            return [];
+        }
+
+        const json = await response.json().catch(() => null);
+        return (json?.Attr as IVipAttribute[]) ?? [];
+    } catch (error) {
+        // Network/timeout errors: do not redirect; surface as empty
+        return [];
+    }
 }
 
 // not for frontend use, only for backend to update HA state
