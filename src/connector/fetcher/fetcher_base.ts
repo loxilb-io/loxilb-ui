@@ -77,7 +77,7 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 		const resp = await fetch(url, mergedOptions);
 
 		if (resp.status === 204) return resp; // No content response
-		if (resp.status === 401) {
+		if (resp.status === 401 || resp.status === 403) {
 			// Do not force-redirect when the request itself is for the login endpoint,
 			// so we can surface server error messages (e.g., Invalid credentials) in the UI.
 			const isLoginRequest = typeof url === 'string' && /\/login(?:\b|\/)/.test(url);
