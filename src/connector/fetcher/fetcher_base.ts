@@ -78,8 +78,13 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 
 		if (resp.status === 204) return resp; // No content response
 		if (resp.status === 401) {
-			remove_token();
-			forced_relocation_to_login();
+			// Do not force-redirect when the request itself is for the login endpoint,
+			// so we can surface server error messages (e.g., Invalid credentials) in the UI.
+			const isLoginRequest = typeof url === 'string' && /\/login(?:\b|\/)/.test(url);
+			if (!isLoginRequest) {
+				remove_token();
+				forced_relocation_to_login();
+			}
 			return resp;
 		} else if (resp.status === 404) move_404();
 		else if (resp.status >= 500 && resp.status < 600) {
