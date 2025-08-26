@@ -3,6 +3,7 @@
 //---------------------------------------------------------
 import {Divider} from '@mui/material';
 import ParamBox from 'components/element/ParamBox';
+import DropDownSelectBox from 'components/element/DropDownSelectBox';
 import HorizontalStack from 'components/layout/HorizontalStack';
 import NewBox from 'components/layout/NewBox';
 import useFormWithParams from 'hooks/inputFormHook';
@@ -29,7 +30,8 @@ export default function EndpointInputForm(props: LEndpointInputFormProps) {
 	// Notify parent of validation state and form data
 	React.useEffect(() => {
 		if (form) {
-			onChange({ ...form, isValid, errors });
+			// onChange({ ...form, isValid, errors });
+			onChange({ ...form, probeType: form.probeType || 'ping', isValid, errors });
 		}
 		if (onValidation) {
 			onValidation(isValid);
@@ -40,7 +42,7 @@ export default function EndpointInputForm(props: LEndpointInputFormProps) {
 	if (!form) return null;
 	return (
 		<NewBox item_name={t('Endpoint')}>
-		   <ParamBox label={t('Host Name')} value={form?.hostName ?? ''} onChange={handleChange('hostName')} param_desc={params?.hostName} />
+		   <ParamBox label={t('Host Name')} value={form?.hostName ?? ''} onChange={handleChange('hostName')} param_desc={{...params?.hostName, type: 'ipaddress'}} />
 
 		   <HorizontalStack>
 			   <ParamBox label={t('Name')} value={form?.name ?? ''} onChange={handleChange('name')} param_desc={params?.name} />
@@ -50,7 +52,19 @@ export default function EndpointInputForm(props: LEndpointInputFormProps) {
 			<Divider />
 
 		   <HorizontalStack>
-			   <ParamBox label={t('Probe Type')} value={form?.probeType ?? ''} onChange={handleChange('probeType')} param_desc={params?.probeType} />
+			   {/* <ParamBox label={t('Probe Type')} value={form?.probeType ?? ''} onChange={handleChange('probeType')} param_desc={params?.probeType} /> */}
+			   <DropDownSelectBox 
+					label={t('Probe Type')} 
+					value={form?.probeType ?? 'ping'} 
+					onChange={handleChange('probeType')} 
+					item_list={[
+						{id: 1, name: 'PING', send_value: 'ping'},
+						{id: 2, name: 'TCP', send_value: 'tcp'},
+						{id: 3, name: 'UDP', send_value: 'udp'},
+						{id: 4, name: 'HTTP', send_value: 'http'},
+						{id: 5, name: 'HTTPS', send_value: 'https'}
+					]}
+				/>
 			   <ParamBox label={t('Probe Duration')} value={form?.probeDuration ?? ''} onChange={handleChange('probeDuration')} param_desc={params?.probeDuration} />
 			   <ParamBox label={t('Probe Port')} value={form?.probePort ?? ''} onChange={handleChange('probePort')} param_desc={{...params?.probePort, type: 'port'}} />
 		   </HorizontalStack>

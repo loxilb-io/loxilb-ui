@@ -1,6 +1,6 @@
 {
-	"name": "rabbit",
-	"version": "0.8.3",
+	"name": "LoxiLB",
+	"version": "0.9.0",
 	"private": true,
 	"homepage": "",
 	"dependencies": {
