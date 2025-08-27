@@ -76,7 +76,7 @@ function MemberView(props: {name: string; vid: number; data: IMember[]; refetch:
 
 	return (
 		<SubTitlePannel title={name} sub_title={t('Members')}>
-			<VLANMemberTable data={data} selected_rows={selected_rows} onChangeSelectedRows={handleSelectionChange} onAdd={handleAdd} onDelete={handleDelete} />
+			<VLANMemberTable data={data} selected_rows={selected_rows} onChangeSelectedRows={handleSelectionChange} onAdd={handleAdd} onDelete={handleDelete} onRefresh={refetch} />
 		</SubTitlePannel>
 	);
 }
@@ -185,6 +185,7 @@ export default function VLANPage() {
 			   onChangeSelectedRows={handleSelectionChange}
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
+			   onRefresh={refetch}
 		   />
 		   {selected_index !== -1 && (
 			   <LowerSection>

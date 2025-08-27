@@ -207,6 +207,7 @@ export default function ConntrackPage() {
 		   <ConntrackTable
 			   data={{ctAttr: sortedCtAttr}}
 			   selected_rows={selected_index !== -1 ? [selected_index] : []}
+			   onRefresh={refetch}
 			   onChangeSelectedRows={(indices: number[]) => {
 				   // Map sorted indices back to original indices
 				   if (indices.length === 1 && ct_info?.ctAttr) {

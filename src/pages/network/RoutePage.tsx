@@ -124,5 +124,6 @@ export default function RoutePage() {
 		onChangeSelectedRows={handleSelectionChange}
 		onAdd={handleAdd}
 		onDelete={handleDelete}
+		onRefresh={refetch}
 	/>;
 }

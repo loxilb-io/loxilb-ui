@@ -166,6 +166,7 @@ export default function MirrorPage() {
 			   onChangeSelectedRows={handleSelectionChange}
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
+			   onRefresh={refetch}
 		   />
 		   {selected_index !== -1 && (
 			   <LowerSection>

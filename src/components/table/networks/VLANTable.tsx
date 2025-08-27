@@ -3,15 +3,14 @@
 //---------------------------------------------------------
 import {get_transfer_amount_str} from 'common';
 import DataTable from 'components/table/DataTable';
-import { get } from 'http';
 import {IDataTableColumnDef} from 'types/global';
 import {IVlanData} from 'types/vlan';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function VLANTable(props: {data: IVlanData; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete} = props;
+export default function VLANTable(props: {data: IVlanData; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onRefresh?: any}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'vid', header: 'VLAN ID', width: 'wide'},
@@ -37,7 +36,7 @@ export default function VLANTable(props: {data: IVlanData; selected_rows: number
 		   const sorted = [...data.vlanAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
 		   return sorted.map((item, index) => {
 			   return {
-				//    id: getHashKey(item),
+			//    id: getHashKey(item),
 				   id: index,
 				   vid: item.vid,
 				   dev: item.dev,
@@ -50,5 +49,5 @@ export default function VLANTable(props: {data: IVlanData; selected_rows: number
 	   })()
 	   : undefined;
 
-	return <DataTable name={'VLAN'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} />;
+	return <DataTable name={'VLAN'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onRefresh={onRefresh} />;
 }

@@ -116,5 +116,6 @@ export default function FDBPage() {
 	   onChangeSelectedRows={handleSelectionChange}
 	   onAdd={handleAdd}
 	   onDelete={handleDelete}
+	   onRefresh={refetch}
    />;
 }

@@ -8,15 +8,15 @@ import {IDataTableColumnDef} from 'types/global';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function FSTable(props: {data: IFilesystemInfo; selected_rows: number[]; onChangeSelectedRows: any}) {
-	const {data, selected_rows, onChangeSelectedRows} = props;
+export default function FSTable(props: {data: IFilesystemInfo; selected_rows: number[]; onChangeSelectedRows: any; onRefresh?: any}) {
+	const {data, selected_rows, onChangeSelectedRows, onRefresh} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'fileSystem', header: 'File System', width: 'wide'},
 		{data_key: 'type', header: 'Type', width: 'medium'},
-		{data_key: 'size', header: 'Total Size', align: 'right', width: 'medium'},
-		{data_key: 'avail', header: 'Free Size', align: 'right', width: 'medium'},
-		{data_key: 'usage', header: 'Current Usage', width: 'wide', type: 'usage'},
+		{data_key: 'size', header: 'Total Size', align: 'left', width: 'medium'},
+		{data_key: 'avail', header: 'Free Size', align: 'left', width: 'medium'},
+		{data_key: 'usage', header: 'Current Usage', align: 'left', width: 'super_wide', type: 'usage'},
 	];
 
 	const getUniqueKey = (item: any) => {
@@ -45,5 +45,5 @@ export default function FSTable(props: {data: IFilesystemInfo; selected_rows: nu
 			})
 		: undefined
 
-	return <DataTable name={'File System'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} hideMenuBar disableSelect />;
+	return <DataTable name={'File System'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onRefresh={onRefresh} disableSelect />;
 }

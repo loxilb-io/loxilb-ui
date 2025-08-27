@@ -162,6 +162,7 @@ export default function LBRulePage() {
 				onChangeSelectedRows={handleSelectionChange}
 				onAdd={handleAdd}
 				onDelete={handleDelete}
+				onRefresh={refetch}
 			/>
 
 			{selected_index !== -1 && rule_name && (

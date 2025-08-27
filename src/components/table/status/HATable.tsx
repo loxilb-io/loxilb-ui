@@ -8,8 +8,8 @@ import {IVipConfiguration} from 'types/ha';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function HATable(props: {data: IVipConfiguration; selected_rows: number[]; onChangeSelectedRows: any}) {
-	const {data, selected_rows, onChangeSelectedRows} = props;
+export default function HATable(props: {data: IVipConfiguration; selected_rows: number[]; onChangeSelectedRows: any; onRefresh?: any}) {
+	const {data, selected_rows, onChangeSelectedRows, onRefresh} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'instance', header: 'Instance', width: 'wide', tooltip: 'Name of the instance LoxiLB is running on'},
@@ -28,5 +28,5 @@ export default function HATable(props: {data: IVipConfiguration; selected_rows: 
 		};
 	});
 
-	return <DataTable name={'High Availability'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} />;
+	return <DataTable name={'High Availability'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onRefresh={onRefresh} />;
 }

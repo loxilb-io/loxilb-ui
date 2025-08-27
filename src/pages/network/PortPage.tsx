@@ -94,7 +94,7 @@ function Layer3Panel(props: {l3_info: IPortL3Info}) {
 export default function PortPage() {
 	const inst = useInstanceFromURL();
 
-	const {data} = usePortAttr(inst); // IPortAttribute[]
+	const {data, refetch} = usePortAttr(inst); // IPortAttribute[]
 	const port_info: IPortInfo = {portAttr: data ?? []};
 
 	const [searchParams] = useSearchParams();
@@ -158,6 +158,7 @@ export default function PortPage() {
 			   data={{portAttr: sortedAttr}}
 			   selected_rows={selected_index !== -1 ? [selected_index] : []}
 			   onChangeSelectedRows={handleChangeRows}
+			   onRefresh={refetch}
 		   />
 		   {selected_index !== -1 && sortedAttr.length > selected_index && (
 			   <LowerSection>
