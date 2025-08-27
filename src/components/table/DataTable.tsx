@@ -4,6 +4,7 @@
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ModeIcon from '@mui/icons-material/Mode';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import {Box, IconButton, Stack, Tooltip} from '@mui/material';
 import {GridColDef, GridRowSelectionModel} from '@mui/x-data-grid';
 import {
@@ -50,9 +51,10 @@ export default function DataTable(props: {
 	onAdd?: () => void;
 	onEdit?: () => void;
 	onDelete?: () => void;
+	onRefresh?: () => void;
 	defaultSort?: {field: string; sort: 'asc' | 'desc'};
 }) {
-	const {name, columns, rows, selected_rows, onChangeSelectedRows, hideMenuBar, hideCheckbox, hideIdColumn, disableSelect, onAdd, onEdit, onDelete, defaultSort} = props;
+	const {name, columns, rows, selected_rows, onChangeSelectedRows, hideMenuBar, hideCheckbox, hideIdColumn, disableSelect, onAdd, onEdit, onDelete, onRefresh, defaultSort} = props;
 
 	const handleRowSelectionChange = (selection: GridRowSelectionModel) => {
 		const indices = selection.map(id => Number(id));
@@ -126,6 +128,16 @@ export default function DataTable(props: {
 		<Stack width="100%" maxWidth="1200px">
 			{hideMenuBar === true ? null : (
 				<Box id="table-bar" width="100%" height="40px" display="flex" justifyContent="flex-end" alignItems="center" bgcolor="grey.100" borderRadius="4px">
+					{onRefresh && (
+						<Tooltip title={t('Refresh {{name}}', {name})} placement="top" arrow>
+							<span>
+								<IconButton onClick={onRefresh}>
+									<RefreshIcon sx={{color: 'primary.main'}} />
+								</IconButton>
+							</span>
+						</Tooltip>
+					)}
+
 					{onAdd && (
 						<Tooltip title={t('Add {{name}}', {name})} placement="top" arrow>
 							<span>

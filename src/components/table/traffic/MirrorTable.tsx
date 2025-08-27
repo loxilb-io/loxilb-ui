@@ -10,8 +10,8 @@ import {IMirrorConfiguration} from 'types/mirror';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function MirrorTable(props: {data: IMirrorConfiguration; selected_rows: number[]; onChangeSelectedRows: any; onAdd?: any; onDelete?: any}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete} = props;
+export default function MirrorTable(props: {data: IMirrorConfiguration; selected_rows: number[]; onChangeSelectedRows: any; onAdd?: any; onDelete?: any; onRefresh?: any}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh} = props;
 	const type_name_set = mirrortypes.map(type => type.name);
 
 	const cols: IDataTableColumnDef[] = [
@@ -61,5 +61,5 @@ export default function MirrorTable(props: {data: IMirrorConfiguration; selected
 	   })()
 	   : undefined;
 
-	return <DataTable name={'Mirror'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} />;
+	return <DataTable name={'Mirror'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onRefresh={onRefresh} />;
 }

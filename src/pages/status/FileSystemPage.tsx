@@ -18,5 +18,12 @@ export default function FileSystemPage() {
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
 
-	return <FSTable data={fs_info} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} />;
+	// Since useStatus currently uses dummy data, create a simple refresh function
+	const handleRefresh = () => {
+		// For now, this will just trigger a re-render
+		// When the real API is implemented, this should call the actual refetch function
+		console.log('Refreshing filesystem data...');
+	};
+
+	return <FSTable data={fs_info} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} onRefresh={handleRefresh} />;
 }

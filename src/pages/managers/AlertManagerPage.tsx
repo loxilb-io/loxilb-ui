@@ -261,6 +261,7 @@ export default function AlertManagerPage() {
 				onUpdate={handleUpdate}
 				onTest={handleTest}
 				onToggleEnabled={handleToggleEnabled}
+				onRefresh={refetch}
 			/>
 
 			{selected_index !== -1 && rule_name && (

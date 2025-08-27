@@ -9,8 +9,8 @@ import {getStableHash} from 'common';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function DeviceNeighborTable(props: {data: INeighborData; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete} = props;
+export default function DeviceNeighborTable(props: {data: INeighborData; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onRefresh?: any}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'ipAddress', header: 'IP Address', width: 'wide', tooltip: 'Assigned IP address for routing or interface use.'},
@@ -43,6 +43,7 @@ export default function DeviceNeighborTable(props: {data: INeighborData; selecte
 			onChangeSelectedRows={onChangeSelectedRows}
 			onAdd={onAdd}
 			onDelete={onDelete}
+			onRefresh={onRefresh}
 		/>
 	);
 }

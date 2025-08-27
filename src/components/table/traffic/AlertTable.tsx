@@ -19,8 +19,9 @@ export default function AlertTable(props: {
 	onChangeSelectedRows: any;
 	onResolve: any;
 	onDelete?: any;
+	onRefresh?: any;
 }) {
-	const { data, selected_rows, onChangeSelectedRows, onResolve, onDelete } = props;
+	const { data, selected_rows, onChangeSelectedRows, onResolve, onDelete, onRefresh } = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{ data_key: 'alertId', header: 'ID', width: 'narrow' },
@@ -93,6 +94,7 @@ export default function AlertTable(props: {
 			onChangeSelectedRows={onChangeSelectedRows}
 			onEdit={onResolve}
 			onDelete={onDelete}
+			onRefresh={onRefresh}
 		/>
 	);
 }

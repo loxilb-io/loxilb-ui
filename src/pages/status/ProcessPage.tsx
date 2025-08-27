@@ -57,9 +57,16 @@ export default function ProcessPage() {
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
 
+	// Since useStatus currently uses real API data for process, create a simple refresh function
+	const handleRefresh = () => {
+		// For now, this will just trigger a re-render
+		// When the real API refetch is available, this should call the actual refetch function
+		console.log('Refreshing process data...');
+	};
+
 	return (
 		<Fragment>
-			<ProcessTable data={process_info} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} />
+			<ProcessTable data={process_info} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} onRefresh={handleRefresh} />
 
 			{selected_rows.length === 1 && (
 				<LowerSection>

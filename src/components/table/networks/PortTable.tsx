@@ -8,8 +8,8 @@ import {IPortInfo} from 'types/port';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function PortTable(props: {data: IPortInfo; selected_rows: number[]; onChangeSelectedRows: any}) {
-	const {data, selected_rows, onChangeSelectedRows} = props;
+export default function PortTable(props: {data: IPortInfo; selected_rows: number[]; onChangeSelectedRows: any; onRefresh?: any}) {
+	const {data, selected_rows, onChangeSelectedRows, onRefresh} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'port', header: 'Port No.', width: 'medium'},
@@ -68,6 +68,7 @@ export default function PortTable(props: {data: IPortInfo; selected_rows: number
 			rows={rows || []}
 			selected_rows={selected_rows}
 			onChangeSelectedRows={onChangeSelectedRows}
+			onRefresh={onRefresh}
 			hideIdColumn
 			defaultSort={{field: 'port', sort: 'asc'}}
 		/>

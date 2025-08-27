@@ -13,9 +13,9 @@ import {IVipConfiguration} from 'types/ha';
 export default function HAPage() {
 	const inst = useInstanceFromURL();
 
-	const {data} = useHAState(inst); // IVipAttribute[]
+	const {data, refetch} = useHAState(inst); // IVipAttribute[]
 	const ha_info: IVipConfiguration = {Attr: data ?? []};
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
 
-	return <HATable data={ha_info} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} />;
+	return <HATable data={ha_info} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} onRefresh={refetch} />;
 }

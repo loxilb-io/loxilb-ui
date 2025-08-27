@@ -118,5 +118,6 @@ export default function QoSPage() {
 	   onChangeSelectedRows={handleSelectionChange}
 	   onAdd={handleAdd}
 	   onDelete={handleDelete}
+	   onRefresh={refetch}
    />;
 }

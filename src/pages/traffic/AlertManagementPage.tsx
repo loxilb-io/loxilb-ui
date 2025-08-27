@@ -313,6 +313,7 @@ export default function AlertManagementPage() {
 				selected_rows={selected_rows}
 				onChangeSelectedRows={set_selected_rows}
 				onResolve={handleResolve}
+				onRefresh={refetch}
 			/>
 
 			{selected_alert && (

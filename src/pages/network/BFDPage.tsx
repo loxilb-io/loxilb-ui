@@ -120,5 +120,6 @@ export default function BFDPage() {
 	   onChangeSelectedRows={handleSelectionChange}
 	   onAdd={handleAdd}
 	   onDelete={handleDelete}
+	   onRefresh={refetch}
    />;
 }

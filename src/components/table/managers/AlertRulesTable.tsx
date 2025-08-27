@@ -18,13 +18,14 @@ interface AlertRulesTableProps {
 	onUpdate?: () => void;
 	onTest?: () => void;
 	onToggleEnabled?: () => void;
+	onRefresh?: () => void;
 }
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
 export default function AlertRulesTable(props: AlertRulesTableProps) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onUpdate} = props;
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onUpdate, onRefresh} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		// {data_key: 'id', header: 'ID', width: 'narrow'},
@@ -83,6 +84,7 @@ export default function AlertRulesTable(props: AlertRulesTableProps) {
 			onAdd={onAdd}
 			onEdit={onUpdate}
 			onDelete={onDelete}
+			onRefresh={onRefresh}
 		/>
 	);
 }
