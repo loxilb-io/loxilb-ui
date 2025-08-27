@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {Box, Stack, Typography} from '@mui/material';
+import {Box, Stack, Typography, FormControl, InputLabel, Select, MenuItem, TextField, Button, Chip} from '@mui/material';
 import {formatRate} from 'common';
 import RateLineGraph from 'components/element/RateLineGraph';
 import RateTooltip from 'components/element/RateTooltip';
@@ -14,7 +14,7 @@ import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useConntrackSeries} from 'hooks/query/metricsTimeSeriesHook';
 import {useConntrack} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
-import {Fragment, useEffect, useState} from 'react';
+import {Fragment, useCallback, useEffect, useMemo, useState} from 'react';
 import {ICtAttribute, ICtData} from 'types/conn_track';
 import {ITimeSeriesPoint, ITimelineDataSet} from 'types/global';
 import {IInstance} from 'types/oam';
@@ -163,9 +163,32 @@ export default function ConntrackPage() {
 
 	const {data: ct_info, refetch} = useConntrack(inst);
 
+	// Filter states
+	const [servNameFilter, setServNameFilter] = useState<string>('');
+	const [sourceIPFilter, setSourceIPFilter] = useState<string>('');
+	const [sourcePortFilter, setSourcePortFilter] = useState<string>('');
+	const [destinationIPFilter, setDestinationIPFilter] = useState<string>('');
+	const [destinationPortFilter, setDestinationPortFilter] = useState<string>('');
+
    const [selected_rows, set_selected_rows] = useState<number[]>([]);
    // Track selected servName for synchronization
    const [selected_servName, set_selected_servName] = useState<string | null>(null);
+   // Apply filters and clear filters functions
+   const applyFilters = useCallback(() => {
+	   // Filters will be applied in the filteredCtAttr useMemo
+   }, [servNameFilter, sourceIPFilter, sourcePortFilter, destinationIPFilter, destinationPortFilter]);
+
+   const clearFilters = useCallback(() => {
+	   setServNameFilter('');
+	   setSourceIPFilter('');
+	   setSourcePortFilter('');
+	   setDestinationIPFilter('');
+	   setDestinationPortFilter('');
+   }, []);
+
+   // Active filter count
+   const activeFilterCount = [servNameFilter, sourceIPFilter, sourcePortFilter, destinationIPFilter, destinationPortFilter].filter(f => f).length;
+
    // Helper: get hash key (same as ConntrackTable)
    const getHashKey = (item: any) => {
 	   const str = `${item.sourcePort || ''}_${item.destinationIP || ''}_${item.destinationPort || ''}_${item.protocol || ''}_${item.conntrackState || ''}_${item.conntrackAct || ''}`;
@@ -176,9 +199,46 @@ export default function ConntrackPage() {
 	   }
 	   return hash >>> 0;
    };
-   // Sorted ctAttr (same as ConntrackTable)
-   const sortedCtAttr = ct_info?.ctAttr ? [...ct_info.ctAttr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
-   // Always map selected_rows (original index) to sorted index
+
+   // Filter and sort ctAttr
+   const filteredCtAttr = useMemo(() => {
+	   if (!ct_info?.ctAttr) return [];
+	   
+	   let filtered = ct_info.ctAttr;
+	   
+	   // Apply filters
+	   if (servNameFilter) {
+		   filtered = filtered.filter(item => 
+			   item.servName?.toLowerCase().includes(servNameFilter.toLowerCase())
+		   );
+	   }
+	   if (sourceIPFilter) {
+		   filtered = filtered.filter(item => 
+			   item.sourceIP?.toLowerCase().includes(sourceIPFilter.toLowerCase())
+		   );
+	   }
+	   if (sourcePortFilter) {
+		   filtered = filtered.filter(item => 
+			   item.sourcePort?.toString().includes(sourcePortFilter)
+		   );
+	   }
+	   if (destinationIPFilter) {
+		   filtered = filtered.filter(item => 
+			   item.destinationIP?.toLowerCase().includes(destinationIPFilter.toLowerCase())
+		   );
+	   }
+	   if (destinationPortFilter) {
+		   filtered = filtered.filter(item => 
+			   item.destinationPort?.toString().includes(destinationPortFilter)
+		   );
+	   }
+	   
+	   // Sort the filtered results
+	   return filtered.sort((a, b) => getHashKey(a) - getHashKey(b));
+   }, [ct_info?.ctAttr, servNameFilter, sourceIPFilter, sourcePortFilter, destinationIPFilter, destinationPortFilter]);
+
+   const sortedCtAttr = filteredCtAttr;
+   // Always map selected_rows (original index) to filtered/sorted index
    let selected_index = -1;
    if (selected_rows.length === 1 && ct_info?.ctAttr) {
 	   const original = ct_info.ctAttr[selected_rows[0]];
@@ -204,6 +264,102 @@ export default function ConntrackPage() {
 
    return (
 	   <Fragment>
+		   {/* Filter Controls */}
+		   <Box sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1, mb: 2 }}>
+			   <Stack spacing={2}>
+				   <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
+					   <Stack direction="row" spacing={2} alignItems="center">
+						   <TextField
+							   size="small"
+							   label={t('Service Name')}
+							   value={servNameFilter}
+							   onChange={(e) => setServNameFilter(e.target.value)}
+							   sx={{ minWidth: 150 }}
+						   />
+
+						   <TextField
+							   size="small"
+							   label={t('Source IP')}
+							   value={sourceIPFilter}
+							   onChange={(e) => setSourceIPFilter(e.target.value)}
+							   sx={{ minWidth: 150 }}
+						   />
+
+						   <TextField
+							   size="small"
+							   label={t('Source Port')}
+							   value={sourcePortFilter}
+							   onChange={(e) => setSourcePortFilter(e.target.value)}
+							   sx={{ minWidth: 120 }}
+						   />
+
+						   <TextField
+							   size="small"
+							   label={t('Destination IP')}
+							   value={destinationIPFilter}
+							   onChange={(e) => setDestinationIPFilter(e.target.value)}
+							   sx={{ minWidth: 150 }}
+						   />
+
+						   <TextField
+							   size="small"
+							   label={t('Destination Port')}
+							   value={destinationPortFilter}
+							   onChange={(e) => setDestinationPortFilter(e.target.value)}
+							   sx={{ minWidth: 120 }}
+						   />
+
+						   {activeFilterCount > 0 && (
+							   <Button variant="outlined" onClick={clearFilters}>
+								   {t('Clear All')} ({activeFilterCount})
+							   </Button>
+						   )}
+					   </Stack>
+				   </Stack>
+
+				   {/* Active Filters Display */}
+				   {activeFilterCount > 0 && (
+					   <Stack direction="row" spacing={1} flexWrap="wrap">
+						   {servNameFilter && (
+							   <Chip
+								   label={`${t('Service Name')}: ${servNameFilter}`}
+								   onDelete={() => setServNameFilter('')}
+								   size="small"
+							   />
+						   )}
+						   {sourceIPFilter && (
+							   <Chip
+								   label={`${t('Source IP')}: ${sourceIPFilter}`}
+								   onDelete={() => setSourceIPFilter('')}
+								   size="small"
+							   />
+						   )}
+						   {sourcePortFilter && (
+							   <Chip
+								   label={`${t('Source Port')}: ${sourcePortFilter}`}
+								   onDelete={() => setSourcePortFilter('')}
+								   size="small"
+							   />
+						   )}
+						   {destinationIPFilter && (
+							   <Chip
+								   label={`${t('Destination IP')}: ${destinationIPFilter}`}
+								   onDelete={() => setDestinationIPFilter('')}
+								   size="small"
+							   />
+						   )}
+						   {destinationPortFilter && (
+							   <Chip
+								   label={`${t('Destination Port')}: ${destinationPortFilter}`}
+								   onDelete={() => setDestinationPortFilter('')}
+								   size="small"
+							   />
+						   )}
+					   </Stack>
+				   )}
+			   </Stack>
+		   </Box>
+
 		   <ConntrackTable
 			   data={{ctAttr: sortedCtAttr}}
 			   selected_rows={selected_index !== -1 ? [selected_index] : []}
