@@ -184,6 +184,11 @@ export interface ITypedLiveMetricsResponse {
 		firewall_rules_count?: number;
 		total_fw_drops?: number;
 		total_fw_drops_per_rule?: number;
+
+		// System metrics
+		system_cpu_utilization?: number;
+		system_memory_utilization?: number;
+		system_disk_utilization?: number;
 	};
 	important?: {
 		// Traffic processing metrics
