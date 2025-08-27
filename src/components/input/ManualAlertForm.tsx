@@ -18,21 +18,23 @@ import { ICreateManualAlertRequest } from 'types/alerts';
 // Component Props Interface
 //---------------------------------------------------------
 interface IManualAlertFormProps {
+	initialData?: Partial<ICreateManualAlertRequest>;
+	isEdit?: boolean;
 	onChange: (data: { request: ICreateManualAlertRequest | null; isValid: boolean }) => void;
 }
 
 //---------------------------------------------------------
 // Component Implementation
 //---------------------------------------------------------
-export default function ManualAlertForm({ onChange }: IManualAlertFormProps) {
+export default function ManualAlertForm({ initialData, isEdit = false, onChange }: IManualAlertFormProps) {
 	const [formData, setFormData] = useState<ICreateManualAlertRequest>({
-		rule_name: 'manual',
-		metric_name: '',
-		severity: 'warning',
-		message: '',
-		value: undefined,
-		threshold: undefined,
-		labels: {},
+		rule_name: initialData?.rule_name || 'manual',
+		metric_name: initialData?.metric_name || '',
+		severity: initialData?.severity || 'warning',
+		message: initialData?.message || '',
+		value: initialData?.value || undefined,
+		threshold: initialData?.threshold || undefined,
+		labels: initialData?.labels || {},
 	});
 
 	const [errors, setErrors] = useState<Record<string, string>>({});
@@ -113,7 +115,7 @@ export default function ManualAlertForm({ onChange }: IManualAlertFormProps) {
 	return (
 		<Stack width="100%" maxHeight="400px" spacing={2}>
 			<Typography variant="h6">
-				{t('Create Manual Alert')}
+				{isEdit ? t('Edit Alert') : t('Create Manual Alert')}
 			</Typography>
 
 			<Stack width="100%" height="100%" padding="15px 5px" spacing={2} sx={{overflowY: 'auto'}}>
