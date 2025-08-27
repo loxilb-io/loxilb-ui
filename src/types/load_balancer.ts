@@ -4,7 +4,7 @@
 export interface IServiceArguments {
 	name: string;
 
-	externalIP: string;
+	externalIP: string;			
 	inactiveTimeOut: number;
 	port: number;
 	protocol: string;
@@ -17,7 +17,7 @@ export interface IServiceArguments {
 	probeport?: number;
 	probereq?: string;
 	proberesp?: string;
-	managed?: boolean;
+	managed?: boolean;				// Not required in Edit
 	mode?: number;
 	security?: number;
 	block?: number;
@@ -34,8 +34,8 @@ export interface IEndpoint {
 	endpointIP: string;
 	weight: number;
 	targetPort: number;
-	state: string;
-	counter: string;
+	state: string;					// Not required in Edit					
+	counter: string;				// Not required in Edit
 }
 
 export interface ISecondaryIP {

@@ -13,8 +13,8 @@ import {IServiceArguments} from 'types/load_balancer';
 //---------------------------------------------------------
 // Component
 //---------------------------------------------------------
-export default function BasicSettingsForm(props: {value: IServiceArguments; onChange: (val: Partial<IServiceArguments>) => void; params?: any}) {
-	const {value, onChange, params} = props;
+export default function BasicSettingsForm(props: {value: IServiceArguments; onChange: (val: Partial<IServiceArguments>) => void; params?: any; isEdit?: boolean}) {
+	const {value, onChange, params, isEdit = false} = props;
 
 	const handleChange = useCallback((field: keyof IServiceArguments) => (newValue: any) => onChange({...value, [field]: newValue}), [value, onChange]);
 
@@ -27,7 +27,7 @@ export default function BasicSettingsForm(props: {value: IServiceArguments; onCh
 
 	return (
 		<Fragment>
-	   <ParamBox label={t('Rule Name')} value={value?.name ?? ''} onChange={handleChange('name')} param_desc={params?.name} />
+	   <ParamBox label={t('Rule Name')} value={value?.name ?? ''} onChange={handleChange('name')} param_desc={params?.name} disabled={isEdit}/>
 
 	   <AccordionBox title={t('Basic Settings(*)')}>
 			   <Stack spacing={2}>
@@ -41,18 +41,19 @@ export default function BasicSettingsForm(props: {value: IServiceArguments; onCh
 							   		{id: 2, name: 'UDP', send_value: 'udp'},
 							   		{id: 3, name: 'SCTP', send_value: 'sctp'}
 							   	]}
+							   	disabled={isEdit}
 							   />
 							   <ParamBox label={t('Host')} value={value?.host ?? ''} onChange={handleChange('host')} param_desc={params?.host} />
 					   </HorizontalStack>
 
 					   <HorizontalStack>
-							   <ParamBox label={t('External IP')} value={value?.externalIP ?? ''} onChange={handleChange('externalIP')} param_desc={{...params?.externalIP, type: 'ipaddress'}} />
+							   <ParamBox label={t('External IP')} value={value?.externalIP ?? ''} onChange={handleChange('externalIP')} param_desc={{...params?.externalIP, type: isEdit ? 'string' : 'ipaddress'}} disabled={isEdit} />
 							   <ParamBox label={t('Private IP')} value={value?.privateIP ?? ''} onChange={handleChange('privateIP')} param_desc={{...params?.privateIP, type: 'ipaddress'}} />
 					   </HorizontalStack>
 
 					   <HorizontalStack>
-							   <ParamBox label={t('Port Min')} value={value?.port ?? ''} onChange={handleChange('port')} param_desc={{...params?.port, type: 'port'}} />
-							   <ParamBox label={t('Port Max')} value={value?.portMax ?? ''} onChange={handleChange('portMax')} param_desc={{...params?.portMax, type: 'port'}} />
+							   <ParamBox label={t('Port Min')} value={value?.port?.toString() ?? ''} onChange={handleChange('port')} param_desc={{...params?.port, type: isEdit ? 'string' : 'port'}} disabled={isEdit} />
+							   <ParamBox label={t('Port Max')} value={value?.portMax?.toString() ?? ''} onChange={handleChange('portMax')} param_desc={{...params?.portMax, type: isEdit ? 'string' : 'port'}} disabled={isEdit} />
 					   </HorizontalStack>
 			   </Stack>
 	   </AccordionBox>

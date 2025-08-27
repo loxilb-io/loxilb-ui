@@ -89,7 +89,7 @@ export default function ParamBox(props: ParamBoxProps) {
 	else if (type === 'array')
 		return <TextBoxArray label={labelText} value={value} type={param_desc?.items?.type === 'integer' ? 'number' : 'string'} onChange={handleChange} />;
 	else if (type === 'ipaddress') 
-		return <IPAddressBox label={labelText} value={value} disabled={disabled} error={!!error || showRequiredHelper} helperText={finalHelperText} onChange={handleChange} />;
+		return <IPAddressBox label={labelText} value={value} disabled={disabled} error={!!error || showRequiredHelper} helperText={finalHelperText} onChange={handleChange} />;	
 	else if (type === 'ipaddress_cidr') 
 		return <IPAddressCidrBox label={labelText} value={value} disabled={disabled} error={!!error || showRequiredHelper} helperText={finalHelperText} onChange={handleChange} />;
 	else if (type === 'port') 
