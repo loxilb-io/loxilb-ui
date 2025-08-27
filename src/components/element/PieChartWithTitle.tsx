@@ -25,7 +25,7 @@ export default function PieChartWithTitle(props: {title?: string; data: PieValue
 		const remainingValue = 100 - totalValue;
 		processedData.push({
 			id: data.length,
-			label: t(`Unused`),
+			label: t(`Available`),
 			value: remainingValue,
 		});
 	}
