@@ -78,7 +78,6 @@ export default function AlertManagementPage() {
 		request?: IResolveAlertRequest;
 		isValid?: boolean;
 	} | null>(null);
-	const instanceRef = useRef<ICreateManualAlertRequest | null>(null);
 
 	// Apply filters
 	const applyFilters = useCallback(() => {

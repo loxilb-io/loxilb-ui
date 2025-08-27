@@ -15,27 +15,25 @@ interface AlertRulesTableProps {
 	onChangeSelectedRows: (indices: number[]) => void;
 	onAdd: () => void;
 	onDelete: () => void;
-	onUpdate?: (ruleId: string, updateData: any) => void;
-	onTest?: (ruleId: string, testData: any) => void;
-	onToggleEnabled?: (ruleId: string, enabled: boolean) => void;
+	onUpdate?: () => void;
+	onTest?: () => void;
+	onToggleEnabled?: () => void;
 }
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
 export default function AlertRulesTable(props: AlertRulesTableProps) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete} = props;
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onUpdate} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		// {data_key: 'id', header: 'ID', width: 'narrow'},
-		{data_key: 'name', header: 'Rule Name', width: 'wide'},
+		{data_key: 'name', header: 'Rule Name', width: 'super_wide'},
 		{data_key: 'severity', header: 'Severity', width: 'medium'},
-		{data_key: 'metric_name', header: 'Metric', width: 'wide'},
+		{data_key: 'metric_name', header: 'Metric', width: 'super_wide'},
 		{data_key: 'condition', header: 'Condition', width: 'medium'},
 		{data_key: 'window', header: 'Window', width: 'narrow'},
 		{data_key: 'status', header: 'Status', width: 'narrow'},
-		{data_key: 'last_triggered', header: 'Last Triggered', width: 'medium'},
-		{data_key: 'alert_count', header: 'Alert Count', width: 'medium'},
 	];
 
 	// Hash function for alert rule
@@ -69,8 +67,6 @@ export default function AlertRulesTable(props: AlertRulesTableProps) {
 					condition: `${getOperatorSymbol(item.condition || 'greater_than')} ${item.threshold || 0}`,
 					window: item.duration ? `${item.duration}s` : '-',
 					status: item.enabled ? 'Active' : 'Inactive',
-					last_triggered: 'Never', // Simplified as not in interface
-					alert_count: 0, // Simplified as not in interface
 					_uniqueKey: getHashKey(item),
 				};
 			});
@@ -85,6 +81,7 @@ export default function AlertRulesTable(props: AlertRulesTableProps) {
 			selected_rows={selected_rows}
 			onChangeSelectedRows={onChangeSelectedRows}
 			onAdd={onAdd}
+			onEdit={onUpdate}
 			onDelete={onDelete}
 		/>
 	);

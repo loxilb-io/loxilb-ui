@@ -9,7 +9,6 @@ import AlertActionsPanel from 'components/panel/AlertActionsPanel';
 import AlertConditionsPanel from 'components/panel/AlertConditionsPanel';
 import AlertHistoryPanel from 'components/panel/AlertHistoryPanel';
 import AlertSettingsPanel from 'components/panel/AlertSettingsPanel';
-import AlertTestingPanel from 'components/panel/AlertTestingPanel';
 import AlertRulesTable from 'components/table/managers/AlertRulesTable';
 import {query_create_alert_rule, query_delete_alert_rule, query_update_alert_rule} from 'connector/instance/alerts';
 import AlertRuleForm from 'components/input/AlertRuleForm';
@@ -38,7 +37,7 @@ export default function AlertManagerPage() {
 	const [rule_name, set_rule_name] = useState<string | null>(null);
 	const [cur_tab_idx, set_cur_tab_idx] = useState(0);
 
-	const tabs: string[] = ['Settings', 'Conditions', 'Actions', 'History', 'Testing'];
+	const tabs: string[] = ['Settings', 'Conditions', 'Actions', 'History'];
 
 	// Hash function for alert rule
 	const getHashKey = (item: any) => {
@@ -168,7 +167,7 @@ export default function AlertManagerPage() {
 		openPopUp(
 			'',
 			update_form,
-			t('Update Alert Rule'),
+			t('Update'),
 			t('Cancel'),
 			async () => {
 				if (!updateFormRef.current) return;
@@ -271,8 +270,7 @@ export default function AlertManagerPage() {
 						{cur_tab_idx === 0 && <AlertSettingsPanel alertRule={	sortedAttr[selected_index]} />}
 						{cur_tab_idx === 1 && <AlertConditionsPanel alertRule={sortedAttr[selected_index]} />}
 						{cur_tab_idx === 2 && <AlertActionsPanel alertRule={sortedAttr[selected_index]} />}
-						{cur_tab_idx === 3 && <AlertHistoryPanel alertRule={sortedAttr[selected_index]} />}
-						{cur_tab_idx === 4 && <AlertTestingPanel alertRule={sortedAttr[selected_index]} />}
+						{cur_tab_idx === 3 && <AlertHistoryPanel alertRule={sortedAttr[selected_index]} />}						
 					</Stack>
 				</LowerSection>
 			)}

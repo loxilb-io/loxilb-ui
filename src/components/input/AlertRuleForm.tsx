@@ -4,14 +4,11 @@
 import {
 	Stack,
 	TextField,
-	FormControl,
-	InputLabel,
-	Select,
-	MenuItem,
 	Typography,
 	FormControlLabel,
 	Checkbox,
 } from '@mui/material';
+import DropDownSelectBox from 'components/element/DropDownSelectBox';
 import { t } from 'i18next';
 import { useEffect, useState, useCallback } from 'react';
 import { ICreateAlertRuleRequest, IUpdateAlertRuleRequest } from 'types/alerts';
@@ -117,7 +114,7 @@ export default function AlertRuleForm({ initialData, isEdit = false, onChange }:
 							helperText={errors.name || t('Unique name for the alert rule')}
 						/>
 
-						<TextField
+						{/* <TextField
 							label={t('Metric Name')} 
 							value={formData.metric_name}
 							onChange={(e) => handleChange('metric_name', e.target.value)}
@@ -125,23 +122,61 @@ export default function AlertRuleForm({ initialData, isEdit = false, onChange }:
 							required
 							error={!!errors.metric_name}
 							helperText={errors.metric_name || t('Name of the metric to monitor')}
+						/> */}
+						<DropDownSelectBox 
+							label={t('Metric Name')} 
+							value={formData.metric_name} 
+							onChange={(value) => handleChange('metric_name', value)} 
+							item_list={[
+								{id: 1, name: 'ACTIVE_CONNTRACK_COUNT', send_value: 'active_conntrack_count'},
+								{id: 2, name: 'ACTIVE_FLOW_COUNT_TCP', send_value: 'active_flow_count_tcp'},
+								{id: 3, name: 'ACTIVE_FLOW_COUNT_UDP', send_value: 'active_flow_count_udp'},
+								{id: 4, name: 'ACTIVE_FLOW_COUNT_SCTP', send_value: 'active_flow_count_sctp'},
+								{id: 5, name: 'INACTIVE_FLOW_COUNT', send_value: 'inactive_flow_count'},
+								{id: 6, name: 'NEW_FLOW_COUNT', send_value: 'new_flow_count'},
+								{id: 7, name: 'LB_RULE_COUNT', send_value: 'lb_rule_count'},
+								{id: 8, name: 'TOTAL_REQUEST', send_value: 'total_requests'},
+								{id: 9, name: 'TOTAL_ERRORS', send_value: 'total_errors'},
+								{id: 10, name: 'UNHEALTHY_ENDPOINTS_COUNT', send_value: 'unhealthy_endpoints_count'},
+								{id: 11, name: 'TOTAL_FW_DROPS', send_value: 'total_fw_drops'},
+								{id: 12, name: 'BPS', send_value: 'rps_bps'},
+								{id: 13, name: 'PPS', send_value: 'rps_pps'},
+								{id: 14, name: 'EPS', send_value: 'rps_eps'},
+								{id: 15, name: 'TCP_BPS', send_value: 'rps_tcp_bps'},
+								{id: 16, name: 'UDP_BPS', send_value: 'rps_udp_bps'},
+								{id: 17, name: 'SCTP_BPS', send_value: 'rps_sctp_bps'},
+								{id: 18, name: 'TCP_PPS', send_value: 'rps_tcp_pps'},
+								{id: 19, name: 'UDP_PPS', send_value: 'rps_udp_pps'},
+								{id: 20, name: 'SCTP_PPS', send_value: 'rps_sctp_pps'}
+							]}
 						/>
 
-						<FormControl size="small" required>
-							<InputLabel>{t('Severity')}</InputLabel>
-							<Select
-								value={formData.severity}
-								label={t('Severity')}
-								onChange={(e) => handleChange('severity', e.target.value)}
-							>
-								<MenuItem value="critical">{t('Critical')}</MenuItem>
-								<MenuItem value="warning">{t('Warning')}</MenuItem>
-								<MenuItem value="info">{t('Info')}</MenuItem>
-							</Select>
-						</FormControl>
+						<DropDownSelectBox 
+							label={t('Severity')} 
+							value={formData.severity} 
+							onChange={(value) => handleChange('severity', value)} 
+							item_list={[
+								{id: 1, name: t('Critical'), send_value: 'critical'},
+								{id: 2, name: t('Warning'), send_value: 'warning'},
+								{id: 3, name: t('Info'), send_value: 'info'}
+							]}
+						/>
+
+						<DropDownSelectBox 
+							label={t('Message Template')} 
+							value={formData.message || ''} 
+							onChange={(value) => handleChange('message', value)} 
+							item_list={[
+								{id: 1, name: t('Basic Alert'), send_value: 'Alert: {{metric_name}} is {{condition}} {{threshold}}'},
+								{id: 2, name: t('Detailed Alert'), send_value: 'ALERT: {{metric_name}} has reached {{condition}} {{threshold}} for {{duration}} seconds'},
+								{id: 3, name: t('Critical System Alert'), send_value: 'CRITICAL: System metric {{metric_name}} is {{condition}} {{threshold}} - Immediate attention required'},
+								{id: 4, name: t('Performance Warning'), send_value: 'WARNING: Performance metric {{metric_name}} is {{condition}} {{threshold}} - Please investigate'},
+								{id: 5, name: t('Threshold Exceeded'), send_value: 'Threshold Exceeded: {{metric_name}} value is {{condition}} {{threshold}}'}
+							]}
+						/>
 
 						<TextField
-							label={t('Message')}
+							label={t('Custom Message')}
 							value={formData.message || ''}
 							onChange={(e) => handleChange('message', e.target.value)}
 							size="small"
@@ -149,28 +184,26 @@ export default function AlertRuleForm({ initialData, isEdit = false, onChange }:
 							rows={2}
 							required
 							error={!!errors.message}
-							helperText={errors.message || t('Alert message template')}
+							helperText={errors.message || t('Customize the alert message. Use {{metric_name}}, {{condition}}, {{threshold}}, {{duration}} as placeholders')}
 							placeholder={t('Alert: {{metric_name}} is {{condition}} {{threshold}}')}
 						/>
 				</Stack>
 
 				{/* Condition Configuration */}
 				<Stack spacing={2}>
-						<FormControl size="small" required>
-							<InputLabel>{t('Condition')}</InputLabel>
-							<Select
-								value={formData.condition}
-								label={t('Condition')}
-								onChange={(e) => handleChange('condition', e.target.value)}
-							>
-								<MenuItem value="gt">{t('Greater than (>)')}</MenuItem>
-								<MenuItem value="gte">{t('Greater than or equal (>=)')}</MenuItem>
-								<MenuItem value="lt">{t('Less than (<)')}</MenuItem>
-								<MenuItem value="lte">{t('Less than or equal (<=)')}</MenuItem>
-								<MenuItem value="eq">{t('Equal to (=)')}</MenuItem>
-								<MenuItem value="ne">{t('Not equal to (≠)')}</MenuItem>
-							</Select>
-						</FormControl>
+						<DropDownSelectBox 
+							label={t('Condition')} 
+							value={formData.condition} 
+							onChange={(value) => handleChange('condition', value)} 
+							item_list={[
+								{id: 1, name: t('Greater than (>)'), send_value: 'gt'},
+								{id: 2, name: t('Greater than or equal (>=)'), send_value: 'gte'},
+								{id: 3, name: t('Less than (<)'), send_value: 'lt'},
+								{id: 4, name: t('Less than or equal (<=)'), send_value: 'lte'},
+								{id: 5, name: t('Equal to (=)'), send_value: 'eq'},
+								{id: 6, name: t('Not equal to (≠)'), send_value: 'ne'}
+							]}
+						/>
 
 						<TextField
 							label={t('Threshold Value')}
