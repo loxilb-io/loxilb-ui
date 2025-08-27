@@ -47,6 +47,5 @@ export default function EndpointTable(props: {data: IEndpointAttr; selected_rows
 	   })()
 	   : undefined;
 
-	return <DataTable name={'Endpoint'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onUpdate={onUpdate} onRefresh={onRefresh} />;
-} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onRefresh={onRefresh} />;
+	return <DataTable name={'Endpoint'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onEdit={onUpdate} onRefresh={onRefresh} />;
 }

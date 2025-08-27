@@ -4,6 +4,7 @@
 import {Box, Stack} from '@mui/material';
 import AccordionBox from 'components/element/AccordionBox';
 import ParamBox from 'components/element/ParamBox';
+import DropDownSelectBox from 'components/element/DropDownSelectBox';
 import HorizontalStack from 'components/layout/HorizontalStack';
 import {t} from 'i18next';
 import {useCallback} from 'react';
@@ -30,7 +31,19 @@ export default function HealthCheckForm(props: {value: IServiceArguments; onChan
 				</HorizontalStack>
 
 				<HorizontalStack>
-					<ParamBox label={t('Probe Type')} value={value.probetype} onChange={handleChange('probetype')} param_desc={{...params?.probetype}} disabled={!value.monitor} />
+					<DropDownSelectBox 
+						label={t('Probe Type')} 
+						value={value.probetype} 
+						onChange={handleChange('probetype')} 
+						item_list={[
+							{id: 1, name: 'PING', send_value: 'ping'},
+							{id: 2, name: 'TCP', send_value: 'tcp'},
+							{id: 3, name: 'UDP', send_value: 'udp'},
+							{id: 4, name: 'HTTP', send_value: 'http'},
+							{id: 5, name: 'HTTPS', send_value: 'https'}
+						]}
+						disabled={!value.monitor}
+					/>
 					<ParamBox
 						label={t('Probe Port')}
 						value={value.probeport}

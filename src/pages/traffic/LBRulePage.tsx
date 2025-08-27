@@ -21,7 +21,7 @@ import {useLoadBalancerConfig, useMirrors, useQOSPolicies} from 'hooks/query/que
 import {t} from 'i18next';
 import {Fragment, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {useSearchParams} from 'react-router-dom';
-import {ILBData, IServiceConfiguration} from 'types/load_balancer';
+import {IEndpoint, ILBData, IServiceConfiguration} from 'types/load_balancer';
 import {IMirrorConfiguration} from 'types/mirror';
 import {IPolicyConfiguration} from 'types/qos';
 
@@ -143,6 +143,66 @@ export default function LBRulePage() {
 		);
 	}, [inst, openPopUp, refetch, enableYes]);
 
+	// Update handler for LB rules
+	const updateFormRef = useRef<(IServiceConfiguration & {isValid?: boolean; errors?: any}) | null>(null);
+	const handleUpdate = useCallback(() => {
+		if (!inst || selected_rows.length !== 1) return;
+
+		const selectedLB = lb_info.lbAttr[selected_rows[0]];
+		
+		// Convert selected LB rule to format expected by LBInputForm
+		// Exclude fields that are "Not required in Edit" (managed, state, counter)
+		const {managed, security, ...editableServiceArguments} = selectedLB.serviceArguments;
+		const editableEndpoints = selectedLB.endpoints.map(endpoint => {
+			const {state, counter, ...editableEndpoint} = endpoint;
+			return editableEndpoint;
+		});
+		
+		const formData: Partial<IServiceConfiguration> = {
+			serviceArguments: editableServiceArguments,
+			secondaryIPs: selectedLB.secondaryIPs,
+			allowedSources: selectedLB.allowedSources,
+			endpoints: editableEndpoints as IEndpoint[],
+		};
+		
+		const update_form = (
+			<LBInputForm
+				key={Date.now()}
+				initialData={formData}
+				isEdit={true}
+				onChange={data => {
+					updateFormRef.current = data;
+					enableYes(data.isValid);
+				}}
+			/>
+		);
+
+		openPopUp(
+			'',
+			update_form,
+			t('Update'),
+			t('Cancel'),
+			async () => {
+				if (!updateFormRef.current) return;
+
+				// Extract only the service configuration data, excluding validation properties
+				const {isValid, errors, ...serviceConfig} = updateFormRef.current as IServiceConfiguration & {isValid?: boolean; errors?: any};
+				
+				// Use POST API with same function as create (following EndpointPage pattern)
+				const res = await request_create_load_balancer_config(inst, serviceConfig);
+				if (res.status === 'success') {
+					openPopUp(t('Success'), t('Load balancer rule updated successfully.'), t('OK'));
+					setTimeout(() => {
+						refetch();
+					}, 1000);
+				} else {
+					openPopUp(t('Error'), t('Failed to update load balancer rule. {{error}}', {error: res.error}), t('OK'));
+				}
+			},
+			true,
+		);
+	}, [inst, selected_rows, lb_info, openPopUp, refetch, enableYes]);
+
 	useEffect(() => {
 		if (!servName || !lb_info || lb_info.lbAttr.length === 0) return;
 		const index = lb_info.lbAttr.findIndex(attr => attr.serviceArguments.name === servName);
@@ -162,6 +222,7 @@ export default function LBRulePage() {
 				onChangeSelectedRows={handleSelectionChange}
 				onAdd={handleAdd}
 				onDelete={handleDelete}
+				onUpdate={handleUpdate}
 				onRefresh={refetch}
 			/>
 

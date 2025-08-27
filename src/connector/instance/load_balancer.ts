@@ -7,6 +7,31 @@ import {ApiResult} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
 
 //---------------------------------------------------------
+// Helper Functions
+//---------------------------------------------------------
+function cleanNegativeNumbers(obj: any): any {
+	if (obj === null || obj === undefined) return obj;
+	
+	if (Array.isArray(obj)) {
+		return obj.map(item => cleanNegativeNumbers(item));
+	}
+	
+	if (typeof obj === 'object') {
+		const cleaned: any = {};
+		for (const [key, value] of Object.entries(obj)) {
+			// Skip keys with negative number values
+			if (typeof value === 'number' && value < 0) {
+				continue;
+			}
+			cleaned[key] = cleanNegativeNumbers(value);
+		}
+		return cleaned;
+	}
+	
+	return obj;
+}
+
+//---------------------------------------------------------
 // API Caller Functions
 //---------------------------------------------------------
 export async function query_get_load_balancer_config_all(instance: IInstance): Promise<IServiceConfiguration[]> {
@@ -15,7 +40,20 @@ export async function query_get_load_balancer_config_all(instance: IInstance): P
 }
 
 export async function request_create_load_balancer_config(instance: IInstance, data: IServiceConfiguration): Promise<ApiResult> {
-	const resp = await POST_INST(instance, `/config/loadbalancer`, data);
+	// Remove keys with negative number values to avoid backend type errors
+	let cleanedData = cleanNegativeNumbers(data);
+	
+	// Clean up probe values according to serviceArguments.monitor value
+	// If monitor is false, remove probetype, probeport, probereq, proberesp, probeTimeout, probeRetries
+	if (cleanedData.serviceArguments && !cleanedData.serviceArguments.monitor) {
+		const {probetype, probeport, probereq, proberesp, probeTimeout, probeRetries, ...serviceArgs} = cleanedData.serviceArguments;
+		cleanedData = {
+			...cleanedData,
+			serviceArguments: serviceArgs
+		};
+	}
+	
+	const resp = await POST_INST(instance, `/config/loadbalancer`, cleanedData);
 	if (resp.code !== 200) return {status: 'error', error: `Failed to create loadbalancer: ${resp.message}`};
 	else return {status: 'success'};
 }

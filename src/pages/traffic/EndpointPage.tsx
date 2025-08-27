@@ -148,6 +148,58 @@ export default function EndpointPage() {
 		);
 	};
 
+	// Update handler for endpoints
+	const updateFormRef = useRef<IEndpointInput | null>(null);
+	const handleUpdate = () => {
+		if (!inst || !selectedItem) return;
+
+		// Convert IEndpointItem to format expected by EndpointInputForm
+		const formData: Partial<IEndpointInput> = {
+			hostName: selectedItem.hostName,
+			name: selectedItem.name,
+			inactiveReTries: selectedItem.inactiveReTries,
+			probeType: selectedItem.probeType,
+			probeDuration: selectedItem.probeDuration,
+			probePort: selectedItem.probePort,
+			probeReq: selectedItem.probeReq,
+			probeResp: selectedItem.probeResp,
+		};
+
+		const update_form = (
+			<EndpointInputForm
+				key={Date.now()}
+				initialData={formData}
+				isEdit={true}
+				onChange={data => {
+					updateFormRef.current = data;
+					enableYes(data.isValid);
+				}}
+			/>
+		);
+
+		openPopUp(
+			'',
+			update_form,
+			t('Update'),
+			t('Cancel'),
+			async () => {
+				if (!updateFormRef.current) return;
+
+				// Use POST API with same function as create (as requested by user)
+				const res = await request_create_endpoint(inst, updateFormRef.current);
+				if (res.status === 'success') {
+					openPopUp(t('Success'), t('Endpoint updated successfully.'), t('OK'));
+					setTimeout(() => {
+						refetch();
+					}, 1000);
+				} else {
+					openPopUp(t('Error'), t('Failed to update endpoint. {{error}}', {error: res.error}), t('OK'));
+				}
+			},
+			true,
+		);
+	};
+
 	return (
 		<Fragment>
 			<EndpointTable
@@ -156,6 +208,7 @@ export default function EndpointPage() {
 				onChangeSelectedRows={handleSelectionChange}
 				onAdd={handleAdd}
 				onDelete={handleDelete}
+				onUpdate={handleUpdate}
 				onRefresh={refetch}
 			/>
 
