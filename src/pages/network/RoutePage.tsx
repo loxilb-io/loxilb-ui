@@ -29,7 +29,7 @@ export default function RoutePage() {
    
    // Hash function for Route entry
    const getHashKey = (item: any) => {
-	   const str = `${item.destinationIPNet || ''}`;
+	   const str = `${item?.destinationIPNet || ''}`;
 	   return getStableHash(str);
    };
    

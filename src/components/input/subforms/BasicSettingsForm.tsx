@@ -43,12 +43,12 @@ export default function BasicSettingsForm(props: {value: IServiceArguments; onCh
 							   	]}
 							   	disabled={isEdit}
 							   />
-							   <ParamBox label={t('Host')} value={value?.host ?? ''} onChange={handleChange('host')} param_desc={params?.host} />
+							   {/* <ParamBox label={t('Host')} value={value?.host ?? ''} onChange={handleChange('host')} param_desc={params?.host} /> */}
 					   </HorizontalStack>
 
 					   <HorizontalStack>
 							   <ParamBox label={t('External IP')} value={value?.externalIP ?? ''} onChange={handleChange('externalIP')} param_desc={{...params?.externalIP, type: isEdit ? 'string' : 'ipaddress'}} disabled={isEdit} />
-							   <ParamBox label={t('Private IP')} value={value?.privateIP ?? ''} onChange={handleChange('privateIP')} param_desc={{...params?.privateIP, type: 'ipaddress'}} />
+							   {/* <ParamBox label={t('Private IP')} value={value?.privateIP ?? ''} onChange={handleChange('privateIP')} param_desc={{...params?.privateIP, type: 'ipaddress'}} /> */}
 					   </HorizontalStack>
 
 					   <HorizontalStack>
