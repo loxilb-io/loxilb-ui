@@ -51,6 +51,15 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 							   <ParamBox label={t('BGP')} value={value?.bgp ?? ''} onChange={handleChange('bgp')} param_desc={params?.bgp} />
 							   <Box width="100%" id="empty-spacer" />
 					   </HorizontalStack>
+					   <HorizontalStack>
+							   <ParamBox label={t('Host')} value={value?.host ?? ''} onChange={handleChange('host')} param_desc={params?.host} disabled={value?.mode !== 4} />
+							   <Box width="100%" id="empty-spacer" />
+					   </HorizontalStack>
+
+					   <HorizontalStack>
+							   <ParamBox label={t('Private IP')} value={value?.privateIP ?? ''} onChange={handleChange('privateIP')} param_desc={{...params?.privateIP, type: 'ipaddress'}} />
+							   <Box width="100%" id="empty-spacer" />
+					   </HorizontalStack>					   
 			   </Stack>
 	   </AccordionBox>
 	);

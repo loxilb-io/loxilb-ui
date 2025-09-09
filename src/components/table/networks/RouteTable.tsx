@@ -27,8 +27,8 @@ export default function RouteTable(props: {data: IRouteData; selected_rows: numb
    const rows = data.routeAttr && Array.isArray(data.routeAttr)
 	   ? (() => {
 		   const sorted = [...data.routeAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
-		   return sorted.map((item) => ({
-			   id: getHashKey(item),
+			return sorted.map((item, index) => ({
+			   id: index,
 			   destinationIPNet: item.destinationIPNet,
 			   gateway: item.gateway,
 			   hardwareMark: item.hardwareMark,
