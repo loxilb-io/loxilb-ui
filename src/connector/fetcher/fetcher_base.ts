@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {forced_relocation_to_login, get_local_storage, move_404, move_500, move_cors, remove_local_storage, save_local_storage} from 'common';
+import {forced_relocation_to_login, get_local_storage, move_404, move_402, move_500, move_cors, remove_local_storage, save_local_storage} from 'common';
 
 //---------------------------------------------------------
 // Interfaces
@@ -86,7 +86,8 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 				forced_relocation_to_login();
 			}
 			return resp;
-		} else if (resp.status === 404) move_404();
+		} else if (resp.status === 402) move_402();
+		else if (resp.status === 404) move_404();
 		else if (resp.status >= 500 && resp.status < 600) {
 			const resp_json = await resp.json();
 			const code = resp.status;

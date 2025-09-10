@@ -33,9 +33,10 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 
 	const default_instance_url = `/instance/dashboard?name=${instance_info.name}`;
 	
-	// Determine if instance is healthy and clickable
+	// Determine if instance is healthy, active, and clickable
 	const isHealthy = health?.isHealthy !== false; // Default to healthy if health is not available yet
-	const isDisabled = !isHealthy;
+	const isActive = instance_info.is_active; // Use the is_active field from the instance
+	const isDisabled = !isHealthy || !isActive;
 
 	useEffect(() => {
         setLanguageKey(prev => prev + 1);
@@ -50,7 +51,8 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 			host: instance_info.host,
 			port: instance_info.port.toString(),
 			version: instance_info.version,
-			description: instance_info.description || ''
+			description: instance_info.description || '',
+			is_active: instance_info.is_active
 		};
 
 		const content = (
@@ -185,6 +187,20 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 							sx={{ fontWeight: 'bold' }}
 						>
 							{health === null ? t('Checking...') : (isHealthy ? t('Healthy') : t('Down'))}
+						</Typography>
+					</Box>
+
+					<Box display="flex" justifyContent="space-between">
+						<Typography variant="caption" color="text.secondary">
+							{t('Activation Status')}
+						</Typography>
+
+						<Typography 
+							variant="caption" 
+							color={isActive ? 'success.main' : 'error.main'}
+							sx={{ fontWeight: 'bold' }}
+						>
+							{health === null ? t('Checking...') : (isActive ? t('Active') : t('Inactive'))}
 						</Typography>
 					</Box>
 

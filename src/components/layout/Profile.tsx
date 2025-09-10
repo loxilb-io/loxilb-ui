@@ -16,7 +16,7 @@ export default function Profile() {
 
 	const user_name = my_info?.username || 'Guest';
 	const user_id = (my_info?.id || 0).toString();
-	const user_license = my_info?.email || '';
+	const user_email = my_info?.email || '';
 
 	const toggle_menu = (event: any) => {
 		if (anchor_element) set_anchor_element(null);
@@ -27,7 +27,7 @@ export default function Profile() {
 
 	return (
 		<Box id="profile" display="flex" alignItems="center" gap="10px" onClick={toggle_menu} sx={{cursor: 'pointer'}}>
-			<ProfileMenu anchorEl={anchor_element} handleClose={() => set_anchor_element(null)} user_name={user_name} user_id={user_id} user_license={user_license} />
+			<ProfileMenu anchorEl={anchor_element} handleClose={() => set_anchor_element(null)} user_name={user_name} user_id={user_id} user_email={user_email} />
 
 			<AccountCircleIcon sx={{color: 'white'}} fontSize="small" />
 

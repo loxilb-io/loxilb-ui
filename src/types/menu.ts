@@ -134,6 +134,10 @@ export const MENU_LIST: IMenuItem[] = [
 		path: 'managers',
 		items: [
 			{
+				name: 'User Manager',
+				path: 'user',
+			},
+			{
 				name: 'Alert Manager',
 				path: 'alert',
 			},

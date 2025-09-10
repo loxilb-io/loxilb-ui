@@ -26,8 +26,9 @@ export default function InstanceInputForm(props: {
 		host: initialValues?.host || '',
 		port: initialValues?.port || '8091',
 		protocol: initialValues?.protocol || 'https',
-		version: initialValues?.version || '',
-		description: initialValues?.description || ''
+		version: initialValues?.version || 'v1',
+		description: initialValues?.description || '',
+		is_active: initialValues?.is_active ?? true, 
 	});
 
 	// Validate required fields
@@ -49,6 +50,10 @@ export default function InstanceInputForm(props: {
 	const handleChange = (field: keyof IInstanceInput) => (value: string | number) => {
 		// Ensure all values are stored as strings to match IInstanceInput interface
 		setForm(prev => ({...prev, [field]: String(value || '')}));
+	};
+
+	const handleBooleanChange = (field: keyof IInstanceInput) => (value: boolean) => {
+		setForm(prev => ({...prev, [field]: value}));
 	};
 
 	return (
@@ -116,6 +121,12 @@ export default function InstanceInputForm(props: {
 		   	param_desc={{type: 'string', required: false}} 
 		   	multiline 
 		   	minRows={3} 
+		   />
+		   <ParamBox 
+		   	label={t('Active')} 
+		   	value={form.is_active} 
+		   	onChange={handleBooleanChange('is_active')} 
+		   	param_desc={{type: 'boolean', required: false}} 
 		   />
 		</Stack>
 	);

@@ -4,6 +4,7 @@
 import PersonIcon from '@mui/icons-material/Person';
 import LockIcon from '@mui/icons-material/Lock';
 import EmailIcon from '@mui/icons-material/Email';
+import InfoIcon from '@mui/icons-material/Info';
 import {
 	Alert,
 	Button,
@@ -11,6 +12,8 @@ import {
 	TextField,
 	Box,
 	Typography,
+	Tooltip,
+	IconButton,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { t } from 'i18next';
@@ -266,7 +269,37 @@ export default function AuthForm({ mode, onSubmit, loading, error }: IAuthFormPr
 					required
 					fullWidth
 					name="password"
-					label={t('Password')}
+					label={
+						<Box display="flex" alignItems="center" gap={0.5}>
+							{t('Password')}
+							{mode === 'signup' && (
+								<Tooltip 
+									title={
+										<Box sx={{ p: 1 }}>
+											<Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+												{t('Password Requirements:')}
+											</Typography>
+											<Typography variant="body2" component="div">
+												• {t('Must be at least 9 characters long')}<br/>
+												• {t('Must contain at least one uppercase letter')}<br/>
+												• {t('Must contain at least one lowercase letter')}<br/>
+												• {t('Must contain at least one number')}<br/>
+												• {t('Must contain at least one special character')}<br/>
+												• {t('Must not contain the same character more than twice in a row')}<br/>
+												• {t('Must not contain consecutive characters')}<br/>
+												• {t('Must not be the same as the username')}<br/>
+												• {t('Must not be the same as the previous password')}
+											</Typography>
+										</Box>
+									}
+									arrow
+									placement="top"
+								>
+									<InfoIcon fontSize="small" color="action" sx={{ cursor: 'pointer' }} />
+								</Tooltip>
+							)}
+						</Box>
+					}
 					type="password"
 					id="password"
 					autoComplete={mode === 'login' ? 'current-password' : 'new-password'}

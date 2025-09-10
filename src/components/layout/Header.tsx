@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import SettingsIcon from '@mui/icons-material/Settings';
+import PersonIcon from '@mui/icons-material/Person';
 import StorageIcon from '@mui/icons-material/Storage';
 import {Box, IconButton, Tooltip, Typography} from '@mui/material';
 import Logo from 'assets/logo/loxi.svg';
@@ -30,14 +30,14 @@ function InstanceIcon() {
 	);
 }
 
-function SettingIcon() {
-	const health_status_message = t('Health Status for LoxiLB System Management');
+function UserIcon() {
+	const user_status_message = t('User Management');
 
 	return (
-		<Tooltip title={health_status_message} placement="top" arrow>
+		<Tooltip title={user_status_message} placement="top" arrow>
 			<span>
-				<IconButton component={Link} to="/system">
-					<SettingsIcon sx={{color: 'white'}} fontSize="small" />
+				<IconButton component={Link} to="/user">
+					<PersonIcon sx={{color: 'white'}} fontSize="small" />
 				</IconButton>
 			</span>
 		</Tooltip>
@@ -67,10 +67,10 @@ export default function Header() {
 					<InstanceIcon />
 					<VerticalDivider />
 
-					{/* <SettingIcon />
+					<UserIcon />
 					<VerticalDivider />
-
-					<AlertsIcon />
+					
+					{/*<AlertsIcon />
 					<VerticalDivider /> */}
 
 					<LanguageIcon />

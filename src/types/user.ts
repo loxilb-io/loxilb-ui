@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // User Management Types
 //---------------------------------------------------------
+import { ILicenseStatusResponse } from './license';
 
 /**
  * User Creation Request (Traditional Signup)
@@ -8,7 +9,9 @@
 export interface ICreateUserRequest {
 	username: string;
 	password: string;
-	email?: string; // Optional based on API but we'll make it required in UI
+	email: string; // Make required based on new API
+	license_key?: string; // Optional license assignment
+	role?: string; // Optional role assignment
 }
 
 /**
@@ -27,7 +30,6 @@ export interface IUser {
 	password?: string; // Usually not returned in responses
 	email?: string;
 	created_at?: string;
-	license?: string;
 	oauth_id?: string;
 	oauth_provider?: string;
 	oauth_token?: string;
@@ -47,6 +49,18 @@ export interface ILoginRequest {
 export interface ILoginResponse {
 	id: number;
 	token: string;
+}
+
+/**
+ * Enhanced Login Response (with license information)
+ */
+export interface IEnhancedLoginResponse {
+	id: number;
+	token: string;
+	has_valid_license: boolean;
+	license_expiring: boolean;
+	days_left: number;
+	license_status: ILicenseStatusResponse;
 }
 
 /**
@@ -86,4 +100,23 @@ export type OAuthProvider = 'google' | 'github';
 export interface IOAuthLoadingState {
 	google: boolean;
 	github: boolean;
+}
+
+/**
+ * User Update Request (for profile editing)
+ */
+export interface IUserUpdateRequest {
+	username?: string;
+	email?: string;
+	password?: string;
+	role?: string;
+}
+
+/**
+ * Password Change Request
+ */
+export interface IPasswordChangeRequest {
+	current_password: string;
+	new_password: string;
+	confirm_password: string;
 }
