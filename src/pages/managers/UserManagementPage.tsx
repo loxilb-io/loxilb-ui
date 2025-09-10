@@ -579,12 +579,12 @@ export default function UserManagementPage() {
 						<PasswordManagementPanel />
 					</TabPanel> */}
 
-					<TabPanel value={tabValue} index={2}>
+					<TabPanel value={tabValue} index={1}>
 						<LicenseManagementPanel />
 					</TabPanel>
 
 					{isAdmin && (
-						<TabPanel value={tabValue} index={3}>
+						<TabPanel value={tabValue} index={2}>
 							<AdminUserManagementPanel 
 								currentUser={my_info}
 								onEditUser={handleEditUser}
