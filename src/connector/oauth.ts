@@ -2,7 +2,7 @@
 // OAuth Authentication Connector Functions
 //---------------------------------------------------------
 import { SimpleResponse } from './fetcher/fetcher_base';
-import { ILoginResponse } from 'types/user';
+import { IEnhancedLoginResponse } from 'types/user';
 import { IOAuthCallbackParams } from 'types/oauth';
 import { OAuthProvider } from 'types/user';
 
@@ -120,7 +120,7 @@ export async function oauth_initiate_login(provider: OAuthProvider): Promise<voi
 export async function oauth_handle_callback(
 	provider: OAuthProvider, 
 	params: IOAuthCallbackParams
-): Promise<ILoginResponse> {
+): Promise<IEnhancedLoginResponse> {
 	try {
 		// Validate state parameter
 		const storedState = sessionStorage.getItem('oauth_state');
@@ -158,7 +158,22 @@ export async function oauth_handle_callback(
 			throw new Error(`OAuth authentication failed: ${result.message}`);
 		}
 
-		return result.data as ILoginResponse;
+		// Handle both legacy and enhanced login responses
+	const loginData = result.data;
+	
+	// Check if it's enhanced response with license data
+	if (loginData.license_status) {
+		return loginData as IEnhancedLoginResponse;
+	} else {
+		// Legacy response - convert to enhanced format
+		return {
+			...loginData,
+			has_valid_license: false,
+			license_expiring: false,
+			days_left: 0,
+			license_status: null as any
+		} as IEnhancedLoginResponse;
+	}
 	} catch (error) {
 		console.error(`OAuth callback failed for ${provider}:`, error);
 		throw error;

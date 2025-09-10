@@ -60,11 +60,13 @@ import ProcessPage from 'pages/status/ProcessPage';
 
 import AlertManagerPage from 'pages/managers/AlertManagerPage';
 import BackupManagerPage from 'pages/managers/BackupManagerPage';
+import UserManagementPage from 'pages/managers/UserManagementPage';
 import AdvancedMetricsPage from 'pages/AdvancedMetricsPage';
 
 import {MAX_DURATION_MS} from 'hooks/query/common';
 import LogPage from 'pages/status/LogPage';
 import 'root.css';
+
 
 //---------------------------------------------------------
 // Global Instance
@@ -118,6 +120,7 @@ export default function App() {
 								<Route path="/oauth/callback" element={<OAuthCallbackPage />} />
 								<Route path="/instance" element={<InstancePage />} />
 								<Route path="/system" element={<SystemPage />} />
+								<Route path="/user" element={<UserManagementPage />} />
 
 								<Route path="/instance/*" element={<NavLayout />}>
 									<Route path="network" element={<Outlet />}>
@@ -158,7 +161,7 @@ export default function App() {
 										<Route path="logs" element={<LogPage />} />
 									</Route>
 
-									<Route path="managers" element={<Outlet />}>
+									<Route path="managers" element={<Outlet />}>										
 										<Route path="alert" element={<AlertManagerPage />} />
 										<Route path="backup" element={<BackupManagerPage />} />
 										<Route path="metrics" element={<AdvancedMetricsPage />} />

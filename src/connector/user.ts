@@ -3,7 +3,7 @@
 //---------------------------------------------------------
 import { SimpleResponse } from './fetcher/fetcher_base';
 import { POST_OAM } from './fetcher/fetcher_oam';
-import { ICreateUserRequest, IUserIdResponse, ILoginRequest, ILoginResponse } from 'types/user';
+import { ICreateUserRequest, IUserIdResponse, ILoginRequest, IEnhancedLoginResponse } from 'types/user';
 
 /**
  * Create a new user account (Traditional Signup)
@@ -51,7 +51,7 @@ export async function create_user(userData: ICreateUserRequest): Promise<IUserId
  * Login user with username and password
  * @param credentials - Login credentials
  */
-export async function login_user(credentials: ILoginRequest): Promise<ILoginResponse> {
+export async function login_user(credentials: ILoginRequest): Promise<IEnhancedLoginResponse> {
 	try {
 		console.log('Logging in user:', credentials.username);
 		const response: SimpleResponse = await POST_OAM('/login', credentials);
@@ -74,7 +74,22 @@ export async function login_user(credentials: ILoginRequest): Promise<ILoginResp
 			throw new Error('No authentication data returned from server');
 		}
 
-		return response.data as ILoginResponse;
+		// Handle both legacy and enhanced login responses
+		const loginData = response.data;
+		
+		// Check if it's enhanced response with license data
+		if (loginData.license_status) {
+			return loginData as IEnhancedLoginResponse;
+		} else {
+			// Legacy response - convert to enhanced format
+			return {
+				...loginData,
+				has_valid_license: false,
+				license_expiring: false,
+				days_left: 0,
+				license_status: null as any
+			} as IEnhancedLoginResponse;
+		}
 	} catch (error) {
 		console.error('User login failed:', error);
 		throw error;
@@ -85,7 +100,7 @@ export async function login_user(credentials: ILoginRequest): Promise<ILoginResp
  * Create user account and automatically log them in
  * @param userData - User creation data
  */
-export async function signup_and_login(userData: ICreateUserRequest): Promise<ILoginResponse> {
+export async function signup_and_login(userData: ICreateUserRequest): Promise<IEnhancedLoginResponse> {
 	try {
 		// Step 1: Create user account
 		const createResult = await create_user(userData);
@@ -130,8 +145,8 @@ export function validate_email(email: string): boolean {
  * @param password - Password to validate
  */
 export function validate_password(password: string): { isValid: boolean; message?: string } {
-	if (password.length < 8) {
-		return { isValid: false, message: 'Password must be at least 8 characters long' };
+	if (password.length < 9) {
+		return { isValid: false, message: 'Password must be at least 9 characters long' };
 	}
 	
 	if (!/(?=.*[a-z])/.test(password)) {
@@ -144,6 +159,10 @@ export function validate_password(password: string): { isValid: boolean; message
 	
 	if (!/(?=.*\d)/.test(password)) {
 		return { isValid: false, message: 'Password must contain at least one number' };
+	}
+	
+	if (!/(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])/.test(password)) {
+		return { isValid: false, message: 'Password must contain at least one special character' };
 	}
 	
 	return { isValid: true };

@@ -265,9 +265,184 @@
                 }
             }
         },
+        "/oam/license/feature-access": {
+            "get": {
+                "description": "Checks if the authenticated user's license allows access to a specific feature",
+                "tags": [
+                    "license"
+                ],
+                "summary": "Check feature access",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Feature name to check (e.g., 'export', 'custom_integration', 'unlimited_users')",
+                        "name": "feature",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/oam/license/install": {
+            "post": {
+                "description": "Installs a new license key for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "license"
+                ],
+                "summary": "Install license",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "License installation data",
+                        "name": "license",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.InstallLicenseRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/oam/license/validate": {
+            "post": {
+                "description": "Validates a license key format and expiration without installing it",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "license"
+                ],
+                "summary": "Validate license key",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "License validation data",
+                        "name": "license",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.InstallLicenseRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.LicensePayload"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/oam/login": {
             "post": {
-                "description": "Authenticates a user and returns a JWT token if the credentials are valid.",
+                "description": "Authenticates a user and returns a JWT token with comprehensive license information if the credentials are valid.",
                 "consumes": [
                     "application/json"
                 ],
@@ -293,7 +468,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.LoginResponse"
+                            "$ref": "#/definitions/models.EnhancedLoginResponse"
                         }
                     },
                     "400": {
@@ -909,6 +1084,303 @@
                 }
             }
         },
+        "/oam/loxilbs/{id}/netlox/": {
+            "get": {
+                "description": "Forwards HTTP requests to the specified LoxiLB instance",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "proxy"
+                ],
+                "summary": "Proxy request to LoxiLB instance",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "LoxiLB Instance ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response from LoxiLB",
+                        "schema": {}
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "Gateway Timeout",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Forwards HTTP requests to the specified LoxiLB instance",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "proxy"
+                ],
+                "summary": "Proxy request to LoxiLB instance",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "LoxiLB Instance ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response from LoxiLB",
+                        "schema": {}
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "Gateway Timeout",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Forwards HTTP requests to the specified LoxiLB instance",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "proxy"
+                ],
+                "summary": "Proxy request to LoxiLB instance",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "LoxiLB Instance ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response from LoxiLB",
+                        "schema": {}
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "Gateway Timeout",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Forwards HTTP requests to the specified LoxiLB instance",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "proxy"
+                ],
+                "summary": "Proxy request to LoxiLB instance",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "LoxiLB Instance ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response from LoxiLB",
+                        "schema": {}
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "Gateway Timeout",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Forwards HTTP requests to the specified LoxiLB instance",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "proxy"
+                ],
+                "summary": "Proxy request to LoxiLB instance",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "LoxiLB Instance ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response from LoxiLB",
+                        "schema": {}
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "Gateway Timeout",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/oam/oauth/{provider}": {
             "get": {
                 "description": "Initiates the OAuth login flow for the specified provider.",
@@ -943,7 +1415,7 @@
         },
         "/oam/oauth/{provider}/callback": {
             "get": {
-                "description": "Handles the OAuth callback flow for the specified provider.",
+                "description": "Handles the OAuth callback flow for the specified provider and returns enhanced login response with license information.",
                 "tags": [
                     "auth"
                 ],
@@ -975,7 +1447,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.LoginResponse"
+                            "$ref": "#/definitions/models.EnhancedLoginResponse"
                         }
                     },
                     "400": {
@@ -1031,7 +1503,7 @@
                 }
             },
             "post": {
-                "description": "Creates a new user in the system",
+                "description": "Creates a new user in the system with optional license key and role",
                 "consumes": [
                     "application/json"
                 ],
@@ -1062,6 +1534,234 @@
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/oam/users/licenses": {
+            "get": {
+                "description": "Retrieves all active and non-expired licenses for the authenticated user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "license"
+                ],
+                "summary": "Get user's valid licenses",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.UserLicensesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/oam/users/licenses/{license_id}": {
+            "put": {
+                "description": "Updates a specific license key by license ID for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "license"
+                ],
+                "summary": "Update specific license",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "License ID to update",
+                        "name": "license_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "License update data",
+                        "name": "license",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateLicenseRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deactivates a specific license by ID for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "license"
+                ],
+                "summary": "Deactivate a user license",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "License ID",
+                        "name": "license_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/oam/users/licenses/{license_id}/status": {
+            "get": {
+                "description": "Retrieves status and information for a specific license by ID for the authenticated user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "license"
+                ],
+                "summary": "Get specific license status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "License ID",
+                        "name": "license_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ActiveLicense"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -1252,6 +1952,35 @@
                 }
             }
         },
+        "models.ActiveLicense": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "installed_at": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "license_key_hash": {
+                    "type": "string"
+                },
+                "license_type": {
+                    "$ref": "#/definitions/models.LicenseType"
+                },
+                "user_id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
         "models.Alert": {
             "type": "object",
             "properties": {
@@ -1317,11 +2046,50 @@
         },
         "models.CreateUserRequest": {
             "type": "object",
+            "required": [
+                "email",
+                "password",
+                "username"
+            ],
             "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "license_key": {
+                    "description": "Optional: Admin can provide license key during creation",
+                    "type": "string"
+                },
                 "password": {
                     "type": "string"
                 },
+                "role": {
+                    "description": "Optional: Admin can set role (defaults to \"user\")",
+                    "type": "string"
+                },
                 "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.EnhancedLoginResponse": {
+            "type": "object",
+            "properties": {
+                "days_left": {
+                    "type": "integer"
+                },
+                "has_valid_license": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "license_expiring": {
+                    "type": "boolean"
+                },
+                "license_status": {
+                    "$ref": "#/definitions/models.LicenseStatusResponse"
+                },
+                "token": {
                     "type": "string"
                 }
             }
@@ -1341,6 +2109,71 @@
                     "type": "string"
                 }
             }
+        },
+        "models.InstallLicenseRequest": {
+            "type": "object",
+            "required": [
+                "license_key"
+            ],
+            "properties": {
+                "license_key": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.LicensePayload": {
+            "type": "object",
+            "properties": {
+                "expiry": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.LicenseStatusResponse": {
+            "type": "object",
+            "properties": {
+                "days_left": {
+                    "type": "integer"
+                },
+                "is_expiring": {
+                    "description": "\u003c 7 days",
+                    "type": "boolean"
+                },
+                "is_valid": {
+                    "type": "boolean"
+                },
+                "license": {
+                    "$ref": "#/definitions/models.ActiveLicense"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "upgrade_url": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.LicenseType": {
+            "type": "string",
+            "enum": [
+                "trial",
+                "enterprise"
+            ],
+            "x-enum-comments": {
+                "LicenseTypeEnterprise": "Full features",
+                "LicenseTypeTrial": "Limited features"
+            },
+            "x-enum-descriptions": [
+                "Limited features",
+                "Full features"
+            ],
+            "x-enum-varnames": [
+                "LicenseTypeTrial",
+                "LicenseTypeEnterprise"
+            ]
         },
         "models.LogArchivesResponse": {
             "type": "object",
@@ -1380,17 +2213,6 @@
                 }
             }
         },
-        "models.LoginResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "token": {
-                    "type": "string"
-                }
-            }
-        },
         "models.LoxiLBInstance": {
             "type": "object",
             "properties": {
@@ -1415,10 +2237,16 @@
                 "id": {
                     "type": "integer"
                 },
+                "is_active": {
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string"
                 },
                 "port": {
+                    "type": "string"
+                },
+                "protocol": {
                     "type": "string"
                 },
                 "version": {
@@ -1435,6 +2263,7 @@
                 "host",
                 "name",
                 "port",
+                "protocol",
                 "version"
             ],
             "properties": {
@@ -1450,10 +2279,18 @@
                 "host": {
                     "type": "string"
                 },
+                "is_active": {
+                    "description": "Optional, defaults to true",
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string"
                 },
                 "port": {
+                    "type": "string"
+                },
+                "protocol": {
+                    "description": "\"http\" or \"https\"",
                     "type": "string"
                 },
                 "version": {
@@ -1552,6 +2389,17 @@
                 }
             }
         },
+        "models.UpdateLicenseRequest": {
+            "type": "object",
+            "required": [
+                "license_key"
+            ],
+            "properties": {
+                "license_key": {
+                    "type": "string"
+                }
+            }
+        },
         "models.User": {
             "type": "object",
             "properties": {
@@ -1563,9 +2411,6 @@
                 },
                 "id": {
                     "type": "integer"
-                },
-                "license": {
-                    "type": "string"
                 },
                 "oauth_id": {
                     "description": "ID provided by the OAuth provider",
@@ -1582,6 +2427,10 @@
                 "password": {
                     "type": "string"
                 },
+                "role": {
+                    "description": "e.g., \"admin\", \"user\"",
+                    "type": "string"
+                },
                 "username": {
                     "type": "string"
                 }
@@ -1591,6 +2440,26 @@
             "type": "object",
             "properties": {
                 "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.UserLicensesResponse": {
+            "type": "object",
+            "properties": {
+                "expired_count": {
+                    "type": "integer"
+                },
+                "licenses": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ActiveLicense"
+                    }
+                },
+                "total_count": {
+                    "type": "integer"
+                },
+                "valid_count": {
                     "type": "integer"
                 }
             }

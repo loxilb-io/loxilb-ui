@@ -250,6 +250,11 @@ export function move_404() {
 	//else window.location.href = get_root_url() + '/404';
 }
 
+export function move_402() {
+	if (window.location.href.includes('/instance')) return;
+	else window.location.href = get_root_url() + '/instance';
+}
+
 export function move_500(code?: number, message?: string) {
 	if (window.location.href.includes('/500')) return;
 

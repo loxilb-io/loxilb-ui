@@ -3,7 +3,7 @@
 //---------------------------------------------------------
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
-import {Box, capitalize, Divider, Menu, MenuItem, Stack, Typography} from '@mui/material';
+import {Box, Divider, Menu, MenuItem, Stack, Typography} from '@mui/material';
 import {move_forced} from 'common';
 import {usePopUp} from 'hooks/popupHook';
 import {t} from 'i18next';
@@ -11,8 +11,8 @@ import {t} from 'i18next';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function ProfileMenu(props: {user_name: string; user_id: string; user_license: string; anchorEl: HTMLElement | null; handleClose: () => void}) {
-	const {user_name, user_id, user_license, anchorEl, handleClose} = props;
+export default function ProfileMenu(props: {user_name: string; user_id: string; user_email: string; anchorEl: HTMLElement | null; handleClose: () => void}) {
+	const {user_name, user_id, user_email, anchorEl, handleClose} = props;
 	const {openPopUp} = usePopUp();
 
 	const handleSignOut = () => {
@@ -29,7 +29,7 @@ export default function ProfileMenu(props: {user_name: string; user_id: string; 
 
 				<Stack>
 					<Typography variant="body1">{user_name}</Typography>
-					<Typography variant="body2">{capitalize(user_license)}</Typography>
+					<Typography variant="body2">{user_email}</Typography>
 					<Typography variant="body2" color="secondary.text">
 						{t('ID {{user_id}}', {user_id})}
 					</Typography>

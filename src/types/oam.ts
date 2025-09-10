@@ -5,7 +5,7 @@ export interface IUser {
 	created_at?: string;
 	email: string;
 	id: number;
-	license?: string;
+	role?: string;
 	oauth_id: string;
 	oauth_provider: string;
 	oauth_token: string;
@@ -22,6 +22,7 @@ export interface IInstanceInput {
 	port: string;
 	protocol: string;
 	version: string;
+	is_active: boolean;
 }
 
 export interface IInstance {
@@ -33,6 +34,7 @@ export interface IInstance {
 	description: string;
 	host: string;
 	id: number;
+	is_active: boolean;
 	name: string;
 	port: string;
 	protocol: string;
