@@ -548,12 +548,12 @@ export default function UserManagementPage() {
 								label={t('Profile')} 
 								{...a11yProps(0)} 
 							/>
-							<Tab 
+							{/* <Tab 
 								icon={<LockIcon fontSize="small" />}
 								iconPosition="start"
 								label={t('Security')} 
 								{...a11yProps(1)} 
-							/>
+							/> */}
 							<Tab 
 								icon={<LicenseIcon fontSize="small" />}
 								iconPosition="start"
