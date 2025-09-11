@@ -16,12 +16,12 @@ export async function query_get_mirror_all(instance: IInstance): Promise<IMirror
 
 export async function request_create_mirror(instance: IInstance, data: IMirrorAttribute): Promise<ApiResult> {
 	const resp = await POST_INST(instance, `/config/mirror`, data);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to create mirror: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }
 
 export async function request_delete_mirror_by_ident(instance: IInstance, ident: string): Promise<ApiResult> {
 	const resp = await DELETE_INST(instance, `/config/mirror/ident/${ident}`);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to delete mirror: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }

@@ -30,24 +30,24 @@ export async function query_get_vlan_all(instance: IInstance): Promise<IVlanAttr
 
 export async function request_create_vlan(instance: IInstance, data: IVlanInput): Promise<ApiResult> {
 	const resp = await POST_INST(instance, `/config/vlan`, data);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to create VLAN: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }
 
 export async function request_delete_vlan(instance: IInstance, vid: number): Promise<ApiResult> {
 	const resp = await DELETE_INST(instance, `/config/vlan/${vid}`);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to delete VLAN: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }
 
 export async function request_add_vlan_member(instance: IInstance, vid: number, data: IVlanMemberInput): Promise<ApiResult> {
 	const resp = await POST_INST(instance, `/config/vlan/${vid}/member`, data);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to add VLAN member: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }
 
 export async function request_delete_vlan_member(instance: IInstance, vid: number, dev: string, tagged: boolean): Promise<ApiResult> {
 	const resp = await DELETE_INST(instance, `/config/vlan/${vid}/member/${dev}/tagged/${tagged}`);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to delete VLAN member: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }

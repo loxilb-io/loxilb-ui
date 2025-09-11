@@ -16,7 +16,7 @@ export async function query_get_endpoint_all(instance: IInstance): Promise<IEndp
 
 export async function request_create_endpoint(instance: IInstance, data: IEndpointInput): Promise<ApiResult> {
 	const resp = await POST_INST(instance, `/config/endpoint`, data);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to create endpoint: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }
 
@@ -39,6 +39,6 @@ export async function request_delete_endpoint_by_ip(instance: IInstance, item: I
 	const curl_with_query = `/config/endpoint/epipaddress/${item.hostName}${queryString}`;
 	const resp = await DELETE_INST(instance, curl_with_query);
 
-	if (resp.code !== 200 || resp.message.includes('error') || resp.message.includes('referred')) return {status: 'error', error: `"${resp.message}"`};
+	if (resp.code !== 200 && resp.code !== 204 || resp.message.includes('error') || resp.message.includes('referred')) return {status: 'error', error: `"${resp.message}"`};
 	else return {status: 'success'};
 }

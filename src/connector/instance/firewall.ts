@@ -16,7 +16,7 @@ export async function query_get_firewall_rules(instance: IInstance): Promise<IFi
 
 export async function request_create_firewall_rule(instance: IInstance, data: IFirewallRule): Promise<ApiResult> {
 	const resp = await POST_INST(instance, `/config/firewall`, data);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to create firewall rule: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }
 
@@ -36,6 +36,6 @@ export async function request_delete_all_firewall_rules(instance: IInstance, fil
 	const url = `/config/firewall${params.toString() ? `?${params.toString()}` : ''}`;
 	const resp = await DELETE_INST(instance, url);
 
-	if (resp.code !== 200) return {status: 'error', error: `Failed to delete all firewall rules: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }
