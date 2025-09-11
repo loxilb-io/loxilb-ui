@@ -19,13 +19,13 @@ export async function query_get_bgp_neighbors(instance: IInstance): Promise<IBgp
 
 export async function request_create_bgp_neighbor(instance: IInstance, param: IBgpNeighborInput): Promise<ApiResult> {
 	const resp = await POST_INST(instance, `/config/bgp/neigh`, param);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to create BGP neighbor: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }
 
 export async function request_delete_bgp_neighbor(instance: IInstance, ipAddress: string): Promise<ApiResult> {
 	const resp = await DELETE_INST(instance, `/config/bgp/neigh/${ipAddress}`);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to delete BGP neighbor: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }
 
@@ -50,10 +50,10 @@ export async function request_get_defined_set(
 export async function request_create_defined_set(instance: IInstance, param: IBGPDefinedSetInput): Promise<ApiResult> {
 	const {definedType, ...body} = param;
 	const resp = await POST_INST(instance, `/config/bgp/policy/definedsets/${definedType}`, body);
-	if (resp.code !== 200) {
+	if (resp.code !== 200 && resp.code !== 204) {
 		return {
 			status: 'error',
-			error: `Failed to create defined set: ${resp.message}`,
+			error: resp.data || resp.message,
 		};
 	}
 	return {status: 'success'};
@@ -65,7 +65,7 @@ export async function request_delete_defined_set(
 	typeName: string,
 ): Promise<ApiResult> {
 	const resp = await DELETE_INST(instance, `/config/bgp/policy/definedsets/${definesetType}/${typeName}`);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to delete defined set: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }
 
@@ -77,24 +77,24 @@ export async function query_get_bgp_policy_definitions(instance: IInstance): Pro
 
 export async function request_create_bgp_policy_definition(instance: IInstance, param: IBgpPolicy): Promise<ApiResult> {
 	const resp = await POST_INST(instance, `/config/bgp/policy/definitions`, param);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to create BGP policy definition: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }
 
 export async function request_delete_bgp_policy_definition(instance: IInstance, policyName: string): Promise<ApiResult> {
 	const resp = await DELETE_INST(instance, `/config/bgp/policy/definitions/${policyName}`);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to delete BGP policy definition: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }
 
 export async function request_apply_bgp_policy(instance: IInstance, param: IBgpPolicyApply): Promise<ApiResult> {
 	const resp = await POST_INST(instance, `/config/bgp/policy/apply`, param);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to apply BGP policy: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }
 
 export async function request_configure_bgp_global(instance: IInstance, param: IBgpGlobalConfig): Promise<ApiResult> {
 	const resp = await POST_INST(instance, `/config/bgp/global`, param);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to configure BGP global settings: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }

@@ -54,30 +54,30 @@ export async function request_create_load_balancer_config(instance: IInstance, d
 	}
 	
 	const resp = await POST_INST(instance, `/config/loadbalancer`, cleanedData);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to create loadbalancer: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }
 
 export async function request_delete_all_load_balancers(instance: IInstance): Promise<ApiResult> {
 	const resp = await DELETE_INST(instance, `/config/loadbalancer/all`);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to delete all loadbalancers: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }
 
 export async function request_delete_lb_by_name(instance: IInstance, lb_name: string): Promise<ApiResult> {
 	const resp = await DELETE_INST(instance, `/config/loadbalancer/name/${lb_name}`);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to delete by name: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }
 
 export async function request_delete_lb_by_ip_port_proto(instance: IInstance, ip: string, port: number, proto: string): Promise<ApiResult> {
 	const resp = await DELETE_INST(instance, `/config/loadbalancer/externalipaddress/${ip}/port/${port}/protocol/${proto}`);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to delete by ip/port/proto: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }
 
 export async function request_delete_lb_by_hosturl_ip_port_proto(instance: IInstance, hosturl: string, ip: string, port: number, proto: string): Promise<ApiResult> {
 	const resp = await DELETE_INST(instance, `/config/loadbalancer/hosturl/${hosturl}/externalipaddress/${ip}/port/${port}/protocol/${proto}`);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to delete by hosturl/ip/port/proto: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }

@@ -16,12 +16,12 @@ export async function query_get_fdb_all(instance: IInstance): Promise<IFdbAttrib
 
 export async function request_create_fdb(instance: IInstance, data: IFdbAttribute): Promise<ApiResult> {
 	const resp = await POST_INST(instance, `/config/fdb`, data);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to create fdb entry: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }
 
 export async function request_delete_fdb(instance: IInstance, mac: string, dev: string): Promise<ApiResult> {
 	const resp = await DELETE_INST(instance, `/config/fdb/${mac}/dev/${dev}`);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to delete fdb entry: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }

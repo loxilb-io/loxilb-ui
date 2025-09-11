@@ -16,12 +16,12 @@ export async function query_get_bfd_all(instance: IInstance): Promise<IBFDAttrib
 
 export async function request_create_bfd(instance: IInstance, param: IBfdInput): Promise<ApiResult> {
 	const resp = await POST_INST(instance, `/config/bfd`, param);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to create bfd: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }
 
 export async function request_delete_bfd(instance: IInstance, remoteIp: string): Promise<ApiResult> {
 	const resp = await DELETE_INST(instance, `/config/bfd/remoteIP/${remoteIp}`);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to delete bfd: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }

@@ -16,12 +16,12 @@ export async function query_get_neighbor_all(instance: IInstance): Promise<INeig
 
 export async function request_create_device_neighbor(instance: IInstance, data: INeighborAttr): Promise<ApiResult> {
 	const resp = await POST_INST(instance, `/config/neighbor`, data);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to create neighbor: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }
 
 export async function request_delete_device_neighbor(instance: IInstance, ip: string, dev: string): Promise<ApiResult> {
 	const resp = await DELETE_INST(instance, `/config/neighbor/${ip}/dev/${dev}`);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to delete neighbor: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }

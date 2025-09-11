@@ -95,7 +95,7 @@ export async function query_get_ha_state_all(instance: IInstance): Promise<IVipA
 // not for frontend use, only for backend to update HA state
 //export async function request_update_ha_state(instance: IInstance, data: IVipAttribute): Promise<ApiResult> {
 //	const resp = await POST_INST(instance, `/config/cistate`, data);
-//	if (resp.code !== 200) return {status: 'error', error: `Failed to create HA state: ${resp.message}`};
+//	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 //	else return {status: 'success'};
 //}
 
@@ -106,7 +106,7 @@ export async function query_get_metadata(instance: IInstance): Promise<any> {
 
 export async function request_post_log_level(instance: IInstance, level: LevelType): Promise<ApiResult> {
 	const resp = await POST_INST(instance, `/config/params`, {logLevel: level});
-	if (resp.code !== 200) return {status: 'error', error: resp.message};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }
 
@@ -168,7 +168,7 @@ export async function query_get_inst_logs(instance: IInstance, options?: {
 
 export async function query_get_inst_log_archives(instance: IInstance): Promise<ILogArchiveList> {
 	const resp = await GET_INST(instance, `/log-archives`);
-	if (resp.code !== 200) return {archives: []};
+	if (resp.code !== 200 && resp.code !== 204) return {archives: []};
 	return (resp.data as ILogArchiveList) ?? {archives: []};
 }
 

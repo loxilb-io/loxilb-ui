@@ -16,12 +16,12 @@ export async function query_get_ulcl_all(instance: IInstance): Promise<IUlclAttr
 
 export async function request_create_ulcl(instance: IInstance, data: IUlclAttribute): Promise<ApiResult> {
 	const resp = await POST_INST(instance, `/config/sessionulcl`, data);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to create ULCL session: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }
 
 export async function request_delete_ulcl(instance: IInstance, ident: string, ip: string): Promise<ApiResult> {
 	const resp = await DELETE_INST(instance, `/config/sessionulcl/ident/${ident}/ulclAddress/${ip}`);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to delete ULCL session: ${resp.message}`};
+	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
 	else return {status: 'success'};
 }
