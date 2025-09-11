@@ -3,10 +3,12 @@
 //---------------------------------------------------------
 import { getStableHash } from 'common';
 import PolicyInputForm from 'components/input/PolicyInputForm';
+import ErrorPopUp from 'components/modal/ErrorPopUp';
 import QoSTable from 'components/table/traffic/QoSTable';
 import {request_create_qos_policy, request_delete_qos_policy} from 'connector/instance/qos';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
+import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useQOSPolicies} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {useRef, useState} from 'react';
@@ -26,6 +28,7 @@ export default function QoSPage() {
    // Track selected policy for synchronization
    const [selected_policyIdent, set_selected_policyIdent] = useState<string | null>(null);
    const {openPopUp, enableYes} = usePopUp();
+   const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
    // Hash function for QoS policy
    const getHashKey = (item: IPolicyAttribute) => {
 	   const str = `${item.policyIdent || ''}_${item.policyInfo.type || ''}_${item.targetObject.attachment || ''}_${item.targetObject.polObjName || ''}`;
@@ -64,7 +67,7 @@ export default function QoSPage() {
 			setTimeout(() => {
 				refetch();
 			}, 1000);
-		} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
+		} else showDeleteError('QoS policy', res.error);
 	};
 
 	const instanceRef = useRef<IPolicyAttribute | null>(null);
@@ -96,7 +99,7 @@ export default function QoSPage() {
 					setTimeout(() => {
 						refetch();
 					}, 1000);
-				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: res.error}), t('OK'));
+				} else showAddError('QoS policy', res.error);
 			},
 			true,
 		);
@@ -112,12 +115,26 @@ export default function QoSPage() {
 	   }
    }, [qos_info, selected_rows, selected_policyIdent]);
 
-   return <QoSTable
-	   data={{polAttr: sortedAttr}}
-	   selected_rows={selected_index !== -1 ? [selected_index] : []}
-	   onChangeSelectedRows={handleSelectionChange}
-	   onAdd={handleAdd}
-	   onDelete={handleDelete}
-	   onRefresh={refetch}
-   />;
+   return (
+	   <>
+		   <QoSTable
+			   data={{polAttr: sortedAttr}}
+			   selected_rows={selected_index !== -1 ? [selected_index] : []}
+			   onChangeSelectedRows={handleSelectionChange}
+			   onAdd={handleAdd}
+			   onDelete={handleDelete}
+			   onRefresh={refetch}
+		   />
+
+		   {/* Error Popup */}
+		   <ErrorPopUp
+			   isOpen={errorPopup.isOpen}
+			   onClose={closeErrorPopup}
+			   title={errorPopup.title}
+			   mainMessage={errorPopup.mainMessage}
+			   errorData={errorPopup.errorData}
+			   buttonText={t('OK')}
+		   />
+	   </>
+   );
 }

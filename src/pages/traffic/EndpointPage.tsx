@@ -7,11 +7,13 @@ import SingleTextBox from 'components/element/SingleTextBox';
 import EndpointInputForm from 'components/input/EndpointInputForm';
 import HorizontalStack from 'components/layout/HorizontalStack';
 import LowerSection from 'components/layout/LowerSection';
+import ErrorPopUp from 'components/modal/ErrorPopUp';
 import SubTitlePannel from 'components/layout/SubTitlePannel';
 import EndpointTable from 'components/table/traffic/EndpointTable';
 import {request_create_endpoint, request_delete_endpoint_by_ip} from 'connector/instance/endpoint';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
+import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useEndpoints} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {Fragment, useEffect, useRef, useState} from 'react';
@@ -57,6 +59,7 @@ export default function EndpointPage() {
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
 	const [selected_key, set_selected_key] = useState<string | null>(null);
 	const {openPopUp, enableYes} = usePopUp();
+	const {errorPopup, showAddError, showUpdateError, showDeleteError, closeErrorPopup} = useErrorPopup();
 
 	// Hash function for endpoint
 	const getHashKey = (item: any) => {
@@ -110,7 +113,7 @@ export default function EndpointPage() {
 			setTimeout(() => {
 				refetch();
 			}, 1000);
-		} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
+		} else showDeleteError('endpoint', res.error);
 	};
 
 	const instanceRef = useRef<IEndpointInput | null>(null);
@@ -142,7 +145,7 @@ export default function EndpointPage() {
 					setTimeout(() => {
 						refetch();
 					}, 1000);
-				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: res.error}), t('OK'));
+				} else showAddError('endpoint', res.error);
 			},
 			true,
 		);
@@ -193,7 +196,7 @@ export default function EndpointPage() {
 						refetch();
 					}, 1000);
 				} else {
-					openPopUp(t('Error'), t('Failed to update endpoint. {{error}}', {error: res.error}), t('OK'));
+					showUpdateError('endpoint', res.error);
 				}
 			},
 			true,
@@ -217,6 +220,16 @@ export default function EndpointPage() {
 					<ProbeInfoPanel name={sortedAttr[selected_index].name} data={sortedAttr[selected_index]} />
 				</LowerSection>
 			)}
+
+			{/* Error Popup */}
+			<ErrorPopUp
+				isOpen={errorPopup.isOpen}
+				onClose={closeErrorPopup}
+				title={errorPopup.title}
+				mainMessage={errorPopup.mainMessage}
+				errorData={errorPopup.errorData}
+				buttonText={t('OK')}
+			/>
 		</Fragment>
 	);
 }

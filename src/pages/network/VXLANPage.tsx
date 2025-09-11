@@ -7,10 +7,12 @@ import SubTitleBar from 'components/element/SubTitleBar';
 import VxlanInputForm from 'components/input/VXLanInputForm';
 import VxlanPeerInputForm from 'components/input/VXLanPeerInputForm';
 import LowerSection from 'components/layout/LowerSection';
+import ErrorPopUp from 'components/modal/ErrorPopUp';
 import VXLANTable from 'components/table/networks/VXLANTable';
 import {request_add_vxlan_peer, request_create_vxlan, request_delete_vxlan, request_delete_vxlan_peer} from 'connector/instance/vxlan';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
+import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useVxlanAttr} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {Fragment, useRef, useState} from 'react';
@@ -23,6 +25,7 @@ function PeerPanel(props: {name: string; vxlanID: number; data: string[]; refetc
 	const {name, vxlanID, data, refetch} = props;
 	const inst = useInstanceFromURL();
 	const {openPopUp, enableYes} = usePopUp();
+	const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
 
 	const handleDelete = async (peerIP: string) => {
 		if (!inst) return;
@@ -32,7 +35,7 @@ function PeerPanel(props: {name: string; vxlanID: number; data: string[]; refetc
 		if (res.status === 'success') {
 			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
 			refetch();
-		} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
+		} else showDeleteError('VXLAN peer', res.error);
 	};
 
 	const peerRef = useRef<string>('');
@@ -61,24 +64,36 @@ function PeerPanel(props: {name: string; vxlanID: number; data: string[]; refetc
 				if (res.status === 'success') {
 					openPopUp(t('Success'), t('Created successfully.'), t('OK'));
 					refetch();
-				} else openPopUp(t('Error'), t('Failed to add.') + ` (${res.error})`, t('OK'));
+				} else showAddError('VXLAN peer', res.error);
 			},
 			true,
 		);
 	};
 
 	return (
-		<Stack spacing={2}>
-			<SubTitleBar title={name} sub_title={t('Peer IPs')} />
+		<>
+			<Stack spacing={2}>
+				<SubTitleBar title={name} sub_title={t('Peer IPs')} />
 
-			<Box display="flex" justifyContent="flex-end">
-				<Button size="small" variant="outlined" onClick={handleAdd}>
-					{t('Add')}
-				</Button>
-			</Box>
+				<Box display="flex" justifyContent="flex-end">
+					<Button size="small" variant="outlined" onClick={handleAdd}>
+						{t('Add')}
+					</Button>
+				</Box>
 
-			<ChipField label={t('Values')} item_list={data} onDelete={handleDelete} />
-		</Stack>
+				<ChipField label={t('Values')} item_list={data} onDelete={handleDelete} />
+			</Stack>
+			
+			{/* Error Popup */}
+			<ErrorPopUp
+				isOpen={errorPopup.isOpen}
+				onClose={closeErrorPopup}
+				title={errorPopup.title}
+				mainMessage={errorPopup.mainMessage}
+				errorData={errorPopup.errorData}
+				buttonText={t('OK')}
+			/>
+		</>
 	);
 }
 
@@ -90,6 +105,7 @@ export default function VxLANPage() {
 
 	const [selected_rows, set_selected_rows] = useState<any[]>([]);
 	const {openPopUp, enableYes} = usePopUp();
+	const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
 
 	const handleSelectionChange = (selection: any) => set_selected_rows(selection);
 	const handleDelete = async () => {
@@ -100,7 +116,7 @@ export default function VxLANPage() {
 			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
 			set_selected_rows([]);
 			refetch();
-		} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
+		} else showDeleteError('VXLAN', res.error);
 	};
 
 	const instanceRef = useRef<IVxlanInput | null>(null);
@@ -128,7 +144,7 @@ export default function VxLANPage() {
 				if (res.status === 'success') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
 					refetch();
-				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: res.error}), t('OK'));
+				} else showAddError('VXLAN', res.error);
 			},
 			true,
 		);
@@ -148,6 +164,16 @@ export default function VxLANPage() {
 					/>
 				</LowerSection>
 			)}
+
+			{/* Error Popup */}
+			<ErrorPopUp
+				isOpen={errorPopup.isOpen}
+				onClose={closeErrorPopup}
+				title={errorPopup.title}
+				mainMessage={errorPopup.mainMessage}
+				errorData={errorPopup.errorData}
+				buttonText={t('OK')}
+			/>
 		</Fragment>
 	);
 }

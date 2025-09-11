@@ -3,10 +3,12 @@
 //---------------------------------------------------------
 import {isValidIPAddress, getStableHash} from 'common';
 import BFDInputForm from 'components/input/BFDInputForm';
+import ErrorPopUp from 'components/modal/ErrorPopUp';
 import BFDTable from 'components/table/networks/BFDTable';
 import {request_create_bfd, request_delete_bfd} from 'connector/instance/bfd';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
+import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useBFD} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {useRef, useState} from 'react';
@@ -26,6 +28,7 @@ export default function BFDPage() {
    // Track selected BFD entry key for synchronization
    const [selected_key, set_selected_key] = useState<string | null>(null);
    const {openPopUp, enableYes} = usePopUp();
+   const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
    
    // Hash function for BFD entry
    const getHashKey = (item: any) => {
@@ -66,7 +69,7 @@ export default function BFDPage() {
 			setTimeout(() => {
 				refetch();
 			}, 1000);
-		} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
+		} else showDeleteError('BFD entry', res.error);
 	};
 
    const instanceRef = useRef<IBfdInput | null>(null);
@@ -97,7 +100,7 @@ export default function BFDPage() {
 				   setTimeout(() => {
 						refetch();
 					}, 1000);
-			   } else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: res.error}), t('OK'));
+			   } else showAddError('BFD entry', res.error);
 		   },
 		   true,
 	   );
@@ -114,12 +117,26 @@ export default function BFDPage() {
 	   }
    }, [attr_info, selected_rows, selected_key]);
 
-   return <BFDTable
-	   data={{Attr: sortedAttr}}
-	   selected_rows={selected_index !== -1 ? [selected_index] : []}
-	   onChangeSelectedRows={handleSelectionChange}
-	   onAdd={handleAdd}
-	   onDelete={handleDelete}
-	   onRefresh={refetch}
-   />;
+   return (
+	   <>
+		   <BFDTable
+			   data={{Attr: sortedAttr}}
+			   selected_rows={selected_index !== -1 ? [selected_index] : []}
+			   onChangeSelectedRows={handleSelectionChange}
+			   onAdd={handleAdd}
+			   onDelete={handleDelete}
+			   onRefresh={refetch}
+		   />
+
+		   {/* Error Popup */}
+		   <ErrorPopUp
+			   isOpen={errorPopup.isOpen}
+			   onClose={closeErrorPopup}
+			   title={errorPopup.title}
+			   mainMessage={errorPopup.mainMessage}
+			   errorData={errorPopup.errorData}
+			   buttonText={t('OK')}
+		   />
+	   </>
+   );
 }

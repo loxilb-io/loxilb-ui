@@ -3,10 +3,12 @@
 //---------------------------------------------------------
 import {getStableHash, isValidMacAddress} from 'common';
 import FdbInputForm from 'components/input/FDBInputForm';
+import ErrorPopUp from 'components/modal/ErrorPopUp';
 import FDBTable from 'components/table/networks/FDBTable';
 import {request_create_fdb, request_delete_fdb} from 'connector/instance/fdb';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
+import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useFDB} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {useRef, useState} from 'react';
@@ -26,6 +28,7 @@ export default function FDBPage() {
    // Track selected dev/macAddress for synchronization
    const [selected_key, set_selected_key] = useState<string | null>(null);
    const {openPopUp, enableYes} = usePopUp();
+   const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
    // Hash function for FDB entry
    const getHashKey = (item: any) => {
 	   const str = `${item.dev || ''}_${item.macAddress || ''}`;
@@ -62,7 +65,7 @@ export default function FDBPage() {
 			setTimeout(() => {
 				refetch();
 			}, 1000);
-		} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
+		} else showDeleteError('FDB entry', res.error);
 	};
 
 	const instanceRef = useRef<IFdbAttribute | null>(null);
@@ -93,7 +96,7 @@ export default function FDBPage() {
 					setTimeout(() => {
 						refetch();
 					}, 1000);
-				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: res.error}), t('OK'));
+				} else showAddError('FDB entry', res.error);
 			},
 			true,
 		);
@@ -110,12 +113,26 @@ export default function FDBPage() {
 	   }
    }, [fdb_info, selected_rows, selected_key]);
 
-   return <FDBTable
-	   data={{fdbAttr: sortedAttr}}
-	   selected_rows={selected_index !== -1 ? [selected_index] : []}
-	   onChangeSelectedRows={handleSelectionChange}
-	   onAdd={handleAdd}
-	   onDelete={handleDelete}
-	   onRefresh={refetch}
-   />;
+   return (
+	   <>
+		   <FDBTable
+			   data={{fdbAttr: sortedAttr}}
+			   selected_rows={selected_index !== -1 ? [selected_index] : []}
+			   onChangeSelectedRows={handleSelectionChange}
+			   onAdd={handleAdd}
+			   onDelete={handleDelete}
+			   onRefresh={refetch}
+		   />
+
+		   {/* Error Popup */}
+		   <ErrorPopUp
+			   isOpen={errorPopup.isOpen}
+			   onClose={closeErrorPopup}
+			   title={errorPopup.title}
+			   mainMessage={errorPopup.mainMessage}
+			   errorData={errorPopup.errorData}
+			   buttonText={t('OK')}
+		   />
+	   </>
+   );
 }
