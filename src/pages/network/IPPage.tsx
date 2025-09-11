@@ -5,12 +5,14 @@ import {getStableHash, isValidIPAddressCidr} from 'common';
 import ChipField from 'components/element/ChipField';
 import IpInputForm from 'components/input/IPInputForm';
 import LowerSection from 'components/layout/LowerSection';
+import ErrorPopUp from 'components/modal/ErrorPopUp';
 import SubTitlePannel from 'components/layout/SubTitlePannel';
 import IPTable from 'components/table/networks/IPTable';
 import IPAddressView from 'components/view/IPAddressView';
 import {request_create_ipv4, request_delete_ipv4} from 'connector/instance/ip';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
+import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useIPAttr} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {Fragment, useRef, useState, useEffect} from 'react';
@@ -39,6 +41,7 @@ export default function IPPage() {
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
 	const [selected_key, set_selected_key] = useState<string | null>(null);
 	const {openPopUp, enableYes} = usePopUp();
+	const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
 
 	// Hash function for IP entry
 	 const getHashKey = (item: any) => {
@@ -83,7 +86,7 @@ export default function IPPage() {
 			setTimeout(() => {
 				refetch();
 			}, 1000);
-		} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
+		} else showDeleteError('IP address', res.error);
 	};
 
 	const handleAdd = () => {
@@ -109,7 +112,7 @@ export default function IPPage() {
 					setTimeout(() => {
 						refetch();
 					}, 1000);
-				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: res.error}), t('OK'));
+				} else showAddError('IP address', res.error);
 			},
 			true,
 		);
@@ -143,6 +146,16 @@ export default function IPPage() {
 					<IPAddressView device_name={sortedAttr[selected_index].dev} />
 				</LowerSection>
 			)}
+
+			{/* Error Popup */}
+			<ErrorPopUp
+				isOpen={errorPopup.isOpen}
+				onClose={closeErrorPopup}
+				title={errorPopup.title}
+				mainMessage={errorPopup.mainMessage}
+				errorData={errorPopup.errorData}
+				buttonText={t('OK')}
+			/>
 		</Fragment>
 	);
 }

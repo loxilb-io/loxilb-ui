@@ -6,11 +6,13 @@ import SingleTextField from 'components/element/SingleTextField';
 import ValueBunch from 'components/element/ValueBunch';
 import MirrorInputForm from 'components/input/MirrorInputForm';
 import LowerSection from 'components/layout/LowerSection';
+import ErrorPopUp from 'components/modal/ErrorPopUp';
 import SubTitlePannel from 'components/layout/SubTitlePannel';
 import MirrorTable from 'components/table/traffic/MirrorTable';
 import {request_create_mirror, request_delete_mirror_by_ident} from 'connector/instance/mirror';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
+import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useMirrors} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {Fragment, useRef, useState} from 'react';
@@ -67,6 +69,7 @@ export default function MirrorPage() {
    // Track selected mirrorIdent for synchronization
    const [selected_mirrorIdent, set_selected_mirrorIdent] = useState<string | null>(null);
    const {openPopUp, enableYes} = usePopUp();
+   const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
    // Hash function for mirror
    const getHashKey = (item: IMirrorAttribute) => {
 	   const str = `${item.mirrorIdent || ''}_${item.targetObject.attachment || ''}_${item.targetObject.mirrObjName || ''}`;
@@ -109,7 +112,7 @@ export default function MirrorPage() {
 			setTimeout(() => {
 				refetch();
 			}, 1000);
-		} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
+		} else showDeleteError('mirror', res.error);
 	};
 
 	const instanceRef = useRef<IMirrorAttribute | null>(null);
@@ -141,7 +144,7 @@ export default function MirrorPage() {
 					setTimeout(() => {
 						refetch();
 					}, 1000);
-				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: res.error}), t('OK'));
+				} else showAddError('mirror', res.error);
 			},
 			true,
 		);
@@ -173,6 +176,16 @@ export default function MirrorPage() {
 				   <DetailPanel name={sortedAttr[selected_index].mirrorIdent} data={sortedAttr[selected_index]} />
 			   </LowerSection>
 		   )}
+
+		   {/* Error Popup */}
+		   <ErrorPopUp
+			   isOpen={errorPopup.isOpen}
+			   onClose={closeErrorPopup}
+			   title={errorPopup.title}
+			   mainMessage={errorPopup.mainMessage}
+			   errorData={errorPopup.errorData}
+			   buttonText={t('OK')}
+		   />
 	   </Fragment>
    );
 }

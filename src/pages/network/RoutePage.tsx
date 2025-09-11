@@ -3,10 +3,12 @@
 //---------------------------------------------------------
 import {getStableHash, isValidIPAddressCidr} from 'common';
 import RouteInputForm from 'components/input/RouteInputForm';
+import ErrorPopUp from 'components/modal/ErrorPopUp';
 import RouteTable from 'components/table/networks/RouteTable';
 import {request_create_route, request_delete_route} from 'connector/instance/route_attr';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
+import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useRouteAttr} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {useRef, useState} from 'react';
@@ -26,6 +28,7 @@ export default function RoutePage() {
    // Track selected destinationIPNet for synchronization
    const [selected_key, set_selected_key] = useState<string | null>(null);
    const {openPopUp, enableYes} = usePopUp();
+   const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
    
    // Hash function for Route entry
    const getHashKey = (item: any) => {
@@ -69,7 +72,7 @@ export default function RoutePage() {
 			setTimeout(() => {
 				refetch();
 			}, 1000);
-		} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
+		} else showDeleteError('route', res.error);
 	};
 
 	const instanceRef = useRef<IRouteAttrInput | null>(null);
@@ -101,7 +104,7 @@ export default function RoutePage() {
 					setTimeout(() => {
 						refetch();
 					}, 1000);
-				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: res.error}), t('OK'));
+				} else showAddError('route', res.error);
 			},
 			true,
 		);
@@ -118,12 +121,26 @@ export default function RoutePage() {
 	   }
    }, [route_info, selected_rows, selected_key]);
 
-	return <RouteTable
-		data={{routeAttr: sortedAttr}}
-		selected_rows={selected_index !== -1 ? [selected_index] : []}
-		onChangeSelectedRows={handleSelectionChange}
-		onAdd={handleAdd}
-		onDelete={handleDelete}
-		onRefresh={refetch}
-	/>;
+	return (
+		<>
+			<RouteTable
+				data={{routeAttr: sortedAttr}}
+				selected_rows={selected_index !== -1 ? [selected_index] : []}
+				onChangeSelectedRows={handleSelectionChange}
+				onAdd={handleAdd}
+				onDelete={handleDelete}
+				onRefresh={refetch}
+			/>
+
+			{/* Error Popup */}
+			<ErrorPopUp
+				isOpen={errorPopup.isOpen}
+				onClose={closeErrorPopup}
+				title={errorPopup.title}
+				mainMessage={errorPopup.mainMessage}
+				errorData={errorPopup.errorData}
+				buttonText={t('OK')}
+			/>
+		</>
+	);
 }

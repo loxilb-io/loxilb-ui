@@ -2,10 +2,11 @@
 // Imports
 //---------------------------------------------------------
 import {Stack} from '@mui/material';
-import { getStableHash, isValidIPAddress } from 'common';
+import { getStableHash } from 'common';
 import SubTabs from 'components/element/SubTabs';
 import LBInputForm from 'components/input/LBInputForm';
 import LowerSection from 'components/layout/LowerSection';
+import ErrorPopUp from 'components/modal/ErrorPopUp';
 import AllowedSourcesPanel from 'components/panel/AllowedSourcePanel';
 import ConntrackTablePanel from 'components/panel/ConntrackTablePanel';
 import EndpointsPanel from 'components/panel/EndpointPanel';
@@ -17,6 +18,7 @@ import LBTable from 'components/table/traffic/LBTable';
 import {request_create_load_balancer_config, request_delete_lb_by_name} from 'connector/instance/load_balancer';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
+import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useLoadBalancerConfig, useMirrors, useQOSPolicies} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {Fragment, useCallback, useEffect, useMemo, useRef, useState} from 'react';
@@ -93,6 +95,7 @@ export default function LBRulePage() {
 	}, [lb_info, selected_rows, selected_key]);
 
 	const {openPopUp, enableYes} = usePopUp();
+	const {errorPopup, showAddError, showUpdateError, showDeleteError, closeErrorPopup} = useErrorPopup();
 
 	const handleDelete = useCallback(async () => {
 		if (!inst || selected_rows.length !== 1) return;
@@ -106,8 +109,11 @@ export default function LBRulePage() {
 			setTimeout(() => {
 				refetch();
 			}, 1000);
-		} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
-	}, [inst, selected_rows, lb_info, openPopUp, refetch]);
+		} else {
+			// Show formatted error popup
+			showDeleteError('load balancer rule', res.error);
+		}
+	}, [inst, selected_rows, lb_info, showDeleteError, refetch]);
 
 	const instanceRef = useRef<IServiceConfiguration | null>(null);
 	const handleAdd = useCallback(() => {
@@ -137,11 +143,14 @@ export default function LBRulePage() {
 					setTimeout(() => {
 						refetch();
 					}, 1000);
-				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: res.error}), t('OK'));
+				} else {
+					// Show formatted error popup
+					showAddError('load balancer rule', res.error);
+				}
 			},
 			true,
 		);
-	}, [inst, openPopUp, refetch, enableYes]);
+	}, [inst, showAddError, refetch, enableYes]);
 
 	// Update handler for LB rules
 	const updateFormRef = useRef<(IServiceConfiguration & {isValid?: boolean; errors?: any}) | null>(null);
@@ -196,12 +205,13 @@ export default function LBRulePage() {
 						refetch();
 					}, 1000);
 				} else {
-					openPopUp(t('Error'), t('Failed to update load balancer rule. {{error}}', {error: res.error}), t('OK'));
+					// Show formatted error popup
+					showUpdateError('load balancer rule', res.error);
 				}
 			},
 			true,
 		);
-	}, [inst, selected_rows, lb_info, openPopUp, refetch, enableYes]);
+	}, [inst, selected_rows, lb_info, showUpdateError, refetch, enableYes]);
 
 	useEffect(() => {
 		if (!servName || !lb_info || lb_info.lbAttr.length === 0) return;
@@ -241,6 +251,16 @@ export default function LBRulePage() {
 					</Stack>
 				</LowerSection>
 			)}
+
+			{/* Error Popup */}
+			<ErrorPopUp
+				isOpen={errorPopup.isOpen}
+				onClose={closeErrorPopup}
+				title={errorPopup.title}
+				mainMessage={errorPopup.mainMessage}
+				errorData={errorPopup.errorData}
+				buttonText={t('OK')}
+			/>
 		</Fragment>
 	) : null;
 }

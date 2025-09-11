@@ -5,12 +5,14 @@ import { getStableHash } from 'common';
 import VLanInputForm from 'components/input/VLanInputForm';
 import VLanMemberInputForm from 'components/input/VLanMemberInputForm';
 import LowerSection from 'components/layout/LowerSection';
+import ErrorPopUp from 'components/modal/ErrorPopUp';
 import SubTitlePannel from 'components/layout/SubTitlePannel';
 import VLANMemberTable from 'components/table/networks/VLANMemberTable';
 import VLANTable from 'components/table/networks/VLANTable';
 import {request_add_vlan_member, request_create_vlan, request_delete_vlan, request_delete_vlan_member} from 'connector/instance/vlan';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
+import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useVLANAttr} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import React from 'react';
@@ -26,6 +28,7 @@ function MemberView(props: {name: string; vid: number; data: IMember[]; refetch:
 	const inst = useInstanceFromURL();
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
 	const {openPopUp, enableYes} = usePopUp();
+	const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
 
 	const handleSelectionChange = (selection: number[]) => set_selected_rows(selection);
 
@@ -39,7 +42,7 @@ function MemberView(props: {name: string; vid: number; data: IMember[]; refetch:
 			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
 			set_selected_rows([]);
 			refetch();
-		} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
+		} else showDeleteError('VLAN member', res.error);
 	};
 
 	const instanceRef = useRef<IVlanMemberInput | null>(null);
@@ -68,16 +71,28 @@ function MemberView(props: {name: string; vid: number; data: IMember[]; refetch:
 				if (res.status === 'success') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
 					refetch();
-				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: res.error}), t('OK'));
+				} else showAddError('VLAN member', res.error);
 			},
 			true,
 		);
 	};
 
 	return (
-		<SubTitlePannel title={name} sub_title={t('Members')}>
-			<VLANMemberTable data={data} selected_rows={selected_rows} onChangeSelectedRows={handleSelectionChange} onAdd={handleAdd} onDelete={handleDelete} onRefresh={refetch} />
-		</SubTitlePannel>
+		<>
+			<SubTitlePannel title={name} sub_title={t('Members')}>
+				<VLANMemberTable data={data} selected_rows={selected_rows} onChangeSelectedRows={handleSelectionChange} onAdd={handleAdd} onDelete={handleDelete} onRefresh={refetch} />
+			</SubTitlePannel>
+			
+			{/* Error Popup */}
+			<ErrorPopUp
+				isOpen={errorPopup.isOpen}
+				onClose={closeErrorPopup}
+				title={errorPopup.title}
+				mainMessage={errorPopup.mainMessage}
+				errorData={errorPopup.errorData}
+				buttonText={t('OK')}
+			/>
+		</>
 	);
 }
 
@@ -91,6 +106,7 @@ export default function VLANPage() {
    // Track selected vid for synchronization
    const [selected_vid, set_selected_vid] = useState<number | null>(null);
    const {openPopUp, enableYes} = usePopUp();
+   const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
    // Hash function for VLAN
    const getHashKey = (item: any) => {
 	   const str = `${item.vid || ''}_${item.dev || ''}`;
@@ -128,7 +144,7 @@ export default function VLANPage() {
 			setTimeout(() => {
 				refetch();
 			}, 1000);
-		} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
+		} else showDeleteError('VLAN', res.error);
 	};
 
 	const instanceRef = useRef<IVlanInput | null>(null);
@@ -160,7 +176,7 @@ export default function VLANPage() {
 					setTimeout(() => {
 						refetch();
 					}, 1000);
-				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: res.error}), t('OK'));
+				} else showAddError('VLAN', res.error);
 			},
 			true,
 		);
@@ -197,6 +213,16 @@ export default function VLANPage() {
 				   />
 			   </LowerSection>
 		   )}
+
+		   {/* Error Popup */}
+		   <ErrorPopUp
+			   isOpen={errorPopup.isOpen}
+			   onClose={closeErrorPopup}
+			   title={errorPopup.title}
+			   mainMessage={errorPopup.mainMessage}
+			   errorData={errorPopup.errorData}
+			   buttonText={t('OK')}
+		   />
 	   </Fragment>
    );
 }

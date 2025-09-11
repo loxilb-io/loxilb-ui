@@ -3,10 +3,12 @@
 //---------------------------------------------------------
 import {isValidIPAddress, getStableHash} from 'common';
 import DeviceNeighborInputForm from 'components/input/DeviceNeighborInputForm';
+import ErrorPopUp from 'components/modal/ErrorPopUp';
 import DeviceNeighborTable from 'components/table/networks/DeviceNeighborTable';
 import {request_create_device_neighbor, request_delete_device_neighbor} from 'connector/instance/device_neghbors';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
+import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useDeviceNeighbors} from 'hooks/query/deviceHooks';
 import {t} from 'i18next';
 import {useRef, useState} from 'react';
@@ -26,6 +28,7 @@ export default function DeviceNeighborPage() {
    // Track selected dev/ipAddress for synchronization
    const [selected_key, set_selected_key] = useState<string | null>(null);
    const {openPopUp, enableYes} = usePopUp();
+   const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
    
    // Hash function for Device Neighbor entry
    const getHashKey = (item: any) => {
@@ -66,7 +69,7 @@ export default function DeviceNeighborPage() {
 			setTimeout(() => {
 				refetch();
 			}, 1000);
-		} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
+		} else showDeleteError('device neighbor', res.error);
 	};
 
 	const instanceRef = useRef<INeighborAttr | null>(null);
@@ -97,7 +100,7 @@ export default function DeviceNeighborPage() {
 					setTimeout(() => {
 						refetch();
 					}, 1000);
-				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: res.error}), t('OK'));
+				} else showAddError('device neighbor', res.error);
 			},
 			true,
 		);
@@ -114,12 +117,26 @@ export default function DeviceNeighborPage() {
 	   }
    }, [neighbor_info, selected_rows, selected_key]);
 
-   return <DeviceNeighborTable
-	   data={{neighborAttr: sortedAttr}}
-	   selected_rows={selected_index !== -1 ? [selected_index] : []}
-	   onChangeSelectedRows={handleSelectionChange}
-	   onAdd={handleAdd}
-	   onDelete={handleDelete}
-	   onRefresh={refetch}
-   />;
+   return (
+	   <>
+		   <DeviceNeighborTable
+			   data={{neighborAttr: sortedAttr}}
+			   selected_rows={selected_index !== -1 ? [selected_index] : []}
+			   onChangeSelectedRows={handleSelectionChange}
+			   onAdd={handleAdd}
+			   onDelete={handleDelete}
+			   onRefresh={refetch}
+		   />
+
+		   {/* Error Popup */}
+		   <ErrorPopUp
+			   isOpen={errorPopup.isOpen}
+			   onClose={closeErrorPopup}
+			   title={errorPopup.title}
+			   mainMessage={errorPopup.mainMessage}
+			   errorData={errorPopup.errorData}
+			   buttonText={t('OK')}
+		   />
+	   </>
+   );
 }

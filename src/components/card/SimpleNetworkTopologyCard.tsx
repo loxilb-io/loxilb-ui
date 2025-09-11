@@ -1,5 +1,6 @@
 //---------------------------------------------------------
-// Simple Network Topology Card - Following Project Patterns
+// Simple Network Topology Card - Dynamic Layout System
+// Automatically adjusts dimensions and positioning based on node count
 //---------------------------------------------------------
 import {
 	Box,
@@ -69,6 +70,8 @@ function SankeyNode({node, showMetrics}: {node: TopologyNode, showMetrics: boole
 	};
 
 	const nodeWidth = node.type === 'loxilb' ? 70 : 50;
+	const labelFontSize = node.type === 'loxilb' ? '14' : '12';
+	const metricsFontSize = node.type === 'loxilb' ? '11' : '10';
 
 	return (
 		<g transform={`translate(${node.x}, ${node.y})`}>
@@ -82,18 +85,18 @@ function SankeyNode({node, showMetrics}: {node: TopologyNode, showMetrics: boole
 			/>
 			<text
 				x={nodeWidth + 8}
-				y={15}
-				fontSize="14"
+				y={Math.min(18, node.height / 2 + 2)}
+				fontSize={labelFontSize}
 				fill={theme.palette.text.primary}
 				fontWeight={node.type === 'loxilb' ? 'bold' : 'normal'}
 			>
-				{node.label}
+				{node.label.length > 12 ? node.label.substring(0, 10) + '...' : node.label}
 			</text>
-			{showMetrics && (
+			{showMetrics && node.height > 30 && (
 				<text
 					x={nodeWidth + 8}
-					y={30}
-					fontSize="12"
+					y={Math.min(32, node.height / 2 + 16)}
+					fontSize={metricsFontSize}
 					fill={theme.palette.text.secondary}
 				>
 					{formatRate(node.value, 'bps')}
@@ -138,8 +141,15 @@ function TreeNode({node, showMetrics}: {node: TopologyNode, showMetrics: boolean
 		}
 	};
 
-	const nodeWidth = node.type === 'loxilb' ? 80 : 60;
-	const nodeHeight = 40;
+	const nodeWidth = node.type === 'loxilb' ? 100 : node.type === 'service' ? 100 : 100;
+	const nodeHeight = node.height;
+	const labelFontSize = node.type === 'loxilb' ? '14' : '12';
+	const metricsFontSize = node.type === 'loxilb' ? '11' : '10';
+
+	// Better label truncation for tree view
+	const maxLabelLength = node.type === 'endpoint' ? 12 : 10;
+	const displayLabel = node.label.length > maxLabelLength ? 
+		node.label.substring(0, maxLabelLength - 3) + '...' : node.label;
 
 	return (
 		<g transform={`translate(${node.x}, ${node.y})`}>
@@ -153,19 +163,19 @@ function TreeNode({node, showMetrics}: {node: TopologyNode, showMetrics: boolean
 			/>
 			<text
 				x={nodeWidth / 2}
-				y={18}
-				fontSize="13"
+				y={nodeHeight / 2 + 2}
+				fontSize={labelFontSize}
 				fill={theme.palette.text.primary}
 				fontWeight={node.type === 'loxilb' ? 'bold' : 'normal'}
 				textAnchor="middle"
 			>
-				{node.label}
+				{displayLabel}
 			</text>
-			{showMetrics && (
+			{showMetrics && nodeHeight > 30 && (
 				<text
 					x={nodeWidth / 2}
-					y={33}
-					fontSize="11"
+					y={nodeHeight / 2 + 18}
+					fontSize={metricsFontSize}
 					fill={theme.palette.text.secondary}
 					textAnchor="middle"
 				>
@@ -177,9 +187,10 @@ function TreeNode({node, showMetrics}: {node: TopologyNode, showMetrics: boolean
 }
 
 function TreeConnection({from, to, theme}: {from: TopologyNode, to: TopologyNode, theme: any}) {
-	const fromX = from.x + (from.type === 'loxilb' ? 80 : 60) / 2;
-	const fromY = from.y + 40;
-	const toX = to.x + (to.type === 'loxilb' ? 80 : 60) / 2;
+	const nodeWidth = 100; // All nodes are now 100px wide in tree view
+	const fromX = from.x + nodeWidth / 2;
+	const fromY = from.y + from.height;
+	const toX = to.x + nodeWidth / 2;
 	const toY = to.y;
 
 	return (
@@ -217,148 +228,86 @@ export default function SimpleNetworkTopologyCard(props: {instance: IInstance | 
 		aggregationInfo
 	} = useTopologyMetrics(instance, '5m');
 
-	// Process data with layout-specific positioning
-	const {nodes, flows, stats} = useMemo(() => {
+	// Dynamic layout calculation
+	const {nodes, flows, stats, svgDimensions} = useMemo(() => {
 
 		if (isLoading) {
-			return {nodes: [], flows: [], stats: null};
+			return {nodes: [], flows: [], stats: null, svgDimensions: {width: 700, height: 250}};
 		}
 
-		// If no real data, show mock data for demonstration
-		// if (!serviceTraffic?.length || !endpointTraffic?.length) {
-		// 	const mockNodes = [
-		// 		{
-		// 			id: 'loxilb',
-		// 			label: 'LoxiLB',
-		// 			type: 'loxilb' as const,
-		// 			value: 100000000,
-		// 			percentage: 100,
-		// 			status: 'healthy' as const,
-		// 			x: 150,
-		// 			y: 60,
-		// 			height: 60
-		// 		},
-		// 		{
-		// 			id: 'service-tcp1',
-		// 			label: 'TCP1',
-		// 			type: 'service' as const,
-		// 			value: 80000000,
-		// 			percentage: 80,
-		// 			status: 'healthy' as const,
-		// 			x: 320,
-		// 			y: 40,
-		// 			height: 50
-		// 		},
-		// 		{
-		// 			id: 'service-udp1',
-		// 			label: 'UDP1',
-		// 			type: 'service' as const,
-		// 			value: 20000000,
-		// 			percentage: 20,
-		// 			status: 'healthy' as const,
-		// 			x: 320,
-		// 			y: 120,
-		// 			height: 25
-		// 		},
-		// 		{
-		// 			id: 'endpoint-192.168.1.10',
-		// 			label: '192.168.1.10',
-		// 			type: 'endpoint' as const,
-		// 			value: 60000000,
-		// 			percentage: 75,
-		// 			status: 'healthy' as const,
-		// 			x: 520,
-		// 			y: 30,
-		// 			height: 40
-		// 		},
-		// 		{
-		// 			id: 'endpoint-192.168.1.11',
-		// 			label: '192.168.1.11',
-		// 			type: 'endpoint' as const,
-		// 			value: 20000000,
-		// 			percentage: 25,
-		// 			status: 'warning' as const,
-		// 			x: 520,
-		// 			y: 90,
-		// 			height: 20
-		// 		},
-		// 		{
-		// 			id: 'endpoint-192.168.1.12',
-		// 			label: '192.168.1.12',
-		// 			type: 'endpoint' as const,
-		// 			value: 20000000,
-		// 			percentage: 100,
-		// 			status: 'healthy' as const,
-		// 			x: 520,
-		// 			y: 130,
-		// 			height: 20
-		// 		}
-		// 	];
-
-		// 	const mockFlows = [
-		// 		{
-		// 			source: 'loxilb',
-		// 			target: 'service-tcp1',
-		// 			value: 80000000,
-		// 			percentage: 80,
-		// 			width: 15,
-		// 			path: 'M 220 90 C 260 90 280 65 320 65'
-		// 		},
-		// 		{
-		// 			source: 'loxilb',
-		// 			target: 'service-udp1',
-		// 			value: 20000000,
-		// 			percentage: 20,
-		// 			width: 8,
-		// 			path: 'M 220 90 C 260 90 280 132 320 132'
-		// 		},
-		// 		{
-		// 			source: 'service-tcp1',
-		// 			target: 'endpoint-192.168.1.10',
-		// 			value: 60000000,
-		// 			percentage: 75,
-		// 			width: 12,
-		// 			path: 'M 370 65 C 420 65 480 50 520 50'
-		// 		},
-		// 		{
-		// 			source: 'service-tcp1',
-		// 			target: 'endpoint-192.168.1.11',
-		// 			value: 20000000,
-		// 			percentage: 25,
-		// 			width: 6,
-		// 			path: 'M 370 65 C 420 65 480 100 520 100'
-		// 		},
-		// 		{
-		// 			source: 'service-udp1',
-		// 			target: 'endpoint-192.168.1.12',
-		// 			value: 20000000,
-		// 			percentage: 100,
-		// 			width: 8,
-		// 			path: 'M 370 132 C 420 132 480 140 520 140'
-		// 		}
-		// 	];
-
-		// 	const mockStats = {
-		// 		totalNodes: mockNodes.length,
-		// 		healthyNodes: mockNodes.filter(n => n.status === 'healthy').length,
-		// 		totalThroughput: 100000000,
-		// 		activeServices: 2
-		// 	};
-
-		// 	return {nodes: mockNodes, flows: mockFlows, stats: mockStats};
-		// }
-
 		// Data from topologyHooks is already converted to BPS, use directly
-
 		const nodes: TopologyNode[] = [];
 		const flows: TopologyFlow[] = [];
 
 		// Calculate total traffic (already in BPS from hooks)
 		const totalTraffic = serviceTraffic.reduce((sum: number, item: any) => sum + item.value, 0);
 
-		// LoxiLB central node - position based on view mode
-		const loxilbX = viewMode === 'sankey' ? 150 : 300;
-		const loxilbY = viewMode === 'sankey' ? 60 : 15;
+		// Dynamic layout calculations
+		const serviceCount = serviceTraffic.length;
+		const endpointCount = endpointTraffic.length;
+
+		// Calculate optimal dimensions and margins
+		const baseMargin = 40;
+		const nodeSpacing = 120;
+		
+		// Calculate max label length for both modes
+		const maxLabelLength = Math.max(
+			...serviceTraffic.map((s: any) => s.labels.service.length),
+			...endpointTraffic.map((e: any) => e.labels.dip.length),
+			6
+		);
+		
+		// Define balancedSpacing for Sankey layout
+		const balancedSpacing = 130;
+		
+		let svgWidth: number;
+		let svgHeight: number;
+		
+		if (viewMode === 'sankey') {
+			// Sankey layout - balanced spacing for better readability
+			const labelSpace = Math.max(80, maxLabelLength * 6);
+			const nodeWidth = 70;
+			const balancedSpacing = 130; // Increased spacing for better readability
+			
+			// Balanced width calculation for optimal readability
+			const totalNodeWidth = nodeWidth * 3; // LoxiLB + Service + Endpoint
+			const totalLabelSpace = labelSpace * 2; // Only service and endpoint labels extend
+			const totalSpacing = balancedSpacing * 2; // Between columns
+			svgWidth = Math.max(700, baseMargin * 2 + totalNodeWidth + totalLabelSpace + totalSpacing);
+			
+			// Height similar to Tree view proportions
+			const maxNodesInColumn = Math.max(serviceCount, endpointCount, 1);
+			svgHeight = Math.max(320, baseMargin * 2 + maxNodesInColumn * 60 + (maxNodesInColumn - 1) * 25);
+		} else {
+			// Tree layout - hierarchical structure with proper spacing
+			let maxEndpointsPerService = 1;
+			if (endpointTraffic.length > 0) {
+				const endpointCountByService: {[key: string]: number} = {};
+				endpointTraffic.forEach((endpoint: any) => {
+					const service = endpoint.labels.service;
+					endpointCountByService[service] = (endpointCountByService[service] || 0) + 1;
+				});
+				const serviceCounts = Object.values(endpointCountByService);
+				maxEndpointsPerService = serviceCounts.length > 0 ? Math.max(...serviceCounts) : 1;
+			}
+			
+			// Tree layout dimensions with generous spacing
+			const nodeWidth = 100;
+			const horizontalSpacing = 160;
+			const verticalSpacing = 80;
+			
+			// Width: accommodate services + endpoints spread horizontally
+			const totalWidth = Math.max(serviceCount, maxEndpointsPerService * serviceCount) * nodeWidth + 
+							   (Math.max(serviceCount, maxEndpointsPerService * serviceCount) + 1) * horizontalSpacing;
+			svgWidth = Math.max(700, baseMargin * 2 + totalWidth);
+			
+			// Height: 3 levels (LoxiLB → Services → Endpoints) with generous spacing
+			svgHeight = Math.max(320, baseMargin * 2 + 40 + verticalSpacing + 40 + verticalSpacing + 40);
+		}
+
+		// LoxiLB central node - better centered positioning
+		const loxilbX = viewMode === 'sankey' ? baseMargin + 20 : svgWidth / 2 - 40;
+		const loxilbY = viewMode === 'sankey' ? svgHeight / 2 - 30 : baseMargin;
 		nodes.push({
 			id: 'loxilb',
 			label: 'LoxiLB',
@@ -371,49 +320,18 @@ export default function SimpleNetworkTopologyCard(props: {instance: IInstance | 
 			height: viewMode === 'sankey' ? 60 : 40
 		});
 
-		// Service nodes - Dynamic positioning based on view mode
+		// Service nodes - Optimized positioning based on view mode
 		if (viewMode === 'sankey') {
-			// Sankey layout - vertical stacking
-			let serviceY = 30;
-			const serviceSpacing = Math.max(60, 180 / Math.max(serviceTraffic.length, 1));
-			serviceTraffic.forEach((service: any) => {
-				const serviceId = `service-${service.labels.service}`;
-				const serviceHeight = Math.max(40, Math.min(80, (service.value / totalTraffic) * 120));
-				
-				nodes.push({
-					id: serviceId,
-					label: service.labels.service.toUpperCase(),
-					type: 'service',
-					value: service.value,
-					percentage: (service.value / totalTraffic) * 100,
-					status: 'healthy',
-					x: 320,
-					y: serviceY,
-					height: serviceHeight
-				});
-
-				// Flow from LoxiLB to service
-				const flowY = serviceY + serviceHeight / 2;
-				flows.push({
-					source: 'loxilb',
-					target: serviceId,
-					value: service.value,
-					percentage: 100,
-					width: Math.max(3, (service.value / totalTraffic) * 20),
-					path: `M 220 100 C 260 100 280 ${flowY} 320 ${flowY}`
-				});
-
-				serviceY += serviceHeight + serviceSpacing;
-			});
-		} else {
-			// Tree layout - horizontal distribution
-			const serviceCount = serviceTraffic.length;
-			const serviceSpacing = serviceCount > 1 ? 300 / (serviceCount - 1) : 0;
-			const startX = serviceCount === 1 ? 230 : 80;
+			// Sankey layout - services in middle column, evenly distributed
+			const availableHeight = svgHeight - baseMargin * 2;
+			const serviceSpacing = serviceCount > 1 ? availableHeight / serviceCount : availableHeight;
+			const labelSpace = Math.max(80, maxLabelLength * 6);
+			const serviceX = baseMargin + 20 + 70 + balancedSpacing;
 			
 			serviceTraffic.forEach((service: any, index: number) => {
 				const serviceId = `service-${service.labels.service}`;
-				const serviceX = serviceCount === 1 ? startX : startX + (index * serviceSpacing);
+				const serviceHeight = Math.max(40, Math.min(80, (service.value / totalTraffic) * 120));
+				const serviceY = baseMargin + index * serviceSpacing + (serviceSpacing - serviceHeight) / 2;
 				
 				nodes.push({
 					id: serviceId,
@@ -423,74 +341,124 @@ export default function SimpleNetworkTopologyCard(props: {instance: IInstance | 
 					percentage: (service.value / totalTraffic) * 100,
 					status: 'healthy',
 					x: serviceX,
-					y: 70,
+					y: serviceY,
+					height: serviceHeight
+				});
+
+				// Flow from LoxiLB to service
+				const flowY = serviceY + serviceHeight / 2;
+				const loxilbCenterY = loxilbY + 30;
+				flows.push({
+					source: 'loxilb',
+					target: serviceId,
+					value: service.value,
+					percentage: 100,
+					width: Math.max(4, (service.value / totalTraffic) * 20),
+					path: `M ${loxilbX + 70} ${loxilbCenterY} C ${loxilbX + balancedSpacing/2} ${loxilbCenterY} ${serviceX - balancedSpacing/2} ${flowY} ${serviceX} ${flowY}`
+				});
+			});
+		} else {
+			// Tree layout - services spread horizontally with proper spacing
+			const availableWidth = svgWidth - baseMargin * 2;
+			const serviceSpacing = serviceCount > 1 ? availableWidth / (serviceCount + 1) : availableWidth / 2;
+			const serviceY = baseMargin + 40 + 80; // LoxiLB height + vertical spacing
+			
+			serviceTraffic.forEach((service: any, index: number) => {
+				const serviceId = `service-${service.labels.service}`;
+				const serviceX = baseMargin + serviceSpacing * (index + 1) - 50; // Center the 100px wide node
+				
+				nodes.push({
+					id: serviceId,
+					label: service.labels.service.toUpperCase(),
+					type: 'service',
+					value: service.value,
+					percentage: (service.value / totalTraffic) * 100,
+					status: 'healthy',
+					x: serviceX,
+					y: serviceY,
 					height: 40
 				});
 			});
 		}
 
-		// Endpoint nodes - Dynamic positioning based on view mode
-		if (viewMode === 'sankey') {
-			// Sankey layout - vertical stacking
-			let endpointY = 30;
-			const endpointSpacing = Math.max(50, 180 / Math.max(endpointTraffic.length, 1));
-			endpointTraffic.forEach((endpoint: any) => {
-			const endpointId = `endpoint-${endpoint.labels.service}-${endpoint.labels.dip}`;
-			const serviceTotal = serviceTraffic.find((s: any) => s.labels.service === endpoint.labels.service)?.value || 1;
-			const endpointHeight = Math.max(30, Math.min(70, (endpoint.value / totalTraffic) * 100));
-			const distribution = distributionRatios?.find(
-				(d: any) => d.labels.service === endpoint.labels.service && d.labels.dip === endpoint.labels.dip
-			);
-
-			nodes.push({
-				id: endpointId,
-				label: endpoint.labels.dip,
-				type: 'endpoint',
-				value: endpoint.value,
-				percentage: (endpoint.value / serviceTotal) * 100,
-				status: 'healthy',
-				x: 520,
-				y: endpointY,
-				height: endpointHeight
-			});
-
-			// Flow from service to endpoint - Use proper center points
-			const serviceNode = nodes.find(n => n.id === `service-${endpoint.labels.service}`);
-			if (serviceNode) {
-				const serviceFlowY = serviceNode.y + serviceNode.height / 2;
-				const endpointFlowY = endpointY + endpointHeight / 2;
-				flows.push({
-					source: `service-${endpoint.labels.service}`,
-					target: endpointId,
-					value: endpoint.value,
-					percentage: (distribution?.value || 0) * 100,
-					width: Math.max(2, (endpoint.value / serviceTotal) * 18),
-					path: `M 370 ${serviceFlowY} C 420 ${serviceFlowY} 480 ${endpointFlowY} 520 ${endpointFlowY}`
-				});
+		// Group endpoints by service for better layout
+		const endpointsByService = new Map();
+		endpointTraffic.forEach((endpoint: any) => {
+			const service = endpoint.labels.service;
+			if (!endpointsByService.has(service)) {
+				endpointsByService.set(service, []);
 			}
+			endpointsByService.get(service).push(endpoint);
+		});
 
-				endpointY += endpointHeight + endpointSpacing;
+		// Endpoint nodes - Optimized positioning based on view mode
+		if (viewMode === 'sankey') {
+			// Sankey layout - endpoints in right column, evenly distributed
+			const availableHeight = svgHeight - baseMargin * 2;
+			const endpointSpacing = endpointCount > 1 ? availableHeight / endpointCount : availableHeight;
+			const labelSpace = Math.max(80, maxLabelLength * 6);
+			const endpointX = baseMargin + 20 + 70 + balancedSpacing + 50 + labelSpace + balancedSpacing;
+			let currentEndpointIndex = 0;
+			
+			endpointsByService.forEach((endpoints) => {
+				endpoints.forEach((endpoint: any) => {
+					const endpointId = `endpoint-${endpoint.labels.service}-${endpoint.labels.dip}`;
+					const serviceTotal = serviceTraffic.find((s: any) => s.labels.service === endpoint.labels.service)?.value || 1;
+					const endpointHeight = Math.max(30, Math.min(60, (endpoint.value / totalTraffic) * 100));
+					const endpointY = baseMargin + currentEndpointIndex * endpointSpacing + (endpointSpacing - endpointHeight) / 2;
+					
+					const distribution = distributionRatios?.find(
+						(d: any) => d.labels.service === endpoint.labels.service && d.labels.dip === endpoint.labels.dip
+					);
+
+					nodes.push({
+						id: endpointId,
+						label: endpoint.labels.dip,
+						type: 'endpoint',
+						value: endpoint.value,
+						percentage: (endpoint.value / serviceTotal) * 100,
+						status: 'healthy',
+						x: endpointX,
+						y: endpointY,
+						height: endpointHeight
+					});
+
+					// Flow from service to endpoint
+					const serviceNode = nodes.find(n => n.id === `service-${endpoint.labels.service}`);
+					if (serviceNode) {
+						const serviceFlowY = serviceNode.y + serviceNode.height / 2;
+						const endpointFlowY = endpointY + endpointHeight / 2;
+						flows.push({
+							source: `service-${endpoint.labels.service}`,
+							target: endpointId,
+							value: endpoint.value,
+							percentage: (distribution?.value || 0) * 100,
+							width: Math.max(3, (endpoint.value / serviceTotal) * 15),
+							path: `M ${serviceNode.x + 50} ${serviceFlowY} C ${serviceNode.x + balancedSpacing/2} ${serviceFlowY} ${endpointX - balancedSpacing/2} ${endpointFlowY} ${endpointX} ${endpointFlowY}`
+						});
+					}
+
+					currentEndpointIndex++;
+				});
 			});
 		} else {
-			// Tree layout - endpoints under their services
-			const endpointsByService = new Map();
-			endpointTraffic.forEach((endpoint: any) => {
-				const service = endpoint.labels.service;
-				if (!endpointsByService.has(service)) {
-					endpointsByService.set(service, []);
-				}
-				endpointsByService.get(service).push(endpoint);
-			});
-
+			// Tree layout - endpoints positioned under their respective services with proper spacing
+			const endpointY = baseMargin + 40 + 80 + 40 + 80; // LoxiLB + spacing + services + spacing
+			
 			endpointsByService.forEach((endpoints, serviceName) => {
 				const serviceNode = nodes.find(n => n.id === `service-${serviceName}`);
 				if (serviceNode) {
-					const endpointSpacing = endpoints.length > 1 ? 80 / (endpoints.length - 1) : 0;
-					const startX = endpoints.length === 1 ? serviceNode.x : serviceNode.x - 40;
+					// Calculate spacing for endpoints under this service
+					const serviceWidth = 100;
+					const endpointSpacing = 120;
+					const totalEndpointWidth = endpoints.length * serviceWidth + (endpoints.length - 1) * endpointSpacing;
+					const startX = serviceNode.x + serviceWidth/2 - totalEndpointWidth/2;
 					
 					endpoints.forEach((endpoint: any, index: number) => {
 						const endpointId = `endpoint-${endpoint.labels.service}-${endpoint.labels.dip}`;
-						const endpointX = endpoints.length === 1 ? startX : startX + (index * endpointSpacing);
+						const endpointX = endpoints.length === 1 
+							? serviceNode.x + serviceWidth/2 - serviceWidth/2 // Center under service
+							: startX + index * (serviceWidth + endpointSpacing);
 						
 						nodes.push({
 							id: endpointId,
@@ -500,7 +468,7 @@ export default function SimpleNetworkTopologyCard(props: {instance: IInstance | 
 							percentage: (endpoint.value / serviceNode.value) * 100,
 							status: 'healthy',
 							x: endpointX,
-							y: 130,
+							y: endpointY,
 							height: 40
 						});
 					});
@@ -515,7 +483,12 @@ export default function SimpleNetworkTopologyCard(props: {instance: IInstance | 
 			activeServices: serviceTraffic.length
 		};
 
-		return {nodes, flows, stats};
+		return {
+			nodes, 
+			flows, 
+			stats, 
+			svgDimensions: {width: svgWidth, height: svgHeight}
+		};
 	}, [serviceTraffic, endpointTraffic, distributionRatios, isLoading, viewMode]);
 
 	// Filter flows by threshold
@@ -641,11 +614,25 @@ export default function SimpleNetworkTopologyCard(props: {instance: IInstance | 
 				)}
 
 				{/* Topology Visualization */}
-				<Box display="flex" justifyContent="center">
+				<Box 
+					sx={{
+						width: '100%',
+						overflowX: 'auto',
+						display: 'flex',
+						justifyContent: 'center'
+					}}
+				>
 					<svg 
-						width="700" 
-						height={viewMode === 'tree' ? "280" : "250"}
-						style={{border: `1px solid ${theme.palette.divider}`, borderRadius: 4}}
+						width="100%"
+						height={svgDimensions.height}
+						viewBox={`0 0 ${svgDimensions.width} ${svgDimensions.height}`}
+						style={{
+							border: `1px solid ${theme.palette.divider}`, 
+							borderRadius: 4,
+							maxWidth: svgDimensions.width,
+							backgroundColor: alpha(theme.palette.background.paper, 0.02)
+						}}
+						preserveAspectRatio="xMidYMid meet"
 					>
 						{viewMode === 'sankey' ? (
 							<>
