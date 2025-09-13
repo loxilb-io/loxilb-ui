@@ -61,6 +61,7 @@ import ProcessPage from 'pages/status/ProcessPage';
 import AlertManagerPage from 'pages/managers/AlertManagerPage';
 import BackupManagerPage from 'pages/managers/BackupManagerPage';
 import UserManagementPage from 'pages/managers/UserManagementPage';
+import ConfigManagementPage from 'pages/ConfigManagementPage';
 import AdvancedMetricsPage from 'pages/AdvancedMetricsPage';
 
 import {MAX_DURATION_MS} from 'hooks/query/common';
@@ -121,6 +122,7 @@ export default function App() {
 								<Route path="/instance" element={<InstancePage />} />
 								<Route path="/system" element={<SystemPage />} />
 								<Route path="/user" element={<UserManagementPage />} />
+								<Route path="/config-management" element={<ConfigManagementPage />} />
 
 								<Route path="/instance/*" element={<NavLayout />}>
 									<Route path="network" element={<Outlet />}>

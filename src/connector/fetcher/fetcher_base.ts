@@ -175,3 +175,88 @@ export async function DELETE(url: string, data?: any, contentType?: 'application
 	const headers = contentType ? {'Content-Type': contentType} : undefined;
 	return await fetch_json(url, {method: 'DELETE', body: data, headers});
 }
+
+//---------------------------------------------------------
+// File Operations
+//---------------------------------------------------------
+export async function UPLOAD_FILE(url: string, file: File, additionalData?: Record<string, string>): Promise<SimpleResponse> {
+	const access_token = load_token();
+	const formData = new FormData();
+	formData.append('file', file);
+	
+	if (additionalData) {
+		Object.entries(additionalData).forEach(([key, value]) => {
+			formData.append(key, value);
+		});
+	}
+	
+	try {
+		const headers: Record<string, string> = {};
+		
+		if (access_token) {
+			headers['Authorization'] = `Bearer ${access_token}`;
+		}
+		
+		const response = await fetch(url, {
+			method: 'POST',
+			headers,
+			body: formData
+		});
+		
+		return await handle_response(response);
+	} catch (error: any) {
+		console.error('Upload file error:', error);
+		throw error;
+	}
+}
+
+export async function DOWNLOAD_FILE(url: string): Promise<{blob: Blob, filename: string} | undefined> {
+	try {
+		const access_token = load_token();
+		const headers: Record<string, string> = {
+			'Accept': 'application/octet-stream'
+		};
+		
+		if (access_token) {
+			headers['Authorization'] = `Bearer ${access_token}`;
+		}
+		
+		const response = await fetch(url, {
+			method: 'GET',
+			headers
+		});
+
+		if (response.ok) {
+			// Check if the response is actually a file
+			const contentType = response.headers.get('Content-Type');
+			if (contentType && contentType.includes('text/html')) {
+				console.error('Received HTML instead of file - likely a routing error or authentication issue');
+				return undefined;
+			}
+			
+			// Extract filename from Content-Disposition header
+			const contentDisposition = response.headers.get('Content-Disposition');
+			let filename = 'download'; // fallback filename
+			
+			if (contentDisposition) {
+				// Try multiple patterns to extract filename
+				let filenameMatch = contentDisposition.match(/filename\s*=\s*"([^"]+)"/);
+				if (!filenameMatch) {
+					filenameMatch = contentDisposition.match(/filename\s*=\s*([^;\s]+)/);
+				}
+				if (filenameMatch && filenameMatch[1]) {
+					filename = filenameMatch[1].trim().replace(/['"]/g, '');
+				}
+			}
+			
+			const blob = await response.blob();
+			return { blob, filename };
+		} else {
+			console.error('Download failed:', response.status, response.statusText);
+		}
+	} catch (error) {
+		console.error('Download file error:', error);
+	}
+	
+	return undefined;
+}
