@@ -2,7 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {filterUnusedParams} from 'common';
-import {DELETE, GET, PATCH, POST, PUT, SimpleResponse} from './fetcher_base';
+import {DELETE, GET, PATCH, POST, PUT, SimpleResponse, UPLOAD_FILE, DOWNLOAD_FILE} from './fetcher_base';
 
 //---------------------------------------------------------
 // Custom Fetchers
@@ -32,4 +32,17 @@ export async function PATCH_OAM(url: string, data?: any, contentType?: 'applicat
 export async function DELETE_OAM(url: string): Promise<SimpleResponse> {
 	const full_url = `${process.env.REACT_APP_API_URL}${url}`;
 	return await DELETE(full_url);
+}
+
+//---------------------------------------------------------
+// File Operations
+//---------------------------------------------------------
+export async function UPLOAD_FILE_OAM(url: string, file: File, additionalData?: Record<string, string>): Promise<SimpleResponse> {
+	const full_url = `${process.env.REACT_APP_API_URL}${url}`;
+	return await UPLOAD_FILE(full_url, file, additionalData);
+}
+
+export async function DOWNLOAD_FILE_OAM(url: string): Promise<{blob: Blob, filename: string} | undefined> {
+	const full_url = `${process.env.REACT_APP_API_URL}${url}`;
+	return await DOWNLOAD_FILE(full_url);
 }

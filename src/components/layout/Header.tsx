@@ -3,6 +3,7 @@
 //---------------------------------------------------------
 import PersonIcon from '@mui/icons-material/Person';
 import StorageIcon from '@mui/icons-material/Storage';
+import ImportExportIcon from '@mui/icons-material/ImportExport';
 import {Box, IconButton, Tooltip, Typography} from '@mui/material';
 import Logo from 'assets/logo/loxi.svg';
 import {is_logged_in, move_home} from 'common';
@@ -44,6 +45,20 @@ function UserIcon() {
 	);
 }
 
+function ConfigIcon() {
+	const config_status_message = t('Config Management');
+
+	return (
+		<Tooltip title={config_status_message} placement="top" arrow>
+			<span>
+				<IconButton component={Link} to="/config-management">
+					<ImportExportIcon sx={{color: 'white'}} fontSize="small" />
+				</IconButton>
+			</span>
+		</Tooltip>
+	);
+}
+
 export default function Header() {
 	const version = package_info.version;
 
@@ -68,6 +83,9 @@ export default function Header() {
 					<VerticalDivider />
 
 					<UserIcon />
+					<VerticalDivider />
+
+					<ConfigIcon />
 					<VerticalDivider />
 					
 					{/*<AlertsIcon />
