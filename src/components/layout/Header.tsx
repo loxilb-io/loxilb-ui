@@ -5,7 +5,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import StorageIcon from '@mui/icons-material/Storage';
 import ImportExportIcon from '@mui/icons-material/ImportExport';
 import {Box, IconButton, Tooltip, Typography} from '@mui/material';
-import Logo from 'assets/logo/loxi.svg';
+import Logo from 'assets/logo/CI_KETI.png';
 import {is_logged_in, move_home} from 'common';
 import {t} from 'i18next';
 import {Link} from 'react-router-dom';

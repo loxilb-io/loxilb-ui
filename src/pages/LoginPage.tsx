@@ -3,7 +3,7 @@
 //---------------------------------------------------------
 import {Alert, Box, Container, Paper, Typography, Tabs, Tab, Divider} from '@mui/material';
 import {styled} from '@mui/material/styles';
-import Logo from 'assets/logo/stamp.svg';
+import Logo from 'assets/logo/CI_KETI.png';
 import {is_logged_in, move_forced, save_local_storage} from 'common';
 import Particles from 'components/animation/Particles';
 import BackBoard from 'components/element/BackBoard';
@@ -144,7 +144,7 @@ export default function LoginPage() {
 
 			<Container component="main" maxWidth="xs">
 				<StyledPaper elevation={24}>
-					<Box component="img" src={Logo} alt="LoxiLB Logo" width="100px" height="100px" />
+					<Box component="img" src={Logo} alt="KETI Logo" sx={{ width: "200px", height: "auto", maxWidth: "100%" }} />
 
 					<Typography variant="subtitle2" color="textSecondary" marginTop="8px">
 						{`v.${version}`}
