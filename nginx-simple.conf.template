@@ -1,13 +1,39 @@
+# HTTP server - redirects to HTTPS
 server {
     listen 80;
-    server_name localhost;
-    
+    server_name _;
+
+    # Health check endpoint (no redirect)
+    location /health {
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
+    }
+
+    # Redirect all other traffic to HTTPS
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# HTTPS server - Main entry point
+server {
+    listen 443 ssl http2;
+    server_name _;
+
+    # SSL Configuration
+    ssl_certificate /etc/nginx/ssl/server.crt;
+    ssl_certificate_key /etc/nginx/ssl/server.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+
     # Security headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https: wss: http: ws: https://*.loxilb.io;" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Frame-Options DENY;
+    add_header X-Content-Type-Options nosniff;
 
     # Root directory for React app
     root /usr/share/nginx/html;
@@ -47,6 +73,15 @@ server {
         add_header 'Access-Control-Allow-Credentials' 'true' always;
     }
 
+    # API routes - LoxiLB Enterprise
+    location /api/lb/ {
+        proxy_pass http://loxilb-enterprise:11111/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
     # Health check endpoint
     location /health {
         access_log off;
@@ -78,9 +113,14 @@ server {
         }
     }
 
-    # Redirect root to public path
+    # Redirect root to /netlox (LoxiLB UI entry point)
     location = / {
-        return 301 ${PUBLIC_PATH}/;
+        return 301 $scheme://$host${PUBLIC_PATH}/;
+    }
+
+    # Handle exact /netlox path (redirect to add trailing slash)
+    location = ${PUBLIC_PATH} {
+        return 301 $scheme://$host${PUBLIC_PATH}/;
     }
 
     # Handle React Router (SPA) for root access - MOVED TO END
