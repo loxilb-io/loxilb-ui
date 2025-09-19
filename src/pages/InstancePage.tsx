@@ -129,8 +129,8 @@ export default function InstancePage() {
 				alignItems="space-between"
 			>
 				{Array.isArray(instance_set) && instance_set.map((item: any) => (
-				<InstanceCardWithHealth key={item.instance.id} item={item} licenseValid={licenseValid} />
-			))}
+					<InstanceCardWithHealth key={item.instance.id} item={item} licenseValid={licenseValid} />
+				))}
 				<InstanceCardAdd />
 			</Box>
 
