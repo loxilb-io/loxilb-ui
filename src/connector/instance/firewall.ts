@@ -3,7 +3,7 @@
 //---------------------------------------------------------
 import {IFirewallDeleteFilter, IFirewallRule} from 'types/firewall';
 import {IInstance} from 'types/oam';
-import {ApiResult} from '../fetcher/fetcher_base';
+import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
 
 //---------------------------------------------------------
@@ -16,8 +16,12 @@ export async function query_get_firewall_rules(instance: IInstance): Promise<IFi
 
 export async function request_create_firewall_rule(instance: IInstance, data: IFirewallRule): Promise<ApiResult> {
 	const resp = await POST_INST(instance, `/config/firewall`, data);
-	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
-	else return {status: 'success'};
+	if (resp.code !== 200 && resp.code !== 204) {
+		const errorMessage = createDetailedErrorMessage(resp, 'Firewall Operation');
+		return {status: 'error', error: errorMessage};
+	} else {
+		return {status: 'success'};
+	}
 }
 
 export async function request_delete_all_firewall_rules(instance: IInstance, filter?: IFirewallDeleteFilter): Promise<ApiResult> {
@@ -36,6 +40,10 @@ export async function request_delete_all_firewall_rules(instance: IInstance, fil
 	const url = `/config/firewall${params.toString() ? `?${params.toString()}` : ''}`;
 	const resp = await DELETE_INST(instance, url);
 
-	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
-	else return {status: 'success'};
+	if (resp.code !== 200 && resp.code !== 204) {
+		const errorMessage = createDetailedErrorMessage(resp, 'Firewall Operation');
+		return {status: 'error', error: errorMessage};
+	} else {
+		return {status: 'success'};
+	}
 }

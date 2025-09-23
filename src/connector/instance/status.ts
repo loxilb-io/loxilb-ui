@@ -2,7 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {clean_string, format_uptime, parse_log_lines} from 'common';
-import {ApiResult, load_token} from 'connector/fetcher/fetcher_base';
+import {ApiResult, createDetailedErrorMessage, load_token} from 'connector/fetcher/fetcher_base';
 import {t} from 'i18next';
 import {ISystemInfo} from 'types/device';
 import {IFilesystemAttribute} from 'types/filesystem';
@@ -106,7 +106,10 @@ export async function query_get_metadata(instance: IInstance): Promise<any> {
 
 export async function request_post_log_level(instance: IInstance, level: LevelType): Promise<ApiResult> {
 	const resp = await POST_INST(instance, `/config/params`, {logLevel: level});
-	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
+	if (resp.code !== 200 && resp.code !== 204) {
+		const errorMessage = createDetailedErrorMessage(resp, 'Status Operation');
+		return {status: 'error', error: errorMessage};
+	}
 	else return {status: 'success'};
 }
 

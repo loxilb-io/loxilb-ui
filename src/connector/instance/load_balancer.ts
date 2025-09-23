@@ -3,7 +3,7 @@
 //---------------------------------------------------------
 import {IServiceConfiguration} from 'types/load_balancer';
 import {IInstance} from 'types/oam';
-import {ApiResult} from '../fetcher/fetcher_base';
+import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
 
 //---------------------------------------------------------
@@ -54,30 +54,50 @@ export async function request_create_load_balancer_config(instance: IInstance, d
 	}
 	
 	const resp = await POST_INST(instance, `/config/loadbalancer`, cleanedData);
-	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
-	else return {status: 'success'};
+	if (resp.code !== 200 && resp.code !== 204) {
+		const errorMessage = createDetailedErrorMessage(resp, 'Create Load Balancer');
+		return {status: 'error', error: errorMessage};
+	} else {
+		return {status: 'success'};
+	}
 }
 
 export async function request_delete_all_load_balancers(instance: IInstance): Promise<ApiResult> {
 	const resp = await DELETE_INST(instance, `/config/loadbalancer/all`);
-	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
-	else return {status: 'success'};
+	if (resp.code !== 200 && resp.code !== 204) {
+		const errorMessage = createDetailedErrorMessage(resp, 'Delete All Load Balancers');
+		return {status: 'error', error: errorMessage};
+	} else {
+		return {status: 'success'};
+	}
 }
 
 export async function request_delete_lb_by_name(instance: IInstance, lb_name: string): Promise<ApiResult> {
 	const resp = await DELETE_INST(instance, `/config/loadbalancer/name/${lb_name}`);
-	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
-	else return {status: 'success'};
+	if (resp.code !== 200 && resp.code !== 204) {
+		const errorMessage = createDetailedErrorMessage(resp, 'Delete Load Balancer by Name');
+		return {status: 'error', error: errorMessage};
+	} else {
+		return {status: 'success'};
+	}
 }
 
 export async function request_delete_lb_by_ip_port_proto(instance: IInstance, ip: string, port: number, proto: string): Promise<ApiResult> {
 	const resp = await DELETE_INST(instance, `/config/loadbalancer/externalipaddress/${ip}/port/${port}/protocol/${proto}`);
-	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
-	else return {status: 'success'};
+	if (resp.code !== 200 && resp.code !== 204) {
+		const errorMessage = createDetailedErrorMessage(resp, 'Delete Load Balancer');
+		return {status: 'error', error: errorMessage};
+	} else {
+		return {status: 'success'};
+	}
 }
 
 export async function request_delete_lb_by_hosturl_ip_port_proto(instance: IInstance, hosturl: string, ip: string, port: number, proto: string): Promise<ApiResult> {
 	const resp = await DELETE_INST(instance, `/config/loadbalancer/hosturl/${hosturl}/externalipaddress/${ip}/port/${port}/protocol/${proto}`);
-	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
-	else return {status: 'success'};
+	if (resp.code !== 200 && resp.code !== 204) {
+		const errorMessage = createDetailedErrorMessage(resp, 'Delete Load Balancer');
+		return {status: 'error', error: errorMessage};
+	} else {
+		return {status: 'success'};
+	}
 }

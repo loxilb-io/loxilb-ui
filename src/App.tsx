@@ -24,6 +24,7 @@ import SimpleSetupPage from 'pages/SimpleSetupPage';
 import OAuthCallbackPage from 'pages/OAuthCallbackPage';
 import Page404 from 'pages/Page404';
 import Page500 from 'pages/Page500';
+import Page503 from 'pages/Page503';
 import PageCORS from 'pages/PageCORS';
 
 import DashboardPage from 'pages/DashboardPage';
@@ -118,6 +119,7 @@ export default function App() {
 
 								<Route path="/404" element={<Page404 />} />
 								<Route path="/500" element={<Page500 />} />
+								<Route path="/503" element={<Page503 />} />
 								<Route path="/cors" element={<PageCORS />} />
 
 								<Route path="/login" element={<LoginPage />} />

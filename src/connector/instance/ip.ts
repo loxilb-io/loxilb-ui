@@ -1,10 +1,10 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {IIpAttribute, IIpAttributeInput} from 'types/ip';
-import {IInstance} from 'types/oam';
-import {ApiResult} from '../fetcher/fetcher_base';
+import { IInstance } from 'types/oam';
+import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
+import { IIpAttribute, IIpAttributeInput } from 'types/ip';
 
 //---------------------------------------------------------
 // API Caller Functions
@@ -16,12 +16,20 @@ export async function query_get_ipv4_all(instance: IInstance): Promise<IIpAttrib
 
 export async function request_create_ipv4(instance: IInstance, data: IIpAttributeInput): Promise<ApiResult> {
 	const resp = await POST_INST(instance, `/config/ipv4address`, data);
-	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
-	else return {status: 'success'};
+	if (resp.code !== 200 && resp.code !== 204) {
+		const errorMessage = createDetailedErrorMessage(resp, 'IP Operation');
+		return {status: 'error', error: errorMessage};
+	} else {
+		return {status: 'success'};
+	}
 }
 
 export async function request_delete_ipv4(instance: IInstance, ip: string, mask: number, dev: string): Promise<ApiResult> {
 	const resp = await DELETE_INST(instance, `/config/ipv4address/${ip}/${mask}/dev/${dev}`);
-	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
-	else return {status: 'success'};
+	if (resp.code !== 200 && resp.code !== 204) {
+		const errorMessage = createDetailedErrorMessage(resp, 'IP Operation');
+		return {status: 'error', error: errorMessage};
+	} else {
+		return {status: 'success'};
+	}
 }
