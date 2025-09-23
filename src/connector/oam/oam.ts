@@ -223,12 +223,12 @@ export async function request_delete_user(id: number): Promise<ApiResult> {
 // Setup & Onboarding API Functions (Updated for finalized backend)
 //---------------------------------------------------------
 export async function query_setup_status(): Promise<ISetupStatus | undefined> {
-	const resp = await GET_OAM('/oam/setup/status');
+	const resp = await GET_OAM('/setup/status');
 	return resp.data as ISetupStatus;
 }
 
 export async function request_update_admin_credentials(payload: IUpdateAdminRequest): Promise<IUpdateAdminResponse> {
-	const resp = await POST_OAM('/oam/setup/update-admin', payload);
+	const resp = await POST_OAM('/setup/update-admin', payload);
 	if (resp.code !== 200 && resp.code !== 201) {
 		return {
 			success: false, 
