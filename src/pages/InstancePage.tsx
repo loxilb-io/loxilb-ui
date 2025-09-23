@@ -17,7 +17,7 @@ import {IInstance} from 'types/oam';
 //---------------------------------------------------------
 // Individual Instance Card Wrapper with Health Hook
 //---------------------------------------------------------
-const InstanceCardWithHealth = memo(({ item, licenseValid }: { item: any; licenseValid: boolean }) => {
+const InstanceCardWithHealth = memo(({ item, licenseValid, onHealthRefresh }: { item: any; licenseValid: boolean; onHealthRefresh?: () => void }) => {
 	// Add delay to stagger health checks and prevent thundering herd
 	const delay = item.instance.id * 100; // 100ms delay per instance
 	const [enableHealthCheck, setEnableHealthCheck] = useState(false);
@@ -39,11 +39,12 @@ const InstanceCardWithHealth = memo(({ item, licenseValid }: { item: any; licens
 	};
 	
 	return (
-		<InstanceCard 
-			key={item.instance.id} 
-			instance_info={modifiedInstanceInfo} 
+		<InstanceCard
+			key={item.instance.id}
+			instance_info={modifiedInstanceInfo}
 			ha={item.ha}
 			health={health}
+			onHealthRefresh={onHealthRefresh}
 		/>
 	);
 });
@@ -129,7 +130,7 @@ export default function InstancePage() {
 				alignItems="space-between"
 			>
 				{Array.isArray(instance_set) && instance_set.map((item: any) => (
-					<InstanceCardWithHealth key={item.instance.id} item={item} licenseValid={licenseValid} />
+					<InstanceCardWithHealth key={item.instance.id} item={item} licenseValid={licenseValid} onHealthRefresh={refreshAllHealth} />
 				))}
 				<InstanceCardAdd />
 			</Box>

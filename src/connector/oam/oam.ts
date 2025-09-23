@@ -5,6 +5,7 @@ import {parse_log_lines} from 'common';
 import {ILog, ILogArchiveList} from 'types/log';
 import {IInstance, IInstanceInput, IUser} from 'types/oam';
 import {ILicenseStatusResponse, IInstallLicenseRequest, IUpdateLicenseRequest, ILicensePayload, IUserLicensesResponse} from 'types/license';
+import {ISetupStatus, IUpdateAdminRequest, IUpdateAdminResponse} from 'types/setup';
 import {ApiResult, load_token, SimpleResponse} from '../fetcher/fetcher_base';
 import {DELETE_OAM, GET_OAM, POST_OAM, PUT_OAM} from '../fetcher/fetcher_oam';
 
@@ -216,4 +217,23 @@ export async function request_delete_user(id: number): Promise<ApiResult> {
 	const resp = await DELETE_OAM(`/users/${id}`);
 	if (resp.code !== 200) return {status: 'error', error: `Failed to delete user: ${resp.message}`};
 	else return {status: 'success'};
+}
+
+//---------------------------------------------------------
+// Setup & Onboarding API Functions (Updated for finalized backend)
+//---------------------------------------------------------
+export async function query_setup_status(): Promise<ISetupStatus | undefined> {
+	const resp = await GET_OAM('/oam/setup/status');
+	return resp.data as ISetupStatus;
+}
+
+export async function request_update_admin_credentials(payload: IUpdateAdminRequest): Promise<IUpdateAdminResponse> {
+	const resp = await POST_OAM('/oam/setup/update-admin', payload);
+	if (resp.code !== 200 && resp.code !== 201) {
+		return {
+			success: false, 
+			message: resp.data?.message || resp.message || 'Failed to update admin credentials'
+		};
+	}
+	return resp.data as IUpdateAdminResponse;
 }
