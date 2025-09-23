@@ -56,7 +56,11 @@ export default function PopUp() {
 						</Typography>
 					)}
 
-					{typeof props.contents === 'string' ? <Typography variant="body1">{props.contents}</Typography> : props.contents}
+					{typeof props.contents === 'string' ? (
+						<Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+							{props.contents}
+						</Typography>
+					) : props.contents}
 
 					<Box display="flex" justifyContent="flex-end" gap="8px" paddingTop="20px">
 						{props.no && (

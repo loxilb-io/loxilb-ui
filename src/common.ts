@@ -263,6 +263,14 @@ export function move_500(code?: number, message?: string) {
 	window.location.href = get_root_url() + '/500';
 }
 
+export function move_503(code?: number, message?: string) {
+	if (window.location.href.includes('/503')) return;
+
+	sessionStorage.setItem('error_code', code?.toString() || '');
+	sessionStorage.setItem('error_message', message || '');
+	window.location.href = get_root_url() + '/503';
+}
+
 export function move_cors() {
 	if (window.location.href.includes('/cors')) return;
 	else window.location.href = get_root_url() + '/cors';

@@ -3,7 +3,7 @@
 //---------------------------------------------------------
 import {IBFDAttribute, IBfdInput} from 'types/bfd';
 import {IInstance} from 'types/oam';
-import {ApiResult} from '../fetcher/fetcher_base';
+import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
 
 //---------------------------------------------------------
@@ -16,12 +16,20 @@ export async function query_get_bfd_all(instance: IInstance): Promise<IBFDAttrib
 
 export async function request_create_bfd(instance: IInstance, param: IBfdInput): Promise<ApiResult> {
 	const resp = await POST_INST(instance, `/config/bfd`, param);
-	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
-	else return {status: 'success'};
+	if (resp.code !== 200 && resp.code !== 204) {
+		const errorMessage = createDetailedErrorMessage(resp, 'BFD Operation');
+		return {status: 'error', error: errorMessage};
+	} else {
+		return {status: 'success'};
+	}
 }
 
 export async function request_delete_bfd(instance: IInstance, remoteIp: string): Promise<ApiResult> {
 	const resp = await DELETE_INST(instance, `/config/bfd/remoteIP/${remoteIp}`);
-	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
-	else return {status: 'success'};
+	if (resp.code !== 200 && resp.code !== 204) {
+		const errorMessage = createDetailedErrorMessage(resp, 'BFD Operation');
+		return {status: 'error', error: errorMessage};
+	} else {
+		return {status: 'success'};
+	}
 }

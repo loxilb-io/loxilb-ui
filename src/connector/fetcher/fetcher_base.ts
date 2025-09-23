@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {forced_relocation_to_login, get_local_storage, move_404, move_402, move_500, move_cors, remove_local_storage, save_local_storage} from 'common';
+import {forced_relocation_to_login, get_local_storage, move_404, move_402, move_500, move_503, move_cors, remove_local_storage, save_local_storage} from 'common';
 
 //---------------------------------------------------------
 // Interfaces
@@ -23,6 +23,31 @@ export type ApiResult = {
 	status: 'success' | 'error';
 	error?: string;
 };
+
+//---------------------------------------------------------
+// Common Error Formatting Function
+//---------------------------------------------------------
+export function createDetailedErrorMessage(resp: any, operation: string): string {
+	const primaryMessage = resp.data?.result || resp.data?.message || resp.data?.error || resp.message || 'Unknown error';
+
+	let message = primaryMessage + '.' + '\n\n';
+	message += `Operation is \[${operation}\].\n\n`;
+	message += `HTTP Code is \[${resp.code}\].\n\n`;
+
+	if (resp.data?.fields) {
+		message += `Fields are : \[${JSON.stringify(resp.data.fields)}\].\n\n`;
+	}
+
+	if (resp.data?.message && resp.data.message !== primaryMessage) {
+		message += `Message is \[${resp.data.message}\].\n\n`;
+	}
+
+	if (resp.data?.result && resp.data.result !== primaryMessage) {
+		message += `Result is \[${resp.data.result}\].\n\n`;
+	}
+
+	return message;
+}
 
 //---------------------------------------------------------
 // Functions
@@ -88,11 +113,20 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 			return resp;
 		} else if (resp.status === 402) move_402();
 		else if (resp.status === 404) move_404();
-		else if (resp.status >= 500 && resp.status < 600 && resp.status !== 502) {
+		else if (resp.status === 503) move_503();
+		else if (resp.status >= 500 && resp.status < 600 && resp.status !== 502 && resp.status !== 503) {
 			const resp_json = await resp.json();
 			const code = resp.status;
+			console.log(resp_json);
 			const message = resp_json.message || resp.statusText;
-			move_500(code, message);
+			const result = resp_json.result || '';
+
+			// Filter for "not running" messages and redirect to move_503
+			if (message.includes('not running') || result.includes('not running')) {
+				move_503(code, message);
+			} else {
+				move_500(code, message);
+			}
 		}
 
 		return resp;
@@ -119,33 +153,23 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 }
 
 async function handle_response(response: any): Promise<SimpleResponse> {
-	if (response.status === 404) move_404();
-	else {
-		try {
-			const cc = response.clone();
-			const resp_json = await cc.json();
-			return {
-				code: response.status, 
-				data: resp_json, 
-				message: response.statusText || resp_json.result,
-				headers: response.headers
-			};
-		} catch (error) {
-			return {
-				code: response.status, 
-				data: null, 
-				message: response.statusText,
-				headers: response.headers
-			};
-		}
+	try {
+		const cc = response.clone();
+		const resp_json = await cc.json();
+		return {
+			code: response.status,
+			data: resp_json,
+			message: response.statusText || resp_json.result,
+			headers: response.headers
+		};
+	} catch (error) {
+		return {
+			code: response.status,
+			data: null,
+			message: response.statusText,
+			headers: response.headers
+		};
 	}
-
-	return {
-		code: response.status, 
-		data: null, 
-		message: response.statusText,
-		headers: response.headers
-	};
 }
 
 async function fetch_json(url: string, options?: RequestOptions): Promise<SimpleResponse> {
