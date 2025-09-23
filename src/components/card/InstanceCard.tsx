@@ -19,8 +19,8 @@ import {IInstanceHealth} from 'hooks/query/healthHook';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function InstanceCard(props: {instance_info: IInstance; ha: IVipAttribute; health?: IInstanceHealth | null}) {
-	const {instance_info, ha, health} = props;
+export default function InstanceCard(props: {instance_info: IInstance; ha: IVipAttribute; health?: IInstanceHealth | null; onHealthRefresh?: () => void}) {
+	const {instance_info, ha, health, onHealthRefresh} = props;
 	const { t, i18n } = useTranslation();
 
 	const navigate = useNavigate();
@@ -68,8 +68,13 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 			if (instanceRef.current) {
 				const res = await request_update_instance(instance_info.id, instanceRef.current);
 				if (res.status === 'success') {
-					openPopUp(t('Success'), t('Updated successfully.'), t('OK'));
-					refetch();
+					openPopUp(t('Success'), t('Updated successfully.'), t('OK'), '', () => {
+						refetch();
+						// Trigger health check after successful update
+						if (onHealthRefresh) {
+							onHealthRefresh();
+						}
+					});
 				} else openPopUp(t('Error'), t('Failed to update. {{error}}', {error: res.error}), t('OK'));
 			}
 		});

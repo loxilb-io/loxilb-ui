@@ -201,8 +201,18 @@ export async function download_inst_log_archive(instance: IInstance | null, file
 export async function query_instance_health(instance: IInstance): Promise<{isHealthy: boolean; error?: string}> {
 	try {
 		// Use proxy API pattern instead of direct endpoint call
-		await GET_INST(instance, '/version');
-		return {isHealthy: true};
+		const response = await GET_INST(instance, '/version');
+		
+		// Check if the response indicates success (status code 200-299)
+		if (response.code >= 200 && response.code < 300) {
+			return {isHealthy: true};
+		} else {
+			// Non-success status codes indicate unhealthy instance
+			return {
+				isHealthy: false, 
+				error: `Server responded with status ${response.code}: ${response.message}`
+			};
+		}
 	} catch (error) {
 		// Handle errors gracefully
 		if (error instanceof Error) {

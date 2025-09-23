@@ -88,7 +88,7 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 			return resp;
 		} else if (resp.status === 402) move_402();
 		else if (resp.status === 404) move_404();
-		else if (resp.status >= 500 && resp.status < 600) {
+		else if (resp.status >= 500 && resp.status < 600 && resp.status !== 502) {
 			const resp_json = await resp.json();
 			const code = resp.status;
 			const message = resp_json.message || resp.statusText;

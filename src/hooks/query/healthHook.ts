@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {useQuery} from '@tanstack/react-query';
+import {useQuery, useQueryClient} from '@tanstack/react-query';
 import {query_instance_health} from 'connector/instance/status';
 import {useMemo} from 'react';
 import {IInstance} from 'types/oam';
@@ -38,7 +38,7 @@ export function useInstanceHealth(instance: IInstance | null, enabled: boolean =
 					query_instance_health(instance),
 					timeoutPromise
 				]);
-				
+
 				return {
 					instanceId: instance.id,
 					isHealthy: result.isHealthy,
@@ -78,6 +78,7 @@ export function useInstanceHealth(instance: IInstance | null, enabled: boolean =
 // Bulk Health Check Hook (for refresh all functionality)
 //---------------------------------------------------------
 export function useInstancesHealthRefresh(instances: IInstance[] = []) {
+	const queryClient = useQueryClient();
 	const instanceIds = useMemo(() => {
 		if (!Array.isArray(instances)) return [];
 		return instances.map(i => i.id);
@@ -94,12 +95,13 @@ export function useInstancesHealthRefresh(instances: IInstance[] = []) {
 			const healthPromises = instances.map(async (instance) => {
 				try {
 					const result = await query_instance_health(instance);
-					return {
+					const healthResult = {
 						instanceId: instance.id,
 						isHealthy: result.isHealthy,
 						error: result.error,
 						lastChecked: Date.now(),
 					} as IInstanceHealth;
+					return healthResult;
 				} catch (error) {
 					return {
 						instanceId: instance.id,
@@ -116,8 +118,17 @@ export function useInstancesHealthRefresh(instances: IInstance[] = []) {
 		retry: false,
 	});
 
-	const refreshAllHealth = () => {
-		query.refetch();
+	const refreshAllHealth = async () => {
+		const result = await query.refetch();
+
+		// Invalidate individual health checks after bulk refresh
+		instances.forEach(instance => {
+			queryClient.invalidateQueries({
+				queryKey: ['instance', 'health', instance.id]
+			});
+		});
+
+		return result;
 	};
 
 	return {
