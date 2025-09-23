@@ -37,11 +37,6 @@ export default function EndpointInputForm({ initialData, isEdit = false, onChang
 	// Get params for validation only (don't use form state from this hook)
 	const {params} = useFormWithParams<IEndpointInput>('IEndpointInput');
 
-	// Wait for params to be ready before rendering
-	if (!params) {
-		return null;
-	}
-
 	// Validation function
 	const validateForm = React.useCallback(() => {
 		const newErrors: Record<string, string> = {};
@@ -81,28 +76,33 @@ export default function EndpointInputForm({ initialData, isEdit = false, onChang
 		}));
 	};
 
+	// Wait for params to be ready before rendering form content
+	if (!params) {
+		return null;
+	}
+
 	return (
 		<NewBox item_name={isEdit ? t('Edit Endpoint') : t('New Endpoint')}>
-		   <ParamBox 
-		   	label={t('Host Name')} 
-		   	value={formData.hostName} 
-		   	onChange={(value) => handleChange('hostName', value)} 
-		   	param_desc={{...params?.hostName, type: isEdit ? 'string' : 'ipaddress'}} 
+		   <ParamBox
+		   	label={t('Host Name')}
+		   	value={formData.hostName}
+		   	onChange={(value) => handleChange('hostName', value)}
+		   	param_desc={{...params.hostName, type: isEdit ? 'string' : 'ipaddress'}}
 		   	disabled={isEdit}
 		   />
 
 		   <HorizontalStack>
-			   <ParamBox 
-			   	label={t('Name')} 
-			   	value={formData.name} 
-			   	onChange={(value) => handleChange('name', value)} 
-			   	param_desc={params?.name} 
+			   <ParamBox
+			   	label={t('Name')}
+			   	value={formData.name}
+			   	onChange={(value) => handleChange('name', value)}
+			   	param_desc={params.name}
 			   />
-			   <ParamBox 
-			   	label={t('Inactive Retries')} 
-			   	value={formData.inactiveReTries} 
-			   	onChange={(value) => handleChange('inactiveReTries', value)} 
-			   	param_desc={params?.inactiveReTries} 
+			   <ParamBox
+			   	label={t('Inactive Retries')}
+			   	value={formData.inactiveReTries}
+			   	onChange={(value) => handleChange('inactiveReTries', value)}
+			   	param_desc={params.inactiveReTries}
 			   />
 		   </HorizontalStack>
 
@@ -121,34 +121,34 @@ export default function EndpointInputForm({ initialData, isEdit = false, onChang
 					{id: 5, name: 'HTTPS', send_value: 'https'}
 				]}
 				/>
-			   <ParamBox 
-			   	label={t('Probe Duration')} 
-			   	value={formData.probeDuration} 
-			   	onChange={(value) => handleChange('probeDuration', value)} 
-			   	param_desc={params?.probeDuration} 
+			   <ParamBox
+			   	label={t('Probe Duration')}
+			   	value={formData.probeDuration}
+			   	onChange={(value) => handleChange('probeDuration', value)}
+			   	param_desc={params.probeDuration}
 			   />
-			   <ParamBox 
-			   	label={t('Probe Port')} 
-			   	value={formData.probePort} 
-			   	onChange={(value) => handleChange('probePort', value)} 
-			   	param_desc={{...params?.probePort, type: 'port'}} 
+			   <ParamBox
+			   	label={t('Probe Port')}
+			   	value={formData.probePort}
+			   	onChange={(value) => handleChange('probePort', value)}
+			   	param_desc={{...params.probePort, type: 'port'}}
 			   />
 		   </HorizontalStack>
 
 		   <HorizontalStack>
-			   <ParamBox 
-			   	label={t('Probe Request')} 
-			   	value={formData.probeReq} 
-			   	onChange={(value) => handleChange('probeReq', value)} 
-			   	param_desc={params?.probeReq} 
-			   	disabled={!["udp", "http", "https"].includes(formData.probeType || '')} 
+			   <ParamBox
+			   	label={t('Probe Request')}
+			   	value={formData.probeReq}
+			   	onChange={(value) => handleChange('probeReq', value)}
+			   	param_desc={params.probeReq}
+			   	disabled={!["udp", "http", "https"].includes(formData.probeType || '')}
 			   />
-			   <ParamBox 
-			   	label={t('Probe Response')} 
-			   	value={formData.probeResp} 
-			   	onChange={(value) => handleChange('probeResp', value)} 
-			   	param_desc={params?.probeResp} 
-			   	disabled={!["udp", "http", "https"].includes(formData.probeType || '')} 
+			   <ParamBox
+			   	label={t('Probe Response')}
+			   	value={formData.probeResp}
+			   	onChange={(value) => handleChange('probeResp', value)}
+			   	param_desc={params.probeResp}
+			   	disabled={!["udp", "http", "https"].includes(formData.probeType || '')}
 			   />
 		   </HorizontalStack>
 		</NewBox>

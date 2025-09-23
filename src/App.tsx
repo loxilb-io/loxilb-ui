@@ -17,8 +17,10 @@ import Layout from 'components/layout/Layout';
 import NavLayout from 'components/layout/NavLayout';
 import ScrollToTop from 'components/layout/ScrollToTop';
 import PopUp from 'components/modal/PopUp';
+import SetupHandler from 'components/setup/SetupHandler';
 
 import LoginPage from './pages/LoginPage';
+import SimpleSetupPage from 'pages/SimpleSetupPage';
 import OAuthCallbackPage from 'pages/OAuthCallbackPage';
 import Page404 from 'pages/Page404';
 import Page500 from 'pages/Page500';
@@ -109,7 +111,8 @@ export default function App() {
 					<BrowserRouter basename={root_url}>
 						<ScrollToTop />
 						<PopUp />
-						<Routes>
+						<SetupHandler>
+							<Routes>
 							<Route element={<Layout />}>
 								<Route path="/" element={<LoginPage />} />
 
@@ -118,6 +121,7 @@ export default function App() {
 								<Route path="/cors" element={<PageCORS />} />
 
 								<Route path="/login" element={<LoginPage />} />
+								<Route path="/setup" element={<SimpleSetupPage />} />
 								<Route path="/oauth/callback" element={<OAuthCallbackPage />} />
 								<Route path="/instance" element={<InstancePage />} />
 								<Route path="/system" element={<SystemPage />} />
@@ -176,6 +180,7 @@ export default function App() {
 								<Route path="/*" element={<Page404 />} />
 							</Route>
 						</Routes>
+						</SetupHandler>
 					</BrowserRouter>
 				</QueryClientProvider>
 			</RecoilRoot>

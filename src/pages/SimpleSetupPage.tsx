@@ -1,8 +1,9 @@
 //---------------------------------------------------------
 // Admin Credential Update Setup Page
 //---------------------------------------------------------
-import {Alert, Box, Button, Container, Paper, TextField, Typography} from '@mui/material';
+import {Alert, Box, Button, Container, Paper, TextField, Typography, Tooltip} from '@mui/material';
 import {styled} from '@mui/material/styles';
+import InfoIcon from '@mui/icons-material/Info';
 import Logo from 'assets/logo/stamp.svg';
 import {move_forced} from 'common';
 import {request_update_admin_credentials} from 'connector/oam/oam';
@@ -19,15 +20,13 @@ const StyledPaper = styled(Paper)(({theme}) => ({
 	display: 'flex',
 	flexDirection: 'column',
 	alignItems: 'center',
-	marginTop: theme.spacing(8),
 	maxWidth: 400,
 	width: '100%',
+	maxHeight: '90vh',
+	overflow: 'auto',
 }));
 
-const FormContainer = styled(Box)(({theme}) => ({
-	width: '100%',
-	marginTop: theme.spacing(2),
-}));
+// Remove unused FormContainer to fix diagnostic warning
 
 //---------------------------------------------------------
 // Main Component
@@ -57,8 +56,39 @@ export default function SimpleSetupPage() {
 		if (formData.newPassword !== formData.confirmPassword) {
 			return 'Passwords do not match';
 		}
-		if (formData.newPassword.length < 9) {
+
+		// Enhanced password validation matching AuthForm requirements
+		const password = formData.newPassword;
+		if (password.length < 9) {
 			return 'Password must be at least 9 characters long';
+		}
+		if (!/[A-Z]/.test(password)) {
+			return 'Password must contain at least one uppercase letter';
+		}
+		if (!/[a-z]/.test(password)) {
+			return 'Password must contain at least one lowercase letter';
+		}
+		if (!/[0-9]/.test(password)) {
+			return 'Password must contain at least one number';
+		}
+		if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+			return 'Password must contain at least one special character';
+		}
+		// Check for same character more than twice in a row
+		if (/(.)\1{2,}/.test(password)) {
+			return 'Password must not contain the same character more than twice in a row';
+		}
+		// Check for consecutive characters (simple check for abc, 123, etc.)
+		for (let i = 0; i < password.length - 2; i++) {
+			const charCode1 = password.charCodeAt(i);
+			const charCode2 = password.charCodeAt(i + 1);
+			const charCode3 = password.charCodeAt(i + 2);
+			if (charCode2 === charCode1 + 1 && charCode3 === charCode2 + 1) {
+				return 'Password must not contain consecutive characters';
+			}
+		}
+		if (password.toLowerCase() === formData.newUsername.toLowerCase()) {
+			return 'Password must not be the same as the username';
 		}
 		if (formData.currentPassword === formData.newPassword) {
 			return 'New password must be different from current password';
@@ -91,7 +121,7 @@ export default function SimpleSetupPage() {
 			openPopUp(
 				t('Credentials Updated!'),
 				t('Your admin credentials have been updated successfully. Please log in with your new credentials.'),
-				t('Continue to Login'),
+				t('Continue'),
 				'',
 				() => move_forced('/login')
 			);
@@ -104,7 +134,18 @@ export default function SimpleSetupPage() {
 	};
 
 	return (
-		<Container component="main" maxWidth="xs">
+		<Container
+			component="main"
+			maxWidth="xs"
+			sx={{
+				minHeight: '100vh',
+				display: 'flex',
+				alignItems: 'center',
+				justifyContent: 'center',
+				py: 2,
+				overflow: 'auto'
+			}}
+		>
 			<StyledPaper elevation={24}>
 				<Box component="img" src={Logo} alt="LoxiLB Logo" width="80px" height="80px" />
 				
@@ -166,7 +207,35 @@ export default function SimpleSetupPage() {
 						value={formData.newPassword}
 						onChange={handleChange('newPassword')}
 						disabled={loading}
-						helperText={t('Minimum 9 characters')}
+						helperText={
+							<Box display="flex" alignItems="center" gap={0.5}>
+								{t('Minimum 9 characters with complexity requirements')}
+								<Tooltip
+									title={
+										<Box sx={{ p: 1 }}>
+											<Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+												{t('Password Requirements:')}
+											</Typography>
+											<Typography variant="body2" component="div">
+												• {t('Must be at least 9 characters long')}<br/>
+												• {t('Must contain at least one uppercase letter')}<br/>
+												• {t('Must contain at least one lowercase letter')}<br/>
+												• {t('Must contain at least one number')}<br/>
+												• {t('Must contain at least one special character')}<br/>
+												• {t('Must not contain the same character more than twice in a row')}<br/>
+												• {t('Must not contain consecutive characters')}<br/>
+												• {t('Must not be the same as the username')}<br/>
+												• {t('Must not be the same as the previous password')}
+											</Typography>
+										</Box>
+									}
+									arrow
+									placement="top"
+								>
+									<InfoIcon fontSize="small" color="action" sx={{ cursor: 'pointer' }} />
+								</Tooltip>
+							</Box>
+						}
 					/>
 					
 					<TextField
