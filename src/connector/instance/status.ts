@@ -57,47 +57,20 @@ export async function query_get_device_status(instance: IInstance): Promise<ISys
 }
 
 export async function query_get_ha_state_all(instance: IInstance): Promise<IVipAttribute[]> {
-    // Perform a direct fetch to avoid global redirect handlers on 5xx
-    try {
-        const access_token = load_token();
-        let oam_base_url = getApiBaseUrl();
-        // Ensure we use a same-origin relative URL to avoid CORS in the browser
-        if (oam_base_url.startsWith('http://') || oam_base_url.startsWith('https://')) {
-            try {
-                const u = new URL(oam_base_url);
-                oam_base_url = u.pathname.replace(/\/$/, '') || '/api/oam';
-            } catch {}
-        }
-        const url = `${oam_base_url}/loxilbs/${instance.id}/netlox/v1/config/cistate/all`;
-
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                Authorization: access_token ? `Bearer ${access_token}` : '',
-                'Content-Type': 'application/json'
-            },
-            signal: AbortSignal.timeout(5000)
-        });
-
-        if (!response.ok) {
-            // When instance is down (e.g., 502), return empty to keep UI running
-            return [];
-        }
-
-        const json = await response.json().catch(() => null);
-        return (json?.Attr as IVipAttribute[]) ?? [];
-    } catch (error) {
-        // Network/timeout errors: do not redirect; surface as empty
-        return [];
-    }
+	const resp = await GET_INST(instance, `/config/cistate/all`);
+	return (resp.data?.Attr as IVipAttribute[]) ?? [];
 }
 
 // not for frontend use, only for backend to update HA state
-//export async function request_update_ha_state(instance: IInstance, data: IVipAttribute): Promise<ApiResult> {
-//	const resp = await POST_INST(instance, `/config/cistate`, data);
-//	if (resp.code !== 200 && resp.code !== 204) return {status: 'error', error: resp.data || resp.message};
-//	else return {status: 'success'};
-//}
+export async function request_update_ha_state(instance: IInstance, data: IVipAttribute): Promise<ApiResult> {
+	const resp = await POST_INST(instance, `/config/cistate`, data);
+	if (resp.code !== 200 && resp.code !== 204) {
+		const errorMessage = createDetailedErrorMessage(resp, 'Update HA State');
+		return {status: 'error', error: errorMessage};
+	} else {
+		return {status: 'success'};
+	}
+}
 
 export async function query_get_metadata(instance: IInstance): Promise<any> {
 	const resp = await GET_INST(instance, `/meta`);
