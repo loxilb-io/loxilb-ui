@@ -93,7 +93,6 @@ export function extractHaData(data: IVipConfiguration): IExtractedHAData[] {
 		instance: item.instance,
 		vip: item.vip,
 		state: item.state,
-		sync: item.sync,
 	}));
 }
 

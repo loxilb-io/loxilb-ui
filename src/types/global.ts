@@ -77,7 +77,6 @@ export interface IExtractedHAData {
 	instance: string;
 	vip: string;
 	state: string;
-	sync: number;
 }
 
 export interface MenuSet {

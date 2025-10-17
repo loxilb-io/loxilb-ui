@@ -8,14 +8,13 @@ import {IVipConfiguration} from 'types/ha';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function HATable(props: {data: IVipConfiguration; selected_rows: number[]; onChangeSelectedRows: any; onRefresh?: any}) {
-	const {data, selected_rows, onChangeSelectedRows, onRefresh} = props;
+export default function HATable(props: {data: IVipConfiguration; selected_rows: number[]; onChangeSelectedRows: any; onEdit?: any; onRefresh?: any}) {
+	const {data, selected_rows, onChangeSelectedRows, onEdit, onRefresh} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'instance', header: 'Instance', width: 'wide', tooltip: 'Name of the instance LoxiLB is running on'},
 		{data_key: 'vip', header: 'Virtual IP', width: 'wide', tooltip: 'Virtual IP for HA (Active/Stanby)'},
 		{data_key: 'state', header: 'State', width: 'medium', tooltip: 'State for HA'},
-		{data_key: 'sync', header: 'Sync', type: 'state', width: 'medium', tooltip: 'Synchronizing'},
 	];
 
 	const rows = data.Attr.map((item, index) => {
@@ -24,9 +23,8 @@ export default function HATable(props: {data: IVipConfiguration; selected_rows: 
 			instance: item.instance,
 			vip: item.vip,
 			state: item.state,
-			sync: item.sync ?? true,
 		};
 	});
 
-	return <DataTable name={'High Availability'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onRefresh={onRefresh} />;
+	return <DataTable name={'High Availability'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onEdit={onEdit} onRefresh={onRefresh} />;
 }
