@@ -128,26 +128,28 @@ export default function AlertRuleForm({ initialData, isEdit = false, onChange }:
 							value={formData.metric_name} 
 							onChange={(value) => handleChange('metric_name', value)} 
 							item_list={[
-								{id: 1, name: 'ACTIVE_CONNTRACK_COUNT', send_value: 'active_conntrack_count'},
-								{id: 2, name: 'ACTIVE_FLOW_COUNT_TCP', send_value: 'active_flow_count_tcp'},
-								{id: 3, name: 'ACTIVE_FLOW_COUNT_UDP', send_value: 'active_flow_count_udp'},
-								{id: 4, name: 'ACTIVE_FLOW_COUNT_SCTP', send_value: 'active_flow_count_sctp'},
-								{id: 5, name: 'INACTIVE_FLOW_COUNT', send_value: 'inactive_flow_count'},
-								{id: 6, name: 'NEW_FLOW_COUNT', send_value: 'new_flow_count'},
-								{id: 7, name: 'LB_RULE_COUNT', send_value: 'lb_rule_count'},
-								{id: 8, name: 'TOTAL_REQUEST', send_value: 'total_requests'},
-								{id: 9, name: 'TOTAL_ERRORS', send_value: 'total_errors'},
-								{id: 10, name: 'UNHEALTHY_ENDPOINTS_COUNT', send_value: 'unhealthy_endpoints_count'},
-								{id: 11, name: 'TOTAL_FW_DROPS', send_value: 'total_fw_drops'},
-								{id: 12, name: 'BPS', send_value: 'rps_bps'},
-								{id: 13, name: 'PPS', send_value: 'rps_pps'},
-								{id: 14, name: 'EPS', send_value: 'rps_eps'},
-								{id: 15, name: 'TCP_BPS', send_value: 'rps_tcp_bps'},
-								{id: 16, name: 'UDP_BPS', send_value: 'rps_udp_bps'},
-								{id: 17, name: 'SCTP_BPS', send_value: 'rps_sctp_bps'},
-								{id: 18, name: 'TCP_PPS', send_value: 'rps_tcp_pps'},
-								{id: 19, name: 'UDP_PPS', send_value: 'rps_udp_pps'},
-								{id: 20, name: 'SCTP_PPS', send_value: 'rps_sctp_pps'}
+								{id: 1, name: 'UNHEALTHY_ENDPOINTS_COUNT', send_value: 'unhealthy_endpoints_count'}
+
+								// {id: 1, name: 'ACTIVE_CONNTRACK_COUNT', send_value: 'active_conntrack_count'},
+								// {id: 2, name: 'ACTIVE_FLOW_COUNT_TCP', send_value: 'active_flow_count_tcp'},
+								// {id: 3, name: 'ACTIVE_FLOW_COUNT_UDP', send_value: 'active_flow_count_udp'},
+								// {id: 4, name: 'ACTIVE_FLOW_COUNT_SCTP', send_value: 'active_flow_count_sctp'},
+								// {id: 5, name: 'INACTIVE_FLOW_COUNT', send_value: 'inactive_flow_count'},
+								// {id: 6, name: 'NEW_FLOW_COUNT', send_value: 'new_flow_count'},
+								// {id: 7, name: 'LB_RULE_COUNT', send_value: 'lb_rule_count'},
+								// {id: 8, name: 'TOTAL_REQUEST', send_value: 'total_requests'},
+								// {id: 9, name: 'TOTAL_ERRORS', send_value: 'total_errors'},
+								// {id: 10, name: 'UNHEALTHY_ENDPOINTS_COUNT', send_value: 'unhealthy_endpoints_count'},
+								// {id: 11, name: 'TOTAL_FW_DROPS', send_value: 'total_fw_drops'},
+								// {id: 12, name: 'BPS', send_value: 'rps_bps'},
+								// {id: 13, name: 'PPS', send_value: 'rps_pps'},
+								// {id: 14, name: 'EPS', send_value: 'rps_eps'},
+								// {id: 15, name: 'TCP_BPS', send_value: 'rps_tcp_bps'},
+								// {id: 16, name: 'UDP_BPS', send_value: 'rps_udp_bps'},
+								// {id: 17, name: 'SCTP_BPS', send_value: 'rps_sctp_bps'},
+								// {id: 18, name: 'TCP_PPS', send_value: 'rps_tcp_pps'},
+								// {id: 19, name: 'UDP_PPS', send_value: 'rps_udp_pps'},
+								// {id: 20, name: 'SCTP_PPS', send_value: 'rps_sctp_pps'}
 							]}
 						/>
 

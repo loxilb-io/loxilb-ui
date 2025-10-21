@@ -7,7 +7,7 @@ import IPAddressCidrBox from 'components/element/IPAddressNetBox';
 import PortBox from 'components/element/PortBox';
 import TextBox from 'components/element/TextBox';
 import TextBoxArray from 'components/element/TextBoxArray';
-import {useMemo} from 'react';
+import {useMemo, useEffect} from 'react';
 import {IEnumItem, IPostParamFieldDesc} from 'types/global';
 import DropDownSelectBox from './DropDownSelectBox';
 import MACAddressBox from './MACAddressBox';
@@ -74,16 +74,27 @@ export default function ParamBox(props: ParamBoxProps) {
 			);
 		}
 
-		// !!! none이 누락이면 none을 인덱스 -1로 추가
-		if (!required && !result.some(item => item.name === 'none') && !result.some(item => item.send_value === ''))
-			result.unshift({id: -1, name: 'none', send_value: typeof result[0].send_value === 'number' ? -1 : '-1'});
-
 		return result;
    }, [param_desc?.enum, required]);
 
+   // If enumOptions exist and value is empty/undefined, default to first option
+   const effectiveValue = useMemo(() => {
+	   if (enumOptions.length > 0 && (value === undefined || value === '' || value === null)) {
+		   return enumOptions[0].send_value;
+	   }
+	   return value;
+   }, [enumOptions, value]);
+
+   // Notify parent when auto-selecting default value
+   useEffect(() => {
+	   if (enumOptions.length > 0 && (value === undefined || value === '' || value === null)) {
+		   onChange(enumOptions[0].send_value);
+	   }
+   }, [enumOptions.length]); // Only run when enumOptions length changes, not on every render
+
    const renderInput = () => {
 	if (enumOptions.length > 0) 
-		return <DropDownSelectBox label={labelText} item_list={enumOptions} value={value} disabled={disabled} onChange={handleChange} />;
+		return <DropDownSelectBox label={labelText} item_list={enumOptions} value={effectiveValue} disabled={disabled} onChange={handleChange} />;
 	else if (type === 'boolean') 
 		return <SwitchBox label={labelText} value={value} disabled={disabled} onChange={handleChange} />;
 	else if (type === 'array')
