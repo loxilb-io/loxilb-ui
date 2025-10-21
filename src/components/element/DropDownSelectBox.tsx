@@ -19,10 +19,13 @@ export default function DropDownSelectBox(props: {label: string; item_list: IEnu
 		if (foundIndex !== -1) {
 			set_cur_idx(foundIndex);
 		} else {
+			// If no match found, try to find 'none' item, otherwise default to index 0
 			const noneIndex = item_list.findIndex(item => item.name.toLowerCase() === 'none');
-			if (noneIndex !== -1) {
-				set_cur_idx(noneIndex);
-				onChange(item_list[noneIndex].send_value);
+			const defaultIndex = noneIndex !== -1 ? noneIndex : 0;
+			set_cur_idx(defaultIndex);
+			// Only call onChange if value is empty/undefined to avoid infinite loops
+			if (value === undefined || value === '' || value === null) {
+				onChange(item_list[defaultIndex].send_value);
 			}
 		}
 	}, [value, item_list]);
