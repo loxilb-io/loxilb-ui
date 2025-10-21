@@ -53,10 +53,10 @@ export const MENU_LIST: IMenuItem[] = [
 				name: 'Alerts',
 				path: 'alerts',
 			},
-			{
-				name: 'Topology',
-				path: 'topology',
-			},
+			// {
+			// 	name: 'Topology',
+			// 	path: 'topology',
+			// },
 			{
 				name: 'nTop Analytics',
 				path: 'ntop',
