@@ -21,13 +21,20 @@ function getPortValidationError(port: string | number): string | null {
 //---------------------------------------------------------
 // Component
 //---------------------------------------------------------
-export default function PortBox(props: {label: string; value: number | null | undefined; disabled?: boolean; onChange: (val: number) => void; error?: boolean; helperText?: string}) {
+export default function PortBox(props: {label: string; value: number | null | undefined; disabled?: boolean; onChange: (val: number | undefined) => void; error?: boolean; helperText?: string}) {
 	const {label, value, disabled, onChange, error: externalError, helperText: externalHelperText} = props;
 
 	const [error, setError] = useState<string | null>(null);
 
 	const handleChange = (val: string) => {
 		const trimmedVal = val.trim();
+		
+		// If empty, set to undefined (let parent handle it)
+		if (trimmedVal === '') {
+			setError(null);
+			onChange(undefined);
+			return;
+		}
 		
 		const validationError = getPortValidationError(trimmedVal);
 		setError(validationError);
@@ -42,9 +49,10 @@ export default function PortBox(props: {label: string; value: number | null | un
 		} else setError(null);
 	}, [value]);
 
-	useEffect(() => {
-		if (disabled) onChange(-1);
-	}, [disabled]);
+	// Don't automatically change value when disabled - let parent component control the value
+	// useEffect(() => {
+	// 	if (disabled) onChange(-1);
+	// }, [disabled]);
 
 	return (
 		<TextField
@@ -52,7 +60,7 @@ export default function PortBox(props: {label: string; value: number | null | un
 			size="small"
 			type="number"
 			fullWidth
-			value={value}
+			value={value ?? ''}
 			disabled={disabled}
 			onChange={e => handleChange(e.target.value)}
 			placeholder={t('0-65535')}

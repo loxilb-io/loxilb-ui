@@ -38,11 +38,12 @@ import DropDownSelectBox from 'components/element/DropDownSelectBox';
 // Component Props Interface
 //---------------------------------------------------------
 interface UserEditFormProps {
-	user: IUser;
+	user?: IUser; // Optional for create mode
 	onChange: (data: IUserUpdateRequest & { isValid?: boolean; errors?: any }) => void;
 	onValidation?: (isValid: boolean) => void;
 	isAdmin?: boolean;
 	isCurrentUser?: boolean;
+	mode?: 'edit' | 'create'; // Add mode prop
 }
 
 //---------------------------------------------------------
@@ -68,14 +69,16 @@ interface IFormErrors {
 // Component Implementation
 //---------------------------------------------------------
 export default function UserEditForm(props: UserEditFormProps) {
-	const {user, onChange, onValidation, isAdmin = false, isCurrentUser = false} = props;
-	
+	const {user, onChange, onValidation, isAdmin = false, isCurrentUser = false, mode = 'edit'} = props;
+
+	const isCreateMode = mode === 'create';
+
 	// Initialize form data with user data (similar to LBInputForm pattern)
 	const [formData, setFormData] = useState<IUserUpdateRequest>({
-		username: user.username || '',
-		email: user.email || '',
+		username: user?.username || '',
+		email: user?.email || '',
 		password: '',
-		role: user.role || 'user',
+		role: user?.role || 'user',
 	});
 
 	// Role options for DropDownSelectBox
@@ -85,7 +88,7 @@ export default function UserEditForm(props: UserEditFormProps) {
 	];
 
 	const [errors, setErrors] = useState<IFormErrors>({});
-	const [changePassword, setChangePassword] = useState(false);
+	const [changePassword, setChangePassword] = useState(isCreateMode); // Always true for create mode
 	const [confirmPassword, setConfirmPassword] = useState('');
 
 	// Handle form field changes (similar to LBInputForm pattern)
@@ -107,21 +110,31 @@ export default function UserEditForm(props: UserEditFormProps) {
 	const validateForm = (): boolean => {
 		const newErrors: IFormErrors = {};
 
-		// Validate username
-		if (formData.username) {
+		// Validate username (required in both modes)
+		if (!formData.username || !formData.username.trim()) {
+			newErrors.username = t('Username is required');
+		} else {
 			const usernameValidation = validate_username(formData.username);
 			if (!usernameValidation.isValid) {
 				newErrors.username = usernameValidation.message;
 			}
 		}
 
-		// Validate email
-		if (formData.email && !validate_email(formData.email)) {
-			newErrors.email = t('Please enter a valid email address');
+		// Validate email (required in create mode, optional in edit mode)
+		if (isCreateMode) {
+			if (!formData.email || !formData.email.trim()) {
+				newErrors.email = t('Email is required');
+			} else if (!validate_email(formData.email)) {
+				newErrors.email = t('Please enter a valid email address');
+			}
+		} else {
+			if (formData.email && !validate_email(formData.email)) {
+				newErrors.email = t('Please enter a valid email address');
+			}
 		}
 
-		// Validate password if changing
-		if (changePassword) {
+		// Validate password if changing (always required in create mode)
+		if (changePassword || isCreateMode) {
 			if (!formData.password) {
 				newErrors.password = t('Password is required');
 			} else {
@@ -161,7 +174,7 @@ export default function UserEditForm(props: UserEditFormProps) {
 			<Stack spacing={3}>
 				<Typography variant="h6" display="flex" alignItems="center" gap={1}>
 					<PersonIcon />
-					{t('Edit User')} - {user.username}
+					{isCreateMode ? t('Create New User') : `${t('Edit User')} - ${user?.username}`}
 				</Typography>
 
 				{(errors.general) && (
@@ -176,7 +189,7 @@ export default function UserEditForm(props: UserEditFormProps) {
 					value={formData.username}
 					onChange={handleInputChange('username')}
 					error={!!errors.username}
-					helperText={errors.username || (isCurrentUser && formData.username !== user.username ? t('Note: Changing your username requires setting a password for re-authentication') : '')}
+					helperText={errors.username || (isCreateMode ? '' : (isCurrentUser && formData.username !== user?.username ? t('Note: Changing your username requires setting a password for re-authentication') : ''))}
 					InputProps={{
 						startAdornment: (
 							<InputAdornment position="start">
@@ -205,14 +218,14 @@ export default function UserEditForm(props: UserEditFormProps) {
 					required
 				/>
 
-				{isAdmin && !isCurrentUser && (
+				{isAdmin && (isCreateMode || !isCurrentUser) && (
 					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
 						<AdminPanelSettingsIcon fontSize="small" color="action" />
 						<Box sx={{ flex: 1 }}>
-							<DropDownSelectBox 
-								label={t('Role')} 
-								item_list={roleOptions} 
-								value={formData.role} 
+							<DropDownSelectBox
+								label={t('Role')}
+								item_list={roleOptions}
+								value={formData.role}
 								disabled={false}
 								onChange={(value) => setFormData(prev => ({...prev, role: value}))}
 							/>
@@ -223,21 +236,15 @@ export default function UserEditForm(props: UserEditFormProps) {
 				<Divider sx={{ my: 3 }} />
 
 				{/* Password Section */}
-				<Box sx={{ 
-					p: 2, 
-					border: '1px solid', 
-					borderColor: changePassword ? 'primary.main' : 'divider',
-					borderRadius: 2,
-					backgroundColor: changePassword ? 'primary.50' : 'grey.50',
-					transition: 'all 0.2s ease-in-out'
-				}}>
-					<Box display="flex" alignItems="center" justifyContent="space-between" mb={changePassword ? 2 : 0}>
+				{isCreateMode ? (
+					// Create mode: Always show password fields, no toggle button
+					<Stack spacing={2}>
 						<Box display="flex" alignItems="center" gap={1}>
-							<LockIcon fontSize="small" color={changePassword ? 'primary' : 'disabled'} />
-							<Typography variant="subtitle2" color={changePassword ? 'primary.main' : 'text.secondary'}>
+							<LockIcon fontSize="small" color="primary" />
+							<Typography variant="subtitle2" color="primary.main">
 								{t('Password Settings')}
 							</Typography>
-							<Tooltip 
+							<Tooltip
 								title={
 									<Box sx={{ p: 1 }}>
 										<Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
@@ -264,75 +271,157 @@ export default function UserEditForm(props: UserEditFormProps) {
 								</IconButton>
 							</Tooltip>
 						</Box>
-						<Button
-							variant={changePassword ? 'contained' : 'outlined'}
-							size="small"
-							onClick={() => {
-								setChangePassword(!changePassword);
-								if (changePassword) {
-									// Clear password fields when canceling
-									setFormData(prev => ({
-										...prev,
-										password: '',
-										confirmPassword: ''
-									}));
-									setErrors(prev => ({
-										...prev,
-										password: undefined,
-										confirmPassword: undefined
-									}));
-								}
+
+						<TextField
+							fullWidth
+							label={t('Password')}
+							type="password"
+							value={formData.password}
+							onChange={handleInputChange('password')}
+							error={!!errors.password}
+							helperText={errors.password || t('Minimum 9 characters with letters and numbers')}
+							InputProps={{
+								startAdornment: (
+									<InputAdornment position="start">
+										<LockIcon fontSize="small" />
+									</InputAdornment>
+								),
 							}}
-							sx={{ minWidth: 140 }}
-						>
-							{changePassword ? t('Cancel') : t('Change Password')}
-						</Button>
+							required
+							placeholder={t('Enter password')}
+						/>
+
+						<TextField
+							fullWidth
+							label={t('Confirm Password')}
+							type="password"
+							value={confirmPassword}
+							onChange={handleConfirmPasswordChange}
+							error={!!errors.confirmPassword}
+							helperText={errors.confirmPassword}
+							InputProps={{
+								startAdornment: (
+									<InputAdornment position="start">
+										<LockIcon fontSize="small" />
+									</InputAdornment>
+								),
+							}}
+							required
+						/>
+					</Stack>
+				) : (
+					// Edit mode: Show password section with toggle
+					<Box sx={{
+						p: 2,
+						border: '1px solid',
+						borderColor: changePassword ? 'primary.main' : 'divider',
+						borderRadius: 2,
+						backgroundColor: changePassword ? 'primary.50' : 'grey.50',
+						transition: 'all 0.2s ease-in-out'
+					}}>
+						<Box display="flex" alignItems="center" justifyContent="space-between" mb={changePassword ? 2 : 0}>
+							<Box display="flex" alignItems="center" gap={1}>
+								<LockIcon fontSize="small" color={changePassword ? 'primary' : 'disabled'} />
+								<Typography variant="subtitle2" color={changePassword ? 'primary.main' : 'text.secondary'}>
+									{t('Password Settings')}
+								</Typography>
+								<Tooltip
+									title={
+										<Box sx={{ p: 1 }}>
+											<Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+												{t('Password Requirements:')}
+											</Typography>
+											<Typography variant="body2" component="div">
+												• {t('Must be at least 9 characters long')}<br/>
+												• {t('Must contain at least one uppercase letter')}<br/>
+												• {t('Must contain at least one lowercase letter')}<br/>
+												• {t('Must contain at least one number')}<br/>
+												• {t('Must contain at least one special character')}<br/>
+												• {t('Must not contain the same character more than twice in a row')}<br/>
+												• {t('Must not contain consecutive characters')}<br/>
+												• {t('Must not be the same as the username')}<br/>
+												• {t('Must not be the same as the previous password')}
+											</Typography>
+										</Box>
+									}
+									arrow
+									placement="top"
+								>
+									<IconButton size="small" sx={{ ml: 0.5 }}>
+										<InfoIcon fontSize="small" color="action" />
+									</IconButton>
+								</Tooltip>
+							</Box>
+							<Button
+								variant={changePassword ? 'contained' : 'outlined'}
+								size="small"
+								onClick={() => {
+									setChangePassword(!changePassword);
+									if (changePassword) {
+										// Clear password fields when canceling
+										setFormData(prev => ({
+											...prev,
+											password: '',
+											confirmPassword: ''
+										}));
+										setErrors(prev => ({
+											...prev,
+											password: undefined,
+											confirmPassword: undefined
+										}));
+									}
+								}}
+								sx={{ minWidth: 140 }}
+							>
+								{changePassword ? t('Cancel') : t('Change Password')}
+							</Button>
+						</Box>
+
+						{changePassword && (
+							<Stack spacing={2} sx={{ mt: 2 }}>
+								<Alert severity="info" sx={{ fontSize: '0.875rem' }}>
+									{t('Leave password fields empty to keep current password unchanged')}
+								</Alert>
+
+								<TextField
+									fullWidth
+									label={t('New Password')}
+									type="password"
+									value={formData.password}
+									onChange={handleInputChange('password')}
+									error={!!errors.password}
+									helperText={errors.password || t('Minimum 9 characters with letters and numbers')}
+									InputProps={{
+										startAdornment: (
+											<InputAdornment position="start">
+												<LockIcon fontSize="small" />
+											</InputAdornment>
+										),
+									}}
+									placeholder={t('Enter new password')}
+								/>
+
+								<TextField
+									fullWidth
+									label={t('Confirm New Password')}
+									type="password"
+									value={confirmPassword}
+									onChange={handleConfirmPasswordChange}
+									error={!!errors.confirmPassword}
+									helperText={errors.confirmPassword}
+									InputProps={{
+										startAdornment: (
+											<InputAdornment position="start">
+												<LockIcon fontSize="small" />
+											</InputAdornment>
+										),
+									}}
+									required
+								/>
+							</Stack>
+						)}
 					</Box>
-
-					{changePassword && (
-						<Stack spacing={2} sx={{ mt: 2 }}>
-							<Alert severity="info" sx={{ fontSize: '0.875rem' }}>
-								{t('Leave password fields empty to keep current password unchanged')}
-							</Alert>
-							
-							<TextField
-								fullWidth
-								label={t('New Password')}
-								type="password"
-								value={formData.password}
-								onChange={handleInputChange('password')}
-								error={!!errors.password}
-								helperText={errors.password || t('Minimum 9 characters with letters and numbers')}
-								InputProps={{
-									startAdornment: (
-										<InputAdornment position="start">
-											<LockIcon fontSize="small" />
-										</InputAdornment>
-									),
-								}}
-								placeholder={t('Enter new password')}
-							/>
-
-							<TextField
-								fullWidth
-								label={t('Confirm New Password')}
-								type="password"
-								value={confirmPassword}
-								onChange={handleConfirmPasswordChange}
-								error={!!errors.confirmPassword}
-								helperText={errors.confirmPassword}
-								InputProps={{
-									startAdornment: (
-										<InputAdornment position="start">
-											<LockIcon fontSize="small" />
-										</InputAdornment>
-									),
-								}}
-								required
-							/>
-						</Stack>
-					)}
-				</Box>
+				)}
 
 	
 			</Stack>

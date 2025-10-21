@@ -10,7 +10,7 @@ import {AllowedSourcesListInputForm, SecondaryIPListInputForm} from './IPListInp
 import AdvancedSettingsForm from './subforms/AdvancedSettingsForm';
 import BasicSettingsForm from './subforms/BasicSettingsForm';
 import EndpointListForm from './subforms/EndpointListForm';
-import HealthCheckForm from './subforms/HealthCheckForm';
+// import HealthCheckForm from './subforms/HealthCheckForm'; // Moved to EndpointListForm
 import SecurityOptionsForm from './subforms/SecurityOptionsForm';
 
 //---------------------------------------------------------
@@ -25,19 +25,25 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 	// Initialize form data with initialData (same pattern as EndpointInputForm)
 	const [formData, setFormData] = React.useState<IServiceConfiguration>({
 		serviceArguments: {
+			// Spread initialData first
+			...initialData?.serviceArguments,
+			// Then apply defaults (these will override the spread values)
 			externalIP: initialData?.serviceArguments?.externalIP || '',
 			port: initialData?.serviceArguments?.port || 80,
 			protocol: initialData?.serviceArguments?.protocol || 'tcp',
 			name: initialData?.serviceArguments?.name || '',
-			sel: initialData?.serviceArguments?.sel || 0,
-			mode: initialData?.serviceArguments?.mode || 0,
+			sel: initialData?.serviceArguments?.sel ?? 0,
+			mode: initialData?.serviceArguments?.mode ?? 0,
 			monitor: initialData?.serviceArguments?.monitor || false,
-			probetype: initialData?.serviceArguments?.probetype || 'ping',
+			probetype: initialData?.serviceArguments?.probetype || '',
+			// Filter out -1 sentinel values for health check fields
+			probeport: (initialData?.serviceArguments?.probeport && initialData.serviceArguments.probeport !== -1) ? initialData.serviceArguments.probeport : undefined,
+			probereq: initialData?.serviceArguments?.probereq || '',
+			proberesp: initialData?.serviceArguments?.proberesp || '',
 			probeTimeout: initialData?.serviceArguments?.probeTimeout || 1800,
-			block: initialData?.serviceArguments?.block || 0,
-			inactiveTimeOut: initialData?.serviceArguments?.inactiveTimeOut || 0,
-			// Add other required fields with defaults
-			...initialData?.serviceArguments
+			probeRetries: (initialData?.serviceArguments?.probeRetries && initialData.serviceArguments.probeRetries !== -1) ? initialData.serviceArguments.probeRetries : undefined,
+			block: initialData?.serviceArguments?.block ?? 0,
+			inactiveTimeOut: initialData?.serviceArguments?.inactiveTimeOut ?? 0,
 		},
 		secondaryIPs: initialData?.secondaryIPs || [],
 		allowedSources: initialData?.allowedSources || [],
@@ -106,11 +112,19 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 			   	params={params?.serviceArguments} 
 			   	isEdit={isEdit}
 			   />
-			   <AdvancedSettingsForm value={formData?.serviceArguments ?? {}} onChange={handleChange('serviceArguments')} params={params?.serviceArguments} />
-			   <HealthCheckForm value={formData?.serviceArguments ?? {}} onChange={handleChange('serviceArguments')} params={params?.serviceArguments} />
+			   <AdvancedSettingsForm value={formData?.serviceArguments ?? {}} onChange={handleChange('serviceArguments')} params={params?.serviceArguments} />			   
 			   <SecondaryIPListInputForm values={formData?.secondaryIPs ?? []} onChange={handleChange('secondaryIPs')} description={params?.secondaryIPs?.description} />
 			   <AllowedSourcesListInputForm values={formData?.allowedSources ?? []} onChange={handleChange('allowedSources')} description={params?.allowedSources?.description} />
-			   <EndpointListForm values={formData?.endpoints ?? []} onChange={handleChange('endpoints')} params={params?.endpoints} />
+			   <EndpointListForm 
+			   	values={formData?.endpoints ?? []} 
+			   	onChange={handleChange('endpoints')} 
+			   	params={params?.endpoints}
+			   	serviceArguments={formData?.serviceArguments}
+			   	onServiceArgumentsChange={handleChange('serviceArguments')}
+			   	serviceArgumentsParams={params?.serviceArguments}
+			   />
+			   {/* <HealthCheckForm value={formData?.serviceArguments ?? {}} onChange={handleChange('serviceArguments')} params={params?.serviceArguments} /> */}
+			   {/* Health check fields moved to EndpointListForm */}
 			</Stack>
 		</Stack>
 	);

@@ -29,8 +29,8 @@ export default function PolicyInfoInputForm(props: {value: IPolicyInfo; onChange
 			</HorizontalStack>
 
 			<HorizontalStack>
-			   <ParamBox label={t('Committed Info Rate')} value={value?.committedInfoRate ?? ''} onChange={handleChange('committedInfoRate')} param_desc={params?.committedInfoRate} />
-			   <ParamBox label={t('Peak Info Rate')} value={value?.peakInfoRate ?? ''} onChange={handleChange('peakInfoRate')} param_desc={params?.peakInfoRate} />
+			   <ParamBox label={t('Committed Info Rate(bps)')} value={value?.committedInfoRate ?? ''} onChange={handleChange('committedInfoRate')} param_desc={params?.committedInfoRate} />
+			   <ParamBox label={t('Peak Info Rate(bps)')} value={value?.peakInfoRate ?? ''} onChange={handleChange('peakInfoRate')} param_desc={params?.peakInfoRate} />
 			</HorizontalStack>
 
 			<HorizontalStack>

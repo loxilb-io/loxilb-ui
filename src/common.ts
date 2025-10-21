@@ -245,6 +245,9 @@ export function move_forced(target: string) {
 	else window.location.href = get_root_url() + target;
 }
 
+export function move_403() {
+}
+
 export function move_404() {
 	//if (window.location.href.includes('/404')) return;
 	//else window.location.href = get_root_url() + '/404';

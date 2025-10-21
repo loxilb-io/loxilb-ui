@@ -44,7 +44,7 @@ export function SecondaryIPListInputForm(props: {values: ISecondaryIP[]; onChang
    };
 
    return (
-	   <AccordionBox title={t('Secondary IPs')} tooltip={description}>
+	   <AccordionBox title={t('Secondary IPs')} tooltip={"Define the list of secondary IP addresses for this Load Balancer"}>
 		   <Stack spacing={2}>
 			   <Stack spacing={2}>
 				   {ip_list.map((item, index) => (
@@ -96,7 +96,7 @@ export function AllowedSourcesListInputForm(props: {values: IAllowedSource[]; on
    };
 
    return (
-	   <AccordionBox title={t('Allowed Sources')} tooltip={description}>
+	   <AccordionBox title={t('Allowed Sources')} tooltip={"Define the list of allowed source IP addresses for this Load Balancer"}>
 		   <Stack spacing={2}>
 			   <Stack spacing={2}>
 				   {ip_list.map((item, index) => (

@@ -30,7 +30,7 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 	);
 
 	return (
-	   <AccordionBox title={t('Advanced Settings (LB Algo, NAT modes, etc)')}>
+	   <AccordionBox title={t('Advanced Settings (LB Algo, NAT modes, etc)')} tooltip={"Configure advanced settings for the load balancer, including algorithms and NAT modes."}>
 			   <Stack spacing={2}>
 					   <HorizontalStack>
 							   <ParamBox label={t('SEL')} value={value?.sel ?? ''} onChange={handleChange('sel')} param_desc={{...params?.sel, enum: sel_list}} />
@@ -46,6 +46,10 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 								<ParamBox label={t('Security')} value={value?.security ?? ''} onChange={handleChange('security')} param_desc={{...params?.security, enum: security_list}} disabled={value?.mode !== 4} />
 								<ParamBox label={t('Block')} value={value?.block ?? ''} onChange={handleChange('block')} param_desc={params?.block} />
 						</HorizontalStack>
+						<HorizontalStack>
+							<ParamBox label={t('Enable Monitor')} value={value.monitor} onChange={handleChange('monitor')} param_desc={params?.monitor} />
+							<Box width="100%" id="empty-spacer" />
+						</HorizontalStack>
 
 						<HorizontalStack>
 							   <ParamBox label={t('BGP')} value={value?.bgp ?? ''} onChange={handleChange('bgp')} param_desc={params?.bgp} />
@@ -53,13 +57,8 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 					   </HorizontalStack>
 					   <HorizontalStack>
 							   <ParamBox label={t('Host')} value={value?.host ?? ''} onChange={handleChange('host')} param_desc={params?.host} disabled={value?.mode !== 4} />
-							   <Box width="100%" id="empty-spacer" />
-					   </HorizontalStack>
-
-					   <HorizontalStack>
 							   <ParamBox label={t('Private IP')} value={value?.privateIP ?? ''} onChange={handleChange('privateIP')} param_desc={{...params?.privateIP, type: 'ipaddress'}} />
-							   <Box width="100%" id="empty-spacer" />
-					   </HorizontalStack>					   
+					   </HorizontalStack>
 			   </Stack>
 	   </AccordionBox>
 	);

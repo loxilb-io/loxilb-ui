@@ -95,7 +95,9 @@ export default function LogTableDashboard(props: {data: ILog[]; selected_rows: n
 		<Stack spacing={2}>
 
 			{rows.length > 0 ? (
-				<DataTable name={'Log'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} hideMenuBar hideCheckbox />
+				<div className="no-drag">
+					<DataTable name={'Log'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} hideMenuBar hideCheckbox />
+				</div>
 			) : (
 				<Typography variant="body2" color="text.secondary">
 					{t('No logs in selected period')}
