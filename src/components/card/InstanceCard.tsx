@@ -114,7 +114,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 		<Card
 			sx={{
 				width: '260px', 
-				height: '400px', 
+				height: '500px', 
 				cursor: isDisabled ? 'not-allowed' : 'pointer',
 				opacity: isDisabled ? 0.6 : 1,
 				backgroundColor: isDisabled ? 'grey.100' : 'background.paper'

@@ -33,15 +33,15 @@ export default function BasicSettingsForm(props: {value: IServiceArguments; onCh
 			   <Stack spacing={2}>
 					   <HorizontalStack>
 							   <DropDownSelectBox 
-							   	label={t('Protocol')} 
-							   	value={value?.protocol ?? 'tcp'} 
-							   	onChange={handleChange('protocol')} 
-							   	item_list={[
-							   		{id: 1, name: 'TCP', send_value: 'tcp'},
-							   		{id: 2, name: 'UDP', send_value: 'udp'},
-							   		{id: 3, name: 'SCTP', send_value: 'sctp'}
-							   	]}
-							   	disabled={isEdit}
+									label={t('Protocol')} 
+									value={value?.protocol ?? 'tcp'} 
+									onChange={handleChange('protocol')} 
+									item_list={[
+										{id: 1, name: 'TCP', send_value: 'tcp'},
+										{id: 2, name: 'UDP', send_value: 'udp'},
+										{id: 3, name: 'SCTP', send_value: 'sctp'}
+									]}
+									disabled={isEdit}
 							   />
 							   {/* <ParamBox label={t('Host')} value={value?.host ?? ''} onChange={handleChange('host')} param_desc={params?.host} /> */}
 					   </HorizontalStack>

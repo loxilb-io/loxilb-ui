@@ -62,7 +62,7 @@ export default function DashboardPage() {
 		{key: 'ha', component: <HACard instance={inst} />},
 		
 		// === NETWORK TOPOLOGY VISUALIZATION ===
-		{key: 'network-topology', component: <SimpleNetworkTopologyCard instance={inst} />},
+		// {key: 'network-topology', component: <SimpleNetworkTopologyCard instance={inst} />},
 		
 		// === CRITICAL METRICS (Administrator Focus) ===
 		{key: 'connection-flows', component: <ConnectionFlowCard title={t('Connection Tracking')} instance={inst} />},
