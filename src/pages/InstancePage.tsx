@@ -5,7 +5,7 @@ import {Box, Stack, Typography, Button, Tooltip, CircularProgress} from '@mui/ma
 import BG from 'assets/image/instance_bg.svg';
 import InstanceCardAdd from 'components/card/InstanceAddCard';
 import InstanceCard from 'components/card/InstanceCard';
-import {useInstanceWithHA} from 'hooks/query/oamHooks';
+import {useInstanceWithHA, useMyInfo} from 'hooks/query/oamHooks';
 import {useInstancesHealthRefresh, useInstanceHealth} from 'hooks/query/healthHook';
 import {useUserLicenses} from 'hooks/query/licenseHooks';
 import {usePopUp} from 'hooks/popupHook';
@@ -58,6 +58,7 @@ export default function InstancePage() {
 	const {instance_set} = useInstanceWithHA();
 	const {userLicenses} = useUserLicenses();
 	const {openPopUp} = usePopUp();
+	const myInfo = useMyInfo();
 	const [licenseValid, setLicenseValid] = useState(true);
 	const [licenseWarningShown, setLicenseWarningShown] = useState(false);
 	
@@ -67,7 +68,7 @@ export default function InstancePage() {
 		return instance_set.map(item => item.instance);
 	}, [instance_set]);
 	
-	// License validation logic
+	// License validation logic - only for admin users (regular users share admin's license)
 	useEffect(() => {
 		if (userLicenses && instances.length > 0) {
 			const validCount = userLicenses.valid_count || 0;
@@ -89,7 +90,7 @@ export default function InstancePage() {
 				);
 			}
 		}
-	}, [userLicenses, instances.length, licenseWarningShown]); // Removed openPopUp from dependencies
+	}, [userLicenses, instances.length, licenseWarningShown, myInfo?.username]);
 	
 	// Use bulk refresh hook for the refresh all button
 	const {refreshAllHealth, isLoading} = useInstancesHealthRefresh(instances);
@@ -132,6 +133,7 @@ export default function InstancePage() {
 				{Array.isArray(instance_set) && instance_set.map((item: any) => (
 					<InstanceCardWithHealth key={item.instance.id} item={item} licenseValid={licenseValid} onHealthRefresh={refreshAllHealth} />
 				))}
+				{/* FIXME: Just remove to add loxilb instance in loxilb-ui GS version */}
 				<InstanceCardAdd />
 			</Box>
 

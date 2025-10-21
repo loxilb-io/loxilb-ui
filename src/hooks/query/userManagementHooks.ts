@@ -1,13 +1,14 @@
 //---------------------------------------------------------
 // User Management Hooks
 //---------------------------------------------------------
-import { 
+import {
     query_get_all_users,
     request_update_user,
     request_delete_user
 } from 'connector/oam/oam';
+import { create_user } from 'connector/user';
 import { useQueryOAMData } from './common';
-import { IUserUpdateRequest } from 'types/user';
+import { IUserUpdateRequest, ICreateUserRequest } from 'types/user';
 
 //---------------------------------------------------------
 // Data Fetching Hooks
@@ -46,5 +47,17 @@ export const updateUser = async (id: number, userData: IUserUpdateRequest) => {
  * Action function to delete a user
  */
 export const deleteUser = async (id: number) => {
-    return request_delete_user(id);
+    const result = await request_delete_user(id);
+    if (result.status === 'error') {
+        throw new Error(result.error);
+    }
+    return result;
+};
+
+/**
+ * Action function to create a new user
+ */
+export const createUser = async (userData: ICreateUserRequest) => {
+    const result = await create_user(userData);
+    return result;
 };

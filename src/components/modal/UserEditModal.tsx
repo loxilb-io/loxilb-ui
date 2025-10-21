@@ -13,22 +13,25 @@ import {t} from 'i18next';
 //---------------------------------------------------------
 interface UserEditModalProps {
 	open: boolean;
-	user: IUser | null;
+	user?: IUser | null;
 	onClose: () => void;
 	onSubmit: (userData: IUserUpdateRequest) => Promise<void>;
 	loading: boolean;
 	error: string;
 	isAdmin?: boolean;
 	currentUserId?: number;
+	mode?: 'edit' | 'create'; // Add mode prop
 }
 
 //---------------------------------------------------------
 // Component Implementation
 //---------------------------------------------------------
 export default function UserEditModal(props: UserEditModalProps) {
-	const {open, user, onClose, onSubmit, loading, error, isAdmin = false, currentUserId} = props;
+	const {open, user, onClose, onSubmit, loading, error, isAdmin = false, currentUserId, mode = 'edit'} = props;
 	const [formData, setFormData] = useState<IUserUpdateRequest | null>(null);
 	const [isFormValid, setIsFormValid] = useState(false);
+
+	const isCreateMode = mode === 'create';
 
 	const handleFormChange = useCallback((data: IUserUpdateRequest & { isValid?: boolean; errors?: any }) => {
 		setFormData(data);
@@ -38,9 +41,10 @@ export default function UserEditModal(props: UserEditModalProps) {
 		setIsFormValid(isValid);
 	}, []);
 
-	if (!user) return null;
+	// For create mode, user is optional; for edit mode, return null if no user
+	if (!isCreateMode && !user) return null;
 
-	const isCurrentUser = user.id === currentUserId;
+	const isCurrentUser = Boolean(!isCreateMode && user && user.id === currentUserId);
 
 	const handleSubmit = async () => {
 		if (!formData || !isFormValid) return;
@@ -85,11 +89,12 @@ export default function UserEditModal(props: UserEditModalProps) {
 				<Box p={3}>
 					<Stack spacing={3}>
 						<UserEditForm
-							user={user}
+							user={user || undefined}
 							onChange={handleFormChange}
 							onValidation={handleFormValidation}
 							isAdmin={isAdmin}
 							isCurrentUser={isCurrentUser}
+							mode={mode}
 						/>
 
 						{error && (
@@ -98,9 +103,9 @@ export default function UserEditModal(props: UserEditModalProps) {
 							</Alert>
 						)}
 
-						<Stack 
-							direction="row" 
-							spacing={2} 
+						<Stack
+							direction="row"
+							spacing={2}
 							justifyContent="flex-end"
 							sx={{ mt: 1, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}
 						>
@@ -121,7 +126,10 @@ export default function UserEditModal(props: UserEditModalProps) {
 								startIcon={loading ? <CircularProgress size={16} /> : undefined}
 								sx={{ minWidth: 120 }}
 							>
-								{loading ? t('Updating...') : t('Update User')}
+								{loading
+									? (isCreateMode ? t('Creating...') : t('Updating...'))
+									: (isCreateMode ? t('Create User') : t('Update User'))
+								}
 							</Button>
 						</Stack>
 					</Stack>

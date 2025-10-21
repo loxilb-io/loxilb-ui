@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {forced_relocation_to_login, get_local_storage, move_404, move_402, move_500, move_503, move_cors, remove_local_storage, save_local_storage} from 'common';
+import {forced_relocation_to_login, get_local_storage, move_404, move_403, move_402, move_500, move_503, move_cors, remove_local_storage, save_local_storage} from 'common';
 
 //---------------------------------------------------------
 // Interfaces
@@ -102,7 +102,8 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 		const resp = await fetch(url, mergedOptions);
 
 		if (resp.status === 204) return resp; // No content response
-		if (resp.status === 401 || resp.status === 403) {
+		// if (resp.status === 401 || resp.status === 403) {
+		if (resp.status === 401) {
 			// Do not force-redirect when the request itself is for the login endpoint,
 			// so we can surface server error messages (e.g., Invalid credentials) in the UI.
 			const isLoginRequest = typeof url === 'string' && /\/login(?:\b|\/)/.test(url);
@@ -110,6 +111,10 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 				remove_token();
 				forced_relocation_to_login();
 			}
+			return resp;
+		} else if (resp.status === 403) {
+			// Forbidden - user is authenticated but lacks permission or action is forbidden
+			// Return response so caller can handle the error message
 			return resp;
 		} else if (resp.status === 402) move_402();
 		else if (resp.status === 404) move_404();

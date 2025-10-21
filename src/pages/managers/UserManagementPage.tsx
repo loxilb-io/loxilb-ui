@@ -14,7 +14,7 @@ import UserManagementTable from 'components/table/managers/UserManagementTable';
 import UserEditModal from 'components/modal/UserEditModal';
 import {useMyInfo} from 'hooks/query/oamHooks';
 import {useUserLicenses} from 'hooks/query/licenseHooks';
-import {useAllUsers, updateUser, deleteUser} from 'hooks/query/userManagementHooks';
+import {useAllUsers, updateUser, deleteUser, createUser} from 'hooks/query/userManagementHooks';
 import {usePopUp} from 'hooks/popupHook';
 import {login_user} from 'connector/user';
 import {save_local_storage, move_forced} from 'common';
@@ -25,7 +25,7 @@ import {updateUserLicense, deactivateUserLicense, installLicense} from 'hooks/qu
 import LicenseManagementTable from 'components/table/managers/LicenseManagementTable';
 import LicenseUpdateForm from 'components/input/LicenseUpdateForm';
 import {IUser} from 'types/oam';
-import {IUserUpdateRequest} from 'types/user';
+import {IUserUpdateRequest, ICreateUserRequest} from 'types/user';
 import {IUpdateLicenseRequest, IInstallLicenseRequest} from 'types/license';
 
 //---------------------------------------------------------
@@ -328,33 +328,45 @@ function LicenseManagementPanel() {
 function AdminUserManagementPanel(props: {
 	currentUser: IUser | undefined;
 	onEditUser: (user: IUser) => void;
+	onAddUser: () => void;
+	onRefresh: () => void;
+	refetchRef?: React.MutableRefObject<(() => void) | null>;
 }) {
-	const {currentUser, onEditUser} = props;
+	const {currentUser, onEditUser, onAddUser, onRefresh, refetchRef} = props;
 	const {users, isLoading, refetch} = useAllUsers();
 
 	const {openPopUp} = usePopUp();
 	const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
 
+	// Expose refetch function to parent via ref
+	useEffect(() => {
+		if (refetchRef) {
+			refetchRef.current = refetch;
+		}
+	}, [refetch, refetchRef]);
+
 	const handleDeleteUser = () => {
 		if (selectedUsers.length === 0) return;
-		
+
 		const selectedUserData = selectedUsers.map(index => users[index]).filter(Boolean);
 		const usernames = selectedUserData.map(user => user.username).join(', ');
-		
+
 		openPopUp(
 			t('Confirm Delete'),
 			t('Are you sure you want to delete user(s): "' + usernames + '"? This action cannot be undone.'),
 			t('Delete'),
 			t('Cancel'),
-			() => {
-				selectedUserData.forEach(async user => {
-			try {
-				await deleteUser(user.id);
-			} catch (error) {
-				console.error('Failed to delete user:', error);
-			}
-		});
-				setSelectedUsers([]);
+			async () => {
+				try {
+					// Delete all selected users
+					await Promise.all(selectedUserData.map(user => deleteUser(user.id)));
+					setSelectedUsers([]);
+					// Refresh the user list
+					onRefresh();
+				} catch (error) {
+					const errorMessage = error instanceof Error ? error.message : t('Failed to delete one or more users');
+					openPopUp(t('Error'), errorMessage, t('OK'));
+				}
 			}
 		);
 	};
@@ -393,8 +405,10 @@ function AdminUserManagementPanel(props: {
 					data={{users}}
 					selected_rows={selectedUsers}
 					onChangeSelectedRows={setSelectedUsers}
+					onAdd={onAddUser}
 					onUpdate={handleEditUser}
 					onDelete={handleDeleteUser}
+					onRefresh={onRefresh}
 					currentUserId={currentUser?.id}
 					isAdmin={currentUser?.role === 'admin'}
 				/>
@@ -416,10 +430,17 @@ export default function UserManagementPage() {
 	const [actionError, setActionError] = useState('');
 
 	const [isUpdating, setIsUpdating] = useState(false);
+	const userRefetchRef = useRef<(() => void) | null>(null);
 
 	const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
 		setTabValue(newValue);
 	};
+
+	const handleUserRefresh = useCallback(() => {
+		if (userRefetchRef.current) {
+			userRefetchRef.current();
+		}
+	}, []);
 
 	const handleEditProfile = () => {
 		if (my_info) {
@@ -433,6 +454,11 @@ export default function UserManagementPage() {
 		setEditModalOpen(true);
 	};
 
+	const handleAddUser = () => {
+		setEditingUser(null); // No user for create mode
+		setEditModalOpen(true);
+	};
+
 	const handleCloseModal = () => {
 		setEditModalOpen(false);
 		setEditingUser(null);
@@ -440,48 +466,79 @@ export default function UserManagementPage() {
 	};
 
 	const handleSubmitUser = async (userData: IUserUpdateRequest) => {
-		if (!editingUser) return;
-
 		setActionError('');
 		setIsUpdating(true);
-		
-		const originalUsername = editingUser.username;
-		const usernameChanged = userData.username !== originalUsername;
-		const isCurrentUserUpdate = editingUser.id === my_info?.id;
-		
+
+		const isCreateMode = !editingUser;
+
 		try {
-			await updateUser(editingUser.id, userData);
-			
-			// If current user changed their username, we need to re-login to get new token
-			if (isCurrentUserUpdate && usernameChanged) {
-				// Check if user provided a password (either new or current)
-				if (userData.password) {
-					try {
-						// Re-login with new username and provided password
-						const loginResult = await login_user({
-							username: userData.username!,
-							password: userData.password!
-						});
-						
-						// Update the access token
-						save_local_storage('access_token', loginResult.token);
-						
+			if (isCreateMode) {
+				// Create new user
+				const createData: ICreateUserRequest = {
+					username: userData.username!,
+					email: userData.email!,
+					password: userData.password!,
+					role: userData.role,
+				};
+				await createUser(createData);
+
+				handleCloseModal();
+				handleUserRefresh(); // Refresh user list
+				openPopUp(t('Success'), t('User "{{username}}" has been created successfully', {username: userData.username}), t('OK'));
+			} else {
+				// Update existing user
+				const originalUsername = editingUser.username;
+				const usernameChanged = userData.username !== originalUsername;
+				const isCurrentUserUpdate = editingUser.id === my_info?.id;
+
+				await updateUser(editingUser.id, userData);
+
+				// If current user changed their username, we need to re-login to get new token
+				if (isCurrentUserUpdate && usernameChanged) {
+					// Check if user provided a password (either new or current)
+					if (userData.password) {
+						try {
+							// Re-login with new username and provided password
+							const loginResult = await login_user({
+								username: userData.username!,
+								password: userData.password!
+							});
+
+							// Update the access token
+							save_local_storage('access_token', loginResult.token);
+
+							handleCloseModal();
+							handleUserRefresh(); // Refresh user list
+							openPopUp(
+								t('Success'),
+								t('Username and authentication updated successfully. You are now logged in with your new username.'),
+								t('OK')
+							);
+							return;
+						} catch (reloginError) {
+							console.error('Re-login failed:', reloginError);
+							// If re-login fails, force logout and redirect
+							handleCloseModal();
+							openPopUp(
+								t('Authentication Error'),
+								t('Username was updated but re-login failed. Please log in again with your new credentials.'),
+								t('OK'),
+								'',
+								() => {
+									localStorage.removeItem('access_token');
+									move_forced('/login');
+								}
+							);
+							return;
+						}
+					} else {
+						// No password provided - user needs to log in manually
 						handleCloseModal();
 						openPopUp(
-							t('Success'), 
-							t('Username and authentication updated successfully. You are now logged in with your new username.'), 
-							t('OK')
-						);
-						return;
-					} catch (reloginError) {
-						console.error('Re-login failed:', reloginError);
-						// If re-login fails, force logout and redirect
-						handleCloseModal();
-						openPopUp(
-							t('Authentication Error'), 
-							t('Username was updated but re-login failed. Please log in again with your new credentials.'), 
-							t('OK'), 
-							'', 
+							t('Username Updated'),
+							t('Your username has been updated. Please log in again with your new username to continue.'),
+							t('OK'),
+							'',
 							() => {
 								localStorage.removeItem('access_token');
 								move_forced('/login');
@@ -489,28 +546,15 @@ export default function UserManagementPage() {
 						);
 						return;
 					}
-				} else {
-					// No password provided - user needs to log in manually
-					handleCloseModal();
-					openPopUp(
-						t('Username Updated'), 
-						t('Your username has been updated. Please log in again with your new username to continue.'), 
-						t('OK'), 
-						'', 
-						() => {
-							localStorage.removeItem('access_token');
-							move_forced('/login');
-						}
-					);
-					return;
 				}
+
+				handleCloseModal();
+				handleUserRefresh(); // Refresh user list
+				// Show success popup (same pattern as LBRulePage)
+				openPopUp(t('Success'), t('User "{{username}}" has been updated successfully', {username: userData.username}), t('OK'));
 			}
-			
-			handleCloseModal();
-			// Show success popup (same pattern as LBRulePage)
-			openPopUp(t('Success'), t('User "{{username}}" has been updated successfully', {username: userData.username}), t('OK'));
 		} catch (error: any) {
-			const errorMessage = error?.message || t('Failed to update user');
+			const errorMessage = error?.message || (isCreateMode ? t('Failed to create user') : t('Failed to update user'));
 			setActionError(errorMessage);
 			throw new Error(errorMessage);
 		} finally {
@@ -586,8 +630,11 @@ export default function UserManagementPage() {
 					{isAdmin && (
 						<TabPanel value={tabValue} index={2}>
 							<AdminUserManagementPanel 
+								onRefresh={handleUserRefresh}
+								refetchRef={userRefetchRef}
 								currentUser={my_info}
 								onEditUser={handleEditUser}
+								onAddUser={handleAddUser}
 							/>
 						</TabPanel>
 					)}
@@ -603,6 +650,7 @@ export default function UserManagementPage() {
 				error={actionError}
 				isAdmin={isAdmin}
 				currentUserId={my_info?.id}
+				mode={editingUser ? 'edit' : 'create'}
 			/>
 
 		</>

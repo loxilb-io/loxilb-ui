@@ -166,7 +166,7 @@ export default function LoginPage() {
 							}}
 						>
 							<Tab label={t('Login')} />
-							<Tab label={t('Sign Up')} />
+							{/* <Tab label={t('Sign Up')} /> */}
 						</Tabs>
 					</Box>
 

@@ -174,7 +174,7 @@ export default function SystemLogCard() {
 	
 		return (
 			<ScrollableBox>
-				<Stack position="relative" id="fixed-container" width="100%" height="100%" spacing={3} padding="16px">
+				<Stack position="relative" id="fixed-container" width="100%" height="100%" spacing={3} padding="16px" className="no-drag">
 	
 					{/* Log Filters - Aligned with LogTable */}
 					<Stack spacing={2}>
@@ -263,6 +263,20 @@ export default function SystemLogCard() {
 					</Stack>
 	
 					<LogTableDashboard data={allLogs} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} />
+
+				{/* Load More Button */}
+				{hasMore && (
+					<Box display="flex" justifyContent="center" mt={2}>
+						<Button
+							variant="outlined"
+							onClick={handleLoadMore}
+							disabled={isLoadingMore}
+							size="large"
+						>
+							{isLoadingMore ? t('Loading...') : t('Load More Logs')}
+						</Button>
+					</Box>
+				)}
 				</Stack>
 			</ScrollableBox>
 		);

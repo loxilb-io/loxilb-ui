@@ -27,7 +27,8 @@ export default function EndpointInputForm({ initialData, isEdit = false, onChang
 		inactiveReTries: initialData?.inactiveReTries || 2,
 		probeType: initialData?.probeType || 'ping',
 		probeDuration: initialData?.probeDuration || 60,
-		probePort: initialData?.probePort || 8080,
+		// probePort: initialData?.probePort || 8080,
+		probePort: (initialData?.probePort && initialData.probePort !== -1) ? initialData.probePort : undefined,
 		probeReq: initialData?.probeReq || '',
 		probeResp: initialData?.probeResp || '',
 	});
@@ -82,7 +83,7 @@ export default function EndpointInputForm({ initialData, isEdit = false, onChang
 	}
 
 	return (
-		<NewBox item_name={isEdit ? t('Edit Endpoint') : t('New Endpoint')}>
+		<NewBox item_name={isEdit ? t('Edit Endpoint') : t('Endpoint')}>
 		   <ParamBox
 		   	label={t('Host Name')}
 		   	value={formData.hostName}
@@ -132,6 +133,7 @@ export default function EndpointInputForm({ initialData, isEdit = false, onChang
 			   	value={formData.probePort}
 			   	onChange={(value) => handleChange('probePort', value)}
 			   	param_desc={{...params.probePort, type: 'port'}}
+				disabled={formData.probeType === 'ping'}
 			   />
 		   </HorizontalStack>
 

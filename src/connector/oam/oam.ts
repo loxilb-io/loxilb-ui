@@ -215,7 +215,11 @@ export async function request_update_user(id: number, userData: Partial<IUser>):
 
 export async function request_delete_user(id: number): Promise<ApiResult> {
 	const resp = await DELETE_OAM(`/users/${id}`);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to delete user: ${resp.message}`};
+	if (resp.code !== 200) {
+		// Extract error message from response data if available (e.g., 403 Forbidden errors)
+		const errorMessage = resp.data?.error || resp.message || 'Failed to delete user';
+		return {status: 'error', error: errorMessage};
+	}
 	else return {status: 'success'};
 }
 
