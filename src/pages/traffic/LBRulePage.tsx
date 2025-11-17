@@ -15,7 +15,7 @@ import QoSPanel from 'components/panel/QOSPanel';
 import SecondaryIPsPanel from 'components/panel/SecondaryIPPanel';
 import SettingsPanel from 'components/panel/SettingPanel';
 import LBTable from 'components/table/traffic/LBTable';
-import {request_create_load_balancer_config, request_delete_lb_by_name} from 'connector/instance/load_balancer';
+import {request_create_load_balancer_config, request_delete_lb_by_ip_port_proto} from 'connector/instance/load_balancer';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useErrorPopup} from 'hooks/useErrorPopup';
@@ -85,14 +85,14 @@ export default function LBRulePage() {
 		if (selected_rows.length === 1) {
 			const item = lb_info.lbAttr[selected_rows[0]];
 			set_selected_key(getHashKey(item).toString());
-			set_lb_name(item.serviceArguments.name);
+			set_lb_name(item.serviceArguments.name || 'unnamed');
 			set_cur_tab_idx(0);
-		} else if (selected_key !== null) {
+		} else {
 			set_selected_key(null);
 			set_lb_name(null);
 			set_cur_tab_idx(0);
 		}
-	}, [lb_info, selected_rows, selected_key]);
+	}, [lb_info, selected_rows]);
 
 	const {openPopUp, enableYes} = usePopUp();
 	const {errorPopup, showAddError, showUpdateError, showDeleteError, closeErrorPopup} = useErrorPopup();
@@ -100,9 +100,12 @@ export default function LBRulePage() {
 	const handleDelete = useCallback(async () => {
 		if (!inst || selected_rows.length !== 1) return;
 
-		const lb_name = lb_info.lbAttr[selected_rows[0]].serviceArguments.name;
+		const selectedLB = lb_info.lbAttr[selected_rows[0]];
+		const externalIP = selectedLB.serviceArguments.externalIP;
+		const port = selectedLB.serviceArguments.port;
+		const protocol = selectedLB.serviceArguments.protocol;
 
-		const res = await request_delete_lb_by_name(inst, lb_name);
+		const res = await request_delete_lb_by_ip_port_proto(inst, externalIP, port, protocol);
 		if (res.status === 'success') {
 			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
 			set_selected_rows([]);
@@ -236,7 +239,7 @@ export default function LBRulePage() {
 				onRefresh={refetch}
 			/>
 
-			{selected_index !== -1 && rule_name && (
+			{selected_index !== -1 && (
 				<LowerSection>
 					<Stack spacing={2}>
 						<SubTabs tabs={tabs} onChange={(index: number) => set_cur_tab_idx(index)} />
@@ -245,9 +248,9 @@ export default function LBRulePage() {
 						{cur_tab_idx === 1 && <EndpointsPanel endpoints={sortedAttr[selected_index].endpoints} />}
 						{cur_tab_idx === 2 && <SecondaryIPsPanel secondaryIPs={sortedAttr[selected_index].secondaryIPs} />}
 						{cur_tab_idx === 3 && <AllowedSourcesPanel allowedSources={sortedAttr[selected_index].allowedSources} />}
-						{cur_tab_idx === 4 && <ConntrackTablePanel lb_name={rule_name} />}
-						{cur_tab_idx === 5 && <QoSPanel data={qos_info} lb_name={rule_name} />}
-						{cur_tab_idx === 6 && <MirrorPanel data={mirror_info} lb_name={rule_name} />}
+						{cur_tab_idx === 4 && rule_name && <ConntrackTablePanel lb_name={rule_name} />}
+						{cur_tab_idx === 5 && rule_name && <QoSPanel data={qos_info} lb_name={rule_name} />}
+						{cur_tab_idx === 6 && rule_name && <MirrorPanel data={mirror_info} lb_name={rule_name} />}
 					</Stack>
 				</LowerSection>
 			)}
