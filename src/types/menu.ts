@@ -53,10 +53,10 @@ export const MENU_LIST: IMenuItem[] = [
 				name: 'Alerts',
 				path: 'alerts',
 			},
-			{
-				name: 'Topology',
-				path: 'topology',
-			},
+			// {
+			// 	name: 'Topology',
+			// 	path: 'topology',
+			// },
 			{
 				name: 'nTop Analytics',
 				path: 'ntop',
@@ -76,18 +76,18 @@ export const MENU_LIST: IMenuItem[] = [
 				name: 'Port',
 				path: 'port',
 			},			
-			{
-				name: 'VLAN',
-				path: 'vlan',
-			},
+			// {
+			// 	name: 'VLAN',
+			// 	path: 'vlan',
+			// },
 			// {
 			// 	name: 'VxLAN',
 			// 	path: 'vxlan',
 			// },
-			{
-				name: 'FDB(MAC Address Table)',
-				path: 'fdb',
-			},
+			// {
+			// 	name: 'FDB(MAC Address Table)',
+			// 	path: 'fdb',
+			// },
 			{
 				name: 'IP Address',
 				path: 'ip',

@@ -33,32 +33,27 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 	   <AccordionBox title={t('Advanced Settings (LB Algo, NAT modes, etc)')} tooltip={"Configure advanced settings for the load balancer, including algorithms and NAT modes."}>
 			   <Stack spacing={2}>
 					   <HorizontalStack>
-							   <ParamBox label={t('SEL')} value={value?.sel ?? ''} onChange={handleChange('sel')} param_desc={{...params?.sel, enum: sel_list}} />
+							   <ParamBox label={t('SEL')} value={value?.sel ?? ''} onChange={handleChange('sel')} param_desc={{...params?.sel, enum: sel_list, description: t('Select an SEL algorithm.(0-rr, 1-hash, 2-priority, 3-persist, 4-lc)')}} />
 							   <ParamBox label={t('Oper')} value={value?.oper ?? ''} onChange={handleChange('oper')} param_desc={{...params?.oper, enum: oper_list}} />
 					   </HorizontalStack>
 
 					   <HorizontalStack>
-							   <ParamBox label={t('Mode')} value={value?.mode ?? ''} onChange={handleChange('mode')} param_desc={{...params?.mode, enum: mode_list}} />
+							   <ParamBox label={t('Mode')} value={value?.mode ?? ''} onChange={handleChange('mode')} param_desc={{...params?.mode, enum: mode_list, description: t('Select a NAT mode.(0-dnat, 1-onearm, 2-fullnat, 3-dsr)')}} />
 							   <ParamBox label={t('Inactive Timeout')} value={value?.inactiveTimeOut ?? ''} onChange={handleChange('inactiveTimeOut')} param_desc={params?.inactiveTimeOut} />
 					   </HorizontalStack>
 
-					   <HorizontalStack>
+					   {/* <HorizontalStack>
 								<ParamBox label={t('Security')} value={value?.security ?? ''} onChange={handleChange('security')} param_desc={{...params?.security, enum: security_list}} disabled={value?.mode !== 4} />
 								<ParamBox label={t('Block')} value={value?.block ?? ''} onChange={handleChange('block')} param_desc={params?.block} />
-						</HorizontalStack>
+						</HorizontalStack> */}
 						<HorizontalStack>
 							<ParamBox label={t('Enable Monitor')} value={value.monitor} onChange={handleChange('monitor')} param_desc={params?.monitor} />
-							<Box width="100%" id="empty-spacer" />
+							<ParamBox label={t('BGP')} value={value?.bgp ?? ''} onChange={handleChange('bgp')} param_desc={params?.bgp} />
 						</HorizontalStack>
-
-						<HorizontalStack>
-							   <ParamBox label={t('BGP')} value={value?.bgp ?? ''} onChange={handleChange('bgp')} param_desc={params?.bgp} />
-							   <Box width="100%" id="empty-spacer" />
-					   </HorizontalStack>
-					   <HorizontalStack>
+					   {/* <HorizontalStack>
 							   <ParamBox label={t('Host')} value={value?.host ?? ''} onChange={handleChange('host')} param_desc={params?.host} disabled={value?.mode !== 4} />
 							   <ParamBox label={t('Private IP')} value={value?.privateIP ?? ''} onChange={handleChange('privateIP')} param_desc={{...params?.privateIP, type: 'ipaddress'}} />
-					   </HorizontalStack>
+					   </HorizontalStack> */}
 			   </Stack>
 	   </AccordionBox>
 	);
