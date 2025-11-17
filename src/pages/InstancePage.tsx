@@ -133,8 +133,7 @@ export default function InstancePage() {
 				{Array.isArray(instance_set) && instance_set.map((item: any) => (
 					<InstanceCardWithHealth key={item.instance.id} item={item} licenseValid={licenseValid} onHealthRefresh={refreshAllHealth} />
 				))}
-				{/* FIXME: Just remove to add loxilb instance in loxilb-ui GS version */}
-				<InstanceCardAdd />
+				{/* <InstanceCardAdd /> */}
 			</Box>
 
 			<Box position="absolute" right="32px" bottom="16px" component="img" src={BG} zIndex={1} width="250px" />

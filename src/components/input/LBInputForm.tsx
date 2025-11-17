@@ -29,7 +29,7 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 			...initialData?.serviceArguments,
 			// Then apply defaults (these will override the spread values)
 			externalIP: initialData?.serviceArguments?.externalIP || '',
-			port: initialData?.serviceArguments?.port || 80,
+			port: initialData?.serviceArguments?.port || 0,
 			protocol: initialData?.serviceArguments?.protocol || 'tcp',
 			name: initialData?.serviceArguments?.name || '',
 			sel: initialData?.serviceArguments?.sel ?? 0,
@@ -116,12 +116,12 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 			   <SecondaryIPListInputForm values={formData?.secondaryIPs ?? []} onChange={handleChange('secondaryIPs')} description={params?.secondaryIPs?.description} />
 			   <AllowedSourcesListInputForm values={formData?.allowedSources ?? []} onChange={handleChange('allowedSources')} description={params?.allowedSources?.description} />
 			   <EndpointListForm 
-			   	values={formData?.endpoints ?? []} 
-			   	onChange={handleChange('endpoints')} 
-			   	params={params?.endpoints}
-			   	serviceArguments={formData?.serviceArguments}
-			   	onServiceArgumentsChange={handleChange('serviceArguments')}
-			   	serviceArgumentsParams={params?.serviceArguments}
+					values={formData?.endpoints ?? []} 
+					onChange={handleChange('endpoints')} 
+					params={params?.endpoints}
+					serviceArguments={formData?.serviceArguments}
+					onServiceArgumentsChange={handleChange('serviceArguments')}
+					serviceArgumentsParams={params?.serviceArguments}
 			   />
 			   {/* <HealthCheckForm value={formData?.serviceArguments ?? {}} onChange={handleChange('serviceArguments')} params={params?.serviceArguments} /> */}
 			   {/* Health check fields moved to EndpointListForm */}
