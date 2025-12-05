@@ -93,12 +93,12 @@ export default function AlertManagementPage() {
 		if (severityFilter) {
 			newParams.severity = severityFilter as 'critical' | 'warning' | 'info';
 		}
-		if (ruleNameFilter) {
-			newParams.rule_name = ruleNameFilter;
-		}
-		if (metricNameFilter) {
-			newParams.metric_name = metricNameFilter;
-		}
+		// if (ruleNameFilter) {
+		// 	newParams.rule_name = ruleNameFilter;
+		// }
+		// if (metricNameFilter) {
+		// 	newParams.metric_name = metricNameFilter;
+		// }
 
 		setQueryParams(newParams);
 	}, [statusFilter, severityFilter, ruleNameFilter, metricNameFilter]);
@@ -244,7 +244,7 @@ export default function AlertManagementPage() {
 							</Select>
 						</FormControl>
 
-						<TextField
+						{/* <TextField
 							size="small"
 							label={t('Rule Name')}
 							value={ruleNameFilter}
@@ -258,7 +258,7 @@ export default function AlertManagementPage() {
 							value={metricNameFilter}
 							onChange={(e) => setMetricNameFilter(e.target.value)}
 							sx={{ minWidth: 200 }}
-						/>
+						/> */}
 
 						<Button variant="contained" onClick={applyFilters}>
 							{t('Apply Filters')}

@@ -22,7 +22,11 @@ export default function ConntrackTable(props: {data: ICtData; selected_rows: num
 		{data_key: 'protocol', header: 'Protocol', width: 'medium'},
 		{data_key: 'conntrackState', header: 'State', width: 'medium'},
 		{data_key: 'conntrackAct', header: 'Act', width: 'medium'},
-		{data_key: 'usage', header: 'Usages', align: 'right', width: 'wide'},
+		{data_key: 'usage', header: 'Usages', align: 'right', width: 'wide', sortComparator: (v1: any, v2: any) => {
+			const bytes1 = typeof v1 === 'object' && v1.bytes !== undefined ? v1.bytes : 0;
+			const bytes2 = typeof v2 === 'object' && v2.bytes !== undefined ? v2.bytes : 0;
+			return bytes1 - bytes2;
+		}},
 	];
 
    // Simple hash function for composite key
@@ -52,7 +56,11 @@ export default function ConntrackTable(props: {data: ICtData; selected_rows: num
 				   protocol: item.protocol,
 				   conntrackState: item.conntrackState,
 				   conntrackAct: item.conntrackAct,
-				   usage: item.bytes && item.packets ? `${get_size_str(item.bytes)} / ${item.packets} pkts` : ' ',
+				   usage: item.bytes && item.packets ? {
+					   bytes: item.bytes,
+					   packets: item.packets,
+					   toString: () => `${get_size_str(item.bytes)} / ${item.packets} pkts`
+				   } : {bytes: 0, packets: 0, toString: () => ' '},
 				   _uniqueKey: getHashKey(item),
 			   };
 		   });

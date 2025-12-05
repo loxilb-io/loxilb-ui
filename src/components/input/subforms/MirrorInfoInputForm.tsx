@@ -8,7 +8,7 @@ import HorizontalStack from 'components/layout/HorizontalStack';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePortAttr} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
-import {useCallback, useEffect, useMemo, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {IEnumItem} from 'types/global';
 import {IMirrorInfo} from 'types/mirror';
 
@@ -18,10 +18,17 @@ import {IMirrorInfo} from 'types/mirror';
 export default function MirrorInfoInputForm(props: {value: IMirrorInfo; onChange: (data: IMirrorInfo) => void; params?: any}) {
 	const {value, onChange, params} = props;
 
-	const [type_index, set_type_index] = useState<number>(0);
-
 	const inst = useInstanceFromURL();
 	const typeList: IEnumItem[] = mirrortypes;
+
+	// Synchronize type_index with value.type
+	const type_index = useMemo(() => {
+		if (value.type !== undefined) {
+			const index = typeList.findIndex(item => Number(item.send_value) === value.type);
+			return index !== -1 ? index : 0;
+		}
+		return 0;
+	}, [value.type, typeList]);
 
 	const {data: portData} = usePortAttr(inst);
 	const portList: IEnumItem[] = useMemo(() => {
@@ -35,12 +42,10 @@ export default function MirrorInfoInputForm(props: {value: IMirrorInfo; onChange
 
 	const handleChangeType = useCallback(
 		(send_value: string) => {
-			const sel_index = typeList.findIndex(item => item.send_value === send_value);
-			set_type_index(sel_index);
 			const typeValue = send_value === '' ? undefined : Number(send_value);
-			handleChange('type')(typeValue);
+			onChange({...value, type: typeValue});
 		},
-		[typeList, handleChange],
+		[value, onChange],
 	);
 
 	// Type에 따른 필드 활성화 조건
@@ -54,6 +59,55 @@ export default function MirrorInfoInputForm(props: {value: IMirrorInfo; onChange
 	const isTunnelEnabled = type_name === 'ERSPAN';
 	const isSourceIPEnabled = type_name === 'ERSPAN';
 	const isRemoteIPEnabled = type_name === 'ERSPAN';
+
+	const portInitialized = useRef(false);
+	const typeInitialized = useRef(false);
+
+	// Initialize type to 0 (SPAN) if undefined
+	useEffect(() => {
+		console.log('🔧 MirrorInfoInputForm init check:', {
+			'value.type': value.type,
+			typeInitialized: typeInitialized.current,
+			shouldInit: value.type === undefined && !typeInitialized.current,
+		});
+		
+		// Only initialize if type is undefined AND we haven't successfully set it yet
+		if (value.type === undefined && !typeInitialized.current) {
+			console.log('✅ Initializing type to 0');
+			onChange({...value, type: 0});
+			// DON'T set typeInitialized here - wait for value to actually change
+		}
+		
+		// Mark as initialized only when type actually has a value
+		if (value.type !== undefined && !typeInitialized.current) {
+			typeInitialized.current = true;
+			console.log('✅ Type initialized successfully:', value.type);
+		}
+	}, [value, onChange]);
+
+	// When type is set but port is not, set the first port (only once)
+	useEffect(() => {
+		console.log('🔧 MirrorInfoInputForm port init check:', {
+			'value.type': value.type,
+			'value.port': value.port,
+			'portList.length': portList.length,
+			portInitialized: portInitialized.current,
+			'portList[0]': portList[0],
+		});
+		
+		// Only set port if type is defined, port is empty, and we have ports available
+		if (value.type !== undefined && !value.port && portList.length > 0 && !portInitialized.current) {
+			console.log('✅ Initializing port with:', portList[0].send_value);
+			onChange({...value, port: portList[0].send_value as string});
+			// DON'T set portInitialized here - wait for value to actually change
+		}
+		
+		// Mark as initialized only when port actually has a value
+		if (value.port && !portInitialized.current) {
+			portInitialized.current = true;
+			console.log('✅ Port initialized successfully:', value.port);
+		}
+	}, [value.type, value.port, portList.length, onChange, value, portList]);
 
 	useEffect(() => {
 		// 타입이 변경될 때만 비활성화된 필드들을 초기화

@@ -123,9 +123,9 @@ export default function MirrorPage() {
 			<MirrorInputForm
 				key={Date.now()}
 				onChange={data => {
-					instanceRef.current = data;
-					enableYes(data.isValid);
-					// enableYes(!!data && data.mirrorIdent !== '');
+					const {isValid, errors, ...cleanData} = data;
+					instanceRef.current = cleanData;
+					enableYes(isValid);
 				}}
 			/>
 		);

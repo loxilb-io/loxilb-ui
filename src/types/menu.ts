@@ -179,7 +179,7 @@ export const MENU_LIST: IMenuItem[] = [
 		],
 	},
 	{
-		name: 'Settings',
+		name: 'Log Settings',
 		icon: WysiwygIcon,
 		path: 'settings',
 	},

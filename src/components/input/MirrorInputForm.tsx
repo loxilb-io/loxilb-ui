@@ -21,11 +21,29 @@ interface MirrorInputFormProps {
 export default function MirrorInputForm(props: MirrorInputFormProps) {
 	const {onChange, onValidation} = props;
 	const {form, params, handleChange, errors, isValid} = useFormWithParams<IMirrorAttribute>('IMirrorAttribute');
+	
 
 	// Notify parent of validation state and form data
 	React.useEffect(() => {
 		if (form) {
-			onChange({ ...form, isValid, errors });
+			// Custom validation: check if required fields have actual values
+			// Note: port and mirrObjName will be set by subforms after type/attachment are set
+			const hasBasicFields = 
+				!!form.mirrorIdent && 
+				form.mirrorIdent.trim() !== '' &&
+				form.mirrorInfo?.type !== undefined &&
+				form.targetObject?.attachment !== undefined;
+
+			// Only validate port and mirrObjName if the basic fields are set
+			// This allows subforms to initialize these values asynchronously
+			const customIsValid = hasBasicFields && (
+				// If type is set, port should eventually be set by MirrorInfoInputForm
+				(form.mirrorInfo?.type !== undefined ? !!form.mirrorInfo?.port : true) &&
+				// If attachment is set, mirrObjName should eventually be set by TargetObjectInputForm
+				(form.targetObject?.attachment !== undefined ? !!form.targetObject?.mirrObjName : true)
+			);
+			
+			onChange({ ...form, isValid: customIsValid, errors });
 		}
 		if (onValidation) {
 			onValidation(isValid);
