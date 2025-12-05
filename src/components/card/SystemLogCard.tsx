@@ -211,11 +211,11 @@ export default function SystemLogCard() {
 	
 							{/* Action Buttons */}
 							<Button variant="contained" onClick={handleApplyFilters} size="small">
-								{t('Apply Filters')}
+								{t('Apply Keyword Filters')}
 							</Button>
 	
 							<Button variant="outlined" onClick={handleClearFilters} size="small">
-								{t('Clear Filters')}
+								{t('Clear KeywordFilters')}
 							</Button>
 	
 							<Tooltip title={t('Refresh Logs')}>

@@ -6,7 +6,7 @@ import ParamBox from 'components/element/ParamBox';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useLoadBalancerConfig, usePortAttr} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
-import {useEffect, useMemo, useState} from 'react';
+import {useEffect, useMemo, useRef, useState} from 'react';
 import {IEnumItem} from 'types/global';
 import {ITargetObject} from 'types/mirror';
 
@@ -66,22 +66,71 @@ export default function TargetObjectInputForm(props: {value: ITargetObject; onCh
 		onChange({attachment: 1, mirrObjName: cur_value});
 	};
 
-	// Always initialize with a valid default selection for type and mirrObjName
+	const nameInitialized = useRef(false);
+	const attachmentInitialized = useRef(false);
+
+	// Initialize attachment to 0 (Rule) if undefined  
 	useEffect(() => {
-		if (cur_type === 0) {
-			if (rules.length > 0) {
-				onChange({attachment: 0, mirrObjName: rules[0].param});
-			} else {
-				onChange({attachment: 0, mirrObjName: ''});
-			}
-		} else if (cur_type === 1) {
-			if (ports.length > 0) {
-				onChange({attachment: 1, mirrObjName: ports[0].param});
-			} else {
-				onChange({attachment: 1, mirrObjName: ''});
-			}
+		console.log('🔧 TargetObjectInputForm init check:', {
+			'value.attachment': value.attachment,
+			attachmentInitialized: attachmentInitialized.current,
+			shouldInit: value.attachment === undefined && !attachmentInitialized.current,
+		});
+		
+		// Only initialize if attachment is undefined AND we haven't successfully set it yet
+		if (value.attachment === undefined && !attachmentInitialized.current) {
+			console.log('✅ Initializing attachment to 0');
+			onChange({...value, attachment: 0});
+			// DON'T set attachmentInitialized here - wait for value to actually change
 		}
-	}, [cur_type, rules, ports]);
+		
+		// Mark as initialized only when attachment actually has a value
+		if (value.attachment !== undefined && !attachmentInitialized.current) {
+			attachmentInitialized.current = true;
+			console.log('✅ Attachment initialized successfully:', value.attachment);
+		}
+	}, [value, onChange]);
+
+	// Synchronize cur_type with value.attachment
+	useEffect(() => {
+		if (value.attachment !== undefined && value.attachment !== cur_type) {
+			set_cur_type(value.attachment);
+		}
+	}, [value.attachment, cur_type]);
+
+	// When attachment is set but mirrObjName is not, set the first available (only once)
+	useEffect(() => {
+		console.log('🔧 TargetObjectInputForm name init check:', {
+			'value.attachment': value.attachment,
+			'value.mirrObjName': value.mirrObjName,
+			'rules.length': rules.length,
+			'ports.length': ports.length,
+			nameInitialized: nameInitialized.current,
+			'rules[0]': rules[0],
+			'ports[0]': ports[0],
+		});
+		
+		const needsInitialization = !value.mirrObjName || value.mirrObjName.trim() === '';
+		
+		// For Rule attachment (0)
+		if (value.attachment === 0 && needsInitialization && rules.length > 0 && !nameInitialized.current) {
+			console.log('✅ Initializing mirrObjName with rule:', rules[0].param);
+			onChange({...value, mirrObjName: rules[0].param});
+			// DON'T set nameInitialized here - wait for value to actually change
+		}
+		// For Port attachment (1)
+		else if (value.attachment === 1 && needsInitialization && ports.length > 0 && !nameInitialized.current) {
+			console.log('✅ Initializing mirrObjName with port:', ports[0].param);
+			onChange({...value, mirrObjName: ports[0].param});
+			// DON'T set nameInitialized here - wait for value to actually change
+		}
+		
+		// Mark as initialized only when mirrObjName actually has a value
+		if (value.mirrObjName && value.mirrObjName.trim() !== '' && !nameInitialized.current) {
+			nameInitialized.current = true;
+			console.log('✅ MirrObjName initialized successfully:', value.mirrObjName);
+		}
+	}, [value.attachment, value.mirrObjName, rules.length, ports.length, onChange, value, rules, ports]);
 
 	return (
 		<Stack spacing={2}>
