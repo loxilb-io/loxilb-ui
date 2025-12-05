@@ -81,14 +81,15 @@ export default function DataTable(props: {
 			align: col.align ?? 'left',
 			headerAlign: col.align ?? 'left',
 			type: 'string',
-			sortComparator:
-				col.type === 'link'
-					? (v1: any, v2: any) => {
-							const text1 = typeof v1 === 'object' && v1.data ? v1.data : String(v1);
-							const text2 = typeof v2 === 'object' && v2.data ? v2.data : String(v2);
-							return text1.localeCompare(text2);
-					  }
-					: undefined,
+			sortComparator: col.sortComparator
+				? col.sortComparator
+				: col.type === 'link'
+				? (v1: any, v2: any) => {
+						const text1 = typeof v1 === 'object' && v1.data ? v1.data : String(v1);
+						const text2 = typeof v2 === 'object' && v2.data ? v2.data : String(v2);
+						return text1.localeCompare(text2);
+				  }
+				: undefined,
 			renderHeader: renderHeader,
 			renderCell:
 				col.type === 'multi-line'
