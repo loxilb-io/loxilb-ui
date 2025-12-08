@@ -3,6 +3,7 @@
 //---------------------------------------------------------
 import {useQuery} from '@tanstack/react-query';
 import {IInstance} from 'types/oam';
+import {GET_INST} from 'connector/fetcher/fetcher_inst';
 
 // Rate-based metrics for live network analysis
 const RATE_METRICS = {
@@ -144,24 +145,29 @@ async function fetchRateMetricData(
 		timeWindow,
 		duration: windowConfig.duration,
 		startTime: new Date(startTime).toISOString(),
-		endTime: new Date(endTime).toISOString(),
-		url: `${instance.api_endpoint}/api/v1/metrics/db/query?time_start=${startTime}&time_end=${endTime}&metrics=${metricName}&limit=100`
+		endTime: new Date(endTime).toISOString()
 	});
 	
-	const response = await fetch(
-		`${instance.api_endpoint}/api/v1/metrics/db/query?time_start=${startTime}&time_end=${endTime}&metrics=${metricName}&order=desc&limit=1`
-	);
+	// Use GET_INST to route through OAM proxy (same pattern as LBRulePage)
+	const params = {
+		time_start: startTime.toString(),
+		time_end: endTime.toString(),
+		metrics: metricName,
+		order: 'desc',
+		limit: '1'
+	};
+	
+	const response = await GET_INST(instance, '/api/v1/metrics/db/query', params);
 
-	if (!response.ok) {
-		throw new Error(`Failed to fetch ${metricName}: ${response.statusText}`);
+	if (!response.success) {
+		throw new Error(`Failed to fetch ${metricName}: ${response.error || 'Unknown error'}`);
 	}
 
-	const result = await response.json();
+	const result = response.data;
 	
 	console.log(`nTop: API Response for ${metricName}:`, {
-		status: response.status,
-		dataLength: result.data?.length || 0,
 		hasData: !!result.data,
+		dataLength: result.data?.length || 0,
 		firstDataPoint: result.data?.[0],
 		result: result
 	});
