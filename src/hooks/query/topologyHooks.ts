@@ -3,6 +3,7 @@
 //---------------------------------------------------------
 import {useQuery} from '@tanstack/react-query';
 import {IInstance} from 'types/oam';
+import {GET_INST} from 'connector/fetcher/fetcher_inst';
 
 // Aggregation strategies for different metric types
 type AggregationStrategy = 'latest' | 'average' | 'max' | 'sum' | 'rate' | 'delta_to_bps';
@@ -160,15 +161,22 @@ async function fetchMetricData(instance: IInstance | null, metricName: string, t
 
 	const startTime = startTimes[timeRange as keyof typeof startTimes] || 1;
 
-	const response = await fetch(
-		`${instance.api_endpoint}/api/v1/metrics/db/query?time_start=${startTime}&time_end=${endTime}&metrics=${metricName}&order=desc&limit=2`
-	);
+	// Use GET_INST to route through OAM proxy (same pattern as LBRulePage and nTopHooks)
+	const params = {
+		time_start: startTime.toString(),
+		time_end: endTime.toString(),
+		metrics: metricName,
+		order: 'desc',
+		limit: '2'
+	};
 
-	if (!response.ok) {
-		throw new Error(`Failed to fetch ${metricName}: ${response.statusText}`);
+	const response = await GET_INST(instance, '/api/v1/metrics/db/query', params);
+
+	if (!response.success) {
+		throw new Error(`Failed to fetch ${metricName}: ${response.error || 'Unknown error'}`);
 	}
 
-	const result = await response.json();
+	const result = response.data;
 	
 	// Apply aggregation strategy
 	const config = METRIC_AGGREGATION_CONFIG[metricName] || { strategy: 'latest', description: 'Default to latest value' };
