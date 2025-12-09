@@ -88,8 +88,8 @@ export const NTOP_CATEGORIES = {
 	},
 	CLIENTS: {
 		title: 'Top Clients',
-		description: 'Clients ranked by packet rate',
-		metrics: ['client_traffic_packets'], // Will be converted to PPS
+		description: 'Clients ranked by traffic rate',
+		metrics: ['client_traffic_packets'], // Will be converted to BPS
 		icon: 'client',
 		primary_metric: 'client_traffic_packets'
 	}
@@ -149,34 +149,53 @@ async function fetchRateMetricData(
 	});
 	
 	// Use GET_INST to route through OAM proxy (same pattern as LBRulePage)
+	// Remove limit to get all data points for proper aggregation
 	const params = {
 		time_start: startTime.toString(),
 		time_end: endTime.toString(),
 		metrics: metricName,
-		order: 'desc',
-		limit: '1'
+		order: 'desc'
 	};
 	
 	const response = await GET_INST(instance, '/api/v1/metrics/db/query', params);
 
-	if (!response.success) {
-		throw new Error(`Failed to fetch ${metricName}: ${response.error || 'Unknown error'}`);
+	if (response.code !== 200 && response.code !== 204) {
+		throw new Error(`Failed to fetch ${metricName}: ${response.message || 'Unknown error'}`);
 	}
 
 	const result = response.data;
 	
+	// Parse labels_json field if present
+	let parsedData = result.data || [];
+	if (parsedData.length > 0) {
+		parsedData = parsedData.map((point: any) => {
+			// Parse labels_json string into labels object
+			if (point.labels_json && typeof point.labels_json === 'string') {
+				try {
+					point.labels = JSON.parse(point.labels_json);
+				} catch (e) {
+					console.error('Failed to parse labels_json:', point.labels_json, e);
+					point.labels = {};
+				}
+			} else if (!point.labels) {
+				point.labels = {};
+			}
+			return point;
+		});
+	}
+	
 	console.log(`nTop: API Response for ${metricName}:`, {
-		hasData: !!result.data,
-		dataLength: result.data?.length || 0,
-		firstDataPoint: result.data?.[0],
-		result: result
+		hasData: parsedData.length > 0,
+		dataLength: parsedData.length,
+		firstDataPoint: parsedData[0],
+		rawResult: result
 	});
 	
 	// For delta bytes metrics, convert to BPS
 	if (metricName.includes('bytes') && !metricName.includes('rps_')) {
-		const bpsData = convertDeltaToBps(result.data || []);
+		const bpsData = convertDeltaToBps(parsedData);
 		console.log(`nTop: BPS conversion for ${metricName}:`, {
-			originalLength: result.data?.length || 0,
+			originalLength: parsedData.length,
 			bpsLength: bpsData.length,
 			firstBps: bpsData[0]
 		});
@@ -189,13 +208,13 @@ async function fetchRateMetricData(
 	
 	// For delta packets metrics, convert to PPS (packets per second)
 	if (metricName.includes('packets')) {
-		const ppsData = (result.data || []).map((point: any) => ({
+		const ppsData = parsedData.map((point: any) => ({
 			...point,
 			value: (point.value || 0) / 10, // deltaPackets / 10 = PPS
 			original_value: point.value
 		}));
 		console.log(`nTop: PPS conversion for ${metricName}:`, {
-			originalLength: result.data?.length || 0,
+			originalLength: parsedData.length,
 			ppsLength: ppsData.length,
 			firstPps: ppsData[0]
 		});
@@ -208,13 +227,13 @@ async function fetchRateMetricData(
 	
 	// For rps_ metrics (bytes per second), convert to bits per second
 	if (metricName.includes('rps_')) {
-		const bpsData = (result.data || []).map((point: any) => ({
+		const bpsData = parsedData.map((point: any) => ({
 			...point,
 			value: (point.value || 0) * 8, // bytes/sec * 8 = bits/sec
 			original_value: point.value
 		}));
 		console.log(`nTop: Bytes to Bits conversion for ${metricName}:`, {
-			originalLength: result.data?.length || 0,
+			originalLength: parsedData.length,
 			bpsLength: bpsData.length,
 			firstBps: bpsData[0]
 		});
@@ -228,7 +247,7 @@ async function fetchRateMetricData(
 	// For other already rate-based metrics, use directly
 	return {
 		...result,
-		data: result.data || [],
+		data: parsedData,
 		is_rate: true
 	};
 }
@@ -239,7 +258,7 @@ function getUnitForCategory(category: NTopCategory): 'bps' | 'pps' | 'eps' | 'fp
 		case 'SERVICES':
 		case 'ENDPOINTS':
 		case 'CLIENTS':
-			return 'pps'; // Packets per second for client metrics
+			return 'bps'; // All use bytes metrics converted to bits per second
 		default:
 			return 'bps';
 	}
@@ -252,7 +271,17 @@ function processNTopData(
 	topN: number,
 	previousData?: any[]
 ): NTopItem[] {
-	if (!data || data.length === 0) return [];
+	if (!data || data.length === 0) {
+		console.log('nTop: No data to process');
+		return [];
+	}
+	
+	console.log('nTop: Processing data:', {
+		category,
+		dataLength: data.length,
+		firstItem: data[0],
+		sampleLabels: data[0]?.labels
+	});
 	
 	// Aggregate by labels to get current rates
 	const aggregated = new Map();
@@ -270,11 +299,11 @@ function processNTopData(
 				break;
 			case 'ENDPOINTS':
 				key = `${labels.service || 'unknown'}-${labels.dip || 'unknown'}`;
-				label = labels.dip || 'Unknown Endpoint';
+				label = `${labels.dip || 'Unknown Endpoint'} (${labels.service || 'Unknown Service'})`;
 				break;
 			case 'CLIENTS':
 				key = `${labels.service || 'unknown'}-${labels.sip || 'unknown'}`;
-				label = labels.sip || 'Unknown Client';
+				label = `${labels.sip || 'Unknown Client'} (${labels.service || 'Unknown Service'})`;
 				break;
 		}
 		
@@ -299,6 +328,12 @@ function processNTopData(
 		item.count += 1;
 	});
 	
+	console.log('nTop: Aggregation result:', {
+		uniqueKeys: aggregated.size,
+		keys: Array.from(aggregated.keys()),
+		firstAggregated: Array.from(aggregated.values())[0]
+	});
+	
 	// Convert to array and calculate averages
 	const items = Array.from(aggregated.values()).map(item => ({
 		...item,
@@ -313,6 +348,13 @@ function processNTopData(
 		.filter(item => item.value > 0)
 		.sort((a, b) => b.value - a.value)
 		.slice(0, topN);
+	
+	console.log('nTop: Final sorted items:', {
+		totalItems: items.length,
+		filteredItems: sorted.length,
+		total,
+		topItems: sorted.slice(0, 3)
+	});
 	
 	// Add ranking and percentage info
 	return sorted.map((item, index) => ({

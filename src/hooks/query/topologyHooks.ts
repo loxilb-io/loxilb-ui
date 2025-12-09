@@ -172,8 +172,8 @@ async function fetchMetricData(instance: IInstance | null, metricName: string, t
 
 	const response = await GET_INST(instance, '/api/v1/metrics/db/query', params);
 
-	if (!response.success) {
-		throw new Error(`Failed to fetch ${metricName}: ${response.error || 'Unknown error'}`);
+	if (response.code !== 200 && response.code !== 204) {
+		throw new Error(`Failed to fetch ${metricName}: ${response.message || 'Unknown error'}`);
 	}
 
 	const result = response.data;

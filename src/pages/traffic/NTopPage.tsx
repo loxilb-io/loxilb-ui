@@ -61,9 +61,7 @@ import {useState} from 'react';
 const CATEGORY_ICONS = {
 	SERVICES: <NetworkCheckIcon />,
 	ENDPOINTS: <RouterIcon />,
-	PROTOCOLS: <SpeedIcon />,
-	CLIENTS: <AssessmentIcon />,
-	PERFORMANCE: <AssessmentIcon />
+	CLIENTS: <AssessmentIcon />
 };
 
 //---------------------------------------------------------
