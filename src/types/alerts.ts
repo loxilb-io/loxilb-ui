@@ -69,7 +69,9 @@ export interface IUpdateAlertRuleRequest {
  */
 export interface IAlertRule {
 	id: string;
+	rule_id?: string;  // API also returns this field
 	name: string;
+	rule_name?: string;  // API also returns this field
 	metric_name: string;
 	condition: string;
 	threshold: number;
@@ -79,6 +81,11 @@ export interface IAlertRule {
 	enabled: boolean;
 	created_at: number;
 	updated_at: number;
+	status?: string;  // API may return this field
+	value?: number;  // Current metric value from API
+	triggered_at?: number;  // When the alert was triggered
+	first_breach?: number;  // First time threshold was breached
+	last_seen?: number;  // Last time alert condition was checked
 }
 
 /**

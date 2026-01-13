@@ -45,5 +45,5 @@ export default function LBEndpointTable(props: {data: IEndpoint[]; selected_rows
 			})
 		: undefined
 
-	return <DataTable name={'Load Balancer Endpoint'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} />;
+	return <DataTable name={'Load Balancer Endpoint'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} hideCheckbox={true} />;
 }

@@ -24,7 +24,7 @@ export default function AlertTable(props: {
 	const { data, selected_rows, onChangeSelectedRows, onResolve, onDelete, onRefresh } = props;
 
 	const cols: IDataTableColumnDef[] = [
-		{ data_key: 'alertId', header: 'ID', width: 'narrow' },
+		{ data_key: 'alertId', header: 'Raw_ID', width: 'narrow' },
 		{ data_key: 'severity', header: 'Severity', width: 'narrow' },
 		{ data_key: 'status', header: 'Status', width: 'narrow' },
 		{ data_key: 'rule_name', header: 'Rule Name', width: 'wide' },
@@ -65,12 +65,12 @@ export default function AlertTable(props: {
 						? item.message.substring(0, 100) + '...'
 						: item.message || '';
 
-					// Format ID (show first 8 characters)
-					const shortId = item.id ? item.id.substring(0, 8) + '...' : '';
+					// Show full ID in the ID column
+					const displayId = item.id || '';
 
 					return {
-						id: index,
-						alertId: shortId,
+						id: index,  // Row identifier for DataTable
+						alertId: displayId,  // Full alert ID
 						severity: item.severity || '',
 						status: item.status || '',
 						rule_name: item.rule_name || '',
