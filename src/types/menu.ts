@@ -6,6 +6,7 @@ import MonitorIcon from '@mui/icons-material/Monitor';
 import RouteIcon from '@mui/icons-material/Route';
 import WysiwygIcon from '@mui/icons-material/Wysiwyg';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
+import SecurityIcon from '@mui/icons-material/Security';
 import {SvgIconTypeMap} from '@mui/material';
 import {OverridableComponent} from '@mui/material/OverridableComponent';
 
@@ -50,6 +51,10 @@ export const MENU_LIST: IMenuItem[] = [
 				path: 'mirror',
 			},			
 			{
+				name: 'SNI Certificates',
+				path: 'sni-certs',
+			},			
+			{
 				name: 'Alerts',
 				path: 'alerts',
 			},
@@ -65,6 +70,25 @@ export const MENU_LIST: IMenuItem[] = [
 			// 	name: 'Telecom',
 			// 	path: 'telecom',
 			// },
+		],
+	},
+	{
+		name: 'Security',
+		icon: SecurityIcon,
+		path: 'security',
+		items: [
+			{
+				name: 'IP Filter(XDP)',
+				path: 'ipfilter',
+			},
+			{
+				name: 'SYN Flood Protection(XDP)',
+				path: 'synflood',
+			},
+			{
+				name: 'Security Rate Limiting(XDP)',
+				path: 'securityrate',
+			},
 		],
 	},
 	{
@@ -127,7 +151,7 @@ export const MENU_LIST: IMenuItem[] = [
 			// 	],
 			// },
 		],
-	},
+	},	
 	{
 		name: 'Managers',
 		icon: ManageAccountsIcon,

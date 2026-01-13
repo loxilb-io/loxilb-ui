@@ -6,6 +6,7 @@ import {query_get_conntrack_all} from 'connector/instance/conn_track';
 import {query_get_endpoint_all} from 'connector/instance/endpoint';
 import {query_get_fdb_all} from 'connector/instance/fdb';
 import {query_get_firewall_rules} from 'connector/instance/firewall';
+import {query_get_ipfilter_all} from 'connector/instance/ipfilter';
 import {query_get_ipv4_all} from 'connector/instance/ip';
 import {query_get_load_balancer_config_all} from 'connector/instance/load_balancer';
 import {query_get_mirror_all} from 'connector/instance/mirror';
@@ -14,7 +15,10 @@ import {query_get_qos_policy_all} from 'connector/instance/qos';
 import {query_get_route_all} from 'connector/instance/route_attr';
 import {query_get_session_all} from 'connector/instance/session';
 import {query_get_ulcl_all} from 'connector/instance/session_ulcl';
+import {query_get_securityrate_all} from 'connector/instance/securityrate';
+import {query_get_sni_certificates} from 'connector/instance/sni_certificates';
 import {query_get_ha_state_all, query_get_metadata} from 'connector/instance/status';
+import {query_get_synflood_all} from 'connector/instance/synflood';
 import {query_get_vlan_all} from 'connector/instance/vlan';
 import {query_get_vxlan_all} from 'connector/instance/vxlan';
 import {IPostParamFieldDesc} from 'types/global';
@@ -72,6 +76,10 @@ export function useFirewallRules(instance: IInstance | null) {
 	return useQueryInstanceData(['firewall'], query_get_firewall_rules, instance);
 }
 
+export function useIPFilterRules(instance: IInstance | null) {
+	return useQueryInstanceData(['ipfilter'], query_get_ipfilter_all, instance);
+}
+
 export function useHAState(instance: IInstance | null) {
 	return useQueryInstanceData(['ha_state'], query_get_ha_state_all, instance);
 }
@@ -116,4 +124,16 @@ export function useVLANAttr(instance: IInstance | null) {
 
 export function useVxlanAttr(instance: IInstance | null) {
 	return useQueryInstanceData(['vxlan_attr'], query_get_vxlan_all, instance);
+}
+
+export function useSYNFlood(instance: IInstance | null) {
+	return useQueryInstanceData(['synflood'], query_get_synflood_all, instance);
+}
+
+export function useSecurityRate(instance: IInstance | null) {
+	return useQueryInstanceData(['securityrate'], query_get_securityrate_all, instance);
+}
+
+export function useSNICertificates(instance: IInstance | null) {
+	return useQueryInstanceData(['sni_certificates'], query_get_sni_certificates, instance);
 }

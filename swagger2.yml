@@ -1,0 +1,6643 @@
+#  Copyright (c) 2022 NetLOX Inc
+#  
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at:
+#  
+#       http://www.apache.org/licenses/LICENSE-2.0
+#  
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+swagger: '2.0'
+info:
+  title: Loxilb Rest API
+  description: Loxilb REST API for Baremetal Scenarios
+  version: 0.0.1
+schemes:
+  - http
+  - https
+host: "0.0.0.0:11111"
+basePath: /netlox/v1
+produces:
+  - application/json
+consumes:
+  - application/json
+paths:
+  '/meta':
+    get:
+      summary: "Get metadata for all POST APIs"
+      description: "Returns metadata about required fields for each POST API."
+      security: []
+      operationId: "getMeta"
+      tags:
+        - "Metadata"
+      produces:
+        - "application/json"
+      responses:
+        "200":
+          description: "Successfully retrieved metadata"
+          schema:
+            type: object
+            additionalProperties: true
+        "500":
+          description: "Internal Server Error"
+#----------------------------------------------
+# User Management
+#----------------------------------------------
+  '/auth/login':
+    post:
+      consumes:
+      - application/json
+      description: Authenticates a user and returns a JWT token if the credentials
+        are valid.
+      parameters:
+      - description: User credentials
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/User'
+      produces:
+      - application/json
+      security: [] # Overrides global security, no authorization required
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/Error'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/Error'
+      summary: User login
+      tags:
+      - auth
+  '/auth/logout':
+    post:
+      consumes:
+      - application/json
+      description: Invalidates the user's token and logs them out.
+      security:
+        - BearerAuth: []
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/Error'
+      summary: User logout
+      tags:
+      - auth
+  '/auth/users':
+    get:
+      description: Retrieves all users from the database and returns them as a JSON
+        response.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/User'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/Error'
+      summary: Fetch all users
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user in the system
+      parameters:
+      - description: User data
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/User'
+      produces:
+      - application/json
+      security: [] # Overrides global security, no authorization required
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/Error'
+      summary: Create a new user
+      tags:
+      - users
+  '/auth/users/{id}':
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a user by its ID
+      security:
+        - BearerAuth: []
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/Error'
+      summary: Delete user
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing user with the provided JSON payload
+      security:
+        - BearerAuth: []
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: User data
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/Error'
+      summary: Update user
+      tags:
+      - users
+  '/auth/token/upgrade':
+    post:
+      consumes:
+      - application/json
+      description: Using manual token, It need to upgrade the token.
+      parameters:
+      - description: license as a token
+        in: body
+        name: token
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateLicenseRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/UpdateLicenseRequest'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/Error'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/Error'
+      summary: Upgrade token
+      tags:
+      - auth
+#----------------------------------------------
+# Load Balancer
+#----------------------------------------------
+  '/config/loadbalancer':
+    post:
+      summary: Create a new Load balancer service
+      description: Create a new load balancer service with .
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes for load balance service
+          schema:
+            $ref: '#/definitions/LoadbalanceEntry'
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/PostSuccess'
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/config/loadbalancer/all':
+    get:
+      summary: Get all of the load balancer services
+      description: Get all of the load balancer services with conntrack infomation.
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              lbAttr:
+                type: array
+                items:
+                  $ref: '#/definitions/LoadbalanceEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+    delete:
+      summary: Delete all Load balancer services
+      description: Delete all load balancer services.
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/config/loadbalancer/name/{lb_name}':
+    delete:
+      summary: Delete an existing Load balancer service
+      description: Delete an existing load balancer service with name.
+      parameters:
+        - name: lb_name
+          in: path
+          type: string
+          required: true
+          description: Attributes for load balance service name
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}':
+    delete:
+      summary: Delete an existing Load balancer service
+      description: Delete an existing load balancer service with .
+      parameters:
+        - name: ip_address
+          in: path
+          type: string
+          required: true
+          description: Attributes for load balance service
+        - name: port
+          in: path
+          type: number
+          required: true
+          description: Attributes for load balance service
+        - name: proto
+          in: path
+          type: string
+          required: true
+          description: Attributes for load balance service
+        - name: bgp
+          in: query
+          type: boolean
+          description: option for BGP enable
+        - name: block
+          in: query
+          type: number
+          required: false
+          description: block value if any
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/portmax/{portmax}/protocol/{proto}':
+    delete:
+      summary: Delete an existing Load balancer service
+      description: Delete an existing load balancer service with .
+      parameters:
+        - name: ip_address
+          in: path
+          type: string
+          required: true
+          description: Attributes for load balance service
+        - name: port
+          in: path
+          type: number
+          required: true
+          description: Attributes for load balance service
+        - name: portmax
+          in: path
+          type: number
+          required: true
+          description: Attributes for load balance service
+        - name: proto
+          in: path
+          type: string
+          required: true
+          description: Attributes for load balance service
+        - name: bgp
+          in: query
+          type: boolean
+          description: option for BGP enable
+        - name: block
+          in: query
+          type: number
+          required: false
+          description: block value if any
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/config/loadbalancer/hosturl/{hosturl}/externalipaddress/{ip_address}/port/{port}/portmax/{portmax}/protocol/{proto}':
+    delete:
+      summary: Delete an existing Load balancer service
+      description: Delete an existing load balancer service with .
+      parameters:
+        - name: hosturl
+          in: path
+          type: string
+          required: true
+          description: Attributes for load balance service
+        - name: ip_address
+          in: path
+          type: string
+          required: true
+          description: Attributes for load balance service
+        - name: port
+          in: path
+          type: number
+          required: true
+          description: Attributes for load balance service
+        - name: portmax
+          in: path
+          type: number
+          required: true
+          description: Attributes for load balance service
+        - name: proto
+          in: path
+          type: string
+          required: true
+          description: Attributes for load balance service
+        - name: bgp
+          in: query
+          type: boolean
+          description: option for BGP enable
+        - name: block
+          in: query
+          type: number
+          required: false
+          description: block value if any
+        - name: path_prefix
+          in: query
+          type: string
+          required: false
+          description: URL path prefix to match for deletion (allows selective deletion of path-based rules)
+        - name: path_match_mode
+          in: query
+          type: string
+          required: false
+          description: Path matching mode (disabled, prefix, exact) for selective deletion
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/config/loadbalancer/hosturl/{hosturl}/externalipaddress/{ip_address}/port/{port}/protocol/{proto}':
+    delete:
+      summary: Delete an existing Load balancer service
+      description: Delete an existing load balancer service with .
+      parameters:
+        - name: hosturl
+          in: path
+          type: string
+          required: true
+          description: Attributes for load balance service
+        - name: ip_address
+          in: path
+          type: string
+          required: true
+          description: Attributes for load balance service
+        - name: port
+          in: path
+          type: number
+          required: true
+          description: Attributes for load balance service
+        - name: proto
+          in: path
+          type: string
+          required: true
+          description: Attributes for load balance service
+        - name: bgp
+          in: query
+          type: boolean
+          description: option for BGP enable
+        - name: block
+          in: query
+          type: number
+          required: false
+          description: block value if any
+        - name: path_prefix
+          in: query
+          type: string
+          required: false
+          description: URL path prefix to match for deletion (allows selective deletion of path-based rules)
+        - name: path_match_mode
+          in: query
+          type: string
+          required: false
+          description: Path matching mode (disabled, prefix, exact) for selective deletion
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+#----------------------------------------------
+# SNI Certificate Management (Global Certificate Store)
+#----------------------------------------------
+  '/sni/certificates':
+    post:
+      summary: Register SNI certificate globally (shared by all proxies)
+      description: Register an SNI certificate in the global certificate store. Multiple loadbalancer rules can share the same certificate by hostname. The certificate is stored independently and looked up during TLS handshake based on SNI.
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: SNI certificate registration parameters
+          schema:
+            $ref: '#/definitions/SNICertificateEntry'
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+        '400':
+          description: Bad Request - Certificate load failed or invalid parameters
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '409':
+          description: Conflict - Certificate already registered for this hostname
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    delete:
+      summary: Unregister SNI certificate globally
+      description: Remove SNI certificate from global store
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: SNI certificate removal parameters
+          schema:
+            type: object
+            required:
+              - hostname
+            properties:
+              hostname:
+                type: string
+                description: Hostname to unregister (e.g., api.example.com)
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+        '404':
+          description: Certificate not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    get:
+      summary: List all global SNI certificates
+      description: Get all SNI certificates in the global certificate store (shared by all proxies)
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              certificates:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    hostname:
+                      type: string
+                      description: Hostname (e.g., api.example.com)
+                    certPath:
+                      type: string
+                      description: Certificate directory path
+                    refCount:
+                      type: integer
+                      description: Number of proxies using this certificate
+              totalCertificates:
+                type: integer
+                description: Total number of registered certificates
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+#----------------------------------------------
+# Conntrack
+#----------------------------------------------
+  '/config/conntrack/all':
+    get:
+      summary: Get all of the conntrack entries.
+      description: Get all of the conntrack infomation for all of the service.
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              ctAttr:
+                type: array
+                items:
+                  $ref: '#/definitions/ConntrackEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+#----------------------------------------------
+# Port Dump
+#----------------------------------------------
+  '/config/port/all':
+    get:
+      summary: Get all of the port interfaces
+      description: Get all of the port interfaces.
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              portAttr:
+                type: array
+                items:
+                 $ref: '#/definitions/PortEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+#----------------------------------------------
+# Route
+#----------------------------------------------
+  '/config/route/all':
+    get:
+      summary: Get all route table
+      description: Get all route table
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              routeAttr:
+                type: array
+                items:
+                 $ref: '#/definitions/RouteGetEntry'
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/config/route':
+    post:
+      summary: Create a new route config
+      description: Create a new route config .
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes for load balance service
+          schema:
+            $ref: '#/definitions/RouteEntry'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+ 
+  '/config/route/destinationIPNet/{ip_address}/{mask}':
+    delete:
+      summary: Create a new Load balancer service
+      description: Create a new load balancer service with .
+      parameters:
+        - name: ip_address
+          in: path
+          type: string
+          required: true
+          description: Attributes for destinaion route address
+        - name: mask
+          in: path
+          type: integer
+          required: true
+          description: Attributes for destination route
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+
+#----------------------------------------------
+# Session
+#----------------------------------------------
+  '/config/session/all':
+    get:
+      summary: Get all of the port interfaces
+      description: Get all of the port interfaces.
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              sessionAttr:
+                type: array
+                items:
+                  $ref: '#/definitions/SessionEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/config/session':
+    post:
+      summary: Create a new session config
+      description: Create a new session config for 5G.
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes for 5G service session
+          schema:
+            $ref: '#/definitions/SessionEntry'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+ 
+  '/config/session/ident/{ident}':
+    delete:
+      summary: Create a new Load balancer service
+      description: Create a new load balancer service with .
+      parameters:
+        - name: ident
+          in: path
+          type: string
+          required: true
+          description: Attributes 5G session Ident.
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/config/sessionulcl/all':
+    get:
+      summary: Get 
+      description: Get 
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              ulclAttr:
+                type: array
+                items:
+                  $ref: '#/definitions/SessionUlClEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+            
+  '/config/sessionulcl':
+    post:
+      summary: Create a new session config
+      description: Create a new session config for 5G.
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes for 5G service session
+          schema:
+            $ref: '#/definitions/SessionUlClEntry'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+ 
+  '/config/sessionulcl/ident/{ident}/ulclAddress/{ip_address}':
+    delete:
+      summary: Create a new Load balancer service
+      description: Create a new load balancer service with .
+      parameters:
+        - name: ident
+          in: path
+          type: string
+          required: true
+          description: Attributes 5G session Ident.
+        - name: ip_address
+          in: path
+          type: string
+          required: true
+          description: Attributes for session ulcl address
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'            
+
+
+
+#----------------------------------------------
+# Policy
+#----------------------------------------------
+  '/config/policy/all':
+    get:
+      summary: Get 
+      description: Get 
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              polAttr:
+                type: array
+                items:
+                  $ref: '#/definitions/PolicyEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+            
+  '/config/policy':
+    post:
+      summary: Create a new Policy QoS config
+      description: Create a new Policy QoS config.
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes for Policy
+          schema:
+            $ref: '#/definitions/PolicyEntry'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+ 
+  '/config/policy/ident/{ident}':
+    delete:
+      summary: Delete a Policy QoS service
+      description: Delete a new Create a Policy QoS service.
+      parameters:
+        - name: ident
+          in: path
+          type: string
+          required: true
+          description: Attributes of Policy Ident.
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+
+#----------------------------------------------
+# Mirror
+#----------------------------------------------
+  '/config/mirror/all':
+    get:
+      summary: Get 
+      description: Get 
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              mirrAttr:
+                type: array
+                items:
+                  $ref: '#/definitions/MirrorGetEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/config/mirror':
+    post:
+      summary: Create a new Mirror config
+      description: Create a new Mirror config.
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes for Mirror
+          schema:
+            $ref: '#/definitions/MirrorEntry'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+ 
+  '/config/mirror/ident/{ident}':
+    delete:
+      summary: Delete a Mirror service
+      description: Delete a new Create a Mirror service.
+      parameters:
+        - name: ident
+          in: path
+          type: string
+          required: true
+          description: Attributes of Mirror Ident.
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+
+#----------------------------------------------
+# IP Address
+#----------------------------------------------
+  '/config/ipv4address/all':
+    get:
+      summary: Get IPv4 addresses in the device(interface)
+      description: Get IPv4 addresses in the device(interface)
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              ipAttr:
+                type: array
+                items:
+                  $ref: '#/definitions/IPv4AddressGetEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+            
+  '/config/ipv4address':
+    post:
+      summary: Assign IPv4 addresses in the device
+      description: Assign IPv4 addresses in the device
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes for IPv4 address
+          schema:
+            $ref: '#/definitions/IPv4AddressEntry'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+ 
+  '/config/ipv4address/{ip_address}/{mask}/dev/{if_name}':
+    delete:
+      summary: Delete IPv4 addresses in the device
+      description: Delete IPv4 addresses in the device
+      parameters:
+        - name: ip_address
+          in: path
+          type: string
+          required: true
+          description: Attributes IPv4 Address in the device
+        - name: mask
+          in: path
+          type: string
+          required: true
+          description: Attributes IPv4 mask in the device
+        - name: if_name
+          in: path
+          type: string
+          required: true
+          description: Attributes of the target device
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+
+#----------------------------------------------
+# IP Neighbor
+#----------------------------------------------
+  '/config/neighbor/all':
+    get:
+      summary: Get IPv4 neighbor in the device(interface)
+      description: Get IPv4 neighbor in the device(interface)
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              neighborAttr:
+                type: array
+                items:
+                  $ref: '#/definitions/NeighborEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+            
+  '/config/neighbor':
+    post:
+      summary: Assign IPv4 neighbor in the device
+      description: Assign IPv4 neighbor in the device
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes for IPv4 address
+          schema:
+            $ref: '#/definitions/NeighborEntry'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+ 
+  '/config/neighbor/{ip_address}/dev/{if_name}':
+    delete:
+      summary: Delete IPv4 neighbor in the device
+      description: Delete IPv4 neighbor in the device
+      parameters:
+        - name: ip_address
+          in: path
+          type: string
+          required: true
+          description: Attributes IPv4 Address in the device
+        - name: if_name
+          in: path
+          type: string
+          required: true
+          description: Attributes of the target device
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+            
+            
+#----------------------------------------------
+# FDB
+#----------------------------------------------
+  '/config/fdb/all':
+    get:
+      summary: Get FDB in the device(interface)
+      description: Get FDB in the device(interface). 
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              fdbAttr:
+                type: array
+                items:
+                  $ref: '#/definitions/FDBEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/config/fdb':
+    post:
+      summary: Assign FDB in the device
+      description: Assign FDB in the device
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes for IPv4 address
+          schema:
+            $ref: '#/definitions/FDBEntry'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+ 
+  '/config/fdb/{mac_address}/dev/{if_name}':
+    delete:
+      summary: Delete FDB in the device
+      description: Delete FDB in the device
+      parameters:
+        - name: mac_address
+          in: path
+          type: string
+          required: true
+          description: Attributes IPv4 Address in the device
+        - name: if_name
+          in: path
+          type: string
+          required: true
+          description: Attributes of the target device
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+#----------------------------------------------
+# Vlan Interface
+#----------------------------------------------
+  '/config/vlan/all':
+    get:
+      summary: Get vlan in the device
+      description: Get vlan in the device
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              vlanAttr:
+                type: array
+                items:
+                  $ref: '#/definitions/VlanGetEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+            
+  '/config/vlan':
+    post:
+      summary: Create vlan interface in the device
+      description: Create vlan interface in the device
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes for Vlan Interface
+          schema:
+            $ref: '#/definitions/VlanBridgeEntry'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+ 
+  '/config/vlan/{vlan_id}':
+    delete:
+      summary: Delete vlan in the device
+      description: Delete vlan in the device
+      parameters:
+        - name: vlan_id
+          in: path
+          type: integer
+          required: true
+          description: Attributes IPv4 Address in the device
+        
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+            
+  '/config/vlan/{vlan_id}/member':
+    post:
+      summary: Add a physical port to a vlan interface
+      description: Add a member to interface Vlan{vlan_id}. If the vlan interface does not exist on LoxiLB it returns a '404' error. If such a member is already present on this Vlan interface the API returns '409' sub-code 0. If the vlan_id passed is less than 2 or greater than 4094 the API will respond with error '400'. If attr with tagging mode is provided it will be honored in config, if not, the default tagging mode will be set to 'untagged'. Vlan members may be tagged or untagged, but, the Vlan member port may be untagged in only one Vlan interface, deviations from this will cause the API to return '409' sub-code 0. 
+      parameters:
+        - name: vlan_id
+          in: path
+          required: true
+          type: integer
+          format: int32
+          description: 12 bit vlan_id
+        - name: attr
+          in: body
+          required: true
+          description: Attributes for Vlan Interface
+          schema:
+            $ref: '#/definitions/VlanMemberEntry'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Vlan interface is not defined
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN member already exists on this VLAN interface OR Vlan member is being added to 2nd Vlan inteface as an untagged member.
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/config/vlan/{vlan_id}/member/{if_name}/tagged/{tagged}':
+    delete:
+      summary: Remove a vlan member from a vlan interface
+      description: Remove a vlan member from a vlan interface which is defined by vlan_id. If the Vlan interface does not exist on LoxiLB OR a vlan member 'if_name' is not present on the interface the API will return '404'. If the vlan_id passed is less than 2 or greater than 4094 the API will respond with error '400'.
+      parameters:
+        - name: vlan_id
+          in: path
+          required: true
+          type: integer
+          format: int32
+          description: 12 bit vlan_id
+        - name: if_name
+          in: path
+          required: true
+          type: string
+          description: Physical port name
+        - name: tagged
+          in: path
+          required: true
+          type: boolean
+          description: Tagged status
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Vlan interface is not defined/Vlan member is not found on this Vlan interface
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+#----------------------------------------------
+# All configured Vxlan configration
+#----------------------------------------------
+  '/config/tunnel/vxlan/all':
+    get:
+      summary: Get a list of vxlan configurations
+      description: Return a list of existing tunnels of a type. If there're no tunnels to return, empty list will be returned.
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              vxlanAttr:
+                type: array
+                items:
+                  $ref: '#/definitions/VxlanEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'          
+  '/config/tunnel/vxlan':
+    post:
+      summary: Add a one of vxlan configuration
+      description: Return a list of existing tunnels of a type. If there're no tunnels to return, empty list will be returned.
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: attributes for vxlan member interface
+          schema:
+            $ref: '#/definitions/VxlanBridgeEntry'    
+      responses:
+        '204':
+          description: OK
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VxLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'   
+  '/config/tunnel/vxlan/{vxlanID}':
+    delete:
+      summary: Delete a one of vxlan configuration
+      description: Return a list of existing tunnels of a type. If there're no tunnels to return, empty list will be returned.
+      parameters:
+        - name: vxlanID
+          in: path
+          required: true
+          type: integer
+          format: int32
+          description: vxlan id (24-bit). Allows to remove routes with defined vnid only. Applicable for routes with nexthop_type 'vxlan-tunnel'. Otherwise '400' error will be returned
+         
+      responses:
+        '204':
+          description: OK
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'        
+            
+  '/config/tunnel/vxlan/{vxlanID}/peer':
+    post:
+      summary: Add a one of vxlan remote(peer) ip address configuration
+      description: Return a list of existing tunnels of a type. If there're no tunnels to return, empty list will be returned.
+      parameters:
+        - name: vxlanID
+          in: path
+          required: true
+          type: integer
+          format: int32
+          description: vxlan id (24-bit). Allows to remove routes with defined vnid only. Applicable for routes with nexthop_type 'vxlan-tunnel'. Otherwise '400' error will be returned
+        - name: attr
+          in: body
+          required: true
+          description: attributes for vxlan Peer interface
+          schema:
+            $ref: '#/definitions/VxlanPeerEntry'
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/VxlanPeerEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'       
+            
+  '/config/tunnel/vxlan/{vxlanID}/peer/{PeerIP}':
+    delete:
+      summary: Remove a one of vxlan remote(peer) ip address configuration
+      description: Return a list of existing tunnels of a type. If there're no tunnels to return, empty list will be returned.
+      parameters:
+        - name: vxlanID
+          in: path
+          required: true
+          type: integer
+          format: int32
+          description: vxlan id (24-bit). Allows to remove routes with defined vnid only. Applicable for routes with nexthop_type 'vxlan-tunnel'. Otherwise '400' error will be returned
+        - name: PeerIP
+          in: path
+          required: true
+          type: string
+          description: attributes for vxlan Peer IP address
+        
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/VxlanEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'     
+
+#----------------------------------------------
+# HA State
+#----------------------------------------------
+  '/config/cistate/all':
+    get:
+      summary: Get Cluster Instance State in the device
+      description: Get Cluster Instance State in the device
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              Attr:
+                type: array
+                items:
+                  $ref: '#/definitions/CIStatusGetEntry'         
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+            
+  '/config/cistate':
+    post:
+      summary: Informs Current Cluster Instance state in the device
+      description: Informs Current Cluster Instance state in the device
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes for CI State
+          schema:
+            $ref: '#/definitions/CIStatusEntry'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict.
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+#----------------------------------------------
+# End-Point State
+#----------------------------------------------
+  '/config/endpoint/all':
+    get:
+      summary: Get End-Points State in loxilb
+      description: Get End-Points State in loxilb
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              Attr:
+                type: array
+                items:
+                  $ref: '#/definitions/EndPointGetEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/config/endpoint':
+    post:
+      summary: Adds a LB endpoint for monitoring
+      description: Adds a LB endpoint for monitoring
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes of end point
+          schema:
+            $ref: '#/definitions/EndPoint'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict.
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/config/endpointhoststate':
+    post:
+      summary: Sets the state of a host
+      description: Sets the state of a host which can have multiple endpoints
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes of end point
+          schema:
+            $ref: '#/definitions/EndPointHostState'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict.
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/config/endpoint/epipaddress/{ip_address}':
+    delete:
+      summary: Delete an LB end-point from monitoring
+      description: Delete an LB end-point from monitoring
+      parameters:
+        - name: ip_address
+          in: path
+          type: string
+          required: true
+          description: Attributes of end point
+        - name: name
+          in: query
+          type: string
+          required: false
+          description: Endpoint Identifier
+        - name: probe_type
+          in: query
+          type: string
+          required: false
+          description: Probe type
+        - name: probe_port
+          in: query
+          type: number
+          required: false
+          description: Probe port
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+#----------------------------------------------
+# Firewall Configuration
+#----------------------------------------------
+  '/config/firewall/all':
+    get:
+      summary: Get all of the firewall config
+      description: Get all of the firewall configuration.
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              fwAttr:
+                type: array
+                items:
+                  $ref: '#/definitions/FirewallEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/config/firewall':
+    post:
+      summary: Create a new firewall config
+      description: Create a new firewall config for security.
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes for  firewall sevice
+          schema:
+            $ref: '#/definitions/FirewallEntry'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+ 
+    delete:
+      summary: Delete of the firewall service
+      description: Delete of the firewall service.
+      parameters:
+        - name: sourceIP
+          in: query
+          type: string
+          description: Source IP address
+        - name: destinationIP
+          in: query
+          type: string
+          description:  Destination IP in CIDR notation
+        - name: minSourcePort
+          in: query
+          type: integer
+          description: Minimum source port range
+        - name: maxSourcePort
+          in: query
+          type: integer
+          description: Maximum source port range
+        - name: minDestinationPort
+          in: query
+          type: integer
+          description: Minimum destination port range
+        - name: maxDestinationPort
+          in: query
+          type: integer
+          description: Maximum destination port range  
+        - name: protocol
+          in: query
+          type: integer
+          description: the protocol
+        - name: portName
+          in: query
+          type: string
+          description: the incoming port     
+        - name: preference
+          in: query
+          type: integer
+          description: User preference for ordering
+  
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+#----------------------------------------------
+# IP Filter (Whitelist/Blacklist)
+#----------------------------------------------
+  '/config/ipfilter/all':
+    get:
+      summary: Get all IP filter rules
+      description: Get all IP whitelist and blacklist rules with statistics.
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              ipFilterAttr:
+                type: array
+                items:
+                  $ref: '#/definitions/IPFilterEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/config/ipfilter':
+    post:
+      summary: Create a new IP filter rule
+      description: Create a new IP whitelist or blacklist rule for DDoS protection.
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes for IP filter rule
+          schema:
+            $ref: '#/definitions/IPFilterEntry'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+    
+    delete:
+      summary: Delete an IP filter rule
+      description: Delete an IP whitelist or blacklist rule.
+      parameters:
+        - name: filterType
+          in: query
+          type: string
+          required: true
+          description: Filter type (whitelist or blacklist)
+        - name: cidr
+          in: query
+          type: string
+          required: true
+          description: IP address in CIDR notation
+        - name: zone
+          in: query
+          type: integer
+          description: Security zone (0 = all zones)
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+#----------------------------------------------
+# SYN Flood Protection
+#----------------------------------------------
+  '/config/synflood':
+    post:
+      summary: Enable or configure SYN flood protection
+      description: Enable SYN flood protection with specified thresholds and configuration.
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: SYN flood protection configuration
+          schema:
+            $ref: '#/definitions/SYNFloodConfigMod'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+    
+    delete:
+      summary: Disable SYN flood protection
+      description: Disable SYN flood protection and clear all tracking state.
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/config/synflood/all':
+    get:
+      summary: Get SYN flood protection configuration and statistics
+      description: Get current SYN flood protection configuration and statistics.
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              synfloodAttr:
+                type: array
+                items:
+                  $ref: '#/definitions/SYNFloodEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+#----------------------------------------------
+# Unified Security Rate Limiting (P0-5 + P0-6)
+#----------------------------------------------
+  '/config/securityrate':
+    post:
+      summary: Configure unified security rate limiting
+      description: Configure unified SYN flood protection (P0-5) and connection rate limiting (P0-6).
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Unified security rate limiting configuration
+          schema:
+            $ref: '#/definitions/SecurityRateConfigMod'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+    
+    delete:
+      summary: Disable unified security rate limiting
+      description: Disable all security rate limiting (SYN flood + connection rate) and clear tracking state.
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/config/securityrate/all':
+    get:
+      summary: Get unified security rate limiting configuration and statistics
+      description: Get current unified security rate limiting (P0-5 + P0-6 + P0-7) configuration and statistics.
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              securityrateAttr:
+                type: array
+                items:
+                  $ref: '#/definitions/SecurityRateEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/config/securityrate/reset':
+    put:
+      summary: Reset security rate limiting statistics
+      description: Reset all accumulated statistics counters for security rate limiting (SYN/Conn/UDP) to zero.
+      responses:
+        '204':
+          description: Statistics reset successfully
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+#----------------------------------------------
+# System Status
+#----------------------------------------------
+  '/status/process':
+    get:
+      summary: Get a process based on CPU usage info in the device
+      description: Get a process based on high usage CPU(linux command "top") in the device or system.
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              processAttr:
+                type: array
+                items:
+                  $ref: '#/definitions/ProcessInfoEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+            
+          
+  '/status/device':
+    get:
+      summary: Get a basic info in the device
+      description: Get a basic info (linux command "uptime, hostnamectl") in the device or system.
+      responses:
+        '200':
+          description: Device unique informations
+          schema:
+            $ref: '#/definitions/DeviceInfoEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+            
+  '/status/filesystem':
+    get:
+      summary: Get a File System info in the device
+      description: Get a File system infomation (linux command "df") in the device or system.
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              filesystemAttr:
+                type: array
+                items:
+                  $ref: '#/definitions/FileSystemInfoEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+#----------------------------------------------
+# LoxiLB Operational Config
+#----------------------------------------------
+  '/config/params':
+    post:
+      summary: Set Operational parameters of LoxiLB
+      description: Set Operational parameters of LoxiLB
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes for setting state
+          schema:
+            $ref: '#/definitions/OperParams'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+    get:
+      summary: Get Operational params of LoxiLB
+      description: Get Operational params of LoxiLB
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/OperParams'
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+#----------------------------------------------
+# GoBGP
+#----------------------------------------------
+  '/config/bgp/neigh/all':
+    get:
+      summary: Get the all of BGP Neighbor
+      description: Get the all of BGP Neighbor
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              bgpNeiAttr:
+                type: array
+                items:
+                  $ref: '#/definitions/BGPNeighGetEntry'
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/config/bgp/neigh':
+    post:
+      summary: Adds a BGP Neighbor
+      description: Adds a BGP Neighbor
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes of bgp neighbor
+          schema:
+            $ref: '#/definitions/BGPNeigh'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict.
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/config/bgp/neigh/{ip_address}':
+    delete:
+      summary: Delete a BGP neighbor
+      description: Delete a BGP Neighbor
+      parameters:
+        - name: ip_address
+          in: path
+          type: string
+          required: true
+          description: Neighbor IP address
+        - name: remoteAs
+          in: query
+          type: integer
+          format: int32
+          required: false
+          description: Remote ASN number
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. Neigh already exists
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+
+  '/config/bgp/policy/definedsets/{defineset_type}/{type_name}':
+    get:
+      summary: Get the all of BGP definedsets
+      description: Get the all of BGP, prefix/neighbor/community/extcommunity/aspath/largecommunity
+      parameters:
+        - name: defineset_type
+          in: path
+          type: string
+          required: true
+          description: defineset type one of prefix/neighbor/community/extcommunity/aspath/largecommunity
+        - name: type_name
+          in: path
+          type: string
+          required: true
+          description: type name
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              definedsetsAttr:
+                type: array
+                items:
+                  $ref: '#/definitions/BGPPolicyDefinedSetGetEntry'
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+    
+    delete:
+      summary: Delete a BGP definedsets
+      description: Delete a BGP definedsets
+      parameters:
+        - name: defineset_type
+          in: path
+          type: string
+          required: true
+          description: defineset type one of prefix/neighbor/community/extcommunity/aspath/largecommunity
+        - name: type_name
+          in: path
+          type: string
+          required: true
+          description: type name
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. Neigh already exists
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/config/bgp/policy/definedsets/{defineset_type}':
+    post:
+      summary: Adds a BGP  definedsets for making Policy
+      description: Adds a BGP definedsets for making Policy
+      parameters:
+        - name: defineset_type
+          in: path
+          type: string
+          required: true
+          description: defineset type one of prefix/neighbor/community/extcommunity/aspath/largecommunity
+        - name: attr
+          in: body
+          required: true
+          description: Attributes of bgp neighbor
+          schema:
+            $ref: '#/definitions/BGPPolicyDefinedSetsMod'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict.
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/config/bgp/policy/definitions/all':
+    get:
+      summary: Get BGP Policy definitions
+      description: Get BGP Policy definitions
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              bgpPolicyAttr:
+                type: array
+                items:
+                  $ref: '#/definitions/BGPPolicyDefinitionsMod'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+            
+  '/config/bgp/policy/definitions':
+    post:
+      summary: Adds a BGP Policy
+      description: Adds a BGP Policy
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes of bgp neighbor
+          schema:
+            $ref: '#/definitions/BGPPolicyDefinitionsMod'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict.
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/config/bgp/policy/definitions/{policy_name}':
+    delete:
+      summary: Delete a BGP policy
+      description: Delete a BGP Policy
+      parameters:
+        - name: policy_name
+          in: path
+          type: string
+          required: true
+          description: The name of the community
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. Neigh already exists
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+
+  '/config/bgp/policy/apply':
+    post:
+      summary: Apply BGP Policy in neighbor
+      description: Apply BGP Policy in neighbor
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes of bgp neighbor
+          schema:
+            $ref: '#/definitions/BGPApplyPolicyToNeighborMod'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict.
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+    delete:
+      summary: Delete BGP Policy in neighbor
+      description: Delete BGP Policy in neighbor. It don't need "routeAction" in the attr body
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes of bgp neighbor
+          schema:
+            $ref: '#/definitions/BGPApplyPolicyToNeighborMod'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. Neigh already exists
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+            
+  '/config/bgp/global':
+    post:
+      summary: Adds a BGP global config
+      description: Adds a BGP global config
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes of bgp global config
+          schema:
+            $ref: '#/definitions/BGPGlobalConfig'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict.
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+#----------------------------------------------
+# LoxiLB Prometheus 
+#----------------------------------------------
+  '/metrics':
+    get:
+      summary: Scrape metrics from the cache
+      responses:
+        '200':
+          description: Metrics in prometheus text format
+          schema:
+            type: string
+  '/config/metrics':
+    get:
+      summary: Get prometheus config value
+      responses:
+        '200':
+          description: prometheus config value
+          schema:
+            $ref: '#/definitions/MetricsConfig'
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+    post:
+      summary: turn on prometheus option
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+    delete:
+      summary: turn off prometheus option
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+#----------------------------------------------
+# GPU-Aware Load Balancing
+#----------------------------------------------
+  '/config/gpu/enable':
+    post:
+      summary: Enable GPU-aware load balancing
+      description: Activates GPU-aware routing mode and starts conversation cleanup thread
+      responses:
+        '200':
+          description: GPU monitoring enabled successfully
+          schema:
+            $ref: '#/definitions/GPUEnableResponse'
+        '400':
+          description: GPU monitoring already enabled
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Failed to enable GPU monitoring
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/config/gpu/disable':
+    post:
+      summary: Disable GPU-aware load balancing
+      description: Deactivates GPU-aware routing and reverts to standard CHWBL
+      responses:
+        '200':
+          description: GPU monitoring disabled successfully
+          schema:
+            $ref: '#/definitions/GPUEnableResponse'
+        '400':
+          description: GPU monitoring already disabled
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Failed to disable GPU monitoring
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/config/gpu/status':
+    get:
+      summary: Get GPU monitoring status
+      description: Returns current GPU monitoring state and statistics
+      responses:
+        '200':
+          description: GPU monitoring status
+          schema:
+            $ref: '#/definitions/GPUMonitoringStatus'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/config/gpu/conversations/cleanup':
+    post:
+      summary: Manual conversation cleanup
+      description: Removes stale conversation mappings older than specified age
+      parameters:
+        - name: max_age_hours
+          in: query
+          type: integer
+          required: false
+          default: 1
+          description: Maximum age in hours for conversations to keep (older ones deleted)
+      responses:
+        '200':
+          description: Cleanup completed successfully
+          schema:
+            $ref: '#/definitions/ConversationCleanupResponse'
+        '400':
+          description: GPU monitoring disabled or invalid parameters
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Cleanup operation failed
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/config/worker/metrics':
+    post:
+      summary: Update worker GPU metrics
+      description: Receives GPU metrics from metrics agent and updates routing decisions
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/WorkerMetricsEntry'
+      responses:
+        '200':
+          description: Metrics updated successfully
+          schema:
+            $ref: '#/definitions/WorkerMetricsUpdateResponse'
+        '400':
+          description: GPU monitoring disabled or invalid request
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Failed to update metrics
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+    get:
+      summary: Get all worker metrics
+      description: Returns current GPU metrics for all tracked workers
+      responses:
+        '200':
+          description: Worker metrics retrieved successfully
+          schema:
+            $ref: '#/definitions/WorkerMetricsResponse'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+#----------------------------------------------
+# LLM Catalog Management
+#----------------------------------------------
+  '/config/llm-catalogs':
+    get:
+      summary: List available LLM catalog profiles
+      description: Returns all available LLM catalog profiles including built-in and custom catalogs
+      tags:
+        - GPU
+      responses:
+        '200':
+          description: Catalog list retrieved successfully
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/LLMCatalog'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/config/llm-catalogs/{catalogName}':
+    get:
+      summary: Get specific LLM catalog profile
+      description: Returns details of a specific LLM catalog profile by name
+      tags:
+        - GPU
+      parameters:
+        - name: catalogName
+          in: path
+          required: true
+          type: string
+          description: Name of the catalog profile (e.g., chat-interactive, rag-longcontext, batch-inference, code-generation, default)
+      responses:
+        '200':
+          description: Catalog details retrieved successfully
+          schema:
+            $ref: '#/definitions/LLMCatalog'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Catalog not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+#----------------------------------------------
+# Version
+#----------------------------------------------
+  '/version':
+    get:
+      summary: Get version information in the device
+      description: Get version information
+      security: [] # Overrides global security, no authorization required
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/VersionGetEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+            
+#----------------------------------------------
+# BFD
+#----------------------------------------------
+  '/config/bfd/all':
+    get:
+      summary: Get BFD session inforrmation in the device
+      description: Get BFD session inforrmation
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              Attr:
+                type: array
+                items:
+                  $ref: '#/definitions/BfdGetEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+            
+  '/config/bfd':
+    post:
+      summary: Create vlan interface in the device
+      description: Create vlan interface in the device
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes for Vlan Interface
+          schema:
+            $ref: '#/definitions/BfdEntry'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. BFD session not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/config/bfd/remoteIP/{remote_ip}':
+    delete:
+      summary: Delete a BFD session
+      description: Delete a BFD session
+      parameters:
+        - name: remote_ip
+          in: path
+          type: string
+          required: true
+          description: Remote IP address
+        - name: instance
+          in: query
+          type: string
+          required: false
+          description: Cluster instance name
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. BFD session already exists
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+#----------------------------------------------
+# Metrics
+#----------------------------------------------
+  '/metrics/flowcount':
+    get:
+      summary: Get flow count metrics
+      description: Get metrics related to flow counts.
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/FlowCountMetrics'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/metrics/hostcount':
+    get:
+      summary: Get host count metrics
+      description: Get metrics related to host counts.
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/HostCountMetrics'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/metrics/lbrulecount':
+    get:
+      summary: Get load balancer rule count metrics
+      description: Get metrics related to load balancer rule counts.
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/LbRuleCountMetrics'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/metrics/newflowcount':
+    get:
+      summary: Get new flow count metrics
+      description: Get metrics related to new flow counts.
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/NewFlowCountMetrics'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/metrics/requestcount':
+    get:
+      summary: Get request count metrics
+      description: Get metrics related to request counts.
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/RequestCountMetrics'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/metrics/errorcount':
+    get:
+      summary: Get error count metrics
+      description: Get metrics related to error counts.
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/ErrorCountMetrics'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/metrics/processedtraffic':
+    get:
+      summary: Get processed traffic metrics
+      description: Get metrics related to processed traffic.
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/ProcessedTrafficMetrics'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/metrics/lbprocessedtraffic':
+    get:
+      summary: Get load balancer processed traffic metrics
+      description: Get metrics related to load balancer processed traffic.
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/LbProcessedTrafficMetrics'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/metrics/epdisttraffic':
+    get:
+      summary: Get endpoint distribution traffic metrics
+      description: Get metrics related to endpoint distribution traffic per service. The additionalProp is service name.
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/EpDistTrafficMetrics'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/metrics/servicedisttraffic':
+    get:
+      summary: Get service distribution traffic metrics
+      description: Get metrics related to service distribution traffic. The additionalProp is service name.
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/ServiceDistTrafficMetrics'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/metrics/fwdrops':
+    get:
+      summary: Get firewall drops metrics
+      description: Get metrics related to firewall drops.
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/FwDropsMetrics'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/metrics/reqcountperclient':
+    get:
+      summary: Get request count per client metrics
+      description: Get metrics related to request counts per client. The additionalProp is client IP address.
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/ReqCountPerClientMetrics'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/logs':
+    get:
+      summary: Fetch logs with optional filtering
+      description: Fetch the latest logs from the system with optional filtering by number of lines, log level, or keyword.
+      parameters:
+        - name: lines
+          in: query
+          required: false
+          type: string
+          description: Number of log lines to fetch (default is 100).
+        - name: level
+          in: query
+          required: false
+          type: string
+          description: Filter logs by level (e.g., INFO, ERROR, DEBUG).
+        - name: keyword
+          in: query
+          required: false
+          type: string
+          description: Filter logs containing a specific keyword or phrase.
+      responses:
+        '200':
+          description: Logs fetched successfully
+          schema:
+            $ref: '#/definitions/Logs'
+        '400':
+          description: Invalid query parameters
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/Error'
+
+#----------------------------------------------
+# Log Archives
+#----------------------------------------------
+  '/log-archives':
+    get:
+      summary: List available log archives
+      description: Retrieve a list of all rotated log archive files available for download.
+      responses:
+        '200':
+          description: List of log archive files
+          schema:
+            $ref: '#/definitions/LogArchives'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/log-archives/{filename}':
+    get:
+      summary: Download a specific log archive
+      description: Download a log archive file by its name.
+      parameters:
+        - name: filename
+          in: path
+          required: true
+          type: string
+          description: Name of the log archive file to download.
+      responses:
+        '200':
+          description: Log archive file download
+          schema:
+            type: file
+        '400':
+          description: Missing or invalid filename
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: File not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/Error'
+
+#----------------------------------------------
+# Topology
+#----------------------------------------------
+  '/nodegraph/all':
+    get:
+      summary: List current topology
+      description: Retrieve a list of all nodes and edges in the current topology.
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/NodeGraphShcmea'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/nodegraph/{service}':
+    get:
+      summary: List current topology for a specific service
+      description: Retrieve a list of all nodes and edges in the current topology for a specific service.
+      parameters:
+        - name: service
+          in: path
+          required: true
+          type: string
+          description: Name of the service to filter the topology by.
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/NodeGraphShcmea'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+#----------------------------------------------
+# OAuth
+#----------------------------------------------
+  /oauth/{provider}:
+    get:
+      description: Initiates the OAuth login flow for the specified provider.
+      parameters:
+      - description: OAuth provider
+        in: path
+        name: provider
+        required: true
+        type: string
+      security: [] 
+      responses:
+        "302":
+          description: Found
+          schema:
+            $ref: '#/definitions/OauthMessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/OauthErrorResponse'
+      summary: OAuth login
+      tags:
+      - auth
+  /oauth/{provider}/callback:
+    get:
+      description: Handles the OAuth callback flow for the specified provider.
+      parameters:
+      - description: OAuth provider
+        in: path
+        name: provider
+        required: true
+        type: string
+      - description: OAuth code
+        in: query
+        name: code
+        required: true
+        type: string
+      - description: OAuth state
+        in: query
+        name: state
+        required: true
+        type: string
+      security: [] # Overrides global security, no authorization required
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/OauthLoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/OauthErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/OauthErrorResponse'
+      summary: OAuth callback
+      tags:
+      - auth
+  /oauth/{provider}/token:
+    get:
+      description: Handles the OAuth token refresh workflow for the specified provider.
+      parameters:
+      - description: OAuth provider
+        in: path
+        name: provider
+        required: true
+        type: string
+      - description: OAuth access token
+        in: query
+        name: token
+        required: true
+        type: string
+      - description: OAuth refresh token
+        in: query
+        name: refreshtoken
+        required: true
+        type: string
+      security: [] # Overrides global security, no authorization required
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/OauthTokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/OauthErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/OauthErrorResponse'
+      summary: OAuth callback
+      tags:
+      - auth
+#----------------------------------------------
+# CORS
+#----------------------------------------------            
+  '/config/cors/all':
+    get:
+      summary: Get all related K8s metadata (Pod, Service, Endpoint, Node, Namespace)
+      produces:
+        - application/json
+      responses:
+        200:
+          description: get cors list
+          schema:
+            properties:
+              corsAttr:
+                type: array
+                items:
+                  type: string
+    
+  '/config/cors':
+    post:
+      summary: Post full K8s metadata set (Pod, Service, Endpoint, Node, Namespace)
+      description: Post full K8s metadata set (Pod, Service, Endpoint, Node, Namespace)
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes for Vlan Interface
+          schema:
+            $ref: '#/definitions/CorsEntry'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. BFD session not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+            
+  '/config/cors/{cors_url}':
+    delete:
+      summary: Delete a BFD session
+      description: Delete a BFD session
+      parameters:
+        - name: cors_url
+          in: path
+          type: string
+          required: true
+          description: cors url ex) http://localhost:3000
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Capacity insufficient
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource Conflict. BFD session already exists
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'    
+#----------------------------------------------
+# Schema definitions
+#----------------------------------------------
+definitions:
+  Error:
+    type: object
+    properties:
+      code:
+        type: integer
+        format: int32
+      sub-code:
+        type: integer
+        format: int32
+      message:
+        type: string
+      fields:
+        type: array
+        items:
+          type: string
+      details:
+        type: string
+      result:
+        type: string
+
+  PostSuccess:
+    type: object
+    properties:
+      code:
+        type: integer
+      message:
+        type: string
+
+  LoadbalanceEntry:
+    type: object
+    required:
+      - serviceArguments
+      - endpoints
+    properties:
+      serviceArguments:
+        type: object
+        required:
+        - externalIP
+        - port
+        properties:
+          externalIP:
+            type: string
+            description: IP address for external access
+          privateIP:
+            type: string
+            description: private IP (NAT'd) address for external access
+          port:
+            type: integer
+            description:  (Min) port number for the access
+          portMax:
+            type: integer
+            description:  Max port number(range) for the access
+          protocol:
+            type: string
+            enum: [tcp, udp, sctp, icmp]
+            description:  value for access protocol
+          sel:
+            type: integer
+            enum: [0,1,2,3,4,5,6,7,8,9]
+            description: value for load balance algorithim(0-rr, 1-hash, 2-priority, 3-persist, 4-lc, 5-n2, 6-n3, 7-quiccid, 8-chwbl, 9-gpuaware, 0-default)
+          bgp:
+            type: boolean
+            description: value for BGP enable or not
+          monitor:
+            type: boolean
+            description: value for monitoring enabled or not
+          probetype:
+            type: string
+            enum: [tcp, udp, sctp, http, https, ping, none]
+            description: probe type for any end-point of this entry
+          probeport:
+            type: integer
+            format: uint16
+            description: probe port if probetype is tcp/udp/sctp
+          probereq:
+            type: string
+            description: probe request string
+          proberesp:
+            type: string
+            description: probe response string
+          managed:
+            type: boolean
+            description: externally managed rule or not
+          mode:
+            type: integer
+            format: int32
+            enum: [0,1,2,3,4,5]
+            description: value for NAT mode (0-DNAT,1-onearm, 2-fullnat, 3-dsr, 4-fullproxy, 5-hostonearm, 0-default)
+          security:
+            type: integer
+            format: int32
+            enum: [0,1,2]
+            description: value for Security mode (0-Plain, 1-https, 1-tls, 2-e2ehttps, 0-default)
+          block:
+            type: integer
+            format: uint32
+            description: block-number if any of this LB entry
+          inactiveTimeOut:
+            type: integer
+            format: int32
+            description: value for inactivity timeout (in seconds)
+          probeTimeout:
+            type: integer
+            format: uint32
+            description: value for probe timer (in seconds)
+          probeRetries:
+            type: integer
+            format: int32
+            description: value for probe retries
+          name:
+            type: string
+            description: service name
+          snat:
+            type: boolean
+            description: snat rule
+          oper:
+            type: integer
+            format: int32
+            enum: [0,1,2]
+            description: end-point specific op (0-create, 1-attachEP, 2-detachEP)
+          host:
+            type: string
+            description: Ingress specific host URL path
+          proxyprotocolv2:
+            type: boolean
+            description: flag to enable proxy protocol v2
+          egress:
+            type: boolean
+            description: flag to indicate an egress rule
+          path_prefix:
+            type: string
+            description: URL path prefix for L7 routing (e.g., /v1/users). Optional - empty means hostname-only matching (backward compatible)
+          path_match_mode:
+            type: string
+            enum: [disabled, prefix, exact]
+            default: disabled
+            description: Path matching mode - disabled (hostname-only, backward compat), prefix (longest prefix match), exact (exact path match)          
+          llm_type:
+            type: string
+            description: LLM catalog profile name for GPU-aware load balancing (e.g., chat-interactive, rag-longcontext, batch-inference, code-generation, default)
+          backend_protocol:
+            type: string
+            enum: [http1, http2, both]
+            default: http1
+            description: Backend protocol capability for ALPN negotiation - http1 (HTTP/1.1 only, safest default), http2 (HTTP/2 only), both (supports both HTTP/1.1 and HTTP/2)
+
+      endpoints:
+        type: array
+        description: values of End point servers
+        items:
+          required:
+            - endpointIP
+            - weight
+            - targetPort
+          properties:
+            endpointIP:
+              type: string
+              description: IP address for external access
+            weight:
+              type: integer
+              description:  Weight for the load balancing
+            targetPort:
+              type: integer
+              description:  port number for access service
+            state:
+              type: string
+              description: state of the endpoint
+            counter:
+              type: string
+              description: traffic counters of the endpoint
+
+      secondaryIPs:
+        type: array
+        description: values of Secondary IPs
+        items:
+          properties:
+            secondaryIP:
+              type: string
+              description: IP address for secondary access
+      
+      allowedSources:
+        type: array
+        description: values of allowed source IP
+        items:
+          properties:
+            prefix:
+              type: string
+              description: IP address for allowed source access
+  
+  RouteEntry:
+    type: object
+    required:
+      - destinationIPNet
+      - gateway
+    properties:
+      destinationIPNet:
+        type: string
+        description: IP address and netmask
+      gateway:
+        type: string
+        description: IP address for nexthop
+      protocol:
+        type: string
+        description: Protocol type of the route like "static"
+
+  RouteGetEntry:
+    type: object
+    properties:
+      destinationIPNet:
+        type: string
+        description: IP address and netmask
+      gateway:
+        type: string
+        description: IP address for nexthop
+      hardwareMark:
+        type: integer
+        description: index of the route 
+      protocol:
+        type: string
+        description: Route protocol
+      flags:
+        type: string
+        description: Route flags
+      sync:
+        type: integer
+      statistic:
+        type: object
+        required:
+          - bytes
+          - packets
+        properties:
+          bytes:
+            type: integer
+            description: Statistic of the ingress port bytes.
+          packets:
+            type: integer
+            description: Statistic of the egress port bytes.
+
+  K8sConntrackEntry:    
+    type: object
+    properties:
+      destinationPod:
+        type: string
+        description: Pod name of the destination
+      sourcePod:
+        type: string
+        description: Pod name of the soruce
+      destinationNamespace:
+        type: string
+        description: Namespace of the destination
+      sourceNamespace:
+        type: string
+        description: Namespace of the source
+      destinationNode:
+        type: string
+        description: Node of the destination
+      sourceNode:
+        type: string
+        description: Node of the source
+      k8sservName:
+        type: string
+        description: K8s service name 
+      destinationIP:
+        type: string
+        description: IP address for externel access
+      sourceIP:
+        type: string
+        description: IP address for externel access
+      destinationPort:
+        type: integer
+        description:  port number for the access
+      sourcePort:
+        type: integer
+        description:  port number for the access
+      protocol:
+        type: string
+        description:  value for access protocol
+      conntrackState:
+        type: string
+        description:  value for Conntrack state
+      ident:
+        type: string
+        description:  value for Conntrack ident
+      conntrackAct:
+        type: string
+        description:  value for Conntrack Act
+      packets:
+        type: integer
+        description:  Packet counts of the conntrack
+      bytes:
+        type: integer
+        description:  Packet bytes of the conntrack
+      servName:
+        type: string
+        description: Connection's Service Name
+        
+  ConntrackEntry:
+    type: object
+    properties:
+      destinationIP:
+        type: string
+        description: IP address for externel access
+      sourceIP:
+        type: string
+        description: IP address for externel access
+      destinationPort:
+        type: integer
+        description:  port number for the access
+      sourcePort:
+        type: integer
+        description:  port number for the access
+      protocol:
+        type: string
+        description:  value for access protocol
+      conntrackState:
+        type: string
+        description:  value for Conntrack state
+      ident:
+        type: string
+        description:  value for Conntrack ident
+      conntrackAct:
+        type: string
+        description:  value for Conntrack Act
+      packets:
+        type: integer
+        description:  Packet counts of the conntrack
+      bytes:
+        type: integer
+        description:  Packet bytes of the conntrack
+      servName:
+        type: string
+        description: Connection's Service Name
+
+  PortEntry:
+    type: object
+    properties:
+        portName:
+          type: string
+          description: The name of the Port interface
+        portNo:
+            type: integer
+            description:  Index of the Port
+        zone:
+          type: string
+          description: network zone
+        portSoftwareInformation:
+          type: object
+          properties:
+            osId:
+              type: integer
+              description: The ID of the Port in the software(OS)
+            portType:
+              type: integer
+              description: port type
+            portProp:
+              type: integer
+              description: Priority of the port
+            portActive:
+              type: boolean
+              description: Activation status of the port
+            bpfLoaded:
+              type: boolean
+              description: The status of the eBPF loaded 
+              
+        portHardwareInformation:
+          type: object
+          properties:
+            rawMacAddress:
+              type: array
+              description: MAC address written by byte array
+              items:
+                type: integer
+            macAddress:
+              type: string
+              description: MAC address of the port
+            mtu:
+              type: integer
+              description: MTU of the port
+            link:
+              type: boolean
+              description: link status
+            state:
+              type: boolean
+              description: state...
+            master:
+              type: string
+              description: Port's mater
+            real:
+              type: string
+              description: real port..
+            tunnelId:
+              type: integer
+              description: Tunnel Id such as VxLAN.
+        portStatisticInformation:
+          type: object
+          properties:
+            rxBytes:
+              type: integer
+              description: Statistic of the ingress port bytes.
+            txBytes:
+              type: integer
+              description: Statistic of the egress port bytes.
+            rxPackets:
+              type: integer
+              description: Statistic of the number of ingress packets.
+            txPackets:
+              type: integer
+              description: Statistic of the number of egress packets.
+            rxErrors:
+              type: integer
+              description: Statistic of the number of ingress Error packets.
+            txErrors:
+              type: integer
+              description: Statistic of the number of egress Error packets.
+        portL3Information:
+          type: object
+          properties:
+            routed:
+              type: boolean
+              description: Is routed or not
+            IPv4Address:
+              type: array
+              description: List of IP address v4
+              items:
+                type: string
+            IPv6Address:
+              type: array
+              description: List of the IP address v6
+              items:
+                type: string
+        portL2Information:
+          type: object
+          properties:
+            isPvid:
+              type: boolean
+              description: Is PVID config or not
+            vid:
+              type: integer
+              description: virtual lan id(VLAN ID)
+        DataplaneSync:
+          type: integer
+          description: Dataplan Sync check
+  
+  SessionEntry:
+    type: object
+    required:
+      - ident
+    properties:
+      ident:
+        type: string
+        description: IP address and netmask
+      sessionIP:
+        type: string
+        description: IP address for nexthop
+      accessNetworkTunnel:
+        type: object
+        properties:
+          TeID:
+            type: integer
+            description: ID of the tunnel
+          tunnelIP:
+            type: string
+            description: Access network IP address
+      coreNetworkTunnel:
+        type: object
+        properties:
+          teID:
+            type: integer
+            description: ID of the tunnel
+          tunnelIP:
+            type: string
+            description: Connection network IP address
+        
+  SessionUlClEntry:
+    type: object
+    required:
+      - ulclIdent
+    properties:
+      ulclIdent:
+        type: string
+        description: IP address and netmask
+      ulclArgument:
+        type: object
+        properties:
+          qfi:
+            type: integer
+            description: QFI number
+          ulclIP:
+            type: string
+            description: Access network IP address
+
+  PolicyEntry:
+    type: object
+    required:
+      - policyIdent
+      - targetObject
+    properties:
+      policyIdent:
+        type: string
+        description: Policy name
+      policyInfo:
+        type: object
+        properties:
+          type:
+            type: integer
+            enum: [0,1]
+            description: policy type(0-TrTCM, 1-SrTCM)
+          colorAware:
+            type: boolean
+            description: Policy color for QoS
+          committedInfoRate:
+            type: integer
+            description: policy type
+          peakInfoRate:
+            type: integer
+            description: policy type
+          committedBlkSize:
+            type: integer
+            description: policy type
+          excessBlkSize:
+            type: integer
+            description: policy type
+      targetObject:
+        type: object
+        required:
+          - attachment
+          - polObjName
+        properties:
+          attachment:
+            type: integer
+            enum: [0,1]
+            description: Target Attachment(0-RuleName, 1-PortName)
+          polObjName:
+            type: string
+            description: Target Names            
+
+  MirrorEntry:
+    type: object
+    required:
+      - mirrorIdent
+      - targetObject
+    properties:
+      mirrorIdent:
+        type: string
+        description: Mirror name
+      mirrorInfo:
+        type: object
+        properties:
+          type:
+            type: integer
+            enum: [0,1,2]
+            description: One of MirrTypeSpan, MirrTypeRspan or MirrTypeErspan(0-MirrTypeSpan, 1-MirrTypeRspan, 2-MirrTypeErspan)
+          port:
+            type: string
+            description: Port where mirrored traffic needs to be sent
+          vlan:
+            type: integer
+            description:  For RSPAN we may need to send tagged mirror traffic
+          remoteIP:
+            type: string
+            description: For ERSPAN we may need to send tunnelled mirror traffic
+          sourceIP:
+            type: string
+            description: For ERSPAN we may need to send tunnelled mirror traffic
+          tunnelID:
+            type: integer
+            description: mirror tunnel-id. For ERSPAN we may need to send tunnelled mirror traffic
+      targetObject:
+        type: object
+        required:
+          - attachment
+          - mirrObjName
+        properties:
+          attachment:
+            type: integer
+            enum: [0,1]
+            description: Target Attachment(0-RuleName, 1-PortName)
+          mirrObjName:
+            type: string
+            description: Target Names            
+
+  MirrorGetEntry:
+    type: object
+    required:
+      - sync
+    properties:
+      mirrorIdent:
+        type: string
+        description: Mirror name
+      mirrorInfo:
+        type: object
+        properties:
+          type:
+            type: integer
+            description: One of MirrTypeSpan, MirrTypeRspan or MirrTypeErspan
+          port:
+            type: string
+            description: Port where mirrored traffic needs to be sent
+          vlan:
+            type: integer
+            description:  For RSPAN we may need to send tagged mirror traffic
+          remoteIP:
+            type: string
+            description: For ERSPAN we may need to send tunnelled mirror traffic
+          sourceIP:
+            type: string
+            description: For ERSPAN we may need to send tunnelled mirror traffic
+          tunnelID:
+            type: integer
+            description: mirror tunnel-id. For ERSPAN we may need to send tunnelled mirror traffic
+      targetObject:
+        type: object
+        properties:
+          attachment:
+            type: integer
+            description: Target Attachment
+          mirrObjName:
+            type: string
+            description: Target Names
+      sync:
+        type: integer
+        description: Sync - sync state
+        
+  VlanBridgeEntry:
+    type: object
+    required:
+      - vid
+    properties:
+      vid:
+        type: integer
+        description: Vlan ID
+            
+  VlanGetEntry:
+    type: object
+    properties:
+      vid:
+        type: integer
+        description: Vlan ID
+      dev:
+        type: string
+        description: Interface device name
+      member:
+        type: array
+        items:
+          $ref: '#/definitions/VlanMemberEntry'
+      vlanStatistic:
+        type: object
+        properties:
+          inBytes:
+            type: integer
+          inPackets:
+            type: integer
+          outBytes:
+            type: integer
+          outPackets:
+            type: integer
+  VlanMemberEntry:
+    type: object
+    properties:
+      dev:
+        type: string
+        description: Interface device name
+      tagged:
+        type: boolean
+        description: Tagged status added
+        
+  IPv4AddressEntry:
+    type: object
+    required:
+      - dev
+      - ipAddress
+    properties:
+      dev:
+        type: string
+        description: Name of the interface device to which you want to modify the IP address
+      ipAddress:
+        type: string
+        description: IP address to modify.
+
+
+  IPv4AddressGetEntry:
+    type: object
+    required: 
+      - sync
+    properties:
+      dev:
+        type: string
+        description: Name of the interface device to which you want to modify the IP address
+      ipAddress:
+        type: array
+        items:
+          type: string
+        
+      sync:
+        type: integer
+        description: Sync - sync state
+        
+
+  NeighborEntry:
+    type: object
+    required:
+      - dev
+      - ipAddress
+      - macAddress
+    properties:
+      ipAddress:
+        type: string
+        description: IP address to neighbor
+      dev:
+        type: string
+        description: Name of the interface device to which you want to add neighbor
+      macAddress:
+        type: string
+        description: MAC address to neighbor
+        
+  FDBEntry:
+    type: object
+    required:
+      - dev
+      - macAddress
+    properties:
+      dev:
+        type: string
+        description: Name of the interface device to which you want to modify FDB
+      macAddress:
+        type: string
+        description: MAC address to FDB
+        
+  ProcessInfoEntry:
+    type: object
+    properties:
+      pid:
+        type: string
+        description: process ID
+      user:
+        type: string
+        description: User name that start the process
+      priority:
+        type: string
+        description: process priority
+      nice:
+        type: string
+        description: process nice value
+      virtMemory:
+        type: string
+        description: virtual memory usage
+      residentSize:
+        type: string
+        description: Physical memory usage
+      sharedMemory:
+        type: string
+        description: Shared memory usage
+      status:
+        type: string
+        description: process status
+      CPUUsage:
+        type: string
+        description: CPU usage of the process
+      MemoryUsage:
+        type: string
+        description: Memory usage of the process
+      time:
+        type: string
+        description: Executation time
+      command:
+        type: string
+        description: process command 
+
+  DeviceInfoEntry:
+    type: object
+    properties:
+      hostName:
+        type: string
+        description: Device host name
+      machineID:
+        type: string
+        description: Device machine ID
+      bootID:
+        type: string
+        description: Boot ID in the linux
+      OS:
+        type: string
+        description: Operation System of the device
+      kernel:
+        type: string
+        description: Kernel version of the device
+      architecture:
+        type: string
+        description: CPU architecture of the device
+      uptime:
+        type: string
+        description: system uptime
+        
+  FileSystemInfoEntry:
+    type: object
+    properties:
+      fileSystem:
+        type: string
+        description: File system name mounted on this device
+      type:
+        type: string
+        description: File type (ex. nfs, ext4..)
+      size:
+        type: string
+        description: Boot ID in the linux
+      used:
+        type: string
+        description: size of used the disk
+      avail:
+        type: string
+        description: size of remain the disk 
+      usePercent:
+        type: string
+        description: usage per total size
+      mountedOn:
+        type: string
+        description: path of the mounted on
+  
+  VxlanEntry:
+    type: object
+    required:
+      - vxlanName
+      - epIntf
+      - vxlanID
+      - peerIP
+    properties:
+      vxlanName:
+        type: string
+      epIntf:
+        type: string
+      vxlanID:
+        type: integer
+      peerIP:
+        type: array
+        items:
+          type: string
+        
+  VxlanBridgeEntry:
+    type: object
+    required:
+      - epIntf
+      - vxlanID
+    properties:
+      epIntf:
+        type: string
+      vxlanID:
+        type: integer
+        
+  VxlanPeerEntry:
+    type: object
+    required:
+      - peerIP
+    properties:
+      peerIP:
+        type: string
+ 
+  CIStatusEntry:
+    type: object
+    properties:
+      instance:
+        type: string
+        description: Instance name
+      state:
+        type: string
+        description: Current Cluster Instance State 
+      vip:
+        type: string
+        description: Instance Virtual IP address  
+      
+
+  CIStatusGetEntry:
+    type: object
+    required: 
+      - sync
+    properties:
+      instance:
+        type: string
+        description: Instance name
+      state:
+        type: string
+        description: Current Cluster Instance State
+      vip:
+        type: string
+        description: Instance Virtual IP address  
+      sync:
+        type: integer
+        description: Sync - sync state
+
+  EndPointGetEntry:
+    type: object
+    properties:
+      hostName:
+        type: string
+        description: Host name
+      name:
+        type: string
+        description: Endpoint Identifier
+      inactiveReTries:
+        type: integer
+        description: Number of inactive retries
+      probeType:
+        type: string
+        description: Type of probe used
+      probeReq:
+        type: string
+        description: URI for http/https probes
+      probeResp:
+        type: string
+        description: Response for http/https probes
+      probeDuration:
+        type: integer
+        description: How frequently to probe in seconds
+      probePort:
+        type: integer
+        description: The l4port to probe on
+      minDelay:
+        type: string
+        description: Minimum delay seen for endpoint
+      avgDelay:
+        type: string
+        description: Average delay seen for endpoint
+      maxDelay:
+        type: string
+        description: Maximum delay seen for endpoint
+      currState:
+        type: string
+        description: Current state of this endpoint
+
+  EndPoint:
+    type: object
+    required:
+      - hostName
+    properties:
+      hostName:
+        type: string
+        description: Host name in CIDR
+      name:
+        type: string
+        description: Endpoint Identifier
+      inactiveReTries:
+        type: integer
+        description: Number of inactive retries
+      probeType:
+        type: string
+        enum: [tcp, udp, sctp, ping, http, https, none]
+        description: Type of probe used
+      probeReq:
+        type: string
+        description: URI for http/https probes
+      probeResp:
+        type: string
+        description: Response for http/https probes
+      probeDuration:
+        type: integer
+        description: How frequently to probe in seconds
+      probePort:
+        type: integer
+        description: The l4port to probe on
+
+  EndPointHostState:
+    type: object
+    properties:
+      hostName:
+        type: string
+        description: Host name in CIDR
+      epPort:
+        type: integer
+        description: The end-point port (0 if not applicable)
+      epProto:
+        type: string
+        description: The end-point prototype (tcp,udp,sctp,icmp,http(s), empty if not applicable)
+      state:
+        type: string
+        description: Host state string ("green", "yellow", "red" )
+
+  FirewallOptionEntry:
+    type: object
+    properties:
+      drop:
+        type: boolean
+        description: Drop any matching rule
+      trap:
+        type: boolean
+        description: Trap anything matching rule
+      redirect:
+        type: boolean
+        description: Redirect any matching rule
+      allow:
+        type: boolean
+        description: Allow any matching rule
+      record:
+        type: boolean
+        description: Record or dump for matching rule
+      redirectPortName:
+        type: string
+        description: Redirect any matching rule
+      fwMark:
+        type: integer
+        description: Set a fwmark for any matching rule
+      doSnat:
+        type: boolean
+        description: Do SNAT on matching rule
+      toIP:
+        type: string
+        description: Modify to given IP in CIDR notation
+      toPort:
+        type: integer
+        description: Modify to given Port (Zero if port is not to be modified)
+      onDefault:
+        type: boolean
+        description: Trigger only on default cases
+      counter:
+        type: string
+        description: traffic counters
+
+
+  FirewallRuleEntry:
+    type: object
+    properties:
+      sourceIP:
+        type: string
+        description: Source IP in CIDR notation
+      destinationIP:
+        type: string
+        description: Destination IP in CIDR notation
+      minSourcePort:
+        type: integer
+        description:  Minimum source port range
+      maxSourcePort:
+        type: integer
+        description:  Maximum  source port range
+      minDestinationPort:
+        type: integer
+        description: Minimum destination port range
+      maxDestinationPort:
+        type: integer
+        description:  Maximum  destination port range
+      protocol:
+        type: integer
+        description:   the protocol
+      portName:
+        type: string
+        description:  the incoming port
+      preference:
+        type: integer
+        description:  User preference for ordering
+    
+  FirewallEntry:
+    type: object
+    required:
+      - ruleArguments
+      - opts
+    properties:
+      ruleArguments:
+        $ref: '#/definitions/FirewallRuleEntry'
+      opts:
+        $ref: '#/definitions/FirewallOptionEntry'
+
+  IPFilterEntry:
+    type: object
+    required:
+      - filterType
+      - cidr
+      - action
+    properties:
+      filterType:
+        type: string
+        enum: [whitelist, blacklist]
+        description: Filter type (whitelist or blacklist)
+      cidr:
+        type: string
+        description: IP address in CIDR notation (e.g., 192.168.1.0/24)
+      zone:
+        type: integer
+        format: int64
+        default: 0
+        description: Security zone (0 = all zones)
+      priority:
+        type: integer
+        format: int64
+        default: 100
+        description: Rule priority (higher = more important)
+      action:
+        type: string
+        enum: [allow, drop]
+        description: Action to take (allow or drop)
+      packets:
+        type: integer
+        format: int64
+        description: Packet counter (read-only)
+      bytes:
+        type: integer
+        format: int64
+        description: Byte counter (read-only)
+
+  SYNFloodConfigMod:
+    type: object
+    required:
+      - enabled
+      - synThreshold
+      - cookieThreshold
+    properties:
+      enabled:
+        type: boolean
+        description: Enable/disable SYN flood protection
+      synThreshold:
+        type: integer
+        format: int64
+        default: 100
+        description: Maximum SYNs per second per IP (hard drop threshold)
+      cookieThreshold:
+        type: integer
+        format: int64
+        default: 50
+        description: Enable SYN cookies above this rate (must be < synThreshold)
+      whitelistIps:
+        type: array
+        items:
+          type: string
+        description: IP addresses to bypass SYN flood protection
+
+  SYNFloodEntry:
+    type: object
+    properties:
+      enabled:
+        type: boolean
+        description: Whether SYN flood protection is enabled
+      synThreshold:
+        type: integer
+        format: int64
+        description: Maximum SYNs per second per IP
+      cookieThreshold:
+        type: integer
+        format: int64
+        description: SYN cookie activation threshold
+      whitelistIps:
+        type: array
+        items:
+          type: string
+        description: Whitelisted IPs
+      totalSyns:
+        type: integer
+        format: int64
+        description: Total SYN packets processed (read-only)
+      blockedSyns:
+        type: integer
+        format: int64
+        description: SYN packets blocked (read-only)
+      passedSyns:
+        type: integer
+        format: int64
+        description: SYN packets passed (read-only)
+      cookieActivations:
+        type: integer
+        format: int64
+        description: Times SYN cookies were enabled (read-only)
+      uniqueIps:
+        type: integer
+        format: int64
+        description: Number of unique source IPs tracked (read-only)
+
+  SecurityRateConfigMod:
+    type: object
+    required:
+      - synEnabled
+      - synThreshold
+      - cookieThreshold
+      - connRateEnabled
+      - ratePerSec
+      - concurrentLimit
+      - udpEnabled
+      - udpPktThreshold
+      - udpBandwidthMB
+    properties:
+      synEnabled:
+        type: boolean
+        description: Enable/disable SYN flood protection (P0-5)
+      synThreshold:
+        type: integer
+        format: int64
+        default: 100
+        description: Maximum SYNs per second per IP (hard drop threshold)
+      cookieThreshold:
+        type: integer
+        format: int64
+        default: 50
+        description: Enable SYN cookies above this rate (must be < synThreshold)
+      connRateEnabled:
+        type: boolean
+        description: Enable/disable connection rate limiting (P0-6)
+      ratePerSec:
+        type: integer
+        format: int64
+        default: 50
+        description: Maximum new connections per second per IP
+      concurrentLimit:
+        type: integer
+        format: int64
+        default: 200
+        description: Maximum concurrent connections per IP
+      udpEnabled:
+        type: boolean
+        description: Enable/disable UDP flood protection (P0-7)
+      udpPktThreshold:
+        type: integer
+        format: int64
+        default: 1000
+        description: Maximum UDP packets per second per IP
+      udpBandwidthMB:
+        type: integer
+        format: int64
+        default: 100
+        description: Maximum UDP bandwidth in MB per second per IP
+      whitelistIps:
+        type: array
+        items:
+          type: string
+        description: IP addresses to bypass all rate limiting
+
+  SecurityRateEntry:
+    type: object
+    properties:
+      synEnabled:
+        type: boolean
+        description: Whether SYN flood protection is enabled
+      synThreshold:
+        type: integer
+        format: int64
+        description: Maximum SYNs per second per IP
+      cookieThreshold:
+        type: integer
+        format: int64
+        description: SYN cookie activation threshold
+      connRateEnabled:
+        type: boolean
+        description: Whether connection rate limiting is enabled
+      ratePerSec:
+        type: integer
+        format: int64
+        description: Maximum new connections per second per IP
+      concurrentLimit:
+        type: integer
+        format: int64
+        description: Maximum concurrent connections per IP
+      udpEnabled:
+        type: boolean
+        description: Whether UDP flood protection is enabled
+      udpPktThreshold:
+        type: integer
+        format: int64
+        description: Maximum UDP packets per second per IP
+      udpBandwidthMB:
+        type: integer
+        format: int64
+        description: Maximum UDP bandwidth in MB per second per IP
+      whitelistIps:
+        type: array
+        items:
+          type: string
+        description: Whitelisted IPs
+      synBlocked:
+        type: integer
+        format: int64
+        description: SYN packets blocked (read-only)
+      synPassed:
+        type: integer
+        format: int64
+        description: SYN packets passed (read-only)
+      synCookies:
+        type: integer
+        format: int64
+        description: SYN cookie activations (read-only)
+      connBlocked:
+        type: integer
+        format: int64
+        description: Connections blocked by rate limit (read-only)
+      connPassed:
+        type: integer
+        format: int64
+        description: Connections passed (read-only)
+      concurrentBlocked:
+        type: integer
+        format: int64
+        description: Connections blocked by concurrent limit (read-only)
+      udpBlocked:
+        type: integer
+        format: int64
+        description: UDP packets blocked (read-only)
+      udpPassed:
+        type: integer
+        format: int64
+        description: UDP packets passed (read-only)
+      udpBytesBlocked:
+        type: integer
+        format: int64
+        description: UDP bytes blocked (read-only)
+      udpBytesPassed:
+        type: integer
+        format: int64
+        description: UDP bytes passed (read-only)
+      uniqueIps:
+        type: integer
+        format: int64
+        description: Number of unique source IPs tracked (read-only)
+
+  OperParams:
+    type: object
+    required:
+      - logLevel
+    properties:
+      logLevel:
+        type: string
+        enum: [trace, debug, info, error, warning, notice, critical, emergency, alert]
+        description: Set level to trace,debug,info,error,warning,notice,critical,emergency,alert
+  
+  BGPNeigh:
+    type: object
+    required:
+      - ipAddress
+      - remoteAs
+    properties:
+      ipAddress:
+        type: string
+        description: BGP Neighbor IP address
+      remoteAs:
+        type: integer
+        description: Remote AS number
+      remotePort:
+        type: integer
+        description: Remote Connect Port (default 179)
+      setMultiHop:
+        type: boolean
+        description: Enable multi-hop peering (if needed)
+
+  BGPPolicyDefinedSetGetEntry:
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        description: BGP Defined set Entries
+      prefixList:
+        type: array
+        items:
+          $ref: '#/definitions/BGPPolicyPrefix'
+      list:
+        type: array
+        items:
+          type: string
+          
+  BGPPolicyDefinedSetsMod:
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        description: BGP Neighbor IP address
+      List:
+        type: array
+        items:
+          type: string
+      prefixList:
+        type: array
+        items:
+          $ref: '#/definitions/BGPPolicyPrefix'
+
+  BGPPolicyPrefix:
+    type: object
+    properties:
+      ipPrefix:
+        type: string
+        description: BGP Neighbor IP address
+      masklengthRange:
+        type: string
+        description: Remote AS number
+  
+  BGPPolicyDefinitionsMod:
+    type: object
+    properties:
+      name:
+        type: string
+        description: BGP Neighbor IP address
+      statements:
+        type: array
+        items:
+          $ref: '#/definitions/BGPPolicyDefinitionsStatement'
+
+  BGPPolicyDefinitionsStatement:
+    type: object
+    properties:
+      name:
+        type: string
+      conditions:
+        type: object
+        properties:
+          bgpConditions:
+            type: object
+            properties:
+              afiSafiIn:
+                type: array
+                items:
+                  type: string
+              asPathLength: 
+                type: object
+                properties:
+                  operator:
+                    type: string
+                  value: 
+                    type: integer
+              matchAsPathSet: 
+                type: object
+                properties:
+                  asPathSet: 
+                    type: string
+                  matchSetOptions: 
+                    type: string
+              matchCommunitySet:
+                type: object
+                properties:
+                  communitySet:
+                    type: string
+                  matchSetOptions:
+                    type: string
+              matchExtCommunitySet:
+                type: object
+                properties:
+                  communitySet:
+                    type: string
+                  matchSetOptions:
+                    type: string
+              matchLargeCommunitySet:
+                type: object
+                properties:
+                  communitySet:
+                    type: string
+                  matchSetOptions:
+                    type: string
+              nextHopInList:
+                type: array
+                items:
+                  type: string
+              rpki: 
+                type: string
+              routeType: 
+                type: string
+          matchNeighborSet:
+            type: object
+            properties:
+              matchSetOption:
+                type: string
+              neighborSet:
+                type: string
+          matchPrefixSet:
+            type: object
+            properties:
+              matchSetOption:
+                type: string
+              prefixSet:
+                type: string
+      actions:
+        type: object
+        properties:
+          routeDisposition:
+            type: string
+          bgpActions:
+            type: object
+            properties:
+              setMed: 
+                type: string
+              setNextHop: 
+                type: string
+              setLocalPerf:
+                type: integer
+              setCommunity:
+                type: object
+                properties:
+                  options:
+                    type: string
+                  setCommunityMethod:
+                    type: array
+                    items:
+                      type: string
+              setExtCommunity:
+                type: object
+                properties:
+                  options:
+                    type: string
+                  setCommunityMethod:
+                    type: array
+                    items:
+                      type: string
+              setLargeCommunity:
+                type: object
+                properties:
+                  options:
+                    type: string
+                  setCommunityMethod:
+                    type: array
+                    items:
+                      type: string
+              setAsPathPrepend:
+                type: object
+                properties:
+                  as:
+                    type: string
+                  repeatN:
+                    type: integer
+      
+  BGPApplyPolicyToNeighborMod:
+    type: object
+    required: 
+      - ipAddress
+      - policyType
+      - routeAction
+    properties:
+      ipAddress:
+        type: string
+        description: BGP Neighbor IP address
+      policyType:
+        enum: ["import", "export"]
+        type: string
+      policies:
+        type: array
+        items:
+          type: string
+      routeAction:
+        enum: ["accept", "reject"]
+        type: string
+        
+  BGPNeighGetEntry:
+    type: object
+    properties:
+      ipAddress:
+        type: string
+        description: BGP Neighbor IP address
+      remoteAs:
+        type: integer
+        description: Remote AS number
+      state:
+        type: string
+        description: Current state
+      updowntime:
+        type: string
+        description: Current uptime
+
+
+  BGPGlobalConfig:
+    type: object
+    required:
+      - routerId
+      - localAs
+    properties:
+      routerId:
+        type: string
+        description: BGP Router ID
+      localAs:
+        type: integer
+        description: Local AS number
+      SetNextHopSelf:
+        type: boolean
+        description: Adds policy to set next hop as self, if enabled
+      listenPort:
+        type: integer
+        description: Listen port (default 179)
+
+  BfdGetEntry:
+    type: object
+    properties:
+      instance:
+        type: string
+        description: Instance name
+      remoteIp:
+        type: string
+        description: Remote IP
+      sourceIP:
+        type: string
+        description: Source IP to be used for BFD session
+      port:
+        type: integer
+        format: uint16
+        description: port number to be used for BFD session
+      interval:
+        type: integer
+        format: uint64
+        description: Tx interval between BFD packets(in microseconds)
+      retryCount:
+        type: integer
+        format: uint8
+        description: Retry Count to detect failure
+      state:
+        type: string
+        description: Current state for BFD session   
+
+  VersionGetEntry:
+    type: object
+    properties:
+      version:
+        type: string
+        description: Instance name
+      buildInfo:
+        type: string
+        description: build info
+
+  BfdEntry:
+    type: object
+    properties:
+      instance:
+        type: string
+        description: Instance name running BFD session
+      remoteIp:
+        type: string
+        description: Remote IP
+      sourceIp:
+        type: string
+        description: Remote IP
+      interval:
+        type: integer
+        format: uint64
+        description: Tx interval between BFD packets(in microseconds)
+      retryCount:
+        type: integer
+        format: uint8
+        description: Retry Count to detect failure
+  MetricsConfig:
+    type: object
+    required:
+      - prometheus
+    properties:
+      prometheus:
+        type: boolean
+        description: value for prometheus enable or not
+  MetricEntity:
+    type: object
+    properties:
+      name:
+        type: string
+        description: Metric Name
+      value:
+        type: integer
+        format: uint64
+        description: Metric Value
+      service:
+        type: string
+        description: Load Balancer Service Name
+  ErrorResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  HealthCheckResponse:
+    properties:
+      status:
+        type: string
+    type: object
+  LoginResponse:
+    properties:
+      token:
+        type: string
+    type: object
+  MessageResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  SuccessResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  User:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer      
+      password:
+        type: string
+      username:
+        type: string
+      role:
+        type: string
+        enum: ["admin", "viewer"]
+    type: object
+    required:
+      - username
+      - password
+
+  FlowCountMetrics:
+    type: object
+    properties:
+      active_conntrack_count:
+        type: number
+      active_flow_count_tcp:
+        type: number
+      active_flow_count_udp:
+        type: number
+      active_flow_count_sctp:
+        type: number
+      inactive_flow_count:
+        type: number
+
+  HostCountMetrics:
+    type: object
+    properties:
+      healthy_host_count:
+        type: number
+      unhealthy_host_count:
+        type: number
+
+  LbRuleCountMetrics:
+    type: object
+    properties:
+      lb_rule_count:
+        type: number
+
+  NewFlowCountMetrics:
+    type: object
+    properties:
+      new_flow_count:
+        type: number
+
+  RequestCountMetrics:
+    type: object
+    properties:
+      total_requests:
+        type: number
+      total_requests_per_service:
+        type: array
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+            value:
+              type: number
+
+  ErrorCountMetrics:
+    type: object
+    properties:
+      total_errors:
+        type: number
+      total_errors_per_service:
+        type: array
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+            value:
+              type: number
+
+  ProcessedTrafficMetrics:
+    type: object
+    properties:
+      processed_bytes:
+        type: number
+      processed_tcp_bytes:
+        type: number
+      processed_sctp_bytes:
+        type: number
+      processed_udp_bytes:
+        type: number
+      processed_packets:
+        type: number
+
+  LbProcessedTrafficMetrics:
+    type: object
+    properties:
+      lb_rule_interaction_bytes:
+        type: array
+        items:
+          type: object
+          properties:
+            service:
+              type: string
+            sip:
+              type: string
+            dip:
+              type: string
+            value:
+              type: number
+      lb_rule_interaction_packets:
+        type: array
+        items:
+          type: object
+          properties:
+            service:
+              type: string
+            sip:
+              type: string
+            dip:
+              type: string
+            value:
+              type: number
+
+  EpDistTrafficMetrics:
+    type: object
+    additionalProperties:
+      type: array
+      items:
+        type: object
+        properties:
+          dip:
+            type: string
+          value:
+            type: number
+          ratio:
+            type: number
+
+  ServiceDistTrafficMetrics:
+    type: object
+    additionalProperties:
+      type: object
+      properties:
+        value:
+          type: number
+        ratio:
+          type: number
+
+  FwDropsMetrics:
+    type: object
+    properties:
+      total_fw_drops:
+        type: number
+      total_fw_drops_per_rule:
+        type: array
+        items:
+          type: object
+          properties:
+            fw_rule:
+              type: string
+            value:
+              type: number
+
+  ReqCountPerClientMetrics:
+    type: object
+    additionalProperties:
+      type: number
+
+  Logs:
+    type: object
+    properties:
+      logs:
+        type: array
+        items:
+          type: string
+        description: List of filtered logs.
+  
+  LogArchives:
+    type: object
+    properties:
+      archives:
+        type: array
+        items:
+          type: string
+        description: List of log archive filenames.
+  
+  NodeGraphShcmea:
+    type: object
+    properties:
+      schemaVersion:
+        type: integer
+      meta:
+        type: object
+        properties:
+          preferredVisualisationType:
+            type: string
+      nodes:
+        type: array
+        items:
+          $ref: '#/definitions/Node'
+      edges:
+        type: array
+        items:
+          $ref: '#/definitions/Edge'
+  
+  Node:
+    type: object
+    properties:
+      id:
+        type: string
+      title:
+        type: string
+      subtitle:
+        type: string
+      mainstat:
+        type: number
+      secondarystat:
+        type: number
+      color:
+        type: string
+      icon:
+        type: string
+      nodeRadius:
+        type: integer
+  
+  Edge:
+    type: object
+    properties:
+      id:
+        type: string
+      source:
+        type: string
+      target:
+        type: string
+      mainstat:
+        type: number
+      secondarystat:
+        type: number
+      thickness:
+        type: integer
+      color:
+        type: string
+  
+  OauthMessageResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  
+  OauthErrorResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  
+  OauthLoginResponse:
+    properties:
+      id:
+        type: string
+        description: The unique identifier for the authenticated user (e.g., Google user ID).
+      token:
+        type: string
+        description: The access token used for API requests. Typically expires after a short duration.
+      refreshtoken:
+        type: string
+        description: The refresh token used to obtain new access tokens once the current one expires.
+      expiresin:
+        type: integer
+        description: The duration in seconds that the access token is valid for.
+    type: object
+  
+  OauthTokenResponse:
+    properties:
+      token:
+        type: string
+        description: The access token used for API requests. Typically expires after a short duration.
+      expiresin:
+        type: integer
+        description: The duration in seconds that the access token is valid for.
+    type: object
+    
+  CorsEntry:
+    type: object
+    properties:
+      cors:
+        type: array
+        description: Interface device name
+        items:
+          type: string
+          description: cors list
+
+  UpdateLicenseRequest:
+    type: object
+    required:
+      - license_key
+    properties:
+      license_key:
+        type: string
+
+#----------------------------------------------
+# GPU-Aware Load Balancing Definitions
+#----------------------------------------------
+  GPUMonitoringStatus:
+    type: object
+    properties:
+      enabled:
+        type: boolean
+        description: Whether GPU monitoring is currently active
+      routing_mode:
+        type: string
+        description: Current routing mode (standard_chwbl or gpu_aware)
+      worker_count:
+        type: integer
+        description: Number of workers being tracked
+      last_metrics_update:
+        type: string
+        format: date-time
+        description: Timestamp of last metrics update
+      ebpf_map_loaded:
+        type: boolean
+        description: Whether eBPF maps are loaded
+
+  WorkerMetricsEntry:
+    type: object
+    required:
+      - endpoint_ip
+      - queued_requests
+      - kv_cache_usage_perc
+    properties:
+      endpoint_ip:
+        type: string
+        description: Worker endpoint IP:port (e.g., "192.168.1.10:8000")
+      queued_requests:
+        type: integer
+        minimum: 0
+        description: "vllm:num_requests_running + vllm:num_requests_waiting (total queue depth)"
+      swapped_requests:
+        type: integer
+        minimum: 0
+        description: "Delta of vllm:num_preemptions_total since last update"
+      kv_cache_usage_perc:
+        type: integer
+        minimum: 0
+        maximum: 100
+        description: "vllm:gpu_cache_usage_perc * 100 (0-100 scale)"
+      num_gpu_blocks:
+        type: integer
+        minimum: 0
+        description: "Static config from vllm:cache_config_info{num_gpu_blocks}"
+      timestamp:
+        type: string
+        format: date-time
+        description: Timestamp of metrics collection
+
+  WorkerMetricsResponse:
+    type: object
+    properties:
+      workers:
+        type: array
+        items:
+          $ref: '#/definitions/WorkerMetricsEntry'
+      monitoring_enabled:
+        type: boolean
+        description: Whether GPU monitoring is enabled
+
+  GPUEnableResponse:
+    type: object
+    required:
+      - enabled
+      - routing_mode
+      - message
+    properties:
+      enabled:
+        type: boolean
+        description: Whether GPU monitoring is now enabled
+      routing_mode:
+        type: string
+        description: Current routing mode (gpu_aware or standard_chwbl)
+      message:
+        type: string
+        description: Status message
+
+  WorkerMetricsUpdateResponse:
+    type: object
+    required:
+      - endpoint_ip
+      - queued_requests
+      - message
+    properties:
+      endpoint_ip:
+        type: string
+        description: Worker endpoint that was updated
+      queued_requests:
+        type: integer
+        description: Number of queued requests (for confirmation)
+      message:
+        type: string
+        description: Status message
+
+  ConversationCleanupResponse:
+    type: object
+    required:
+      - deleted_count
+      - oldest_remaining_hours
+      - message
+    properties:
+      deleted_count:
+        type: integer
+        description: Number of conversations deleted
+      oldest_remaining_hours:
+        type: number
+        format: float
+        description: Age in hours of oldest remaining conversation
+      message:
+        type: string
+        description: Status message
+
+  LLMCatalog:
+    type: object
+    required:
+      - name
+      - weights
+      - thresholds
+    properties:
+      name:
+        type: string
+        description: Catalog profile name (e.g., chat-interactive, rag-longcontext, batch-inference, code-generation, default)
+      description:
+        type: string
+        description: Human-readable description of the workload type
+      weights:
+        type: object
+        required:
+          - queued_requests
+          - swapped_requests
+          - kv_cache_usage_perc
+        properties:
+          queued_requests:
+            type: integer
+            minimum: 0
+            maximum: 100
+            description: Weight percentage for queue depth (0-100)
+          swapped_requests:
+            type: integer
+            minimum: 0
+            maximum: 100
+            description: Weight percentage for swap activity (0-100)
+          kv_cache_usage_perc:
+            type: integer
+            minimum: 0
+            maximum: 100
+            description: Weight percentage for KV cache usage (0-100)
+      thresholds:
+        type: object
+        required:
+          - queue_high
+          - queue_critical
+          - swap_high
+          - swap_critical
+          - cache_high
+          - cache_critical
+        properties:
+          queue_high:
+            type: integer
+            minimum: 0
+            description: High threshold for queued requests
+          queue_critical:
+            type: integer
+            minimum: 0
+            description: Critical threshold for queued requests
+          swap_high:
+            type: integer
+            minimum: 0
+            description: High threshold for swapped requests
+          swap_critical:
+            type: integer
+            minimum: 0
+            description: Critical threshold for swapped requests
+          cache_high:
+            type: integer
+            minimum: 0
+            maximum: 100
+            description: High threshold for KV cache usage percentage (0-100)
+          cache_critical:
+            type: integer
+            minimum: 0
+            maximum: 100
+            description: Critical threshold for KV cache usage percentage (0-100)
+      is_builtin:
+        type: boolean
+        description: Whether this is a built-in catalog (true) or custom catalog (false)
+      version:
+        type: string
+        description: Catalog version for compatibility tracking
+
+  SNICertificateEntry:
+    type: object
+    required:
+      - hostname
+    properties:
+      hostname:
+        type: string
+        description: Hostname for SNI certificate (e.g., api.example.com). This certificate will be automatically used by all loadbalancer rules that have matching 'host' field.
+      certPath:
+        type: string
+        description: Optional certificate directory path (defaults to /opt/loxilb/cert/{hostname}). Directory must contain server.crt, server.key, and optionally rootCA.crt for mTLS.
+
+securityDefinitions:
+  BearerAuth:
+    type: apiKey
+    name: Authorization
+    in: header
+security:
+  - BearerAuth: [] # Global security applied to all endpoints by default

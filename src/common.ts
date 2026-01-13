@@ -343,13 +343,13 @@ export function formatRateForAxis(value: number, unit: 'bps' | 'pps' | 'eps' | '
 	if (value === 0) return '0';
 	
 	if (unit === 'bps') {
-		if (value >= 1e9) return `${(value / 1e9).toFixed(0)}G`;
-		if (value >= 1e6) return `${(value / 1e6).toFixed(0)}M`;
-		if (value >= 1e3) return `${(value / 1e3).toFixed(0)}K`;
+		if (value >= 1e9) return `${(value / 1e9).toFixed(0)} G`;
+		if (value >= 1e6) return `${(value / 1e6).toFixed(0)} M`;
+		if (value >= 1e3) return `${(value / 1e3).toFixed(0)} K`;
 		return value.toFixed(0);
 	} else {
-		if (value >= 1e6) return `${(value / 1e6).toFixed(0)}M`;
-		if (value >= 1e3) return `${(value / 1e3).toFixed(0)}K`;
+		if (value >= 1e6) return `${(value / 1e6).toFixed(0)} M`;
+		if (value >= 1e3) return `${(value / 1e3).toFixed(0)} K`;
 		return value.toFixed(0);
 	}
 }
@@ -357,10 +357,10 @@ export function formatRateForAxis(value: number, unit: 'bps' | 'pps' | 'eps' | '
 export function formatNumberForAxis(value: number): string {
 	if (value === 0) return '0';
 	if (value < 1_000) return value.toFixed(0);
-	if (value < 1_000_000) return (value / 1_000).toFixed(0) + 'K';
-	if (value < 1_000_000_000) return (value / 1_000_000).toFixed(0) + 'M';
-	if (value < 1_000_000_000_000) return (value / 1_000_000_000).toFixed(0) + 'B';
-	else return (value / 1_000_000_000_000).toFixed(0) + 'T';
+	if (value < 1_000_000) return (value / 1_000).toFixed(0) + ' K';
+	if (value < 1_000_000_000) return (value / 1_000_000).toFixed(0) + ' M';
+	if (value < 1_000_000_000_000) return (value / 1_000_000_000).toFixed(0) + ' B';
+	else return (value / 1_000_000_000_000).toFixed(0) + ' T';
 }
 
 export function get_size_str(value: number): string {

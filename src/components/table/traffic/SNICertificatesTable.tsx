@@ -1,0 +1,48 @@
+//---------------------------------------------------------
+// Imports
+//---------------------------------------------------------
+import DataTable from 'components/table/DataTable';
+import {ISNICertificateListItem} from 'types/security';
+import {IDataTableColumnDef} from 'types/global';
+
+//---------------------------------------------------------
+// Functional Component
+//---------------------------------------------------------
+interface SNICertificatesTableProps {
+	data: ISNICertificateListItem[];
+	selected_rows: number[];
+	onChangeSelectedRows: (indices: number[]) => void;
+	onAdd?: () => void;
+	onDelete?: () => void;
+	onRefresh?: () => void;
+}
+
+export default function SNICertificatesTable(props: SNICertificatesTableProps) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh} = props;
+
+	const cols: IDataTableColumnDef[] = [
+		{data_key: 'hostname', header: 'Hostname', width: 'wide'},
+		{data_key: 'certPath', header: 'Certificate Path', width: 'super_wide'},
+		{data_key: 'refCount', header: 'Reference Count', width: 'medium'},
+	];
+
+	const rows = data.map((item, index) => ({
+		id: index,
+		hostname: item.hostname,
+		certPath: item.certPath,
+		refCount: item.refCount.toString(),
+	}));
+
+	return (
+		<DataTable
+			name={'SNI Certificates'}
+			columns={cols}
+			rows={rows}
+			selected_rows={selected_rows}
+			onChangeSelectedRows={onChangeSelectedRows}
+			onAdd={onAdd}
+			onDelete={onDelete}
+			onRefresh={onRefresh}
+		/>
+	);
+}

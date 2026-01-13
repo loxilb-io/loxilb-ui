@@ -1,0 +1,115 @@
+//---------------------------------------------------------
+// SYN Flood Protection Types
+//---------------------------------------------------------
+export interface ISYNFloodConfigMod {
+	enabled: boolean;
+	synThreshold: number;
+	cookieThreshold: number;
+	whitelistIps?: string[];
+}
+
+export interface ISYNFloodEntry {
+	enabled: boolean;
+	synThreshold: number;
+	cookieThreshold: number;
+	whitelistIps: string[];
+	totalSyns: number;
+	blockedSyns: number;
+	passedSyns: number;
+	cookieActivations: number;
+	uniqueIps: number;
+}
+
+export interface ISYNFloodResponse {
+	synfloodAttr: ISYNFloodEntry[];
+}
+
+//---------------------------------------------------------
+// Unified Security Rate Limiting Types (P0-5 + P0-6 + P0-7)
+//---------------------------------------------------------
+export interface ISecurityRateConfigMod {
+	synEnabled: boolean;
+	synThreshold: number;
+	cookieThreshold: number;
+	connRateEnabled: boolean;
+	ratePerSec: number;
+	concurrentLimit: number;
+	udpEnabled: boolean;
+	udpPktThreshold: number;
+	udpBandwidthMB: number;
+	whitelistIps?: string[];
+}
+
+export interface ISecurityRateEntry {
+	synEnabled: boolean;
+	synThreshold: number;
+	cookieThreshold: number;
+	connRateEnabled: boolean;
+	ratePerSec: number;
+	concurrentLimit: number;
+	udpEnabled: boolean;
+	udpPktThreshold: number;
+	udpBandwidthMB: number;
+	whitelistIps: string[];
+	synBlocked: number;
+	synPassed: number;
+	synCookies: number;
+	connBlocked: number;
+	connPassed: number;
+	concurrentBlocked: number;
+	udpBlocked: number;
+	udpPassed: number;
+	udpBytesBlocked: number;
+	udpBytesPassed: number;
+	uniqueIps: number;
+}
+
+export interface ISecurityRateResponse {
+	securityrateAttr: ISecurityRateEntry[];
+}
+
+//---------------------------------------------------------
+// SNI Certificate Types
+//---------------------------------------------------------
+export interface ISNICertificateEntry {
+	hostname: string;
+	certPath?: string;
+}
+
+export interface ISNICertificateListItem {
+	hostname: string;
+	certPath: string;
+	refCount: number;
+}
+
+export interface ISNICertificatesResponse {
+	certificates: ISNICertificateListItem[];
+	totalCertificates: number;
+}
+
+export interface ISNICertificateDeleteRequest {
+	hostname: string;
+}
+
+//---------------------------------------------------------
+// IP Filter Types
+//---------------------------------------------------------
+export interface IIPFilterEntry {
+	filterType: 'whitelist' | 'blacklist';
+	cidr: string;
+	zone?: number;
+	priority?: number;
+	action: 'allow' | 'drop';
+	packets?: number;
+	bytes?: number;
+}
+
+export interface IIPFilterResponse {
+	ipFilterAttr: IIPFilterEntry[];
+}
+
+export interface IIPFilterDeleteParams {
+	filterType: string;
+	cidr: string;
+	zone?: number;
+}

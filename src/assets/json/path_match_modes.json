@@ -1,0 +1,5 @@
+[
+	{"id": 0, "name": "disabled", "send_value": "disabled"},
+	{"id": 1, "name": "prefix", "send_value": "prefix"},
+	{"id": 2, "name": "exact", "send_value": "exact"}
+]

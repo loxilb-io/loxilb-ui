@@ -1,0 +1,5 @@
+[
+	{"id": 0, "name": "http1", "send_value": "http1"},
+	{"id": 1, "name": "http2", "send_value": "http2"},
+	{"id": 2, "name": "both", "send_value": "both"}
+]
