@@ -4,7 +4,7 @@
 export interface IServiceArguments {
 	name: string;
 
-	externalIP: string;			
+	externalIP: string;
 	inactiveTimeOut: number;
 	port: number;
 	protocol: string;
@@ -28,6 +28,10 @@ export interface IServiceArguments {
 	host?: string;
 	proxyprotocolv2?: boolean;
 	egress?: boolean;
+	path_prefix?: string;			// URL path prefix for L7 routing (e.g., /v1/users)
+	path_match_mode?: 'disabled' | 'prefix' | 'exact';	// Path matching mode
+	llm_type?: string;				// LLM catalog profile name for GPU-aware load balancing
+	backend_protocol?: 'http1' | 'http2' | 'both';		// Backend protocol capability for ALPN negotiation
 }
 
 export interface IEndpoint {

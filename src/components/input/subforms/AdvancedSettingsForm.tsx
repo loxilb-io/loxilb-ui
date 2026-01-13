@@ -3,6 +3,8 @@ import modes from 'assets/json/modes.json';
 import opers from 'assets/json/opers.json';
 import securities from 'assets/json/securities.json';
 import sels from 'assets/json/sels.json';
+import path_match_modes from 'assets/json/path_match_modes.json';
+import backend_protocols from 'assets/json/backend_protocols.json';
 import AccordionBox from 'components/element/AccordionBox';
 import ParamBox from 'components/element/ParamBox';
 import HorizontalStack from 'components/layout/HorizontalStack';
@@ -21,6 +23,8 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 	const oper_list: IEnumItem[] = opers;
 	const mode_list: IEnumItem[] = modes;
 	const security_list: IEnumItem[] = securities;
+	const path_match_mode_list: IEnumItem[] = path_match_modes;
+	const backend_protocol_list: IEnumItem[] = backend_protocols;
 
 	const handleChange = useCallback(
 		(field: keyof IServiceArguments) => (newValue: any) => {
@@ -54,6 +58,45 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 							   <ParamBox label={t('Host')} value={value?.host ?? ''} onChange={handleChange('host')} param_desc={params?.host} disabled={value?.mode !== 4} />
 							   <ParamBox label={t('Private IP')} value={value?.privateIP ?? ''} onChange={handleChange('privateIP')} param_desc={{...params?.privateIP, type: 'ipaddress'}} />
 					   </HorizontalStack> */}
+
+					   {/* L7 Routing Configuration */}
+					   <HorizontalStack>
+							<ParamBox label={t('Host')} value={value?.host ?? ''} onChange={handleChange('host')} param_desc={params?.host} disabled={value?.mode !== 4} />
+							<ParamBox
+								label={t('Path Match Mode')}
+								value={value?.path_match_mode ?? ''}
+								onChange={handleChange('path_match_mode')}
+								param_desc={{...params?.path_match_mode, enum: path_match_mode_list, description: t('Path matching mode (disabled: hostname-only, prefix: longest prefix match, exact: exact path match)')}}
+								disabled={value?.mode !== 4}
+							/>
+					   </HorizontalStack>
+					   <HorizontalStack>
+							<ParamBox
+								label={t('Path Prefix')}
+								value={value?.path_prefix ?? ''}
+								onChange={handleChange('path_prefix')}
+								param_desc={{...params?.path_prefix, description: t('URL path prefix for L7 routing (e.g., /v1/users)')}}
+								disabled={value?.mode !== 4}
+							/>
+					   </HorizontalStack>
+
+					   {/* Backend Protocol & LLM Configuration */}
+					   <HorizontalStack>
+							   <ParamBox
+								   label={t('Backend Protocol')}
+								   value={value?.backend_protocol ?? ''}
+								   onChange={handleChange('backend_protocol')}
+								   param_desc={{...params?.backend_protocol, enum: backend_protocol_list, description: t('Backend protocol for ALPN negotiation (http1: HTTP/1.1 only, http2: HTTP/2 only, both: supports both)')}}
+								   disabled={value?.mode !== 4}
+							   />
+							   <ParamBox
+								   label={t('LLM Type')}
+								   value={value?.llm_type ?? ''}
+								   onChange={handleChange('llm_type')}
+								   param_desc={{...params?.llm_type, description: t('LLM catalog profile for GPU-aware load balancing (e.g., chat-interactive, rag-longcontext, batch-inference)')}}
+								   disabled={value?.mode !== 4}
+							   />
+					   </HorizontalStack>
 			   </Stack>
 	   </AccordionBox>
 	);

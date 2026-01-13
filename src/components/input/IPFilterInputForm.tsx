@@ -1,0 +1,121 @@
+//---------------------------------------------------------
+// Imports
+//---------------------------------------------------------
+import {Grid2, Stack, MenuItem} from '@mui/material';
+import NewBox from 'components/layout/NewBox';
+import ParamBox from 'components/element/ParamBox';
+import {t} from 'i18next';
+import {IIPFilterEntry} from 'types/security';
+import React from 'react';
+
+//---------------------------------------------------------
+// Functional Component
+//---------------------------------------------------------
+interface IPFilterInputFormProps {
+	value?: IIPFilterEntry;
+	onChange: (data: IIPFilterEntry & {isValid?: boolean}) => void;
+}
+
+export default function IPFilterInputForm(props: IPFilterInputFormProps) {
+	const {onChange} = props;
+
+	const [form, setForm] = React.useState<IIPFilterEntry>({
+		filterType: 'whitelist',
+		cidr: '',
+		zone: 0,
+		priority: 100,
+		action: 'allow',
+	});
+
+	const handleChange = (field: keyof IIPFilterEntry) => (value: any) => {
+		const newForm = {...form, [field]: value};
+		setForm(newForm);
+		onChange({...newForm, isValid: validateForm(newForm)});
+	};
+
+	const validateForm = (data: IIPFilterEntry): boolean => {
+		// CIDR is required
+		if (!data.cidr || data.cidr.trim() === '') return false;
+
+		// Basic CIDR format validation (simple check)
+		const cidrRegex = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/;
+		if (!cidrRegex.test(data.cidr)) return false;
+
+		// Priority should be positive
+		if (data.priority !== undefined && data.priority < 0) return false;
+
+		// Zone should be non-negative
+		if (data.zone !== undefined && data.zone < 0) return false;
+
+		return true;
+	};
+
+	React.useEffect(() => {
+		onChange({...form, isValid: validateForm(form)});
+	}, []);
+
+	return (
+		<NewBox item_name={t('IP Filter Rule Configuration')}>
+			<Stack spacing={3}>
+				<Grid2 container spacing={2}>
+					<ParamBox
+						label={t('Filter Type')}
+						value={form.filterType}
+						onChange={(value: string) => handleChange('filterType')(value as 'whitelist' | 'blacklist')}
+						param_desc={{
+							type: 'string',
+							description: 'Filter type (whitelist or blacklist)',
+							required: true,
+							enum: ['whitelist', 'blacklist'],
+						}}
+					/>
+
+					<ParamBox
+						label={t('CIDR')}
+						value={form.cidr}
+						onChange={(value: string) => handleChange('cidr')(value)}
+						param_desc={{
+							type: 'string',
+							description: 'IP address in CIDR notation (e.g., 192.168.1.0/24)',
+							required: true,
+						}}
+					/>
+				</Grid2>
+
+				<Grid2 container spacing={2}>
+					<ParamBox
+						label={t('Action')}
+						value={form.action}
+						onChange={(value: string) => handleChange('action')(value as 'allow' | 'drop')}
+						param_desc={{
+							type: 'string',
+							description: 'Action to take (allow or drop)',
+							required: true,
+							enum: ['allow', 'drop'],
+						}}
+					/>
+
+					<ParamBox
+						label={t('Priority')}
+						value={form.priority?.toString() ?? '100'}
+						onChange={(value: string) => handleChange('priority')(parseInt(value) || 100)}
+						param_desc={{
+							type: 'integer',
+							description: 'Rule priority (higher = more important)',
+						}}
+					/>
+				</Grid2>
+
+				<ParamBox
+					label={t('Security Zone')}
+					value={form.zone?.toString() ?? '0'}
+					onChange={(value: string) => handleChange('zone')(parseInt(value) || 0)}
+					param_desc={{
+						type: 'integer',
+						description: 'Security zone (0 = all zones)',
+					}}
+				/>
+			</Stack>
+		</NewBox>
+	);
+}

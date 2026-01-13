@@ -44,6 +44,11 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 			probeRetries: (initialData?.serviceArguments?.probeRetries && initialData.serviceArguments.probeRetries !== -1) ? initialData.serviceArguments.probeRetries : undefined,
 			block: initialData?.serviceArguments?.block ?? 0,
 			inactiveTimeOut: initialData?.serviceArguments?.inactiveTimeOut ?? 0,
+			// New optional fields for API updates
+			path_prefix: initialData?.serviceArguments?.path_prefix,
+			path_match_mode: initialData?.serviceArguments?.path_match_mode,
+			llm_type: initialData?.serviceArguments?.llm_type,
+			backend_protocol: initialData?.serviceArguments?.backend_protocol,
 		},
 		secondaryIPs: initialData?.secondaryIPs || [],
 		allowedSources: initialData?.allowedSources || [],

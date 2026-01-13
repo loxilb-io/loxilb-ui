@@ -43,6 +43,8 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 					<SingleTextBox label={t('Mode')} value={modeValue} tooltip="Value for load balance algorithim(0-rr, 1-hash, 2-priority, 3-persist, 4-lc, 5-n2, 6-n3, 0-default)"/>
 					<SingleTextBox label={t('Block')} value={blockValue} tooltip='Value for Firewall block (0-disabled, Other-Firewall number)' />
 					<SingleTextBox label={t('SNAT')} value={serviceArguments.snat ?? false} tooltip='Flag to enable SNAT' />
+					<SingleTextBox label={t('Egress')} value={serviceArguments.egress} tooltip='Flag to indicate an egress rule'/>
+					<SingleTextBox label={t('Operation')} value={serviceArguments.oper} tooltip='End-point specific op (0-create, 1-attachEP, 2-detachEP)'/>
 				</Grid2>
 			</ValueBunch>
 
@@ -57,15 +59,20 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 					<SingleTextBox label={t('Monitoring')} value={serviceArguments.monitor ?? false} />
 				</Grid2>
 			</ValueBunch>
-
+			<ValueBunch name={t('L7 Proxy Information')}>
+				<Grid2 container spacing={2}>
+					<SingleTextBox label={t('Host')} value={serviceArguments.host} tooltip='Ingress specific host URL path'/>
+					<SingleTextBox label={t('Path Prefix')} value={serviceArguments.path_prefix} tooltip='URL path prefix for L7 routing (e.g., /v1/users)'/>
+					<SingleTextBox label={t('Path Match Mode')} value={serviceArguments.path_match_mode} tooltip="Path matching mode ('disabled', 'prefix', or 'exact')"/>
+					<SingleTextBox label={t('Security')} value={serviceArguments.security} tooltip='Value for Security mode (0-Plain, 1-https, 1-tls, 2-e2ehttps, 0-default) in fullproxy mode'/>
+					<SingleTextBox label={t('Backend Protocol')} value={serviceArguments.backend_protocol} tooltip="Backend protocol capability for ALPN negotiation ('http1', 'http2', or 'both')"/>
+					<SingleTextBox label={t('Proxy Protocol v2')} value={serviceArguments.proxyprotocolv2} tooltip='Flag to enable proxy protocol v2' />
+					<SingleTextBox label={t('LLM Type')} value={serviceArguments.llm_type} tooltip='LLM catalog profile name for GPU-aware load balancing'/>
+				</Grid2>
+			</ValueBunch>			
 			<ValueBunch name={t('Kubernetes Information')}>
 				<Grid2 container spacing={2}>
-					<SingleTextBox label={t('Managed')} value={serviceArguments.managed ?? false} tooltip='Kubernetes Load Balancer externally managed rule or not' />
-					<SingleTextBox label={t('Security')} value={serviceArguments.security} tooltip='Value for Security mode (0-Plain, 1-https, 1-tls, 2-e2ehttps, 0-default) in fullproxy mode'/>
-					<SingleTextBox label={t('Host')} value={serviceArguments.host} tooltip='Ingress specific host URL path'/>
-					<SingleTextBox label={t('Proxy Protocol v2')} value={serviceArguments.proxyprotocolv2} tooltip='Flag to enable proxy protocol v2' />
-					<SingleTextBox label={t('Egress')} value={serviceArguments.egress} tooltip='Flag to indicate an egress rule'/>
-					<SingleTextBox label={t('Operation')} value={serviceArguments.oper} tooltip='End-point specific op (0-create, 1-attachEP, 2-detachEP)'/>
+					<SingleTextBox label={t('Managed')} value={serviceArguments.managed ?? false} tooltip='Kubernetes Load Balancer externally managed rule or not' />					
 				</Grid2>
 			</ValueBunch>
 		</Stack>
