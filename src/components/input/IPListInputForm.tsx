@@ -28,19 +28,21 @@ export function SecondaryIPListInputForm(props: {values: ISecondaryIP[]; onChang
 	   const newList = [...ip_list];
 	   newList[index] = trimmedVal;
 	   set_ip_list(newList);
-	   onChange(newList.map(ip => ({secondaryIP: ip})));
+	   // Filter out empty values before passing to parent
+	   onChange(newList.filter(ip => ip.trim() !== '').map(ip => ({secondaryIP: ip})));
    };
 
    const handleAdd = () => {
 	   const newList = [...ip_list, ''];
 	   set_ip_list(newList);
-	   onChange(newList.map(ip => ({secondaryIP: ip})));
+	   // Don't call onChange here - wait for user to fill in the value
    };
 
    const handleDelete = (index: number) => {
 	   const newList = ip_list.filter((_, i) => i !== index);
 	   set_ip_list(newList);
-	   onChange(newList.map(ip => ({secondaryIP: ip})));
+	   // Filter out empty values before passing to parent
+	   onChange(newList.filter(ip => ip.trim() !== '').map(ip => ({secondaryIP: ip})));
    };
 
    return (
@@ -80,19 +82,21 @@ export function AllowedSourcesListInputForm(props: {values: IAllowedSource[]; on
 	   const newList = [...ip_list];
 	   newList[index] = trimmedVal;
 	   set_ip_list(newList);
-	   onChange(newList.map(ip => ({prefix: ip})));
+	   // Filter out empty values before passing to parent
+	   onChange(newList.filter(ip => ip.trim() !== '').map(ip => ({prefix: ip})));
    };
 
    const handleAdd = () => {
 	   const newList = [...ip_list, ''];
 	   set_ip_list(newList);
-	   onChange(newList.map(ip => ({prefix: ip})));
+	   // Don't call onChange here - wait for user to fill in the value
    };
 
    const handleDelete = (index: number) => {
 	   const newList = ip_list.filter((_, i) => i !== index);
 	   set_ip_list(newList);
-	   onChange(newList.map(ip => ({prefix: ip})));
+	   // Filter out empty values before passing to parent
+	   onChange(newList.filter(ip => ip.trim() !== '').map(ip => ({prefix: ip})));
    };
 
    return (
@@ -102,7 +106,7 @@ export function AllowedSourcesListInputForm(props: {values: IAllowedSource[]; on
 				   {ip_list.map((item, index) => (
 					   <Box border={'1px solid #ccc'} borderRadius={2} padding={2} key={index}>
 						   <Stack spacing={1} direction="row" justifyContent="space-between" alignItems="center">
-							   <ParamBox label={t('IP Address')} value={item ?? ''} onChange={val => handleChange(val, index)} param_desc={{type: 'ipaddress'}} />
+							   <ParamBox label={t('IP Address')} value={item ?? ''} onChange={val => handleChange(val, index)} param_desc={{type: 'ipaddress_cidr'}} />
 							   <SimpleButton type="delete" onClick={() => handleDelete(index)} />
 						   </Stack>
 					   </Box>
