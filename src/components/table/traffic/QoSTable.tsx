@@ -55,5 +55,5 @@ export default function QoSTable(props: {data: IPolicyConfiguration; selected_ro
 	   })()
 	   : undefined;
 
-	return <DataTable name={'QoS'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onRefresh={onRefresh} />;
+	return <DataTable name={'QoS'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onRefresh={onRefresh} hideCheckbox={true} />;
 }

@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import { Stack, Box, FormControl, InputLabel, Select, MenuItem, TextField, Button, Chip } from '@mui/material';
+import { Stack, Box, TextField } from '@mui/material';
 import { getStableHash } from 'common';
 import SubTabs from 'components/element/SubTabs';
 import AlertResolveForm from 'components/input/AlertResolveForm';
@@ -29,20 +29,40 @@ export default function AlertManagementPage() {
 	const [searchParams] = useSearchParams();
 	const alertId = searchParams.get('alertId');
 
-	// Query parameters for filtering
-	const [queryParams, setQueryParams] = useState<IAlertQueryParams>({
-		limit: 100,
-		offset: 0,
-	});
-
 	// Filter states
 	const [statusFilter, setStatusFilter] = useState<string>('');
 	const [severityFilter, setSeverityFilter] = useState<string>('');
-	const [ruleNameFilter, setRuleNameFilter] = useState<string>('');
-	const [metricNameFilter, setMetricNameFilter] = useState<string>('');
+
+	// Fixed query parameters - no server-side filtering
+	const queryParams: IAlertQueryParams = {
+		limit: 100,
+		offset: 0,
+	};
 
 	const { data: alert_data, refetch } = useAllAlertsMain(inst, queryParams);
-	const alert_info: IAlertData = useMemo(() => ({ alerts: alert_data?.data ?? [] }), [alert_data]);
+	
+	// Client-side filtering with partial text matching (like ConntrackPage)
+	const filteredAlerts = useMemo(() => {
+		if (!alert_data?.data) return [];
+		
+		let filtered = alert_data.data;
+		
+		// Apply filters with partial text matching
+		if (statusFilter) {
+			filtered = filtered.filter(item => 
+				item.status?.toLowerCase().includes(statusFilter.toLowerCase())
+			);
+		}
+		if (severityFilter) {
+			filtered = filtered.filter(item => 
+				item.severity?.toLowerCase().includes(severityFilter.toLowerCase())
+			);
+		}
+		
+		return filtered;
+	}, [alert_data?.data, statusFilter, severityFilter]);
+	
+	const alert_info: IAlertData = useMemo(() => ({ alerts: filteredAlerts }), [filteredAlerts]);
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
 	const [selected_key, set_selected_key] = useState<string | null>(null);
@@ -78,45 +98,6 @@ export default function AlertManagementPage() {
 		request?: IResolveAlertRequest;
 		isValid?: boolean;
 	} | null>(null);
-
-	// Apply filters
-	const applyFilters = useCallback(() => {
-		const newParams: IAlertQueryParams = {
-			limit: 100,
-			offset: 0,
-		};
-
-		// Only add filter parameters if they have values
-		if (statusFilter) {
-			newParams.status = statusFilter as 'active' | 'resolved';
-		}
-		if (severityFilter) {
-			newParams.severity = severityFilter as 'critical' | 'warning' | 'info';
-		}
-		// if (ruleNameFilter) {
-		// 	newParams.rule_name = ruleNameFilter;
-		// }
-		// if (metricNameFilter) {
-		// 	newParams.metric_name = metricNameFilter;
-		// }
-
-		setQueryParams(newParams);
-	}, [statusFilter, severityFilter, ruleNameFilter, metricNameFilter]);
-
-	// Clear filters
-	const clearFilters = useCallback(() => {
-		setStatusFilter('');
-		setSeverityFilter('');
-		setRuleNameFilter('');
-		setMetricNameFilter('');
-		setQueryParams({
-			limit: 100,
-			offset: 0,
-		});
-	}, []);
-
-	// Active filter count
-	const activeFilterCount = [statusFilter, severityFilter, ruleNameFilter, metricNameFilter].filter(f => f).length;
 
 	// Alert resolution handler
 	const handleResolve = useCallback(async () => {
@@ -214,97 +195,22 @@ export default function AlertManagementPage() {
 		<Fragment>
 			{/* Filter Controls */}
 			<Box sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1, mb: 2 }}>
-				<Stack spacing={2}>
-					<Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
-						<Stack direction="row" spacing={2} alignItems="center">
-							<FormControl size="small" sx={{ minWidth: 120 }}>
-								<InputLabel>{t('Status')}</InputLabel>
-							<Select
-								value={statusFilter}
-								label={t('Status')}
-								onChange={(e) => setStatusFilter(e.target.value)}
-							>
-								<MenuItem value="">{t('All')}</MenuItem>
-								<MenuItem value="firing">{t('Active')}</MenuItem>
-								<MenuItem value="resolved">{t('Resolved')}</MenuItem>
-							</Select>
-						</FormControl>
+				<Stack direction="row" spacing={2} alignItems="center">
+					<TextField
+						size="small"
+						label={t('Status')}
+						value={statusFilter}
+						onChange={(e) => setStatusFilter(e.target.value)}
+						sx={{ minWidth: 150 }}
+					/>
 
-						<FormControl size="small" sx={{ minWidth: 120 }}>
-							<InputLabel>{t('Severity')}</InputLabel>
-							<Select
-								value={severityFilter}
-								label={t('Severity')}
-								onChange={(e) => setSeverityFilter(e.target.value)}
-							>
-								<MenuItem value="">{t('All')}</MenuItem>
-								<MenuItem value="critical">{t('Critical')}</MenuItem>
-								<MenuItem value="warning">{t('Warning')}</MenuItem>
-								<MenuItem value="info">{t('Info')}</MenuItem>
-							</Select>
-						</FormControl>
-
-						{/* <TextField
-							size="small"
-							label={t('Rule Name')}
-							value={ruleNameFilter}
-							onChange={(e) => setRuleNameFilter(e.target.value)}
-							sx={{ minWidth: 200 }}
-						/>
-
-						<TextField
-							size="small"
-							label={t('Metric Name')}
-							value={metricNameFilter}
-							onChange={(e) => setMetricNameFilter(e.target.value)}
-							sx={{ minWidth: 200 }}
-						/> */}
-
-						<Button variant="contained" onClick={applyFilters}>
-							{t('Apply Filters')}
-						</Button>
-
-						{activeFilterCount > 0 && (
-							<Button variant="outlined" onClick={clearFilters}>
-								{t('Clear All')} ({activeFilterCount})
-							</Button>
-						)}
-					</Stack>
-				</Stack>
-
-				{/* Active Filters Display */}
-					{activeFilterCount > 0 && (
-						<Stack direction="row" spacing={1} flexWrap="wrap">
-							{statusFilter && (
-								<Chip
-									label={`${t('Status')}: ${statusFilter}`}
-									onDelete={() => setStatusFilter('')}
-									size="small"
-								/>
-							)}
-							{severityFilter && (
-								<Chip
-									label={`${t('Severity')}: ${severityFilter}`}
-									onDelete={() => setSeverityFilter('')}
-									size="small"
-								/>
-							)}
-							{ruleNameFilter && (
-								<Chip
-									label={`${t('Rule')}: ${ruleNameFilter}`}
-									onDelete={() => setRuleNameFilter('')}
-									size="small"
-								/>
-							)}
-							{metricNameFilter && (
-								<Chip
-									label={`${t('Metric')}: ${metricNameFilter}`}
-									onDelete={() => setMetricNameFilter('')}
-									size="small"
-								/>
-							)}
-						</Stack>
-					)}
+					<TextField
+						size="small"
+						label={t('Severity')}
+						value={severityFilter}
+						onChange={(e) => setSeverityFilter(e.target.value)}
+						sx={{ minWidth: 150 }}
+					/>
 				</Stack>
 			</Box>
 
@@ -324,7 +230,7 @@ export default function AlertManagementPage() {
 						{cur_tab_idx === 0 && (
 							<AlertSettingsPanel 
 								alertRule={{
-									id: selected_alert.rule_name || '',
+									id: selected_alert.rule_id || '',
 									name: selected_alert.rule_name || '',
 									metric_name: selected_alert.metric_name || '',
 									enabled: true,
@@ -341,7 +247,7 @@ export default function AlertManagementPage() {
 						{cur_tab_idx === 1 && (
 							<AlertHistoryPanel 
 								alertRule={{
-									id: selected_alert.rule_name || '',
+									id: selected_alert.rule_id || '',
 									name: selected_alert.rule_name || '',
 									metric_name: selected_alert.metric_name || '',
 									enabled: true,
@@ -358,7 +264,7 @@ export default function AlertManagementPage() {
 						{cur_tab_idx === 2 && (
 							<AlertActionsPanel 
 								alertRule={{
-									id: selected_alert.rule_name || '',
+									id: selected_alert.rule_id || '',
 									name: selected_alert.rule_name || '',
 									metric_name: selected_alert.metric_name || '',
 									enabled: true,

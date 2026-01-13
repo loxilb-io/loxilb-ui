@@ -40,7 +40,7 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 					<SingleTextBox label={t('Protocol')} value={serviceArguments.protocol} />
 					<SingleTextBox label={t('BGP')} value={serviceArguments.bgp ?? false} tooltip='Flag to enable BGP'/>
 					<SingleTextBox label={t('SEL')} value={selValue} tooltip='Value for load balance algorithim(0-rr, 1-hash, 2-priority, 3-persist, 4-lc, 5-n2, 6-n3, 0-default)'/>
-					<SingleTextBox label={t('Mode')} value={modeValue} tooltip="Value for load balance algorithim(0-rr, 1-hash, 2-priority, 3-persist, 4-lc, 5-n2, 6-n3, 0-default)"/>
+					<SingleTextBox label={t('Mode')} value={modeValue} tooltip="Value for NAT mode (0-DNAT,1-onearm, 2-fullnat, 3-dsr, 4-fullproxy, 5-hostonearm, 0-default)"/>
 					<SingleTextBox label={t('Block')} value={blockValue} tooltip='Value for Firewall block (0-disabled, Other-Firewall number)' />
 					<SingleTextBox label={t('SNAT')} value={serviceArguments.snat ?? false} tooltip='Flag to enable SNAT' />
 				</Grid2>
