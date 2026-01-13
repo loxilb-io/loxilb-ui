@@ -15,7 +15,7 @@ import QoSPanel from 'components/panel/QOSPanel';
 import SecondaryIPsPanel from 'components/panel/SecondaryIPPanel';
 import SettingsPanel from 'components/panel/SettingPanel';
 import LBTable from 'components/table/traffic/LBTable';
-import {request_create_load_balancer_config, request_delete_lb_by_ip_port_proto} from 'connector/instance/load_balancer';
+import {request_create_load_balancer_config, request_delete_lb_by_ip_port_proto, request_delete_lb_by_ip_portrange_proto} from 'connector/instance/load_balancer';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useErrorPopup} from 'hooks/useErrorPopup';
@@ -105,7 +105,13 @@ export default function LBRulePage() {
 		const port = selectedLB.serviceArguments.port;
 		const protocol = selectedLB.serviceArguments.protocol;
 
-		const res = await request_delete_lb_by_ip_port_proto(inst, externalIP, port, protocol);
+		// if selectedLB.serviceArguments.portMax exists and is greater than port, use that API
+		let res;
+		if (selectedLB.serviceArguments.portMax && selectedLB.serviceArguments.portMax > port) {
+			res = await request_delete_lb_by_ip_portrange_proto(inst, externalIP, port, selectedLB.serviceArguments.portMax, protocol);
+		} else {
+			res = await request_delete_lb_by_ip_port_proto(inst, externalIP, port, protocol);
+		}
 		if (res.status === 'success') {
 			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
 			set_selected_rows([]);

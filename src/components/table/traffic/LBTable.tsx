@@ -55,7 +55,7 @@ export default function LBTable(props: {data: ILBData; selected_rows: number[]; 
 			   return {
 				   id: index, // Use hash as row ID
 				   externalIP: item.serviceArguments.externalIP,
-				   port: item.serviceArguments.port,
+				   port: item.serviceArguments.port + (item.serviceArguments.portMax ? ` - ${item.serviceArguments.portMax}` : ''),
 				   protocol: item.serviceArguments.protocol,
 				   name: item.serviceArguments.name,
 				   mark: mark,

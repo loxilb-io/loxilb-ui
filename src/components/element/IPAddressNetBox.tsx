@@ -28,7 +28,9 @@ export default function IPAddressCidrBox(props: {label: string; value: string; d
 		const validationError = getIPValidationError(trimmedVal);
 		setError(validationError);
 
-		if (!validationError) onChange(trimmedVal);
+		// Always call onChange with the value, even if there's a validation error
+		// This allows the user to continue editing the field
+		onChange(trimmedVal);
 	};
 
 	useEffect(() => {
@@ -43,8 +45,10 @@ export default function IPAddressCidrBox(props: {label: string; value: string; d
 		if (disabled) onChange('');
 	}, [disabled]);
 
-	// Highlight required/empty field if parent validation says so
-	const showRequired = externalHelperText === 'Required' || (externalError && !localValue);
+	// Combine internal and external error states
+	const hasError = !!error || !!externalError;
+	const displayHelperText = externalHelperText || error;
+
 	return (
 		<TextField
 			label={label}
@@ -54,8 +58,8 @@ export default function IPAddressCidrBox(props: {label: string; value: string; d
 			disabled={disabled}
 			onChange={e => handleChange(e.target.value)}
 			placeholder={'192.168.0.1/24'}
-			error={externalError !== undefined ? !!externalError : !!error || showRequired}
-			helperText={externalHelperText !== undefined ? externalHelperText : error}
+			error={hasError}
+			helperText={displayHelperText}
 			slotProps={{inputLabel: {shrink: true}}}
 		/>
 	);
