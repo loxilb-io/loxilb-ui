@@ -293,6 +293,12 @@ function LicenseManagementPanel() {
 		);
 	}, [selectedRows, licenseInfo, openPopUp, refetch, isUpdateFormValid]);
 
+	const handleRefresh = () => {
+		setSelectedRows([]);
+		setSelectedKey(null);
+		refetch();
+	};
+
 	if (isLoading) {
 		return (
 			<Stack spacing={3}>
@@ -316,7 +322,7 @@ function LicenseManagementPanel() {
 				onAdd={handleAdd}
 				onDelete={handleDelete}
 				onUpdate={handleUpdate}
-				onRefresh={refetch}
+				onRefresh={handleRefresh}
 			/>
 		</Fragment>
 	) : null;
@@ -337,6 +343,25 @@ function AdminUserManagementPanel(props: {
 
 	const {openPopUp} = usePopUp();
 	const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
+	const [selectedKey, setSelectedKey] = useState<string | null>(null);
+
+	// Hash function for user
+	const getUserHashKey = (item: any) => {
+		const str = `${item.id || ''}_${item.username || ''}_${item.email || ''}`;
+		return getStableHash(str);
+	};
+
+	// Sorted users
+	const sortedUsers = users ? [...users].sort((a, b) => getUserHashKey(a) - getUserHashKey(b)) : [];
+
+	// Find selected index in sortedUsers
+	let selectedIndex = -1;
+	if (selectedUsers.length === 1 && users) {
+		const original = users[selectedUsers[0]];
+		selectedIndex = sortedUsers.findIndex(user => getUserHashKey(user) === getUserHashKey(original));
+	} else if (selectedKey) {
+		selectedIndex = sortedUsers.findIndex(user => getUserHashKey(user).toString() === selectedKey);
+	}
 
 	// Expose refetch function to parent via ref
 	useEffect(() => {
@@ -344,6 +369,37 @@ function AdminUserManagementPanel(props: {
 			refetchRef.current = refetch;
 		}
 	}, [refetch, refetchRef]);
+
+	// Update selectedKey when selection changes
+	useEffect(() => {
+		if (!users || users.length === 0) return;
+		if (selectedUsers.length === 1) {
+			const item = users[selectedUsers[0]];
+			setSelectedKey(getUserHashKey(item).toString());
+		} else if (selectedKey !== null) {
+			setSelectedKey(null);
+		}
+	}, [users, selectedUsers, selectedKey]);
+
+	// Selection handler: map sorted index back to original
+	const handleSelectionChange = (indices: number[]) => {
+		if (indices.length === 1 && users) {
+			const sortedItem = sortedUsers[indices[0]];
+			const originalIndex = users.findIndex(user => getUserHashKey(user) === getUserHashKey(sortedItem));
+			setSelectedUsers(originalIndex !== -1 ? [originalIndex] : []);
+		} else if (indices.length > 1) {
+			// Multiple selections: map each sorted index back to original
+			const originalIndices = indices
+				.map(idx => {
+					const sortedItem = sortedUsers[idx];
+					return users.findIndex(user => getUserHashKey(user) === getUserHashKey(sortedItem));
+				})
+				.filter(idx => idx !== -1);
+			setSelectedUsers(originalIndices);
+		} else {
+			setSelectedUsers([]);
+		}
+	};
 
 	const handleDeleteUser = () => {
 		if (selectedUsers.length === 0) return;
@@ -379,6 +435,12 @@ function AdminUserManagementPanel(props: {
 		}
 	};
 
+	const handleRefresh = () => {
+		setSelectedUsers([]);
+		setSelectedKey(null);
+		onRefresh();
+	};
+
 	if (isLoading) {
 		return (
 			<Stack spacing={3}>
@@ -402,13 +464,16 @@ function AdminUserManagementPanel(props: {
 
 			<Fragment>
 				<UserManagementTable
-					data={{users}}
-					selected_rows={selectedUsers}
-					onChangeSelectedRows={setSelectedUsers}
+					data={{users: sortedUsers}}
+					selected_rows={selectedIndex !== -1 ? [selectedIndex] : selectedUsers.length > 1 ? selectedUsers.map(idx => {
+						const original = users[idx];
+						return sortedUsers.findIndex(user => getUserHashKey(user) === getUserHashKey(original));
+					}).filter(idx => idx !== -1) : []}
+					onChangeSelectedRows={handleSelectionChange}
 					onAdd={onAddUser}
 					onUpdate={handleEditUser}
 					onDelete={handleDeleteUser}
-					onRefresh={onRefresh}
+					onRefresh={handleRefresh}
 					currentUserId={currentUser?.id}
 					isAdmin={currentUser?.role === 'admin'}
 				/>
