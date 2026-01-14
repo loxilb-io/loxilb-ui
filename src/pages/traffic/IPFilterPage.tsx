@@ -15,7 +15,7 @@ import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useIPFilterRules} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
-import {Fragment, useRef, useState} from 'react';
+import {Fragment, useRef, useState, useMemo} from 'react';
 import React from 'react';
 import {IIPFilterEntry} from 'types/security';
 
@@ -74,42 +74,77 @@ export default function IPFilterPage() {
 	};
 
 	// Sorted entries
-	const sortedEntries = [...entries].sort((a, b) => getHashKey(a) - getHashKey(b));
+	const sortedEntries = useMemo(() => 
+		[...entries].sort((a, b) => getHashKey(a) - getHashKey(b)),
+		[entries]
+	);
 
-	// Map selected rows
-	let selected_index = -1;
-	if (selected_rows.length === 1 && entries.length > 0) {
-		const original = entries[selected_rows[0]];
-		selected_index = sortedEntries.findIndex(entry => getHashKey(entry) === getHashKey(original));
-	}
+	// Map selected original indices to sorted indices for display
+	const selectedSortedIndices = useMemo(() => {
+		if (entries.length === 0 || selected_rows.length === 0) return [];
+		
+		return selected_rows
+			.map(originalIdx => {
+				const original = entries[originalIdx];
+				return sortedEntries.findIndex(entry => getHashKey(entry) === getHashKey(original));
+			})
+			.filter(idx => idx !== -1);
+	}, [selected_rows, entries, sortedEntries]);
 
-	// Selection handler: map sorted index back to original
+	// Find single selected index for detail panel
+	const selected_index = selectedSortedIndices.length === 1 ? selectedSortedIndices[0] : -1;
+
+	// Selection handler: map sorted indices back to original indices
 	const handleSelectionChange = (indices: number[]) => {
-		if (indices.length === 1 && entries.length > 0) {
-			const sortedItem = sortedEntries[indices[0]];
-			const originalIndex = entries.findIndex(entry => getHashKey(entry) === getHashKey(sortedItem));
-			set_selected_rows(originalIndex !== -1 ? [originalIndex] : []);
-		} else {
+		if (entries.length === 0) {
 			set_selected_rows([]);
+			return;
 		}
+
+		if (indices.length === 0) {
+			set_selected_rows([]);
+			return;
+		}
+
+		// Map each sorted index back to original index
+		const originalIndices = indices
+			.map(sortedIdx => {
+				const sortedItem = sortedEntries[sortedIdx];
+				return entries.findIndex(entry => getHashKey(entry) === getHashKey(sortedItem));
+			})
+			.filter(idx => idx !== -1);
+
+		set_selected_rows(originalIndices);
 	};
 
 	const handleDelete = async () => {
 		if (!inst || selected_rows.length === 0) return;
 
-		const item = entries[selected_rows[0]];
-		const res = await request_delete_ipfilter_rule(inst, {
-			filterType: item.filterType,
-			cidr: item.cidr,
-			zone: item.zone,
+		// Delete multiple selected IP filter rules
+		const deletePromises = selected_rows.map(async (rowIndex) => {
+			const item = entries[rowIndex];
+			return request_delete_ipfilter_rule(inst, {
+				filterType: item.filterType,
+				cidr: item.cidr,
+				zone: item.zone,
+			});
 		});
 
-		if (res.status === 'success') {
-			openPopUp(t('Success'), t('IP filter rule deleted successfully.'), t('OK'));
+		const results = await Promise.all(deletePromises);
+		const failures = results.filter(res => res.status === 'error');
+
+		if (failures.length === 0) {
+			openPopUp(t('Success'), t('Deleted {{count}} rule(s) successfully.', {count: selected_rows.length}), t('OK'));
+			set_selected_rows([]);
+			setTimeout(() => refetch(), 1000);
+		} else if (failures.length < results.length) {
+			// Partial success
+			openPopUp(t('Warning'), t('{{success}} succeeded, {{failed}} failed.', {success: results.length - failures.length, failed: failures.length}), t('OK'));
 			set_selected_rows([]);
 			setTimeout(() => refetch(), 1000);
 		} else {
-			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
+			// All failed
+			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: failures[0].error}), t('OK'));
 		}
 	};
 
@@ -146,15 +181,20 @@ export default function IPFilterPage() {
 		);
 	};
 
+	const handleRefresh = () => {
+		set_selected_rows([]);
+		refetch();
+	};
+
 	return (
 		<Fragment>
 			<IPFilterTable
 				data={sortedEntries}
-				selected_rows={selected_index !== -1 ? [selected_index] : []}
+				selected_rows={selectedSortedIndices}
 				onChangeSelectedRows={handleSelectionChange}
 				onAdd={handleAdd}
 				onDelete={selected_rows.length > 0 ? handleDelete : undefined}
-				onRefresh={refetch}
+				onRefresh={handleRefresh}
 			/>
 			{selected_index !== -1 && sortedEntries[selected_index] && (
 				<LowerSection>
