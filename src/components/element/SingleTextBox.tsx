@@ -23,7 +23,8 @@ export default function SingleTextBox(props: {label: string; value?: string | nu
 					{tooltip && <TooltipMark content={tooltip} />}
 				</Box>
 				<Typography variant="body2" sx={{userSelect: 'text'}}>
-					{value === false ? 'False' : value !== null && value !== undefined ? capitalize(value.toString()) : t('None')}
+					{/* {value === false ? 'False' : value !== null && value !== undefined ? capitalize(value.toString()) : t('None')} */}
+					{value === false ? 'False' : value !== null && value !== undefined ? value.toString() : t('None')}
 				</Typography>
 			</Stack>
 		</Box>

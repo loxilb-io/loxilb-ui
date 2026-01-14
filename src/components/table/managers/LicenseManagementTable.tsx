@@ -75,7 +75,8 @@ export default function LicenseManagementTable(props: LicenseManagementTableProp
 				is_active: item.is_active ? t('Active') : t('Inactive'),
 				installed_at: item.installed_at ? new Date(item.installed_at).toLocaleDateString() : 'N/A',
 				expires_at: item.expires_at ? new Date(item.expires_at).toLocaleDateString() : 'N/A',
-				license_key_hash: item.license_key_hash?.toString().substring(0, 20) + '...' || 'N/A',
+				// license_key_hash: item.license_key_hash?.toString().substring(0, 20) + '...' || 'N/A',
+				license_key_hash: item.license_key_hash?.toString() || 'N/A',
 				_uniqueKey: getHashKey(item)
 			}));
 		})()

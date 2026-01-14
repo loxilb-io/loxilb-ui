@@ -44,6 +44,10 @@ export default function MACAddressBox(props: {
 		onChange('');
 	}, [disabled]);
 
+	// Combine internal and external error states
+	const hasError = !!internalError || !!error;
+	const displayHelperText = helperText || internalError;
+
 	return (
 		<TextField
 			label={label}
@@ -53,8 +57,8 @@ export default function MACAddressBox(props: {
 			disabled={disabled}
 			onChange={e => handleChange(e.target.value)}
 			placeholder={'00:1A:2B:3C:4D:5E'}
-			error={error !== undefined ? error : !!internalError}
-			helperText={helperText !== undefined ? helperText : internalError}
+			error={hasError}
+			helperText={displayHelperText}
 			slotProps={{inputLabel: {shrink: true}}}
 		/>
 	);

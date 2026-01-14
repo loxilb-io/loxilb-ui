@@ -92,8 +92,28 @@ export async function request_delete_lb_by_ip_port_proto(instance: IInstance, ip
 	}
 }
 
+export async function request_delete_lb_by_ip_portrange_proto(instance: IInstance, ip: string, port: number, portmax: number, proto: string): Promise<ApiResult> {
+	const resp = await DELETE_INST(instance, `/config/loadbalancer/externalipaddress/${ip}/port/${port}/portmax/${portmax}/protocol/${proto}`);
+	if (resp.code !== 200 && resp.code !== 204) {
+		const errorMessage = createDetailedErrorMessage(resp, 'Delete Load Balancer');
+		return {status: 'error', error: errorMessage};
+	} else {
+		return {status: 'success'};
+	}
+}
+
 export async function request_delete_lb_by_hosturl_ip_port_proto(instance: IInstance, hosturl: string, ip: string, port: number, proto: string): Promise<ApiResult> {
 	const resp = await DELETE_INST(instance, `/config/loadbalancer/hosturl/${hosturl}/externalipaddress/${ip}/port/${port}/protocol/${proto}`);
+	if (resp.code !== 200 && resp.code !== 204) {
+		const errorMessage = createDetailedErrorMessage(resp, 'Delete Load Balancer');
+		return {status: 'error', error: errorMessage};
+	} else {
+		return {status: 'success'};
+	}
+}
+
+export async function request_delete_lb_by_hosturl_ip_portrange_proto(instance: IInstance, hosturl: string, ip: string, port: number, portmax: number, proto: string): Promise<ApiResult> {
+	const resp = await DELETE_INST(instance, `/config/loadbalancer/hosturl/${hosturl}/externalipaddress/${ip}/port/${port}/portmax/${portmax}/protocol/${proto}`);
 	if (resp.code !== 200 && resp.code !== 204) {
 		const errorMessage = createDetailedErrorMessage(resp, 'Delete Load Balancer');
 		return {status: 'error', error: errorMessage};

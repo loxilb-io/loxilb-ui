@@ -67,5 +67,5 @@ export default function ConntrackTable(props: {data: ICtData; selected_rows: num
 	   })()
 	   : undefined;
 
-	return <DataTable name={'Connection Track'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onRefresh={onRefresh} />;
+	return <DataTable name={'Connection Track'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onRefresh={onRefresh} hideCheckbox={true} />;
 }

@@ -151,12 +151,12 @@ export async function query_get_inst_log_archives(instance: IInstance): Promise<
 export async function download_inst_log_archive(instance: IInstance | null, filename: string): Promise<void> {
 	if (!instance) return;
 
-	const url = `/log-archives/${filename}`;
-	const base_url = instance.api_endpoint;
-	const full_url = `${base_url}${url}`;
+	// Use OAM Proxy pattern
+	const oam_base_url = getApiBaseUrl();
+	const proxied_url = `${oam_base_url}/loxilbs/${instance.id}/netlox/v1/log-archives/${filename}`;
 
 	const access_token = load_token();
-	const response = await fetch(full_url, {method: 'GET', headers: {Authorization: `Bearer ${access_token}`}});
+	const response = await fetch(proxied_url, {method: 'GET', headers: {Authorization: `Bearer ${access_token}`}});
 
 	if (!response.ok) {
 		const text = await response.text();

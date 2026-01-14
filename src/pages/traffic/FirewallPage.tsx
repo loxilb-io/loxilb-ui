@@ -112,23 +112,44 @@ export default function FirewallPage() {
    // Sorted firewall rules
    const sortedAttr = fw_info.fwAttr ? [...fw_info.fwAttr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
    const instanceRef = useRef<IFirewallRule | null>(null);
-   let selected_index = -1;
 
-   if (selected_rows.length === 1 && fw_info.fwAttr) {
-	   const original = fw_info.fwAttr[selected_rows[0]];
-	   selected_index = sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
-   } else if (selected_portName) {
-	   selected_index = sortedAttr.findIndex(attr => attr.ruleArguments.portName === selected_portName);
-   }
-   // Selection handler: map sorted index back to original
+   // Map selected original indices to sorted indices for display
+   const selectedSortedIndices = React.useMemo(() => {
+	   if (!fw_info.fwAttr || selected_rows.length === 0) return [];
+	   
+	   return selected_rows
+		   .map(originalIdx => {
+			   const original = fw_info.fwAttr[originalIdx];
+			   return sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
+		   })
+		   .filter(idx => idx !== -1);
+   }, [selected_rows, fw_info.fwAttr, sortedAttr]);
+
+   // Find single selected index for detail panel
+   const selected_index = selectedSortedIndices.length === 1 ? selectedSortedIndices[0] : 
+	   (selected_portName ? sortedAttr.findIndex(attr => attr.ruleArguments.portName === selected_portName) : -1);
+
+   // Selection handler: map sorted indices back to original indices
    const handleSelectionChange = (indices: number[]) => {
-	   if (indices.length === 1 && fw_info.fwAttr) {
-		   const sortedItem = sortedAttr[indices[0]];
-		   const originalIndex = fw_info.fwAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
-		   set_selected_rows(originalIndex !== -1 ? [originalIndex] : []);
-	   } else {
+	   if (!fw_info.fwAttr) {
 		   set_selected_rows([]);
+		   return;
 	   }
+
+	   if (indices.length === 0) {
+		   set_selected_rows([]);
+		   return;
+	   }
+
+	   // Map each sorted index back to original index
+	   const originalIndices = indices
+		   .map(sortedIdx => {
+			   const sortedItem = sortedAttr[sortedIdx];
+			   return fw_info.fwAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
+		   })
+		   .filter(idx => idx !== -1);
+
+	   set_selected_rows(originalIndices);
    };
 
 	const handleDelete = async () => {
@@ -179,6 +200,12 @@ export default function FirewallPage() {
 		);
 	};
 
+	const handleRefresh = () => {
+		set_selected_rows([]);
+		set_selected_portName(null);
+		refetch();
+	};
+
    // Synchronize selected_portName with selected_rows
    React.useEffect(() => {
 	   if (!fw_info.fwAttr || fw_info.fwAttr.length === 0) return;
@@ -194,11 +221,11 @@ export default function FirewallPage() {
 	   <Fragment>
 		   <FirewallTable
 			   data={{fwAttr: sortedAttr}}
-			   selected_rows={selected_index !== -1 ? [selected_index] : []}
+			   selected_rows={selectedSortedIndices}
 			   onChangeSelectedRows={handleSelectionChange}
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
-			   onRefresh={refetch}
+			   onRefresh={handleRefresh}
 		   />
 	   {selected_index !== -1 && (
 		   <LowerSection>
