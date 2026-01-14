@@ -48,24 +48,43 @@ export default function AlertManagerPage() {
 	// Sorted alert rules
 	const sortedAttr = alert_info.rules ? [...alert_info.rules].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
 
-	// Find selected index in sortedAttr
-	let selected_index = -1;
-	if (selected_rows.length === 1 && alert_info.rules) {
-		const original = alert_info.rules[selected_rows[0]];
-		selected_index = sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
-	} else if (selected_key) {
-		selected_index = sortedAttr.findIndex(attr => getHashKey(attr).toString() === selected_key);
-	}
+	// Map selected original indices to sorted indices for display
+	const selectedSortedIndices = useMemo(() => {
+		if (!alert_info.rules || selected_rows.length === 0) return [];
+		
+		return selected_rows
+			.map(originalIdx => {
+				const original = alert_info.rules[originalIdx];
+				return sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
+			})
+			.filter(idx => idx !== -1);
+	}, [selected_rows, alert_info.rules, sortedAttr]);
 
-	// Selection handler: map sorted index back to original
+	// Find single selected index for detail panel
+	const selected_index = selectedSortedIndices.length === 1 ? selectedSortedIndices[0] : 
+		(selected_key ? sortedAttr.findIndex(attr => getHashKey(attr).toString() === selected_key) : -1);
+
+	// Selection handler: map sorted indices back to original indices
 	const handleSelectionChange = (indices: number[]) => {
-		if (indices.length === 1 && alert_info.rules) {
-			const sortedItem = sortedAttr[indices[0]];
-			const originalIndex = alert_info.rules.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
-			set_selected_rows(originalIndex !== -1 ? [originalIndex] : []);
-		} else {
+		if (!alert_info.rules) {
 			set_selected_rows([]);
+			return;
 		}
+
+		if (indices.length === 0) {
+			set_selected_rows([]);
+			return;
+		}
+
+		// Map each sorted index back to original index
+		const originalIndices = indices
+			.map(sortedIdx => {
+				const sortedItem = sortedAttr[sortedIdx];
+				return alert_info.rules.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
+			})
+			.filter(idx => idx !== -1);
+
+		set_selected_rows(originalIndices);
 	};
 
 	useEffect(() => {
@@ -239,6 +258,13 @@ export default function AlertManagerPage() {
 		}
 	}, [inst, selected_rows, alert_info, openPopUp, refetch]);
 
+	const handleRefresh = () => {
+		set_selected_rows([]);
+		set_selected_key(null);
+		set_rule_name(null);
+		refetch();
+	};
+
 	useEffect(() => {
 		if (!ruleId || !alert_info || alert_info.rules.length === 0) return;
 		const index = alert_info.rules.findIndex(attr => attr.id === ruleId);
@@ -261,7 +287,7 @@ export default function AlertManagerPage() {
 				onUpdate={handleUpdate}
 				onTest={handleTest}
 				onToggleEnabled={handleToggleEnabled}
-				onRefresh={refetch}
+			onRefresh={handleRefresh}
 			/>
 
 			{selected_index !== -1 && rule_name && (

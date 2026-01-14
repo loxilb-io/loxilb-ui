@@ -27,6 +27,7 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 
 	const blockValue = serviceArguments.block ?? 0;
 	const timeoutValue = serviceArguments.probeTimeout ?? 1800;
+	const inactiveTimeOutValue = serviceArguments.inactiveTimeOut ?? 0;
 
 	return (
 		<Stack spacing={2}>
@@ -43,6 +44,7 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 					<SingleTextBox label={t('Mode')} value={modeValue} tooltip="Value for NAT mode (0-DNAT,1-onearm, 2-fullnat, 3-dsr, 4-fullproxy, 5-hostonearm, 0-default)"/>
 					<SingleTextBox label={t('Block')} value={blockValue} tooltip='Value for Firewall block (0-disabled, Other-Firewall number)' />
 					<SingleTextBox label={t('SNAT')} value={serviceArguments.snat ?? false} tooltip='Flag to enable SNAT' />
+					<SingleTextBox label={t('Inactive Timeout')} value={inactiveTimeOutValue} tooltip='Value for inactive timeout seconds' />
 				</Grid2>
 			</ValueBunch>
 

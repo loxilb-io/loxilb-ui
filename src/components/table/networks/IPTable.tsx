@@ -9,8 +9,8 @@ import {getStableHash} from 'common';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function IPTable(props: {data: IIpData; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onRefresh?: any}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh} = props;
+export default function IPTable(props: {data: IIpData; selected_rows: number[]; onChangeSelectedRows: any; onDelete: any; onUpdate?: any; onRefresh?: any}) {
+	const {data, selected_rows, onChangeSelectedRows, onDelete, onUpdate, onRefresh} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'dev', header: 'Device', width: 'wide', tooltip: 'Device (Interface Name)'},
@@ -21,17 +21,15 @@ export default function IPTable(props: {data: IIpData; selected_rows: number[]; 
    // Use global hash function for IP entry
    const getHashKey = (item: any) => getStableHash(`${item.dev || ''}_${item.ipAddress.join(', ') || ''}`);
 
+   // Use data as provided (already sorted by parent component)
    const rows = data.ipAttr
-	   ? (() => {
-		   const sorted = [...data.ipAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
-		   return sorted.map((item, index) => ({
-			   id: index,
-			   dev: item.dev,
-			   ipAddress: item.ipAddress.join(', '),
-			   sync: item.sync,
-			   _uniqueKey: getHashKey(item),
-		   }));
-	   })()
+	   ? data.ipAttr.map((item, index) => ({
+		   id: index,
+		   dev: item.dev,
+		   ipAddress: item.ipAddress.join(', '),
+		   sync: item.sync,
+		   _uniqueKey: getHashKey(item),
+	   }))
 	   : undefined;
 
 	return (
@@ -41,7 +39,7 @@ export default function IPTable(props: {data: IIpData; selected_rows: number[]; 
 			rows={rows || []}
 			selected_rows={selected_rows}
 			onChangeSelectedRows={onChangeSelectedRows}
-			onAdd={onAdd}
+			onEdit={onUpdate}
 			onDelete={onDelete}
 			onRefresh={onRefresh}
 			hideIdColumn={false}

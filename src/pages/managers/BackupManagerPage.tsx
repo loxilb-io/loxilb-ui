@@ -47,24 +47,43 @@ export default function BackupManagerPage() {
 	// Sorted backups
 	const sortedAttr = backup_info.backups ? [...backup_info.backups].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
 
-	// Find selected index in sortedAttr
-	let selected_index = -1;
-	if (selected_rows.length === 1 && backup_info.backups) {
-		const original = backup_info.backups[selected_rows[0]];
-		selected_index = sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
-	} else if (selected_key) {
-		selected_index = sortedAttr.findIndex(attr => getHashKey(attr).toString() === selected_key);
-	}
+	// Map selected original indices to sorted indices for display
+	const selectedSortedIndices = useMemo(() => {
+		if (!backup_info.backups || selected_rows.length === 0) return [];
+		
+		return selected_rows
+			.map(originalIdx => {
+				const original = backup_info.backups[originalIdx];
+				return sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
+			})
+			.filter(idx => idx !== -1);
+	}, [selected_rows, backup_info.backups, sortedAttr]);
 
-	// Selection handler: map sorted index back to original
+	// Find single selected index for detail panel
+	const selected_index = selectedSortedIndices.length === 1 ? selectedSortedIndices[0] : 
+		(selected_key ? sortedAttr.findIndex(attr => getHashKey(attr).toString() === selected_key) : -1);
+
+	// Selection handler: map sorted indices back to original indices
 	const handleSelectionChange = (indices: number[]) => {
-		if (indices.length === 1 && backup_info.backups) {
-			const sortedItem = sortedAttr[indices[0]];
-			const originalIndex = backup_info.backups.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
-			set_selected_rows(originalIndex !== -1 ? [originalIndex] : []);
-		} else {
+		if (!backup_info.backups) {
 			set_selected_rows([]);
+			return;
 		}
+
+		if (indices.length === 0) {
+			set_selected_rows([]);
+			return;
+		}
+
+		// Map each sorted index back to original index
+		const originalIndices = indices
+			.map(sortedIdx => {
+				const sortedItem = sortedAttr[sortedIdx];
+				return backup_info.backups.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
+			})
+			.filter(idx => idx !== -1);
+
+		set_selected_rows(originalIndices);
 	};
 
 	useEffect(() => {
@@ -309,7 +328,7 @@ export default function BackupManagerPage() {
 		<Fragment>
 			<BackupTable
 				data={{backups: sortedAttr}}
-				selected_rows={selected_index !== -1 ? [selected_index] : []}
+				selected_rows={selectedSortedIndices}
 				onChangeSelectedRows={handleSelectionChange}
 				onAdd={handleAdd}
 				onDelete={handleDelete}

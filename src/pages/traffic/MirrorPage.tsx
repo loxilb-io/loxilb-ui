@@ -82,23 +82,44 @@ export default function MirrorPage() {
    };
    // Sorted mirrors
    const sortedAttr = mirror_info.mirrAttr ? [...mirror_info.mirrAttr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
-   // Find selected index in sortedAttr
-   let selected_index = -1;
-   if (selected_rows.length === 1 && mirror_info.mirrAttr) {
-	   const original = mirror_info.mirrAttr[selected_rows[0]];
-	   selected_index = sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
-   } else if (selected_mirrorIdent) {
-	   selected_index = sortedAttr.findIndex(attr => attr.mirrorIdent === selected_mirrorIdent);
-   }
-   // Selection handler: map sorted index back to original
+   
+   // Map selected original indices to sorted indices for display
+   const selectedSortedIndices = React.useMemo(() => {
+	   if (!mirror_info.mirrAttr || selected_rows.length === 0) return [];
+	   
+	   return selected_rows
+		   .map(originalIdx => {
+			   const original = mirror_info.mirrAttr[originalIdx];
+			   return sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
+		   })
+		   .filter(idx => idx !== -1);
+   }, [selected_rows, mirror_info.mirrAttr, sortedAttr]);
+
+   // Find single selected index for detail panel
+   const selected_index = selectedSortedIndices.length === 1 ? selectedSortedIndices[0] : 
+	   (selected_mirrorIdent ? sortedAttr.findIndex(attr => attr.mirrorIdent === selected_mirrorIdent) : -1);
+
+   // Selection handler: map sorted indices back to original indices
    const handleSelectionChange = (indices: number[]) => {
-	   if (indices.length === 1 && mirror_info.mirrAttr) {
-		   const sortedItem = sortedAttr[indices[0]];
-		   const originalIndex = mirror_info.mirrAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
-		   set_selected_rows(originalIndex !== -1 ? [originalIndex] : []);
-	   } else {
+	   if (!mirror_info.mirrAttr) {
 		   set_selected_rows([]);
+		   return;
 	   }
+
+	   if (indices.length === 0) {
+		   set_selected_rows([]);
+		   return;
+	   }
+
+	   // Map each sorted index back to original index
+	   const originalIndices = indices
+		   .map(sortedIdx => {
+			   const sortedItem = sortedAttr[sortedIdx];
+			   return mirror_info.mirrAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
+		   })
+		   .filter(idx => idx !== -1);
+
+	   set_selected_rows(originalIndices);
    };
 
 	const handleDelete = async () => {
@@ -150,6 +171,12 @@ export default function MirrorPage() {
 		);
 	};
 
+	const handleRefresh = () => {
+		set_selected_rows([]);
+		set_selected_mirrorIdent(null);
+		refetch();
+	};
+
    // Synchronize selected_mirrorIdent with selected_rows
    React.useEffect(() => {
 	   if (!mirror_info.mirrAttr || mirror_info.mirrAttr.length === 0) return;
@@ -165,11 +192,11 @@ export default function MirrorPage() {
 	   <Fragment>
 		   <MirrorTable
 			   data={{mirrAttr: sortedAttr}}
-			   selected_rows={selected_index !== -1 ? [selected_index] : []}
+			   selected_rows={selectedSortedIndices}
 			   onChangeSelectedRows={handleSelectionChange}
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
-			   onRefresh={refetch}
+			   onRefresh={handleRefresh}
 		   />
 		   {selected_index !== -1 && (
 			   <LowerSection>
