@@ -35,7 +35,31 @@ export default function IPPage() {
 	const inst = useInstanceFromURL();
 
 	const {data, refetch} = useIPAttr(inst); // IIpAttribute[]
-	const ip_info: IIpData = {ipAttr: data ?? []};
+	
+	// Transform data: split entries with multiple IPs into separate entries
+	const ip_info: IIpData = useMemo(() => {
+		if (!data) return {ipAttr: []};
+		
+		const expandedAttr: IIpAttribute[] = [];
+		
+		data.forEach(attr => {
+			if (attr.ipAddress && attr.ipAddress.length > 0) {
+				// Create one entry for each IP address
+				attr.ipAddress.forEach(ip => {
+					expandedAttr.push({
+						...attr,
+						ipAddress: [ip]
+					});
+				});
+			} else {
+				// If no IP addresses, keep the entry as is
+				expandedAttr.push(attr);
+			}
+		});
+		
+		return {ipAttr: expandedAttr};
+	}, [data]);
+	
 	const instanceRef = useRef<IIpAttributeInput | null>(null);
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);

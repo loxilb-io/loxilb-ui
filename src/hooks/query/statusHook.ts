@@ -48,11 +48,16 @@ export function useStatus(instance: IInstance | null) {
 	const fsLoading = false;
 	const fsError = null;
 
-	const {data: processAttr = [], isLoading: psLoading, error: psError} = useQueryInstanceData(['status', 'process', instance_id], query_get_process_status, instance);
-	const {data: systemInfo, isLoading: devLoading, error: devError} = useQueryInstanceData(['status', 'device', instance_id], query_get_device_status, instance);
+	const {data: processAttr = [], isLoading: psLoading, error: psError, refetch: refetchProcess} = useQueryInstanceData(['status', 'process', instance_id], query_get_process_status, instance);
+	const {data: systemInfo, isLoading: devLoading, error: devError, refetch: refetchDevice} = useQueryInstanceData(['status', 'device', instance_id], query_get_device_status, instance);
 
 	const isLoading = fsLoading || psLoading || devLoading;
 	const error = fsError || psError || devError;
+
+	const refetch = () => {
+		refetchProcess();
+		refetchDevice();
+	};
 
 	return {
 		filesystemAttr,
@@ -60,6 +65,7 @@ export function useStatus(instance: IInstance | null) {
 		systemInfo,
 		isLoading,
 		error,
+		refetch,
 	};
 }
 
