@@ -60,34 +60,55 @@ export default function LBRulePage() {
 	// Sorted LB rules
 	const sortedAttr = lb_info.lbAttr ? [...lb_info.lbAttr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
 
-	// Find selected index in sortedAttr
-	let selected_index = -1;
-	if (selected_rows.length === 1 && lb_info.lbAttr) {
-		const original = lb_info.lbAttr[selected_rows[0]];
-		selected_index = sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
-	} else if (selected_key) {
-		selected_index = sortedAttr.findIndex(attr => getHashKey(attr).toString() === selected_key);
-	}
+	// Map selected original indices to sorted indices for display
+	const selectedSortedIndices = useMemo(() => {
+		if (!lb_info.lbAttr || selected_rows.length === 0) return [];
+		
+		return selected_rows
+			.map(originalIdx => {
+				const original = lb_info.lbAttr[originalIdx];
+				return sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
+			})
+			.filter(idx => idx !== -1);
+	}, [selected_rows, lb_info.lbAttr, sortedAttr]);
 
-	// Selection handler: map sorted index back to original
+	// Find single selected index for detail panel (backward compatibility with selected_key)
+	const selected_index = selectedSortedIndices.length === 1 ? selectedSortedIndices[0] : 
+		(selected_key ? sortedAttr.findIndex(attr => getHashKey(attr).toString() === selected_key) : -1);
+
+	// Selection handler: map sorted indices back to original indices
 	const handleSelectionChange = (indices: number[]) => {
-		if (indices.length === 1 && lb_info.lbAttr) {
-			const sortedItem = sortedAttr[indices[0]];
-			const originalIndex = lb_info.lbAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
-			set_selected_rows(originalIndex !== -1 ? [originalIndex] : []);
-		} else {
+		if (!lb_info.lbAttr) {
 			set_selected_rows([]);
+			return;
 		}
+
+		if (indices.length === 0) {
+			set_selected_rows([]);
+			return;
+		}
+
+		// Map each sorted index back to original index
+		const originalIndices = indices
+			.map(sortedIdx => {
+				const sortedItem = sortedAttr[sortedIdx];
+				return lb_info.lbAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
+			})
+			.filter(idx => idx !== -1);
+
+		set_selected_rows(originalIndices);
 	};
 
 	useEffect(() => {
 		if (!lb_info || lb_info.lbAttr.length === 0) return;
+		// Only show details panel when exactly one row is selected
 		if (selected_rows.length === 1) {
 			const item = lb_info.lbAttr[selected_rows[0]];
 			set_selected_key(getHashKey(item).toString());
 			set_lb_name(item.serviceArguments.name || 'unnamed');
 			set_cur_tab_idx(0);
 		} else {
+			// Clear details when multiple or no rows selected
 			set_selected_key(null);
 			set_lb_name(null);
 			set_cur_tab_idx(0);
@@ -98,31 +119,43 @@ export default function LBRulePage() {
 	const {errorPopup, showAddError, showUpdateError, showDeleteError, closeErrorPopup} = useErrorPopup();
 
 	const handleDelete = useCallback(async () => {
-		if (!inst || selected_rows.length !== 1) return;
+		if (!inst || selected_rows.length === 0) return;
 
-		const selectedLB = lb_info.lbAttr[selected_rows[0]];
-		const externalIP = selectedLB.serviceArguments.externalIP;
-		const port = selectedLB.serviceArguments.port;
-		const protocol = selectedLB.serviceArguments.protocol;
+		// Delete multiple selected load balancers
+		const deletePromises = selected_rows.map(async (rowIndex) => {
+			const selectedLB = lb_info.lbAttr[rowIndex];
+			const externalIP = selectedLB.serviceArguments.externalIP;
+			const port = selectedLB.serviceArguments.port;
+			const protocol = selectedLB.serviceArguments.protocol;
 
-		// if selectedLB.serviceArguments.portMax exists and is greater than port, use that API
-		let res;
-		if (selectedLB.serviceArguments.portMax && selectedLB.serviceArguments.portMax > port) {
-			res = await request_delete_lb_by_ip_portrange_proto(inst, externalIP, port, selectedLB.serviceArguments.portMax, protocol);
-		} else {
-			res = await request_delete_lb_by_ip_port_proto(inst, externalIP, port, protocol);
-		}
-		if (res.status === 'success') {
-			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
+			// if selectedLB.serviceArguments.portMax exists and is greater than port, use that API
+			if (selectedLB.serviceArguments.portMax && selectedLB.serviceArguments.portMax > port) {
+				return request_delete_lb_by_ip_portrange_proto(inst, externalIP, port, selectedLB.serviceArguments.portMax, protocol);
+			} else {
+				return request_delete_lb_by_ip_port_proto(inst, externalIP, port, protocol);
+			}
+		});
+
+		const results = await Promise.all(deletePromises);
+		const failures = results.filter(res => res.status === 'error');
+
+		if (failures.length === 0) {
+			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: selected_rows.length}), t('OK'));
 			set_selected_rows([]);
 			setTimeout(() => {
 				refetch();
 			}, 1000);
+		} else if (failures.length < results.length) {
+			// Partial success
+			showDeleteError('load balancer rule(s)', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+			setTimeout(() => {
+				refetch();
+			}, 1000);
 		} else {
-			// Show formatted error popup
-			showDeleteError('load balancer rule', res.error);
+			// All failed
+			showDeleteError('load balancer rule(s)', failures[0].error);
 		}
-	}, [inst, selected_rows, lb_info, showDeleteError, refetch]);
+	}, [inst, selected_rows, lb_info, showDeleteError, refetch, openPopUp]);
 
 	const instanceRef = useRef<IServiceConfiguration | null>(null);
 	const handleAdd = useCallback(() => {
@@ -222,6 +255,13 @@ export default function LBRulePage() {
 		);
 	}, [inst, selected_rows, lb_info, showUpdateError, refetch, enableYes]);
 
+	const handleRefresh = () => {
+		set_selected_rows([]);
+		set_selected_key(null);
+		set_lb_name(null);
+		refetch();
+	};
+
 	useEffect(() => {
 		if (!servName || !lb_info || lb_info.lbAttr.length === 0) return;
 		const index = lb_info.lbAttr.findIndex(attr => attr.serviceArguments.name === servName);
@@ -237,12 +277,12 @@ export default function LBRulePage() {
 		<Fragment>
 			<LBTable
 				data={{lbAttr: sortedAttr}}
-				selected_rows={selected_index !== -1 ? [selected_index] : []}
+				selected_rows={selectedSortedIndices}
 				onChangeSelectedRows={handleSelectionChange}
 				onAdd={handleAdd}
 				onDelete={handleDelete}
 				onUpdate={handleUpdate}
-				onRefresh={refetch}
+					onRefresh={handleRefresh}
 			/>
 
 			{selected_index !== -1 && (

@@ -97,7 +97,7 @@ export default function EndpointListForm(props: {
 								value={serviceArguments.probeport}
 								onChange={handleServiceArgChange('probeport')}
 								param_desc={{...serviceArgumentsParams?.probeport, type: 'port'}}
-								disabled={!isProbePortEnabled}
+								disabled={!isProbePortEnabled && !serviceArguments.monitor}
 							/>
 						</HorizontalStack>
 
@@ -107,14 +107,14 @@ export default function EndpointListForm(props: {
 								value={serviceArguments?.probereq ?? ''}
 								onChange={handleServiceArgChange('probereq')}
 								param_desc={serviceArgumentsParams?.probereq}
-								disabled={!isProbeReqRespEnabled()}
+								disabled={!isProbeReqRespEnabled() && !serviceArguments.monitor}
 							/>
 							<ParamBox
 								label={t('Probe Response')}
 								value={serviceArguments?.proberesp ?? ''}
 								onChange={handleServiceArgChange('proberesp')}
 								param_desc={serviceArgumentsParams?.proberesp}
-								disabled={!isProbeReqRespEnabled()}
+								disabled={!isProbeReqRespEnabled() && !serviceArguments.monitor}
 							/>
 						</HorizontalStack>
 
@@ -124,14 +124,14 @@ export default function EndpointListForm(props: {
 								value={serviceArguments?.probeTimeout ?? ''}
 								onChange={handleServiceArgChange('probeTimeout')}
 								param_desc={serviceArgumentsParams?.probeTimeout}
-								disabled={!isProbeTimeoutRetriesEnabled}
+								disabled={!isProbeTimeoutRetriesEnabled && !serviceArguments.monitor}
 							/>
 							<ParamBox
 								label={t('Probe Retries')}
 								value={serviceArguments?.probeRetries ?? ''}
 								onChange={handleServiceArgChange('probeRetries')}
 								param_desc={serviceArgumentsParams?.probeRetries}
-								disabled={!isProbeTimeoutRetriesEnabled}
+								disabled={!isProbeTimeoutRetriesEnabled && !serviceArguments.monitor}
 							/>
 						</HorizontalStack>
 					</Stack>

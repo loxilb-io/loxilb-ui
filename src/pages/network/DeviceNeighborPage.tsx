@@ -39,24 +39,43 @@ export default function DeviceNeighborPage() {
    // Sorted neighbor entries
    const sortedAttr = neighbor_info.neighborAttr ? [...neighbor_info.neighborAttr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
    
-   // Find selected index in sortedAttr
-   let selected_index = -1;
-   if (selected_rows.length === 1 && neighbor_info.neighborAttr) {
-	   const original = neighbor_info.neighborAttr[selected_rows[0]];
-	   selected_index = sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
-   } else if (selected_key) {
-	   selected_index = sortedAttr.findIndex(attr => `${attr.dev}_${attr.ipAddress}` === selected_key);
-   }
-   
-   // Selection handler: map sorted index back to original
+   // Map selected original indices to sorted indices for display
+   const selectedSortedIndices = React.useMemo(() => {
+	   if (!neighbor_info.neighborAttr || selected_rows.length === 0) return [];
+	   
+	   return selected_rows
+		   .map(originalIdx => {
+			   const original = neighbor_info.neighborAttr[originalIdx];
+			   return sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
+		   })
+		   .filter(idx => idx !== -1);
+   }, [selected_rows, neighbor_info.neighborAttr, sortedAttr]);
+
+   // Find single selected index for detail panel
+   const selected_index = selectedSortedIndices.length === 1 ? selectedSortedIndices[0] : 
+	   (selected_key ? sortedAttr.findIndex(attr => `${attr.dev}_${attr.ipAddress}` === selected_key) : -1);
+
+   // Selection handler: map sorted indices back to original indices
    const handleSelectionChange = (indices: number[]) => {
-	   if (indices.length === 1 && neighbor_info.neighborAttr) {
-		   const sortedItem = sortedAttr[indices[0]];
-		   const originalIndex = neighbor_info.neighborAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
-		   set_selected_rows(originalIndex !== -1 ? [originalIndex] : []);
-	   } else {
+	   if (!neighbor_info.neighborAttr) {
 		   set_selected_rows([]);
+		   return;
 	   }
+
+	   if (indices.length === 0) {
+		   set_selected_rows([]);
+		   return;
+	   }
+
+	   // Map each sorted index back to original index
+	   const originalIndices = indices
+		   .map(sortedIdx => {
+			   const sortedItem = sortedAttr[sortedIdx];
+			   return neighbor_info.neighborAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
+		   })
+		   .filter(idx => idx !== -1);
+
+	   set_selected_rows(originalIndices);
    };
 	const handleDelete = async () => {
 		if (!inst) return;
@@ -106,6 +125,12 @@ export default function DeviceNeighborPage() {
 		);
 	};
 
+	const handleRefresh = () => {
+		set_selected_rows([]);
+		set_selected_key(null);
+		refetch();
+	};
+
    // Synchronize selected_key with selected_rows
    React.useEffect(() => {
 	   if (!neighbor_info.neighborAttr || neighbor_info.neighborAttr.length === 0) return;
@@ -121,11 +146,11 @@ export default function DeviceNeighborPage() {
 	   <>
 		   <DeviceNeighborTable
 			   data={{neighborAttr: sortedAttr}}
-			   selected_rows={selected_index !== -1 ? [selected_index] : []}
+			   selected_rows={selectedSortedIndices}
 			   onChangeSelectedRows={handleSelectionChange}
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
-			   onRefresh={refetch}
+		   onRefresh={handleRefresh}
 		   />
 
 		   {/* Error Popup */}
