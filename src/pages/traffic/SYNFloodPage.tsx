@@ -2,7 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {Stack, Grid2} from '@mui/material';
-import {formatNumberForAxis} from 'common';
+import {formatNumberForAxis, getStableHash} from 'common';
 import SingleTextBox from 'components/element/SingleTextBox';
 import ValueBunch from 'components/element/ValueBunch';
 import SYNFloodInputForm from 'components/input/SYNFloodInputForm';
@@ -14,7 +14,7 @@ import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useSYNFlood} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
-import {Fragment, useRef, useState} from 'react';
+import {Fragment, useRef, useState, useMemo} from 'react';
 import {ISYNFloodConfigMod, ISYNFloodEntry} from 'types/security';
 
 //---------------------------------------------------------
@@ -61,6 +61,56 @@ export default function SYNFloodPage() {
 	const {openPopUp, enableYes} = usePopUp();
 	const formRef = useRef<ISYNFloodConfigMod | null>(null);
 
+	// Hash function for SYN flood entry
+	const getHashKey = (item: ISYNFloodEntry) => {
+		const str = `${item.enabled}_${item.synThreshold}_${item.cookieThreshold}`;
+		return getStableHash(str);
+	};
+
+	// Sorted entries
+	const sortedEntries = useMemo(() => 
+		[...entries].sort((a, b) => getHashKey(a) - getHashKey(b)),
+		[entries]
+	);
+
+	// Map selected original indices to sorted indices for display
+	const selectedSortedIndices = useMemo(() => {
+		if (entries.length === 0 || selected_rows.length === 0) return [];
+		
+		return selected_rows
+			.map(originalIdx => {
+				const original = entries[originalIdx];
+				return sortedEntries.findIndex(entry => getHashKey(entry) === getHashKey(original));
+			})
+			.filter(idx => idx !== -1);
+	}, [selected_rows, entries, sortedEntries]);
+
+	// Find single selected index for detail panel
+	const selected_index = selectedSortedIndices.length === 1 ? selectedSortedIndices[0] : -1;
+
+	// Selection handler: map sorted indices back to original indices
+	const handleSelectionChange = (indices: number[]) => {
+		if (entries.length === 0) {
+			set_selected_rows([]);
+			return;
+		}
+
+		if (indices.length === 0) {
+			set_selected_rows([]);
+			return;
+		}
+
+		// Map each sorted index back to original index
+		const originalIndices = indices
+			.map(sortedIdx => {
+				const sortedItem = sortedEntries[sortedIdx];
+				return entries.findIndex(entry => getHashKey(entry) === getHashKey(sortedItem));
+			})
+			.filter(idx => idx !== -1);
+
+		set_selected_rows(originalIndices);
+	};
+
 	const handleEdit = () => {
 		if (!inst) return;
 
@@ -104,20 +154,23 @@ export default function SYNFloodPage() {
 		);
 	};
 
-	const selected_index = selected_rows.length === 1 ? selected_rows[0] : -1;
+	const handleRefresh = () => {
+		set_selected_rows([]);
+		refetch();
+	};
 
 	return (
 		<Fragment>
 			<SYNFloodTable
-				data={entries}
-				selected_rows={selected_rows}
-				onChangeSelectedRows={set_selected_rows}
+				data={sortedEntries}
+				selected_rows={selectedSortedIndices}
+				onChangeSelectedRows={handleSelectionChange}
 				onEdit={handleEdit}
-				onRefresh={refetch}
+				onRefresh={handleRefresh}
 			/>
-			{selected_index !== -1 && entries[selected_index] && (
+			{selected_index !== -1 && sortedEntries[selected_index] && (
 				<LowerSection>
-					<DetailPanel entry={entries[selected_index]} />
+					<DetailPanel entry={sortedEntries[selected_index]} />
 				</LowerSection>
 			)}
 		</Fragment>
