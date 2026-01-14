@@ -16,7 +16,7 @@ import {usePopUp} from 'hooks/popupHook';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useEndpoints} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
-import {Fragment, useEffect, useRef, useState} from 'react';
+import {Fragment, useEffect, useRef, useState, useMemo} from 'react';
 import {IEndpointAttr, IEndpointInput, IEndpointItem} from 'types/endpoint';
 
 //---------------------------------------------------------
@@ -70,24 +70,43 @@ export default function EndpointPage() {
 	// Sorted endpoints
 	const sortedAttr = ep_info.Attr ? [...ep_info.Attr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
 
-	// Find selected index in sortedAttr
-	let selected_index = -1;
-	if (selected_rows.length === 1 && ep_info.Attr) {
-		const original = ep_info.Attr[selected_rows[0]];
-		selected_index = sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
-	} else if (selected_key) {
-		selected_index = sortedAttr.findIndex(attr => getHashKey(attr).toString() === selected_key);
-	}
+	// Map selected original indices to sorted indices for display
+	const selectedSortedIndices = useMemo(() => {
+		if (!ep_info.Attr || selected_rows.length === 0) return [];
+		
+		return selected_rows
+			.map(originalIdx => {
+				const original = ep_info.Attr[originalIdx];
+				return sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
+			})
+			.filter(idx => idx !== -1);
+	}, [selected_rows, ep_info.Attr, sortedAttr]);
 
-	// Selection handler: map sorted index back to original
+	// Find single selected index for detail panel
+	const selected_index = selectedSortedIndices.length === 1 ? selectedSortedIndices[0] : 
+		(selected_key ? sortedAttr.findIndex(attr => getHashKey(attr).toString() === selected_key) : -1);
+
+	// Selection handler: map sorted indices back to original indices
 	const handleSelectionChange = (indices: number[]) => {
-		if (indices.length === 1 && ep_info.Attr) {
-			const sortedItem = sortedAttr[indices[0]];
-			const originalIndex = ep_info.Attr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
-			set_selected_rows(originalIndex !== -1 ? [originalIndex] : []);
-		} else {
+		if (!ep_info.Attr) {
 			set_selected_rows([]);
+			return;
 		}
+
+		if (indices.length === 0) {
+			set_selected_rows([]);
+			return;
+		}
+
+		// Map each sorted index back to original index
+		const originalIndices = indices
+			.map(sortedIdx => {
+				const sortedItem = sortedAttr[sortedIdx];
+				return ep_info.Attr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
+			})
+			.filter(idx => idx !== -1);
+
+		set_selected_rows(originalIndices);
 	};
 
 	const [selectedItem, setSelectedItem] = useState<IEndpointItem | null>(null);
@@ -203,16 +222,23 @@ export default function EndpointPage() {
 		);
 	};
 
+	const handleRefresh = () => {
+		set_selected_rows([]);
+		set_selected_key(null);
+		setSelectedItem(null);
+		refetch();
+	};
+
 	return (
 		<Fragment>
 			<EndpointTable
 				data={{Attr: sortedAttr}}
-				selected_rows={selected_index !== -1 ? [selected_index] : []}
+				selected_rows={selectedSortedIndices}
 				onChangeSelectedRows={handleSelectionChange}
 				onAdd={handleAdd}
 				onDelete={handleDelete}
 				onUpdate={handleUpdate}
-				onRefresh={refetch}
+				onRefresh={handleRefresh}
 			/>
 
 			{selected_index !== -1 && selectedItem && (

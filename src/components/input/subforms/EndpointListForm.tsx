@@ -9,7 +9,7 @@ import DropDownSelectBox from 'components/element/DropDownSelectBox';
 import SimpleButton from 'components/element/SimpleButton';
 import HorizontalStack from 'components/layout/HorizontalStack';
 import {t} from 'i18next';
-import {useCallback} from 'react';
+import {useCallback, useState, useEffect} from 'react';
 import {IEndpoint, IServiceArguments} from 'types/load_balancer';
 
 //---------------------------------------------------------
@@ -25,25 +25,38 @@ export default function EndpointListForm(props: {
 }) {
 	const {values, onChange, params, serviceArguments, onServiceArgumentsChange, serviceArgumentsParams} = props;
 
+	// Local state to manage endpoints including empty ones for UI
+	const [localEndpoints, setLocalEndpoints] = useState<IEndpoint[]>(values);
+
+	// Sync local state with props when values change externally
+	useEffect(() => {
+		setLocalEndpoints(values);
+	}, [values]);
+
 	const handleChange = useCallback(
 		(index: number, field: keyof IEndpoint, value: string | number) => {
-			const updated = [...values];
+			const updated = [...localEndpoints];
 			updated[index] = {...updated[index], [field]: ['weight', 'targetPort'].includes(field) ? Number(value) : value};
-			onChange(updated);
+			setLocalEndpoints(updated);
+			// Filter out endpoints with empty endpointIP before passing to parent
+			onChange(updated.filter(ep => ep.endpointIP?.trim() !== ''));
 		},
-		[values, onChange],
+		[localEndpoints, onChange],
 	);
 
 	const handleAdd = useCallback(() => {
-		onChange([...values, {endpointIP: '', weight: 1, targetPort: 0, state: '', counter: ''}]);
-	}, [values, onChange]);
+		// Add empty endpoint to local state without calling onChange
+		setLocalEndpoints([...localEndpoints, {endpointIP: '', weight: 1, targetPort: 0, state: '', counter: ''}]);
+	}, [localEndpoints]);
 
 	const handleDelete = useCallback(
 		(index: number) => {
-			const updated = values.filter((_, i) => i !== index);
-			onChange(updated);
+			const updated = localEndpoints.filter((_, i) => i !== index);
+			setLocalEndpoints(updated);
+			// Filter out endpoints with empty endpointIP before passing to parent
+			onChange(updated.filter(ep => ep.endpointIP?.trim() !== ''));
 		},
-		[values, onChange],
+		[localEndpoints, onChange],
 	);
 
 	const handleServiceArgChange = useCallback(
@@ -84,7 +97,7 @@ export default function EndpointListForm(props: {
 								value={serviceArguments.probeport}
 								onChange={handleServiceArgChange('probeport')}
 								param_desc={{...serviceArgumentsParams?.probeport, type: 'port'}}
-								disabled={!isProbePortEnabled}
+								disabled={!isProbePortEnabled && !serviceArguments.monitor}
 							/>
 						</HorizontalStack>
 
@@ -94,14 +107,14 @@ export default function EndpointListForm(props: {
 								value={serviceArguments?.probereq ?? ''}
 								onChange={handleServiceArgChange('probereq')}
 								param_desc={serviceArgumentsParams?.probereq}
-								disabled={!isProbeReqRespEnabled()}
+								disabled={!isProbeReqRespEnabled() && !serviceArguments.monitor}
 							/>
 							<ParamBox
 								label={t('Probe Response')}
 								value={serviceArguments?.proberesp ?? ''}
 								onChange={handleServiceArgChange('proberesp')}
 								param_desc={serviceArgumentsParams?.proberesp}
-								disabled={!isProbeReqRespEnabled()}
+								disabled={!isProbeReqRespEnabled() && !serviceArguments.monitor}
 							/>
 						</HorizontalStack>
 
@@ -111,14 +124,14 @@ export default function EndpointListForm(props: {
 								value={serviceArguments?.probeTimeout ?? ''}
 								onChange={handleServiceArgChange('probeTimeout')}
 								param_desc={serviceArgumentsParams?.probeTimeout}
-								disabled={!isProbeTimeoutRetriesEnabled}
+								disabled={!isProbeTimeoutRetriesEnabled && !serviceArguments.monitor}
 							/>
 							<ParamBox
 								label={t('Probe Retries')}
 								value={serviceArguments?.probeRetries ?? ''}
 								onChange={handleServiceArgChange('probeRetries')}
 								param_desc={serviceArgumentsParams?.probeRetries}
-								disabled={!isProbeTimeoutRetriesEnabled}
+								disabled={!isProbeTimeoutRetriesEnabled && !serviceArguments.monitor}
 							/>
 						</HorizontalStack>
 					</Stack>
@@ -126,7 +139,7 @@ export default function EndpointListForm(props: {
 
 				{/* Endpoint List */}
 				<Stack spacing={2}>
-					{values.map((item, index) => (
+					{localEndpoints.map((item, index) => (
 						<Box border={'1px solid #ccc'} borderRadius={2} padding={2} key={index}>
 							<Stack spacing={1} direction="row" justifyContent="space-between" alignItems="center">
 								<Stack spacing={2}>
@@ -161,7 +174,7 @@ export default function EndpointListForm(props: {
 					size="small"
 					sx={{width: 'fit-content'}}
 					onClick={handleAdd}
-					disabled={values.length > 0 && !values.at(-1)?.endpointIP?.trim()}
+					disabled={localEndpoints.length > 0 && !localEndpoints.at(-1)?.endpointIP?.trim()}
 				>
 					{t('Add')}
 				</Button>

@@ -27,6 +27,7 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 
 	const blockValue = serviceArguments.block ?? 0;
 	const timeoutValue = serviceArguments.probeTimeout ?? 1800;
+	const inactiveTimeOutValue = serviceArguments.inactiveTimeOut ?? 0;
 
 	return (
 		<Stack spacing={2}>
@@ -40,11 +41,12 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 					<SingleTextBox label={t('Protocol')} value={serviceArguments.protocol} />
 					<SingleTextBox label={t('BGP')} value={serviceArguments.bgp ?? false} tooltip='Flag to enable BGP'/>
 					<SingleTextBox label={t('SEL')} value={selValue} tooltip='Value for load balance algorithim(0-rr, 1-hash, 2-priority, 3-persist, 4-lc, 5-n2, 6-n3, 0-default)'/>
-					<SingleTextBox label={t('Mode')} value={modeValue} tooltip="Value for load balance algorithim(0-rr, 1-hash, 2-priority, 3-persist, 4-lc, 5-n2, 6-n3, 0-default)"/>
+					<SingleTextBox label={t('Mode')} value={modeValue} tooltip="Value for NAT mode (0-DNAT,1-onearm, 2-fullnat, 3-dsr, 4-fullproxy, 5-hostonearm, 0-default)"/>
 					<SingleTextBox label={t('Block')} value={blockValue} tooltip='Value for Firewall block (0-disabled, Other-Firewall number)' />
 					<SingleTextBox label={t('SNAT')} value={serviceArguments.snat ?? false} tooltip='Flag to enable SNAT' />
 					<SingleTextBox label={t('Egress')} value={serviceArguments.egress} tooltip='Flag to indicate an egress rule'/>
 					<SingleTextBox label={t('Operation')} value={serviceArguments.oper} tooltip='End-point specific op (0-create, 1-attachEP, 2-detachEP)'/>
+					<SingleTextBox label={t('Inactive Timeout')} value={inactiveTimeOutValue} tooltip='Value for inactive timeout seconds' />
 				</Grid2>
 			</ValueBunch>
 

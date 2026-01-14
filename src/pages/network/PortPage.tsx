@@ -119,46 +119,59 @@ export default function PortPage() {
    };
    // Sorted ports
    const sortedAttr = port_info.portAttr ? [...port_info.portAttr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
-   // Find selected index in sortedAttr
-   let selected_index = -1;
-   if (selected_rows.length === 1 && port_info.portAttr) {
-	   const original = port_info.portAttr[selected_rows[0]];
-	   selected_index = sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
-   } else if (selected_portNo !== null) {
-	   selected_index = sortedAttr.findIndex(attr => attr.portNo === selected_portNo);
-   }
-   // Selection handler: map sorted index back to original
+   
+   // Map selected original indices to sorted indices for display
+   const selectedSortedIndices = React.useMemo(() => {
+	   if (!port_info.portAttr || selected_rows.length === 0) return [];
+	   
+	   return selected_rows
+		   .map(originalIdx => {
+			   const original = port_info.portAttr[originalIdx];
+			   return sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
+		   })
+		   .filter(idx => idx !== -1);
+   }, [selected_rows, port_info.portAttr, sortedAttr]);
+
+   // Find single selected index for detail panel
+   const selected_index = selectedSortedIndices.length === 1 ? selectedSortedIndices[0] : 
+	   (selected_portNo !== null ? sortedAttr.findIndex(attr => attr.portNo === selected_portNo) : -1);
+
+   // Selection handler: map sorted indices back to original indices
    const handleChangeRows = (indices: number[]) => {
-	   if (indices.length === 1 && port_info.portAttr) {
-		   const sortedItem = sortedAttr[indices[0]];
-		   const originalIndex = port_info.portAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
-		   set_selected_rows(originalIndex !== -1 ? [originalIndex] : []);
-		   set_cur_tab_idx(0);
-	   } else {
+	   if (!port_info.portAttr) {
 		   set_selected_rows([]);
-		   set_cur_tab_idx(0);
+		   return;
 	   }
+
+	   if (indices.length === 0) {
+		   set_selected_rows([]);
+		   return;
+	   }
+
+	   // Map each sorted index back to original index
+	   const originalIndices = indices
+		   .map(sortedIdx => {
+			   const sortedItem = sortedAttr[sortedIdx];
+			   return port_info.portAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
+		   })
+		   .filter(idx => idx !== -1);
+
+	   set_selected_rows(originalIndices);
    };
 
-   // Synchronize selected_portNo with selected_rows
-   // (useEffect required for correct selection after sorting)
-   React.useEffect(() => {
-	   if (!port_info.portAttr || port_info.portAttr.length === 0) return;
-	   if (selected_rows.length === 1) {
-		   const portNo = port_info.portAttr[selected_rows[0]].portNo;
-		   set_selected_portNo(portNo);
-	   } else if (selected_portNo !== null) {
-		   set_selected_portNo(null);
-	   }
-   }, [port_info, selected_rows, selected_portNo]);
+	const handleRefresh = () => {
+		set_selected_rows([]);
+		set_selected_portNo(null);
+		refetch();
+	};
 
    return (
 	   <Fragment>
 		   <PortTable
 			   data={{portAttr: sortedAttr}}
-			   selected_rows={selected_index !== -1 ? [selected_index] : []}
+			   selected_rows={selectedSortedIndices}
 			   onChangeSelectedRows={handleChangeRows}
-			   onRefresh={refetch}
+		   onRefresh={handleRefresh}
 		   />
 		   {selected_index !== -1 && sortedAttr.length > selected_index && (
 			   <LowerSection>

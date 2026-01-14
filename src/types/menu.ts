@@ -161,10 +161,10 @@ export const MENU_LIST: IMenuItem[] = [
 				name: 'Alert Manager',
 				path: 'alert',
 			},
-			{
-				name: 'Backup Manager',
-				path: 'backup',
-			},
+			// {
+			// 	name: 'Backup Manager',
+			// 	path: 'backup',
+			// },
 			// {
 			// 	name: 'Advanced Metrics',
 			// 	path: 'metrics',

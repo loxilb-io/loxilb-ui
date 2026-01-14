@@ -39,7 +39,9 @@ export default function PortBox(props: {label: string; value: number | null | un
 		const validationError = getPortValidationError(trimmedVal);
 		setError(validationError);
 		
-		if (!validationError) onChange(Number(trimmedVal));
+		// Always call onChange with the numeric value, even if there's a validation error
+		// This allows the user to continue editing the field
+		onChange(Number(trimmedVal));
 	};
 
 	useEffect(() => {
@@ -54,6 +56,10 @@ export default function PortBox(props: {label: string; value: number | null | un
 	// 	if (disabled) onChange(-1);
 	// }, [disabled]);
 
+	// Combine internal and external error states
+	const hasError = !!error || !!externalError;
+	const displayHelperText = externalHelperText || error;
+
 	return (
 		<TextField
 			label={label}
@@ -64,8 +70,8 @@ export default function PortBox(props: {label: string; value: number | null | un
 			disabled={disabled}
 			onChange={e => handleChange(e.target.value)}
 			placeholder={t('0-65535')}
-			error={externalError !== undefined ? !!externalError : !!error}
-			helperText={externalHelperText !== undefined ? externalHelperText : error}
+			error={hasError}
+			helperText={displayHelperText}
 			slotProps={{inputLabel: {shrink: true}}}
 		/>
 	);

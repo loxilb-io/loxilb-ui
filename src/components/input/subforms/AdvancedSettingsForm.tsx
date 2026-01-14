@@ -43,7 +43,7 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 
 					   <HorizontalStack>
 							   <ParamBox label={t('Mode')} value={value?.mode ?? ''} onChange={handleChange('mode')} param_desc={{...params?.mode, enum: mode_list, description: t('Select a NAT mode.(0-dnat, 1-onearm, 2-fullnat, 3-dsr)')}} />
-							   <ParamBox label={t('Inactive Timeout')} value={value?.inactiveTimeOut ?? ''} onChange={handleChange('inactiveTimeOut')} param_desc={params?.inactiveTimeOut} />
+							   <ParamBox label={t('Inactive Timeout')} value={value?.inactiveTimeOut ?? 0} onChange={handleChange('inactiveTimeOut')} param_desc={params?.inactiveTimeOut} />
 					   </HorizontalStack>
 
 					   {/* <HorizontalStack>

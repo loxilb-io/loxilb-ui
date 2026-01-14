@@ -15,7 +15,18 @@ export async function query_get_route_all(instance: IInstance): Promise<IRouteAt
 }
 
 export async function request_create_route(instance: IInstance, data: IRouteAttrInput): Promise<ApiResult> {
-	const resp = await POST_INST(instance, `/config/route`, data);
+	// Clean up the data: remove empty protocol field
+	const cleanData: any = {
+		destinationIPNet: data.destinationIPNet,
+		gateway: data.gateway,
+	};
+	
+	// Only include protocol if it has a non-empty value
+	if (data.protocol && data.protocol.trim() !== '') {
+		cleanData.protocol = data.protocol;
+	}
+	
+	const resp = await POST_INST(instance, `/config/route`, cleanData);
 	if (resp.code !== 200 && resp.code !== 204) {
 		const errorMessage = createDetailedErrorMessage(resp, 'Route Operation');
 		return {status: 'error', error: errorMessage};

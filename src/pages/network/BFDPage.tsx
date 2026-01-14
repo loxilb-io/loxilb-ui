@@ -39,24 +39,43 @@ export default function BFDPage() {
    // Sorted BFD entries
    const sortedAttr = attr_info.Attr ? [...attr_info.Attr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
    
-   // Find selected index in sortedAttr
-   let selected_index = -1;
-   if (selected_rows.length === 1 && attr_info.Attr) {
-	   const original = attr_info.Attr[selected_rows[0]];
-	   selected_index = sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
-   } else if (selected_key) {
-	   selected_index = sortedAttr.findIndex(attr => `${attr.instance}_${attr.remoteIp}_${attr.sourceIP}_${attr.port}` === selected_key);
-   }
-   
-   // Selection handler: map sorted index back to original
+   // Map selected original indices to sorted indices for display
+   const selectedSortedIndices = React.useMemo(() => {
+	   if (!attr_info.Attr || selected_rows.length === 0) return [];
+	   
+	   return selected_rows
+		   .map(originalIdx => {
+			   const original = attr_info.Attr[originalIdx];
+			   return sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
+		   })
+		   .filter(idx => idx !== -1);
+   }, [selected_rows, attr_info.Attr, sortedAttr]);
+
+   // Find single selected index for detail panel
+   const selected_index = selectedSortedIndices.length === 1 ? selectedSortedIndices[0] : 
+	   (selected_key ? sortedAttr.findIndex(attr => `${attr.instance}_${attr.remoteIp}_${attr.sourceIP}_${attr.port}` === selected_key) : -1);
+
+   // Selection handler: map sorted indices back to original indices
    const handleSelectionChange = (indices: number[]) => {
-	   if (indices.length === 1 && attr_info.Attr) {
-		   const sortedItem = sortedAttr[indices[0]];
-		   const originalIndex = attr_info.Attr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
-		   set_selected_rows(originalIndex !== -1 ? [originalIndex] : []);
-	   } else {
+	   if (!attr_info.Attr) {
 		   set_selected_rows([]);
+		   return;
 	   }
+
+	   if (indices.length === 0) {
+		   set_selected_rows([]);
+		   return;
+	   }
+
+	   // Map each sorted index back to original index
+	   const originalIndices = indices
+		   .map(sortedIdx => {
+			   const sortedItem = sortedAttr[sortedIdx];
+			   return attr_info.Attr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
+		   })
+		   .filter(idx => idx !== -1);
+
+	   set_selected_rows(originalIndices);
    };
 	const handleDelete = async () => {
 		if (!inst) return;
@@ -106,6 +125,12 @@ export default function BFDPage() {
 	   );
    };
 
+	const handleRefresh = () => {
+		set_selected_rows([]);
+		set_selected_key(null);
+		refetch();
+	};
+
    // Synchronize selected_key with selected_rows
    React.useEffect(() => {
 	   if (!attr_info.Attr || attr_info.Attr.length === 0) return;
@@ -121,11 +146,11 @@ export default function BFDPage() {
 	   <>
 		   <BFDTable
 			   data={{Attr: sortedAttr}}
-			   selected_rows={selected_index !== -1 ? [selected_index] : []}
+			   selected_rows={selectedSortedIndices}
 			   onChangeSelectedRows={handleSelectionChange}
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
-			   onRefresh={refetch}
+		   onRefresh={handleRefresh}
 		   />
 
 		   {/* Error Popup */}

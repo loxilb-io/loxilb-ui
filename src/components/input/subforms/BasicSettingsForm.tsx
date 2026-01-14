@@ -25,6 +25,21 @@ export default function BasicSettingsForm(props: {value: IServiceArguments; onCh
 		}
 	}, [value, onChange]);
 
+	// Validate port range
+	const portRangeError = React.useMemo(() => {
+		const portMin = value?.port;
+		const portMax = value?.portMax;
+		
+		// Only validate if both ports are valid numbers
+		if (portMin !== undefined && portMin !== null && portMax !== undefined && portMax !== null &&
+			portMin > 0 && portMin <= 65535 && portMax > 0 && portMax <= 65535) {
+			if (portMin > portMax) {
+				return t('Port Min must be less than or equal to Port Max');
+			}
+		}
+		return null;
+	}, [value?.port, value?.portMax]);
+
 	return (
 		<Fragment>
 	   <ParamBox label={t('Rule Name')} value={value?.name ?? ''} onChange={handleChange('name')} param_desc={params?.name} disabled={isEdit}/>
@@ -52,8 +67,8 @@ export default function BasicSettingsForm(props: {value: IServiceArguments; onCh
 					   </HorizontalStack>
 
 					   <HorizontalStack>
-							   <ParamBox label={t('Port Min')} value={value?.port?.toString() ?? ''} onChange={handleChange('port')} param_desc={{...params?.port, type: isEdit ? 'string' : 'port'}} disabled={isEdit} />
-							   <ParamBox label={t('Port Max')} value={value?.portMax?.toString() ?? ''} onChange={handleChange('portMax')} param_desc={{...params?.portMax, type: isEdit ? 'string' : 'port'}} disabled={isEdit} />
+						   <ParamBox label={t('Port Min')} value={value?.port?.toString() ?? ''} onChange={handleChange('port')} param_desc={{...params?.port, type: isEdit ? 'string' : 'port'}} disabled={isEdit} error={!!portRangeError} helperText={portRangeError || undefined} />
+						   <ParamBox label={t('Port Max')} value={value?.portMax?.toString() ?? ''} onChange={handleChange('portMax')} param_desc={{...params?.portMax, type: isEdit ? 'string' : 'port'}} disabled={isEdit} error={!!portRangeError} helperText={portRangeError || undefined} />
 					   </HorizontalStack>
 			   </Stack>
 	   </AccordionBox>

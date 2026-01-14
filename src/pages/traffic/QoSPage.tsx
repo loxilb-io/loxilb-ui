@@ -37,23 +37,43 @@ export default function QoSPage() {
    // Sorted policies
    const sortedAttr = qos_info.polAttr ? [...qos_info.polAttr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
    
-   // Find selected index in sortedAttr
-   let selected_index = -1;
-   if (selected_rows.length === 1 && qos_info.polAttr) {
-	   const original = qos_info.polAttr[selected_rows[0]];
-	   selected_index = sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
-   } else if (selected_policyIdent) {
-	   selected_index = sortedAttr.findIndex(attr => attr.policyIdent === selected_policyIdent);
-   }
-   // Selection handler: map sorted index back to original
+   // Map selected original indices to sorted indices for display
+   const selectedSortedIndices = React.useMemo(() => {
+	   if (!qos_info.polAttr || selected_rows.length === 0) return [];
+	   
+	   return selected_rows
+		   .map(originalIdx => {
+			   const original = qos_info.polAttr[originalIdx];
+			   return sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
+		   })
+		   .filter(idx => idx !== -1);
+   }, [selected_rows, qos_info.polAttr, sortedAttr]);
+
+   // Find single selected index for detail panel
+   const selected_index = selectedSortedIndices.length === 1 ? selectedSortedIndices[0] : 
+	   (selected_policyIdent ? sortedAttr.findIndex(attr => attr.policyIdent === selected_policyIdent) : -1);
+
+   // Selection handler: map sorted indices back to original indices
    const handleSelectionChange = (indices: number[]) => {
-	   if (indices.length === 1 && qos_info.polAttr) {
-		   const sortedItem = sortedAttr[indices[0]];
-		   const originalIndex = qos_info.polAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
-		   set_selected_rows(originalIndex !== -1 ? [originalIndex] : []);
-	   } else {
+	   if (!qos_info.polAttr) {
 		   set_selected_rows([]);
+		   return;
 	   }
+
+	   if (indices.length === 0) {
+		   set_selected_rows([]);
+		   return;
+	   }
+
+	   // Map each sorted index back to original index
+	   const originalIndices = indices
+		   .map(sortedIdx => {
+			   const sortedItem = sortedAttr[sortedIdx];
+			   return qos_info.polAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
+		   })
+		   .filter(idx => idx !== -1);
+
+	   set_selected_rows(originalIndices);
    };
 	const handleDelete = async () => {
 		if (!inst) return;
@@ -105,6 +125,12 @@ export default function QoSPage() {
 		);
 	};
 
+	const handleRefresh = () => {
+		set_selected_rows([]);
+		set_selected_policyIdent(null);
+		refetch();
+	};
+
    React.useEffect(() => {
 	   if (!qos_info.polAttr || qos_info.polAttr.length === 0) return;
 	   if (selected_rows.length === 1) {
@@ -119,11 +145,11 @@ export default function QoSPage() {
 	   <>
 		   <QoSTable
 			   data={{polAttr: sortedAttr}}
-			   selected_rows={selected_index !== -1 ? [selected_index] : []}
+			   selected_rows={selectedSortedIndices}
 			   onChangeSelectedRows={handleSelectionChange}
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
-			   onRefresh={refetch}
+			   onRefresh={handleRefresh}
 		   />
 
 		   {/* Error Popup */}
