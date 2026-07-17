@@ -268,7 +268,11 @@ export interface DownloadProgress {
 // Throws on HTTP errors so callers can surface them.
 export async function DOWNLOAD_FILE_STREAM(url: string, fallbackFilename: string, onProgress?: (p: DownloadProgress) => void): Promise<void> {
 	const access_token = load_token();
-	const headers: Record<string, string> = {Accept: 'application/octet-stream'};
+	// Accept must be */*: the gateway's go-swagger negotiator only knows the
+	// operation's declared produces (application/json for /log-archives) and
+	// returns 406 for application/octet-stream even though the handler streams
+	// exactly that — same failure class as the /metrics 406.
+	const headers: Record<string, string> = {Accept: '*/*'};
 	if (access_token) headers['Authorization'] = `Bearer ${access_token}`;
 
 	const response = await fetch(url, {method: 'GET', headers});
