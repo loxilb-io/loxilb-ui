@@ -138,6 +138,10 @@ export const MENU_LIST: IMenuItem[] = [
 				path: 'ip',
 			},
 			{
+				name: 'IPv6 Address',
+				path: 'ip6',
+			},
+			{
 				name: 'IP Neighbor(ARP/NDP)',
 				path: 'neighbor',
 			},

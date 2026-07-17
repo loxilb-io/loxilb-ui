@@ -11,6 +11,7 @@ export interface IRuleArguments {
 	protocol: number;
 	portName: string;
 	preference: number;
+	hwOffload?: boolean;
 }
 
 export interface IOptions {

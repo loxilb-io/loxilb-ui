@@ -9,8 +9,8 @@ import {getStableHash} from 'common';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function IPTable(props: {data: IIpData; selected_rows: number[]; onChangeSelectedRows: any; onDelete: any; onUpdate?: any; onRefresh?: any}) {
-	const {data, selected_rows, onChangeSelectedRows, onDelete, onUpdate, onRefresh} = props;
+export default function IPTable(props: {data: IIpData; title?: string; selected_rows: number[]; onChangeSelectedRows: any; onDelete: any; onUpdate?: any; onRefresh?: any}) {
+	const {data, title, selected_rows, onChangeSelectedRows, onDelete, onUpdate, onRefresh} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'ipAddress', header: 'IP Addresses', width: 'super_wide', tooltip: 'Assigned IP Addresses'},
@@ -34,7 +34,7 @@ export default function IPTable(props: {data: IIpData; selected_rows: number[]; 
 
 	return (
 		<DataTable
-			name={'IP Address'}
+			name={title ?? 'IP Address'}
 			columns={cols}
 			rows={rows || []}
 			selected_rows={selected_rows}

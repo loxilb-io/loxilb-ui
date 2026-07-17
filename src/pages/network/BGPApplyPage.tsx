@@ -5,7 +5,7 @@ import {Box, Button, Checkbox, FormControl, InputLabel, ListItemText, MenuItem, 
 import actions from 'assets/json/actions.json';
 import policyTypes from 'assets/json/policytypes.json';
 import ParamBox from 'components/element/ParamBox';
-import {request_apply_bgp_policy} from 'connector/instance/bgp';
+import {request_apply_bgp_policy, request_unapply_bgp_policy} from 'connector/instance/bgp';
 import useFormWithParams from 'hooks/inputFormHook';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
@@ -38,6 +38,20 @@ export default function BGPApplyPage() {
 					openPopUp(t('Success'), t('Updated successfully.'), t('OK'));
 					refetchNeighbors();
 				} else openPopUp(t('Error'), t('Failed to update. {{error}}', {error: res.error}), t('OK'));
+			});
+		}
+	};
+
+	const handleRemove = () => {
+		if (!inst || !form || !form.ipAddress || form.ipAddress === '') openPopUp(t('Error'), t('Please select a neighbor IP address.'), t('OK'));
+		else {
+			openPopUp(t('Remove BGP Policy'), t('Are you sure you want to remove the selected BGP policy from this neighbor?'), t('Remove'), t('Cancel'), async () => {
+				// DELETE takes the same required body as apply (incl. routeAction)
+				const res = await request_unapply_bgp_policy(inst, form);
+				if (res.status === 'success') {
+					openPopUp(t('Success'), t('Removed successfully.'), t('OK'));
+					refetchNeighbors();
+				} else openPopUp(t('Error'), t('Failed to remove. {{error}}', {error: res.error}), t('OK'));
 			});
 		}
 	};
@@ -80,9 +94,14 @@ export default function BGPApplyPage() {
 			<ParamBox label={t('Route Action')} value={form.routeAction} onChange={handleChange('routeAction')} param_desc={{...params?.routeAction, enum: actions}} />
 
 			<Box>
-				<Button variant="contained" onClick={handleApply} disabled={neighbor_list.length === 0 || policy_list.length === 0}>
-					{t('Apply')}
-				</Button>
+				<Stack direction="row" spacing={1}>
+					<Button variant="contained" onClick={handleApply} disabled={neighbor_list.length === 0 || policy_list.length === 0}>
+						{t('Apply')}
+					</Button>
+					<Button variant="outlined" color="warning" onClick={handleRemove} disabled={neighbor_list.length === 0 || policy_list.length === 0}>
+						{t('Remove')}
+					</Button>
+				</Stack>
 			</Box>
 		</Stack>
 	);

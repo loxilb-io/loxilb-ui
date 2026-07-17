@@ -68,6 +68,12 @@ export default function FirewallRuleArgsForm(props: {value: IRuleArguments; onCh
 				/>
 			   <ParamBox label={t('Port Name')} value={value?.portName ?? ''} onChange={handleChange('portName')} param_desc={params?.portName} />
 			   <ParamBox label={t('Preference')} value={value?.preference ?? ''} onChange={handleChange('preference')} param_desc={params?.preference} />
+			   <ParamBox
+				   label={t('HW Offload')}
+				   value={value?.hwOffload ?? false}
+				   onChange={handleChange('hwOffload')}
+				   param_desc={{...params?.hwOffload, type: 'boolean', description: 'Offload this rule to hardware when supported'}}
+			   />
 			</HorizontalStack>
 		</Stack>
 	);

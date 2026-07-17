@@ -49,4 +49,5 @@ export const INPUT_PARAM_LIST: IInputBase[] = [
 	{interface: 'IVlanMemberInput', url: '/config/vlan/{vlan_id}/member'},
 	{interface: 'IVxlanInput', url: '/config/tunnel/vxlan'},
 	{interface: 'IBgpPolicyApply', url: '/config/bgp/policy/apply'},
+	{interface: 'IBgpGlobalConfig', url: '/config/bgp/global'},
 ];

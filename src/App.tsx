@@ -33,6 +33,7 @@ import InstanceSettingPage from 'pages/InstanceSettingPage';
 import SystemPage from 'pages/SystemPage';
 
 import BGPApplyPage from 'pages/network/BGPApplyPage';
+import BGPGlobalPage from 'pages/network/BGPGlobalPage';
 import BGPDefinedSetPage from 'pages/network/BGPDefinedSetPage';
 import BGPDefinitionPage from 'pages/network/BGPDefinitionPage';
 import BGPNeighborPage from 'pages/network/BGPNeighborPage';
@@ -145,9 +146,11 @@ export default function App() {
 											<Route path="def" element={<BGPDefinitionPage />} />
 											<Route path="apply" element={<BGPApplyPage />} />
 											<Route path="neighbor" element={<BGPNeighborPage />} />
+											<Route path="global" element={<BGPGlobalPage />} />
 										</Route>
 										<Route path="fdb" element={<FDBPage />} />
 										<Route path="ip" element={<IPPage />} />
+										<Route path="ip6" element={<IPPage family="ipv6" />} />
 										<Route path="port" element={<PortPage />} />
 										<Route path="neighbor" element={<NeighborPage />} />
 										<Route path="route" element={<RoutePage />} />

@@ -233,13 +233,44 @@ Each item: audit fields → update type + connector + form → `tsc`/tests →
   falls back to re-POST when the immutable VIP/port/proto key was changed.
   **Validated live**: PATCH inactiveTimeOut→120 round-trips (200); immutable
   `mode` correctly rejected 400 "cannot modify immutable field".
-- [ ] Endpoint — P/D + HM member fields
-- [ ] Firewall — field parity
-- [ ] IP filter / synflood / securityrate — field parity; securityrate PUT
-- [ ] Mirror / policy(QoS) — field parity
-- [ ] SNI cert — PUT (rotate) support
-- [ ] ipv6address — new form (parity with ipv4)
-- [ ] vlan / vxlan / bfd / bgp — verify + fill gaps
+- [x] Endpoint (2026-07-18) — P/D fields already covered on the LB form
+  (ep_role/nixl_port live on the rule's inline endpoints[], not /config/endpoint).
+  Octavia HM member fields (httpMethod, urlPath, expectedCodes, httpVersion,
+  domainName) EXCLUDED per scope decision. `/config/endpointhoststate`
+  deliberately not surfaced — it is the HA/peer state-sync API, not an operator
+  form.
+- [x] Firewall (2026-07-18) — audit found one gap: `hwOffload` missing from
+  type+form; added. **Live-validated** (POST with hwOffload 200, round-trip,
+  DELETE by query params).
+- [x] IP filter / synflood / securityrate (2026-07-18) — audited at FULL parity
+  already; securityrate PUT `/config/securityrate/reset` was already wired
+  (`request_reset_securityrate_stats`). No changes needed.
+- [x] Mirror / policy(QoS) (2026-07-18) — audited at FULL parity. No changes.
+- [x] SNI cert (2026-07-18) — the hostname/certPath SNI store was already at
+  parity; the gap was the OTHER subsystem: the certId-keyed inline-PEM store
+  `/config/cert` (POST upload / **PUT zero-downtime rotate** / DELETE / GET
+  metadata) had zero UI. Added `connector/instance/cert.ts` + `CertPemForm` +
+  Upload PEM / Rotate (certId) / Delete (certId) actions on the SNI page
+  (write-roles only). **Live-validated full cycle**: POST 201 → GET 200 (no
+  key material) → PUT rotate 200 → DELETE 204 → GET 404. Note: swagger has no
+  structured mTLS/client-CA field — mTLS is implicit via files under certPath.
+- [x] ipv6address (2026-07-18) — new page: `IPPage` parameterized by family
+  (`/instance/network/ip6`, menu "IPv6 Address"); connector + hook family-aware.
+  **Gateway fix**: GET `/config/ipv{4,6}address/all` returned ALL families
+  (NetAddrGet is family-agnostic) — both handlers now filter. Live validation
+  limited: the kv-loxilb testbed kernel has IPv6 DISABLED (`/proc/sys/net/ipv6`
+  absent; even manual `ip -6 addr add` fails), so POST correctly returns fail
+  there; contract validated via handler source + family-filtered GET.
+- [x] vlan / vxlan / bfd / bgp (2026-07-18) — audited: vlan(+members),
+  vxlan(+peers), bfd, bgp neighbors/defined-sets/definitions all at FULL parity.
+  Two BGP gaps fixed: (a) `/config/bgp/global` had type+connector but NO
+  page — added `BGPGlobalPage` (route `network/bgp/global`); (b) DELETE
+  `/config/bgp/policy/apply` (un-apply) unwired — added connector + Remove
+  button on BGPApplyPage (DELETE requires the SAME body as apply incl.
+  routeAction — 422 without it). **Live-validated routing**: both endpoints
+  correctly answer 403 "loxilb BGP mode is disabled" on the non-BGP testbed.
+  BGP menu section remains hidden (pre-existing decision); pages reachable by
+  route.
 - [~] **L7 policy** — DEFERRED (2026-07-17): gateway impl verified real end-to-end
   but unreleased (in-memory store, no CICD, not in deployed image) — see §2.3.
 - [x] **AI API keys** — new resource (2026-07-17): table + create form + one-time

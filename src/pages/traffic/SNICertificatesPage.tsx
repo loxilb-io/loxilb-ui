@@ -1,21 +1,28 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {Stack, Grid2} from '@mui/material';
+import AutorenewIcon from '@mui/icons-material/Autorenew';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import {Button, Stack, Grid2} from '@mui/material';
 import {getStableHash} from 'common';
+import ParamBox from 'components/element/ParamBox';
 import SingleTextBox from 'components/element/SingleTextBox';
 import ValueBunch from 'components/element/ValueBunch';
+import CertPemForm from 'components/input/CertPemForm';
 import SNICertificateInputForm from 'components/input/SNICertificateInputForm';
 import LowerSection from 'components/layout/LowerSection';
 import SubTitlePannel from 'components/layout/SubTitlePannel';
 import SNICertificatesTable from 'components/table/traffic/SNICertificatesTable';
+import {request_delete_cert_pem, request_rotate_cert_pem, request_upload_cert_pem} from 'connector/instance/cert';
 import {request_register_sni_certificate, request_unregister_sni_certificate} from 'connector/instance/sni_certificates';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
+import {useRole} from 'hooks/query/oamHooks';
 import {useSNICertificates} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {Fragment, useRef, useState, useMemo} from 'react';
-import {ISNICertificateEntry, ISNICertificateListItem} from 'types/security';
+import {ICert, ISNICertificateEntry, ISNICertificateListItem} from 'types/security';
 
 //---------------------------------------------------------
 // Detail Panel Component
@@ -170,8 +177,90 @@ export default function SNICertificatesPage() {
 		refetch();
 	};
 
+	// Inline-PEM certId store (/config/cert): upload POSTs new material and
+	// auto-registers its SAN/CN hostnames; rotate PUTs under a stable certId.
+	const {can_write_gateway} = useRole();
+	const pemFormRef = useRef<(ICert & {isValid: boolean}) | null>(null);
+	const certIdRef = useRef<string>('');
+
+	const openPemDialog = (mode: 'upload' | 'rotate') => {
+		if (!inst) return;
+
+		const pem_form = (
+			<CertPemForm
+				key={Date.now()}
+				mode={mode}
+				onChange={data => {
+					pemFormRef.current = data;
+					enableYes(data.isValid);
+				}}
+			/>
+		);
+
+		openPopUp(
+			'',
+			pem_form,
+			mode === 'rotate' ? t('Rotate') : t('Upload'),
+			t('Cancel'),
+			async () => {
+				if (!pemFormRef.current) return;
+				const {isValid, ...cert} = pemFormRef.current;
+				if (cert.certId === '') delete cert.certId;
+
+				const res =
+					mode === 'rotate' ? await request_rotate_cert_pem(inst, cert.certId as string, cert) : await request_upload_cert_pem(inst, cert);
+				if (res.status === 'success') {
+					openPopUp(t('Success'), mode === 'rotate' ? t('Certificate rotated successfully.') : t('Certificate uploaded successfully.'), t('OK'));
+					setTimeout(() => refetch(), 1000);
+				} else {
+					openPopUp(t('Error'), t('Failed. {{error}}', {error: res.error}), t('OK'));
+				}
+			},
+			true,
+		);
+	};
+
+	const handleDeleteByCertId = () => {
+		if (!inst) return;
+
+		certIdRef.current = '';
+		const id_form = (
+			<ParamBox
+				key={Date.now()}
+				label={t('Cert ID')}
+				value={''}
+				onChange={(v: string) => {
+					certIdRef.current = v;
+					enableYes(v.trim().length > 0);
+				}}
+				param_desc={{type: 'string', description: 'Deletes the stored PEM material and unregisters its hostnames', required: true}}
+			/>
+		);
+
+		openPopUp('', id_form, t('Delete'), t('Cancel'), async () => {
+			const res = await request_delete_cert_pem(inst, certIdRef.current.trim());
+			if (res.status === 'success') {
+				openPopUp(t('Success'), t('Certificate deleted.'), t('OK'));
+				setTimeout(() => refetch(), 1000);
+			} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
+		});
+	};
+
 	return (
 		<Fragment>
+			{can_write_gateway && (
+				<Stack direction="row" spacing={1} sx={{mb: 1}}>
+					<Button variant="outlined" size="small" startIcon={<UploadFileIcon />} onClick={() => openPemDialog('upload')}>
+						{t('Upload PEM')}
+					</Button>
+					<Button variant="outlined" size="small" startIcon={<AutorenewIcon />} onClick={() => openPemDialog('rotate')}>
+						{t('Rotate (certId)')}
+					</Button>
+					<Button variant="outlined" size="small" color="warning" startIcon={<DeleteOutlineIcon />} onClick={handleDeleteByCertId}>
+						{t('Delete (certId)')}
+					</Button>
+				</Stack>
+			)}
 			<SNICertificatesTable
 				data={sortedCertificates}
 				selected_rows={selectedSortedIndices}

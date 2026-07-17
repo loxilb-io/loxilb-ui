@@ -9,7 +9,7 @@ import {query_get_fdb_all} from 'connector/instance/fdb';
 import {query_get_firewall_rules} from 'connector/instance/firewall';
 import {query_get_ipfilter_all} from 'connector/instance/ipfilter';
 import {query_get_ipsec_ca_certificate_all, query_get_ipsec_certificate_all, query_get_ipsec_config, query_get_ipsec_sa_all, query_get_ipsec_stats, query_get_ipsec_tunnel_all} from 'connector/instance/ipsec';
-import {query_get_ipv4_all} from 'connector/instance/ip';
+import {query_get_ipv4_all, query_get_ipv6_all} from 'connector/instance/ip';
 import {query_get_load_balancer_config_all} from 'connector/instance/load_balancer';
 import {query_get_mirror_all} from 'connector/instance/mirror';
 import {query_get_port_all} from 'connector/instance/port';
@@ -84,8 +84,8 @@ export function useHAState(instance: IInstance | null) {
 	return useQueryInstanceData(['ha_state'], query_get_ha_state_all, instance);
 }
 
-export function useIPAttr(instance: IInstance | null) {
-	return useQueryInstanceData(['ip_attr'], query_get_ipv4_all, instance);
+export function useIPAttr(instance: IInstance | null, family: 'ipv4' | 'ipv6' = 'ipv4') {
+	return useQueryInstanceData(['ip_attr', family], family === 'ipv6' ? query_get_ipv6_all : query_get_ipv4_all, instance);
 }
 
 export function useLoadBalancerConfig(instance: IInstance | null) {
