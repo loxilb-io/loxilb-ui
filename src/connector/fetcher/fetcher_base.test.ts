@@ -1,5 +1,5 @@
 import {afterEach, beforeEach, describe, expect, it, vi, type Mock} from 'vitest';
-import {createDetailedErrorMessage, GET, GET_TEXT} from './fetcher_base';
+import {createDetailedErrorMessage, DOWNLOAD_FILE_STREAM, GET, GET_TEXT} from './fetcher_base';
 
 function mockFetch(body: string, init: {status?: number; contentType?: string} = {}) {
 	const {status = 200, contentType = 'application/json'} = init;
@@ -26,6 +26,30 @@ describe('GET_TEXT', () => {
 		expect(options.headers.Accept).toBe('*/*');
 		expect(resp.code).toBe(200);
 		expect(resp.data).toBe('lb_rule_count 3\n');
+	});
+});
+
+describe('DOWNLOAD_FILE_STREAM', () => {
+	it('sends Accept: */* — go-swagger 406es application/octet-stream on /log-archives', async () => {
+		// Regression test for commit 079bf79 (same 406 class as /metrics).
+		mockFetch('log line 1\nlog line 2\n', {contentType: 'application/octet-stream'});
+		vi.stubGlobal('URL', {...URL, createObjectURL: vi.fn(() => 'blob:x'), revokeObjectURL: vi.fn()});
+		const clicks: string[] = [];
+		vi.spyOn(document, 'createElement').mockReturnValue({click: () => clicks.push('click'), set href(_: string) {}, set download(_: string) {}} as any);
+
+		const progress: number[] = [];
+		await DOWNLOAD_FILE_STREAM('http://gw/log-archives/a.log', 'a.log', p => progress.push(p.receivedBytes));
+
+		const [, options] = (global.fetch as Mock).mock.calls[0];
+		expect(options.headers.Accept).toBe('*/*');
+		expect(clicks).toEqual(['click']);
+		expect(progress.length).toBeGreaterThan(0);
+		expect(progress[progress.length - 1]).toBe('log line 1\nlog line 2\n'.length);
+	});
+
+	it('throws on HTTP errors so the card can show a failure toast', async () => {
+		mockFetch('{"code":406,"message":"unsupported media type requested"}', {status: 406});
+		await expect(DOWNLOAD_FILE_STREAM('http://gw/log-archives/a.log', 'a.log')).rejects.toThrow(/406/);
 	});
 });
 
