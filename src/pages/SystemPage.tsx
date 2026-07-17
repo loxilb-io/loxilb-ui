@@ -77,7 +77,7 @@ export default function SystemPage() {
 						{is_online !== undefined && renderServerState(is_online)}
 					</Box>
 
-					<ArchivedLogCard log_file_list={log_file_list} onRowClick={(row: any) => download_oam_log_archive(row.filename)} />
+					<ArchivedLogCard log_file_list={log_file_list} onDownload={(filename, onProgress) => download_oam_log_archive(filename, onProgress)} />
 				</Box>
 
 				<Divider />

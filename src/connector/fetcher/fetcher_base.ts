@@ -257,6 +257,62 @@ export async function UPLOAD_FILE(url: string, file: File, additionalData?: Reco
 	}
 }
 
+export interface DownloadProgress {
+	receivedBytes: number;
+	totalBytes: number | null; // null when the server sends no Content-Length
+}
+
+// Streams a file download and reports progress, then hands the finished blob
+// to the browser's save dialog. Content-Length is CORS-safelisted, so a
+// determinate percentage works even for cross-origin OAM/proxy downloads.
+// Throws on HTTP errors so callers can surface them.
+export async function DOWNLOAD_FILE_STREAM(url: string, fallbackFilename: string, onProgress?: (p: DownloadProgress) => void): Promise<void> {
+	const access_token = load_token();
+	const headers: Record<string, string> = {Accept: 'application/octet-stream'};
+	if (access_token) headers['Authorization'] = `Bearer ${access_token}`;
+
+	const response = await fetch(url, {method: 'GET', headers});
+	if (!response.ok) {
+		const text = await response.text().catch(() => '');
+		throw new Error(`Download failed (${response.status}): ${text || response.statusText}`);
+	}
+
+	const lengthHeader = Number(response.headers.get('Content-Length'));
+	const totalBytes = Number.isFinite(lengthHeader) && lengthHeader > 0 ? lengthHeader : null;
+
+	// Content-Disposition is not CORS-safelisted, so it may be unreadable on
+	// cross-origin downloads — fall back to the caller-provided name.
+	let filename = fallbackFilename;
+	const contentDisposition = response.headers.get('Content-Disposition');
+	const cdMatch = contentDisposition?.match(/filename\s*=\s*"?([^";]+)"?/);
+	if (cdMatch?.[1]) filename = cdMatch[1].trim();
+
+	const chunks: BlobPart[] = [];
+	let receivedBytes = 0;
+	if (response.body) {
+		const reader = response.body.getReader();
+		for (;;) {
+			const {done, value} = await reader.read();
+			if (done) break;
+			chunks.push(value);
+			receivedBytes += value.byteLength;
+			onProgress?.({receivedBytes, totalBytes});
+		}
+	} else {
+		const blob = await response.blob();
+		chunks.push(blob);
+		onProgress?.({receivedBytes: blob.size, totalBytes});
+	}
+
+	const blob = new Blob(chunks);
+	const downloadUrl = URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	a.href = downloadUrl;
+	a.download = filename;
+	a.click();
+	URL.revokeObjectURL(downloadUrl);
+}
+
 export async function DOWNLOAD_FILE(url: string): Promise<{blob: Blob, filename: string} | undefined> {
 	try {
 		const access_token = load_token();
