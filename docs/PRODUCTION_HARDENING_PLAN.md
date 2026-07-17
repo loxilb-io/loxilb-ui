@@ -55,7 +55,8 @@ Rationale:
 - Central logger to absorb the remaining **48** `console.*`.
 - DoD: a forced 500 on a list endpoint shows an error state, not an empty table; a thrown render shows a boundary fallback, not a blank page.
 
-### H4 — Mapping-correctness CI guard  *(make the win permanent)*
+### H4 — Mapping-correctness CI guard  *(make the win permanent)*  ✅ DONE (2026-07-17)
+- **Landed:** `npm run api:check-mapping` (scripts/check-api-mapping.mjs) statically extracts all 119 connector calls and fails on any path/method not in the vendored specs; ops tagged `x-not-implemented` in the gateway spec count as non-existent (guards the 501-endpoint regression class). `npm run api:coverage` lists spec ops without UI. Wired into `.github/workflows/ci.yml` together with typecheck, `gen:api:check`, vitest (incl. `src/api/contract.test.ts` backward-compat guard), and the production build. `npm run sync:specs` + `api-spec/SOURCES.json` pin the backend versions the UI is built against. Backend audit results + UI gap priorities: `docs/API_COVERAGE_REPORT.md`.
 - CI script: extract every `GET_INST/POST_INST/PUT_INST/DELETE_INST` path from `src/connector/**`, assert each matches a path in the gateway `swagger.yml` (params normalized). Fail the build on any orphan.
 - Optional: a smoke job that curls each declared path against a reference gateway and flags `501`/`406` (would have caught both testbed bugs pre-merge).
 - DoD: CI red if a connector calls a path not in swagger.
