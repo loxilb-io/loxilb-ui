@@ -118,9 +118,11 @@ export default function EndpointInputForm({ initialData, isEdit = false, onChang
 					{id: 1, name: 'PING', send_value: 'ping'},
 					{id: 2, name: 'TCP', send_value: 'tcp'},
 					{id: 3, name: 'UDP', send_value: 'udp'},
-					{id: 4, name: 'HTTP', send_value: 'http'},
-					{id: 5, name: 'HTTPS', send_value: 'https'},
-					{id: 6, name: 'NONE', send_value: 'none'},
+					{id: 4, name: 'SCTP', send_value: 'sctp'},
+					{id: 5, name: 'HTTP', send_value: 'http'},
+					{id: 6, name: 'HTTPS', send_value: 'https'},
+					{id: 7, name: 'TLS-HELLO', send_value: 'tls-hello'},
+					{id: 8, name: 'NONE', send_value: 'none'},
 				]}
 				/>
 			   <ParamBox
