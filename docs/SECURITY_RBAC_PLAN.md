@@ -46,7 +46,7 @@ Severity uses CVSS-style qualitative rating. "Verified" = confirmed against the 
 | # | Finding | Evidence | Status |
 |---|---|---|---|
 | H-1 | **Password hashes serialized in API responses.** `models.User.Password` had `json:"password"`; `GetUsers`/`GetMe` return `User` directly. | `model.go:10`; live `/users/me` returns a `password` field. | **[FIXED]** `json:"-"` on the field |
-| H-2 | **Token revocation is non-functional.** Logout deletes a DB token row, but `TokenAuthMiddleware` only checks JWT signature+expiry — never the DB/blacklist. A "logged-out" token works until natural 24h expiry. UI logout never even called `/oam/logout`. | `middleware/auth.go`, `user_service.go:670`; UI `ProfileMenu.tsx:18`. | **[PARTIAL]** UI now calls logout (see §4); server-side revocation still OPEN |
+| H-2 | **Token revocation is non-functional.** Logout deletes a DB token row, but `TokenAuthMiddleware` only checks JWT signature+expiry — never the DB/blacklist. A "logged-out" token works until natural 24h expiry. UI logout never even called `/oam/logout`. | `middleware/auth.go`, `user_service.go:670`; UI `ProfileMenu.tsx:18`. | **[FIXED + DEPLOYED]** `TokenAuthMiddleware(userService)` now also requires the token in the `api_tokens` store (fail-closed). Live: token → 200, logout → 200, same token → **401 "Token has been revoked"**. Residual: a token can outlive revocation by ≤5 min via the in-process validation cache only if deleted from the DB out-of-band (logout purges the cache). |
 | H-3 | **Proxy grants full read+write data-plane control to any licensed user; no method distinction.** `ProxyToLoxiLB` forwards all methods identically; a `viewer` could POST/DELETE gateway config. | `proxy_service.go:111`, `routes.go` licensed group. | **OPEN — needs RBAC Phase 2** |
 | H-4 | **CORS `Allow-Origin: *` with `Allow-Credentials: true`.** Unsafe/spec-violating combination. | `middleware/cors.go`. | **OPEN — flagged** |
 
@@ -83,7 +83,7 @@ Severity uses CVSS-style qualitative rating. "Verified" = confirmed against the 
 
 **UI (`loxilb-ui`):**
 - Dead signup path removed (§1).
-- Logout now calls `POST /oam/logout` (best-effort) before clearing local state and redirecting — H-2 client half. Server-side revocation (making `TokenAuthMiddleware` honor the logout) remains OPEN in Phase 4.
+- Logout now calls `POST /oam/logout` (best-effort) before clearing local state and redirecting — H-2 client half. Server-side revocation was completed in a follow-up pass (see §6).
 
 > **Deploy note:** the OAM changes are committed to source but the testbed still runs the old binary. Role enforcement is **not live** until OAM is rebuilt and redeployed on kv-client. The current admin session is unaffected (same key, admin role).
 
@@ -125,7 +125,7 @@ Add `role` and `user_id` to JWT claims so middleware avoids a DB lookup per requ
 **Phase 4 — Harden the auth primitives (the CRITICAL/HIGH backend items).**
 - **C-1:** require a valid admin token on `/oam/admin/reset`, OR gate it to first-boot only (allow unauthenticated reset only when no admin exists / DB uninitialized), OR remove the HTTP route and keep only the `cmd/reset_admin` local CLI. **Recommend: remove the HTTP route; reset is a break-glass local op.**
 - **C-3 / C-4 / M-4 / M-5:** move JWT key, license HMAC secret, OAuth secrets, and default admin password to environment variables / mounted secrets; fail closed if unset in production. Rotate on deploy (invalidates tokens/licenses — coordinate).
-- **H-2:** make `TokenAuthMiddleware` consult the token store/blacklist so logout actually revokes; or move to short-lived access tokens + refresh.
+- **H-2:** ~~make `TokenAuthMiddleware` consult the token store/blacklist so logout actually revokes~~ **DONE** (store check in middleware, fail-closed). Follow-up idea: revoke ALL of a user's tokens on password change (`DELETE FROM api_tokens WHERE user_id = ?` + cache flush) — today only the presented token is revoked on logout.
 - **H-4:** reflect a specific allowed origin (env-driven) instead of `*` when credentials are allowed.
 - **M-1:** raise PBKDF2 to ≥600k rounds (or migrate to argon2id), rehash-on-login.
 - **M-2:** exponential/again-longer lockout; rate-limit reset/setup/proxy.
@@ -160,12 +160,18 @@ Testbed (kv-client) is currently deployed with `OAM_JWT_SECRET` (fresh random) a
 
 **Done + deployed to kv-client** (OAM `9327bf2`, `2006208`; UI `d7cf9d5`, `13831f9`): RBAC Phase 1 (admin gate + self-vs-admin + role-escalation guard), C-1 reset route removed, C-3/C-4/M-4/M-5 secrets env-wired, H-1 password-leak fixed, H-2 client half (UI calls logout). All live-verified (§2 table).
 
+**H-2 server half — FIXED + DEPLOYED (2026-07-17, follow-up pass):**
+- `TokenAuthMiddleware(userService)` now requires, after the JWT signature+expiry check, that the token still exists in the `api_tokens` store (`UserService.ValidateToken`); missing → **401 "Token has been revoked"**, store lookup error → fail-closed 401.
+- `ValidateToken` reworked: absence (`sql.ErrNoRows`) is a definitive `(false, nil)` — not retried — so rejected tokens don't pay the 2s retry sleep on every request. Positive results are cached 5 min; logout purges cache + DB row, so revocation is immediate.
+- `UpdateAdminCredentials` now saves its newly issued token via `SaveToken` (it previously returned a JWT that existed nowhere in the store — the store check would have rejected it).
+- Logger `init()` falls back to stderr when `/var/log/loxioam.log` is unwritable (was `log.Fatalf`, which also blocked running tests locally).
+- Live-verified on kv-client: login → `/users/me` 200 → logout 200 → same token **401 revoked** → re-login 200; garbage token 401; licensed proxy route 200 with valid token.
+
 **Remaining security work, in priority order — resume here:**
 
-1. **H-2 — server-side token revocation** *(next; token still valid after logout)*. Make `TokenAuthMiddleware` (`internal/middleware/auth.go`) consult the `api_tokens` store/blacklist that logout already writes, OR switch to short-lived access tokens + a refresh endpoint. Today it only checks JWT signature+expiry.
-2. **RBAC Phase 2 — role-aware enforcement on all mutating routes**, especially **gate the gateway proxy (`ProxyToLoxiLB`, `proxy_service.go`) by HTTP method**: `viewer` → GET only; `operator`/`admin` → writes. Add a capability table + `RequireCapability(action)` middleware; extend `@Security` to the remaining protected handlers. Adopt the 3-role model (admin / operator[=rename `user`] / viewer) and add `role`+`user_id` to JWT claims.
-3. **RBAC Phase 3 — UI role-awareness** (defense-in-depth/UX): fetch role into a context/atom (`is_logged_in_atom` is unused today), add `roles?: string[]` to `IMenuItem` and filter `SideMenu`/`TopNavMenu` + write buttons; add a route guard around `<Layout>`. Choke points: `MENU_LIST`, `Header.tsx:39/53`.
-4. **Phase 4 hardening**: M-1 PBKDF2 → ≥600k rounds (rehash-on-login), M-2 stronger lockout + rate-limit setup/proxy, M-3 shorter token TTL / httpOnly cookie, H-4 CORS specific-origin.
+1. **RBAC Phase 2 — role-aware enforcement on all mutating routes**, especially **gate the gateway proxy (`ProxyToLoxiLB`, `proxy_service.go`) by HTTP method**: `viewer` → GET only; `operator`/`admin` → writes. Add a capability table + `RequireCapability(action)` middleware; extend `@Security` to the remaining protected handlers. Adopt the 3-role model (admin / operator[=rename `user`] / viewer) and add `role`+`user_id` to JWT claims.
+2. **RBAC Phase 3 — UI role-awareness** (defense-in-depth/UX): fetch role into a context/atom (`is_logged_in_atom` is unused today), add `roles?: string[]` to `IMenuItem` and filter `SideMenu`/`TopNavMenu` + write buttons; add a route guard around `<Layout>`. Choke points: `MENU_LIST`, `Header.tsx:39/53`.
+3. **Phase 4 hardening**: M-1 PBKDF2 → ≥600k rounds (rehash-on-login), M-2 stronger lockout + rate-limit setup/proxy, M-3 shorter token TTL / httpOnly cookie, H-4 CORS specific-origin.
 
 **Owner actions (not code):**
 - Log back into the UI — the JWT-key rotation invalidated the old session token.
