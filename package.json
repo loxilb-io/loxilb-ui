@@ -17,7 +17,7 @@
 		"ebpf",
 		"react"
 	],
-	"homepage": "https://github.com/loxilb-io/loxilb-ui",
+	"homepage": "",
 	"dependencies": {
 		"@emotion/react": "^11.14.0",
 		"@emotion/styled": "^11.14.0",
