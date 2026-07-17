@@ -5,13 +5,14 @@ import {IFirewallDeleteFilter, IFirewallRule} from 'types/firewall';
 import {IInstance} from 'types/oam';
 import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
+import type {GwGetResp} from 'api';
 
 //---------------------------------------------------------
 // API Caller Functions
 //---------------------------------------------------------
 export async function query_get_firewall_rules(instance: IInstance): Promise<IFirewallRule[]> {
-	const resp = await GET_INST(instance, `/config/firewall/all`);
-	return (resp.data?.fwAttr as IFirewallRule[]) ?? [];
+	const resp = await GET_INST<GwGetResp<'/config/firewall/all'>>(instance, `/config/firewall/all`);
+	return (resp.data?.fwAttr ?? []) as IFirewallRule[];
 }
 
 export async function request_create_firewall_rule(instance: IInstance, data: IFirewallRule): Promise<ApiResult> {

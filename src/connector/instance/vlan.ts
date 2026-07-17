@@ -5,20 +5,21 @@ import { IInstance } from 'types/oam';
 import { IVlanAttribute, IVlanInput, IVlanMemberInput } from 'types/vlan';
 import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
+import type {GwGetResp} from 'api';
 
 //---------------------------------------------------------
 // API Caller Functions
 //---------------------------------------------------------
 export async function query_get_vlan_all(instance: IInstance): Promise<IVlanAttribute[]> {
-	const resp = await GET_INST(instance, `/config/vlan/all`);
+	const resp = await GET_INST<GwGetResp<'/config/vlan/all'>>(instance, `/config/vlan/all`);
 
 	const raw_list = resp.data?.vlanAttr;
 	if (!Array.isArray(raw_list)) return [];
 	else
 		return raw_list.map(item => ({
-			vid: item.vid,
-			dev: item.dev,
-			member: item.member ?? [],
+			vid: item.vid ?? 0,
+			dev: item.dev ?? '',
+			member: (item.member ?? []).map(m => ({dev: m.dev ?? '', tagged: m.tagged ?? false})),
 			vlanStatistic: {
 				inBytes: item.vlanStatistic?.inBytes ?? 0,
 				inPackets: item.vlanStatistic?.inPackets ?? 0,

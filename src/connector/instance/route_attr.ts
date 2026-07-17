@@ -5,13 +5,14 @@ import {IInstance} from 'types/oam';
 import {IRouteAttribute, IRouteAttrInput} from 'types/route_attr';
 import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
+import type {GwGetResp} from 'api';
 
 //---------------------------------------------------------
 // API Caller Functions
 //---------------------------------------------------------
 export async function query_get_route_all(instance: IInstance): Promise<IRouteAttribute[]> {
-	const resp = await GET_INST(instance, `/config/route/all`);
-	return (resp.data?.routeAttr as IRouteAttribute[]) ?? [];
+	const resp = await GET_INST<GwGetResp<'/config/route/all'>>(instance, `/config/route/all`);
+	return (resp.data?.routeAttr ?? []) as IRouteAttribute[];
 }
 
 export async function request_create_route(instance: IInstance, data: IRouteAttrInput): Promise<ApiResult> {

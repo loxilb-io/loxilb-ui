@@ -26,8 +26,8 @@ export default function BGPApplyPage() {
 	const {data: neighbor_data, refetch: refetchNeighbors} = useBGPNeighbors(inst);
 	const {data: policy_data} = useBGPPolicyDefs(inst);
 
-	const neighbor_list: IEnumItem[] = neighbor_data?.map((neighbor, index) => ({id: index, name: neighbor.ipAddress, send_value: neighbor.ipAddress})) ?? [];
-	const policy_list: IEnumItem[] = policy_data?.map((policy, index) => ({id: index, name: policy.name, send_value: policy.name})) ?? [];
+	const neighbor_list: IEnumItem[] = neighbor_data?.map((neighbor, index) => ({id: index, name: neighbor.ipAddress ?? '', send_value: neighbor.ipAddress ?? ''})) ?? [];
+	const policy_list: IEnumItem[] = policy_data?.map((policy, index) => ({id: index, name: policy.name ?? '', send_value: policy.name ?? ''})) ?? [];
 
 	const handleApply = () => {
 		if (!inst || !form || !form.ipAddress || form.ipAddress === '') openPopUp(t('Error'), t('Please select a neighbor IP address.'), t('OK'));

@@ -1,15 +1,61 @@
 {
-    "schemes": [],
     "swagger": "2.0",
     "info": {
-        "description": "",
-        "title": "",
-        "contact": {},
-        "version": ""
+        "contact": {}
     },
-    "host": "",
-    "basePath": "",
     "paths": {
+        "/oam/admin/reset": {
+            "post": {
+                "description": "Reset admin account to default username (admin), password (AdminNetlox132!), and email. Useful for recovery or testing.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Setup"
+                ],
+                "summary": "Reset admin account to defaults",
+                "parameters": [
+                    {
+                        "description": "Admin reset confirmation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AdminResetRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.AdminResetResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/oam/alerts": {
             "get": {
                 "description": "Retrieves all active alerts from the database with pagination (always returns paginated response)",
@@ -226,6 +272,402 @@
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/oam/config/download/{id}": {
+            "get": {
+                "description": "Downloads a previously exported configuration file by export ID",
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "configuration"
+                ],
+                "summary": "Download exported configuration file",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Export ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Configuration file download",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/oam/config/export": {
+            "post": {
+                "description": "Exports the current OAM system configuration including users, instances, and settings to a downloadable file",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "configuration"
+                ],
+                "summary": "Export system configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Export request with optional description",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "description": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Configuration exported successfully",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "export_data": {
+                                    "$ref": "#/definitions/models.ConfigExport"
+                                },
+                                "export_id": {
+                                    "type": "string"
+                                },
+                                "message": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/oam/config/exports": {
+            "get": {
+                "description": "Retrieves a list of all available configuration exports with basic metadata",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "configuration"
+                ],
+                "summary": "List configuration exports",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Exports retrieved successfully",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "count": {
+                                    "type": "integer"
+                                },
+                                "exports": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/models.ConfigExport"
+                                    }
+                                },
+                                "message": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/oam/config/files": {
+            "get": {
+                "description": "Retrieves a detailed list of downloadable configuration files with enhanced metadata, pagination, and filtering",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "configuration"
+                ],
+                "summary": "Get downloadable configuration files",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by user who exported the configuration",
+                        "name": "exported_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum number of files to return (1-100, default: 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of files to skip for pagination (default: 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Downloadable files retrieved successfully",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "files": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object"
+                                    }
+                                },
+                                "filters": {
+                                    "type": "object"
+                                },
+                                "message": {
+                                    "type": "string"
+                                },
+                                "pagination": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/oam/config/import": {
+            "post": {
+                "description": "Imports system configuration from uploaded JSON file with mandatory backup creation",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "configuration"
+                ],
+                "summary": "Import system configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Configuration JSON file to import",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Configuration imported successfully",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string"
+                                },
+                                "result": {
+                                    "$ref": "#/definitions/models.ConfigImportResponseOAM"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/oam/config/import/dry-run": {
+            "post": {
+                "description": "Validates configuration import data without making changes to the system",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "configuration"
+                ],
+                "summary": "Dry-run configuration import",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Configuration JSON file to validate",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Dry-run validation completed",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string"
+                                },
+                                "result": {
+                                    "$ref": "#/definitions/models.ConfigImportResponseOAM"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -479,6 +921,12 @@
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too many failed login attempts",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -1116,10 +1564,28 @@
                 "responses": {
                     "200": {
                         "description": "Successful response from LoxiLB",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessPostResponse"
+                        }
+                    },
+                    "204": {
+                        "description": "Successful response from LoxiLB",
                         "schema": {}
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -1130,14 +1596,20 @@
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
-                    "502": {
-                        "description": "Bad Gateway",
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
-                    "504": {
-                        "description": "Gateway Timeout",
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -1175,10 +1647,28 @@
                 "responses": {
                     "200": {
                         "description": "Successful response from LoxiLB",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessPostResponse"
+                        }
+                    },
+                    "204": {
+                        "description": "Successful response from LoxiLB",
                         "schema": {}
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -1189,14 +1679,20 @@
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
-                    "502": {
-                        "description": "Bad Gateway",
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
-                    "504": {
-                        "description": "Gateway Timeout",
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -1234,10 +1730,28 @@
                 "responses": {
                     "200": {
                         "description": "Successful response from LoxiLB",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessPostResponse"
+                        }
+                    },
+                    "204": {
+                        "description": "Successful response from LoxiLB",
                         "schema": {}
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -1248,14 +1762,20 @@
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
-                    "502": {
-                        "description": "Bad Gateway",
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
-                    "504": {
-                        "description": "Gateway Timeout",
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -1293,10 +1813,28 @@
                 "responses": {
                     "200": {
                         "description": "Successful response from LoxiLB",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessPostResponse"
+                        }
+                    },
+                    "204": {
+                        "description": "Successful response from LoxiLB",
                         "schema": {}
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -1307,14 +1845,20 @@
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
-                    "502": {
-                        "description": "Bad Gateway",
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
-                    "504": {
-                        "description": "Gateway Timeout",
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -1352,10 +1896,28 @@
                 "responses": {
                     "200": {
                         "description": "Successful response from LoxiLB",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessPostResponse"
+                        }
+                    },
+                    "204": {
+                        "description": "Successful response from LoxiLB",
                         "schema": {}
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -1366,14 +1928,20 @@
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
-                    "502": {
-                        "description": "Bad Gateway",
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
-                    "504": {
-                        "description": "Gateway Timeout",
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -1452,6 +2020,87 @@
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/oam/setup/status": {
+            "get": {
+                "description": "Check if admin credentials need to be updated from defaults",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Setup"
+                ],
+                "summary": "Get admin credential setup status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SetupStatusResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/oam/setup/update-admin": {
+            "post": {
+                "description": "Update admin credentials from default username/password to user-defined values",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Setup"
+                ],
+                "summary": "Update admin credentials",
+                "parameters": [
+                    {
+                        "description": "Admin credential update request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AdminUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.AdminUpdateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -1824,7 +2473,7 @@
         },
         "/oam/users/{id}": {
             "put": {
-                "description": "Updates an existing user with the provided JSON payload",
+                "description": "Updates specific user fields (username, email, role, password) based on provided JSON payload. Only non-empty fields are updated.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1834,7 +2483,7 @@
                 "tags": [
                     "users"
                 ],
-                "summary": "Update user",
+                "summary": "Update user fields",
                 "parameters": [
                     {
                         "type": "string",
@@ -1851,12 +2500,13 @@
                         "required": true
                     },
                     {
-                        "description": "User data",
-                        "name": "user",
+                        "description": "Fields to update (username, email, role, password)",
+                        "name": "updates",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.User"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 ],
@@ -1864,11 +2514,17 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.User"
+                            "$ref": "#/definitions/models.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -1981,6 +2637,83 @@
                 }
             }
         },
+        "models.AdminResetRequest": {
+            "type": "object",
+            "required": [
+                "confirm"
+            ],
+            "properties": {
+                "confirm": {
+                    "description": "Must be true to proceed",
+                    "type": "boolean"
+                }
+            }
+        },
+        "models.AdminResetResponse": {
+            "type": "object",
+            "properties": {
+                "adminInfo": {
+                    "$ref": "#/definitions/models.DefaultAdminInfo"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "warning": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.AdminUpdateRequest": {
+            "type": "object",
+            "required": [
+                "confirmPassword",
+                "currentPassword",
+                "currentUsername",
+                "newEmail",
+                "newPassword",
+                "newUsername"
+            ],
+            "properties": {
+                "confirmPassword": {
+                    "type": "string"
+                },
+                "currentPassword": {
+                    "type": "string"
+                },
+                "currentUsername": {
+                    "type": "string"
+                },
+                "newEmail": {
+                    "type": "string"
+                },
+                "newPassword": {
+                    "type": "string",
+                    "minLength": 9
+                },
+                "newUsername": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 3
+                }
+            }
+        },
+        "models.AdminUpdateResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "newAccessToken": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
         "models.Alert": {
             "type": "object",
             "properties": {
@@ -2007,6 +2740,96 @@
                 "type": {
                     "description": "DB_DISCONNECT, API_UNREACHABLE, HIGH_CPU, MEMORY_LEAK.",
                     "type": "string"
+                }
+            }
+        },
+        "models.ConfigExport": {
+            "type": "object",
+            "properties": {
+                "checksum": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "download_count": {
+                    "type": "integer"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "export_type": {
+                    "type": "string"
+                },
+                "exported_at": {
+                    "type": "string"
+                },
+                "exported_by": {
+                    "type": "string"
+                },
+                "file_path": {
+                    "type": "string"
+                },
+                "file_size": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "last_downloaded_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ConfigImportResponseOAM": {
+            "type": "object",
+            "properties": {
+                "backup_id": {
+                    "type": "string"
+                },
+                "dry_run": {
+                    "type": "boolean"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ImportError"
+                    }
+                },
+                "import_summary": {
+                    "$ref": "#/definitions/models.ConfigImportSummaryOAM"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "models.ConfigImportSummaryOAM": {
+            "type": "object",
+            "properties": {
+                "instances_imported": {
+                    "type": "integer"
+                },
+                "instances_skipped": {
+                    "type": "integer"
+                },
+                "settings_updated": {
+                    "type": "integer"
+                },
+                "trial_history_imported": {
+                    "type": "integer"
+                },
+                "trial_history_skipped": {
+                    "type": "integer"
+                },
+                "users_imported": {
+                    "type": "integer"
+                },
+                "users_skipped": {
+                    "type": "integer"
                 }
             }
         },
@@ -2071,6 +2894,23 @@
                 }
             }
         },
+        "models.DefaultAdminInfo": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
         "models.EnhancedLoginResponse": {
             "type": "object",
             "properties": {
@@ -2097,8 +2937,32 @@
         "models.ErrorResponse": {
             "type": "object",
             "properties": {
-                "message": {
+                "code": {
+                    "description": "code",
+                    "type": "integer"
+                },
+                "details": {
+                    "description": "details",
                     "type": "string"
+                },
+                "fields": {
+                    "description": "fields",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "message": {
+                    "description": "message",
+                    "type": "string"
+                },
+                "result": {
+                    "description": "result",
+                    "type": "string"
+                },
+                "sub-code": {
+                    "description": "sub code",
+                    "type": "integer"
                 }
             }
         },
@@ -2106,6 +2970,26 @@
             "type": "object",
             "properties": {
                 "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ImportError": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "record": {
+                    "type": "string"
+                },
+                "record_index": {
+                    "type": "integer"
+                },
+                "type": {
                     "type": "string"
                 }
             }
@@ -2127,7 +3011,27 @@
                 "expiry": {
                     "type": "string"
                 },
+                "features": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "issued_at": {
+                    "type": "string"
+                },
+                "license_type": {
+                    "type": "string"
+                },
+                "system_installation_id": {
+                    "description": "Enterprise license specific fields (optional)",
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                },
                 "username": {
+                    "description": "Common fields for all license types",
                     "type": "string"
                 }
             }
@@ -2166,10 +3070,6 @@
                 "LicenseTypeEnterprise": "Full features",
                 "LicenseTypeTrial": "Limited features"
             },
-            "x-enum-descriptions": [
-                "Limited features",
-                "Full features"
-            ],
             "x-enum-varnames": [
                 "LicenseTypeTrial",
                 "LicenseTypeEnterprise"
@@ -2259,12 +3159,10 @@
             "required": [
                 "cimage",
                 "ctag",
-                "description",
                 "host",
                 "name",
                 "port",
-                "protocol",
-                "version"
+                "protocol"
             ],
             "properties": {
                 "cimage": {
@@ -2355,10 +3253,57 @@
                 }
             }
         },
+        "models.SetupStatusResponse": {
+            "type": "object",
+            "properties": {
+                "adminExists": {
+                    "type": "boolean"
+                },
+                "credentialsUpdated": {
+                    "type": "boolean"
+                },
+                "hasDefaultCredentials": {
+                    "type": "boolean"
+                },
+                "needsCredentialUpdate": {
+                    "type": "boolean"
+                },
+                "systemInfo": {
+                    "$ref": "#/definitions/models.SystemInfo"
+                }
+            }
+        },
+        "models.SuccessPostResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "code",
+                    "type": "integer"
+                },
+                "message": {
+                    "description": "message",
+                    "type": "string"
+                }
+            }
+        },
         "models.SuccessResponse": {
             "type": "object",
             "properties": {
                 "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SystemInfo": {
+            "type": "object",
+            "properties": {
+                "adminUserId": {
+                    "type": "integer"
+                },
+                "installationId": {
+                    "type": "string"
+                },
+                "version": {
                     "type": "string"
                 }
             }

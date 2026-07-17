@@ -5,13 +5,14 @@ import {IIPFilterEntry, IIPFilterDeleteParams} from 'types/security';
 import {IInstance} from 'types/oam';
 import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
+import type {GwGetResp} from 'api';
 
 //---------------------------------------------------------
 // API Caller Functions
 //---------------------------------------------------------
 export async function query_get_ipfilter_all(instance: IInstance): Promise<IIPFilterEntry[]> {
-	const resp = await GET_INST(instance, `/config/ipfilter/all`);
-	return (resp.data?.ipFilterAttr as IIPFilterEntry[]) ?? [];
+	const resp = await GET_INST<GwGetResp<'/config/ipfilter/all'>>(instance, `/config/ipfilter/all`);
+	return (resp.data?.ipFilterAttr ?? []) as IIPFilterEntry[];
 }
 
 export async function request_create_ipfilter_rule(instance: IInstance, data: IIPFilterEntry): Promise<ApiResult> {

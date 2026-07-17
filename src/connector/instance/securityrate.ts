@@ -5,6 +5,7 @@ import {ISecurityRateConfigMod, ISecurityRateEntry} from 'types/security';
 import {IInstance} from 'types/oam';
 import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST, PUT_INST} from '../fetcher/fetcher_inst';
+import type {GwGetResp} from 'api';
 
 //---------------------------------------------------------
 // API Caller Functions
@@ -15,8 +16,8 @@ import {DELETE_INST, GET_INST, POST_INST, PUT_INST} from '../fetcher/fetcher_ins
  * Includes SYN flood (P0-5), connection rate limiting (P0-6), and UDP flood (P0-7)
  */
 export async function query_get_securityrate_all(instance: IInstance): Promise<ISecurityRateEntry[]> {
-	const resp = await GET_INST(instance, `/config/securityrate/all`);
-	return (resp.data?.securityrateAttr as ISecurityRateEntry[]) ?? [];
+	const resp = await GET_INST<GwGetResp<'/config/securityrate/all'>>(instance, `/config/securityrate/all`);
+	return (resp.data?.securityrateAttr ?? []) as ISecurityRateEntry[];
 }
 
 /**

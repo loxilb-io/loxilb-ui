@@ -5,13 +5,14 @@ import { IInstance } from 'types/oam';
 import { IVxlanAttribute, IVxlanInput } from 'types/vxlan';
 import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
+import type {GwGetResp} from 'api';
 
 //---------------------------------------------------------
 // API Caller Functions
 //---------------------------------------------------------
 export async function query_get_vxlan_all(instance: IInstance): Promise<IVxlanAttribute[]> {
-	const resp = await GET_INST(instance, `/config/tunnel/vxlan/all`);
-	return (resp.data?.vxlanAttr as IVxlanAttribute[]) ?? [];
+	const resp = await GET_INST<GwGetResp<'/config/tunnel/vxlan/all'>>(instance, `/config/tunnel/vxlan/all`);
+	return (resp.data?.vxlanAttr ?? []) as IVxlanAttribute[];
 }
 
 export async function request_create_vxlan(instance: IInstance, data: IVxlanInput): Promise<ApiResult> {

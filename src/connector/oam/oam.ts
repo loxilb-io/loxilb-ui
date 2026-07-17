@@ -6,25 +6,26 @@ import {ILog, ILogArchiveList} from 'types/log';
 import {IInstance, IInstanceInput, IUser} from 'types/oam';
 import {ILicenseStatusResponse, IInstallLicenseRequest, IUpdateLicenseRequest, ILicensePayload, IUserLicensesResponse} from 'types/license';
 import {ISetupStatus, IUpdateAdminRequest, IUpdateAdminResponse} from 'types/setup';
-import {ApiResult, load_token, SimpleResponse} from '../fetcher/fetcher_base';
+import {ApiResult, load_token} from '../fetcher/fetcher_base';
 import {DELETE_OAM, GET_OAM, POST_OAM, PUT_OAM} from '../fetcher/fetcher_oam';
+import type {OamGetResp, OamPostResp} from 'api';
 
 //---------------------------------------------------------
 // API Caller Functions
 //---------------------------------------------------------
 export async function query_get_me(): Promise<IUser | undefined> {
-	const resp = await GET_OAM(`/users/me`);
-	return resp.data as IUser;
+	const resp = await GET_OAM<OamGetResp<'/oam/users/me'>>(`/users/me`);
+	return (resp.data ?? undefined) as IUser | undefined;
 }
 
 export async function request_health_check(): Promise<boolean> {
-	const resp: SimpleResponse = await GET_OAM(`/health`);
+	const resp = await GET_OAM<OamGetResp<'/oam/health'>>(`/health`);
 	return resp.code === 200;
 }
 
 export async function query_get_instance_list(): Promise<IInstance[]> {
-	const resp = await GET_OAM(`/loxilbs`);
-	return (resp.data as IInstance[]) ?? [];
+	const resp = await GET_OAM<OamGetResp<'/oam/loxilbs'>>(`/loxilbs`);
+	return (resp.data ?? []) as IInstance[];
 }
 
 export async function request_create_instance(param: IInstanceInput): Promise<ApiResult> {
@@ -34,8 +35,8 @@ export async function request_create_instance(param: IInstanceInput): Promise<Ap
 }
 
 export async function request_get_instance_by_id(id: number): Promise<IInstance | undefined> {
-	const resp = await GET_OAM(`/loxilbs/${id}`);
-	return resp.data as IInstance;
+	const resp = await GET_OAM<OamGetResp<'/oam/loxilbs/{id}'>>(`/loxilbs/${id}`);
+	return (resp.data ?? undefined) as IInstance | undefined;
 }
 
 export async function request_update_instance(id: number, param: IInstanceInput): Promise<ApiResult> {
@@ -98,8 +99,8 @@ export async function query_get_oam_logs(): Promise<ILog[]> {
 	//	"ERROR: 2025/05/25 07:23:58 logging.go:51: main.main.func1: Reconnection failed: could not connect to database after 5 retries: %!w(<nil>)",
 	//	...
 	//]
-	const resp = await GET_OAM(`/logs`);
-	const log_strings = resp.data.logs as string[] | undefined;
+	const resp = await GET_OAM<OamGetResp<'/oam/logs'>>(`/logs`);
+	const log_strings = resp.data?.logs;
 	if (!log_strings) return [];
 	else {
 		const res: ILog[] = parse_log_lines(log_strings);
@@ -108,9 +109,9 @@ export async function query_get_oam_logs(): Promise<ILog[]> {
 }
 
 export async function query_get_log_archives(): Promise<ILogArchiveList> {
-	const resp = await GET_OAM(`/logs/archives`);
+	const resp = await GET_OAM<OamGetResp<'/oam/logs/archives'>>(`/logs/archives`);
 	if (resp.code !== 200) return {archives: []};
-	return (resp.data as ILogArchiveList) ?? {archives: []};
+	return (resp.data ?? {archives: []}) as ILogArchiveList;
 }
 
 //---------------------------------------------------------
@@ -154,9 +155,9 @@ export async function request_upgrade_license(param: IUpdateLicenseRequest): Pro
 }
 
 export async function request_validate_license(param: IInstallLicenseRequest): Promise<ILicensePayload | undefined> {
-	const resp = await POST_OAM('/license/validate', param);
+	const resp = await POST_OAM<OamPostResp<'/oam/license/validate'>>('/license/validate', param);
 	if (resp.code !== 200) return undefined;
-	return resp.data as ILicensePayload;
+	return (resp.data ?? undefined) as ILicensePayload | undefined;
 }
 
 export async function query_check_feature_access(feature: string): Promise<boolean> {
@@ -168,8 +169,8 @@ export async function query_check_feature_access(feature: string): Promise<boole
 // User License Management API Functions (New endpoints)
 //---------------------------------------------------------
 export async function query_get_user_licenses(): Promise<IUserLicensesResponse | undefined> {
-	const resp = await GET_OAM('/users/licenses');
-	return resp.data as IUserLicensesResponse;
+	const resp = await GET_OAM<OamGetResp<'/oam/users/licenses'>>('/users/licenses');
+	return (resp.data ?? undefined) as IUserLicensesResponse | undefined;
 }
 
 export async function request_update_user_license(licenseId: number, param: IUpdateLicenseRequest): Promise<ApiResult> {
@@ -182,8 +183,8 @@ export async function request_update_user_license(licenseId: number, param: IUpd
 }
 
 export async function query_get_user_license_status(licenseId: number): Promise<ILicenseStatusResponse | undefined> {
-	const resp = await GET_OAM(`/users/licenses/${licenseId}/status`);
-	return resp.data as ILicenseStatusResponse;
+	const resp = await GET_OAM<OamGetResp<'/oam/users/licenses/{license_id}/status'>>(`/users/licenses/${licenseId}/status`);
+	return (resp.data ?? undefined) as ILicenseStatusResponse | undefined;
 }
 
 export async function request_deactivate_user_license(licenseId: number): Promise<ApiResult> {
@@ -199,8 +200,8 @@ export async function request_deactivate_user_license(licenseId: number): Promis
 // User Management API Functions
 //---------------------------------------------------------
 export async function query_get_all_users(): Promise<IUser[]> {
-	const resp = await GET_OAM('/users');
-	return (resp.data as IUser[]) ?? [];
+	const resp = await GET_OAM<OamGetResp<'/oam/users'>>('/users');
+	return (resp.data ?? []) as IUser[];
 }
 
 export async function request_update_user(id: number, userData: Partial<IUser>): Promise<ApiResult> {
@@ -227,17 +228,17 @@ export async function request_delete_user(id: number): Promise<ApiResult> {
 // Setup & Onboarding API Functions (Updated for finalized backend)
 //---------------------------------------------------------
 export async function query_setup_status(): Promise<ISetupStatus | undefined> {
-	const resp = await GET_OAM('/setup/status');
-	return resp.data as ISetupStatus;
+	const resp = await GET_OAM<OamGetResp<'/oam/setup/status'>>('/setup/status');
+	return (resp.data ?? undefined) as ISetupStatus | undefined;
 }
 
 export async function request_update_admin_credentials(payload: IUpdateAdminRequest): Promise<IUpdateAdminResponse> {
-	const resp = await POST_OAM('/setup/update-admin', payload);
+	const resp = await POST_OAM<OamPostResp<'/oam/setup/update-admin'>>('/setup/update-admin', payload);
 	if (resp.code !== 200 && resp.code !== 201) {
 		return {
 			success: false, 
 			message: resp.data?.message || resp.message || 'Failed to update admin credentials'
 		};
 	}
-	return resp.data as IUpdateAdminResponse;
+	return (resp.data ?? {success: false, message: 'Empty response from server'}) as IUpdateAdminResponse;
 }

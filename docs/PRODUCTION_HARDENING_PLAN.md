@@ -33,7 +33,9 @@ Rationale:
 
 ## 3. Workstreams (ordered; 1–4 are the production-quality core, mostly non-breaking)
 
-### H1 — Swagger codegen for types  *(foundation — do first)*
+### H1 — Swagger codegen for types  *(foundation — do first)*  ✅ DONE (2026-07-17)
+- **Landed:** specs vendored to `api-spec/` (gateway `swagger.yml` + `swagger-extras.yml` from the loxilb-inference-gateway repo, OAM from `oam-loxilb/docs/swagger.json` via `swag init`); `npm run gen:api` (swagger2openapi → openapi-typescript) emits `src/api/gen/*`; `src/api/index.ts` exposes `GwSchema/GwGetResp/GwPostBody/Oam*` helpers; fetchers are generic (`SimpleResponse<T>`, `GET_INST<T>`, …); every GET in `src/connector/instance/*` + `src/connector/oam/*` + `user.ts` is typed against the spec (a wrong path literal is now a compile error). `npm run gen:api:check` fails on drift (wire into CI in H7). Stale root spec copies deleted.
+- **Spec gaps found (fix upstream):** gateway `/logs` returns `next_cursor`/`has_more`/`log_count` but the `Logs` model doesn't declare them (typed locally in `status.ts` with a SPEC GAP comment); the BGP defined-sets "all" listing rides `/config/bgp/policy/definedsets/{defineset_type}/{type_name}` with `type_name=all` (no dedicated route); defined-set entries carry no `definedType` on the wire — the UI tags it client-side (was silently `undefined` before typing).
 - Add `openapi-typescript` (types-only, lightest) or `orval` (types + typed React-Query client) against `swagger.yml` (gateway) + the OAM spec.
 - Wire a `gen:api` npm script; commit generated output; add a CI check that regen produces no diff (drift = build failure).
 - Replace `any` at the connector boundary with generated request/response types. Target: collapse the **273 `any`** substantially (start with `src/connector/**` and `src/types/metrics.ts`).

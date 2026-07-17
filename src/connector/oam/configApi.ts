@@ -8,6 +8,7 @@ import {
 } from 'types/config';
 import {ApiResult} from '../fetcher/fetcher_base';
 import {GET_OAM, POST_OAM, UPLOAD_FILE_OAM, DOWNLOAD_FILE_OAM} from '../fetcher/fetcher_oam';
+import type {OamGetResp} from 'api';
 
 //---------------------------------------------------------
 // Configuration Export Functions
@@ -21,12 +22,12 @@ export async function request_export_config(request: ExportRequest): Promise<Api
 }
 
 export async function query_get_config_exports(): Promise<ExportListResponse | undefined> {
-  const resp = await GET_OAM('/config/exports');
+  const resp = await GET_OAM<OamGetResp<'/oam/config/exports'>>('/config/exports');
   if (resp.code === 200) {
     return {
-      exports: resp.data.exports || [],
-      count: resp.data.count || 0,
-      message: resp.data.message || 'Success'
+      exports: (resp.data?.exports ?? []) as ExportListResponse['exports'],
+      count: resp.data?.count || 0,
+      message: resp.data?.message || 'Success'
     };
   }
   return undefined;
@@ -101,9 +102,9 @@ export async function query_get_config_files(params?: {
     }
   }
 
-  const resp = await GET_OAM(url);
+  const resp = await GET_OAM<OamGetResp<'/oam/config/files'>>(url);
   if (resp.code === 200) {
-    return resp.data as FileListResponse;
+    return (resp.data ?? undefined) as FileListResponse | undefined;
   }
   return undefined;
 }
