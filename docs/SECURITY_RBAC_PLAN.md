@@ -36,10 +36,10 @@ Severity uses CVSS-style qualitative rating. "Verified" = confirmed against the 
 
 | # | Finding | Evidence | Status |
 |---|---|---|---|
-| C-1 | **Unauthenticated admin takeover via `POST /oam/admin/reset`.** Only "protection" is a JSON `confirm:true` flag; the code comment "Optional: Verify super admin authorization" is unimplemented. Resets admin to the known default password and returns it in the body. Any anonymous caller with network reach → admin. | `handler.go:2647-2690`, `user_service.go:1686`. Live: `/oam/admin/reset` reachable with no token (OPTIONS 200). | **OPEN — flagged** |
-| C-2 | **No authorization on user management.** `CreateUser`/`UpdateUser`/`DeleteUser`/`GetUsers` never checked the caller's role. Any authenticated user could create an **admin**, change another user's password/role (take over admin), or delete users. | `handler.go` CreateUser:306 / UpdateUser:370 / DeleteUser:460; `routes.go` token-only group. | **[FIXED]** RBAC middleware + handler authz (see §4) |
-| C-3 | **Hardcoded JWT signing key** `netlox_secret_key` (HS256). Anyone with the source can forge a token for `username:"admin"` → full access, bypassing login entirely. | `utils/jwt.go:15`. | **OPEN — flagged** (needs env secret + token invalidation) |
-| C-4 | **Hardcoded license HMAC secret** `presto@123` used to both mint and validate trial/enterprise licenses. Anyone with the repo can forge enterprise licenses. | `config/constants.go:21`, `user_service.go:907/956`, `utils/license.go:253`. | **OPEN — flagged** |
+| C-1 | **Unauthenticated admin takeover via `POST /oam/admin/reset`.** Only "protection" was a JSON `confirm:true` flag. Reset admin to the known default password and returned it. Any anonymous caller with network reach → admin. | `handler.go:2647-2690`, `user_service.go:1686`. | **[FIXED + DEPLOYED]** HTTP route & handler removed; reset is now the local-only `cmd/reset_admin` CLI. Live testbed: route returns **404**. |
+| C-2 | **No authorization on user management.** `CreateUser`/`UpdateUser`/`DeleteUser`/`GetUsers` never checked the caller's role. Any authenticated user could create an **admin**, change another user's password/role (take over admin), or delete users. | `handler.go` CreateUser:306 / UpdateUser:370 / DeleteUser:460; `routes.go` token-only group. | **[FIXED + DEPLOYED]** RBAC middleware + handler authz (see §4). Live: non-admin gets **403** on GET/POST/DELETE `/users` and on changing another user's password. |
+| C-3 | **Hardcoded JWT signing key** `netlox_secret_key` (HS256). Anyone with the source can forge a token for `username:"admin"` → full access, bypassing login entirely. | `utils/jwt.go:15`. | **[FIXED + DEPLOYED]** Sourced from `OAM_JWT_SECRET` (public fallback + startup warning). Testbed running with a fresh random key; old forgeable tokens invalidated. |
+| C-4 | **Hardcoded license HMAC secret** `presto@123` used to both mint and validate trial/enterprise licenses. Anyone with the repo can forge enterprise licenses. | `config/constants.go:21`, `user_service.go:907/956`, `utils/license.go:253`. | **[FIXED — env-wired]** Sourced from `OAM_LICENSE_SIGNING_SECRET` (public fallback + startup warning). Testbed keeps the old value so existing licenses validate; **production must set a new secret AND reissue licenses.** |
 
 ### HIGH
 
@@ -57,8 +57,8 @@ Severity uses CVSS-style qualitative rating. "Verified" = confirmed against the 
 | M-1 | Weak password hashing: PBKDF2-HMAC-SHA256 at **10,000** rounds (OWASP ≈600k). | `pkg/utils/password.go:14`. | OPEN |
 | M-2 | Weak brute-force lockout: 5 attempts → **30-second** lock; no rate-limit on reset/setup/proxy. | `config/constants.go:71`. | OPEN |
 | M-3 | No token expiry/refresh in UI; 24h opaque token in `localStorage` (XSS-exfiltratable). | UI `fetcher_base.ts`; `constants.go:25`. | OPEN |
-| M-4 | Hardcoded OAuth client secrets committed. | `config/oauth.go:13`. | OPEN (OAuth being removed) |
-| M-5 | Default admin password hardcoded in 7+ files, incl. imported-user default. | `config/constants.go:65`, `main.go:232`. | OPEN |
+| M-4 | Hardcoded OAuth client secrets committed (real Google/GitHub secrets in git history). | `config/oauth.go:13`. | **[FIXED — env-wired]** Secrets removed from source; loaded from `OAM_OAUTH_<PROVIDER>_CLIENT_ID/_SECRET`. **Rotate the leaked Google/GitHub secrets at the provider** (git history still holds them). |
+| M-5 | Default admin password hardcoded in 7+ files, incl. imported-user default. | `config/constants.go:65`, `main.go:232`. | **[FIXED — env-wired]** All functional refs route through `config.DefaultConfigPassword` (env `OAM_DEFAULT_ADMIN_PASSWORD`, public fallback + startup warning). |
 
 ---
 
@@ -141,6 +141,20 @@ Phase 2 (route/proxy capability enforcement) → Phase 3 (UI) → Phase 4 remain
 C-1 and C-3 are the highest priority: either alone is a full remote-admin-compromise. They gate any exposure of OAM beyond a trusted network.
 
 ---
+
+## 5.5 OAM security environment variables (added 2026-07-17)
+
+Set these in production (docker `-e` / compose `environment:` / k8s Secret). Each has a public built-in fallback so dev/test runs unconfigured; OAM logs a `SECURITY:` warning at startup for every one left unset.
+
+| Env var | Purpose | Rotation impact |
+|---|---|---|
+| `OAM_JWT_SECRET` | JWT signing key | Rotating invalidates all active tokens (users re-login) |
+| `OAM_LICENSE_SIGNING_SECRET` | License HMAC secret | Rotating invalidates existing licenses — **reissue them** |
+| `OAM_DEFAULT_ADMIN_PASSWORD` | Bootstrap admin + imported-user password | Affects only fresh installs / new imports |
+| `OAM_OAUTH_GOOGLE_CLIENT_ID` / `_CLIENT_SECRET` | Google OAuth (if used) | — |
+| `OAM_OAUTH_GITHUB_CLIENT_ID` / `_CLIENT_SECRET` | GitHub OAuth (if used) | — |
+
+Testbed (kv-client) is currently deployed with `OAM_JWT_SECRET` (fresh random) and `OAM_LICENSE_SIGNING_SECRET=presto@123` (kept so the installed trial license still validates).
 
 ## 6. Verification & follow-ups
 

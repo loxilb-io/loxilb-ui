@@ -4,58 +4,6 @@
         "contact": {}
     },
     "paths": {
-        "/oam/admin/reset": {
-            "post": {
-                "description": "Reset admin account to default username (admin), password (AdminNetlox132!), and email. Useful for recovery or testing.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Setup"
-                ],
-                "summary": "Reset admin account to defaults",
-                "parameters": [
-                    {
-                        "description": "Admin reset confirmation request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.AdminResetRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.AdminResetResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/oam/alerts": {
             "get": {
                 "description": "Retrieves all active alerts from the database with pagination (always returns paginated response)",
@@ -2687,35 +2635,6 @@
                 }
             }
         },
-        "models.AdminResetRequest": {
-            "type": "object",
-            "required": [
-                "confirm"
-            ],
-            "properties": {
-                "confirm": {
-                    "description": "Must be true to proceed",
-                    "type": "boolean"
-                }
-            }
-        },
-        "models.AdminResetResponse": {
-            "type": "object",
-            "properties": {
-                "adminInfo": {
-                    "$ref": "#/definitions/models.DefaultAdminInfo"
-                },
-                "message": {
-                    "type": "string"
-                },
-                "success": {
-                    "type": "boolean"
-                },
-                "warning": {
-                    "type": "string"
-                }
-            }
-        },
         "models.AdminUpdateRequest": {
             "type": "object",
             "required": [
@@ -2938,23 +2857,6 @@
                 "role": {
                     "description": "Optional: Admin can set role (defaults to \"user\")",
                     "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.DefaultAdminInfo": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "password": {
-                    "type": "string"
-                },
-                "userId": {
-                    "type": "integer"
                 },
                 "username": {
                     "type": "string"

@@ -5,46 +5,6 @@
 
 
 export interface paths {
-  "/oam/admin/reset": {
-    /**
-     * Reset admin account to defaults
-     * @description Reset admin account to default username (admin), password (AdminNetlox132!), and email. Useful for recovery or testing.
-     */
-    post: {
-      /** @description Admin reset confirmation request */
-      requestBody: {
-        content: {
-          "application/json": components["schemas"]["models.AdminResetRequest"];
-        };
-      };
-      responses: {
-        /** @description OK */
-        200: {
-          content: {
-            "application/json": components["schemas"]["models.AdminResetResponse"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-      };
-    };
-  };
   "/oam/alerts": {
     /**
      * Get active alerts
@@ -2046,16 +2006,6 @@ export interface components {
       user_id?: number;
       username?: string;
     };
-    "models.AdminResetRequest": {
-      /** @description Must be true to proceed */
-      confirm: boolean;
-    };
-    "models.AdminResetResponse": {
-      adminInfo?: components["schemas"]["models.DefaultAdminInfo"];
-      message?: string;
-      success?: boolean;
-      warning?: string;
-    };
     "models.AdminUpdateRequest": {
       confirmPassword: string;
       currentPassword: string;
@@ -2129,12 +2079,6 @@ export interface components {
       /** @description Optional: Admin can set role (defaults to "user") */
       role?: string;
       username: string;
-    };
-    "models.DefaultAdminInfo": {
-      email?: string;
-      password?: string;
-      userId?: number;
-      username?: string;
     };
     "models.EnhancedLoginResponse": {
       days_left?: number;
