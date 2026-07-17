@@ -1,8 +1,8 @@
 //---------------------------------------------------------
 // User Management Connector Functions
 //---------------------------------------------------------
-import { SimpleResponse } from './fetcher/fetcher_base';
 import { POST_OAM } from './fetcher/fetcher_oam';
+import type { OamPostResp } from 'api';
 import { ICreateUserRequest, IUserIdResponse, ILoginRequest, IEnhancedLoginResponse } from 'types/user';
 
 /**
@@ -11,15 +11,17 @@ import { ICreateUserRequest, IUserIdResponse, ILoginRequest, IEnhancedLoginRespo
  */
 export async function create_user(userData: ICreateUserRequest): Promise<IUserIdResponse> {
 	try {
-		const response: SimpleResponse = await POST_OAM('/users', userData);
+		const response = await POST_OAM<OamPostResp<'/oam/users'>>('/users', userData);
 
 		// Accept both 200 and 201 as success (some APIs return 200 instead of 201)
 		if (response.code !== 200 && response.code !== 201) {
 			// Parse error message from API response
 			let errorMessage = 'Unknown error';
-			
-			if (response.data && typeof response.data === 'object' && response.data.error) {
-				errorMessage = response.data.error;
+
+			// non-2xx bodies are models.ErrorResponse, not the success type
+			const errBody = response.data as {error?: string} | null;
+			if (errBody && typeof errBody === 'object' && errBody.error) {
+				errorMessage = errBody.error;
 			} else if (response.message) {
 				errorMessage = response.message;
 			}
@@ -33,7 +35,7 @@ export async function create_user(userData: ICreateUserRequest): Promise<IUserId
 			return response.data as IUserIdResponse;
 		} else if (response.data) {
 			// If response.data is just the ID number
-			return { id: response.data } as IUserIdResponse;
+			return { id: response.data as unknown as number } as IUserIdResponse;
 		} else {
 			// If no data returned but status is success, assume creation worked
 			return { id: 0 } as IUserIdResponse; // Placeholder ID
@@ -49,14 +51,16 @@ export async function create_user(userData: ICreateUserRequest): Promise<IUserId
  */
 export async function login_user(credentials: ILoginRequest): Promise<IEnhancedLoginResponse> {
 	try {
-		const response: SimpleResponse = await POST_OAM('/login', credentials);
+		const response = await POST_OAM<OamPostResp<'/oam/login'>>('/login', credentials);
 
 		if (response.code !== 200) {
 			// Parse error message from API response
 			let errorMessage = 'Login failed';
-			
-			if (response.data && typeof response.data === 'object' && response.data.error) {
-				errorMessage = response.data.error;
+
+			// non-2xx bodies are models.ErrorResponse, not the success type
+			const errBody = response.data as {error?: string} | null;
+			if (errBody && typeof errBody === 'object' && errBody.error) {
+				errorMessage = errBody.error;
 			} else if (response.message) {
 				errorMessage = response.message;
 			}

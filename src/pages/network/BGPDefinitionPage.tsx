@@ -24,7 +24,8 @@ export default function BGPDefinitionPage() {
 	const inst = useInstanceFromURL();
 
 	const {data, refetch} = useBGPPolicyDefs(inst); // IBgpPolicy[]
-	const def_info: IBgpPolicyInfo = {bgpPolicyAttr: data ?? []};
+	// wire fields are optional in swagger; the policy views require them — narrow once here
+	const def_info: IBgpPolicyInfo = {bgpPolicyAttr: (data ?? []) as IBgpPolicy[]};
 
 	const [cur_tab_idx, set_cur_tab_idx] = useState(0);
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);

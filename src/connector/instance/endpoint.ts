@@ -5,13 +5,14 @@ import {IEndpointInput, IEndpointItem} from 'types/endpoint';
 import {IInstance} from 'types/oam';
 import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
+import type {GwGetResp} from 'api';
 
 //---------------------------------------------------------
 // API Caller Functions
 //---------------------------------------------------------
 export async function query_get_endpoint_all(instance: IInstance): Promise<IEndpointItem[]> {
-	const resp = await GET_INST(instance, `/config/endpoint/all`);
-	return (resp.data?.Attr as IEndpointItem[]) ?? [];
+	const resp = await GET_INST<GwGetResp<'/config/endpoint/all'>>(instance, `/config/endpoint/all`);
+	return (resp.data?.Attr ?? []) as IEndpointItem[];
 }
 
 export async function request_create_endpoint(instance: IInstance, data: IEndpointInput): Promise<ApiResult> {

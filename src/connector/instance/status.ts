@@ -12,22 +12,23 @@ import {IInstance} from 'types/oam';
 import {IProcessAttribute} from 'types/process';
 import {GET_INST, POST_INST} from '../fetcher/fetcher_inst';
 import { getApiBaseUrl } from 'utils/apiProxy';
+import type {GwGetResp, GwSchema} from 'api';
 
 //---------------------------------------------------------
 // API Caller Functions
 //---------------------------------------------------------
 export async function query_get_filesystem_status(instance: IInstance): Promise<IFilesystemAttribute[]> {
-	const resp = await GET_INST(instance, `/status/filesystem`);
-	return (resp.data?.filesystemAttr as IFilesystemAttribute[]) ?? [];
+	const resp = await GET_INST<GwGetResp<'/status/filesystem'>>(instance, `/status/filesystem`);
+	return (resp.data?.filesystemAttr ?? []) as IFilesystemAttribute[];
 }
 
 export async function query_get_process_status(instance: IInstance): Promise<IProcessAttribute[]> {
-	const resp = await GET_INST(instance, `/status/process`);
-	return (resp.data?.processAttr as IProcessAttribute[]) ?? [];
+	const resp = await GET_INST<GwGetResp<'/status/process'>>(instance, `/status/process`);
+	return (resp.data?.processAttr ?? []) as IProcessAttribute[];
 }
 
 export async function query_get_device_status(instance: IInstance): Promise<ISystemInfo> {
-	const resp = await GET_INST(instance, `/status/device`);
+	const resp = await GET_INST<GwGetResp<'/status/device'>>(instance, `/status/device`);
 
 	if (resp.data) {
 		const system_info = resp.data as ISystemInfo;
@@ -57,8 +58,8 @@ export async function query_get_device_status(instance: IInstance): Promise<ISys
 }
 
 export async function query_get_ha_state_all(instance: IInstance): Promise<IVipAttribute[]> {
-	const resp = await GET_INST(instance, `/config/cistate/all`);
-	return (resp.data?.Attr as IVipAttribute[]) ?? [];
+	const resp = await GET_INST<GwGetResp<'/config/cistate/all'>>(instance, `/config/cistate/all`);
+	return (resp.data?.Attr ?? []) as IVipAttribute[];
 }
 
 // not for frontend use, only for backend to update HA state
@@ -73,8 +74,8 @@ export async function request_update_ha_state(instance: IInstance, data: IVipAtt
 }
 
 export async function query_get_metadata(instance: IInstance): Promise<any> {
-	const resp = await GET_INST(instance, `/meta`);
-	return (resp.data as any) ?? {};
+	const resp = await GET_INST<GwGetResp<'/meta'>>(instance, `/meta`);
+	return resp.data ?? {};
 }
 
 export async function request_post_log_level(instance: IInstance, level: LevelType): Promise<ApiResult> {
@@ -86,9 +87,9 @@ export async function request_post_log_level(instance: IInstance, level: LevelTy
 	else return {status: 'success'};
 }
 
-export async function query_get_log_level(instance: IInstance): Promise<any> {
-	const resp = await GET_INST(instance, `/config/params`);
-	return (resp.data as any) ?? {};
+export async function query_get_log_level(instance: IInstance): Promise<Partial<GwSchema<'OperParams'>>> {
+	const resp = await GET_INST<GwGetResp<'/config/params'>>(instance, `/config/params`);
+	return resp.data ?? {};
 }
 
 // Map UI level names to API level codes
@@ -122,17 +123,21 @@ export async function query_get_inst_logs(instance: IInstance, options?: {
 	const queryString = params.toString();
 	const endpoint = `/logs${queryString ? `?${queryString}` : ''}`;
 	
-	const resp = await GET_INST(instance, endpoint);
+	// SPEC GAP: the gateway /logs handler returns pagination fields
+	// (next_cursor, has_more, log_count) that swagger's Logs model does not
+	// declare yet — extend locally until the spec catches up.
+	type LogsResponse = GwGetResp<'/logs'> & {next_cursor?: string; has_more?: boolean; log_count?: number};
+	const resp = await GET_INST<LogsResponse>(instance, endpoint);
 
-	const log_strings = resp.data.logs as string[] | undefined;
+	const log_strings = resp.data?.logs;
 	if (!log_strings) return {logs: [], has_more: false};
 	
 	const logs: ILog[] = parse_log_lines(log_strings);
 	
 	// Get pagination info from response body
-	const next_cursor = resp.data.next_cursor || undefined;
-	const has_more = resp.data.has_more || false;
-	const count = resp.data.log_count || undefined;
+	const next_cursor = resp.data?.next_cursor || undefined;
+	const has_more = resp.data?.has_more || false;
+	const count = resp.data?.log_count || undefined;
 	
 	return {
 		logs,
@@ -143,9 +148,9 @@ export async function query_get_inst_logs(instance: IInstance, options?: {
 }
 
 export async function query_get_inst_log_archives(instance: IInstance): Promise<ILogArchiveList> {
-	const resp = await GET_INST(instance, `/log-archives`);
+	const resp = await GET_INST<GwGetResp<'/log-archives'>>(instance, `/log-archives`);
 	if (resp.code !== 200 && resp.code !== 204) return {archives: []};
-	return (resp.data as ILogArchiveList) ?? {archives: []};
+	return (resp.data ?? {archives: []}) as ILogArchiveList;
 }
 
 export async function download_inst_log_archive(instance: IInstance | null, filename: string): Promise<void> {
@@ -177,7 +182,7 @@ export async function download_inst_log_archive(instance: IInstance | null, file
 export async function query_instance_health(instance: IInstance): Promise<{isHealthy: boolean; error?: string}> {
 	try {
 		// Use proxy API pattern instead of direct endpoint call
-		const response = await GET_INST(instance, '/version');
+		const response = await GET_INST<GwGetResp<'/version'>>(instance, '/version');
 		
 		// Check if the response indicates success (status code 200-299)
 		if (response.code >= 200 && response.code < 300) {

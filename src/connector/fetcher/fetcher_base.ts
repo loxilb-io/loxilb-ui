@@ -12,9 +12,12 @@ export interface RequestOptions {
 	headers?: Record<string, string>;
 }
 
-export interface SimpleResponse {
+// T is the expected 2xx JSON body shape — pass a generated type from
+// src/api (e.g. GwGetResp<'/config/loadbalancer/all'>). data is null when
+// the body is not parseable JSON, and may be an error body on non-2xx codes.
+export interface SimpleResponse<T = any> {
 	code: number;
-	data: any;
+	data: T | null;
 	message: string;
 	headers?: Headers;
 }
@@ -156,7 +159,7 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 	}
 }
 
-async function handle_response(response: any): Promise<SimpleResponse> {
+async function handle_response<T = any>(response: any): Promise<SimpleResponse<T>> {
 	try {
 		const cc = response.clone();
 		const resp_json = await cc.json();
@@ -176,13 +179,13 @@ async function handle_response(response: any): Promise<SimpleResponse> {
 	}
 }
 
-async function fetch_json(url: string, options?: RequestOptions): Promise<SimpleResponse> {
+async function fetch_json<T = any>(url: string, options?: RequestOptions): Promise<SimpleResponse<T>> {
 	const resp = await fetch_data(url, options);
-	return await handle_response(resp);
+	return await handle_response<T>(resp);
 }
 
-export async function GET(url: string, params?: Record<string, any>): Promise<SimpleResponse> {
-	return await fetch_json(url, {method: 'GET', body: params});
+export async function GET<T = any>(url: string, params?: Record<string, any>): Promise<SimpleResponse<T>> {
+	return await fetch_json<T>(url, {method: 'GET', body: params});
 }
 
 // For plain-text endpoints (e.g. Prometheus exposition format) where the
@@ -190,7 +193,7 @@ export async function GET(url: string, params?: Record<string, any>): Promise<Si
 // Note: the gateway's /metrics endpoint returns 406 for `Accept: text/plain`
 // (its declared `produces` does not include text/plain) but serves the text
 // body for `Accept: */*`, so request that.
-export async function GET_TEXT(url: string, params?: Record<string, any>): Promise<SimpleResponse> {
+export async function GET_TEXT(url: string, params?: Record<string, any>): Promise<SimpleResponse<string>> {
 	const resp = await fetch_data(url, {method: 'GET', body: params, headers: {Accept: '*/*'}});
 	const text = await resp.text();
 	return {
@@ -201,23 +204,23 @@ export async function GET_TEXT(url: string, params?: Record<string, any>): Promi
 	};
 }
 
-export async function POST(url: string, data?: any, contentType?: 'application/json' | 'multipart/form-data'): Promise<SimpleResponse> {
+export async function POST<T = any>(url: string, data?: any, contentType?: 'application/json' | 'multipart/form-data'): Promise<SimpleResponse<T>> {
 	const headers = contentType ? {'Content-Type': contentType} : undefined;
-	return await fetch_json(url, {method: 'POST', body: data, headers});
+	return await fetch_json<T>(url, {method: 'POST', body: data, headers});
 }
 
-export async function PUT(url: string, data: any): Promise<SimpleResponse> {
-	return await fetch_json(url, {method: 'PUT', body: data});
+export async function PUT<T = any>(url: string, data: any): Promise<SimpleResponse<T>> {
+	return await fetch_json<T>(url, {method: 'PUT', body: data});
 }
 
-export async function PATCH(url: string, data?: any, contentType?: 'application/json' | 'multipart/form-data'): Promise<SimpleResponse> {
+export async function PATCH<T = any>(url: string, data?: any, contentType?: 'application/json' | 'multipart/form-data'): Promise<SimpleResponse<T>> {
 	const headers = contentType ? {'Content-Type': contentType} : undefined;
-	return await fetch_json(url, {method: 'PATCH', body: data, headers});
+	return await fetch_json<T>(url, {method: 'PATCH', body: data, headers});
 }
 
-export async function DELETE(url: string, data?: any, contentType?: 'application/json' | 'multipart/form-data'): Promise<SimpleResponse> {
+export async function DELETE<T = any>(url: string, data?: any, contentType?: 'application/json' | 'multipart/form-data'): Promise<SimpleResponse<T>> {
 	const headers = contentType ? {'Content-Type': contentType} : undefined;
-	return await fetch_json(url, {method: 'DELETE', body: data, headers});
+	return await fetch_json<T>(url, {method: 'DELETE', body: data, headers});
 }
 
 //---------------------------------------------------------

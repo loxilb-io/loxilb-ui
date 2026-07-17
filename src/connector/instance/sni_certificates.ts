@@ -10,6 +10,7 @@ import {
 import {IInstance} from 'types/oam';
 import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
+import type {GwGetResp} from 'api';
 
 //---------------------------------------------------------
 // API Caller Functions
@@ -20,13 +21,8 @@ import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
  * Returns all SNI certificates in the global certificate store (shared by all proxies)
  */
 export async function query_get_sni_certificates(instance: IInstance): Promise<ISNICertificatesResponse> {
-	const resp = await GET_INST(instance, `/sni/certificates`);
-	return (
-		(resp.data as ISNICertificatesResponse) ?? {
-			certificates: [],
-			totalCertificates: 0,
-		}
-	);
+	const resp = await GET_INST<GwGetResp<'/sni/certificates'>>(instance, `/sni/certificates`);
+	return (resp.data ?? {certificates: [], totalCertificates: 0}) as ISNICertificatesResponse;
 }
 
 /**

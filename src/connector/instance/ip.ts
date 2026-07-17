@@ -5,13 +5,14 @@ import { IInstance } from 'types/oam';
 import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
 import { IIpAttribute, IIpAttributeInput } from 'types/ip';
+import type {GwGetResp} from 'api';
 
 //---------------------------------------------------------
 // API Caller Functions
 //---------------------------------------------------------
 export async function query_get_ipv4_all(instance: IInstance): Promise<IIpAttribute[]> {
-	const resp = await GET_INST(instance, `/config/ipv4address/all`);
-	return (resp.data?.ipAttr as IIpAttribute[]) ?? [];
+	const resp = await GET_INST<GwGetResp<'/config/ipv4address/all'>>(instance, `/config/ipv4address/all`);
+	return (resp.data?.ipAttr ?? []) as IIpAttribute[];
 }
 
 export async function request_create_ipv4(instance: IInstance, data: IIpAttributeInput): Promise<ApiResult> {

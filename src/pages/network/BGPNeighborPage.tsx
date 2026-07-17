@@ -9,7 +9,7 @@ import {usePopUp} from 'hooks/popupHook';
 import {useBGPNeighbors} from 'hooks/query/bgpHooks';
 import {t} from 'i18next';
 import {useRef, useState} from 'react';
-import {IBgpNeighborInput, IBgpNeighborState} from 'types/bgp_neighbor';
+import {IBgpNeighborAttribute, IBgpNeighborInput, IBgpNeighborState} from 'types/bgp_neighbor';
 
 //---------------------------------------------------------
 // Functional Component
@@ -18,7 +18,8 @@ export default function BGPNeighborPage() {
 	const inst = useInstanceFromURL();
 
 	const {data, refetch} = useBGPNeighbors(inst); // IBgpNeighborAttribute[]
-	const bgp_neighbor_info: IBgpNeighborState = {bgpNeiAttr: data ?? []};
+	// wire fields are optional in swagger; the table/delete flow requires them — narrow once here
+	const bgp_neighbor_info: IBgpNeighborState = {bgpNeiAttr: (data ?? []) as IBgpNeighborAttribute[]};
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
 	const {openPopUp, enableYes} = usePopUp();

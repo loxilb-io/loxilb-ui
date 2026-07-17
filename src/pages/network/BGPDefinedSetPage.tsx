@@ -9,7 +9,7 @@ import {usePopUp} from 'hooks/popupHook';
 import {useBGPDefinedSets} from 'hooks/query/bgpHooks';
 import {t} from 'i18next';
 import {useRef, useState} from 'react';
-import {IBGPDefinedSetInput, IDefinedSetsInfo} from 'types/bgp_defined_set';
+import {IBGPDefinedSetInput, IDefinedSetAttribute, IDefinedSetsInfo} from 'types/bgp_defined_set';
 
 //---------------------------------------------------------
 // Functional Component
@@ -24,14 +24,27 @@ export default function BGPDefinedSetPage() {
 	const {data: extcommunity_data, refetch: refetch_extcomm} = useBGPDefinedSets(inst, 'extcommunity'); // list is avalable
 	const {data: largecommunity_data, refetch: refetch_largecomm} = useBGPDefinedSets(inst, 'largecommunity'); // list is avalable
 
+	// The gateway response does not carry definedType — each list is tagged
+	// here with the type it was queried by (delete/refetch route on it).
+	const tag_defined_type = (
+		rows: {name: string; prefixList?: {ipPrefix?: string; masklengthRange?: string}[]; list?: string[]}[] | undefined,
+		definedType: IDefinedSetAttribute['definedType'],
+	): IDefinedSetAttribute[] =>
+		(rows ?? []).map(d => ({
+			name: d.name,
+			definedType,
+			prefixList: (d.prefixList ?? []).map(p => ({ipPrefix: p.ipPrefix ?? '', masklengthRange: p.masklengthRange ?? ''})),
+			list: d.list ?? [],
+		}));
+
 	const set_data: IDefinedSetsInfo = {
 		definedsetsAttr: [
-			...(prefix_data ?? []),
-			...(neighbor_data ?? []),
-			...(aspath_data ?? []),
-			...(community_data ?? []),
-			...(extcommunity_data ?? []),
-			...(largecommunity_data ?? []),
+			...tag_defined_type(prefix_data, 'prefix'),
+			...tag_defined_type(neighbor_data, 'neighbor'),
+			...tag_defined_type(aspath_data, 'aspath'),
+			...tag_defined_type(community_data, 'community'),
+			...tag_defined_type(extcommunity_data, 'extcommunity'),
+			...tag_defined_type(largecommunity_data, 'largecommunity'),
 		],
 	};
 
