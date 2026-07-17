@@ -53,8 +53,8 @@ Legend: ✅ implemented · ◐ partial (works but missing fields) · ❌ missing
 | cert (SNI) | GET POST PUT DELETE | ◐ GET/POST/DELETE; ❌ PUT | field parity + no PUT |
 | params | GET POST | ◐ GET | verify POST |
 | **l7policy** | GET POST DELETE | ❌ | **new resource (in scope)** |
-| **ai (apikey)** | GET POST DELETE | ❌ | **new resource (in scope)** |
-| **ai (tenant ratelimit)** | GET POST DELETE | ❌ | **new resource (in scope)** |
+| **ai (apikey)** | GET POST DELETE (+PATCH via raw middleware) | ✅ built | UI done; **gateway needs `--userservice`** (see §2.2) |
+| **ai (tenant ratelimit)** | POST + GET/{tenant_id} only (no DELETE, no list-all) | ✅ built (menu hidden) | UI done; **gateway needs `--userservice`** (see §2.2) |
 | **ipsec** (tunnels/certs/ca) | GET POST DELETE | ❌ | **new resource (in scope)** |
 | gpu / pii / llamafirewall / opa / trace / l4trace / session / sessionulcl / cors / worker / cistate / metrics | various | ❌ | out of scope this pass (§4) |
 
@@ -113,8 +113,44 @@ httpVersion, domainName.
 **Missing operations:** `PATCH /config/loadbalancer` (RFC 7386 merge-patch —
 partial update without full re-create; the UI only re-POSTs today).
 
-> Rows 2.2–2.x (firewall, endpoint, mirror, policy, securityrate PUT, cert PUT,
-> ipv6, l7policy, ai/apikey, ai/ratelimit, ipsec) are filled in as each is
+### 2.2 AI API keys + tenant rate limits (`/config/ai/apikey`, `/config/ai/tenant/ratelimit`)
+
+**Built 2026-07-17** (`types/ai.ts`, `connector/instance/ai.ts`,
+`pages/ai/AIApiKeyPage.tsx`, `pages/ai/AITenantRateLimitPage.tsx`). Types are
+derived from the generated swagger types (`GwSchema<…>`), so they cannot drift.
+
+**Schema notes (corrections to the §1 matrix as first drafted):**
+- apikey: `POST` (201 returns `raw_key` **exactly once** — UI shows a one-time
+  copy dialog), `GET` list (optional `tenant_id` filter), `GET`/`DELETE` by
+  `key_id`. The gateway also serves `PATCH /config/ai/apikey/{key_id}` via raw
+  middleware (enable/disable + limit updates, not in the vendored swagger) —
+  a candidate follow-up for an enable/disable toggle in the UI.
+- tenant ratelimit: `POST` is an **upsert**; `GET` exists **only per-tenant**
+  (`/{tenant_id}`); there is **no DELETE and no list-all**. The UI derives the
+  tenant list from tenants seen on API keys plus manual lookups.
+
+**Tenant ≠ Octavia (decision 2026-07-17).** `tenant_id` here is the AI
+gateway's own API-key quota grouping (validated per LLM request in
+`ai_gateway_dp.go`, aggregate caps across a tenant's keys) — unrelated to the
+excluded Octavia `projectId` on LB rules. It is server-side mandatory on key
+creation, so it cannot be removed from the form. The **Tenant Rate Limits menu
+item is hidden** (page + route remain at `/instance/ai/ratelimit`).
+
+**Deployment finding (blocker for live validation).** On the testbed gateway
+all four endpoints return **501 stubs**: the handlers are registered only when
+the gateway runs with `--userservice --databasehost <mariadb>` (exactly how the
+`ai-apikey` CICD scenario boots it, logging in as `admin`/`Admin123!` for a
+JWT). With `--userservice` enabled the gateway enforces JWT auth on **every**
+API call, which the current OAM proxy does not forward — so enabling the
+feature on the shared testbed would break all other UI pages. Live validation
+is **deferred** until either (a) an isolated gateway instance is spun up with
+userservice + MariaDB, or (b) the OAM proxy learns to log into the gateway and
+attach tokens. UI correctness was instead validated against the gateway
+handler source (`api/restapi/handler/ai_apikey.go`) and the CICD request
+bodies, which the UI-built JSON matches field-for-field.
+
+> Rows 2.3–2.x (firewall, endpoint, mirror, policy, securityrate PUT, cert PUT,
+> ipv6, l7policy, ipsec) are filled in as each is
 > audited during burndown — see §3.
 
 ---
@@ -134,8 +170,14 @@ Each item: audit fields → update type + connector + form → `tsc`/tests →
 - [ ] ipv6address — new form (parity with ipv4)
 - [ ] vlan / vxlan / bfd / bgp — verify + fill gaps
 - [ ] **L7 policy** — new resource (GET/POST/DELETE)
-- [ ] **AI API keys** — new resource
-- [ ] **AI tenant rate-limits** — new resource
+- [x] **AI API keys** — new resource (2026-07-17): table + create form + one-time
+  raw-key dialog + delete; under new "AI Gateway" menu. Live validation deferred
+  (gateway `--userservice` requirement — §2.2); contract validated against
+  gateway handler source + CICD bodies.
+- [x] **AI tenant rate-limits** — new resource (2026-07-17): upsert form + per-tenant
+  lookup + table (tenants derived from API keys; API has no list-all/DELETE).
+  Menu item hidden by decision; route live at `/instance/ai/ratelimit`. Same
+  `--userservice` caveat as API keys.
 - [ ] **IPsec** — tunnels + certificates + ca-certificates
 
 ---
@@ -156,10 +198,10 @@ coverage. Config bodies come from each scenario's `config.sh`.
 | httpsproxy-mtls / e2ehttpsproxy-mtls | security + client-CA cert (mTLS) | ◐ verify SNI-cert/mTLS form |
 | vllm-fullproxy / -wrr, vllm-httpproxy / -wrr | mode=4, sel, model routing | ✅ |
 | **ai-model-routing** | model_name, path_prefix, path_match_mode | ✅ (model_name added) |
-| **ai-sse-quota** | sse_mode + tenant rate-limit (`/config/ai/tenant/ratelimit`) | ◐ LB sse ✅; **rate-limit resource ❌ (to build)** |
+| **ai-sse-quota** | sse_mode + tenant rate-limit (`/config/ai/tenant/ratelimit`) | ✅ (rate-limit page built; menu hidden — §2.2) |
 | **vllm-pd-disagg** | pd_disagg_mode, pd_cache_aware_mode, sse_mode, session_header_name, ep_role, nixl_port | ✅ (all added + live-validated) |
 | **sglang-loxilb-kvcache** | kvExactMode, kvBlockSize, kvHashAlgo, kvZmqPort | ✅ (all added) |
-| **ai-apikey** | `POST /config/ai/apikey` {tenant_id, name, allowed_models, rate_limit_rps, burst_size, tokens_per_min, expires_at, enabled} | ❌ **new resource (to build)** |
+| **ai-apikey** | `POST /config/ai/apikey` {tenant_id, name, allowed_models, rate_limit_rps, burst_size, tokens_per_min, expires_at, enabled} | ✅ (API Keys page built — §2.2; needs `--userservice` gateway) |
 | mcp-fullproxy | mode=4 proxy | ✅ |
 
 **Conclusion:** every classic + LB-level AI use case in CICD is now expressible

@@ -1,0 +1,173 @@
+//---------------------------------------------------------
+// Imports
+//---------------------------------------------------------
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import {Alert, IconButton, Stack, Tooltip, Typography} from '@mui/material';
+import SingleTextField from 'components/element/SingleTextField';
+import ValueBunch from 'components/element/ValueBunch';
+import ApiKeyInputForm from 'components/input/ApiKeyInputForm';
+import LowerSection from 'components/layout/LowerSection';
+import SubTitlePannel from 'components/layout/SubTitlePannel';
+import ErrorPopUp from 'components/modal/ErrorPopUp';
+import ApiKeyTable from 'components/table/ai/ApiKeyTable';
+import {request_create_apikey, request_delete_apikey} from 'connector/instance/ai';
+import {useInstanceFromURL} from 'hooks/instanceHook';
+import {usePopUp} from 'hooks/popupHook';
+import {useApiKeys} from 'hooks/query/queryHooks';
+import {useErrorPopup} from 'hooks/useErrorPopup';
+import {t} from 'i18next';
+import React, {Fragment, useRef, useState} from 'react';
+import {IApiKeyCreateRequest, IApiKeyCreateResponse, IApiKeySummary} from 'types/ai';
+
+//---------------------------------------------------------
+// Functional Components
+//---------------------------------------------------------
+
+// The plaintext key exists ONLY in this popup — it cannot be fetched again.
+function RawKeyPanel(props: {created: IApiKeyCreateResponse}) {
+	const {created} = props;
+	const [copied, setCopied] = useState(false);
+
+	const handleCopy = () => {
+		navigator.clipboard?.writeText(created.raw_key).then(() => setCopied(true));
+	};
+
+	return (
+		<Stack spacing={2}>
+			<Alert severity="warning">{t('Copy this key now — it is shown only once and cannot be retrieved later.')}</Alert>
+			{created.key_id && <SingleTextField label={t('Key ID')} value={created.key_id} />}
+			<Stack direction="row" spacing={1} alignItems="center">
+				<Typography sx={{fontFamily: 'monospace', wordBreak: 'break-all', flex: 1}}>{created.raw_key}</Typography>
+				<Tooltip title={copied ? t('Copied!') : t('Copy to clipboard')}>
+					<IconButton onClick={handleCopy} size="small">
+						<ContentCopyIcon fontSize="small" />
+					</IconButton>
+				</Tooltip>
+			</Stack>
+		</Stack>
+	);
+}
+
+function DetailPanel(props: {data: IApiKeySummary}) {
+	const {data} = props;
+
+	return (
+		<SubTitlePannel title={data.name || data.key_id || ''} sub_title={t('Details')}>
+			<Stack spacing={2}>
+				<ValueBunch name={t('Identity')}>
+					<SingleTextField label={t('Key ID')} value={data.key_id} />
+					<SingleTextField label={t('Tenant')} value={data.tenant_id} />
+					<SingleTextField label={t('Name')} value={data.name} />
+					<SingleTextField label={t('Enabled')} value={data.enabled === false ? 'No' : 'Yes'} />
+				</ValueBunch>
+				<ValueBunch name={t('Limits')}>
+					<SingleTextField label={t('Allowed Models')} value={(data.allowed_models ?? []).join(', ') || t('All models')} />
+					<SingleTextField label={t('Rate Limit (req/s)')} value={(data.rate_limit_rps ?? 0).toString()} />
+					<SingleTextField label={t('Burst Size')} value={(data.burst_size ?? 0).toString()} />
+					<SingleTextField label={t('Tokens / Minute')} value={(data.tokens_per_min ?? 0).toString()} />
+				</ValueBunch>
+				<ValueBunch name={t('Lifecycle')}>
+					<SingleTextField label={t('Created At')} value={data.created_at} />
+					<SingleTextField label={t('Expires At')} value={data.expires_at || t('Never')} />
+				</ValueBunch>
+			</Stack>
+		</SubTitlePannel>
+	);
+}
+
+export default function AIApiKeyPage() {
+	const inst = useInstanceFromURL();
+
+	const {data, refetch} = useApiKeys(inst);
+	const keys = React.useMemo(() => [...(data ?? [])].sort((a, b) => (a.key_id ?? '').localeCompare(b.key_id ?? '')), [data]);
+
+	const [selected_rows, set_selected_rows] = useState<number[]>([]);
+	const {openPopUp, enableYes} = usePopUp();
+	const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
+
+	const selected_index = selected_rows.length === 1 ? selected_rows[0] : -1;
+
+	const formRef = useRef<IApiKeyCreateRequest | null>(null);
+	const handleAdd = () => {
+		if (!inst) return;
+
+		const input_form = (
+			<ApiKeyInputForm
+				key={Date.now()}
+				onChange={data => {
+					const {isValid, ...cleanData} = data;
+					formRef.current = cleanData;
+					enableYes(isValid);
+				}}
+			/>
+		);
+
+		openPopUp(
+			'',
+			input_form,
+			t('Add'),
+			t('Cancel'),
+			async () => {
+				if (!formRef.current) return;
+
+				const res = await request_create_apikey(inst, formRef.current);
+				if (res.status === 'success' && res.created) {
+					openPopUp(t('API Key Created'), <RawKeyPanel created={res.created} />, t('OK'));
+					setTimeout(() => {
+						refetch();
+					}, 1000);
+				} else showAddError('AI API key', res.error);
+			},
+			true,
+		);
+	};
+
+	const handleDelete = async () => {
+		if (!inst || selected_rows.length !== 1) return;
+
+		const item = keys[selected_rows[0]];
+		if (!item?.key_id) return;
+
+		const res = await request_delete_apikey(inst, item.key_id);
+		if (res.status === 'success') {
+			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
+			set_selected_rows([]);
+			setTimeout(() => {
+				refetch();
+			}, 1000);
+		} else showDeleteError('AI API key', res.error);
+	};
+
+	const handleRefresh = () => {
+		set_selected_rows([]);
+		refetch();
+	};
+
+	return (
+		<Fragment>
+			<ApiKeyTable
+				data={keys}
+				selected_rows={selected_rows}
+				onChangeSelectedRows={set_selected_rows}
+				onAdd={handleAdd}
+				onDelete={handleDelete}
+				onRefresh={handleRefresh}
+			/>
+			{selected_index !== -1 && keys[selected_index] && (
+				<LowerSection>
+					<DetailPanel data={keys[selected_index]} />
+				</LowerSection>
+			)}
+
+			{/* Error Popup */}
+			<ErrorPopUp
+				isOpen={errorPopup.isOpen}
+				onClose={closeErrorPopup}
+				title={errorPopup.title}
+				mainMessage={errorPopup.mainMessage}
+				errorData={errorPopup.errorData}
+				buttonText={t('OK')}
+			/>
+		</Fragment>
+	);
+}
