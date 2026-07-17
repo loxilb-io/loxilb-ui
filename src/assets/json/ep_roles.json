@@ -1,0 +1,5 @@
+[
+	{"id": 0, "name": "normal", "send_value": 0},
+	{"id": 1, "name": "prefill", "send_value": 1},
+	{"id": 2, "name": "decode", "send_value": 2}
+]

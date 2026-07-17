@@ -1,0 +1,4 @@
+[
+	{"id": 0, "name": "sha256_cbor", "send_value": "sha256_cbor"},
+	{"id": 1, "name": "xxhash_cbor", "send_value": "xxhash_cbor"}
+]

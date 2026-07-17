@@ -8,6 +8,7 @@ import {t} from 'i18next';
 import {IServiceConfiguration} from 'types/load_balancer';
 import {AllowedSourcesListInputForm, SecondaryIPListInputForm} from './IPListInputForm';
 import AdvancedSettingsForm from './subforms/AdvancedSettingsForm';
+import AIGatewaySettingsForm from './subforms/AIGatewaySettingsForm';
 import BasicSettingsForm from './subforms/BasicSettingsForm';
 import EndpointListForm from './subforms/EndpointListForm';
 // import HealthCheckForm from './subforms/HealthCheckForm'; // Moved to EndpointListForm
@@ -117,7 +118,8 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 			   	params={params?.serviceArguments} 
 			   	isEdit={isEdit}
 			   />
-			   <AdvancedSettingsForm value={formData?.serviceArguments ?? {}} onChange={handleChange('serviceArguments')} params={params?.serviceArguments} />			   
+			   <AdvancedSettingsForm value={formData?.serviceArguments ?? {}} onChange={handleChange('serviceArguments')} params={params?.serviceArguments} />
+				   <AIGatewaySettingsForm value={formData?.serviceArguments ?? {}} onChange={handleChange('serviceArguments')} params={params?.serviceArguments} />
 			   <SecondaryIPListInputForm values={formData?.secondaryIPs ?? []} onChange={handleChange('secondaryIPs')} description={params?.secondaryIPs?.description} />
 			   <AllowedSourcesListInputForm values={formData?.allowedSources ?? []} onChange={handleChange('allowedSources')} description={params?.allowedSources?.description} />
 			   <EndpointListForm 
