@@ -47,7 +47,7 @@ Severity uses CVSS-style qualitative rating. "Verified" = confirmed against the 
 |---|---|---|---|
 | H-1 | **Password hashes serialized in API responses.** `models.User.Password` had `json:"password"`; `GetUsers`/`GetMe` return `User` directly. | `model.go:10`; live `/users/me` returns a `password` field. | **[FIXED]** `json:"-"` on the field |
 | H-2 | **Token revocation is non-functional.** Logout deletes a DB token row, but `TokenAuthMiddleware` only checks JWT signature+expiry — never the DB/blacklist. A "logged-out" token works until natural 24h expiry. UI logout never even called `/oam/logout`. | `middleware/auth.go`, `user_service.go:670`; UI `ProfileMenu.tsx:18`. | **[FIXED + DEPLOYED]** `TokenAuthMiddleware(userService)` now also requires the token in the `api_tokens` store (fail-closed). Live: token → 200, logout → 200, same token → **401 "Token has been revoked"**. Residual: a token can outlive revocation by ≤5 min via the in-process validation cache only if deleted from the DB out-of-band (logout purges the cache). |
-| H-3 | **Proxy grants full read+write data-plane control to any licensed user; no method distinction.** `ProxyToLoxiLB` forwards all methods identically; a `viewer` could POST/DELETE gateway config. | `proxy_service.go:111`, `routes.go` licensed group. | **OPEN — needs RBAC Phase 2** |
+| H-3 | **Proxy grants full read+write data-plane control to any licensed user; no method distinction.** `ProxyToLoxiLB` forwards all methods identically; a `viewer` could POST/DELETE gateway config. | `proxy_service.go:111`, `routes.go` licensed group. | **[FIXED + DEPLOYED]** RBAC Phase 2: proxy method-gated (`RequireGatewayCapability`) — GET/HEAD/OPTIONS any role, mutating methods need `gateway_write` (admin/operator). Live: viewer POST/DELETE proxy → **403**; operator/admin writes forwarded. |
 | H-4 | **CORS `Allow-Origin: *` with `Allow-Credentials: true`.** Unsafe/spec-violating combination. | `middleware/cors.go`. | **OPEN — flagged** |
 
 ### MEDIUM
@@ -111,7 +111,7 @@ Add `role` and `user_id` to JWT claims so middleware avoids a DB lookup per requ
 
 **Phase 1 — Admin gate on user administration.** ✅ done this pass (§4).
 
-**Phase 2 — Role-aware enforcement across all mutating routes (the real win for H-3).**
+**Phase 2 — Role-aware enforcement across all mutating routes (the real win for H-3).** ✅ **done + deployed 2026-07-17** (see §6).
 - Capability table; a `RequireCapability(action)` middleware.
 - Gate instance CRUD, config import/export, firmware, and — critically — the **proxy** by HTTP method: `viewer` → GET only; `operator`/`admin` → write. Enforce at `ProxyToLoxiLB` before forwarding (inspect `c.Request.Method`).
 - Add `@Security` to **all** remaining protected handlers (Phase 1 did user/logout/license only).
@@ -167,11 +167,18 @@ Testbed (kv-client) is currently deployed with `OAM_JWT_SECRET` (fresh random) a
 - Logger `init()` falls back to stderr when `/var/log/loxioam.log` is unwritable (was `log.Fatalf`, which also blocked running tests locally).
 - Live-verified on kv-client: login → `/users/me` 200 → logout 200 → same token **401 revoked** → re-login 200; garbage token 401; licensed proxy route 200 with valid token.
 
+**RBAC Phase 2 — FIXED + DEPLOYED (2026-07-17, OAM commit `643c442`):**
+- 3-role model **admin / operator / viewer** live: DB enum extended (`migrations/002_add_rbac_roles.sql`, applied on testbed), legacy `user` rows migrated to `operator` and `user` accepted on input as an operator alias; **new-user default is now least-privilege `viewer`** (was `user`).
+- Capability matrix in `middleware/rbac.go` (single source of truth): admin = everything; operator = `gateway_write` + `alert_write`; viewer = read-only. `RequireCapability(userService, action)` resolves the role from the **DB** per request (role changes apply immediately; JWT claims are not trusted for authz). `RequireAdmin` = `RequireCapability(user_admin)`.
+- Routes gated: proxy method-gated (H-3 fixed), instance CRUD + firmware admin-only, config import/export admin-only, alert create/ack admin+operator, license install/update/deactivate admin-only (non-admins use the admin license pool).
+- JWT claims now include `role` + `user_id` (informational, for Phase 3 UI gating; old tokens still work — no forced re-login).
+- `@Security BearerAuth` added to the remaining 25 protected handlers; swagger regenerated and re-vendored (`api-spec/oam-swagger.json`).
+- Tests: capability-matrix + sqlmock proxy method-gating tests (`tests/local/rbac`). Live-verified full matrix on kv-client: viewer 12/12 (all reads 200, all writes 403 incl. proxy POST/DELETE), operator 9/9 (proxy write + alert ack pass RBAC; instance/config/license/user-admin 403), admin passes everything; invalid role on create → 400; H-2 logout-revocation regression passed on the new binary.
+
 **Remaining security work, in priority order — resume here:**
 
-1. **RBAC Phase 2 — role-aware enforcement on all mutating routes**, especially **gate the gateway proxy (`ProxyToLoxiLB`, `proxy_service.go`) by HTTP method**: `viewer` → GET only; `operator`/`admin` → writes. Add a capability table + `RequireCapability(action)` middleware; extend `@Security` to the remaining protected handlers. Adopt the 3-role model (admin / operator[=rename `user`] / viewer) and add `role`+`user_id` to JWT claims.
-2. **RBAC Phase 3 — UI role-awareness** (defense-in-depth/UX): fetch role into a context/atom (`is_logged_in_atom` is unused today), add `roles?: string[]` to `IMenuItem` and filter `SideMenu`/`TopNavMenu` + write buttons; add a route guard around `<Layout>`. Choke points: `MENU_LIST`, `Header.tsx:39/53`.
-3. **Phase 4 hardening**: M-1 PBKDF2 → ≥600k rounds (rehash-on-login), M-2 stronger lockout + rate-limit setup/proxy, M-3 shorter token TTL / httpOnly cookie, H-4 CORS specific-origin.
+1. **RBAC Phase 3 — UI role-awareness** (defense-in-depth/UX): fetch role into a context/atom (`is_logged_in_atom` is unused today), add `roles?: string[]` to `IMenuItem` and filter `SideMenu`/`TopNavMenu` + write buttons; add a route guard around `<Layout>`. Choke points: `MENU_LIST`, `Header.tsx:39/53`. Also update the User Management role options to admin/operator/viewer (backend still accepts legacy `user` = operator). Role is now available offline in the JWT claims (`role`, `user_id`).
+2. **Phase 4 hardening**: M-1 PBKDF2 → ≥600k rounds (rehash-on-login), M-2 stronger lockout + rate-limit setup/proxy, M-3 shorter token TTL / httpOnly cookie, H-4 CORS specific-origin.
 
 **Owner actions (not code):**
 - Log back into the UI — the JWT-key rotation invalidated the old session token.

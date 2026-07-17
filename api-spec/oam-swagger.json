@@ -6,6 +6,11 @@
     "paths": {
         "/oam/alerts": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Retrieves all active alerts from the database with pagination (always returns paginated response)",
                 "produces": [
                     "application/json"
@@ -57,6 +62,11 @@
                 }
             },
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Creates a new alert in the system",
                 "consumes": [
                     "application/json"
@@ -110,6 +120,11 @@
         },
         "/oam/alerts/history": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Retrieves alert history within a specified time range with pagination (always returns paginated response)",
                 "produces": [
                     "application/json"
@@ -175,6 +190,11 @@
         },
         "/oam/alerts/{id}/acknowledge": {
             "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Acknowledges an alert by ID",
                 "consumes": [
                     "application/json"
@@ -235,6 +255,11 @@
         },
         "/oam/config/download/{id}": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Downloads a previously exported configuration file by export ID",
                 "produces": [
                     "application/octet-stream"
@@ -295,6 +320,11 @@
         },
         "/oam/config/export": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Exports the current OAM system configuration including users, instances, and settings to a downloadable file",
                 "consumes": [
                     "application/json"
@@ -370,6 +400,11 @@
         },
         "/oam/config/exports": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Retrieves a list of all available configuration exports with basic metadata",
                 "produces": [
                     "application/json"
@@ -425,6 +460,11 @@
         },
         "/oam/config/files": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Retrieves a detailed list of downloadable configuration files with enhanced metadata, pagination, and filtering",
                 "produces": [
                     "application/json"
@@ -501,6 +541,11 @@
         },
         "/oam/config/import": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Imports system configuration from uploaded JSON file with mandatory backup creation",
                 "consumes": [
                     "multipart/form-data"
@@ -566,6 +611,11 @@
         },
         "/oam/config/import/dry-run": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Validates configuration import data without making changes to the system",
                 "consumes": [
                     "multipart/form-data"
@@ -657,6 +707,11 @@
         },
         "/oam/license/feature-access": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Checks if the authenticated user's license allows access to a specific feature",
                 "tags": [
                     "license"
@@ -714,6 +769,11 @@
         },
         "/oam/license/install": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Installs a new license key for the authenticated user",
                 "consumes": [
                     "application/json"
@@ -773,6 +833,11 @@
         },
         "/oam/license/validate": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Validates a license key format and expiration without installing it",
                 "consumes": [
                     "application/json"
@@ -939,6 +1004,11 @@
         },
         "/oam/logs": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Retrieves logs from the log file within the specified time range.",
                 "produces": [
                     "application/json"
@@ -998,6 +1068,11 @@
         },
         "/oam/logs/archives": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "List available log archives",
                 "produces": [
                     "application/json"
@@ -1033,6 +1108,11 @@
         },
         "/oam/logs/archives/{filename}": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Download a log archive by filename",
                 "produces": [
                     "application/octet-stream"
@@ -1081,6 +1161,11 @@
         },
         "/oam/loxilbs": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Retrieves LoxiLB instances and returns them as JSON.",
                 "produces": [
                     "application/json"
@@ -1117,6 +1202,11 @@
                 }
             },
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Create a new LoxiLB instance.",
                 "consumes": [
                     "application/json"
@@ -1170,6 +1260,11 @@
         },
         "/oam/loxilbs/{id}": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Retrieves a LoxiLB instance by ID.",
                 "produces": [
                     "application/json"
@@ -1216,6 +1311,11 @@
                 }
             },
             "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Updates an existing LoxiLB instance with the provided JSON payload",
                 "consumes": [
                     "application/json"
@@ -1274,6 +1374,11 @@
                 }
             },
             "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Deletes a LoxiLB instance by ID",
                 "consumes": [
                     "application/json"
@@ -1319,6 +1424,11 @@
         },
         "/oam/loxilbs/{id}/firmware": {
             "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Updates the firmware of a LoxiLB instance image.",
                 "consumes": [
                     "application/json"
@@ -1379,6 +1489,11 @@
         },
         "/oam/loxilbs/{id}/firmware/start": {
             "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Starts the firmware of a LoxiLB instance image using the instance ID.",
                 "produces": [
                     "application/json"
@@ -1433,6 +1548,11 @@
         },
         "/oam/loxilbs/{id}/firmware/stop": {
             "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Stops the firmware of a LoxiLB instance image using the instance ID.",
                 "produces": [
                     "application/json"
@@ -1487,6 +1607,11 @@
         },
         "/oam/loxilbs/{id}/netlox/": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Forwards HTTP requests to the specified LoxiLB instance",
                 "consumes": [
                     "application/json"
@@ -1570,6 +1695,11 @@
                 }
             },
             "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Forwards HTTP requests to the specified LoxiLB instance",
                 "consumes": [
                     "application/json"
@@ -1653,6 +1783,11 @@
                 }
             },
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Forwards HTTP requests to the specified LoxiLB instance",
                 "consumes": [
                     "application/json"
@@ -1736,6 +1871,11 @@
                 }
             },
             "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Forwards HTTP requests to the specified LoxiLB instance",
                 "consumes": [
                     "application/json"
@@ -1819,6 +1959,11 @@
                 }
             },
             "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Forwards HTTP requests to the specified LoxiLB instance",
                 "consumes": [
                     "application/json"
