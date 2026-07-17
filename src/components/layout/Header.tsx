@@ -10,7 +10,6 @@ import {is_logged_in, move_home} from 'common';
 import {t} from 'i18next';
 import {Link} from 'react-router-dom';
 import package_info from '../../../package.json';
-import AlertsIcon from './AlertsIcon';
 import LanguageIcon from './LanguageIcon';
 import Profile from './Profile';
 

@@ -185,6 +185,19 @@ export async function GET(url: string, params?: Record<string, any>): Promise<Si
 	return await fetch_json(url, {method: 'GET', body: params});
 }
 
+// For plain-text endpoints (e.g. Prometheus exposition format) where the
+// response body is not JSON; data carries the raw text.
+export async function GET_TEXT(url: string, params?: Record<string, any>): Promise<SimpleResponse> {
+	const resp = await fetch_data(url, {method: 'GET', body: params, headers: {Accept: 'text/plain'}});
+	const text = await resp.text();
+	return {
+		code: resp.status,
+		data: text,
+		message: resp.statusText,
+		headers: resp.headers,
+	};
+}
+
 export async function POST(url: string, data?: any, contentType?: 'application/json' | 'multipart/form-data'): Promise<SimpleResponse> {
 	const headers = contentType ? {'Content-Type': contentType} : undefined;
 	return await fetch_json(url, {method: 'POST', body: data, headers});

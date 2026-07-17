@@ -3,7 +3,6 @@
 //---------------------------------------------------------
 import {useQueries} from '@tanstack/react-query';
 import {query_get_ha_state_all} from 'connector/instance/status';
-import {query_get_alerts_history} from 'connector/oam/alerts';
 import {query_get_instance_list, query_get_log_archives, query_get_me, query_get_oam_logs} from 'connector/oam/oam';
 import {useCallback, useMemo} from 'react';
 import {useQueryOAMData} from './common';
@@ -11,10 +10,6 @@ import {useQueryOAMData} from './common';
 //---------------------------------------------------------
 // Functions
 //---------------------------------------------------------
-export function useAlertsHistory() {
-	return useQueryOAMData(['alerts_history'], query_get_alerts_history);
-}
-
 export function useOAMLogs() {
 	return useQueryOAMData(['logs'], query_get_oam_logs);
 }
