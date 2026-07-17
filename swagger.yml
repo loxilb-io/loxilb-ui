@@ -567,6 +567,16 @@ paths:
           type: number
           required: false
           description: block value if any
+        - name: path_prefix
+          in: query
+          type: string
+          required: false
+          description: URL path prefix to match for deletion (allows selective deletion of path-based rules)
+        - name: path_match_mode
+          in: query
+          type: string
+          required: false
+          description: Path matching mode (disabled, prefix, exact) for selective deletion
       responses:
         '204':
           description: OK
@@ -632,6 +642,16 @@ paths:
           type: number
           required: false
           description: block value if any
+        - name: path_prefix
+          in: query
+          type: string
+          required: false
+          description: URL path prefix to match for deletion (allows selective deletion of path-based rules)
+        - name: path_match_mode
+          in: query
+          type: string
+          required: false
+          description: Path matching mode (disabled, prefix, exact) for selective deletion
       responses:
         '204':
           description: OK
@@ -663,6 +683,96 @@ paths:
           description: Maintenance mode
           schema:
             $ref: '#/definitions/Error'
+#----------------------------------------------
+# SNI Certificate Management (Global Certificate Store)
+#----------------------------------------------
+  '/sni/certificates':
+    post:
+      summary: Register SNI certificate globally (shared by all proxies)
+      description: Register an SNI certificate in the global certificate store. Multiple loadbalancer rules can share the same certificate by hostname. The certificate is stored independently and looked up during TLS handshake based on SNI.
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: SNI certificate registration parameters
+          schema:
+            $ref: '#/definitions/SNICertificateEntry'
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+        '400':
+          description: Bad Request - Certificate load failed or invalid parameters
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '409':
+          description: Conflict - Certificate already registered for this hostname
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    delete:
+      summary: Unregister SNI certificate globally
+      description: Remove SNI certificate from global store
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: SNI certificate removal parameters
+          schema:
+            type: object
+            required:
+              - hostname
+            properties:
+              hostname:
+                type: string
+                description: Hostname to unregister (e.g., api.example.com)
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+        '404':
+          description: Certificate not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    get:
+      summary: List all global SNI certificates
+      description: Get all SNI certificates in the global certificate store (shared by all proxies)
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              certificates:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    hostname:
+                      type: string
+                      description: Hostname (e.g., api.example.com)
+                    certPath:
+                      type: string
+                      description: Certificate directory path
+                    refCount:
+                      type: integer
+                      description: Number of proxies using this certificate
+              totalCertificates:
+                type: integer
+                description: Total number of registered certificates
+        '500':
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
 #----------------------------------------------
 # Conntrack
 #----------------------------------------------
@@ -2448,6 +2558,265 @@ paths:
             $ref: '#/definitions/Error'
 
 #----------------------------------------------
+# IP Filter (Whitelist/Blacklist)
+#----------------------------------------------
+  '/config/ipfilter/all':
+    get:
+      summary: Get all IP filter rules
+      description: Get all IP whitelist and blacklist rules with statistics.
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              ipFilterAttr:
+                type: array
+                items:
+                  $ref: '#/definitions/IPFilterEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/config/ipfilter':
+    post:
+      summary: Create a new IP filter rule
+      description: Create a new IP whitelist or blacklist rule for DDoS protection.
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Attributes for IP filter rule
+          schema:
+            $ref: '#/definitions/IPFilterEntry'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+    
+    delete:
+      summary: Delete an IP filter rule
+      description: Delete an IP whitelist or blacklist rule.
+      parameters:
+        - name: filterType
+          in: query
+          type: string
+          required: true
+          description: Filter type (whitelist or blacklist)
+        - name: cidr
+          in: query
+          type: string
+          required: true
+          description: IP address in CIDR notation
+        - name: zone
+          in: query
+          type: integer
+          description: Security zone (0 = all zones)
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+#----------------------------------------------
+# SYN Flood Protection
+#----------------------------------------------
+  '/config/synflood':
+    post:
+      summary: Enable or configure SYN flood protection
+      description: Enable SYN flood protection with specified thresholds and configuration.
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: SYN flood protection configuration
+          schema:
+            $ref: '#/definitions/SYNFloodConfigMod'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+    
+    delete:
+      summary: Disable SYN flood protection
+      description: Disable SYN flood protection and clear all tracking state.
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/config/synflood/all':
+    get:
+      summary: Get SYN flood protection configuration and statistics
+      description: Get current SYN flood protection configuration and statistics.
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              synfloodAttr:
+                type: array
+                items:
+                  $ref: '#/definitions/SYNFloodEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+#----------------------------------------------
+# Unified Security Rate Limiting (P0-5 + P0-6)
+#----------------------------------------------
+  '/config/securityrate':
+    post:
+      summary: Configure unified security rate limiting
+      description: Configure unified SYN flood protection (P0-5) and connection rate limiting (P0-6).
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Unified security rate limiting configuration
+          schema:
+            $ref: '#/definitions/SecurityRateConfigMod'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+    
+    delete:
+      summary: Disable unified security rate limiting
+      description: Disable all security rate limiting (SYN flood + connection rate) and clear tracking state.
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/config/securityrate/all':
+    get:
+      summary: Get unified security rate limiting configuration and statistics
+      description: Get current unified security rate limiting (P0-5 + P0-6 + P0-7) configuration and statistics.
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              securityrateAttr:
+                type: array
+                items:
+                  $ref: '#/definitions/SecurityRateEntry'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/config/securityrate/reset':
+    put:
+      summary: Reset security rate limiting statistics
+      description: Reset all accumulated statistics counters for security rate limiting (SYN/Conn/UDP) to zero.
+      responses:
+        '204':
+          description: Statistics reset successfully
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+#----------------------------------------------
 # System Status
 #----------------------------------------------
   '/status/process':
@@ -3216,6 +3585,225 @@ paths:
           schema:
             $ref: '#/definitions/Error'
 #----------------------------------------------
+# GPU-Aware Load Balancing
+#----------------------------------------------
+  '/config/gpu/enable':
+    post:
+      summary: Enable GPU-aware load balancing
+      description: Activates GPU-aware routing mode and starts conversation cleanup thread
+      responses:
+        '200':
+          description: GPU monitoring enabled successfully
+          schema:
+            $ref: '#/definitions/GPUEnableResponse'
+        '400':
+          description: GPU monitoring already enabled
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Failed to enable GPU monitoring
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/config/gpu/disable':
+    post:
+      summary: Disable GPU-aware load balancing
+      description: Deactivates GPU-aware routing and reverts to standard CHWBL
+      responses:
+        '200':
+          description: GPU monitoring disabled successfully
+          schema:
+            $ref: '#/definitions/GPUEnableResponse'
+        '400':
+          description: GPU monitoring already disabled
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Failed to disable GPU monitoring
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/config/gpu/status':
+    get:
+      summary: Get GPU monitoring status
+      description: Returns current GPU monitoring state and statistics
+      responses:
+        '200':
+          description: GPU monitoring status
+          schema:
+            $ref: '#/definitions/GPUMonitoringStatus'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/config/gpu/conversations/cleanup':
+    post:
+      summary: Manual conversation cleanup
+      description: Removes stale conversation mappings older than specified age
+      parameters:
+        - name: max_age_hours
+          in: query
+          type: integer
+          required: false
+          default: 1
+          description: Maximum age in hours for conversations to keep (older ones deleted)
+      responses:
+        '200':
+          description: Cleanup completed successfully
+          schema:
+            $ref: '#/definitions/ConversationCleanupResponse'
+        '400':
+          description: GPU monitoring disabled or invalid parameters
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Cleanup operation failed
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/config/worker/metrics':
+    post:
+      summary: Update worker GPU metrics
+      description: Receives GPU metrics from metrics agent and updates routing decisions
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/WorkerMetricsEntry'
+      responses:
+        '200':
+          description: Metrics updated successfully
+          schema:
+            $ref: '#/definitions/WorkerMetricsUpdateResponse'
+        '400':
+          description: GPU monitoring disabled or invalid request
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Failed to update metrics
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+    get:
+      summary: Get all worker metrics
+      description: Returns current GPU metrics for all tracked workers
+      responses:
+        '200':
+          description: Worker metrics retrieved successfully
+          schema:
+            $ref: '#/definitions/WorkerMetricsResponse'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+#----------------------------------------------
+# LLM Catalog Management
+#----------------------------------------------
+  '/config/llm-catalogs':
+    get:
+      summary: List available LLM catalog profiles
+      description: Returns all available LLM catalog profiles including built-in and custom catalogs
+      tags:
+        - GPU
+      responses:
+        '200':
+          description: Catalog list retrieved successfully
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/LLMCatalog'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/config/llm-catalogs/{catalogName}':
+    get:
+      summary: Get specific LLM catalog profile
+      description: Returns details of a specific LLM catalog profile by name
+      tags:
+        - GPU
+      parameters:
+        - name: catalogName
+          in: path
+          required: true
+          type: string
+          description: Name of the catalog profile (e.g., chat-interactive, rag-longcontext, batch-inference, code-generation, default)
+      responses:
+        '200':
+          description: Catalog details retrieved successfully
+          schema:
+            $ref: '#/definitions/LLMCatalog'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Catalog not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+#----------------------------------------------
 # Version
 #----------------------------------------------
   '/version':
@@ -3862,56 +4450,6 @@ paths:
           description: Maintenance mode
           schema:
             $ref: '#/definitions/Error'    
-            
-#----------------------------------------------
-# Configration import and export
-#----------------------------------------------            
-  '/config/import':
-    post:
-      summary: Import configurations
-      consumes:
-        - multipart/form-data
-      parameters:
-        - in: formData
-          name: configuration
-          type: file
-          description: The configuration file to upload.
-      responses:
-        '204':
-          description: OK
-  '/config/export':
-    get:
-      summary: Export all configurations
-      description: Export cluster, endpoint, firewall, loadbalancer, mirror, and policy configurations as a JSON file.
-      parameters:
-        - name: components
-          in: query
-          description: Comma-separated list of components to export (cluster, endpoint, firewall, loadbalancer, mirror, policy). If not specified, all components are exported.
-          type: string
-      produces:
-        - application/json
-      responses:
-        '200':
-          description: Configuration JSON file download
-          schema:
-            type: file
-        '400':
-          description: Invalid parameters
-          schema:
-            $ref: '#/definitions/Error' 
-        '401':
-          description: Invalid authentication credentials
-          schema:
-            $ref: '#/definitions/Error' 
-        '500':
-          description: Internal service error
-          schema:
-            $ref: '#/definitions/Error' 
-        '503':
-          description: Maintenance mode
-          schema:
-            $ref: '#/definitions/Error' 
-
 #----------------------------------------------
 # Schema definitions
 #----------------------------------------------
@@ -3974,8 +4512,8 @@ definitions:
             description:  value for access protocol
           sel:
             type: integer
-            enum: [0,1,2,3,4,5,6]
-            description: value for load balance algorithim(0-rr, 1-hash, 2-priority, 3-persist, 4-lc, 5-n2, 6-n3, 0-default)
+            enum: [0,1,2,3,4,5,6,7,8,9]
+            description: value for load balance algorithim(0-rr, 1-hash, 2-priority, 3-persist, 4-lc, 5-n2, 6-n3, 7-quiccid, 8-chwbl, 9-gpuaware, 0-default)
           bgp:
             type: boolean
             description: value for BGP enable or not
@@ -4045,7 +4583,23 @@ definitions:
           egress:
             type: boolean
             description: flag to indicate an egress rule
-      
+          path_prefix:
+            type: string
+            description: URL path prefix for L7 routing (e.g., /v1/users). Optional - empty means hostname-only matching (backward compatible)
+          path_match_mode:
+            type: string
+            enum: [disabled, prefix, exact]
+            default: disabled
+            description: Path matching mode - disabled (hostname-only, backward compat), prefix (longest prefix match), exact (exact path match)          
+          llm_type:
+            type: string
+            description: LLM catalog profile name for GPU-aware load balancing (e.g., chat-interactive, rag-longcontext, batch-inference, code-generation, default)
+          backend_protocol:
+            type: string
+            enum: [http1, http2, both]
+            default: http1
+            description: Backend protocol capability for ALPN negotiation - http1 (HTTP/1.1 only, safest default), http2 (HTTP/2 only), both (supports both HTTP/1.1 and HTTP/2)
+
       endpoints:
         type: array
         description: values of End point servers
@@ -4956,7 +5510,254 @@ definitions:
       ruleArguments:
         $ref: '#/definitions/FirewallRuleEntry'
       opts:
-        $ref: '#/definitions/FirewallOptionEntry'       
+        $ref: '#/definitions/FirewallOptionEntry'
+
+  IPFilterEntry:
+    type: object
+    required:
+      - filterType
+      - cidr
+      - action
+    properties:
+      filterType:
+        type: string
+        enum: [whitelist, blacklist]
+        description: Filter type (whitelist or blacklist)
+      cidr:
+        type: string
+        description: IP address in CIDR notation (e.g., 192.168.1.0/24)
+      zone:
+        type: integer
+        format: int64
+        default: 0
+        description: Security zone (0 = all zones)
+      priority:
+        type: integer
+        format: int64
+        default: 100
+        description: Rule priority (higher = more important)
+      action:
+        type: string
+        enum: [allow, drop]
+        description: Action to take (allow or drop)
+      packets:
+        type: integer
+        format: int64
+        description: Packet counter (read-only)
+      bytes:
+        type: integer
+        format: int64
+        description: Byte counter (read-only)
+
+  SYNFloodConfigMod:
+    type: object
+    required:
+      - enabled
+      - synThreshold
+      - cookieThreshold
+    properties:
+      enabled:
+        type: boolean
+        description: Enable/disable SYN flood protection
+      synThreshold:
+        type: integer
+        format: int64
+        default: 100
+        description: Maximum SYNs per second per IP (hard drop threshold)
+      cookieThreshold:
+        type: integer
+        format: int64
+        default: 50
+        description: Enable SYN cookies above this rate (must be < synThreshold)
+      whitelistIps:
+        type: array
+        items:
+          type: string
+        description: IP addresses to bypass SYN flood protection
+
+  SYNFloodEntry:
+    type: object
+    properties:
+      enabled:
+        type: boolean
+        description: Whether SYN flood protection is enabled
+      synThreshold:
+        type: integer
+        format: int64
+        description: Maximum SYNs per second per IP
+      cookieThreshold:
+        type: integer
+        format: int64
+        description: SYN cookie activation threshold
+      whitelistIps:
+        type: array
+        items:
+          type: string
+        description: Whitelisted IPs
+      totalSyns:
+        type: integer
+        format: int64
+        description: Total SYN packets processed (read-only)
+      blockedSyns:
+        type: integer
+        format: int64
+        description: SYN packets blocked (read-only)
+      passedSyns:
+        type: integer
+        format: int64
+        description: SYN packets passed (read-only)
+      cookieActivations:
+        type: integer
+        format: int64
+        description: Times SYN cookies were enabled (read-only)
+      uniqueIps:
+        type: integer
+        format: int64
+        description: Number of unique source IPs tracked (read-only)
+
+  SecurityRateConfigMod:
+    type: object
+    required:
+      - synEnabled
+      - synThreshold
+      - cookieThreshold
+      - connRateEnabled
+      - ratePerSec
+      - concurrentLimit
+      - udpEnabled
+      - udpPktThreshold
+      - udpBandwidthMB
+    properties:
+      synEnabled:
+        type: boolean
+        description: Enable/disable SYN flood protection (P0-5)
+      synThreshold:
+        type: integer
+        format: int64
+        default: 100
+        description: Maximum SYNs per second per IP (hard drop threshold)
+      cookieThreshold:
+        type: integer
+        format: int64
+        default: 50
+        description: Enable SYN cookies above this rate (must be < synThreshold)
+      connRateEnabled:
+        type: boolean
+        description: Enable/disable connection rate limiting (P0-6)
+      ratePerSec:
+        type: integer
+        format: int64
+        default: 50
+        description: Maximum new connections per second per IP
+      concurrentLimit:
+        type: integer
+        format: int64
+        default: 200
+        description: Maximum concurrent connections per IP
+      udpEnabled:
+        type: boolean
+        description: Enable/disable UDP flood protection (P0-7)
+      udpPktThreshold:
+        type: integer
+        format: int64
+        default: 1000
+        description: Maximum UDP packets per second per IP
+      udpBandwidthMB:
+        type: integer
+        format: int64
+        default: 100
+        description: Maximum UDP bandwidth in MB per second per IP
+      whitelistIps:
+        type: array
+        items:
+          type: string
+        description: IP addresses to bypass all rate limiting
+
+  SecurityRateEntry:
+    type: object
+    properties:
+      synEnabled:
+        type: boolean
+        description: Whether SYN flood protection is enabled
+      synThreshold:
+        type: integer
+        format: int64
+        description: Maximum SYNs per second per IP
+      cookieThreshold:
+        type: integer
+        format: int64
+        description: SYN cookie activation threshold
+      connRateEnabled:
+        type: boolean
+        description: Whether connection rate limiting is enabled
+      ratePerSec:
+        type: integer
+        format: int64
+        description: Maximum new connections per second per IP
+      concurrentLimit:
+        type: integer
+        format: int64
+        description: Maximum concurrent connections per IP
+      udpEnabled:
+        type: boolean
+        description: Whether UDP flood protection is enabled
+      udpPktThreshold:
+        type: integer
+        format: int64
+        description: Maximum UDP packets per second per IP
+      udpBandwidthMB:
+        type: integer
+        format: int64
+        description: Maximum UDP bandwidth in MB per second per IP
+      whitelistIps:
+        type: array
+        items:
+          type: string
+        description: Whitelisted IPs
+      synBlocked:
+        type: integer
+        format: int64
+        description: SYN packets blocked (read-only)
+      synPassed:
+        type: integer
+        format: int64
+        description: SYN packets passed (read-only)
+      synCookies:
+        type: integer
+        format: int64
+        description: SYN cookie activations (read-only)
+      connBlocked:
+        type: integer
+        format: int64
+        description: Connections blocked by rate limit (read-only)
+      connPassed:
+        type: integer
+        format: int64
+        description: Connections passed (read-only)
+      concurrentBlocked:
+        type: integer
+        format: int64
+        description: Connections blocked by concurrent limit (read-only)
+      udpBlocked:
+        type: integer
+        format: int64
+        description: UDP packets blocked (read-only)
+      udpPassed:
+        type: integer
+        format: int64
+        description: UDP packets passed (read-only)
+      udpBytesBlocked:
+        type: integer
+        format: int64
+        description: UDP bytes blocked (read-only)
+      udpBytesPassed:
+        type: integer
+        format: int64
+        description: UDP bytes passed (read-only)
+      uniqueIps:
+        type: integer
+        format: int64
+        description: Number of unique source IPs tracked (read-only)
 
   OperParams:
     type: object
@@ -5299,6 +6100,11 @@ definitions:
       service:
         type: string
         description: Load Balancer Service Name
+  ErrorResponse:
+    properties:
+      message:
+        type: string
+    type: object
   HealthCheckResponse:
     properties:
       status:
@@ -5619,6 +6425,215 @@ definitions:
     properties:
       license_key:
         type: string
+
+#----------------------------------------------
+# GPU-Aware Load Balancing Definitions
+#----------------------------------------------
+  GPUMonitoringStatus:
+    type: object
+    properties:
+      enabled:
+        type: boolean
+        description: Whether GPU monitoring is currently active
+      routing_mode:
+        type: string
+        description: Current routing mode (standard_chwbl or gpu_aware)
+      worker_count:
+        type: integer
+        description: Number of workers being tracked
+      last_metrics_update:
+        type: string
+        format: date-time
+        description: Timestamp of last metrics update
+      ebpf_map_loaded:
+        type: boolean
+        description: Whether eBPF maps are loaded
+
+  WorkerMetricsEntry:
+    type: object
+    required:
+      - endpoint_ip
+      - queued_requests
+      - kv_cache_usage_perc
+    properties:
+      endpoint_ip:
+        type: string
+        description: Worker endpoint IP:port (e.g., "192.168.1.10:8000")
+      queued_requests:
+        type: integer
+        minimum: 0
+        description: "vllm:num_requests_running + vllm:num_requests_waiting (total queue depth)"
+      swapped_requests:
+        type: integer
+        minimum: 0
+        description: "Delta of vllm:num_preemptions_total since last update"
+      kv_cache_usage_perc:
+        type: integer
+        minimum: 0
+        maximum: 100
+        description: "vllm:gpu_cache_usage_perc * 100 (0-100 scale)"
+      num_gpu_blocks:
+        type: integer
+        minimum: 0
+        description: "Static config from vllm:cache_config_info{num_gpu_blocks}"
+      timestamp:
+        type: string
+        format: date-time
+        description: Timestamp of metrics collection
+
+  WorkerMetricsResponse:
+    type: object
+    properties:
+      workers:
+        type: array
+        items:
+          $ref: '#/definitions/WorkerMetricsEntry'
+      monitoring_enabled:
+        type: boolean
+        description: Whether GPU monitoring is enabled
+
+  GPUEnableResponse:
+    type: object
+    required:
+      - enabled
+      - routing_mode
+      - message
+    properties:
+      enabled:
+        type: boolean
+        description: Whether GPU monitoring is now enabled
+      routing_mode:
+        type: string
+        description: Current routing mode (gpu_aware or standard_chwbl)
+      message:
+        type: string
+        description: Status message
+
+  WorkerMetricsUpdateResponse:
+    type: object
+    required:
+      - endpoint_ip
+      - queued_requests
+      - message
+    properties:
+      endpoint_ip:
+        type: string
+        description: Worker endpoint that was updated
+      queued_requests:
+        type: integer
+        description: Number of queued requests (for confirmation)
+      message:
+        type: string
+        description: Status message
+
+  ConversationCleanupResponse:
+    type: object
+    required:
+      - deleted_count
+      - oldest_remaining_hours
+      - message
+    properties:
+      deleted_count:
+        type: integer
+        description: Number of conversations deleted
+      oldest_remaining_hours:
+        type: number
+        format: float
+        description: Age in hours of oldest remaining conversation
+      message:
+        type: string
+        description: Status message
+
+  LLMCatalog:
+    type: object
+    required:
+      - name
+      - weights
+      - thresholds
+    properties:
+      name:
+        type: string
+        description: Catalog profile name (e.g., chat-interactive, rag-longcontext, batch-inference, code-generation, default)
+      description:
+        type: string
+        description: Human-readable description of the workload type
+      weights:
+        type: object
+        required:
+          - queued_requests
+          - swapped_requests
+          - kv_cache_usage_perc
+        properties:
+          queued_requests:
+            type: integer
+            minimum: 0
+            maximum: 100
+            description: Weight percentage for queue depth (0-100)
+          swapped_requests:
+            type: integer
+            minimum: 0
+            maximum: 100
+            description: Weight percentage for swap activity (0-100)
+          kv_cache_usage_perc:
+            type: integer
+            minimum: 0
+            maximum: 100
+            description: Weight percentage for KV cache usage (0-100)
+      thresholds:
+        type: object
+        required:
+          - queue_high
+          - queue_critical
+          - swap_high
+          - swap_critical
+          - cache_high
+          - cache_critical
+        properties:
+          queue_high:
+            type: integer
+            minimum: 0
+            description: High threshold for queued requests
+          queue_critical:
+            type: integer
+            minimum: 0
+            description: Critical threshold for queued requests
+          swap_high:
+            type: integer
+            minimum: 0
+            description: High threshold for swapped requests
+          swap_critical:
+            type: integer
+            minimum: 0
+            description: Critical threshold for swapped requests
+          cache_high:
+            type: integer
+            minimum: 0
+            maximum: 100
+            description: High threshold for KV cache usage percentage (0-100)
+          cache_critical:
+            type: integer
+            minimum: 0
+            maximum: 100
+            description: Critical threshold for KV cache usage percentage (0-100)
+      is_builtin:
+        type: boolean
+        description: Whether this is a built-in catalog (true) or custom catalog (false)
+      version:
+        type: string
+        description: Catalog version for compatibility tracking
+
+  SNICertificateEntry:
+    type: object
+    required:
+      - hostname
+    properties:
+      hostname:
+        type: string
+        description: Hostname for SNI certificate (e.g., api.example.com). This certificate will be automatically used by all loadbalancer rules that have matching 'host' field.
+      certPath:
+        type: string
+        description: Optional certificate directory path (defaults to /opt/loxilb/cert/{hostname}). Directory must contain server.crt, server.key, and optionally rootCA.crt for mTLS.
+
 securityDefinitions:
   BearerAuth:
     type: apiKey

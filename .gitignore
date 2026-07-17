@@ -111,3 +111,11 @@ claude-agents/
 
 *.log
 
+
+# AI tooling artifacts (do not commit — see docs/CODE_QUALITY_REFACTORING_PLAN.md P0-4)
+.codegraph/
+.claude/
+.serena/
+claudedocs/
+CLAUDE.md
+**/CLAUDE.md
