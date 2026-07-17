@@ -7,6 +7,7 @@ import ImportExportIcon from '@mui/icons-material/ImportExport';
 import {Box, IconButton, Tooltip, Typography} from '@mui/material';
 import Logo from 'assets/logo/loxi.svg';
 import {is_logged_in, move_home} from 'common';
+import {useRole} from 'hooks/query/oamHooks';
 import {t} from 'i18next';
 import {Link} from 'react-router-dom';
 import package_info from '../../../package.json';
@@ -62,6 +63,8 @@ export default function Header() {
 	const version = package_info.version;
 
 	const is_enabled = is_logged_in();
+	// Config import/export is admin-only (RBAC Phase 3); hide its entry point
+	const {can_manage_config} = useRole();
 	const VerticalDivider = () => <Box width="1px" height="20px" bgcolor="grey.700" />;
 
 	return (
@@ -84,9 +87,13 @@ export default function Header() {
 					<UserIcon />
 					<VerticalDivider />
 
-					<ConfigIcon />
-					<VerticalDivider />
-					
+					{can_manage_config && (
+						<>
+							<ConfigIcon />
+							<VerticalDivider />
+						</>
+					)}
+
 					{/*<AlertsIcon />
 					<VerticalDivider /> */}
 

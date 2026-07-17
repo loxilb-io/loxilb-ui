@@ -15,9 +15,11 @@ interface LicenseManagementTableProps {
 	data: {licenses: IActiveLicense[]};
 	selected_rows: number[];
 	onChangeSelectedRows: (indices: number[]) => void;
-	onAdd: () => void;
-	onDelete: () => void;
-	onUpdate: () => void;
+	// Mutation handlers are optional: omitted for roles without the
+	// license_write capability (RBAC Phase 3), which hides the buttons.
+	onAdd?: () => void;
+	onDelete?: () => void;
+	onUpdate?: () => void;
 	onRefresh: () => void;
 }
 
