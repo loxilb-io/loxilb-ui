@@ -2,6 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import CloudIcon from '@mui/icons-material/Cloud';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
 import MonitorIcon from '@mui/icons-material/Monitor';
 import RouteIcon from '@mui/icons-material/Route';
 import WysiwygIcon from '@mui/icons-material/Wysiwyg';
@@ -56,6 +57,24 @@ export const MENU_LIST: IMenuItem[] = [
 				name: 'SNI Certificates',
 				path: 'sni-certs',
 			},
+		],
+	},
+	{
+		name: 'AI Gateway',
+		icon: SmartToyIcon,
+		path: 'ai',
+		items: [
+			{
+				name: 'API Keys',
+				path: 'apikey',
+			},
+			// Tenant Rate Limits hidden (decision 2026-07-17): the gateway's
+			// AI quota API is tenant-mandatory and only active when the gateway
+			// runs with --userservice; page + route stay at /instance/ai/ratelimit.
+			// {
+			// 	name: 'Tenant Rate Limits',
+			// 	path: 'ratelimit',
+			// },
 		],
 	},
 	{

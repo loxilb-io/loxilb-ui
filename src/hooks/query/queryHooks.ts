@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {query_get_apikey_all} from 'connector/instance/ai';
 import {query_get_bfd_all} from 'connector/instance/bfd';
 import {query_get_conntrack_all} from 'connector/instance/conn_track';
 import {query_get_endpoint_all} from 'connector/instance/endpoint';
@@ -124,4 +125,8 @@ export function useSecurityRate(instance: IInstance | null) {
 
 export function useSNICertificates(instance: IInstance | null) {
 	return useQueryInstanceData(['sni_certificates'], query_get_sni_certificates, instance);
+}
+
+export function useApiKeys(instance: IInstance | null) {
+	return useQueryInstanceData(['ai_apikeys'], query_get_apikey_all, instance);
 }

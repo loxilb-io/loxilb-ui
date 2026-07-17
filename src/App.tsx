@@ -45,6 +45,8 @@ import RoutePage from 'pages/network/RoutePage';
 import VLANPage from 'pages/network/VLANPage';
 import VxLANPage from 'pages/network/VXLANPage';
 
+import AIApiKeyPage from 'pages/ai/AIApiKeyPage';
+import AITenantRateLimitPage from 'pages/ai/AITenantRateLimitPage';
 import ConntrackPage from 'pages/traffic/ConntrackPage';
 import EndpointPage from 'pages/traffic/EndpointPage';
 import FirewallPage from 'pages/traffic/FirewallPage';
@@ -159,6 +161,10 @@ export default function App() {
 										<Route path="mirror" element={<MirrorPage />} />
 										<Route path="qos" element={<QoSPage />} />										
 										<Route path="sni-certs" element={<SNICertificatesPage />} />
+									</Route>
+									<Route path="ai" element={<Outlet />}>
+										<Route path="apikey" element={<AIApiKeyPage />} />
+										<Route path="ratelimit" element={<AITenantRateLimitPage />} />
 									</Route>
 									<Route path="security" element={<Outlet />}>
 										<Route path="synflood" element={<SYNFloodPage />} />
