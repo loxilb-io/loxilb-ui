@@ -357,6 +357,15 @@ const api = {
 | `npm run build` | Build for local environment |
 | `npm run build:dev` | Build for development environment |
 | `npm run build:prod` | Build for production environment |
+| `npm test` | Run unit + backend-contract tests (Vitest) |
+| `npm run typecheck` | TypeScript check (`tsc --noEmit`) |
+| `npm run gen:api` | Regenerate API types from `api-spec/*` |
+| `npm run api:check-mapping` | Verify every connector call exists in the backend specs |
+| `npm run sync:specs` | Re-vendor backend specs from sibling repos |
+
+API type-safety and backend-compatibility tooling is documented in
+[`docs/API_TOOLING.md`](docs/API_TOOLING.md); UI-vs-API gap analysis in
+[`docs/API_COVERAGE_REPORT.md`](docs/API_COVERAGE_REPORT.md).
 
 ### Build Optimization
 - **Code splitting** with React.lazy()

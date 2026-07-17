@@ -6,15 +6,20 @@
 
 ---
 
-## 1. Where we are (entry state for the next session)
+## 1. Where we are (entry state for the next session — updated 2026-07-17 evening)
 
-The P0 OSS-release blockers and the gateway API-sync (W4 deletions + live-metrics rebind) are **done and pushed** to `feat/inference-gateway-integration` (through commit `e8f4556`). Full stack was validated end-to-end through the OAM proxy against a live gateway (Playwright + real Chromium): every page renders correct live data, zero request failures. Two real bugs were caught and fixed by that run (the `/metrics` 406 Accept-header, and dead protocol-rate cards).
+Done on `feat/inference-gateway-integration` through commit `56ddf12`:
+- **P0 blockers, W4 API-sync, testbed e2e** (see git history / memory).
+- **H1 swagger codegen** (`88ac1e4`) — specs vendored, types generated, every connector GET typed; wrong path literal = compile error.
+- **H4 mapping guard** (`006d937`) — `npm run api:check-mapping` over all 119 connector calls; gateway spec audited against handler wiring (15 ops tagged `x-not-implemented`); gateway swagger fixed for `/logs` pagination + `cursor`/`file` params.
+- **Tests + CI** (`5aa4902`, pulled forward from H7) — Vitest (74 tests incl. backend-contract suite), `.github/workflows/ci.yml`, `npm run sync:specs` + `api-spec/SOURCES.json` version pinning.
+- Developer guide for all of the above: **`docs/API_TOOLING.md`**. UI gap analysis: **`docs/API_COVERAGE_REPORT.md`**.
 
-**Validated facts the plan below relies on:**
-- All 86 instance-side `GET_INST(...)` calls resolve to real gateway swagger paths (zero mismatches).
-- `swagger.yml` is currently used **nowhere** in code — it is a dead reference file. The runtime API contract is the gateway's `/meta` endpoint.
+⚠️ Sibling repos hold uncommitted changes from this work (commit them there): `loxilb-inference-gateway/api/swagger.yml` (Logs fields, /logs params, x-not-implemented/x-raw-middleware tags), `oam-loxilb/docs/*` (regenerated swagger incl. `/oam/setup/*`).
+
+**Facts the remaining plan relies on:**
 - `/meta`-driven forms: 19 of 31 input components use `useFormWithParams` (runtime field discovery). 9 more have hand-rolled `validateForm` — **two parallel validation systems**.
-- Current correctness smells (post-refactor counts): **28** silent-failure `(resp.data as X) ?? {}`, **273** `any`, **48** raw `console.*`, **17** copy-pasted table CRUD controllers, **0** error boundaries.
+- Remaining correctness smells: silent-failure `?? []`/`?? {}` reads still mask errors-vs-empty (H3), ~48 raw `console.*`, 17 copy-pasted table CRUD controllers, 0 error boundaries. `any` in `src/connector` is down to generic defaults + POST bodies (typed further in H2).
 
 ---
 
@@ -76,14 +81,31 @@ Rationale:
 
 ---
 
-## 4. Suggested execution order
+## 4. Execution order & NEXT TODO (updated 2026-07-17)
 
-```
-H7 (toolchain: at least ESLint+CI skeleton)  →  H1 (codegen types)  →  H4 (mapping guard)
-   →  H2 (zod validation)  →  H3 (error handling)  →  H5 (retire /meta)  →  H6 (dedupe)
-```
+Done: ~~H1 (codegen types)~~ → ~~H4 (mapping guard)~~ + tests/CI (part of H7 pulled forward).
 
-H1 + H4 are the highest-leverage, lowest-risk first moves. H2 + H3 are where user-facing correctness improves most. H5 + H6 are cleanup that depends on H1.
+**Next session — start here, in this order:**
+
+1. **H2 — zod validation layer** *(top priority; user-facing correctness)*
+   - `npm i zod @hookform/resolvers`; create `src/validation/` with network primitives: `ipv4`, `ipv6`, `cidr` (reject `999.999.999.999/99`), `port` (reject 0 and >65535), `macAddress`, `hostname`.
+   - Unit-test the primitives first (Vitest is ready — same table-driven style as `src/connector/user.test.ts`).
+   - Pilot on the LB rule form (highest traffic), then the 9 hand-rolled `validateForm` components; `useFormWithParams` keeps field *shape*, zod owns *validity*.
+   - DoD: invalid IP/CIDR/port cannot be submitted; one form is the documented reference pattern.
+2. **H3 — error-handling hardening**
+   - Replace silent `?? []` / `?? {}` reads with an unwrap that distinguishes error from empty (failed GET ⇒ error state, not an empty table).
+   - React Query global `onError` + central logger (absorb the ~48 `console.*`); top-level + per-route error boundaries (currently 0).
+   - Include the small OAM gap found in H4: call `POST /oam/logout` on logout (today the token is only cleared locally).
+3. **P1 UI coverage components** (from `docs/API_COVERAGE_REPORT.md` §P1; each is connector + hooks + page, all typed via `GwGetResp`/`GwSchema`):
+   - AI API-key management (`/config/ai/apikey*`) — flagship inference-gateway feature.
+   - Tenant rate limits (`/config/ai/tenant/ratelimit*`).
+   - GPU routing status/enable (`/config/gpu/*`) — dashboard card + settings.
+   - L7 policy table (`/config/l7policy*`) — clone the firewall page pattern.
+   - LB per-rule stats/status/PATCH — detail panel in the existing LB page.
+4. **H5 — retire `/meta`** (after H2: generate form metadata from swagger at build time; only then delete `query_get_metadata`).
+5. **H6 — dedupe**: one `useTableController` replacing the 17 copy-pasted CRUD controllers (do after H3 so the shared controller bakes in the new error handling).
+6. **H7 remainder — CRA → Vite migration + ESLint flat config + Prettier** (vitest/CI already landed; Prettier will finish the LF normalization). After migration, fold the standalone vitest config into vite.config.
+7. **Backend follow-ups (gateway repo):** commit the swagger.yml fixes; optionally emit `definedType` in BGP defined-set GET responses; decide implement-or-remove for the 15 `x-not-implemented` ops (if implemented, unflag + build UI per coverage report).
 
 ## 5. Definition of done (production-quality bar)
 
