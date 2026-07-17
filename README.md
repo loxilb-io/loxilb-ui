@@ -132,8 +132,8 @@ The application supports multiple environment variables:
 ```yaml
 environment:
   - SSL_MODE=enabled          # enabled|disabled|commercial
-  - BACKEND_URL=https://oam-1.loxilb.io
-  - BACKEND_HOST=oam-1.loxilb.io
+  - BACKEND_URL=https://oam.example.com
+  - BACKEND_HOST=oam.example.com
   - FRONTEND_URL=http://localhost:3000
   - PUBLIC_PATH=/netlox
 ```
@@ -316,8 +316,8 @@ HTTPS=true                               # Enable HTTPS in development
 ### Docker Environment Variables
 ```env
 SSL_MODE=enabled                         # SSL configuration mode
-BACKEND_URL=https://oam-1.loxilb.io     # LoxiLB OAM API URL
-BACKEND_HOST=oam-1.loxilb.io            # Backend host for proxy
+BACKEND_URL=https://oam.example.com     # LoxiLB OAM API URL
+BACKEND_HOST=oam.example.com            # Backend host for proxy
 FRONTEND_URL=http://localhost:3000       # Frontend URL
 PUBLIC_PATH=/netlox                      # Public path prefix
 ```
@@ -389,7 +389,7 @@ docker-compose restart
 docker-compose logs loxilb-ui
 
 # Verify backend connectivity
-docker exec <container> curl -k https://oam-1.loxilb.io/health
+docker exec <container> curl -k https://oam.example.com/health
 ```
 
 #### Build Issues

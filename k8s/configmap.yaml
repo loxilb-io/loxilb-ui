@@ -14,8 +14,8 @@ data:
   REACT_APP_REPATCH_INTERVAL: "5000"
   
   # Backend Configuration (Dynamic URLs)
-  BACKEND_URL: "https://oam-1.loxilb.io"  # Change this to your backend URL
-  BACKEND_HOST: "oam-1.loxilb.io"         # Change this to your backend host
+  BACKEND_URL: "https://oam.example.com"  # Change this to your backend URL
+  BACKEND_HOST: "oam.example.com"         # Change this to your backend host
   FRONTEND_URL: "http://localhost:3000" # Change this to your frontend URL
   PUBLIC_PATH: "/netlox"
   
@@ -41,7 +41,7 @@ data:
         add_header X-Content-Type-Options "nosniff" always;
         add_header X-XSS-Protection "1; mode=block" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https: wss: http: ws: https://*.loxilb.io;" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https: wss: http: ws:;" always;
 
         # Root directory for React app
         root /usr/share/nginx/html;
@@ -61,10 +61,10 @@ data:
                 return 204;
             }
                 
-            proxy_pass https://oam-1.loxilb.io/oam/;  # Change this to your backend
+            proxy_pass https://oam.example.com/oam/;  # Change this to your backend
             proxy_ssl_verify off;
             
-            proxy_set_header Host oam-1.loxilb.io;    # Change this to your backend host
+            proxy_set_header Host oam.example.com;    # Change this to your backend host
             proxy_set_header Origin http://localhost:3000;  # Change this to your frontend
             proxy_set_header Referer http://localhost:3000/;
             proxy_set_header X-Real-IP $remote_addr;
@@ -172,7 +172,7 @@ data:
         add_header X-Content-Type-Options "nosniff" always;
         add_header X-XSS-Protection "1; mode=block" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https: wss: http: ws: https://*.loxilb.io;" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https: wss: http: ws:;" always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
         # Root directory for React app
@@ -193,10 +193,10 @@ data:
                 return 204;
             }
                 
-            proxy_pass https://oam-1.loxilb.io/oam/;  # Change this to your backend
+            proxy_pass https://oam.example.com/oam/;  # Change this to your backend
             proxy_ssl_verify off;
             
-            proxy_set_header Host oam-1.loxilb.io;    # Change this to your backend host
+            proxy_set_header Host oam.example.com;    # Change this to your backend host
             proxy_set_header Origin http://localhost:3000;  # Change this to your frontend
             proxy_set_header Referer http://localhost:3000/;
             proxy_set_header X-Real-IP $remote_addr;
