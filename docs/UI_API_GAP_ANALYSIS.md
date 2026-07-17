@@ -52,7 +52,7 @@ Legend: ✅ implemented · ◐ partial (works but missing fields) · ❌ missing
 | port | GET | ✅ | — |
 | cert (SNI) | GET POST PUT DELETE | ◐ GET/POST/DELETE; ❌ PUT | field parity + no PUT |
 | params | GET POST | ◐ GET | verify POST |
-| **l7policy** | GET POST DELETE | ❌ | **new resource (in scope)** |
+| **l7policy** | GET/all POST DELETE+GET by id | ⏸ deferred | gateway feature unreleased (see §2.3) |
 | **ai (apikey)** | GET POST DELETE (+PATCH via raw middleware) | ✅ built | UI done; **gateway needs `--userservice`** (see §2.2) |
 | **ai (tenant ratelimit)** | POST + GET/{tenant_id} only (no DELETE, no list-all) | ✅ built (menu hidden) | UI done; **gateway needs `--userservice`** (see §2.2) |
 | **ipsec** (tunnels/certs/ca) | GET POST DELETE | ❌ | **new resource (in scope)** |
@@ -149,8 +149,24 @@ attach tokens. UI correctness was instead validated against the gateway
 handler source (`api/restapi/handler/ai_apikey.go`) and the CICD request
 bodies, which the UI-built JSON matches field-for-field.
 
-> Rows 2.3–2.x (firewall, endpoint, mirror, policy, securityrate PUT, cert PUT,
-> ipv6, l7policy, ipsec) are filled in as each is
+### 2.3 L7 policy (`/config/l7policy`) — DEFERRED (decision 2026-07-17)
+
+Gateway-source audit (requested before building the UI): the implementation is
+**real end-to-end, not a mock** — `handler/l7policy.go` (609 lines, Octavia
+validation, attach-before-store, 19 unit tests) → `NetL7PolicyApply` →
+`DpProxyAttachL7Policy` CGO → `sockproxy_l7policy.c` (1,250 lines; matching,
+FORWARD/REDIRECT/REJECT dispatch) invoked from the live request path
+(`sockproxy_ep.c:410` HTTP/1, `sockproxy_h2.c:2457` HTTP/2).
+
+**Deferred anyway because the feature is pre-release:** the handler comments
+say "unreleased"; the policy registry is **in-memory only** (lost on gateway
+restart); there is **no CICD scenario**; and the deployed testbed image 404s
+`/config/l7policy/*` (feature exists only in source). Revisit when the gateway
+ships it in an image with a CICD scenario. Ops when built: `GET /all`, `POST`
+(policy references the LB's stable opaque `id`), `GET`/`DELETE /id/{id}`.
+
+> Rows 2.4–2.x (firewall, endpoint, mirror, policy, securityrate PUT, cert PUT,
+> ipv6, ipsec) are filled in as each is
 > audited during burndown — see §3.
 
 ---
@@ -161,7 +177,12 @@ Each item: audit fields → update type + connector + form → `tsc`/tests →
 **validate live** against the gateway via the OAM proxy → commit → tick here.
 
 - [x] **LB rule** — field parity (AI-gateway serviceArguments + endpoint P/D fields); Octavia fields excluded. **Validated live** (2026-07-17): POST 200 for a full aigw rule; 17/20 serviceArguments + both endpoint fields round-trip on GET; the 3 `None` (session_header_name, chwbl_*) are sel-conditional — confirmed round-trip under sel=8/sel=3. Finding: `pd_disagg_mode` requires `mode=fullproxy` (gateway 500s on aigw); delete-by-name is more reliable than the externalipaddress path for fullproxy rules.
-- [ ] LB rule — add PATCH (merge-patch) path for edits
+- [x] LB rule — PATCH (merge-patch) edit path (2026-07-17): edit dialog now diffs
+  against the original and PATCHes only changed mutable fields at
+  `/config/loadbalancer/externalipaddress/{ip}/port/{port}/protocol/{proto}`;
+  falls back to re-POST when the immutable VIP/port/proto key was changed.
+  **Validated live**: PATCH inactiveTimeOut→120 round-trips (200); immutable
+  `mode` correctly rejected 400 "cannot modify immutable field".
 - [ ] Endpoint — P/D + HM member fields
 - [ ] Firewall — field parity
 - [ ] IP filter / synflood / securityrate — field parity; securityrate PUT
@@ -169,7 +190,8 @@ Each item: audit fields → update type + connector + form → `tsc`/tests →
 - [ ] SNI cert — PUT (rotate) support
 - [ ] ipv6address — new form (parity with ipv4)
 - [ ] vlan / vxlan / bfd / bgp — verify + fill gaps
-- [ ] **L7 policy** — new resource (GET/POST/DELETE)
+- [~] **L7 policy** — DEFERRED (2026-07-17): gateway impl verified real end-to-end
+  but unreleased (in-memory store, no CICD, not in deployed image) — see §2.3.
 - [x] **AI API keys** — new resource (2026-07-17): table + create form + one-time
   raw-key dialog + delete; under new "AI Gateway" menu. Live validation deferred
   (gateway `--userservice` requirement — §2.2); contract validated against

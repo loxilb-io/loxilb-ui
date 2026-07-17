@@ -4,7 +4,7 @@
 import {IServiceConfiguration} from 'types/load_balancer';
 import {IInstance} from 'types/oam';
 import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
-import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
+import {DELETE_INST, GET_INST, PATCH_INST, POST_INST} from '../fetcher/fetcher_inst';
 import type {GwGetResp} from 'api';
 
 //---------------------------------------------------------
@@ -61,6 +61,27 @@ export async function request_create_load_balancer_config(instance: IInstance, d
 	} else {
 		return {status: 'success'};
 	}
+}
+
+/**
+ * Apply an RFC 7386 JSON merge-patch to an existing LB rule identified by its
+ * VIP/port/protocol composite key. Fields present are overwritten, absent
+ * fields untouched. Immutable fields (mode, security, egress, protocol, VIP
+ * key) are rejected by the gateway with 400 — callers must exclude them.
+ */
+export async function request_patch_load_balancer_config(
+	instance: IInstance,
+	ip: string,
+	port: number,
+	proto: string,
+	patch: Partial<IServiceConfiguration>,
+): Promise<ApiResult> {
+	const resp = await PATCH_INST(instance, `/config/loadbalancer/externalipaddress/${ip}/port/${port}/protocol/${proto}`, patch);
+	if (resp.code !== 200 && resp.code !== 204) {
+		const errorMessage = createDetailedErrorMessage(resp, 'Load Balancer Patch');
+		return {status: 'error', error: errorMessage};
+	}
+	return {status: 'success'};
 }
 
 export async function request_delete_all_load_balancers(instance: IInstance): Promise<ApiResult> {
