@@ -81,7 +81,8 @@ PII/LlamaFirewall/OPA, tracing, DPU, IPsec). See roadmap in §9.
 
 ### 3.1 Two backends, one env var
 
-- **OAM control plane** (`REACT_APP_API_URL`): auth/OAuth, users, licenses,
+- **OAM control plane** (`REACT_APP_API_URL`): auth/OAuth (OAuth slated for
+  removal — §7), users, licenses,
   instances registry, config export/import, OAM logs, `/alerts` history.
   Connectors: `src/connector/oam/*`, `src/connector/fetcher/fetcher_oam.ts`.
 - **Per-instance gateway API**, proxied through OAM:
@@ -251,6 +252,7 @@ client-accumulated series. NTop/topology traffic history:
 | `CacheStatsCard`, `SystemHealthCard` (metrics-subsystem health), `LiveMetricsCard` | Delete or re-bind |
 | Types: `advancedMetrics.ts` storage/query sections, `alerts.ts` rule-CRUD types | Prune |
 | Dead code flagged during inventory: `DashboardPage_orig.tsx`, `HomePage.tsx`, unrouted `TelecomPage` + `session*.ts`, legacy `react-query` v3 dep | Delete (hygiene) |
+| OAuth (`OAuthCallbackPage.tsx`, `connector/oauth.ts`, login-page OAuth flow) | Delete — on-premise focus, local auth only (decision 2026-07-17; see `CODE_QUALITY_REFACTORING_PLAN.md` P0-5) |
 
 ## 8. Risks & Open Questions
 
