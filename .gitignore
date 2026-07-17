@@ -120,3 +120,10 @@ claude-agents/
 claudedocs/
 CLAUDE.md
 **/CLAUDE.md
+
+# Internal-only artifacts — never ship in the public tree (P0-4)
+docs/internal/
+docs/license-management/
+docker-compose.commercial.yml
+deploy.ps1
+make-package.ps1
