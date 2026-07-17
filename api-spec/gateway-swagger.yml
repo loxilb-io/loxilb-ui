@@ -1485,6 +1485,7 @@ paths:
             $ref: '#/definitions/Error'
   '/config/trace/catalogs':
     get:
+      x-not-implemented: true  # declared but no handler wired (returns 501); do not build clients against this yet
       summary: List all loaded trace catalogs
       description: |
         Returns a list of all tracing catalog templates loaded from YAML files.
@@ -5887,6 +5888,7 @@ paths:
 #----------------------------------------------
   '/metrics/flowcount':
     get:
+      x-not-implemented: true  # declared but no handler wired (returns 501); do not build clients against this yet
       summary: Get flow count metrics
       description: Get metrics related to flow counts.
       responses:
@@ -5901,6 +5903,7 @@ paths:
 
   '/metrics/hostcount':
     get:
+      x-not-implemented: true  # declared but no handler wired (returns 501); do not build clients against this yet
       summary: Get host count metrics
       description: Get metrics related to host counts.
       responses:
@@ -5915,6 +5918,7 @@ paths:
 
   '/metrics/lbrulecount':
     get:
+      x-not-implemented: true  # declared but no handler wired (returns 501); do not build clients against this yet
       summary: Get load balancer rule count metrics
       description: Get metrics related to load balancer rule counts.
       responses:
@@ -5929,6 +5933,7 @@ paths:
 
   '/metrics/newflowcount':
     get:
+      x-not-implemented: true  # declared but no handler wired (returns 501); do not build clients against this yet
       summary: Get new flow count metrics
       description: Get metrics related to new flow counts.
       responses:
@@ -5943,6 +5948,7 @@ paths:
 
   '/metrics/requestcount':
     get:
+      x-not-implemented: true  # declared but no handler wired (returns 501); do not build clients against this yet
       summary: Get request count metrics
       description: Get metrics related to request counts.
       responses:
@@ -5957,6 +5963,7 @@ paths:
 
   '/metrics/errorcount':
     get:
+      x-not-implemented: true  # declared but no handler wired (returns 501); do not build clients against this yet
       summary: Get error count metrics
       description: Get metrics related to error counts.
       responses:
@@ -5971,6 +5978,7 @@ paths:
 
   '/metrics/processedtraffic':
     get:
+      x-not-implemented: true  # declared but no handler wired (returns 501); do not build clients against this yet
       summary: Get processed traffic metrics
       description: Get metrics related to processed traffic.
       responses:
@@ -5985,6 +5993,7 @@ paths:
 
   '/metrics/lbprocessedtraffic':
     get:
+      x-not-implemented: true  # declared but no handler wired (returns 501); do not build clients against this yet
       summary: Get load balancer processed traffic metrics
       description: Get metrics related to load balancer processed traffic.
       responses:
@@ -5999,6 +6008,7 @@ paths:
 
   '/metrics/epdisttraffic':
     get:
+      x-not-implemented: true  # declared but no handler wired (returns 501); do not build clients against this yet
       summary: Get endpoint distribution traffic metrics
       description: Get metrics related to endpoint distribution traffic per service. The additionalProp is service name.
       responses:
@@ -6013,6 +6023,7 @@ paths:
 
   '/metrics/servicedisttraffic':
     get:
+      x-not-implemented: true  # declared but no handler wired (returns 501); do not build clients against this yet
       summary: Get service distribution traffic metrics
       description: Get metrics related to service distribution traffic. The additionalProp is service name.
       responses:
@@ -6027,6 +6038,7 @@ paths:
 
   '/metrics/fwdrops':
     get:
+      x-not-implemented: true  # declared but no handler wired (returns 501); do not build clients against this yet
       summary: Get firewall drops metrics
       description: Get metrics related to firewall drops.
       responses:
@@ -6041,6 +6053,7 @@ paths:
 
   '/metrics/reqcountperclient':
     get:
+      x-not-implemented: true  # declared but no handler wired (returns 501); do not build clients against this yet
       summary: Get request count per client metrics
       description: Get metrics related to request counts per client. The additionalProp is client IP address.
       responses:
@@ -6073,6 +6086,16 @@ paths:
           required: false
           type: string
           description: Filter logs containing a specific keyword or phrase.
+        - name: cursor
+          in: query
+          required: false
+          type: string
+          description: Opaque pagination cursor from a previous response's next_cursor; fetches the next page.
+        - name: file
+          in: query
+          required: false
+          type: string
+          description: Specific log file to read (default is the current log file).
       responses:
         '200':
           description: Logs fetched successfully
@@ -6137,6 +6160,7 @@ paths:
 #----------------------------------------------
   '/nodegraph/all':
     get:
+      x-not-implemented: true  # declared but no handler wired (returns 501); do not build clients against this yet
       summary: List current topology
       description: Retrieve a list of all nodes and edges in the current topology.
       responses:
@@ -6159,6 +6183,7 @@ paths:
 
   '/nodegraph/{service}':
     get:
+      x-not-implemented: true  # declared but no handler wired (returns 501); do not build clients against this yet
       summary: List current topology for a specific service
       description: Retrieve a list of all nodes and edges in the current topology for a specific service.
       parameters:
@@ -6564,6 +6589,7 @@ paths:
 #----------------------------------------------
   '/config/opa/watcher':
     post:
+      x-raw-middleware: true  # served by global middleware, not this stub (see swagger-extras.yml for the real contract)
       summary: "Configure OPA L4 policy watcher"
       description: "Start or reconfigure the OPA L4 policy watcher. Stops any existing watcher before starting a new one."
       parameters:
@@ -6589,6 +6615,7 @@ paths:
       tags:
         - opa
     get:
+      x-raw-middleware: true  # served by global middleware, not this stub (see swagger-extras.yml for the real contract)
       summary: "Get OPA L4 policy watcher status"
       description: "Returns current configuration and operational status of the OPA watcher."
       responses:
@@ -6604,6 +6631,7 @@ paths:
       tags:
         - opa
     delete:
+      x-raw-middleware: true  # served by global middleware, not this stub (see swagger-extras.yml for the real contract)
       summary: "Stop and remove OPA L4 policy watcher"
       description: "Stops the running OPA watcher and removes its configuration."
       responses:
@@ -9660,6 +9688,22 @@ definitions:
         items:
           type: string
         description: List of filtered logs.
+      log_file:
+        type: string
+        description: Name of the log file the lines were read from.
+      log_count:
+        type: integer
+        description: Number of log lines returned in this page.
+      total_size:
+        type: integer
+        format: int64
+        description: Total size of the log file in bytes.
+      has_more:
+        type: boolean
+        description: Whether more log lines are available (pass next_cursor to fetch them).
+      next_cursor:
+        type: string
+        description: Opaque cursor for the next page; present only when has_more is true.
   
   LogArchives:
     type: object

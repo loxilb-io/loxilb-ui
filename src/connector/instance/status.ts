@@ -123,11 +123,7 @@ export async function query_get_inst_logs(instance: IInstance, options?: {
 	const queryString = params.toString();
 	const endpoint = `/logs${queryString ? `?${queryString}` : ''}`;
 	
-	// SPEC GAP: the gateway /logs handler returns pagination fields
-	// (next_cursor, has_more, log_count) that swagger's Logs model does not
-	// declare yet — extend locally until the spec catches up.
-	type LogsResponse = GwGetResp<'/logs'> & {next_cursor?: string; has_more?: boolean; log_count?: number};
-	const resp = await GET_INST<LogsResponse>(instance, endpoint);
+	const resp = await GET_INST<GwGetResp<'/logs'>>(instance, endpoint);
 
 	const log_strings = resp.data?.logs;
 	if (!log_strings) return {logs: [], has_more: false};

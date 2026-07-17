@@ -6951,6 +6951,10 @@ export interface paths {
           level?: string;
           /** @description Filter logs containing a specific keyword or phrase. */
           keyword?: string;
+          /** @description Opaque pagination cursor from a previous response's next_cursor; fetches the next page. */
+          cursor?: string;
+          /** @description Specific log file to read (default is the current log file). */
+          file?: string;
         };
       };
       responses: {
@@ -9503,6 +9507,19 @@ export interface components {
     Logs: {
       /** @description List of filtered logs. */
       logs?: string[];
+      /** @description Name of the log file the lines were read from. */
+      log_file?: string;
+      /** @description Number of log lines returned in this page. */
+      log_count?: number;
+      /**
+       * Format: int64
+       * @description Total size of the log file in bytes.
+       */
+      total_size?: number;
+      /** @description Whether more log lines are available (pass next_cursor to fetch them). */
+      has_more?: boolean;
+      /** @description Opaque cursor for the next page; present only when has_more is true. */
+      next_cursor?: string;
     };
     LogArchives: {
       /** @description List of log archive filenames. */
