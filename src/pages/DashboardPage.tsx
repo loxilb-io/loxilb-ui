@@ -43,14 +43,11 @@ export default function DashboardPage() {
 		{key: 'lb-rules', component: <CriticalMetricCard title={t('Load Balancer Rules')} instance={inst} metricField="lb_rule_count" description={t('Active LB rules')} warningThreshold={50} criticalThreshold={100} />},
 
 		// === REAL-TIME TRAFFIC MONITORING ===
+		// Aggregate rates only; the gateway registry does not emit protocol-split
+		// byte rates (rps_tcp_bps/udp/sctp), so those cards are intentionally omitted.
 		{key: 'total-traffic-rate', component: <RealTimeRateCard title={t('Total Traffic Rate')} instance={inst} rateField="rps_bps" unit="bps" />},
 		{key: 'total-packet-rate', component: <RealTimeRateCard title={t('Total Packet Rate')} instance={inst} rateField="rps_pps" unit="pps" />},
 		{key: 'total-error-rate', component: <RealTimeRateCard title={t('Total Error Rate')} instance={inst} rateField="rps_eps" unit="eps" />},
-		
-		// === PROTOCOL-SPECIFIC MONITORING ===
-		{key: 'tcp-traffic-rate', component: <RealTimeRateCard title={t('TCP Traffic Rate')} instance={inst} rateField="rps_tcp_bps" unit="bps" />},
-		{key: 'udp-traffic-rate', component: <RealTimeRateCard title={t('UDP Traffic Rate')} instance={inst} rateField="rps_udp_bps" unit="bps" />},
-		{key: 'sctp-traffic-rate', component: <RealTimeRateCard title={t('SCTP Traffic Rate')} instance={inst} rateField="rps_sctp_bps" unit="bps" />},
 
 		// === SYSTEM LOGS AND DIAGNOSTICS ===
 		{key: 'system-log', component: <SystemLogCard />},
@@ -71,13 +68,8 @@ export default function DashboardPage() {
 		{i: 'total-packet-rate', x: 4, y: 4, w: 4, h: 1}, // Total packet rate
 		{i: 'total-error-rate', x: 8, y: 4, w: 4, h: 1}, // Total error rate
 
-		// === ROW 4: PROTOCOL-SPECIFIC MONITORING ===
-		{i: 'tcp-traffic-rate', x: 0, y: 5, w: 4, h: 1}, // TCP traffic rate
-		{i: 'udp-traffic-rate', x: 4, y: 5, w: 4, h: 1}, // UDP traffic rate
-		{i: 'sctp-traffic-rate', x: 8, y: 5, w: 4, h: 1}, // SCTP traffic rate
-
-		// === ROW 5: SYSTEM LOGS AND DIAGNOSTICS ===
-		{i: 'system-log', x: 0, y: 6, w: 12, h: 2}, // System logs
+		// === ROW 4: SYSTEM LOGS AND DIAGNOSTICS ===
+		{i: 'system-log', x: 0, y: 5, w: 12, h: 2}, // System logs
 	];
 
 	const [layout, set_layout] = useState<Layout[] | null>(null);
