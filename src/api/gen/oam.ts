@@ -2301,7 +2301,6 @@ export interface components {
       oauth_provider?: string;
       /** @description Access token from the OAuth provider */
       oauth_token?: string;
-      password?: string;
       /** @description e.g., "admin", "user" */
       role?: string;
       username?: string;

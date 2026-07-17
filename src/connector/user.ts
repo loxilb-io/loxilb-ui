@@ -94,38 +94,6 @@ export async function login_user(credentials: ILoginRequest): Promise<IEnhancedL
 }
 
 /**
- * Create user account and automatically log them in
- * @param userData - User creation data
- */
-export async function signup_and_login(userData: ICreateUserRequest): Promise<IEnhancedLoginResponse> {
-	try {
-		// Step 1: Create user account
-		await create_user(userData);
-
-		// Step 2: Automatically log in the new user
-		const loginResult = await login_user({
-			username: userData.username,
-			password: userData.password,
-		});
-
-		return loginResult;
-	} catch (error) {
-		throw error;
-	}
-}
-
-/**
- * Validate username availability (placeholder - would need API endpoint)
- * @param username - Username to check
- */
-export async function check_username_availability(username: string): Promise<boolean> {
-	// Note: This would require a specific API endpoint like GET /users/check?username=xxx
-	// Since it's not in the swagger spec, we'll return true for now
-	// In a real implementation, you'd call the API here
-	return true;
-}
-
-/**
  * Validate email format
  * @param email - Email to validate
  */
