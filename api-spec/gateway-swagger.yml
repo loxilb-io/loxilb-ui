@@ -4324,7 +4324,42 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
-    
+
+    put:
+      summary: Update an IPsec tunnel
+      description: Update an existing IPsec tunnel in place. The tunnel is replaced within a single configuration regeneration and strongSwan reload (no delete/recreate window). The name in the path takes precedence over the body.
+      parameters:
+        - name: name
+          in: path
+          type: string
+          required: true
+          description: Tunnel name
+        - name: attr
+          in: body
+          required: true
+          description: New IPsec tunnel configuration
+          schema:
+            $ref: '#/definitions/IPsecTunnelMod'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Tunnel not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
     delete:
       summary: Delete an IPsec tunnel
       description: Delete an existing IPsec tunnel and remove associated SAs.
@@ -4337,6 +4372,70 @@ paths:
       responses:
         '204':
           description: OK
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Tunnel not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/config/ipsec/tunnels/{name}/action':
+    post:
+      summary: Execute a connection action on an IPsec tunnel
+      description: Initiate, terminate, or restart the strongSwan connection for an existing tunnel without changing its configuration.
+      parameters:
+        - name: name
+          in: path
+          type: string
+          required: true
+          description: Tunnel name
+        - name: attr
+          in: body
+          required: true
+          description: Action to execute
+          schema:
+            $ref: '#/definitions/IPsecTunnelActionMod'
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          description: Tunnel not found
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+
+  '/config/ipsec/tunnels/{name}/peerconfig':
+    get:
+      summary: Get remote-peer strongSwan configuration for a tunnel
+      description: Generate a mirrored strongSwan configuration (ipsec.conf conn block and ipsec.secrets entry) ready to install on the remote peer of this tunnel. For PSK tunnels the response contains the pre-shared key.
+      parameters:
+        - name: name
+          in: path
+          type: string
+          required: true
+          description: Tunnel name
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/IPsecPeerConfig'
         '401':
           description: Invalid authentication credentials
           schema:
@@ -8760,16 +8859,16 @@ definitions:
         description: IKE version
       ikeEncryption:
         type: string
-        default: aes256-sha256-modp2048
-        description: IKE encryption algorithm
+        default: aes256
+        description: IKE encryption algorithm as a single token (e.g. aes256, aes128). The gateway composes the proposal as encryption-integrity-dhgroup.
       ikeIntegrity:
         type: string
         default: sha256
-        description: IKE integrity algorithm
+        description: IKE integrity algorithm as a single token (e.g. sha256, sha1)
       ikeDhGroup:
         type: string
         default: modp2048
-        description: IKE DH group
+        description: IKE DH group as a single token (e.g. modp2048, modp1024)
       ikeLifetime:
         type: integer
         format: uint32
@@ -8777,16 +8876,15 @@ definitions:
         description: IKE lifetime in seconds
       espEncryption:
         type: string
-        default: aes256-sha256
-        description: ESP encryption algorithm
+        default: aes256
+        description: ESP encryption algorithm as a single token (e.g. aes256, aes128). The gateway composes the proposal as encryption-integrity[-pfsgroup].
       espIntegrity:
         type: string
         default: sha256
-        description: ESP integrity algorithm
+        description: ESP integrity algorithm as a single token (e.g. sha256, sha1)
       espDhGroup:
         type: string
-        default: modp2048
-        description: ESP PFS DH group
+        description: ESP PFS DH group as a single token (e.g. modp2048). When set, it is appended to the ESP proposal to enable Perfect Forward Secrecy; leave empty to disable PFS.
       espLifetime:
         type: integer
         format: uint32
@@ -8827,10 +8925,40 @@ definitions:
         enum: [start, add, route]
         default: start
         description: Connection startup mode - start (initiator/client), add (responder/server), route (on-demand)
+      compatFallback:
+        type: boolean
+        default: false
+        description: Append a weak legacy proposal (aes128-sha1-modp1024 for IKE, aes128-sha1 for ESP) as a compatibility fallback for old peers. Disabled by default.
       selector:
         $ref: '#/definitions/IPsecSelector'
       dpd:
         $ref: '#/definitions/IPsecDPD'
+
+  IPsecTunnelActionMod:
+    type: object
+    required:
+      - action
+    properties:
+      action:
+        type: string
+        enum: [initiate, terminate, restart]
+        description: Connection action - initiate (ipsec up), terminate (ipsec down), restart (down then up)
+
+  IPsecPeerConfig:
+    type: object
+    properties:
+      tunnelName:
+        type: string
+        description: Tunnel name
+      ipsecConf:
+        type: string
+        description: strongSwan ipsec.conf conn block for the remote peer
+      ipsecSecrets:
+        type: string
+        description: strongSwan ipsec.secrets entry for the remote peer (PSK mode only; contains the pre-shared key)
+      notes:
+        type: string
+        description: Peer-side installation notes
 
   IPsecTunnel:
     type: object
@@ -8895,6 +9023,9 @@ definitions:
         type: string
         enum: [start, add, route]
         description: Connection startup mode - start (initiator/client), add (responder/server), route (on-demand)
+      compatFallback:
+        type: boolean
+        description: Weak legacy proposal fallback enabled
       selector:
         $ref: '#/definitions/IPsecSelector'
       dpd:

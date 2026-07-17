@@ -18,6 +18,13 @@ export type IIPsecTunnelMod = GwSchema<'IPsecTunnelMod'>;
 // GET /config/ipsec/tunnels/all element — config + state/traffic counters
 export type IIPsecTunnel = GwSchema<'IPsecTunnel'>;
 
+// POST /config/ipsec/tunnels/{name}/action body
+export type IIPsecTunnelAction = NonNullable<GwSchema<'IPsecTunnelActionMod'>['action']>;
+
+// GET /config/ipsec/tunnels/{name}/peerconfig response — mirrored strongSwan
+// config for the remote peer (ipsec.conf conn block + secrets entry)
+export type IIPsecPeerConfig = GwSchema<'IPsecPeerConfig'>;
+
 // Traffic selector / DPD sub-objects
 export type IIPsecSelector = GwSchema<'IPsecSelector'>;
 export type IIPsecDPD = GwSchema<'IPsecDPD'>;

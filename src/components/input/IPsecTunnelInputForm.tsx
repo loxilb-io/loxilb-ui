@@ -116,7 +116,8 @@ export default function IPsecTunnelInputForm(props: IPsecTunnelInputFormProps) {
 	const validateForm = (data: IIPsecTunnelMod): boolean => {
 		if (data.name.trim().length === 0) return false;
 		if (!IP_RE.test(data.localIp) || !IP_RE.test(data.remoteIp)) return false;
-		if (data.authMode === 'psk' && (data.psk ?? '').length === 0) return false;
+		// On edit an empty PSK means "keep the stored one" (PUT carries it over)
+		if (data.authMode === 'psk' && (data.psk ?? '').length === 0 && !isEdit) return false;
 		if (data.authMode === 'cert' && (!data.certName || !data.caCertName)) return false;
 		if (data.selector?.srcCidr && !CIDR_RE.test(data.selector.srcCidr)) return false;
 		if (data.selector?.dstCidr && !CIDR_RE.test(data.selector.dstCidr)) return false;
@@ -151,11 +152,11 @@ export default function IPsecTunnelInputForm(props: IPsecTunnelInputFormProps) {
 	}, []);
 
 	return (
-		<NewBox item_name={isEdit ? t('Edit IPsec Tunnel (recreate)') : t('IPsec Tunnel')}>
+		<NewBox item_name={isEdit ? t('Edit IPsec Tunnel') : t('IPsec Tunnel')}>
 			<Stack spacing={3}>
 				{isEdit && (
-					<Alert severity="warning">
-						{t('The gateway has no in-place tunnel update: applying will delete and recreate the tunnel, briefly interrupting the connection. The PSK must be re-entered.')}
+					<Alert severity="info">
+						{t('The tunnel is updated in place (single strongSwan reload). Leave the PSK blank to keep the current one.')}
 					</Alert>
 				)}
 
@@ -197,7 +198,11 @@ export default function IPsecTunnelInputForm(props: IPsecTunnelInputFormProps) {
 							label={t('Pre-Shared Key')}
 							value={form.psk ?? ''}
 							onChange={handleChange('psk')}
-							param_desc={{type: 'string', description: 'Shared secret — must match the remote peer', required: true}}
+							param_desc={{
+								type: 'string',
+								description: isEdit ? 'Leave blank to keep the current key' : 'Shared secret — must match the remote peer',
+								required: !isEdit,
+							}}
 						/>
 					)}
 					{form.authMode === 'cert' && (
@@ -316,7 +321,7 @@ export default function IPsecTunnelInputForm(props: IPsecTunnelInputFormProps) {
 								label={t('PFS Group')}
 								value={form.espDhGroup ?? 'modp2048'}
 								onChange={(v: string) => handleChange('espDhGroup')(stripLegacy(v))}
-								param_desc={{type: 'string', enum: DH_GROUPS, description: 'Perfect Forward Secrecy DH group (note: not yet enforced by the gateway)'}}
+								param_desc={{type: 'string', enum: DH_GROUPS, description: 'Perfect Forward Secrecy DH group, appended to the ESP proposal'}}
 							/>
 							<ParamBox
 								label={t('ESP Lifetime (s)')}
@@ -381,6 +386,10 @@ export default function IPsecTunnelInputForm(props: IPsecTunnelInputFormProps) {
 							<FormControlLabel
 								control={<Switch checked={form.compress ?? false} onChange={e => handleChange('compress')(e.target.checked)} />}
 								label={t('IP Compression')}
+							/>
+							<FormControlLabel
+								control={<Switch checked={form.compatFallback ?? false} onChange={e => handleChange('compatFallback')(e.target.checked)} />}
+								label={t('Legacy Cipher Fallback')}
 							/>
 						</Grid2>
 

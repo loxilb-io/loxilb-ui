@@ -1,7 +1,11 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import DownloadIcon from '@mui/icons-material/Download';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import ReplayIcon from '@mui/icons-material/Replay';
 import SettingsIcon from '@mui/icons-material/Settings';
+import StopIcon from '@mui/icons-material/Stop';
 import {Button, Stack} from '@mui/material';
 import SingleTextField from 'components/element/SingleTextField';
 import ValueBunch from 'components/element/ValueBunch';
@@ -12,24 +16,55 @@ import SubTitlePannel from 'components/layout/SubTitlePannel';
 import ErrorPopUp from 'components/modal/ErrorPopUp';
 import IPsecSATable from 'components/table/ipsec/IPsecSATable';
 import IPsecTunnelTable, {formatBytes} from 'components/table/ipsec/IPsecTunnelTable';
-import {request_create_ipsec_tunnel, request_delete_ipsec_tunnel, request_set_ipsec_config} from 'connector/instance/ipsec';
+import {
+	query_get_ipsec_tunnel_peerconfig,
+	request_create_ipsec_tunnel,
+	request_delete_ipsec_tunnel,
+	request_ipsec_tunnel_action,
+	request_set_ipsec_config,
+	request_update_ipsec_tunnel,
+} from 'connector/instance/ipsec';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
+import {useRole} from 'hooks/query/oamHooks';
 import {useIPsecCACertificates, useIPsecCertificates, useIPsecConfig, useIPsecSAs, useIPsecStats, useIPsecTunnels} from 'hooks/query/queryHooks';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {t} from 'i18next';
 import React, {Fragment, useRef, useState} from 'react';
-import {IIPsecConfigMod, IIPsecTunnel, IIPsecTunnelMod} from 'types/ipsec';
+import {IIPsecConfigMod, IIPsecTunnel, IIPsecTunnelAction, IIPsecTunnelMod} from 'types/ipsec';
 
 //---------------------------------------------------------
 // Functional Components
 //---------------------------------------------------------
-function DetailPanel(props: {data: IIPsecTunnel}) {
-	const {data} = props;
+function DetailPanel(props: {data: IIPsecTunnel; onAction?: (action: IIPsecTunnelAction) => void; onDownloadPeerConfig?: () => void}) {
+	const {data, onAction, onDownloadPeerConfig} = props;
+	const state = data.state ?? 'down';
 
 	return (
 		<SubTitlePannel title={data.name ?? ''} sub_title={t('Tunnel Details')}>
 			<Stack spacing={2}>
+				{(onAction || onDownloadPeerConfig) && (
+					<Stack direction="row" spacing={1} flexWrap="wrap">
+						{onAction && (
+							<Fragment>
+								<Button variant="outlined" size="small" startIcon={<PlayArrowIcon />} disabled={state === 'up'} onClick={() => onAction('initiate')}>
+									{t('Initiate')}
+								</Button>
+								<Button variant="outlined" size="small" color="warning" startIcon={<StopIcon />} disabled={state === 'down'} onClick={() => onAction('terminate')}>
+									{t('Terminate')}
+								</Button>
+								<Button variant="outlined" size="small" startIcon={<ReplayIcon />} disabled={state === 'down'} onClick={() => onAction('restart')}>
+									{t('Restart')}
+								</Button>
+							</Fragment>
+						)}
+						{onDownloadPeerConfig && (
+							<Button variant="outlined" size="small" startIcon={<DownloadIcon />} onClick={onDownloadPeerConfig}>
+								{t('Peer Config')}
+							</Button>
+						)}
+					</Stack>
+				)}
 				<ValueBunch name={t('Connection')}>
 					<SingleTextField label={t('State')} value={(data.state ?? 'down').toUpperCase()} />
 					<SingleTextField label={t('Local')} value={data.localIp} />
@@ -44,7 +79,7 @@ function DetailPanel(props: {data: IIPsecTunnel}) {
 					<SingleTextField label={t('Lifetime')} value={`${data.ikeLifetime ?? 0}s`} />
 				</ValueBunch>
 				<ValueBunch name={t('ESP (Phase 2)')}>
-					<SingleTextField label={t('Proposal')} value={`${data.espEncryption}-${data.espIntegrity}`} />
+					<SingleTextField label={t('Proposal')} value={`${data.espEncryption}-${data.espIntegrity}${data.espDhGroup ? `-${data.espDhGroup} (PFS)` : ''}`} />
 					<SingleTextField label={t('Lifetime')} value={`${data.espLifetime ?? 0}s`} />
 					<SingleTextField label={t('Selectors')} value={`${data.selector?.srcCidr || 'host'} ⇄ ${data.selector?.dstCidr || 'host'}`} />
 				</ValueBunch>
@@ -62,6 +97,7 @@ function DetailPanel(props: {data: IIPsecTunnel}) {
 
 export default function IPsecTunnelPage() {
 	const inst = useInstanceFromURL();
+	const {can_write_gateway} = useRole();
 
 	const {data: tunnels, refetch: refetchTunnels} = useIPsecTunnels(inst);
 	const {data: sas, refetch: refetchSAs} = useIPsecSAs(inst);
@@ -107,22 +143,18 @@ export default function IPsecTunnelPage() {
 		openPopUp(
 			'',
 			input_form,
-			isEdit ? t('Recreate') : t('Add'),
+			isEdit ? t('Apply') : t('Add'),
 			t('Cancel'),
 			async () => {
 				if (!tunnelFormRef.current) return;
 
-				// Recreate-based edit: the gateway has no tunnel update op
-				if (isEdit && initial?.name) {
-					const delRes = await request_delete_ipsec_tunnel(inst, initial.name);
-					if (delRes.status !== 'success') {
-						showAddError('IPsec tunnel', delRes.error);
-						return;
-					}
-				}
-				const res = await request_create_ipsec_tunnel(inst, tunnelFormRef.current);
+				// In-place update (PUT): single config regen + reload on the gateway
+				const res =
+					isEdit && initial?.name
+						? await request_update_ipsec_tunnel(inst, initial.name, tunnelFormRef.current)
+						: await request_create_ipsec_tunnel(inst, tunnelFormRef.current);
 				if (res.status === 'success') {
-					openPopUp(t('Success'), isEdit ? t('Tunnel recreated successfully.') : t('Tunnel created successfully.'), t('OK'));
+					openPopUp(t('Success'), isEdit ? t('Tunnel updated successfully.') : t('Tunnel created successfully.'), t('OK'));
 					set_selected_rows([]);
 					setTimeout(refetchAll, 1000);
 				} else showAddError('IPsec tunnel', res.error);
@@ -138,6 +170,40 @@ export default function IPsecTunnelPage() {
 		// GET never returns the PSK — it must be re-entered in the form
 		const {state, installedAt, bytesIn, bytesOut, packetsIn, packetsOut, lastRekeyAt, sasInstalled, ...conf} = selectedTunnel;
 		openTunnelForm({...(conf as Partial<IIPsecTunnelMod>), psk: ''}, true);
+	};
+
+	const handleTunnelAction = async (action: IIPsecTunnelAction) => {
+		if (!inst || !selectedTunnel?.name) return;
+
+		const res = await request_ipsec_tunnel_action(inst, selectedTunnel.name, action);
+		if (res.status === 'success') {
+			openPopUp(t('Success'), t('Tunnel {{action}} completed.', {action}), t('OK'));
+			setTimeout(refetchAll, 1000);
+		} else showAddError('IPsec tunnel action', res.error);
+	};
+
+	// Mirrored strongSwan config for the remote peer, saved as a text file.
+	// Contains the PSK for psk tunnels — write-role only.
+	const handleDownloadPeerConfig = async () => {
+		if (!inst || !selectedTunnel?.name) return;
+
+		const peer = await query_get_ipsec_tunnel_peerconfig(inst, selectedTunnel.name);
+		if (!peer) {
+			showAddError('IPsec peer config', t('Failed to generate peer configuration.') as string);
+			return;
+		}
+
+		const parts = [peer.ipsecConf ?? ''];
+		if (peer.ipsecSecrets) parts.push(`# ===== append to /etc/ipsec.secrets =====\n${peer.ipsecSecrets}\n`);
+		if (peer.notes) parts.push(`# ===== notes =====\n# ${peer.notes}\n`);
+
+		const blob = new Blob([parts.join('\n')], {type: 'text/plain'});
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `ipsec-peer-${selectedTunnel.name}.conf`;
+		a.click();
+		URL.revokeObjectURL(url);
 	};
 
 	const handleDelete = async () => {
@@ -224,7 +290,11 @@ export default function IPsecTunnelPage() {
 			{selectedTunnel && (
 				<LowerSection>
 					<Stack spacing={2}>
-						<DetailPanel data={selectedTunnel} />
+						<DetailPanel
+							data={selectedTunnel}
+							onAction={can_write_gateway ? handleTunnelAction : undefined}
+							onDownloadPeerConfig={can_write_gateway ? handleDownloadPeerConfig : undefined}
+						/>
 						<IPsecSATable data={selectedSAs} onRefresh={() => refetchSAs()} />
 					</Stack>
 				</LowerSection>
