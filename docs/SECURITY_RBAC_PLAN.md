@@ -116,7 +116,7 @@ Add `role` and `user_id` to JWT claims so middleware avoids a DB lookup per requ
 - Gate instance CRUD, config import/export, firmware, and — critically — the **proxy** by HTTP method: `viewer` → GET only; `operator`/`admin` → write. Enforce at `ProxyToLoxiLB` before forwarding (inspect `c.Request.Method`).
 - Add `@Security` to **all** remaining protected handlers (Phase 1 did user/logout/license only).
 
-**Phase 3 — UI role-awareness (defense-in-depth + UX).**
+**Phase 3 — UI role-awareness (defense-in-depth + UX).** ✅ **done 2026-07-17** (see §6).
 - Fetch role once (from `/users/me` or the new claim) into a small context/atom (`is_logged_in_atom` is currently unused).
 - Add `roles?: string[]` to `IMenuItem` (`types/menu.ts`) and filter in `SideMenu`/`TopNavMenu`; gate write buttons (create/delete/apply) on capability. Choke points already identified: `MENU_LIST`, `Header.tsx:39/53`.
 - Route-level guard component wrapping `<Layout>` routes (there is none today).
@@ -175,10 +175,15 @@ Testbed (testbed-client) is currently deployed with `OAM_JWT_SECRET` (fresh rand
 - `@Security BearerAuth` added to the remaining 25 protected handlers; swagger regenerated and re-vendored (`api-spec/oam-swagger.json`).
 - Tests: capability-matrix + sqlmock proxy method-gating tests (`tests/local/rbac`). Live-verified full matrix on testbed-client: viewer 12/12 (all reads 200, all writes 403 incl. proxy POST/DELETE), operator 9/9 (proxy write + alert ack pass RBAC; instance/config/license/user-admin 403), admin passes everything; invalid role on create → 400; H-2 logout-revocation regression passed on the new binary.
 
+**RBAC Phase 3 — DONE (2026-07-17, UI commit `4dd597d`):**
+- `useRole()` (`hooks/query/oamHooks.ts`) derives role + capability flags from `/users/me` via the existing react-query cache (no new atom needed); `normalize_role` maps legacy `user` → operator.
+- Route guards (`components/layout/RouteGuards.tsx`): `RequireAuth` wraps all authenticated routes; `RequireAdminRoute` gates `/config-management`.
+- Header Config icon admin-only; `DataTable` hides add/edit/delete for viewers (single choke point for every resource table); license panel mutation buttons admin-only; `UserEditForm` role dropdown = Viewer/Operator/Admin with viewer default; `IMenuItem.roles?` + SideMenu filtering mechanism added (no entry restricted yet).
+- All UX-only — server (Phase 2) remains the security boundary. tsc + 79 unit tests + CRA build green. Browser-level validation planned via the Playwright E2E suite.
+
 **Remaining security work, in priority order — resume here:**
 
-1. **RBAC Phase 3 — UI role-awareness** (defense-in-depth/UX): fetch role into a context/atom (`is_logged_in_atom` is unused today), add `roles?: string[]` to `IMenuItem` and filter `SideMenu`/`TopNavMenu` + write buttons; add a route guard around `<Layout>`. Choke points: `MENU_LIST`, `Header.tsx:39/53`. Also update the User Management role options to admin/operator/viewer (backend still accepts legacy `user` = operator). Role is now available offline in the JWT claims (`role`, `user_id`).
-2. **Phase 4 hardening**: M-1 PBKDF2 → ≥600k rounds (rehash-on-login), M-2 stronger lockout + rate-limit setup/proxy, M-3 shorter token TTL / httpOnly cookie, H-4 CORS specific-origin.
+1. **Phase 4 hardening**: M-1 PBKDF2 → ≥600k rounds (rehash-on-login), M-2 stronger lockout + rate-limit setup/proxy, M-3 shorter token TTL / httpOnly cookie, H-4 CORS specific-origin.
 
 **Owner actions (not code):**
 - Log back into the UI — the JWT-key rotation invalidated the old session token.
