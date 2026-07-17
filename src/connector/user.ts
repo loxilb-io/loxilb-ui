@@ -11,10 +11,8 @@ import { ICreateUserRequest, IUserIdResponse, ILoginRequest, IEnhancedLoginRespo
  */
 export async function create_user(userData: ICreateUserRequest): Promise<IUserIdResponse> {
 	try {
-		console.log('Creating user with data:', { username: userData.username, email: userData.email });
 		const response: SimpleResponse = await POST_OAM('/users', userData);
-		console.log('User creation API response:', response);
-		
+
 		// Accept both 200 and 201 as success (some APIs return 200 instead of 201)
 		if (response.code !== 200 && response.code !== 201) {
 			// Parse error message from API response
@@ -38,11 +36,9 @@ export async function create_user(userData: ICreateUserRequest): Promise<IUserId
 			return { id: response.data } as IUserIdResponse;
 		} else {
 			// If no data returned but status is success, assume creation worked
-			console.log('User created successfully but no ID returned');
 			return { id: 0 } as IUserIdResponse; // Placeholder ID
 		}
 	} catch (error) {
-		console.error('User creation failed:', error);
 		throw error;
 	}
 }
@@ -53,10 +49,8 @@ export async function create_user(userData: ICreateUserRequest): Promise<IUserId
  */
 export async function login_user(credentials: ILoginRequest): Promise<IEnhancedLoginResponse> {
 	try {
-		console.log('Logging in user:', credentials.username);
 		const response: SimpleResponse = await POST_OAM('/login', credentials);
-		console.log('Login API response:', response);
-		
+
 		if (response.code !== 200) {
 			// Parse error message from API response
 			let errorMessage = 'Login failed';
@@ -91,7 +85,6 @@ export async function login_user(credentials: ILoginRequest): Promise<IEnhancedL
 			} as IEnhancedLoginResponse;
 		}
 	} catch (error) {
-		console.error('User login failed:', error);
 		throw error;
 	}
 }
@@ -103,8 +96,7 @@ export async function login_user(credentials: ILoginRequest): Promise<IEnhancedL
 export async function signup_and_login(userData: ICreateUserRequest): Promise<IEnhancedLoginResponse> {
 	try {
 		// Step 1: Create user account
-		const createResult = await create_user(userData);
-		console.log('User created successfully with ID:', createResult.id);
+		await create_user(userData);
 
 		// Step 2: Automatically log in the new user
 		const loginResult = await login_user({
@@ -114,7 +106,6 @@ export async function signup_and_login(userData: ICreateUserRequest): Promise<IE
 
 		return loginResult;
 	} catch (error) {
-		console.error('Signup and login failed:', error);
 		throw error;
 	}
 }
@@ -127,7 +118,6 @@ export async function check_username_availability(username: string): Promise<boo
 	// Note: This would require a specific API endpoint like GET /users/check?username=xxx
 	// Since it's not in the swagger spec, we'll return true for now
 	// In a real implementation, you'd call the API here
-	console.log('Username availability check for:', username);
 	return true;
 }
 

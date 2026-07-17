@@ -122,7 +122,6 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 		else if (resp.status >= 500 && resp.status < 600 && resp.status !== 502 && resp.status !== 503) {
 			const resp_json = await resp.json();
 			const code = resp.status;
-			console.log(resp_json);
 			const message = resp_json.message || resp.statusText;
 			const result = resp_json.result || '';
 
