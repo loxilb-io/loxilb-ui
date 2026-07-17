@@ -47,6 +47,8 @@ import VxLANPage from 'pages/network/VXLANPage';
 
 import AIApiKeyPage from 'pages/ai/AIApiKeyPage';
 import AITenantRateLimitPage from 'pages/ai/AITenantRateLimitPage';
+import IPsecTunnelPage from 'pages/ipsec/IPsecTunnelPage';
+import IPsecCertificatePage from 'pages/ipsec/IPsecCertificatePage';
 import ConntrackPage from 'pages/traffic/ConntrackPage';
 import EndpointPage from 'pages/traffic/EndpointPage';
 import FirewallPage from 'pages/traffic/FirewallPage';
@@ -165,6 +167,10 @@ export default function App() {
 									<Route path="ai" element={<Outlet />}>
 										<Route path="apikey" element={<AIApiKeyPage />} />
 										<Route path="ratelimit" element={<AITenantRateLimitPage />} />
+									</Route>
+									<Route path="ipsec" element={<Outlet />}>
+										<Route path="tunnels" element={<IPsecTunnelPage />} />
+										<Route path="certs" element={<IPsecCertificatePage />} />
 									</Route>
 									<Route path="security" element={<Outlet />}>
 										<Route path="synflood" element={<SYNFloodPage />} />

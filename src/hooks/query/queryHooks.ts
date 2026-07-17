@@ -8,6 +8,7 @@ import {query_get_endpoint_all} from 'connector/instance/endpoint';
 import {query_get_fdb_all} from 'connector/instance/fdb';
 import {query_get_firewall_rules} from 'connector/instance/firewall';
 import {query_get_ipfilter_all} from 'connector/instance/ipfilter';
+import {query_get_ipsec_ca_certificate_all, query_get_ipsec_certificate_all, query_get_ipsec_config, query_get_ipsec_sa_all, query_get_ipsec_stats, query_get_ipsec_tunnel_all} from 'connector/instance/ipsec';
 import {query_get_ipv4_all} from 'connector/instance/ip';
 import {query_get_load_balancer_config_all} from 'connector/instance/load_balancer';
 import {query_get_mirror_all} from 'connector/instance/mirror';
@@ -129,4 +130,28 @@ export function useSNICertificates(instance: IInstance | null) {
 
 export function useApiKeys(instance: IInstance | null) {
 	return useQueryInstanceData(['ai_apikeys'], query_get_apikey_all, instance);
+}
+
+export function useIPsecConfig(instance: IInstance | null) {
+	return useQueryInstanceData(['ipsec_config'], query_get_ipsec_config, instance);
+}
+
+export function useIPsecTunnels(instance: IInstance | null) {
+	return useQueryInstanceData(['ipsec_tunnels'], query_get_ipsec_tunnel_all, instance);
+}
+
+export function useIPsecSAs(instance: IInstance | null) {
+	return useQueryInstanceData(['ipsec_sas'], query_get_ipsec_sa_all, instance);
+}
+
+export function useIPsecStats(instance: IInstance | null) {
+	return useQueryInstanceData(['ipsec_stats'], query_get_ipsec_stats, instance);
+}
+
+export function useIPsecCertificates(instance: IInstance | null) {
+	return useQueryInstanceData(['ipsec_certs'], query_get_ipsec_certificate_all, instance);
+}
+
+export function useIPsecCACertificates(instance: IInstance | null) {
+	return useQueryInstanceData(['ipsec_ca_certs'], query_get_ipsec_ca_certificate_all, instance);
 }
