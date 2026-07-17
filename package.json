@@ -1,8 +1,23 @@
 {
-	"name": "LoxiLB",
-	"version": "1.0.0",
+	"name": "loxilb-ui",
+	"version": "0.9.0",
 	"private": true,
-	"homepage": "",
+	"description": "Web dashboard for managing LoxiLB load balancers and network services",
+	"license": "MIT",
+	"author": "NetLOX Inc.",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/loxilb-io/loxilb-ui.git"
+	},
+	"keywords": [
+		"loxilb",
+		"load-balancer",
+		"dashboard",
+		"networking",
+		"ebpf",
+		"react"
+	],
+	"homepage": "https://github.com/loxilb-io/loxilb-ui",
 	"dependencies": {
 		"@emotion/react": "^11.14.0",
 		"@emotion/styled": "^11.14.0",
