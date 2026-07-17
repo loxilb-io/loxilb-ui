@@ -26,14 +26,8 @@ export async function request_create_endpoint(instance: IInstance, data: IEndpoi
 }
 
 export async function request_delete_endpoint_by_ip(instance: IInstance, item: IEndpointItem): Promise<ApiResult> {
-	/*
-	아래 예시와 같이 쿼리를 넣어서 Delete를 보내야 삭제됨, Swagger에는 없지만 실제로는 이렇게 동작함
-	curl -X 'DELETE' \
-	'http://0.0.0.0:11111/netlox/v1/config/endpoint/epipaddress/32.32.32.1?name=32.32.32.1_http_8080&probe_type=http&probe_port=8080' \
-	-H 'accept: application/json'
-	*/
-
-	//const resp = await DELETE_INST(instance, `/config/endpoint/epipaddress/${item.hostName}`, {name: item.name, probe_type: item.probeType, probe_port: item.probePort});
+	// DELETE /config/endpoint/epipaddress/{ip} identifies the exact endpoint via
+	// query params (name, probe_type, probe_port) - now declared in swagger.
 	// Build query parameters conditionally, omitting null/undefined values
 	const queryParams = [];
 	if (item.name) queryParams.push(`name=${item.name}`);
