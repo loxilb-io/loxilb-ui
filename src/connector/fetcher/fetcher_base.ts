@@ -187,8 +187,11 @@ export async function GET(url: string, params?: Record<string, any>): Promise<Si
 
 // For plain-text endpoints (e.g. Prometheus exposition format) where the
 // response body is not JSON; data carries the raw text.
+// Note: the gateway's /metrics endpoint returns 406 for `Accept: text/plain`
+// (its declared `produces` does not include text/plain) but serves the text
+// body for `Accept: */*`, so request that.
 export async function GET_TEXT(url: string, params?: Record<string, any>): Promise<SimpleResponse> {
-	const resp = await fetch_data(url, {method: 'GET', body: params, headers: {Accept: 'text/plain'}});
+	const resp = await fetch_data(url, {method: 'GET', body: params, headers: {Accept: '*/*'}});
 	const text = await resp.text();
 	return {
 		code: resp.status,
