@@ -44,15 +44,12 @@ import RoutePage from 'pages/network/RoutePage';
 import VLANPage from 'pages/network/VLANPage';
 import VxLANPage from 'pages/network/VXLANPage';
 
-import AlertManagementPage from 'pages/traffic/AlertManagementPage';
 import ConntrackPage from 'pages/traffic/ConntrackPage';
 import EndpointPage from 'pages/traffic/EndpointPage';
 import FirewallPage from 'pages/traffic/FirewallPage';
 import IPFilterPage from 'pages/traffic/IPFilterPage';
 import LoadBalancerPage from 'pages/traffic/LBRulePage';
 import MirrorPage from 'pages/traffic/MirrorPage';
-import NetworkTopologyPage from 'pages/traffic/NetworkTopologyPage';
-import NTopPage from 'pages/traffic/NTopPage';
 import QoSPage from 'pages/traffic/QoSPage';
 import SecurityRatePage from 'pages/traffic/SecurityRatePage';
 import SNICertificatesPage from 'pages/traffic/SNICertificatesPage';
@@ -63,11 +60,8 @@ import FileSystemPage from 'pages/status/FileSystemPage';
 import HAPage from 'pages/status/HAPage';
 import ProcessPage from 'pages/status/ProcessPage';
 
-import AlertManagerPage from 'pages/managers/AlertManagerPage';
-import BackupManagerPage from 'pages/managers/BackupManagerPage';
 import UserManagementPage from 'pages/managers/UserManagementPage';
 import ConfigManagementPage from 'pages/ConfigManagementPage';
-import AdvancedMetricsPage from 'pages/AdvancedMetricsPage';
 
 import {MAX_DURATION_MS} from 'hooks/query/common';
 import LogPage from 'pages/status/LogPage';
@@ -150,7 +144,6 @@ export default function App() {
 									</Route>
 
 									<Route path="traffic" element={<Outlet />}>
-										<Route path="alerts" element={<AlertManagementPage />} />
 										<Route path="ct" element={<ConntrackPage />} />
 										<Route path="endpoint" element={<EndpointPage />} />
 										<Route path="fw" element={<FirewallPage />} />										
@@ -158,10 +151,7 @@ export default function App() {
 										<Route path="mirror" element={<MirrorPage />} />
 										<Route path="qos" element={<QoSPage />} />										
 										<Route path="sni-certs" element={<SNICertificatesPage />} />
-										
-										<Route path="topology" element={<NetworkTopologyPage />} />
-										<Route path="ntop" element={<NTopPage />} />
-									</Route>	
+									</Route>
 									<Route path="security" element={<Outlet />}>
 										<Route path="synflood" element={<SYNFloodPage />} />
 										<Route path="ipfilter" element={<IPFilterPage />} />
@@ -173,11 +163,6 @@ export default function App() {
 										<Route path="ha" element={<HAPage />} />
 										<Route path="process" element={<ProcessPage />} />
 										<Route path="logs" element={<LogPage />} />
-									</Route>
-									<Route path="managers" element={<Outlet />}>										
-										<Route path="alert" element={<AlertManagerPage />} />
-										<Route path="backup" element={<BackupManagerPage />} />
-										<Route path="metrics" element={<AdvancedMetricsPage />} />
 									</Route>
 									<Route path="settings" element={<InstanceSettingPage />} />
 									<Route path="dashboard" element={<DashboardPage />} />

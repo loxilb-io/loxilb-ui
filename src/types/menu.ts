@@ -5,7 +5,6 @@ import CloudIcon from '@mui/icons-material/Cloud';
 import MonitorIcon from '@mui/icons-material/Monitor';
 import RouteIcon from '@mui/icons-material/Route';
 import WysiwygIcon from '@mui/icons-material/Wysiwyg';
-import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import SecurityIcon from '@mui/icons-material/Security';
 import {SvgIconTypeMap} from '@mui/material';
 import {OverridableComponent} from '@mui/material/OverridableComponent';
@@ -53,23 +52,7 @@ export const MENU_LIST: IMenuItem[] = [
 			{
 				name: 'SNI Certificates',
 				path: 'sni-certs',
-			},			
-			{
-				name: 'Alerts',
-				path: 'alerts',
 			},
-			// {
-			// 	name: 'Topology',
-			// 	path: 'topology',
-			// },
-			{
-				name: 'nTop Analytics',
-				path: 'ntop',
-			},
-			// {
-			// 	name: 'Telecom',
-			// 	path: 'telecom',
-			// },
 		],
 	},
 	{
@@ -152,29 +135,6 @@ export const MENU_LIST: IMenuItem[] = [
 			// },
 		],
 	},	
-	{
-		name: 'Managers',
-		icon: ManageAccountsIcon,
-		path: 'managers',
-		items: [
-			{
-				name: 'Alert Manager',
-				path: 'alert',
-			},
-			// {
-			// 	name: 'Backup Manager',
-			// 	path: 'backup',
-			// },
-			// {
-			// 	name: 'Advanced Metrics',
-			// 	path: 'metrics',
-			// },
-			// {
-			// 	name: 'Compression Manager',
-			// 	path: 'compression',
-			// },
-		],
-	},
 	{
 		name: 'Status',
 		icon: MonitorIcon,

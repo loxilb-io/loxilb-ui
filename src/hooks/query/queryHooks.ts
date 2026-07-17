@@ -13,8 +13,6 @@ import {query_get_mirror_all} from 'connector/instance/mirror';
 import {query_get_port_all} from 'connector/instance/port';
 import {query_get_qos_policy_all} from 'connector/instance/qos';
 import {query_get_route_all} from 'connector/instance/route_attr';
-import {query_get_session_all} from 'connector/instance/session';
-import {query_get_ulcl_all} from 'connector/instance/session_ulcl';
 import {query_get_securityrate_all} from 'connector/instance/securityrate';
 import {query_get_sni_certificates} from 'connector/instance/sni_certificates';
 import {query_get_ha_state_all, query_get_metadata} from 'connector/instance/status';
@@ -106,16 +104,6 @@ export function useQOSPolicies(instance: IInstance | null) {
 
 export function useRouteAttr(instance: IInstance | null) {
 	return useQueryInstanceData(['route_attr'], query_get_route_all, instance);
-}
-
-export function useSessionAttr(instance: IInstance | null) {
-	return useQueryInstanceData(['session_attr'], query_get_session_all, instance);
-}
-
-
-
-export function useULCLAttr(instance: IInstance | null) {
-	return useQueryInstanceData(['ulcl_attr'], query_get_ulcl_all, instance);
 }
 
 export function useVLANAttr(instance: IInstance | null) {
