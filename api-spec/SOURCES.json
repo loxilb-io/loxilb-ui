@@ -1,0 +1,15 @@
+{
+  "vendoredAt": "2026-07-17T04:58:16Z",
+  "gateway": {
+    "repo": "loxilb-inference-gateway",
+    "path": "api/swagger.yml + api/swagger-extras.yml",
+    "commit": "1e38a275",
+    "dirty": true
+  },
+  "oam": {
+    "repo": "oam-loxilb",
+    "path": "docs/swagger.json (swag init)",
+    "commit": "cd5ffd5",
+    "dirty": true
+  }
+}

@@ -57,6 +57,10 @@
 		"gen:api:check": "npm run gen:api && git diff --exit-code -- src/api/gen",
 		"api:check-mapping": "node scripts/check-api-mapping.mjs",
 		"api:coverage": "node scripts/check-api-mapping.mjs --coverage",
+		"sync:specs": "bash scripts/sync-specs.sh",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"typecheck": "tsc --noEmit",
 		"start": "HTTPS=true WDS_SOCKET_PORT=0 HOST=0.0.0.0 dotenv -e .env.development react-scripts start",
 		"build": "dotenv -e .env.local react-scripts build",
 		"build:dev": "dotenv -e .env.development react-scripts build",
@@ -77,7 +81,10 @@
 	"devDependencies": {
 		"@types/archiver": "^6.0.3",
 		"dotenv-cli": "^10.0.0",
+		"jsdom": "^29.1.1",
 		"openapi-typescript": "^6.7.6",
-		"swagger2openapi": "^7.0.8"
+		"swagger2openapi": "^7.0.8",
+		"vite-tsconfig-paths": "^6.1.1",
+		"vitest": "^4.1.10"
 	}
 }

@@ -12,7 +12,7 @@ import {GET_INST_TEXT} from '../fetcher/fetcher_inst';
 // Parses Prometheus text format into a flat {metric_name: value} map.
 // Labeled samples of the same metric are summed, which matches how the
 // dashboard cards consume a flat metric snapshot.
-function parse_prometheus_text(text: string): Record<string, number> {
+export function parse_prometheus_text(text: string): Record<string, number> {
 	const values: Record<string, number> = {};
 	for (const line of text.split('\n')) {
 		if (!line || line.startsWith('#')) continue;

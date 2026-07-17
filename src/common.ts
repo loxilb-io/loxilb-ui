@@ -421,8 +421,11 @@ export function parse_log_line(line: string): ILog | null {
 		};
 	}
 
-	// Legacy regex for old format: LEVEL: DATE TIME file:line: message
-	const legacyRegex = /^(ERROR|INFO|WARNING|DEBUG|CRITICAL): (\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}) ([^:]+): (.+)$/;
+	// Legacy regex for old format: LEVEL: DATE TIME [file:line:] message
+	// The file:line prefix is optional and may itself contain a colon
+	// (e.g. "logging.go:51:"), so it is matched as its own optional group —
+	// the previous [^:]+ pattern could never match it and dropped these lines.
+	const legacyRegex = /^(ERROR|INFO|WARNING|DEBUG|CRITICAL):\s*(\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2})\s+(?:([^\s:]+:\d+):\s*)?(.+)$/;
 	const legacyMatch = line.match(legacyRegex);
 	if (legacyMatch) {
 		const [, level, timestamp, programLoc, message] = legacyMatch;
@@ -432,7 +435,7 @@ export function parse_log_line(line: string): ILog | null {
 			timestamp,
 			level,
 			message,
-			programname: programLoc.trim().split(' ')[0],
+			programname: (programLoc ?? '').trim().split(' ')[0],
 			host: '',
 		};
 	}
