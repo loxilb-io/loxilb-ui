@@ -9,7 +9,7 @@ import ErrorPopUp from 'components/modal/ErrorPopUp';
 import SubTitlePannel from 'components/layout/SubTitlePannel';
 import IPTable from 'components/table/networks/IPTable';
 import IPAddressView from 'components/view/IPAddressView';
-import {request_create_ipv4, request_delete_ipv4} from 'connector/instance/ip';
+import {request_create_ipv4, request_create_ipv6, request_delete_ipv4, request_delete_ipv6} from 'connector/instance/ip';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useErrorPopup} from 'hooks/useErrorPopup';
@@ -31,10 +31,13 @@ function AddressPannel(props: {name: string; data: IIpAttribute}) {
 	);
 }
 
-export default function IPPage() {
+export default function IPPage(props: {family?: 'ipv4' | 'ipv6'}) {
+	const family = props.family ?? 'ipv4';
+	const request_create_ip = family === 'ipv6' ? request_create_ipv6 : request_create_ipv4;
+	const request_delete_ip = family === 'ipv6' ? request_delete_ipv6 : request_delete_ipv4;
 	const inst = useInstanceFromURL();
 
-	const {data, refetch} = useIPAttr(inst); // IIpAttribute[]
+	const {data, refetch} = useIPAttr(inst, family); // IIpAttribute[]
 	
 	// Transform data: split entries with multiple IPs into separate entries
 	const ip_info: IIpData = useMemo(() => {
@@ -129,7 +132,7 @@ export default function IPPage() {
 		const cidr = item.ipAddress[0];
 		const [ip, maskStr] = cidr.split('/');
 		const mask = parseInt(maskStr, 10);
-		const res = await request_delete_ipv4(inst, ip, mask, item.dev);
+		const res = await request_delete_ip(inst, ip, mask, item.dev);
 		if (res.status === 'success') {
 			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
 			set_selected_rows([]);
@@ -156,7 +159,7 @@ export default function IPPage() {
 			t('Cancel'),
 			async () => {
 				if (!instanceRef.current) return;
-				const res = await request_create_ipv4(inst, instanceRef.current);
+				const res = await request_create_ip(inst, instanceRef.current);
 				if (res.status === 'success') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
 					setTimeout(() => {
@@ -206,7 +209,7 @@ export default function IPPage() {
 				};
 				
 				// Use same API as create
-				const res = await request_create_ipv4(inst, updateData);
+				const res = await request_create_ip(inst, updateData);
 				if (res.status === 'success') {
 					openPopUp(t('Success'), t('IP address updated successfully.'), t('OK'));
 					setTimeout(() => {
@@ -262,6 +265,7 @@ export default function IPPage() {
 	return (
 		<Fragment>
 			<IPTable
+				title={family === 'ipv6' ? t('IPv6 Address') : undefined}
 				data={{ipAttr: sortedAttr}}
 				selected_rows={selectedSortedIndices}
 				onChangeSelectedRows={handleSelectionChange}

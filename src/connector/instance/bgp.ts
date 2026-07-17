@@ -116,6 +116,17 @@ export async function request_apply_bgp_policy(instance: IInstance, param: any):
 	}
 }
 
+// Remove an applied policy from a neighbor (same body shape as apply)
+export async function request_unapply_bgp_policy(instance: IInstance, param: any): Promise<ApiResult> {
+	const resp = await DELETE_INST(instance, `/config/bgp/policy/apply`, param);
+	if (resp.code !== 200 && resp.code !== 204) {
+		const errorMessage = createDetailedErrorMessage(resp, 'BGP Operation');
+		return {status: 'error', error: errorMessage};
+	} else {
+		return {status: 'success'};
+	}
+}
+
 export async function request_configure_bgp_global(instance: IInstance, param: any): Promise<ApiResult> {
 	const resp = await POST_INST(instance, `/config/bgp/global`, param);
 	if (resp.code !== 200 && resp.code !== 204) {

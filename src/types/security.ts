@@ -92,6 +92,19 @@ export interface ISNICertificateDeleteRequest {
 }
 
 //---------------------------------------------------------
+// Inline-PEM certificate store (/config/cert, certId-keyed).
+// POST/PUT persist PEM under /etc/loxilb/certs/<certId>/ and
+// auto-register the SAN/CN hostnames into the SNI store.
+//---------------------------------------------------------
+export interface ICert {
+	certId?: string; // opaque handle; server mints one when absent on upload
+	certPem: string;
+	keyPem: string; // never returned by GET
+	chainPem?: string;
+	hostnames?: string[]; // output-only, derived from leaf SAN/CN
+}
+
+//---------------------------------------------------------
 // IP Filter Types
 //---------------------------------------------------------
 export interface IIPFilterEntry {
