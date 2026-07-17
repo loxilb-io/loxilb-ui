@@ -7017,25 +7017,25 @@ export interface paths {
         /** @description Log archive file download */
         200: {
           content: {
-            "application/json": string;
+            "application/octet-stream": string;
           };
         };
         /** @description Missing or invalid filename */
         400: {
           content: {
-            "application/json": components["schemas"]["Error"];
+            "application/octet-stream": components["schemas"]["Error"];
           };
         };
         /** @description File not found */
         404: {
           content: {
-            "application/json": components["schemas"]["Error"];
+            "application/octet-stream": components["schemas"]["Error"];
           };
         };
         /** @description Internal server error */
         500: {
           content: {
-            "application/json": components["schemas"]["Error"];
+            "application/octet-stream": components["schemas"]["Error"];
           };
         };
       };

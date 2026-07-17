@@ -6131,6 +6131,12 @@ paths:
     get:
       summary: Download a specific log archive
       description: Download a log archive file by its name.
+      # The handler streams the raw file; without this override the operation
+      # inherits the global produces [application/json] and go-swagger's
+      # negotiator returns 406 for Accept: application/octet-stream.
+      # NOTE: takes effect in generated code on the next build_api.sh run.
+      produces:
+        - application/octet-stream
       parameters:
         - name: filename
           in: path
