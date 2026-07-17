@@ -140,6 +140,49 @@ Each item: audit fields → update type + connector + form → `tsc`/tests →
 
 ---
 
+## 3a. CICD cross-check (gateway `cicd/run_local_cicd.sh`)
+
+The gateway's required use-cases were cross-checked against the UI's field
+coverage. Config bodies come from each scenario's `config.sh`.
+
+| CICD scenario | Key fields used | UI covers? |
+|---|---|---|
+| tcplb / tcplbhash / tcplbmark / dsr variants | mode, sel, protocol | ✅ |
+| tcplbmon / udplbmon / sctplbmon / tcplbmon6 | monitor, probetype/port/req/resp/timeout/retries | ✅ |
+| sctplb / sctponearm / sctplbdsr | protocol=sctp, mode | ✅ (endpoint sctp probe added) |
+| httpproxy / httpproxy-prefix | mode=4, host, path_prefix, path_match_mode, backend_protocol | ✅ |
+| httpsproxy / -prefix | mode=4, security=1, host, backend_protocol | ✅ |
+| e2ehttpsproxy / -prefix / -grpc | mode=4, security=2, host | ✅ |
+| httpsproxy-mtls / e2ehttpsproxy-mtls | security + client-CA cert (mTLS) | ◐ verify SNI-cert/mTLS form |
+| vllm-fullproxy / -wrr, vllm-httpproxy / -wrr | mode=4, sel, model routing | ✅ |
+| **ai-model-routing** | model_name, path_prefix, path_match_mode | ✅ (model_name added) |
+| **ai-sse-quota** | sse_mode + tenant rate-limit (`/config/ai/tenant/ratelimit`) | ◐ LB sse ✅; **rate-limit resource ❌ (to build)** |
+| **vllm-pd-disagg** | pd_disagg_mode, pd_cache_aware_mode, sse_mode, session_header_name, ep_role, nixl_port | ✅ (all added + live-validated) |
+| **sglang-loxilb-kvcache** | kvExactMode, kvBlockSize, kvHashAlgo, kvZmqPort | ✅ (all added) |
+| **ai-apikey** | `POST /config/ai/apikey` {tenant_id, name, allowed_models, rate_limit_rps, burst_size, tokens_per_min, expires_at, enabled} | ❌ **new resource (to build)** |
+| mcp-fullproxy | mode=4 proxy | ✅ |
+
+**Conclusion:** every classic + LB-level AI use case in CICD is now expressible
+in the UI after the LB/endpoint field-parity work. The only CICD scenarios not
+yet UI-configurable are the two **new resources already in our scope**: AI API
+keys and AI tenant rate-limits (plus a verify pass on the mTLS SNI-cert form).
+
+## 3b. Meta API finding (`GET /meta`)
+
+The UI drives form field types/enums/validation/defaults from the gateway's
+`GET /meta` (via `useFormWithParams`). **It is NOT stale.** `/meta` is
+auto-generated from the gateway's embedded swagger
+(`handler/metadata.go` → `AutoGenerateMetaData(EmbeddedSwagger)`), so it cannot
+drift from the live API. Verified on the testbed: `/meta` already describes
+every new LB field (model_name, sse_mode, pd_*, kv*, trace_type, …) and the new
+resources (`/config/ai/apikey`, `/config/ai/tenant/ratelimit`, `/config/l7policy`,
+`/config/ipsec/tunnels`). The form gaps were **not** caused by `/meta`; they were
+caused by the form JSX hardcoding which fields to render. So: no gateway `/meta`
+change is needed, and removing the meta-validation logic is optional (see the
+recommendation in the session notes) — the higher-leverage option is to render
+high-churn resource fields *from* `/meta` so new gateway fields appear
+automatically.
+
 ## 4. Deferred / out of scope (this pass)
 
 Requires 3rd-party endpoints or lower priority; documented so nothing is
