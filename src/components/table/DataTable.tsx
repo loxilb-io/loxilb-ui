@@ -23,6 +23,7 @@ import {
 	UsageCell,
 } from 'components/element/CustomGridCell';
 import {usePopUp} from 'hooks/popupHook';
+import {useRole} from 'hooks/query/oamHooks';
 import {t} from 'i18next';
 import {IDataTableColumnDef} from 'types/global';
 import {TableBase} from './TableBase';
@@ -54,7 +55,15 @@ export default function DataTable(props: {
 	onRefresh?: () => void;
 	defaultSort?: {field: string; sort: 'asc' | 'desc'};
 }) {
-	const {name, columns, rows, selected_rows, onChangeSelectedRows, hideMenuBar, hideCheckbox, hideIdColumn, disableSelect, onAdd, onEdit, onDelete, onRefresh, defaultSort} = props;
+	const {name, columns, rows, selected_rows, onChangeSelectedRows, hideMenuBar, hideCheckbox, hideIdColumn, disableSelect, onRefresh, defaultSort} = props;
+
+	// RBAC Phase 3: viewers are read-only everywhere, so hide the mutation
+	// buttons for them (UX only — the server rejects viewer writes with 403).
+	// While the role is still loading (is_viewer false) buttons stay visible.
+	const {is_viewer} = useRole();
+	const onAdd = is_viewer ? undefined : props.onAdd;
+	const onEdit = is_viewer ? undefined : props.onEdit;
+	const onDelete = is_viewer ? undefined : props.onDelete;
 
 	const handleRowSelectionChange = (selection: GridRowSelectionModel) => {
 		const indices = selection.map(id => Number(id));

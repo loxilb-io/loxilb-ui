@@ -12,7 +12,7 @@ import ValueBunch from 'components/element/ValueBunch';
 import ScrollableBox from 'components/layout/ScrollableBox';
 import UserManagementTable from 'components/table/managers/UserManagementTable';
 import UserEditModal from 'components/modal/UserEditModal';
-import {useMyInfo} from 'hooks/query/oamHooks';
+import {useMyInfo, useRole} from 'hooks/query/oamHooks';
 import {useUserLicenses} from 'hooks/query/licenseHooks';
 import {useAllUsers, updateUser, deleteUser, createUser} from 'hooks/query/userManagementHooks';
 import {usePopUp} from 'hooks/popupHook';
@@ -133,6 +133,10 @@ function PasswordManagementPanel() {
 //---------------------------------------------------------
 function LicenseManagementPanel() {
 	const {userLicenses, refetch, isLoading} = useUserLicenses();
+	// License install/update/deactivate are admin-only server-side (RBAC
+	// Phase 2); non-admins inherit from the admin license pool, so hide the
+	// mutation buttons and keep the panel read-only for them.
+	const {can_manage_licenses} = useRole();
 
 	const {openPopUp} = usePopUp();
 	
@@ -319,9 +323,9 @@ function LicenseManagementPanel() {
 				data={{licenses: sortedLicenses}}
 				selected_rows={selectedIndex !== -1 ? [selectedIndex] : []}
 				onChangeSelectedRows={handleSelectionChange}
-				onAdd={handleAdd}
-				onDelete={handleDelete}
-				onUpdate={handleUpdate}
+				onAdd={can_manage_licenses ? handleAdd : undefined}
+				onDelete={can_manage_licenses ? handleDelete : undefined}
+				onUpdate={can_manage_licenses ? handleUpdate : undefined}
 				onRefresh={handleRefresh}
 			/>
 		</Fragment>

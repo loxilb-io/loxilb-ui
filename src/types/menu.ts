@@ -17,6 +17,9 @@ export interface IMenuItem {
 	path: string;
 	icon?: OverridableComponent<SvgIconTypeMap<{}, 'svg'>> & {muiName: string};
 	items?: readonly IMenuItem[];
+	// RBAC Phase 3: when set, the item is shown only to these roles
+	// ('admin' | 'operator' | 'viewer'); unset = visible to every role.
+	roles?: readonly string[];
 }
 
 export const MENU_LIST: IMenuItem[] = [

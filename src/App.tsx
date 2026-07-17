@@ -15,6 +15,7 @@ import {theme_config} from 'theme';
 
 import Layout from 'components/layout/Layout';
 import NavLayout from 'components/layout/NavLayout';
+import {RequireAdminRoute, RequireAuth} from 'components/layout/RouteGuards';
 import ScrollToTop from 'components/layout/ScrollToTop';
 import PopUp from 'components/modal/PopUp';
 import SetupHandler from 'components/setup/SetupHandler';
@@ -120,10 +121,17 @@ export default function App() {
 
 								<Route path="/login" element={<LoginPage />} />
 								<Route path="/setup" element={<SimpleSetupPage />} />
+
+								{/* Authenticated routes (RBAC Phase 3 route guard) */}
+								<Route element={<RequireAuth />}>
 								<Route path="/instance" element={<InstancePage />} />
 								<Route path="/system" element={<SystemPage />} />
 								<Route path="/user" element={<UserManagementPage />} />
-								<Route path="/config-management" element={<ConfigManagementPage />} />
+
+								{/* Config import/export is an admin capability */}
+								<Route element={<RequireAdminRoute />}>
+									<Route path="/config-management" element={<ConfigManagementPage />} />
+								</Route>
 
 								<Route path="/instance/*" element={<NavLayout />}>
 									<Route path="network" element={<Outlet />}>
@@ -166,6 +174,7 @@ export default function App() {
 									</Route>
 									<Route path="settings" element={<InstanceSettingPage />} />
 									<Route path="dashboard" element={<DashboardPage />} />
+								</Route>
 								</Route>
 
 								<Route path="/*" element={<Page404 />} />
