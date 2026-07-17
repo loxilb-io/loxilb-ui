@@ -8,8 +8,10 @@ import ParamBox from 'components/element/ParamBox';
 import DropDownSelectBox from 'components/element/DropDownSelectBox';
 import SimpleButton from 'components/element/SimpleButton';
 import HorizontalStack from 'components/layout/HorizontalStack';
+import ep_roles from 'assets/json/ep_roles.json';
 import {t} from 'i18next';
 import {useCallback, useState, useEffect} from 'react';
+import {IEnumItem} from 'types/global';
 import {IEndpoint, IServiceArguments} from 'types/load_balancer';
 
 //---------------------------------------------------------
@@ -36,7 +38,7 @@ export default function EndpointListForm(props: {
 	const handleChange = useCallback(
 		(index: number, field: keyof IEndpoint, value: string | number) => {
 			const updated = [...localEndpoints];
-			updated[index] = {...updated[index], [field]: ['weight', 'targetPort'].includes(field) ? Number(value) : value};
+			updated[index] = {...updated[index], [field]: ['weight', 'targetPort', 'ep_role', 'nixl_port'].includes(field) ? Number(value) : value};
 			setLocalEndpoints(updated);
 			// Filter out endpoints with empty endpointIP before passing to parent
 			onChange(updated.filter(ep => ep.endpointIP?.trim() !== ''));
@@ -71,6 +73,8 @@ export default function EndpointListForm(props: {
 	const isProbePortEnabled: boolean = serviceArguments?.probetype !== '' && serviceArguments?.probetype !== 'ping';
 	const isProbeTimeoutRetriesEnabled: boolean = serviceArguments?.probetype !== '' && serviceArguments?.probetype !== 'ping';
 	const isProbeReqRespEnabled = () => ['udp', 'http', 'https'].includes(serviceArguments?.probetype || '');
+
+	const ep_role_list: IEnumItem[] = ep_roles;
 
 	return (
 		<AccordionBox title={t('Endpoints')} tooltip={"Define the list of endpoints (IP addresses) for this Load Balancer"}>
@@ -160,6 +164,23 @@ export default function EndpointListForm(props: {
 										/>
 										<ParamBox label={t('Weight')} value={item.weight} onChange={val => handleChange(index, 'weight', val)} param_desc={params?.weight} />
 									</HorizontalStack>
+									{/* P/D disaggregation endpoint fields — only when pd_disagg_mode is on */}
+									{serviceArguments?.pd_disagg_mode && (
+										<HorizontalStack>
+											<ParamBox
+												label={t('EP Role')}
+												value={item.ep_role ?? ''}
+												onChange={val => handleChange(index, 'ep_role', val)}
+												param_desc={{type: 'integer', enum: ep_role_list, description: t('Prefill/decode role: 0 normal, 1 prefill, 2 decode.')}}
+											/>
+											<ParamBox
+												label={t('NIXL Port')}
+												value={item.nixl_port ?? ''}
+												onChange={val => handleChange(index, 'nixl_port', val)}
+												param_desc={{type: 'port', description: t('NIXL side-channel port for KV transfer. 0 = use target port.')}}
+											/>
+										</HorizontalStack>
+									)}
 								</Stack>
 
 								<SimpleButton type="delete" onClick={() => handleDelete(index)} />

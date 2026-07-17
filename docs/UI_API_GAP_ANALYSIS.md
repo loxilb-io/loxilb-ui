@@ -71,20 +71,16 @@ security, block, probeTimeout, probeRetries, snat, oper, host,
 proxyprotocolv2, egress, path_prefix, path_match_mode, llm_type,
 backend_protocol.
 
-**`serviceArguments` — MISSING (in schema, not in UI):**
+**`serviceArguments` — MISSING but EXCLUDED (Octavia, unstable — per decision 2026-07-17):**
+id, adminStateUp, projectId, connectionLimit, annotations, timeoutMemberConnect,
+timeoutMemberData, timeoutTcpInspect. Not added to the UI type/form.
+
+**`serviceArguments` — MISSING and IN SCOPE (AI-gateway, added):**
 
 | Field | Type | Meaning |
 |---|---|---|
-| id | string | Octavia stable opaque LB id (client-supplied or minted) |
-| adminStateUp | bool | Octavia lifecycle flag (false = paused) |
-| projectId | string | Octavia tenant/project id (opaque) |
-| connectionLimit | uint32 | per-service concurrent-connection ceiling |
-| annotations | map[string]string | opaque Octavia round-trip map |
 | model_name | string | AI model routing key (endpoint-pool selector) |
 | trace_type | string | tracing catalog name for deep inspection |
-| timeoutMemberConnect | uint32 ms | backend connect timeout (L7 proxy) |
-| timeoutMemberData | uint32 ms | member relay idle timeout |
-| timeoutTcpInspect | uint32 ms | header-accumulation deadline (slowloris) |
 | sse_mode | bool | SSE streaming mode (suppress idle timeout) |
 | max_stream_duration_sec | int32 | absolute cap for SSE streams (0 = 24h) |
 | backend_keepalive_interval_sec | int32 | SO_KEEPALIVE/TCP_KEEPIDLE on backend |
@@ -103,20 +99,16 @@ backend_protocol.
 
 **`endpoints[]` — present in UI (`IEndpoint`):** endpointIP, weight, targetPort, state, counter.
 
-**`endpoints[]` — MISSING:**
+**`endpoints[]` — MISSING and IN SCOPE (AI-gateway, added):**
 
 | Field | Meaning |
 |---|---|
 | ep_role | P/D role: 0 normal, 1 prefill, 2 decode |
 | nixl_port | NIXL side-channel port for KV transfer |
-| backup | Octavia standby member |
-| subnetId | Octavia member subnet id (opaque) |
-| monitorAddress | per-member health-probe address |
-| httpMethod | HM method (GET/HEAD) |
-| urlPath | HM request path |
-| expectedCodes | HM expected codes ("200", "200,202", "200-204") |
-| httpVersion | HM HTTP version ("1.0"/"1.1") |
-| domainName | HM TLS SNI + Host header |
+
+**`endpoints[]` — MISSING but EXCLUDED (Octavia member/HM, unstable):**
+backup, subnetId, monitorAddress, httpMethod, urlPath, expectedCodes,
+httpVersion, domainName.
 
 **Missing operations:** `PATCH /config/loadbalancer` (RFC 7386 merge-patch —
 partial update without full re-create; the UI only re-POSTs today).
@@ -132,7 +124,7 @@ partial update without full re-create; the UI only re-POSTs today).
 Each item: audit fields → update type + connector + form → `tsc`/tests →
 **validate live** against the gateway via the OAM proxy → commit → tick here.
 
-- [ ] **LB rule** — field parity (serviceArguments + endpoints), keep negative-strip/probe-clean logic; live POST round-trip
+- [x] **LB rule** — field parity (AI-gateway serviceArguments + endpoint P/D fields); Octavia fields excluded. **Validated live** (2026-07-17): POST 200 for a full aigw rule; 17/20 serviceArguments + both endpoint fields round-trip on GET; the 3 `None` (session_header_name, chwbl_*) are sel-conditional — confirmed round-trip under sel=8/sel=3. Finding: `pd_disagg_mode` requires `mode=fullproxy` (gateway 500s on aigw); delete-by-name is more reliable than the externalipaddress path for fullproxy rules.
 - [ ] LB rule — add PATCH (merge-patch) path for edits
 - [ ] Endpoint — P/D + HM member fields
 - [ ] Firewall — field parity
@@ -151,7 +143,9 @@ Each item: audit fields → update type + connector + form → `tsc`/tests →
 ## 4. Deferred / out of scope (this pass)
 
 Requires 3rd-party endpoints or lower priority; documented so nothing is
-silently dropped: **PII** (`/config/pii/*`), **LlamaFirewall**
+silently dropped: **Octavia LB fields** (unstable — id, adminStateUp, projectId,
+connectionLimit, annotations, timeoutMember*, timeoutTcpInspect, and the Octavia
+member/health-monitor endpoint fields), **PII** (`/config/pii/*`), **LlamaFirewall**
 (`/config/llamafirewall/*`), **OPA** (`/config/opa/watcher`), **GPU**
 (`/config/gpu/*`), **tracing** (`/config/trace/*`, `/config/l4trace/*`),
 **sessions** (`/config/session*`, `/config/sessionulcl*`), **CORS**
