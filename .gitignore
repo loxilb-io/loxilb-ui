@@ -11,12 +11,17 @@ node_modules/
 
 # Misc
 .DS_Store
-# .env.local
-# .env.development.local
-# .env.test.local
-# .env.production.local
+
+# Environment files — only .env.example is committed (P0-2)
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.*.local
 
 # Logs
+logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -48,10 +53,6 @@ pids
 
 # Yarn Integrity file
 .yarn-integrity
-
-# dotenv environment variables file
-.env
-.env.test
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache

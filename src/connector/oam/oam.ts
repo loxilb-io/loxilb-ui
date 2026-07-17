@@ -69,7 +69,7 @@ export async function request_firmware_install_stop(id: number): Promise<ApiResu
 }
 
 export async function download_oam_log_archive(filename: string): Promise<void> {
-	// https://oam-1.loxilb.io/oam/oam/logs/archives/loxioam.log
+	// https://oam.example.com/oam/oam/logs/archives/loxioam.log
 	const url = `/logs/archives/${filename}`;
 	const base_url = process.env.REACT_APP_API_URL;
 	const full_url = `${base_url}${url}`;
