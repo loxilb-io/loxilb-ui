@@ -57,7 +57,6 @@ import QoSPage from 'pages/traffic/QoSPage';
 import SecurityRatePage from 'pages/traffic/SecurityRatePage';
 import SNICertificatesPage from 'pages/traffic/SNICertificatesPage';
 import SYNFloodPage from 'pages/traffic/SYNFloodPage';
-// import TelecomPage from 'pages/traffic/TelecomPage';
 
 import DevicePage from 'pages/status/DevicePage';
 import FileSystemPage from 'pages/status/FileSystemPage';
@@ -162,7 +161,6 @@ export default function App() {
 										
 										<Route path="topology" element={<NetworkTopologyPage />} />
 										<Route path="ntop" element={<NTopPage />} />
-										{/* <Route path="telecom" element={<TelecomPage />} /> */}
 									</Route>	
 									<Route path="security" element={<Outlet />}>
 										<Route path="synflood" element={<SYNFloodPage />} />
