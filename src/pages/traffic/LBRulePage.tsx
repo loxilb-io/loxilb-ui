@@ -15,7 +15,7 @@ import QoSPanel from 'components/panel/QOSPanel';
 import SecondaryIPsPanel from 'components/panel/SecondaryIPPanel';
 import SettingsPanel from 'components/panel/SettingPanel';
 import LBTable from 'components/table/traffic/LBTable';
-import {request_create_load_balancer_config, request_delete_lb_by_ip_port_proto, request_delete_lb_by_ip_portrange_proto} from 'connector/instance/load_balancer';
+import {request_create_load_balancer_config, request_delete_lb_by_ip_port_proto, request_delete_lb_by_ip_portrange_proto, request_patch_load_balancer_config} from 'connector/instance/load_balancer';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useErrorPopup} from 'hooks/useErrorPopup';
@@ -238,9 +238,37 @@ export default function LBRulePage() {
 
 				// Extract only the service configuration data, excluding validation properties
 				const {isValid, errors, ...serviceConfig} = updateFormRef.current as IServiceConfiguration & {isValid?: boolean; errors?: any};
-				
-				// Use POST API with same function as create (following EndpointPage pattern)
-				const res = await request_create_load_balancer_config(inst, serviceConfig);
+
+				const osa = selectedLB.serviceArguments;
+				const sa = serviceConfig.serviceArguments ?? ({} as any);
+				const keyChanged = sa.externalIP !== osa.externalIP || sa.port !== osa.port || sa.protocol !== osa.protocol;
+
+				let res;
+				if (keyChanged || !osa.externalIP || osa.port == null || !osa.protocol) {
+					// The VIP/port/proto composite key is immutable under PATCH —
+					// changing it means a different rule, so fall back to re-POST.
+					res = await request_create_load_balancer_config(inst, serviceConfig);
+				} else {
+					// RFC 7386 merge-patch: send only changed, mutable fields.
+					// Immutable fields are rejected by the gateway with 400.
+					const IMMUTABLE = new Set(['externalIP', 'port', 'protocol', 'mode', 'security', 'egress', 'oper', 'managed']);
+					const saPatch: Record<string, any> = {};
+					Object.entries(sa).forEach(([k, v]) => {
+						if (IMMUTABLE.has(k)) return;
+						if (JSON.stringify(v) !== JSON.stringify((osa as any)[k])) saPatch[k] = v;
+					});
+					const patch: Partial<IServiceConfiguration> = {};
+					if (Object.keys(saPatch).length > 0) patch.serviceArguments = saPatch as any;
+					if (JSON.stringify(serviceConfig.endpoints) !== JSON.stringify(editableEndpoints)) patch.endpoints = serviceConfig.endpoints;
+					if (JSON.stringify(serviceConfig.secondaryIPs) !== JSON.stringify(selectedLB.secondaryIPs)) patch.secondaryIPs = serviceConfig.secondaryIPs;
+					if (JSON.stringify(serviceConfig.allowedSources) !== JSON.stringify(selectedLB.allowedSources)) patch.allowedSources = serviceConfig.allowedSources;
+
+					if (Object.keys(patch).length === 0) {
+						openPopUp(t('Success'), t('No changes to apply.'), t('OK'));
+						return;
+					}
+					res = await request_patch_load_balancer_config(inst, osa.externalIP, osa.port, osa.protocol, patch);
+				}
 				if (res.status === 'success') {
 					openPopUp(t('Success'), t('Load balancer rule updated successfully.'), t('OK'));
 					setTimeout(() => {
