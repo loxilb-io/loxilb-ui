@@ -30,9 +30,6 @@ export interface IUser {
 	password?: string; // Usually not returned in responses
 	email?: string;
 	created_at?: string;
-	oauth_id?: string;
-	oauth_provider?: string;
-	oauth_token?: string;
 }
 
 /**
@@ -44,7 +41,7 @@ export interface ILoginRequest {
 }
 
 /**
- * Login Response (Traditional and OAuth)
+ * Login Response
  */
 export interface ILoginResponse {
 	id: number;
@@ -88,19 +85,6 @@ export interface IAuthFormData {
  * Auth Mode
  */
 export type AuthMode = 'login' | 'signup';
-
-/**
- * OAuth Provider
- */
-export type OAuthProvider = 'google' | 'github';
-
-/**
- * OAuth Loading State
- */
-export interface IOAuthLoadingState {
-	google: boolean;
-	github: boolean;
-}
 
 /**
  * User Update Request (for profile editing)

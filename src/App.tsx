@@ -21,7 +21,6 @@ import SetupHandler from 'components/setup/SetupHandler';
 
 import LoginPage from './pages/LoginPage';
 import SimpleSetupPage from 'pages/SimpleSetupPage';
-import OAuthCallbackPage from 'pages/OAuthCallbackPage';
 import Page404 from 'pages/Page404';
 import Page500 from 'pages/Page500';
 import Page503 from 'pages/Page503';
@@ -128,7 +127,6 @@ export default function App() {
 
 								<Route path="/login" element={<LoginPage />} />
 								<Route path="/setup" element={<SimpleSetupPage />} />
-								<Route path="/oauth/callback" element={<OAuthCallbackPage />} />
 								<Route path="/instance" element={<InstancePage />} />
 								<Route path="/system" element={<SystemPage />} />
 								<Route path="/user" element={<UserManagementPage />} />
