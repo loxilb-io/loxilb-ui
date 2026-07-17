@@ -13,8 +13,9 @@ instances) is the standard industry pattern for multi-instance management
 all separate control planes; only single-instance products embed their UI in the
 proxy like Traefik/Kong Manager). **We keep OAM, but slimmed:**
 
-- OAM keeps: auth/OAuth, users, RBAC/licenses, instance registry, reverse proxy
-  (`/loxilbs/{id}/netlox/v1/*`), config export/import.
+- OAM keeps: auth (local login only — **OAuth is removed**, see quality plan
+  P0-5; on-premise focus), users, RBAC/licenses, instance registry, reverse
+  proxy (`/loxilbs/{id}/netlox/v1/*`), config export/import.
 - OAM gains: `prometheus_url` per instance + `/loxilbs/{id}/prom/*` proxy route.
 - OAM loses: alert storage/engine (`/alerts`, `/alerts/history`, acknowledge).
 - Its DB now holds only management config (users/instances/licenses) — no
@@ -31,7 +32,8 @@ same page, new data source · **REBUILD** = significant rework · **DELETE**.
 
 | Page (route) | Action | Notes |
 |---|---|---|
-| Login / OAuth / Setup / User mgmt / Instance / ConfigManagement | KEEP | OAM-side, untouched |
+| Login / Setup / User mgmt / Instance / ConfigManagement | KEEP | OAM-side, untouched |
+| OAuthCallbackPage + OAuth login flow | DELETE | on-premise focus; quality plan P0-5 (also removes the token-leak logging finding) |
 | All `network/*` pages (BFD, BGP×4, FDB, IP, Port, Neighbor, Route, VLAN, VXLAN) | KEEP | classic `/config/*` unchanged in gateway |
 | LBRulePage | KEEP (Phase 1) | Phase 2 adds inference fields (sse_mode, P/D, CHWBL, endpoint role) + per-rule stats |
 | EndpointPage, FirewallPage, MirrorPage, QoSPage, SNICertificatesPage | KEEP | |
@@ -57,9 +59,13 @@ same page, new data source · **REBUILD** = significant rework · **DELETE**.
 2. Confirm no references to `/config/llm-catalogs` (analysis found none).
 3. Verify error-envelope handling in `fetcher_base.ts` (`createDetailedErrorMessage`
    expects `{result,message,fields}`) against gateway responses; fix edge cases.
-4. Replace repo `swagger.yml` with the gateway's `api/swagger.yml` (+ note that
-   `swagger-extras.yml` is supplementary); delete `metrics-api-swagger.yaml`
-   (dead API). Swagger stays reference-only (no codegen today).
+4. ~~Replace repo `swagger.yml` with the gateway's `api/swagger.yml`~~ — **done**
+   (commit `f7d7d4c` on `feat/inference-gateway-integration`). Still to do:
+   delete `metrics-api-swagger.yaml` (dead API). Swagger stays reference-only
+   (no codegen today).
+5. Environment: run the pass against the Naver Cloud testbed —
+   gateway on kv-loxilb, OAM on kv-client, UI local dev server
+   (see `docs/internal/TESTBED.md`, Workflow A).
 
 ### W2 — Prometheus datasource (Phase 1 core) — ~2 dev-weeks UI + small OAM task
 
@@ -78,8 +84,8 @@ same page, new data source · **REBUILD** = significant rework · **DELETE**.
 6. Hooks: `usePromQuery`, `usePromRangeQuery` (returns chart-ready series,
    React Query cached), `usePromAlerts`.
 7. **Single mapping file** `src/config/promMetrics.ts`: cardKey → {promql,
-   legend, unit, kind: gauge|rate}. All PromQL lives here (design §8.3 rename
-   risk). Seed from design §6 table.
+   legend, unit, kind: gauge|rate}. All PromQL lives here (design §8 item 3,
+   metric-rename risk). Seed from design §6 table.
 8. Reusable `PromRangeChart` card component (MUI x-charts line/area, time-range
    prop, empty-state when no `prometheus_url`).
 9. Degradation UX: shared `usePrometheusAvailable(instance)` hook; cards render
@@ -167,9 +173,10 @@ on W2 hooks. Total Phase 0+1 ≈ **5–6 dev-weeks** single UI dev + 3 OAM days;
 
 - Unit: promMetrics mapping table (every entry parses/queries against a
   test Prometheus), fetcher_prom envelope/error paths, step calculation.
-- Integration: docker-compose dev stack (gateway + Prometheus + OAM + UI) with
-  traffic generator; scripted checks of query results vs. JSON counter endpoints
-  (sanity: same order of magnitude).
+- Integration: full stack — either local docker-compose or the remote testbed
+  (`docs/internal/TESTBED.md`, Workflow B: gateway on kv-loxilb + OAM/UI/
+  Prometheus on kv-client) — with traffic generator; scripted checks of query
+  results vs. JSON counter endpoints (sanity: same order of magnitude).
 - Regression: existing page smoke suite against gateway (W1 output becomes CI).
 
 ## 6. Risks (delta from design §8)

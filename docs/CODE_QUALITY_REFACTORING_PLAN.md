@@ -15,7 +15,7 @@ Audit headline numbers:
 | Area | Finding |
 |---|---|
 | License | **No LICENSE file** — README §License falsely claims MIT and links a nonexistent file (legal blocker) |
-| Secrets | `.env.development/.local/.production` **tracked in git** with internal host `oam-1.loxilb.io`; same host hardcoded in `nginx-simple.conf:30`, `nginx-https.conf:62` (history scrub required) |
+| Secrets | `.env.development/.local/.production` **tracked in git** with an internal OAM hostname; same host hardcoded in `nginx-simple.conf:30`, `nginx-https.conf:62` (history scrub required) |
 | Logging | 84 raw `console.*`; **OAuth token + PII logged to console** (`OAuthCallbackPage.tsx:65,73`, `user.ts:14,16,56,58`, `fetcher_base.ts:125`); no logger, no levels |
 | Error handling | GET connectors return `(resp.data as X) ?? {}` — **read failures rendered as empty success**; no React error boundary anywhere; fetch layer navigates via `window.location` on substring-matched server prose |
 | Validation | Format validation is **display-only** — invalid IPs/ports still submit; react-hook-form used in 1 of ~35 forms; buggy inline CIDR regex accepts `999.999.999.999/99` (`IPFilterInputForm.tsx:41`); `isValidPort` accepts 0; `verify_params` is a `return true` stub |
@@ -37,9 +37,9 @@ Audit headline numbers:
 | # | Task | Detail |
 |---|---|---|
 | P0-1 | **Add LICENSE** | Real MIT text (or chosen license — confirm with management); add `"license"` to package.json; fix README §License. Until then the repo grants no rights. |
-| P0-2 | **Secrets/env purge + history scrub** | `git rm --cached .env.development .env.local .env.production`; keep only `.env.example` with placeholder values; fix `.gitignore` (CRA env lines are commented out). Parameterize `nginx-simple.conf`/`nginx-https.conf` to `${BACKEND_URL}` like the existing template. Because `oam-1.loxilb.io` is in git history, plan a **history rewrite (git filter-repo) before the public push**, or publish from a fresh, squashed public repo (recommended — simpler and guarantees clean history). |
+| P0-2 | **Secrets/env purge + history scrub** | `git rm --cached .env.development .env.local .env.production`; keep only `.env.example` with placeholder values; fix `.gitignore` (CRA env lines are commented out). Parameterize `nginx-simple.conf`/`nginx-https.conf` to `${BACKEND_URL}` like the existing template. Because the internal hostname is in git history, plan a **history rewrite (git filter-repo) before the public push**, or publish from a fresh, squashed public repo (recommended — simpler and guarantees clean history). |
 | P0-3 | **Purge token/PII console logs** | Delete `OAuthCallbackPage.tsx:65,73` + OAuth flow logs (superseded by P0-5), `user.ts:14,16,56,58,107,130`, `oauth.ts:61`, `fetcher_base.ts:125`. Do not wait for the logger workstream. |
-| P0-4 | **Strip internal artifacts from public tree** | `.claude/`, `.serena/`, `.codegraph/`, `claudedocs/`, `claude-agents/`, per-dir `CLAUDE.md`, `docs/license-management/`, internal roadmap docs, `docker-compose.commercial.yml`, `deploy.ps1`/`make-package.ps1` (move to internal repo or `.github`-excluded packaging repo). Decide doc-by-doc for `docs/` (the two gateway docs + this one can ship once scrubbed of internal hosts). Remove `.npmrc` insecure flags (`strict-ssl=false`, `audit=false`, `force=true`). |
+| P0-4 | **Strip internal artifacts from public tree** | `.claude/`, `.serena/`, `.codegraph/`, `claudedocs/`, `claude-agents/`, per-dir `CLAUDE.md`, **`docs/internal/` (testbed credentials — never ships)**, `docs/license-management/`, internal roadmap docs, `docker-compose.commercial.yml`, `deploy.ps1`/`make-package.ps1` (move to internal repo or `.github`-excluded packaging repo). Decide doc-by-doc for `docs/` (the two gateway docs + this one can ship once scrubbed of internal hosts). Remove `.npmrc` insecure flags (`strict-ssl=false`, `audit=false`, `force=true`). |
 | P0-5 | **Remove OAuth** | Delete `src/pages/OAuthCallbackPage.tsx`, `src/connector/oauth.ts`, `/oauth/callback` route in `App.tsx`, OAuth UI on `LoginPage`, oauth fields from UI `IUser` usage, related i18n keys. Keep `LoginPage` calling a single auth connector (clean seam for future OIDC). OAM's `/oauth/*` endpoints become unreferenced (backend may keep or drop). |
 | P0-6 | **package.json metadata** | `name: "loxilb-ui"`, real `version` (align with README badge), `license`, `repository`, `description`, `keywords`, `author`. Add CONTRIBUTING.md, SECURITY.md, CODE_OF_CONDUCT.md. |
 
@@ -201,7 +201,8 @@ refactored** — never for code scheduled for deletion.
 4. **Component tests**: the shared primitives — `CrudTablePage`, form field
    components, `PromRangeChart` empty/error/data states.
 5. **E2E — deterministic CI gate (`@playwright/test`)**: against the
-   docker-compose dev stack (gateway + Prometheus + OAM + UI). Smoke: login →
+   docker-compose dev stack (gateway + Prometheus + OAM + UI); interactive runs
+   can also target the remote testbed (`docs/internal/TESTBED.md`). Smoke: login →
    every route renders without console errors → one CRUD round-trip per domain
    (LB rule, VLAN, firewall) → dashboard shows Prometheus-backed data.
    Merge-blocking on main.
