@@ -6,7 +6,7 @@ import {ILog, ILogArchiveList} from 'types/log';
 import {IInstance, IInstanceInput, IUser} from 'types/oam';
 import {ILicenseStatusResponse, IInstallLicenseRequest, IUpdateLicenseRequest, ILicensePayload, IUserLicensesResponse} from 'types/license';
 import {ISetupStatus, IUpdateAdminRequest, IUpdateAdminResponse} from 'types/setup';
-import {ApiResult, load_token} from '../fetcher/fetcher_base';
+import {ApiResult, DOWNLOAD_FILE_STREAM, DownloadProgress} from '../fetcher/fetcher_base';
 import {DELETE_OAM, GET_OAM, POST_OAM, PUT_OAM} from '../fetcher/fetcher_oam';
 import type {OamGetResp, OamPostResp} from 'api';
 
@@ -69,29 +69,10 @@ export async function request_firmware_install_stop(id: number): Promise<ApiResu
 	else return {status: 'success'};
 }
 
-export async function download_oam_log_archive(filename: string): Promise<void> {
+export async function download_oam_log_archive(filename: string, onProgress?: (p: DownloadProgress) => void): Promise<void> {
 	// https://oam.example.com/oam/oam/logs/archives/loxioam.log
-	const url = `/logs/archives/${filename}`;
-	const base_url = process.env.REACT_APP_API_URL;
-	const full_url = `${base_url}${url}`;
-
-	const access_token = load_token();
-	const response = await fetch(full_url, {method: 'GET', headers: {Authorization: `Bearer ${access_token}`}});
-
-	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(`Failed to download log: ${text}`);
-	}
-
-	const blob = await response.blob();
-	const downloadUrl = URL.createObjectURL(blob);
-
-	const a = document.createElement('a');
-	a.href = downloadUrl;
-	a.download = filename;
-	a.click();
-
-	URL.revokeObjectURL(downloadUrl);
+	const full_url = `${process.env.REACT_APP_API_URL}/logs/archives/${filename}`;
+	await DOWNLOAD_FILE_STREAM(full_url, filename, onProgress);
 }
 
 export async function query_get_oam_logs(): Promise<ILog[]> {

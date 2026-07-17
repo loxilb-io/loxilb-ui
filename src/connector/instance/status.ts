@@ -2,7 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {clean_string, format_uptime, parse_log_lines} from 'common';
-import {ApiResult, createDetailedErrorMessage, load_token} from 'connector/fetcher/fetcher_base';
+import {ApiResult, createDetailedErrorMessage, DOWNLOAD_FILE_STREAM, DownloadProgress} from 'connector/fetcher/fetcher_base';
 import {t} from 'i18next';
 import {ISystemInfo} from 'types/device';
 import {IFilesystemAttribute} from 'types/filesystem';
@@ -149,30 +149,17 @@ export async function query_get_inst_log_archives(instance: IInstance): Promise<
 	return (resp.data ?? {archives: []}) as ILogArchiveList;
 }
 
-export async function download_inst_log_archive(instance: IInstance | null, filename: string): Promise<void> {
+export async function download_inst_log_archive(
+	instance: IInstance | null,
+	filename: string,
+	onProgress?: (p: DownloadProgress) => void,
+): Promise<void> {
 	if (!instance) return;
 
 	// Use OAM Proxy pattern
 	const oam_base_url = getApiBaseUrl();
 	const proxied_url = `${oam_base_url}/loxilbs/${instance.id}/netlox/v1/log-archives/${filename}`;
-
-	const access_token = load_token();
-	const response = await fetch(proxied_url, {method: 'GET', headers: {Authorization: `Bearer ${access_token}`}});
-
-	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(`Failed to download log: ${text}`);
-	}
-
-	const blob = await response.blob();
-	const downloadUrl = URL.createObjectURL(blob);
-
-	const a = document.createElement('a');
-	a.href = downloadUrl;
-	a.download = filename;
-	a.click();
-
-	URL.revokeObjectURL(downloadUrl);
+	await DOWNLOAD_FILE_STREAM(proxied_url, filename, onProgress);
 }
 
 export async function query_instance_health(instance: IInstance): Promise<{isHealthy: boolean; error?: string}> {
