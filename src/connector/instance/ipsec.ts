@@ -9,14 +9,16 @@ import {
 	IIPsecCertificateMod,
 	IIPsecConfig,
 	IIPsecConfigMod,
+	IIPsecPeerConfig,
 	IIPsecSA,
 	IIPsecStats,
 	IIPsecTunnel,
+	IIPsecTunnelAction,
 	IIPsecTunnelMod,
 } from 'types/ipsec';
 import {IInstance} from 'types/oam';
 import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
-import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
+import {DELETE_INST, GET_INST, POST_INST, PUT_INST} from '../fetcher/fetcher_inst';
 
 //---------------------------------------------------------
 // Global configuration (/config/ipsec)
@@ -50,6 +52,37 @@ export async function request_create_ipsec_tunnel(instance: IInstance, data: IIP
 		return {status: 'error', error: createDetailedErrorMessage(resp, 'IPsec Tunnel Create')};
 	}
 	return {status: 'success'};
+}
+
+/**
+ * In-place tunnel update (PUT) — single config regen + strongSwan reload on
+ * the gateway, no delete/recreate window. PSK may be omitted when unchanged
+ * (the gateway keeps the stored one).
+ */
+export async function request_update_ipsec_tunnel(instance: IInstance, name: string, data: IIPsecTunnelMod): Promise<ApiResult> {
+	const resp = await PUT_INST(instance, `/config/ipsec/tunnels/${encodeURIComponent(name)}`, data);
+	if (resp.code !== 200 && resp.code !== 204) {
+		return {status: 'error', error: createDetailedErrorMessage(resp, 'IPsec Tunnel Update')};
+	}
+	return {status: 'success'};
+}
+
+/** Initiate (ipsec up), terminate (ipsec down), or restart the tunnel connection. */
+export async function request_ipsec_tunnel_action(instance: IInstance, name: string, action: IIPsecTunnelAction): Promise<ApiResult> {
+	const resp = await POST_INST(instance, `/config/ipsec/tunnels/${encodeURIComponent(name)}/action`, {action});
+	if (resp.code !== 200 && resp.code !== 204) {
+		return {status: 'error', error: createDetailedErrorMessage(resp, `IPsec Tunnel ${action}`)};
+	}
+	return {status: 'success'};
+}
+
+/**
+ * Mirrored strongSwan configuration for the REMOTE peer of the tunnel
+ * (ipsec.conf conn block + secrets entry). PSK tunnels include the key.
+ */
+export async function query_get_ipsec_tunnel_peerconfig(instance: IInstance, name: string): Promise<IIPsecPeerConfig | null> {
+	const resp = await GET_INST<IIPsecPeerConfig>(instance, `/config/ipsec/tunnels/${encodeURIComponent(name)}/peerconfig`);
+	return resp.code === 200 ? resp.data : null;
 }
 
 export async function request_delete_ipsec_tunnel(instance: IInstance, name: string): Promise<ApiResult> {

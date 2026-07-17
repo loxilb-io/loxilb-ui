@@ -180,8 +180,9 @@ research report). Design choices applied:
   expiry status columns.
 - **Tunnels page** joins read-only SA data per tunnel + aggregate stats tiles;
   global settings (fast-path/HW offload/MTU) via dialog.
-- **Edit = explicit delete+recreate** with warning (no tunnel update op; PSK
-  must be re-entered — GET never returns it).
+- **Edit = in-place PUT** (2026-07-17, replaced the original delete+recreate
+  flow once the gateway grew `PUT /config/ipsec/tunnels/{name}`). PSK may be
+  left blank on edit — the gateway keeps the stored key.
 
 Pages: `pages/ipsec/IPsecTunnelPage.tsx`, `IPsecCertificatePage.tsx`; menu
 section "IPsec VPN". **Live-validated on the testbed gateway** (deployed image
@@ -192,18 +193,27 @@ parsed subject/issuer; CA upload 201; validate 200 with valid/keySize/warnings
 Deployed-build quirk: cert notBefore/notAfter return zero-time (parsing gap) —
 UI expiry status tolerates it.
 
-**Gateway API gaps identified (authorized to add; not yet implemented):**
-1. `POST /config/ipsec/tunnels/{name}/action` {initiate|terminate|restart} —
-   every commercial product has per-tunnel connect/disconnect; the gateway even
-   has an internal `initiateConnection()` not exposed via REST.
-2. `PUT /config/ipsec/tunnels/{name}` — in-place update (server-side del+add)
-   to replace the UI's delete+recreate edit.
-3. Swagger default for `ikeEncryption` ("aes256-sha256-modp2048") is misleading —
-   the conf generator composes `<enc>-<integrity>-<dh>` from single tokens.
-4. `espDhGroup` is accepted but never written to the strongSwan `esp=` line —
-   PFS is silently ignored.
-5. The generated `ike=`/`esp=` lines always append a weak
-   `aes128-sha1[-modp1024]` compatibility fallback — should be opt-in.
+**Gateway API gaps — ALL IMPLEMENTED (2026-07-17, gateway repo):**
+1. [x] `POST /config/ipsec/tunnels/{name}/action` {initiate|terminate|restart} —
+   wired to `ipsec up`/`ipsec down` with a 10s timeout. Tunnel `state` is now
+   refreshed from `ipsec status` (up/connecting/down) on GET and after actions
+   (2s throttle), so the UI's state-gated buttons work; previously `state` was
+   frozen at "down" forever.
+2. [x] `PUT /config/ipsec/tunnels/{name}` — in-place update: server-side
+   del+add under one lock, single config regen + single strongSwan reload.
+   Empty PSK on PUT keeps the stored key (GET never returns it).
+3. [x] Swagger defaults fixed: `ikeEncryption`/`espEncryption` are single
+   tokens (`aes256`); descriptions explain proposal composition; `espDhGroup`
+   default removed (empty = PFS off, matching actual behavior).
+4. [x] `espDhGroup` is now appended to the `esp=` proposal (PFS enforced).
+5. [x] Weak `aes128-sha1[-modp1024]` fallback is now opt-in via a new
+   `compatFallback` tunnel field (default off); exposed in the UI advanced
+   toggles as "Legacy Cipher Fallback".
+6. [x] (new, user-requested) `GET /config/ipsec/tunnels/{name}/peerconfig` —
+   generates the mirrored strongSwan config for the REMOTE peer (left/right,
+   IDs, subnets swapped; startup role mirrored; same proposals; secrets entry
+   with PSK for psk mode + install notes). UI: "Peer Config" download button
+   in the tunnel detail panel (write roles only — the file contains the PSK).
 
 > Rows 2.5–2.x (firewall, endpoint, mirror, policy, securityrate PUT, cert PUT,
 > ipv6) are filled in as each is
@@ -243,7 +253,9 @@ Each item: audit fields → update type + connector + form → `tsc`/tests →
 - [x] **IPsec** — tunnels + certificates + ca-certificates (2026-07-17): research-driven
   UI (presets, advanced toggle, cert-store dropdowns, SA join, stats, global
   settings). **Live-validated end-to-end** on the testbed gateway — see §2.4.
-  Follow-up: gateway tunnel action/update APIs (§2.4 gap list).
+- [x] **IPsec gateway follow-ups** (2026-07-17): tunnel action + PUT + peerconfig
+  endpoints, PFS fix, opt-in compat fallback, swagger default fixes, live state
+  refresh — all implemented in the gateway and wired in the UI (see §2.4).
 
 ---
 

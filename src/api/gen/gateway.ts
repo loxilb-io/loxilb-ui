@@ -4468,6 +4468,54 @@ export interface paths {
       };
     };
     /**
+     * Update an IPsec tunnel
+     * @description Update an existing IPsec tunnel in place. The tunnel is replaced within a single configuration regeneration and strongSwan reload (no delete/recreate window). The name in the path takes precedence over the body.
+     */
+    put: {
+      parameters: {
+        path: {
+          /** @description Tunnel name */
+          name: string;
+        };
+      };
+      /** @description New IPsec tunnel configuration */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["IPsecTunnelMod"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        204: {
+          content: never;
+        };
+        /** @description Malformed arguments for API call */
+        400: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Invalid authentication credentials */
+        401: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Tunnel not found */
+        404: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Internal service error */
+        500: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+      };
+    };
+    /**
      * Delete an IPsec tunnel
      * @description Delete an existing IPsec tunnel and remove associated SAs.
      */
@@ -4482,6 +4530,96 @@ export interface paths {
         /** @description OK */
         204: {
           content: never;
+        };
+        /** @description Invalid authentication credentials */
+        401: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Tunnel not found */
+        404: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Internal service error */
+        500: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+      };
+    };
+  };
+  "/config/ipsec/tunnels/{name}/action": {
+    /**
+     * Execute a connection action on an IPsec tunnel
+     * @description Initiate, terminate, or restart the strongSwan connection for an existing tunnel without changing its configuration.
+     */
+    post: {
+      parameters: {
+        path: {
+          /** @description Tunnel name */
+          name: string;
+        };
+      };
+      /** @description Action to execute */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["IPsecTunnelActionMod"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        204: {
+          content: never;
+        };
+        /** @description Malformed arguments for API call */
+        400: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Invalid authentication credentials */
+        401: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Tunnel not found */
+        404: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Internal service error */
+        500: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+      };
+    };
+  };
+  "/config/ipsec/tunnels/{name}/peerconfig": {
+    /**
+     * Get remote-peer strongSwan configuration for a tunnel
+     * @description Generate a mirrored strongSwan configuration (ipsec.conf conn block and ipsec.secrets entry) ready to install on the remote peer of this tunnel. For PSK tunnels the response contains the pre-shared key.
+     */
+    get: {
+      parameters: {
+        path: {
+          /** @description Tunnel name */
+          name: string;
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          content: {
+            "application/json": components["schemas"]["IPsecPeerConfig"];
+          };
         };
         /** @description Invalid authentication credentials */
         401: {
@@ -8914,17 +9052,17 @@ export interface components {
        */
       ikeVersion?: "ikev1" | "ikev2";
       /**
-       * @description IKE encryption algorithm
-       * @default aes256-sha256-modp2048
+       * @description IKE encryption algorithm as a single token (e.g. aes256, aes128). The gateway composes the proposal as encryption-integrity-dhgroup.
+       * @default aes256
        */
       ikeEncryption?: string;
       /**
-       * @description IKE integrity algorithm
+       * @description IKE integrity algorithm as a single token (e.g. sha256, sha1)
        * @default sha256
        */
       ikeIntegrity?: string;
       /**
-       * @description IKE DH group
+       * @description IKE DH group as a single token (e.g. modp2048, modp1024)
        * @default modp2048
        */
       ikeDhGroup?: string;
@@ -8935,19 +9073,16 @@ export interface components {
        */
       ikeLifetime?: number;
       /**
-       * @description ESP encryption algorithm
-       * @default aes256-sha256
+       * @description ESP encryption algorithm as a single token (e.g. aes256, aes128). The gateway composes the proposal as encryption-integrity[-pfsgroup].
+       * @default aes256
        */
       espEncryption?: string;
       /**
-       * @description ESP integrity algorithm
+       * @description ESP integrity algorithm as a single token (e.g. sha256, sha1)
        * @default sha256
        */
       espIntegrity?: string;
-      /**
-       * @description ESP PFS DH group
-       * @default modp2048
-       */
+      /** @description ESP PFS DH group as a single token (e.g. modp2048). When set, it is appended to the ESP proposal to enable Perfect Forward Secrecy; leave empty to disable PFS. */
       espDhGroup?: string;
       /**
        * Format: uint32
@@ -8998,8 +9133,30 @@ export interface components {
        * @enum {string}
        */
       auto?: "start" | "add" | "route";
+      /**
+       * @description Append a weak legacy proposal (aes128-sha1-modp1024 for IKE, aes128-sha1 for ESP) as a compatibility fallback for old peers. Disabled by default.
+       * @default false
+       */
+      compatFallback?: boolean;
       selector?: components["schemas"]["IPsecSelector"];
       dpd?: components["schemas"]["IPsecDPD"];
+    };
+    IPsecTunnelActionMod: {
+      /**
+       * @description Connection action - initiate (ipsec up), terminate (ipsec down), restart (down then up)
+       * @enum {string}
+       */
+      action: "initiate" | "terminate" | "restart";
+    };
+    IPsecPeerConfig: {
+      /** @description Tunnel name */
+      tunnelName?: string;
+      /** @description strongSwan ipsec.conf conn block for the remote peer */
+      ipsecConf?: string;
+      /** @description strongSwan ipsec.secrets entry for the remote peer (PSK mode only; contains the pre-shared key) */
+      ipsecSecrets?: string;
+      /** @description Peer-side installation notes */
+      notes?: string;
     };
     IPsecTunnel: {
       name?: string;
@@ -9041,6 +9198,8 @@ export interface components {
        * @enum {string}
        */
       auto?: "start" | "add" | "route";
+      /** @description Weak legacy proposal fallback enabled */
+      compatFallback?: boolean;
       selector?: components["schemas"]["IPsecSelector"];
       dpd?: components["schemas"]["IPsecDPD"];
       /**
