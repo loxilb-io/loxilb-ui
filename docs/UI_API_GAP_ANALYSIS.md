@@ -165,8 +165,48 @@ restart); there is **no CICD scenario**; and the deployed testbed image 404s
 ships it in an image with a CICD scenario. Ops when built: `GET /all`, `POST`
 (policy references the LB's stable opaque `id`), `GET`/`DELETE /id/{id}`.
 
-> Rows 2.4–2.x (firewall, endpoint, mirror, policy, securityrate PUT, cert PUT,
-> ipv6, ipsec) are filled in as each is
+### 2.4 IPsec (`/config/ipsec/*`) — BUILT + live-validated (2026-07-17)
+
+UI designed from a cross-product research pass (pfSense, OPNsense, FortiGate,
+PAN-OS, Cisco, Meraki, strongSwan, MikroTik, AWS, Azure — see the session's
+research report). Design choices applied:
+- **Single tunnel form with P1/P2 sections** (matches the API's flat named-tunnel
+  model), required fields = name/peers/auth/selectors, everything else defaulted
+  behind an Advanced toggle (pfSense/FortiGate pattern).
+- **Named policy presets** Default/AWS/Azure fill the proposal fields (Meraki
+  pattern), all editable.
+- **Cert auth = dropdowns into the cert store** (never inline upload), backed by
+  the Certificates page with server-side **validate-before-install** feedback and
+  expiry status columns.
+- **Tunnels page** joins read-only SA data per tunnel + aggregate stats tiles;
+  global settings (fast-path/HW offload/MTU) via dialog.
+- **Edit = explicit delete+recreate** with warning (no tunnel update op; PSK
+  must be re-entered — GET never returns it).
+
+Pages: `pages/ipsec/IPsecTunnelPage.tsx`, `IPsecCertificatePage.tsx`; menu
+section "IPsec VPN". **Live-validated on the testbed gateway** (deployed image
+serves the full IPsec API): tunnel create 204 + full field round-trip on GET
+(auto=add passive; PSK correctly withheld), delete 200; cert upload 201 with
+parsed subject/issuer; CA upload 201; validate 200 with valid/keySize/warnings
+(NOTE: validate requires `name` in the body); stats reflects tunnel counts.
+Deployed-build quirk: cert notBefore/notAfter return zero-time (parsing gap) —
+UI expiry status tolerates it.
+
+**Gateway API gaps identified (authorized to add; not yet implemented):**
+1. `POST /config/ipsec/tunnels/{name}/action` {initiate|terminate|restart} —
+   every commercial product has per-tunnel connect/disconnect; the gateway even
+   has an internal `initiateConnection()` not exposed via REST.
+2. `PUT /config/ipsec/tunnels/{name}` — in-place update (server-side del+add)
+   to replace the UI's delete+recreate edit.
+3. Swagger default for `ikeEncryption` ("aes256-sha256-modp2048") is misleading —
+   the conf generator composes `<enc>-<integrity>-<dh>` from single tokens.
+4. `espDhGroup` is accepted but never written to the strongSwan `esp=` line —
+   PFS is silently ignored.
+5. The generated `ike=`/`esp=` lines always append a weak
+   `aes128-sha1[-modp1024]` compatibility fallback — should be opt-in.
+
+> Rows 2.5–2.x (firewall, endpoint, mirror, policy, securityrate PUT, cert PUT,
+> ipv6) are filled in as each is
 > audited during burndown — see §3.
 
 ---
@@ -200,7 +240,10 @@ Each item: audit fields → update type + connector + form → `tsc`/tests →
   lookup + table (tenants derived from API keys; API has no list-all/DELETE).
   Menu item hidden by decision; route live at `/instance/ai/ratelimit`. Same
   `--userservice` caveat as API keys.
-- [ ] **IPsec** — tunnels + certificates + ca-certificates
+- [x] **IPsec** — tunnels + certificates + ca-certificates (2026-07-17): research-driven
+  UI (presets, advanced toggle, cert-store dropdowns, SA join, stats, global
+  settings). **Live-validated end-to-end** on the testbed gateway — see §2.4.
+  Follow-up: gateway tunnel action/update APIs (§2.4 gap list).
 
 ---
 

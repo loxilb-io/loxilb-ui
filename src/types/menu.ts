@@ -3,6 +3,7 @@
 //---------------------------------------------------------
 import CloudIcon from '@mui/icons-material/Cloud';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
+import VpnLockIcon from '@mui/icons-material/VpnLock';
 import MonitorIcon from '@mui/icons-material/Monitor';
 import RouteIcon from '@mui/icons-material/Route';
 import WysiwygIcon from '@mui/icons-material/Wysiwyg';
@@ -75,6 +76,21 @@ export const MENU_LIST: IMenuItem[] = [
 			// 	name: 'Tenant Rate Limits',
 			// 	path: 'ratelimit',
 			// },
+		],
+	},
+	{
+		name: 'IPsec VPN',
+		icon: VpnLockIcon,
+		path: 'ipsec',
+		items: [
+			{
+				name: 'Tunnels',
+				path: 'tunnels',
+			},
+			{
+				name: 'Certificates',
+				path: 'certs',
+			},
 		],
 	},
 	{
