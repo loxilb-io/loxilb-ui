@@ -156,9 +156,19 @@ Set these in production (docker `-e` / compose `environment:` / k8s Secret). Eac
 
 Testbed (testbed-client) is currently deployed with `OAM_JWT_SECRET` (fresh random) and `OAM_LICENSE_SIGNING_SECRET=presto@123` (kept so the installed trial license still validates).
 
-## 6. Verification & follow-ups
+## 6. Status & NEXT WORK (updated 2026-07-17, deployed)
 
-- OAM: `go build ./...` ✅. Rebuild + redeploy to testbed-client to activate Phase 1 enforcement, then re-run the live probes (non-admin token must get 403 on `POST /oam/users`).
-- UI: `tsc` ✅, 76 tests ✅, production build ✅, mapping guard ✅.
-- **Owner decisions needed** before Phase 4: secret-management mechanism (env vs vault), whether to keep `/oam/admin/reset` as an HTTP route, token-TTL/refresh strategy.
-- Backend commits pending in `oam-loxilb` (RBAC + swagger regen) and `loxilb-inference-gateway` (earlier swagger fixes) must be committed in those repos.
+**Done + deployed to testbed-client** (OAM `9327bf2`, `2006208`; UI `d7cf9d5`, `13831f9`): RBAC Phase 1 (admin gate + self-vs-admin + role-escalation guard), C-1 reset route removed, C-3/C-4/M-4/M-5 secrets env-wired, H-1 password-leak fixed, H-2 client half (UI calls logout). All live-verified (§2 table).
+
+**Remaining security work, in priority order — resume here:**
+
+1. **H-2 — server-side token revocation** *(next; token still valid after logout)*. Make `TokenAuthMiddleware` (`internal/middleware/auth.go`) consult the `api_tokens` store/blacklist that logout already writes, OR switch to short-lived access tokens + a refresh endpoint. Today it only checks JWT signature+expiry.
+2. **RBAC Phase 2 — role-aware enforcement on all mutating routes**, especially **gate the gateway proxy (`ProxyToLoxiLB`, `proxy_service.go`) by HTTP method**: `viewer` → GET only; `operator`/`admin` → writes. Add a capability table + `RequireCapability(action)` middleware; extend `@Security` to the remaining protected handlers. Adopt the 3-role model (admin / operator[=rename `user`] / viewer) and add `role`+`user_id` to JWT claims.
+3. **RBAC Phase 3 — UI role-awareness** (defense-in-depth/UX): fetch role into a context/atom (`is_logged_in_atom` is unused today), add `roles?: string[]` to `IMenuItem` and filter `SideMenu`/`TopNavMenu` + write buttons; add a route guard around `<Layout>`. Choke points: `MENU_LIST`, `Header.tsx:39/53`.
+4. **Phase 4 hardening**: M-1 PBKDF2 → ≥600k rounds (rehash-on-login), M-2 stronger lockout + rate-limit setup/proxy, M-3 shorter token TTL / httpOnly cookie, H-4 CORS specific-origin.
+
+**Owner actions (not code):**
+- Log back into the UI — the JWT-key rotation invalidated the old session token.
+- **Rotate the leaked Google/GitHub OAuth secrets at the provider** (scrubbed from source but still in git history).
+- Commit the pending swagger edits in `loxilb-inference-gateway` (Logs pagination, `/logs` params, `x-not-implemented`/`x-raw-middleware` tags, log-archive `produces` override).
+- Set the §5.5 env vars in any non-testbed deployment (prod must set a NEW license secret and reissue licenses).
