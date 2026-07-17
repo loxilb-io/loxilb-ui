@@ -4,7 +4,6 @@
 import DownloadIcon from '@mui/icons-material/Download';
 import UploadIcon from '@mui/icons-material/Upload';
 import FolderIcon from '@mui/icons-material/Folder';
-import BackupIcon from '@mui/icons-material/Backup';
 import {Box, Stack, Typography, Tabs, Tab, Button, Paper} from '@mui/material';
 import ScrollableBox from 'components/layout/ScrollableBox';
 import ErrorPopUp from 'components/modal/ErrorPopUp';
@@ -15,7 +14,7 @@ import {useErrorPopup} from 'hooks/useErrorPopup';
 import ConfigExportForm from 'components/input/ConfigExportForm';
 import ConfigFileUploader from 'components/input/ConfigFileUploader';
 import {ExportRequest, OperationProgress, ValidationResult} from 'types/config';
-import {request_export_config, request_validate_import_config, request_import_config, query_get_config_files, request_download_config_file, request_delete_config_export} from 'connector/oam/configApi';
+import {request_export_config, request_validate_import_config, request_import_config, query_get_config_files, request_download_config_file} from 'connector/oam/configApi';
 import {t} from 'i18next';
 
 //---------------------------------------------------------
@@ -94,8 +93,7 @@ function FileManagementTab() {
 	const [files, setFiles] = useState<any[]>([]);
 	const [loading, setLoading] = useState(false);
 	const {openPopUp} = usePopUp();
-	const {showDeleteError} = useErrorPopup();
-	
+
 	const fetchFiles = useCallback(async () => {
 		setLoading(true);
 		try {
@@ -158,16 +156,6 @@ function FileManagementTab() {
 		}
 	}, [openPopUp]);
 	
-	const handleDelete = useCallback(async (exportId: string) => {
-		const result = await request_delete_config_export(exportId);
-		if (result.status === 'success') {
-			openPopUp(t('Success'), t('File deleted successfully.'), t('OK'));
-			fetchFiles();
-		} else {
-			showDeleteError('config file', result.error);
-		}
-	}, [openPopUp, showDeleteError, fetchFiles]);
-	
 	return (
 		<Box>
 			<Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
@@ -218,37 +206,12 @@ function FileManagementTab() {
 									>
 										Download
 									</Button>
-									{/* Delete button temporarily disabled - API endpoint not available */}
-									<Button
-										size="small"
-										variant="outlined"
-										color="error"
-										onClick={() => handleDelete(file.id)}
-										disabled
-										title="Delete functionality not yet available in API"
-									>
-										Delete
-									</Button>
 								</Stack>
 							</Stack>
 						</Paper>
 					))}
 				</Stack>
 			)}
-		</Box>
-	);
-}
-
-function BackupHistoryTab() {
-	return (
-		<Box>
-			<Typography variant="h6" gutterBottom>
-				Backup History
-			</Typography>
-			<Typography variant="body2" color="text.secondary">
-				View and manage configuration backups.
-			</Typography>
-			{/* Backup history will be implemented later */}
 		</Box>
 	);
 }
@@ -308,26 +271,49 @@ export default function ConfigManagementPage() {
 		
 		const result = await request_validate_import_config(file);
 		if (result.status === 'success') {
-			// For now, create a basic validation result - will be enhanced in Phase 2
+			// Build the validation result from the server's dry-run response
+			const dryRun = result.result;
+			const errors = (dryRun?.errors ?? []).map(e => ({
+				type: 'error' as const,
+				field: e.field,
+				message: e.message,
+				line: e.record_index,
+			}));
+			const summary = dryRun?.import_summary;
+			const imported =
+				(summary?.instances_imported ?? 0) +
+				(summary?.users_imported ?? 0) +
+				(summary?.settings_updated ?? 0) +
+				(summary?.trial_history_imported ?? 0);
+			const skipped =
+				(summary?.instances_skipped ?? 0) +
+				(summary?.users_skipped ?? 0) +
+				(summary?.trial_history_skipped ?? 0);
+			const isValid = (dryRun?.success ?? false) && errors.length === 0;
+
 			const validationResult: ValidationResult = {
-				isValid: true,
-				errors: [],
+				isValid,
+				errors,
 				warnings: [],
 				summary: {
-					total_records: 1,
-					valid_records: 1,
-					invalid_records: 0
-				}
+					total_records: imported + skipped + errors.length,
+					valid_records: imported,
+					invalid_records: errors.length,
+				},
 			};
-			
+
 			setValidationResult(validationResult);
-			setValidationProgress({ 
-				status: 'success', 
-				progress: 100, 
-				message: 'Validation completed' 
+			setValidationProgress({
+				status: isValid ? 'success' : 'error',
+				progress: 100,
+				message: isValid ? 'Validation completed' : 'Validation found problems',
 			});
-			
-			openPopUp(t('Success'), t('Configuration file validated successfully.'), t('OK'));
+
+			if (isValid) {
+				openPopUp(t('Success'), t('Configuration file validated successfully.'), t('OK'));
+			} else {
+				showAddError('configuration validation', dryRun?.message || t('The configuration file failed validation. Review the reported errors before importing.'));
+			}
 		} else {
 			setValidationProgress({ 
 				status: 'error', 
@@ -395,17 +381,11 @@ export default function ConfigManagementPage() {
 								label="Import" 
 								{...a11yProps(1)} 
 							/>
-							<Tab 
+							<Tab
 								icon={<FolderIcon fontSize="small" />}
 								iconPosition="start"
-								label="File Management" 
-								{...a11yProps(2)} 
-							/>
-							<Tab 
-								icon={<BackupIcon fontSize="small" />}
-								iconPosition="start"
-								label="Backup History" 
-								{...a11yProps(3)} 
+								label="File Management"
+								{...a11yProps(2)}
 							/>
 						</Tabs>
 					</Box>
@@ -427,9 +407,6 @@ export default function ConfigManagementPage() {
 					</TabPanel>
 					<TabPanel value={tabValue} index={2}>
 						<FileManagementTab />
-					</TabPanel>
-					<TabPanel value={tabValue} index={3}>
-						<BackupHistoryTab />
 					</TabPanel>
 				</Stack>
 			</ScrollableBox>

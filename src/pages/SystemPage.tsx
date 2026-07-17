@@ -27,10 +27,6 @@ function LogDetailPannel(props: {data: ILog}) {
 			<Stack spacing={2}>
 				<ValueBunch>
 					<SingleTextBox label={t('Timestamp')} value={props.data.timestamp} />
-					{/*<SingleTextBox label={t('Host')} value={props.data.host} />
-					<SingleTextBox label={t('Program')} value={props.data.programname} />
-					<SingleTextBox label={t('Level')} value={`${props.data.level}/${props.data.severity}`} />
-					<SingleTextBox label={t('Facility')} value={props.data.facility} />*/}
 					<SingleTextBox label={t('Message')} value={props.data.message} />
 				</ValueBunch>
 			</Stack>

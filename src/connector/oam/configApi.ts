@@ -48,11 +48,30 @@ export async function request_import_config(file: File): Promise<ApiResult> {
   }
 }
 
-export async function request_validate_import_config(file: File): Promise<ApiResult> {
+// Shape of the OAM dry-run response (models.ConfigImportResponseOAM)
+export interface ImportDryRunResult {
+  success: boolean;
+  dry_run?: boolean;
+  message?: string;
+  errors?: {type?: string; field?: string; message: string; record?: string; record_index?: number}[];
+  import_summary?: {
+    instances_imported?: number;
+    instances_skipped?: number;
+    users_imported?: number;
+    users_skipped?: number;
+    settings_updated?: number;
+    trial_history_imported?: number;
+    trial_history_skipped?: number;
+  };
+}
+
+export async function request_validate_import_config(file: File): Promise<ApiResult & {result?: ImportDryRunResult}> {
   try {
     const resp = await UPLOAD_FILE_OAM('/config/import/dry-run', file);
     if (resp.code === 200) {
-      return {status: 'success'};
+      // Response body is {message, result: ConfigImportResponseOAM}
+      const result = (resp.data?.result ?? resp.data) as ImportDryRunResult;
+      return {status: 'success', result};
     }
     return {status: 'error', error: resp.message || 'Validation failed'};
   } catch (error) {
@@ -104,11 +123,4 @@ export async function request_download_config_file(exportId: string): Promise<{b
   }
   
   return undefined;
-}
-
-export async function request_delete_config_export(_exportId: string): Promise<ApiResult> {
-  // According to swagger API documentation, there's no DELETE endpoint for config exports
-  // The API only supports GET /oam/config/exports (list) but no DELETE operation
-  console.warn('Delete config export endpoint not available in current API version');
-  return {status: 'error', error: 'Delete functionality not implemented in backend API. Only listing and downloading exports is currently supported.'};
 }
