@@ -1,5 +1,5 @@
 {
-  "vendoredAt": "2026-07-17T04:58:16Z",
+  "vendoredAt": "2026-07-17T05:52:10Z",
   "gateway": {
     "repo": "loxilb-inference-gateway",
     "path": "api/swagger.yml + api/swagger-extras.yml",

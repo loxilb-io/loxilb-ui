@@ -5,6 +5,7 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
 import {Box, Divider, Menu, MenuItem, Stack, Typography} from '@mui/material';
 import {move_forced} from 'common';
+import {request_logout} from 'connector/oam/oam';
 import {usePopUp} from 'hooks/popupHook';
 import {t} from 'i18next';
 
@@ -16,7 +17,9 @@ export default function ProfileMenu(props: {user_name: string; user_id: string; 
 	const {openPopUp} = usePopUp();
 
 	const handleSignOut = () => {
-		openPopUp(t('Sign out'), t('Are you sure you want to sign out?'), t('Yes'), t('Cancel'), () => {
+		openPopUp(t('Sign out'), t('Are you sure you want to sign out?'), t('Yes'), t('Cancel'), async () => {
+			// Invalidate server-side first (best-effort), then clear local state.
+			await request_logout();
 			localStorage.removeItem('access_token');
 			move_forced('/login');
 		});

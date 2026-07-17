@@ -61,32 +61,6 @@ export interface IEnhancedLoginResponse {
 }
 
 /**
- * Form Validation State
- */
-export interface IAuthFormErrors {
-	username?: string;
-	password?: string;
-	email?: string;
-	confirmPassword?: string;
-	general?: string;
-}
-
-/**
- * Auth Form Data
- */
-export interface IAuthFormData {
-	username: string;
-	password: string;
-	email: string;
-	confirmPassword: string;
-}
-
-/**
- * Auth Mode
- */
-export type AuthMode = 'login' | 'signup';
-
-/**
  * User Update Request (for profile editing)
  */
 export interface IUserUpdateRequest {

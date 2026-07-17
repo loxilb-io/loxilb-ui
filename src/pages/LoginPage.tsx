@@ -1,17 +1,16 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {Box, Container, Paper, Typography, Tabs, Tab} from '@mui/material';
+import {Box, Container, Paper, Typography} from '@mui/material';
 import {styled} from '@mui/material/styles';
 import Logo from 'assets/logo/stamp.svg';
 import {is_logged_in, move_forced, save_local_storage} from 'common';
 import Particles from 'components/animation/Particles';
 import BackBoard from 'components/element/BackBoard';
 import AuthForm from 'components/input/AuthForm';
-import {login_user, signup_and_login} from 'connector/user';
-import {t} from 'i18next';
+import {login_user} from 'connector/user';
 import {useEffect, useState} from 'react';
-import {AuthMode, ICreateUserRequest, ILoginRequest} from 'types/user';
+import {ILoginRequest} from 'types/user';
 import package_info from '../../package.json';
 
 //---------------------------------------------------------
@@ -27,38 +26,26 @@ const StyledPaper = styled(Paper)(({theme}) => ({
 
 
 export default function LoginPage() {
-	const [authMode, setAuthMode] = useState<AuthMode>('login');
 	const [error, setError] = useState<string>('');
 	const [loading, setLoading] = useState(false);
 	const version = package_info.version;
 
-	// Handle form submission (login or signup)
-	const handleFormSubmit = async (data: ILoginRequest | ICreateUserRequest) => {
+	// This is a closed system: accounts are provisioned by an administrator
+	// (see docs/SECURITY_RBAC_PLAN.md), so there is no self-service signup —
+	// only login. Additional users are created from the User Management page.
+	const handleFormSubmit = async (data: ILoginRequest) => {
 		setLoading(true);
 		setError('');
 
 		try {
-			let result;
-
-			if (authMode === 'login') {
-				result = await login_user(data as ILoginRequest);
-			} else {
-				result = await signup_and_login(data as ICreateUserRequest);
-			}
-
+			const result = await login_user(data);
 			save_local_storage('access_token', result.token);
 			move_forced('/instance');
 		} catch (err) {
-			setError(err instanceof Error ? err.message : `${authMode === 'login' ? 'Login' : 'Signup'} failed`);
+			setError(err instanceof Error ? err.message : 'Login failed');
 		} finally {
 			setLoading(false);
 		}
-	};
-
-	// Handle tab change
-	const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
-		setAuthMode(newValue === 0 ? 'login' : 'signup');
-		setError(''); // Clear errors when switching modes
 	};
 
 	useEffect(() => {
@@ -91,29 +78,9 @@ export default function LoginPage() {
 						{`v.${version}`}
 					</Typography>
 
-					{/* Auth Mode Tabs */}
-					<Box sx={{ width: '100%', mt: 2 }}>
-						<Tabs
-							value={authMode === 'login' ? 0 : 1}
-							onChange={handleTabChange}
-							variant="fullWidth"
-							sx={{
-								minHeight: '40px',
-								'& .MuiTab-root': {
-									minHeight: '40px',
-									fontSize: '14px',
-									textTransform: 'none',
-								},
-							}}
-						>
-							<Tab label={t('Login')} />
-							{/* <Tab label={t('Sign Up')} /> */}
-						</Tabs>
-					</Box>
-
-					{/* Auth Form */}
+					{/* Auth Form (login only — admin-provisioned accounts) */}
 					<AuthForm
-						mode={authMode}
+						mode="login"
 						onSubmit={handleFormSubmit}
 						loading={loading}
 						error={error}

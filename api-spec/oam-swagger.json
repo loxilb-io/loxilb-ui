@@ -942,6 +942,11 @@
         },
         "/oam/logout": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Invalidates the user's token and logs them out.",
                 "consumes": [
                     "application/json"
@@ -2116,6 +2121,11 @@
         },
         "/oam/users": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Retrieves all users from the database and returns them as a JSON response.",
                 "produces": [
                     "application/json"
@@ -2152,6 +2162,11 @@
                 }
             },
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Creates a new user in the system with optional license key and role",
                 "consumes": [
                     "application/json"
@@ -2198,6 +2213,11 @@
         },
         "/oam/users/licenses": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Retrieves all active and non-expired licenses for the authenticated user",
                 "produces": [
                     "application/json"
@@ -2239,6 +2259,11 @@
         },
         "/oam/users/licenses/{license_id}": {
             "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Updates a specific license key by license ID for the authenticated user",
                 "consumes": [
                     "application/json"
@@ -2309,6 +2334,11 @@
                 }
             },
             "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Deactivates a specific license by ID for the authenticated user",
                 "consumes": [
                     "application/json"
@@ -2366,6 +2396,11 @@
         },
         "/oam/users/licenses/{license_id}/status": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Retrieves status and information for a specific license by ID for the authenticated user",
                 "produces": [
                     "application/json"
@@ -2426,6 +2461,11 @@
         },
         "/oam/users/me": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Retrieves the authenticated user's profile information based on the JWT token",
                 "produces": [
                     "application/json"
@@ -2473,6 +2513,11 @@
         },
         "/oam/users/{id}": {
             "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Updates specific user fields (username, email, role, password) based on provided JSON payload. Only non-empty fields are updated.",
                 "consumes": [
                     "application/json"
@@ -2538,6 +2583,11 @@
                 }
             },
             "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Deletes a user by its ID",
                 "consumes": [
                     "application/json"
@@ -3369,9 +3419,6 @@
                     "description": "Access token from the OAuth provider",
                     "type": "string"
                 },
-                "password": {
-                    "type": "string"
-                },
                 "role": {
                     "description": "e.g., \"admin\", \"user\"",
                     "type": "string"
@@ -3408,6 +3455,14 @@
                     "type": "integer"
                 }
             }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "JWT bearer token from POST /oam/login, sent as \"Bearer \u003ctoken\u003e\".",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }
