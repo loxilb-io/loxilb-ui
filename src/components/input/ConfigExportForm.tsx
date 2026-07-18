@@ -130,7 +130,6 @@ export default function ConfigExportForm({
 					<li>User accounts and roles</li>
 					<li>LoxiLB instance configurations</li>
 					<li>System settings and preferences</li>
-					<li>License information</li>
 				</Typography>
 			</Box>
 		</Stack>

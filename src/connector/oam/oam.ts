@@ -4,7 +4,6 @@
 import {parse_log_lines} from 'common';
 import {ILog, ILogArchiveList} from 'types/log';
 import {IInstance, IInstanceInput, IUser} from 'types/oam';
-import {ILicenseStatusResponse, IInstallLicenseRequest, IUpdateLicenseRequest, ILicensePayload, IUserLicensesResponse} from 'types/license';
 import {ISetupStatus, IUpdateAdminRequest, IUpdateAdminResponse} from 'types/setup';
 import {ApiResult, DOWNLOAD_FILE_STREAM, DownloadProgress} from '../fetcher/fetcher_base';
 import {DELETE_OAM, GET_OAM, POST_OAM, PUT_OAM} from '../fetcher/fetcher_oam';
@@ -84,87 +83,6 @@ export async function query_get_log_archives(): Promise<ILogArchiveList> {
 	return (resp.data ?? {archives: []}) as ILogArchiveList;
 }
 
-//---------------------------------------------------------
-// License Management API Functions
-//---------------------------------------------------------
-// DEPRECATED - use query_get_user_license_status instead
-export async function query_get_license_status(): Promise<ILicenseStatusResponse | undefined> {
-	// Updated to use new user licenses endpoint - returns status of first active license
-	const userLicenses = await query_get_user_licenses();
-	if (!userLicenses?.licenses?.length) return undefined;
-	
-	const firstActiveLicense = userLicenses.licenses.find(license => license.is_active);
-	if (!firstActiveLicense) return undefined;
-	
-	return await query_get_user_license_status(firstActiveLicense.id);
-}
-
-export async function request_install_license(param: IInstallLicenseRequest): Promise<ApiResult> {
-	const resp = await POST_OAM('/license/install', param);
-	if (resp.code !== 201 && resp.code !== 200) {
-		const errorMsg = resp.data?.error || resp.data?.message || resp.message || 'Unknown error';
-		throw new Error(errorMsg);
-	}
-	return {status: 'success'};
-}
-
-// DEPRECATED - use request_update_user_license instead
-export async function request_upgrade_license(param: IUpdateLicenseRequest): Promise<ApiResult> {
-	// Updated to use new user license endpoint - updates first active license
-	const userLicenses = await query_get_user_licenses();
-	if (!userLicenses?.licenses?.length) {
-		return {status: 'error', error: 'No licenses found for user'};
-	}
-	
-	const firstActiveLicense = userLicenses.licenses.find(license => license.is_active);
-	if (!firstActiveLicense) {
-		return {status: 'error', error: 'No active license found to upgrade'};
-	}
-	
-	return await request_update_user_license(firstActiveLicense.id, param);
-}
-
-export async function request_validate_license(param: IInstallLicenseRequest): Promise<ILicensePayload | undefined> {
-	const resp = await POST_OAM<OamPostResp<'/oam/license/validate'>>('/license/validate', param);
-	if (resp.code !== 200) return undefined;
-	return (resp.data ?? undefined) as ILicensePayload | undefined;
-}
-
-export async function query_check_feature_access(feature: string): Promise<boolean> {
-	const resp = await GET_OAM('/license/feature-access', {feature});
-	return resp.code === 200;
-}
-
-//---------------------------------------------------------
-// User License Management API Functions (New endpoints)
-//---------------------------------------------------------
-export async function query_get_user_licenses(): Promise<IUserLicensesResponse | undefined> {
-	const resp = await GET_OAM<OamGetResp<'/oam/users/licenses'>>('/users/licenses');
-	return (resp.data ?? undefined) as IUserLicensesResponse | undefined;
-}
-
-export async function request_update_user_license(licenseId: number, param: IUpdateLicenseRequest): Promise<ApiResult> {
-	const resp = await PUT_OAM(`/users/licenses/${licenseId}`, param);
-	if (resp.code !== 200) {
-		const errorMsg = resp.data?.error || resp.data?.message || resp.message || 'Unknown error';
-		throw new Error(errorMsg);
-	}
-	return {status: 'success'};
-}
-
-export async function query_get_user_license_status(licenseId: number): Promise<ILicenseStatusResponse | undefined> {
-	const resp = await GET_OAM<OamGetResp<'/oam/users/licenses/{license_id}/status'>>(`/users/licenses/${licenseId}/status`);
-	return (resp.data ?? undefined) as ILicenseStatusResponse | undefined;
-}
-
-export async function request_deactivate_user_license(licenseId: number): Promise<ApiResult> {
-	const resp = await DELETE_OAM(`/users/licenses/${licenseId}`);
-	if (resp.code !== 200) {
-		const errorMsg = resp.data?.error || resp.data?.message || resp.message || 'Unknown error';
-		throw new Error(errorMsg);
-	}
-	return {status: 'success'};
-}
 
 //---------------------------------------------------------
 // User Management API Functions

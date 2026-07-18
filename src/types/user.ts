@@ -1,7 +1,6 @@
 //---------------------------------------------------------
 // User Management Types
 //---------------------------------------------------------
-import { ILicenseStatusResponse } from './license';
 
 /**
  * User Creation Request (Traditional Signup)
@@ -10,7 +9,6 @@ export interface ICreateUserRequest {
 	username: string;
 	password: string;
 	email: string; // Make required based on new API
-	license_key?: string; // Optional license assignment
 	role?: string; // Optional role assignment
 }
 
@@ -49,15 +47,11 @@ export interface ILoginResponse {
 }
 
 /**
- * Enhanced Login Response (with license information)
+ * Login Response returned by login_user.
  */
 export interface IEnhancedLoginResponse {
 	id: number;
 	token: string;
-	has_valid_license: boolean;
-	license_expiring: boolean;
-	days_left: number;
-	license_status: ILicenseStatusResponse;
 }
 
 /**

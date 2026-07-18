@@ -48,8 +48,6 @@ export interface ImportDryRunResult {
     users_imported?: number;
     users_skipped?: number;
     settings_updated?: number;
-    trial_history_imported?: number;
-    trial_history_skipped?: number;
   };
 }
 

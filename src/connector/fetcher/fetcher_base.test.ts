@@ -56,9 +56,9 @@ describe('DOWNLOAD_FILE_STREAM', () => {
 describe('GET', () => {
 	it('serializes params into the query string', async () => {
 		mockFetch('{}');
-		await GET('http://oam/oam/license/feature-access', {feature: 'metrics'});
+		await GET('http://oam/oam/logs', {level: 'error'});
 		const [url] = (global.fetch as Mock).mock.calls[0];
-		expect(url).toBe('http://oam/oam/license/feature-access?feature=metrics');
+		expect(url).toBe('http://oam/oam/logs?level=error');
 	});
 
 	it('returns data: null when the body is not JSON instead of throwing', async () => {

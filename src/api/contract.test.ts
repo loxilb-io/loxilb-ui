@@ -121,7 +121,6 @@ describe('oam spec contract', () => {
 		['/oam/users/me', 'get'],
 		['/oam/logs', 'get'],
 		['/oam/setup/status', 'get'],
-		['/oam/users/licenses', 'get'],
 		['/oam/config/files', 'get'],
 		['/oam/config/exports', 'get'],
 		['/oam/login', 'post'],
@@ -129,8 +128,8 @@ describe('oam spec contract', () => {
 		expect(successSchema(oam, p, m)).toBeTruthy();
 	});
 
-	it('login response keeps token + license fields', () => {
+	it('login response returns a token', () => {
 		const props = propNames(oam, successSchema(oam, '/oam/login', 'post'));
-		expect(props).toEqual(expect.arrayContaining(['token', 'license_status', 'has_valid_license']));
+		expect(props).toEqual(expect.arrayContaining(['token']));
 	});
 });

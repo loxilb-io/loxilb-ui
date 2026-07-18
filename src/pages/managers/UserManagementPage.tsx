@@ -3,7 +3,6 @@
 //---------------------------------------------------------
 import PersonIcon from '@mui/icons-material/Person';
 import LockIcon from '@mui/icons-material/Lock';
-import LicenseIcon from '@mui/icons-material/CardMembership';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import EditIcon from '@mui/icons-material/Edit';
 import {Box, Stack, Typography, Tabs, Tab, Button} from '@mui/material';
@@ -13,7 +12,6 @@ import ScrollableBox from 'components/layout/ScrollableBox';
 import UserManagementTable from 'components/table/managers/UserManagementTable';
 import UserEditModal from 'components/modal/UserEditModal';
 import {useMyInfo, useRole} from 'hooks/query/oamHooks';
-import {useUserLicenses} from 'hooks/query/licenseHooks';
 import {useAllUsers, updateUser, deleteUser, createUser} from 'hooks/query/userManagementHooks';
 import {usePopUp} from 'hooks/popupHook';
 import {login_user} from 'connector/user';
@@ -21,12 +19,8 @@ import {save_local_storage, move_forced} from 'common';
 import {t} from 'i18next';
 import {Fragment, useState, useMemo, useEffect, useCallback, useRef} from 'react';
 import {getStableHash} from 'common';
-import {updateUserLicense, deactivateUserLicense, installLicense} from 'hooks/query/licenseHooks';
-import LicenseManagementTable from 'components/table/managers/LicenseManagementTable';
-import LicenseUpdateForm from 'components/input/LicenseUpdateForm';
 import {IUser} from 'types/oam';
 import {IUserUpdateRequest, ICreateUserRequest} from 'types/user';
-import {IUpdateLicenseRequest, IInstallLicenseRequest} from 'types/license';
 
 //---------------------------------------------------------
 // Tab Panel Component
@@ -126,210 +120,6 @@ function PasswordManagementPanel() {
 			</Box>
 		</Stack>
 	);
-}
-
-//---------------------------------------------------------
-// License Management Panel
-//---------------------------------------------------------
-function LicenseManagementPanel() {
-	const {userLicenses, refetch, isLoading} = useUserLicenses();
-	// License install/update/deactivate are admin-only server-side (RBAC
-	// Phase 2); non-admins inherit from the admin license pool, so hide the
-	// mutation buttons and keep the panel read-only for them.
-	const {can_manage_licenses} = useRole();
-
-	const {openPopUp} = usePopUp();
-	
-	const [selectedRows, setSelectedRows] = useState<number[]>([]);
-	const [selectedKey, setSelectedKey] = useState<string | null>(null);
-
-
-	const licenseInfo = useMemo(() => ({licenses: userLicenses?.licenses ?? []}), [userLicenses]);
-
-	// Hash function for license
-	const getHashKey = (item: any) => {
-		const str = `${item.id || ''}_${item.license_type || ''}_${item.license_key_hash || ''}`;
-		return getStableHash(str);
-	};
-
-	// Sorted licenses
-	const sortedLicenses = licenseInfo.licenses ? [...licenseInfo.licenses].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
-
-	// Find selected index in sortedLicenses
-	let selectedIndex = -1;
-	if (selectedRows.length === 1 && licenseInfo.licenses) {
-		const original = licenseInfo.licenses[selectedRows[0]];
-		selectedIndex = sortedLicenses.findIndex(license => getHashKey(license) === getHashKey(original));
-	} else if (selectedKey) {
-		selectedIndex = sortedLicenses.findIndex(license => getHashKey(license).toString() === selectedKey);
-	}
-
-	// Selection handler: map sorted index back to original
-	const handleSelectionChange = (indices: number[]) => {
-		if (indices.length === 1 && licenseInfo.licenses) {
-			const sortedItem = sortedLicenses[indices[0]];
-			const originalIndex = licenseInfo.licenses.findIndex(license => getHashKey(license) === getHashKey(sortedItem));
-			setSelectedRows(originalIndex !== -1 ? [originalIndex] : []);
-		} else {
-			setSelectedRows([]);
-		}
-	};
-
-	useEffect(() => {
-		if (!licenseInfo || licenseInfo.licenses.length === 0) return;
-		if (selectedRows.length === 1) {
-			const item = licenseInfo.licenses[selectedRows[0]];
-			setSelectedKey(getHashKey(item).toString());
-		} else if (selectedKey !== null) {
-			setSelectedKey(null);
-		}
-	}, [licenseInfo, selectedRows, selectedKey]);
-
-	const handleDelete = useCallback(async () => {
-		if (selectedRows.length !== 1) return;
-
-		const licenseId = licenseInfo.licenses[selectedRows[0]].id;
-
-		openPopUp(
-			t('Confirm Delete'),
-			t('Are you sure you want to deactivate this license? This action cannot be undone.'),
-			t('Delete'),
-			t('Cancel'),
-			async () => {
-				try {
-					await deactivateUserLicense(licenseId);
-					openPopUp(t('Success'), t('License deactivated successfully.'), t('OK'));
-					setSelectedRows([]);
-					setTimeout(() => {
-						refetch();
-					}, 1000);
-				} catch (error: any) {
-					openPopUp(t('Error'), t('Failed to deactivate license. {{error}}', {error: error?.message || error}), t('OK'));
-				}
-			}
-		);
-	}, [selectedRows, licenseInfo, openPopUp, refetch]);
-
-	const licenseFormRef = useRef<IInstallLicenseRequest | null>(null);
-	const [isFormValid, setIsFormValid] = useState(false);
-	
-	const handleAdd = useCallback(() => {
-		setIsFormValid(false); // Reset validation state
-		licenseFormRef.current = null; // Reset form data
-		
-		const inputForm = (
-			<LicenseUpdateForm
-				key={Date.now()}
-				onChange={(data: IUpdateLicenseRequest & { isValid?: boolean; errors?: any }) => {
-					licenseFormRef.current = data as IInstallLicenseRequest;
-				}}
-				onValidation={(isValid: boolean) => {
-					setIsFormValid(isValid);
-				}}
-				mode="install"
-			/>
-		);
-
-		openPopUp(
-			'',
-			inputForm,
-			t('Install'),
-			t('Cancel'),
-			async () => {
-				if (!licenseFormRef.current) return;
-
-				try {
-					await installLicense(licenseFormRef.current!);
-					openPopUp(t('Success'), t('License installed successfully.'), t('OK'));
-					setTimeout(() => {
-						refetch();
-					}, 1000);
-				} catch (error: any) {
-					openPopUp(t('Error'), t('Failed to install license. {{error}}', {error: error?.message || error}), t('OK'));
-				}
-			},
-			isFormValid
-		);
-	}, [openPopUp, refetch, isFormValid]);
-
-	const updateFormRef = useRef<IUpdateLicenseRequest | null>(null);
-	const [isUpdateFormValid, setIsUpdateFormValid] = useState(false);
-	
-	const handleUpdate = useCallback(() => {
-		if (selectedRows.length !== 1) return;
-
-		const selectedLicense = licenseInfo.licenses[selectedRows[0]];
-		setIsUpdateFormValid(false); // Reset validation state
-		updateFormRef.current = null; // Reset form data
-
-		const updateForm = (
-			<LicenseUpdateForm
-				key={Date.now()}
-				onChange={(data: IUpdateLicenseRequest & { isValid?: boolean; errors?: any }) => {
-					updateFormRef.current = data;
-				}}
-				onValidation={(isValid: boolean) => {
-					setIsUpdateFormValid(isValid);
-				}}
-				mode="update"
-			/>
-		);
-
-		openPopUp(
-			'',
-			updateForm,
-			t('Update'),
-			t('Cancel'),
-			async () => {
-				if (!updateFormRef.current) return;
-
-				try {
-					await updateUserLicense(selectedLicense.id, updateFormRef.current!);
-					openPopUp(t('Success'), t('License updated successfully.'), t('OK'));
-					setTimeout(() => {
-						refetch();
-					}, 1000);
-				} catch (error: any) {
-					openPopUp(t('Error'), t('Failed to update license. {{error}}', {error: error?.message || error}), t('OK'));
-				}
-			},
-			isUpdateFormValid
-		);
-	}, [selectedRows, licenseInfo, openPopUp, refetch, isUpdateFormValid]);
-
-	const handleRefresh = () => {
-		setSelectedRows([]);
-		setSelectedKey(null);
-		refetch();
-	};
-
-	if (isLoading) {
-		return (
-			<Stack spacing={3}>
-				<Typography variant="h6" display="flex" alignItems="center" gap={1}>
-					<LicenseIcon />
-					{t('License Management')}
-				</Typography>
-				<Typography variant="body2" color="text.secondary">
-					{t('Loading license information...')}
-				</Typography>
-			</Stack>
-		);
-	}
-
-	return licenseInfo ? (
-		<Fragment>
-			<LicenseManagementTable
-				data={{licenses: sortedLicenses}}
-				selected_rows={selectedIndex !== -1 ? [selectedIndex] : []}
-				onChangeSelectedRows={handleSelectionChange}
-				onAdd={can_manage_licenses ? handleAdd : undefined}
-				onDelete={can_manage_licenses ? handleDelete : undefined}
-				onUpdate={can_manage_licenses ? handleUpdate : undefined}
-				onRefresh={handleRefresh}
-			/>
-		</Fragment>
-	) : null;
 }
 
 //---------------------------------------------------------
@@ -667,18 +457,12 @@ export default function UserManagementPage() {
 								label={t('Security')} 
 								{...a11yProps(1)} 
 							/> */}
-							<Tab 
-								icon={<LicenseIcon fontSize="small" />}
-								iconPosition="start"
-								label={t('License')} 
-								{...a11yProps(2)} 
-							/>
 							{isAdmin && (
 								<Tab 
 									icon={<AdminPanelSettingsIcon fontSize="small" />}
 									iconPosition="start"
 									label={t('User List')} 
-									{...a11yProps(3)} 
+									{...a11yProps(1)}
 								/>
 							)}
 						</Tabs>
@@ -692,13 +476,9 @@ export default function UserManagementPage() {
 						<PasswordManagementPanel />
 					</TabPanel> */}
 
-					<TabPanel value={tabValue} index={1}>
-						<LicenseManagementPanel />
-					</TabPanel>
-
 					{isAdmin && (
-						<TabPanel value={tabValue} index={2}>
-							<AdminUserManagementPanel 
+						<TabPanel value={tabValue} index={1}>
+							<AdminUserManagementPanel
 								onRefresh={handleUserRefresh}
 								refetchRef={userRefetchRef}
 								currentUser={my_info}
