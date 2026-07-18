@@ -37,6 +37,18 @@ export async function selectRowByText(page: Page, text: string | RegExp): Promis
 	await row.getByRole('checkbox').check();
 }
 
+/**
+ * Selects a row on a hideCheckbox table by clicking a non-link cell (link
+ * cells navigate away). Row-click selection is single-select only — these
+ * tables have no bulk-select affordance. Pass the cell's column field
+ * (`data-field`) to click; defaults to the implicit `id` cell.
+ */
+export async function selectRowByClick(page: Page, text: string | RegExp, field = 'id'): Promise<void> {
+	const row = rowByText(page, text);
+	await expect(row).toHaveCount(1);
+	await row.locator(`[data-field="${field}"]`).first().click();
+}
+
 /** Refresh via the toolbar and wait for a row matching `text` to appear. */
 export async function refreshUntilRow(page: Page, text: string | RegExp, attempts = 5): Promise<void> {
 	for (let i = 0; i < attempts; i++) {
