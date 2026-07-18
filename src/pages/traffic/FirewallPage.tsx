@@ -153,17 +153,28 @@ export default function FirewallPage() {
    };
 
 	const handleDelete = async () => {
-		if (!inst) return;
+		if (!inst || selected_rows.length === 0) return;
 
-		const item = fw_info.fwAttr[selected_rows[0]];
-		const res = await request_delete_all_firewall_rules(inst, {...item.ruleArguments});
-		if (res.status === 'success') {
-			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
-			set_selected_rows([]);
-			setTimeout(() => {
-				refetch();
-			}, 1000);
-		} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
+		const results = await Promise.all(
+			selected_rows.map(rowIndex => {
+				const item = fw_info.fwAttr[rowIndex];
+				return request_delete_all_firewall_rules(inst, {...item.ruleArguments});
+			}),
+		);
+		const failures = results.filter(res => res.status === 'error');
+
+		if (failures.length === 0) {
+			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
+		} else if (failures.length < results.length) {
+			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`}), t('OK'));
+		} else {
+			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: failures[0].error}), t('OK'));
+			return;
+		}
+		set_selected_rows([]);
+		setTimeout(() => {
+			refetch();
+		}, 1000);
 	};
 
 	const handleAdd = () => {
