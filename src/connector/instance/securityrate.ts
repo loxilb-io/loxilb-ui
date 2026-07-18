@@ -28,7 +28,21 @@ export async function request_configure_securityrate(
 	instance: IInstance,
 	data: ISecurityRateConfigMod,
 ): Promise<ApiResult> {
-	const resp = await POST_INST(instance, `/config/securityrate`, data);
+	// Explicit payload: the page forwards the form ref verbatim, which also
+	// carries the client-side isValid flag — send only ISecurityRateConfigMod fields.
+	const payload: ISecurityRateConfigMod = {
+		synEnabled: data.synEnabled,
+		synThreshold: data.synThreshold,
+		cookieThreshold: data.cookieThreshold,
+		connRateEnabled: data.connRateEnabled,
+		ratePerSec: data.ratePerSec,
+		concurrentLimit: data.concurrentLimit,
+		udpEnabled: data.udpEnabled,
+		udpPktThreshold: data.udpPktThreshold,
+		udpBandwidthMB: data.udpBandwidthMB,
+		whitelistIps: data.whitelistIps,
+	};
+	const resp = await POST_INST(instance, `/config/securityrate`, payload);
 	if (resp.code !== 200 && resp.code !== 204) {
 		const errorMessage = createDetailedErrorMessage(resp, 'Security Rate Limiting');
 		return {status: 'error', error: errorMessage};

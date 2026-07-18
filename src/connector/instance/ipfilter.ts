@@ -16,7 +16,17 @@ export async function query_get_ipfilter_all(instance: IInstance): Promise<IIPFi
 }
 
 export async function request_create_ipfilter_rule(instance: IInstance, data: IIPFilterEntry): Promise<ApiResult> {
-	const resp = await POST_INST(instance, `/config/ipfilter`, data);
+	// Explicit payload: the page forwards the form ref verbatim, which also
+	// carries the client-side isValid flag — send only IIPFilterEntry schema
+	// fields (drop isValid + the read-only packets/bytes counters).
+	const payload: IIPFilterEntry = {
+		filterType: data.filterType,
+		cidr: data.cidr,
+		zone: data.zone,
+		priority: data.priority,
+		action: data.action,
+	};
+	const resp = await POST_INST(instance, `/config/ipfilter`, payload);
 	if (resp.code !== 200 && resp.code !== 204) {
 		const errorMessage = createDetailedErrorMessage(resp, 'IP Filter Operation');
 		return {status: 'error', error: errorMessage};

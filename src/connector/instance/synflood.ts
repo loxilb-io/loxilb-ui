@@ -23,7 +23,15 @@ export async function query_get_synflood_all(instance: IInstance): Promise<ISYNF
  * Enable or configure SYN flood protection
  */
 export async function request_configure_synflood(instance: IInstance, data: ISYNFloodConfigMod): Promise<ApiResult> {
-	const resp = await POST_INST(instance, `/config/synflood`, data);
+	// Explicit payload: the page forwards the form ref verbatim, which also
+	// carries the client-side isValid flag — send only ISYNFloodConfigMod fields.
+	const payload: ISYNFloodConfigMod = {
+		enabled: data.enabled,
+		synThreshold: data.synThreshold,
+		cookieThreshold: data.cookieThreshold,
+		whitelistIps: data.whitelistIps,
+	};
+	const resp = await POST_INST(instance, `/config/synflood`, payload);
 	if (resp.code !== 200 && resp.code !== 204) {
 		const errorMessage = createDetailedErrorMessage(resp, 'SYN Flood Protection');
 		return {status: 'error', error: errorMessage};

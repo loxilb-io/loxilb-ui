@@ -2,6 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {Grid2, Stack, MenuItem} from '@mui/material';
+import {isValidIPAddress, isValidIPAddressCidr} from 'common';
 import NewBox from 'components/layout/NewBox';
 import ParamBox from 'components/element/ParamBox';
 import {t} from 'i18next';
@@ -37,9 +38,10 @@ export default function IPFilterInputForm(props: IPFilterInputFormProps) {
 		// CIDR is required
 		if (!data.cidr || data.cidr.trim() === '') return false;
 
-		// Basic CIDR format validation (simple check)
-		const cidrRegex = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/;
-		if (!cidrRegex.test(data.cidr)) return false;
+		// Accept a bare IP or a CIDR, but reject out-of-range octets and
+		// prefixes (the old regex let 999.1.1.1 and /33 through).
+		const cidr = data.cidr.trim();
+		if (!isValidIPAddress(cidr) && !isValidIPAddressCidr(cidr)) return false;
 
 		// Priority should be positive
 		if (data.priority !== undefined && data.priority < 0) return false;
