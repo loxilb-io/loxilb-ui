@@ -106,13 +106,16 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 		onValidationRef.current?.(isValid);
 	}, [formData, isValid, errors]);
 
-	// Handle form field changes
-	const handleChange = React.useCallback(
-		(field: keyof IServiceConfiguration) => (value: any) => {
-			setFormData(prev => ({...prev, [field]: value}));
-		},
-		[],
-	);
+	// Stable per-field change handlers. Passing a fresh closure each render
+	// (`handleChange('field')` re-invoked in JSX) gave every child sub-form a
+	// NEW onChange identity per render; child effects that depend on `onChange`
+	// (e.g. BasicSettingsForm) then re-fired every render → setState →
+	// "Maximum update depth exceeded" (F14). Memoizing keeps onChange identity
+	// stable so child effects only run on real value changes.
+	const handleServiceArguments = React.useCallback((value: any) => setFormData(prev => ({...prev, serviceArguments: value})), []);
+	const handleSecondaryIPs = React.useCallback((value: any) => setFormData(prev => ({...prev, secondaryIPs: value})), []);
+	const handleAllowedSources = React.useCallback((value: any) => setFormData(prev => ({...prev, allowedSources: value})), []);
+	const handleEndpoints = React.useCallback((value: any) => setFormData(prev => ({...prev, endpoints: value})), []);
 
 	// Don't render until params are loaded to avoid issues
 	if (!params) {
@@ -126,22 +129,22 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 			</Typography>
 
 			<Stack width="100%" height="100%" padding="15px 5px" spacing={2} sx={{overflowY: 'auto'}}>
-			   <BasicSettingsForm 
-			   	value={formData?.serviceArguments ?? {}} 
-			   	onChange={handleChange('serviceArguments')} 
-			   	params={params?.serviceArguments} 
+			   <BasicSettingsForm
+			   	value={formData?.serviceArguments ?? {}}
+			   	onChange={handleServiceArguments}
+			   	params={params?.serviceArguments}
 			   	isEdit={isEdit}
 			   />
-			   <AdvancedSettingsForm value={formData?.serviceArguments ?? {}} onChange={handleChange('serviceArguments')} params={params?.serviceArguments} />
-				   <AIGatewaySettingsForm value={formData?.serviceArguments ?? {}} onChange={handleChange('serviceArguments')} params={params?.serviceArguments} />
-			   <SecondaryIPListInputForm values={formData?.secondaryIPs ?? []} onChange={handleChange('secondaryIPs')} description={params?.secondaryIPs?.description} />
-			   <AllowedSourcesListInputForm values={formData?.allowedSources ?? []} onChange={handleChange('allowedSources')} description={params?.allowedSources?.description} />
-			   <EndpointListForm 
-					values={formData?.endpoints ?? []} 
-					onChange={handleChange('endpoints')} 
+			   <AdvancedSettingsForm value={formData?.serviceArguments ?? {}} onChange={handleServiceArguments} params={params?.serviceArguments} />
+				   <AIGatewaySettingsForm value={formData?.serviceArguments ?? {}} onChange={handleServiceArguments} params={params?.serviceArguments} />
+			   <SecondaryIPListInputForm values={formData?.secondaryIPs ?? []} onChange={handleSecondaryIPs} description={params?.secondaryIPs?.description} />
+			   <AllowedSourcesListInputForm values={formData?.allowedSources ?? []} onChange={handleAllowedSources} description={params?.allowedSources?.description} />
+			   <EndpointListForm
+					values={formData?.endpoints ?? []}
+					onChange={handleEndpoints}
 					params={params?.endpoints}
 					serviceArguments={formData?.serviceArguments}
-					onServiceArgumentsChange={handleChange('serviceArguments')}
+					onServiceArgumentsChange={handleServiceArguments}
 					serviceArgumentsParams={params?.serviceArguments}
 			   />
 			   {/* <HealthCheckForm value={formData?.serviceArguments ?? {}} onChange={handleChange('serviceArguments')} params={params?.serviceArguments} /> */}
