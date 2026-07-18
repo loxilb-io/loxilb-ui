@@ -109,14 +109,21 @@ export default function VxLANPage() {
 
 	const handleSelectionChange = (selection: any) => set_selected_rows(selection);
 	const handleDelete = async () => {
-		if (!inst) return;
-		const item = vxlan_info.vxlanAttr[selected_rows[0]];
-		const res = await request_delete_vxlan(inst, item.vxlanID);
-		if (res.status === 'success') {
-			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
-			set_selected_rows([]);
-			refetch();
-		} else showDeleteError('VXLAN', res.error);
+		if (!inst || selected_rows.length === 0) return;
+
+		const results = await Promise.all(selected_rows.map(rowIndex => request_delete_vxlan(inst, vxlan_info.vxlanAttr[rowIndex].vxlanID)));
+		const failures = results.filter(res => res.status === 'error');
+
+		if (failures.length === 0) {
+			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
+		} else if (failures.length < results.length) {
+			showDeleteError('VXLAN', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+		} else {
+			showDeleteError('VXLAN', failures[0].error);
+			return;
+		}
+		set_selected_rows([]);
+		refetch();
 	};
 
 	const instanceRef = useRef<IVxlanInput | null>(null);

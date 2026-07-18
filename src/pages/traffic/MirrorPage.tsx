@@ -123,17 +123,23 @@ export default function MirrorPage() {
    };
 
 	const handleDelete = async () => {
-		if (!inst) return;
+		if (!inst || selected_rows.length === 0) return;
 
-		const item = mirror_info.mirrAttr[selected_rows[0]];
-		const res = await request_delete_mirror_by_ident(inst, item.mirrorIdent);
-		if (res.status === 'success') {
-			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
-			set_selected_rows([]);
-			setTimeout(() => {
-				refetch();
-			}, 1000);
-		} else showDeleteError('mirror', res.error);
+		const results = await Promise.all(selected_rows.map(rowIndex => request_delete_mirror_by_ident(inst, mirror_info.mirrAttr[rowIndex].mirrorIdent)));
+		const failures = results.filter(res => res.status === 'error');
+
+		if (failures.length === 0) {
+			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
+		} else if (failures.length < results.length) {
+			showDeleteError('mirror', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+		} else {
+			showDeleteError('mirror', failures[0].error);
+			return;
+		}
+		set_selected_rows([]);
+		setTimeout(() => {
+			refetch();
+		}, 1000);
 	};
 
 	const instanceRef = useRef<IMirrorAttribute | null>(null);

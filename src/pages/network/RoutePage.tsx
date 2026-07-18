@@ -78,20 +78,28 @@ export default function RoutePage() {
 		set_selected_rows(originalIndices);
 	};
 	const handleDelete = async () => {
-		if (!inst) return;
+		if (!inst || selected_rows.length === 0) return;
 
-		const item = route_info.routeAttr[selected_rows[0]];
-		const cidr = item.destinationIPNet;
-		const [ip, maskStr] = cidr.split('/');
-		const mask = parseInt(maskStr, 10);
-		const res = await request_delete_route(inst, ip, mask);
-		if (res.status === 'success') {
-			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
-			set_selected_rows([]);
-			setTimeout(() => {
-				refetch();
-			}, 1000);
-		} else showDeleteError('route', res.error);
+		const results = await Promise.all(
+			selected_rows.map(rowIndex => {
+				const [ip, maskStr] = route_info.routeAttr[rowIndex].destinationIPNet.split('/');
+				return request_delete_route(inst, ip, parseInt(maskStr, 10));
+			}),
+		);
+		const failures = results.filter(res => res.status === 'error');
+
+		if (failures.length === 0) {
+			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
+		} else if (failures.length < results.length) {
+			showDeleteError('route', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+		} else {
+			showDeleteError('route', failures[0].error);
+			return;
+		}
+		set_selected_rows([]);
+		setTimeout(() => {
+			refetch();
+		}, 1000);
 	};
 
 	const instanceRef = useRef<IRouteAttrInput | null>(null);

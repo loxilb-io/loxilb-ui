@@ -128,19 +128,26 @@ export default function AIApiKeyPage() {
 	};
 
 	const handleDelete = async () => {
-		if (!inst || selected_rows.length !== 1) return;
+		if (!inst || selected_rows.length === 0) return;
 
-		const item = keys[selected_rows[0]];
-		if (!item?.key_id) return;
+		const targets = selected_rows.map(rowIndex => keys[rowIndex]).filter(item => item?.key_id);
+		if (targets.length === 0) return;
 
-		const res = await request_delete_apikey(inst, item.key_id);
-		if (res.status === 'success') {
-			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
-			set_selected_rows([]);
-			setTimeout(() => {
-				refetch();
-			}, 1000);
-		} else showDeleteError('AI API key', res.error);
+		const results = await Promise.all(targets.map(item => request_delete_apikey(inst, item.key_id!)));
+		const failures = results.filter(res => res.status === 'error');
+
+		if (failures.length === 0) {
+			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
+		} else if (failures.length < results.length) {
+			showDeleteError('AI API key', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+		} else {
+			showDeleteError('AI API key', failures[0].error);
+			return;
+		}
+		set_selected_rows([]);
+		setTimeout(() => {
+			refetch();
+		}, 1000);
 	};
 
 	const handleRefresh = () => {
