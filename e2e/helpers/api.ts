@@ -248,6 +248,48 @@ export async function sweepIpAddresses(family: 'ipv4' | 'ipv6'): Promise<number>
 	return removed;
 }
 
+/** Reserved high VLAN/VXLAN IDs the network specs use — never real config.
+ * (3999 is intentionally avoided — it got wedged during bring-up.) */
+export const TEST_VLAN_IDS = [3990, 3991, 3992];
+export const TEST_VXLAN_IDS = [3999, 3998];
+
+/**
+ * Deletes every reserved-test VLAN. A VLAN with members is undeletable, and
+ * the gateway lists a tagged member as "<dev>.<vid>" but only deletes it by
+ * the base dev — so strip the suffix and remove members first, or the VLAN
+ * wedges (404s forever).
+ */
+export async function sweepVlans(): Promise<number> {
+	const resp = await gw('GET', '/config/vlan/all');
+	if (!resp.ok) return 0;
+	const data = await resp.json();
+	let removed = 0;
+	for (const v of data.vlanAttr ?? []) {
+		if (!TEST_VLAN_IDS.includes(v.vid)) continue;
+		for (const m of v.member ?? []) {
+			const baseDev = typeof m.dev === 'string' && m.dev.endsWith(`.${v.vid}`) ? m.dev.slice(0, m.dev.length - `.${v.vid}`.length) : m.dev;
+			await gw('DELETE', `/config/vlan/${v.vid}/member/${baseDev}/tagged/${m.tagged}`);
+		}
+		const del = await gw('DELETE', `/config/vlan/${v.vid}`);
+		if (del.ok) removed++;
+	}
+	return removed;
+}
+
+/** Deletes every VXLAN whose id is a reserved test id. */
+export async function sweepVxlans(): Promise<number> {
+	const resp = await gw('GET', '/config/tunnel/vxlan/all');
+	if (!resp.ok) return 0;
+	const data = await resp.json();
+	let removed = 0;
+	for (const v of data.vxlanAttr ?? []) {
+		if (!TEST_VXLAN_IDS.includes(v.vxlanID)) continue;
+		const del = await gw('DELETE', `/config/tunnel/vxlan/${v.vxlanID}`);
+		if (del.ok) removed++;
+	}
+	return removed;
+}
+
 /** Deletes every route whose destination sits in a documentation range. */
 export async function sweepRoutes(): Promise<number> {
 	const resp = await gw('GET', '/config/route/all');
