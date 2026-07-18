@@ -38,7 +38,11 @@ function MemberView(props: {name: string; vid: number; data: IMember[]; refetch:
 		const results = await Promise.all(
 			selected_rows.map(rowIndex => {
 				const member = data[rowIndex];
-				return request_delete_vlan_member(inst, vid, member.dev, member.tagged);
+				// The gateway lists a tagged member as "<dev>.<vid>" (e.g. eth0.3999)
+				// but its delete endpoint expects the base device name — passing the
+				// suffixed name 404s and the member is undeletable. Strip the suffix.
+				const baseDev = member.dev.endsWith(`.${vid}`) ? member.dev.slice(0, member.dev.length - `.${vid}`.length) : member.dev;
+				return request_delete_vlan_member(inst, vid, baseDev, member.tagged);
 			}),
 		);
 		const failures = results.filter(res => res.status === 'error');
