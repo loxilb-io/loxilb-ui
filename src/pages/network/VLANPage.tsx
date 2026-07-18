@@ -35,14 +35,24 @@ function MemberView(props: {name: string; vid: number; data: IMember[]; refetch:
 	const handleDelete = async () => {
 		if (!inst || selected_rows.length === 0) return;
 
-		const member = data[selected_rows[0]];
-		const res = await request_delete_vlan_member(inst, vid, member.dev, member.tagged);
+		const results = await Promise.all(
+			selected_rows.map(rowIndex => {
+				const member = data[rowIndex];
+				return request_delete_vlan_member(inst, vid, member.dev, member.tagged);
+			}),
+		);
+		const failures = results.filter(res => res.status === 'error');
 
-		if (res.status === 'success') {
-			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
-			set_selected_rows([]);
-			refetch();
-		} else showDeleteError('VLAN member', res.error);
+		if (failures.length === 0) {
+			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
+		} else if (failures.length < results.length) {
+			showDeleteError('VLAN member', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+		} else {
+			showDeleteError('VLAN member', failures[0].error);
+			return;
+		}
+		set_selected_rows([]);
+		refetch();
 	};
 
 	const instanceRef = useRef<IVlanMemberInput | null>(null);
@@ -134,17 +144,23 @@ export default function VLANPage() {
    };
 
 	const handleDelete = async () => {
-		if (!inst) return;
+		if (!inst || selected_rows.length === 0) return;
 
-		const item = vlan_info.vlanAttr[selected_rows[0]];
-		const res = await request_delete_vlan(inst, item.vid);
-		if (res.status === 'success') {
-			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
-			set_selected_rows([]);
-			setTimeout(() => {
-				refetch();
-			}, 1000);
-		} else showDeleteError('VLAN', res.error);
+		const results = await Promise.all(selected_rows.map(rowIndex => request_delete_vlan(inst, vlan_info.vlanAttr[rowIndex].vid)));
+		const failures = results.filter(res => res.status === 'error');
+
+		if (failures.length === 0) {
+			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
+		} else if (failures.length < results.length) {
+			showDeleteError('VLAN', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+		} else {
+			showDeleteError('VLAN', failures[0].error);
+			return;
+		}
+		set_selected_rows([]);
+		setTimeout(() => {
+			refetch();
+		}, 1000);
 	};
 
 	const instanceRef = useRef<IVlanInput | null>(null);

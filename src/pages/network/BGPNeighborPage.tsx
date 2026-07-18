@@ -25,15 +25,21 @@ export default function BGPNeighborPage() {
 	const {openPopUp, enableYes} = usePopUp();
 
 	const handleDelete = async () => {
-		if (!inst) return;
+		if (!inst || selected_rows.length === 0) return;
 
-		const item = bgp_neighbor_info.bgpNeiAttr[selected_rows[0]];
-		const res = await request_delete_bgp_neighbor(inst, item.ipAddress);
-		if (res.status === 'success') {
-			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
-			set_selected_rows([]);
-			refetch();
-		} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
+		const results = await Promise.all(selected_rows.map(rowIndex => request_delete_bgp_neighbor(inst, bgp_neighbor_info.bgpNeiAttr[rowIndex].ipAddress)));
+		const failures = results.filter(res => res.status === 'error');
+
+		if (failures.length === 0) {
+			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
+		} else if (failures.length < results.length) {
+			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`}), t('OK'));
+		} else {
+			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: failures[0].error}), t('OK'));
+			return;
+		}
+		set_selected_rows([]);
+		refetch();
 	};
 
 	const instanceRef = useRef<IBgpNeighborInput | null>(null);

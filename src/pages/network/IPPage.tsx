@@ -126,20 +126,33 @@ export default function IPPage(props: {family?: 'ipv4' | 'ipv6'}) {
 	};
 
 	const handleDelete = async () => {
-		if (!inst || selected_rows.length !== 1) return;
-		const item = ip_info.ipAttr[selected_rows[0]];
-		if (!item || !item.ipAddress || !item.ipAddress[0]) return;
-		const cidr = item.ipAddress[0];
-		const [ip, maskStr] = cidr.split('/');
-		const mask = parseInt(maskStr, 10);
-		const res = await request_delete_ip(inst, ip, mask, item.dev);
-		if (res.status === 'success') {
-			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
-			set_selected_rows([]);
-			setTimeout(() => {
-				refetch();
-			}, 1000);
-		} else showDeleteError('IP address', res.error);
+		if (!inst || selected_rows.length === 0) return;
+
+		const targets = selected_rows
+			.map(rowIndex => ip_info.ipAttr[rowIndex])
+			.filter(item => item && item.ipAddress && item.ipAddress[0]);
+		if (targets.length === 0) return;
+
+		const results = await Promise.all(
+			targets.map(item => {
+				const [ip, maskStr] = item.ipAddress[0].split('/');
+				return request_delete_ip(inst, ip, parseInt(maskStr, 10), item.dev);
+			}),
+		);
+		const failures = results.filter(res => res.status === 'error');
+
+		if (failures.length === 0) {
+			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
+		} else if (failures.length < results.length) {
+			showDeleteError('IP address', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+		} else {
+			showDeleteError('IP address', failures[0].error);
+			return;
+		}
+		set_selected_rows([]);
+		setTimeout(() => {
+			refetch();
+		}, 1000);
 	};
 
 	const handleAdd = () => {

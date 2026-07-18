@@ -78,17 +78,23 @@ export default function BFDPage() {
 	   set_selected_rows(originalIndices);
    };
 	const handleDelete = async () => {
-		if (!inst) return;
+		if (!inst || selected_rows.length === 0) return;
 
-		const item = attr_info.Attr[selected_rows[0]];
-		const res = await request_delete_bfd(inst, item.remoteIp);
-		if (res.status === 'success') {
-			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
-			set_selected_rows([]);
-			setTimeout(() => {
-				refetch();
-			}, 1000);
-		} else showDeleteError('BFD entry', res.error);
+		const results = await Promise.all(selected_rows.map(rowIndex => request_delete_bfd(inst, attr_info.Attr[rowIndex].remoteIp)));
+		const failures = results.filter(res => res.status === 'error');
+
+		if (failures.length === 0) {
+			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
+		} else if (failures.length < results.length) {
+			showDeleteError('BFD entry', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+		} else {
+			showDeleteError('BFD entry', failures[0].error);
+			return;
+		}
+		set_selected_rows([]);
+		setTimeout(() => {
+			refetch();
+		}, 1000);
 	};
 
    const instanceRef = useRef<IBfdInput | null>(null);

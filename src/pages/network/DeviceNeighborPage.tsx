@@ -78,17 +78,28 @@ export default function DeviceNeighborPage() {
 	   set_selected_rows(originalIndices);
    };
 	const handleDelete = async () => {
-		if (!inst) return;
+		if (!inst || selected_rows.length === 0) return;
 
-		const item = neighbor_info.neighborAttr[selected_rows[0]];
-		const res = await request_delete_device_neighbor(inst, item.ipAddress, item.dev);
-		if (res.status === 'success') {
-			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
-			set_selected_rows([]);
-			setTimeout(() => {
-				refetch();
-			}, 1000);
-		} else showDeleteError('device neighbor', res.error);
+		const results = await Promise.all(
+			selected_rows.map(rowIndex => {
+				const item = neighbor_info.neighborAttr[rowIndex];
+				return request_delete_device_neighbor(inst, item.ipAddress, item.dev);
+			}),
+		);
+		const failures = results.filter(res => res.status === 'error');
+
+		if (failures.length === 0) {
+			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
+		} else if (failures.length < results.length) {
+			showDeleteError('device neighbor', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+		} else {
+			showDeleteError('device neighbor', failures[0].error);
+			return;
+		}
+		set_selected_rows([]);
+		setTimeout(() => {
+			refetch();
+		}, 1000);
 	};
 
 	const instanceRef = useRef<INeighborAttr | null>(null);

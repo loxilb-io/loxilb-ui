@@ -76,18 +76,23 @@ export default function QoSPage() {
 	   set_selected_rows(originalIndices);
    };
 	const handleDelete = async () => {
-		if (!inst) return;
+		if (!inst || selected_rows.length === 0) return;
 
-		const item = qos_info.polAttr[selected_rows[0]];
+		const results = await Promise.all(selected_rows.map(rowIndex => request_delete_qos_policy(inst, qos_info.polAttr[rowIndex].policyIdent)));
+		const failures = results.filter(res => res.status === 'error');
 
-		const res = await request_delete_qos_policy(inst, item.policyIdent);
-		if (res.status === 'success') {
-			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
-			set_selected_rows([]);
-			setTimeout(() => {
-				refetch();
-			}, 1000);
-		} else showDeleteError('QoS policy', res.error);
+		if (failures.length === 0) {
+			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
+		} else if (failures.length < results.length) {
+			showDeleteError('QoS policy', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+		} else {
+			showDeleteError('QoS policy', failures[0].error);
+			return;
+		}
+		set_selected_rows([]);
+		setTimeout(() => {
+			refetch();
+		}, 1000);
 	};
 
 	const instanceRef = useRef<IPolicyAttribute | null>(null);
