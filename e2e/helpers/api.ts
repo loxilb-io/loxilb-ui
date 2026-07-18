@@ -1,0 +1,140 @@
+//---------------------------------------------------------
+// Direct OAM / gateway API access for the E2E suite: seeding,
+// cleanup-verify and the per-spec leftover sweep. Reuses the
+// token captured by auth.setup.ts (never logs in again — the
+// OAM login endpoint is rate-limited).
+//---------------------------------------------------------
+import fs from 'fs';
+import path from 'path';
+
+export const OAM_BASE = process.env.E2E_OAM_URL ?? 'http://223.130.142.175:8080/oam';
+const ADMIN_STATE = path.resolve(__dirname, '../../.auth/admin.json');
+
+export interface Instance {
+	id: number;
+	name: string;
+	host: string;
+	is_active: boolean;
+}
+
+export function adminToken(): string {
+	const state = JSON.parse(fs.readFileSync(ADMIN_STATE, 'utf-8'));
+	for (const origin of state.origins ?? []) {
+		for (const entry of origin.localStorage ?? []) {
+			if (entry.name === 'access_token' && entry.value) return entry.value;
+		}
+	}
+	throw new Error(`No access_token in ${ADMIN_STATE} — did the setup project run?`);
+}
+
+async function oamFetch(pathname: string, init: RequestInit = {}): Promise<Response> {
+	return fetch(`${OAM_BASE}${pathname}`, {
+		...init,
+		headers: {
+			Accept: 'application/json',
+			Authorization: `Bearer ${adminToken()}`,
+			'Content-Type': 'application/json',
+			...(init.headers ?? {}),
+		},
+	});
+}
+
+let cachedInstance: Instance | null = null;
+
+/** The single active testbed instance every page operates on (?name=…). */
+export async function activeInstance(): Promise<Instance> {
+	if (cachedInstance) return cachedInstance;
+	const resp = await oamFetch('/loxilbs');
+	if (!resp.ok) throw new Error(`GET /loxilbs failed: ${resp.status}`);
+	const list = (await resp.json()) as Instance[];
+	const active = list.find(i => i.is_active) ?? list[0];
+	if (!active) throw new Error('No loxilb instance registered on the OAM');
+	cachedInstance = active;
+	return active;
+}
+
+/** Raw gateway call through the OAM proxy (…/loxilbs/{id}/netlox/v1{path}). */
+export async function gw(method: string, apiPath: string, body?: unknown): Promise<Response> {
+	const inst = await activeInstance();
+	return oamFetch(`/loxilbs/${inst.id}/netlox/v1${apiPath}`, {
+		method,
+		...(body !== undefined ? {body: JSON.stringify(body)} : {}),
+	});
+}
+
+export async function gwJson<T = any>(apiPath: string): Promise<T> {
+	const resp = await gw('GET', apiPath);
+	if (!resp.ok) throw new Error(`GET ${apiPath} failed: ${resp.status}`);
+	return (await resp.json()) as T;
+}
+
+//---------------------------------------------------------
+// Entity markers — every test entity is identifiable so the
+// safety-net sweep can never touch real config.
+//---------------------------------------------------------
+export const E2E_PREFIX = 'e2e-';
+/** Reserved documentation ranges (RFC 5737) — inert on the testbed. */
+export const DOC_IP = /^(203\.0\.113\.|198\.51\.100\.)/;
+
+export function isE2eMarked(value: string | undefined | null): boolean {
+	if (!value) return false;
+	return value.startsWith(E2E_PREFIX) || DOC_IP.test(value);
+}
+
+//---------------------------------------------------------
+// Per-resource safety-net sweeps
+//---------------------------------------------------------
+
+export function firewallDeleteQuery(ra: Record<string, unknown>): string {
+	const params = new URLSearchParams();
+	for (const key of ['sourceIP', 'destinationIP', 'minSourcePort', 'maxSourcePort', 'minDestinationPort', 'maxDestinationPort', 'protocol', 'portName', 'preference']) {
+		const v = ra[key];
+		if (v !== undefined && v !== null && v !== '') params.append(key, String(v));
+	}
+	return params.toString();
+}
+
+/**
+ * Deletes every firewall rule whose source/dest sits in a documentation
+ * range. Also covers the allow-rules the gateway auto-creates for dnat LB
+ * VIPs (they carry the documentation-IP VIP as destination).
+ * NOTE: rules created WITH port ranges are undeletable — known gateway bug
+ * (every DELETE 404s "no-rule error"); those survive the sweep inert.
+ */
+export async function sweepFirewallRules(): Promise<number> {
+	const resp = await gw('GET', '/config/firewall/all');
+	if (!resp.ok) return 0;
+	const data = await resp.json();
+	let removed = 0;
+	for (const rule of data.fwAttr ?? []) {
+		const ra = rule.ruleArguments ?? {};
+		if (isE2eMarked(ra.sourceIP) || isE2eMarked(ra.destinationIP)) {
+			const del = await gw('DELETE', `/config/firewall?${firewallDeleteQuery(ra)}`);
+			if (del.ok) removed++;
+		}
+	}
+	return removed;
+}
+
+/** Deletes every LB rule with an e2e- name or documentation-range VIP. */
+export async function sweepLbRules(): Promise<number> {
+	const resp = await gw('GET', '/config/loadbalancer/all');
+	if (!resp.ok) return 0;
+	const data = await resp.json();
+	let removed = 0;
+	for (const rule of data.lbAttr ?? []) {
+		const sa = rule.serviceArguments ?? {};
+		if (isE2eMarked(sa.name) || isE2eMarked(sa.externalIP)) {
+			// Name-delete works for every mode; the tuple endpoints 404 on
+			// fullproxy/L7 (mode 4) rules.
+			const path = sa.name
+				? `/config/loadbalancer/name/${encodeURIComponent(sa.name)}`
+				: sa.portMax && sa.portMax > sa.port
+				? `/config/loadbalancer/externalipaddress/${sa.externalIP}/port/${sa.port}/portmax/${sa.portMax}/protocol/${sa.protocol}`
+				: `/config/loadbalancer/externalipaddress/${sa.externalIP}/port/${sa.port}/protocol/${sa.protocol}`;
+			const del = await gw('DELETE', path);
+			if (del.ok) removed++;
+		}
+	}
+	return removed;
+}
