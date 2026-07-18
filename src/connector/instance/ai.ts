@@ -16,7 +16,10 @@ import type {GwGetResp} from 'api';
  */
 export async function query_get_apikey_all(instance: IInstance, tenant_id?: string): Promise<IApiKeySummary[]> {
 	const resp = await GET_INST<GwGetResp<'/config/ai/apikey'>>(instance, `/config/ai/apikey`, tenant_id ? {tenant_id} : undefined);
-	return resp.data ?? [];
+	// The gateway license-gates AI features with HTTP 402, whose body is a JSON
+	// error *object*, not an array. Never pass a non-array through: spreading /
+	// mapping it in the list pages would throw and white-screen the app.
+	return Array.isArray(resp.data) ? resp.data : [];
 }
 
 export type ApiKeyCreateResult = ApiResult & {created?: IApiKeyCreateResponse};

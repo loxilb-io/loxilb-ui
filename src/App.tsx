@@ -189,6 +189,8 @@ export default function App() {
 									</Route>
 									<Route path="settings" element={<InstanceSettingPage />} />
 									<Route path="dashboard" element={<DashboardPage />} />
+									{/* Unknown instance sub-route → 404 instead of a blank content area */}
+									<Route path="*" element={<Page404 />} />
 								</Route>
 								</Route>
 

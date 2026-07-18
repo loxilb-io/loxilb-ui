@@ -14,7 +14,7 @@ import {useErrorPopup} from 'hooks/useErrorPopup';
 import ConfigExportForm from 'components/input/ConfigExportForm';
 import ConfigFileUploader from 'components/input/ConfigFileUploader';
 import {ExportRequest, OperationProgress, ValidationResult} from 'types/config';
-import {request_export_config, request_validate_import_config, request_import_config, query_get_config_files, request_download_config_file} from 'connector/oam/configApi';
+import {request_export_config, request_validate_import_config, request_import_config, query_get_config_files, request_download_config_file, request_delete_config_file} from 'connector/oam/configApi';
 import {t} from 'i18next';
 
 //---------------------------------------------------------
@@ -155,7 +155,25 @@ function FileManagementTab() {
 			);
 		}
 	}, [openPopUp]);
-	
+
+	const handleDelete = useCallback((exportId: string, filename: string) => {
+		openPopUp(
+			t('Delete Configuration File'),
+			t('Are you sure you want to delete "{{filename}}"? This action cannot be undone.', {filename}),
+			t('Delete'),
+			t('Cancel'),
+			async () => {
+				const result = await request_delete_config_file(exportId);
+				if (result.status === 'success') {
+					openPopUp(t('Success'), t('Configuration file deleted successfully.'), t('OK'));
+					fetchFiles();
+				} else {
+					openPopUp(t('Delete Error'), result.error || t('Failed to delete the configuration file.'), t('OK'));
+				}
+			},
+		);
+	}, [openPopUp, fetchFiles]);
+
 	return (
 		<Box>
 			<Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
@@ -206,6 +224,14 @@ function FileManagementTab() {
 									>
 										Download
 									</Button>
+									<Button
+										size="small"
+										variant="outlined"
+										color="error"
+										onClick={() => handleDelete(file.id, file.filename || `config-${file.id}.json`)}
+									>
+										Delete
+									</Button>
 								</Stack>
 							</Stack>
 						</Paper>
@@ -237,7 +263,7 @@ export default function ConfigManagementPage() {
 
 	// Following DeviceNeighborPage pattern
 	const {openPopUp} = usePopUp();
-	const {errorPopup, showAddError, closeErrorPopup} = useErrorPopup();
+	const {errorPopup, showAddError, showErrorPopup, closeErrorPopup} = useErrorPopup();
 
 	const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
 		setTabValue(newValue);
@@ -312,7 +338,7 @@ export default function ConfigManagementPage() {
 			if (isValid) {
 				openPopUp(t('Success'), t('Configuration file validated successfully.'), t('OK'));
 			} else {
-				showAddError('configuration validation', dryRun?.message || t('The configuration file failed validation. Review the reported errors before importing.'));
+				showErrorPopup(t('Failed to validate the configuration file.'), dryRun?.message || t('The configuration file failed validation. Review the reported errors before importing.'));
 			}
 		} else {
 			setValidationProgress({ 
@@ -320,9 +346,9 @@ export default function ConfigManagementPage() {
 				progress: 0, 
 				message: 'Failed to validate configuration file' 
 			});
-			showAddError('configuration validation', result.error);
+			showErrorPopup(t('Failed to validate the configuration file.'), result.error);
 		}
-	}, [openPopUp, showAddError]);
+	}, [openPopUp, showErrorPopup]);
 
 	const handleImport = useCallback(async (file: File) => {
 		setImportProgress({ status: 'processing', progress: 0, message: 'Importing configuration...' });

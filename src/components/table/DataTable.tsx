@@ -125,7 +125,12 @@ export default function DataTable(props: {
 		};
 	});
 
-	cols.unshift({field: 'id', headerName: 'ID', type: 'number', width: col_width_value['narrow'], align: 'left', headerAlign: 'left', renderCell: TextCell});
+	// Prepend the implicit ID column only when a caller hasn't already declared
+	// one. DataGrid keys columns by `field`; a second `field: 'id'` collides
+	// (duplicate React key → duplicate/omitted cells). Defensive for every caller.
+	if (!cols.some(c => c.field === 'id')) {
+		cols.unshift({field: 'id', headerName: 'ID', type: 'number', width: col_width_value['narrow'], align: 'left', headerAlign: 'left', renderCell: TextCell});
+	}
 
 	const {openPopUp} = usePopUp();
 

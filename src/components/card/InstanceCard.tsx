@@ -35,6 +35,9 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 	
 	// Determine if instance is healthy, active, and clickable
 	const isHealthy = health?.isHealthy !== false; // Default to healthy if health is not available yet
+	// A 402 comes from the OAM license gate before the request reaches the
+	// gateway, so it means "license required", not "gateway down" (E2E F7).
+	const isUnlicensed = health?.code === 402;
 	const isActive = instance_info.is_active; // Use the is_active field from the instance
 	const isDisabled = !isHealthy || !isActive;
 
@@ -186,12 +189,12 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 							{t('Health Status')}
 						</Typography>
 
-						<Typography 
-							variant="caption" 
-							color={isHealthy ? 'success.main' : 'error.main'}
+						<Typography
+							variant="caption"
+							color={isHealthy ? 'success.main' : isUnlicensed ? 'warning.main' : 'error.main'}
 							sx={{ fontWeight: 'bold' }}
 						>
-							{health === null ? t('Checking...') : (isHealthy ? t('Healthy') : t('Down'))}
+							{health === null ? t('Checking...') : (isHealthy ? t('Healthy') : isUnlicensed ? t('License required') : t('Down'))}
 						</Typography>
 					</Box>
 
