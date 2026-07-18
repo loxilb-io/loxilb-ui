@@ -72,22 +72,7 @@ export async function login_user(credentials: ILoginRequest): Promise<IEnhancedL
 			throw new Error('No authentication data returned from server');
 		}
 
-		// Handle both legacy and enhanced login responses
-		const loginData = response.data;
-		
-		// Check if it's enhanced response with license data
-		if (loginData.license_status) {
-			return loginData as IEnhancedLoginResponse;
-		} else {
-			// Legacy response - convert to enhanced format
-			return {
-				...loginData,
-				has_valid_license: false,
-				license_expiring: false,
-				days_left: 0,
-				license_status: null as any
-			} as IEnhancedLoginResponse;
-		}
+		return response.data as IEnhancedLoginResponse;
 	} catch (error) {
 		throw error;
 	}

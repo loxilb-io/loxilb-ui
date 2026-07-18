@@ -309,12 +309,10 @@ export default function ConfigManagementPage() {
 			const imported =
 				(summary?.instances_imported ?? 0) +
 				(summary?.users_imported ?? 0) +
-				(summary?.settings_updated ?? 0) +
-				(summary?.trial_history_imported ?? 0);
+				(summary?.settings_updated ?? 0);
 			const skipped =
 				(summary?.instances_skipped ?? 0) +
-				(summary?.users_skipped ?? 0) +
-				(summary?.trial_history_skipped ?? 0);
+				(summary?.users_skipped ?? 0);
 			const isValid = (dryRun?.success ?? false) && errors.length === 0;
 
 			const validationResult: ValidationResult = {

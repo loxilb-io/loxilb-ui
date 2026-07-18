@@ -90,6 +90,5 @@ export function useRole() {
 		can_manage_users: role === 'admin',
 		can_manage_instances: role === 'admin',
 		can_manage_config: role === 'admin',
-		can_manage_licenses: role === 'admin',
 	};
 }
