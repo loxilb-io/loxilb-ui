@@ -5,7 +5,7 @@ import {Stack} from '@mui/material';
 import ParamBox from 'components/element/ParamBox';
 import HorizontalStack from 'components/layout/HorizontalStack';
 import {t} from 'i18next';
-import {useCallback} from 'react';
+import {useCallback, useRef} from 'react';
 import {IEnumItem} from 'types/global';
 import {IPolicyInfo} from 'types/qos';
 
@@ -19,7 +19,23 @@ const types: IEnumItem[] = [
 export default function PolicyInfoInputForm(props: {value: IPolicyInfo; onChange: any; params?: any}) {
 	const {value, onChange, params} = props;
 
-	const handleChange = useCallback((field: keyof IPolicyInfo) => (newValue: any) => onChange({...value, [field]: newValue}), [value, onChange]);
+	// Accumulate field updates in a ref so several onChange calls landing in the
+	// same React batch — e.g. the Type dropdown's mount-time auto-default (TrTCM)
+	// firing while the user fills the rate fields — merge instead of clobbering
+	// one another through a stale `value` snapshot (F19 sibling: without this the
+	// displayed TrTCM default was dropped from the POST payload). The ref only
+	// accumulates emitted values; the schema-default reset can transiently blank
+	// a field's `value`, and folding that back in here would re-clobber the ref
+	// (the ParamBox re-announces its default, so the ref self-heals regardless).
+	const mergedRef = useRef<IPolicyInfo>(value ?? ({} as IPolicyInfo));
+
+	const handleChange = useCallback(
+		(field: keyof IPolicyInfo) => (newValue: any) => {
+			mergedRef.current = {...mergedRef.current, [field]: newValue};
+			onChange({...mergedRef.current});
+		},
+		[onChange],
+	);
 
 	return (
 		<Stack spacing={2}>
