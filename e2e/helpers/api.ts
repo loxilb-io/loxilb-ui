@@ -75,10 +75,18 @@ export async function gwJson<T = any>(apiPath: string): Promise<T> {
 export const E2E_PREFIX = 'e2e-';
 /** Reserved documentation ranges (RFC 5737) — inert on the testbed. */
 export const DOC_IP = /^(203\.0\.113\.|198\.51\.100\.)/;
+/** Reserved IPv6 documentation range (RFC 3849) — inert on the testbed. */
+export const DOC_IP6 = /^2001:db8:/i;
 
 export function isE2eMarked(value: string | undefined | null): boolean {
 	if (!value) return false;
 	return value.startsWith(E2E_PREFIX) || DOC_IP.test(value);
+}
+
+/** True for any documentation-range address (v4 or v6), with or without a CIDR mask. */
+export function isDocAddr(value: string | undefined | null): boolean {
+	if (!value) return false;
+	return DOC_IP.test(value) || DOC_IP6.test(value);
 }
 
 //---------------------------------------------------------
@@ -214,6 +222,57 @@ export async function sweepIpFilterRules(): Promise<number> {
 			const del = await gw('DELETE', `/config/ipfilter?${q.toString()}`);
 			if (del.ok) removed++;
 		}
+	}
+	return removed;
+}
+
+/**
+ * Deletes every documentation-range address on the given family.
+ * DELETE /config/ip{v4,v6}address/{ip}/{mask}/dev/{dev}. Only doc-range
+ * addresses are ever matched, so real interface IPs are never touched.
+ */
+export async function sweepIpAddresses(family: 'ipv4' | 'ipv6'): Promise<number> {
+	const seg = family === 'ipv6' ? 'ipv6address' : 'ipv4address';
+	const resp = await gw('GET', `/config/${seg}/all`);
+	if (!resp.ok) return 0;
+	const data = await resp.json();
+	let removed = 0;
+	for (const attr of data.ipAttr ?? []) {
+		for (const cidr of attr.ipAddress ?? []) {
+			if (!isDocAddr(cidr)) continue;
+			const [ip, mask] = cidr.split('/');
+			const del = await gw('DELETE', `/config/${seg}/${encodeURIComponent(ip)}/${mask}/dev/${attr.dev}`);
+			if (del.ok) removed++;
+		}
+	}
+	return removed;
+}
+
+/** Deletes every route whose destination sits in a documentation range. */
+export async function sweepRoutes(): Promise<number> {
+	const resp = await gw('GET', '/config/route/all');
+	if (!resp.ok) return 0;
+	const data = await resp.json();
+	let removed = 0;
+	for (const r of data.routeAttr ?? []) {
+		if (!isDocAddr(r.destinationIPNet)) continue;
+		const [ip, mask] = r.destinationIPNet.split('/');
+		const del = await gw('DELETE', `/config/route/destinationIPNet/${encodeURIComponent(ip)}/${mask}`);
+		if (del.ok) removed++;
+	}
+	return removed;
+}
+
+/** Deletes every neighbor whose IP sits in a documentation range. */
+export async function sweepNeighbors(): Promise<number> {
+	const resp = await gw('GET', '/config/neighbor/all');
+	if (!resp.ok) return 0;
+	const data = await resp.json();
+	let removed = 0;
+	for (const n of data.neighborAttr ?? []) {
+		if (!isDocAddr(n.ipAddress)) continue;
+		const del = await gw('DELETE', `/config/neighbor/${encodeURIComponent(n.ipAddress)}/dev/${n.dev}`);
+		if (del.ok) removed++;
 	}
 	return removed;
 }
