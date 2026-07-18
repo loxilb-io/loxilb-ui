@@ -8,8 +8,11 @@ import {t} from 'i18next';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function ChipField(props: {label: string; item_list?: string[]; onDelete?: (item: string) => void}) {
-	const {label, item_list = [], onDelete} = props;
+export default function ChipField(props: {label: string; item_list?: string[] | null; onDelete?: (item: string) => void}) {
+	const {label, onDelete} = props;
+	// The gateway returns e.g. peerIP as null (not []) when empty; a default
+	// param only covers undefined, so coalesce null too or .map() crashes.
+	const item_list = props.item_list ?? [];
 	const min_width = '220px';
 
 	return (
