@@ -38,14 +38,30 @@ export default function MirrorInfoInputForm(props: {value: IMirrorInfo; onChange
 		return uniqueInterfaces.map((interfaceName, index) => ({id: index, name: interfaceName, send_value: interfaceName}));
 	}, [portData]);
 
-	const handleChange = useCallback((field: keyof IMirrorInfo) => (newValue: any) => onChange({...value, [field]: newValue}), [value, onChange]);
+	// Route every mutation through a ref-merged emit so the several onChange
+	// calls that land in the same React batch — the Type auto-default, the port
+	// auto-init, and the disabled-field clears — merge instead of clobbering one
+	// another via a stale `value` snapshot (F19 sibling, same class fixed in the
+	// QoS policyInfo subform). The ParamBox re-announces its default if a reset
+	// transiently blanks a field, so the ref self-heals without folding `value`
+	// back in (which would re-clobber it with the transient undefined).
+	const mergedRef = useRef<IMirrorInfo>(value ?? ({} as IMirrorInfo));
+	const emit = useCallback(
+		(delta: Partial<IMirrorInfo>) => {
+			mergedRef.current = {...mergedRef.current, ...delta};
+			onChange({...mergedRef.current});
+		},
+		[onChange],
+	);
+
+	const handleChange = useCallback((field: keyof IMirrorInfo) => (newValue: any) => emit({[field]: newValue}), [emit]);
 
 	const handleChangeType = useCallback(
 		(send_value: string) => {
 			const typeValue = send_value === '' ? undefined : Number(send_value);
-			onChange({...value, type: typeValue});
+			emit({type: typeValue});
 		},
-		[value, onChange],
+		[emit],
 	);
 
 	// Type에 따른 필드 활성화 조건
@@ -74,7 +90,7 @@ export default function MirrorInfoInputForm(props: {value: IMirrorInfo; onChange
 		// Only initialize if type is undefined AND we haven't successfully set it yet
 		if (value.type === undefined && !typeInitialized.current) {
 			console.log('✅ Initializing type to 0');
-			onChange({...value, type: 0});
+			emit({type: 0});
 			// DON'T set typeInitialized here - wait for value to actually change
 		}
 		
@@ -98,7 +114,7 @@ export default function MirrorInfoInputForm(props: {value: IMirrorInfo; onChange
 		// Only set port if type is defined, port is empty, and we have ports available
 		if (value.type !== undefined && !value.port && portList.length > 0 && !portInitialized.current) {
 			console.log('✅ Initializing port with:', portList[0].send_value);
-			onChange({...value, port: portList[0].send_value as string});
+			emit({port: portList[0].send_value as string});
 			// DON'T set portInitialized here - wait for value to actually change
 		}
 		
@@ -136,7 +152,7 @@ export default function MirrorInfoInputForm(props: {value: IMirrorInfo; onChange
 		}
 
 		if (hasChanges) {
-			onChange({...value, ...updatedForm});
+			emit(updatedForm);
 		}
 	}, [
 		type_index,

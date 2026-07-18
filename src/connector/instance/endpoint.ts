@@ -16,7 +16,20 @@ export async function query_get_endpoint_all(instance: IInstance): Promise<IEndp
 }
 
 export async function request_create_endpoint(instance: IInstance, data: IEndpointInput): Promise<ApiResult> {
-	const resp = await POST_INST(instance, `/config/endpoint`, data);
+	// The input form's onChange emits its validation state (isValid/errors)
+	// alongside the field values; build an explicit IEndpointInput payload so
+	// those client-only keys can never leak into the gateway POST (F22 family).
+	const payload: IEndpointInput = {
+		hostName: data.hostName,
+		name: data.name,
+		inactiveReTries: data.inactiveReTries,
+		probeType: data.probeType,
+		probeReq: data.probeReq,
+		probeResp: data.probeResp,
+		probeDuration: data.probeDuration,
+		probePort: data.probePort,
+	};
+	const resp = await POST_INST(instance, `/config/endpoint`, payload);
 	if (resp.code !== 200 && resp.code !== 204) {
 		const errorMessage = createDetailedErrorMessage(resp, 'Create Endpoint');
 		return {status: 'error', error: errorMessage};

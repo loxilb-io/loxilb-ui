@@ -31,7 +31,13 @@ export async function query_get_sni_certificates(instance: IInstance): Promise<I
  * Multiple loadbalancer rules can share the same certificate by hostname.
  */
 export async function request_register_sni_certificate(instance: IInstance, data: ISNICertificateEntry): Promise<ApiResult> {
-	const resp = await POST_INST(instance, `/sni/certificates`, data);
+	// The input form's onChange emits its validation state (isValid) alongside
+	// the fields; build an explicit ISNICertificateEntry so that client-only key
+	// can never leak into the gateway POST (F22 family), and omit an empty
+	// certPath so the gateway applies its default path.
+	const payload: ISNICertificateEntry = {hostname: data.hostname};
+	if (data.certPath && data.certPath.trim() !== '') payload.certPath = data.certPath;
+	const resp = await POST_INST(instance, `/sni/certificates`, payload);
 	if (resp.code !== 200 && resp.code !== 204) {
 		const errorMessage = createDetailedErrorMessage(resp, 'SNI Certificate Registration');
 		return {status: 'error', error: errorMessage};
