@@ -162,18 +162,22 @@ export async function download_inst_log_archive(
 	await DOWNLOAD_FILE_STREAM(proxied_url, filename, onProgress);
 }
 
-export async function query_instance_health(instance: IInstance): Promise<{isHealthy: boolean; error?: string}> {
+export async function query_instance_health(instance: IInstance): Promise<{isHealthy: boolean; error?: string; code?: number}> {
 	try {
 		// Use proxy API pattern instead of direct endpoint call
 		const response = await GET_INST<GwGetResp<'/version'>>(instance, '/version');
-		
+
 		// Check if the response indicates success (status code 200-299)
 		if (response.code >= 200 && response.code < 300) {
-			return {isHealthy: true};
+			return {isHealthy: true, code: response.code};
 		} else {
-			// Non-success status codes indicate unhealthy instance
+			// Non-success status codes indicate unhealthy instance. Note 402
+			// ("Insufficient licenses") comes from the OAM license gate before the
+			// request reaches the gateway, so it means "license required", not
+			// "gateway down" — the caller distinguishes this (E2E F7).
 			return {
-				isHealthy: false, 
+				isHealthy: false,
+				code: response.code,
 				error: `Server responded with status ${response.code}: ${response.message}`
 			};
 		}

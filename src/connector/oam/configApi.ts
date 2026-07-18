@@ -7,7 +7,7 @@ import {
   FileListResponse
 } from 'types/config';
 import {ApiResult} from '../fetcher/fetcher_base';
-import {GET_OAM, POST_OAM, UPLOAD_FILE_OAM, DOWNLOAD_FILE_OAM} from '../fetcher/fetcher_oam';
+import {GET_OAM, POST_OAM, DELETE_OAM, UPLOAD_FILE_OAM, DOWNLOAD_FILE_OAM} from '../fetcher/fetcher_oam';
 import type {OamGetResp} from 'api';
 
 //---------------------------------------------------------
@@ -107,6 +107,14 @@ export async function query_get_config_files(params?: {
     return (resp.data ?? undefined) as FileListResponse | undefined;
   }
   return undefined;
+}
+
+export async function request_delete_config_file(exportId: string): Promise<ApiResult> {
+  const resp = await DELETE_OAM(`/config/files/${exportId}`);
+  if (resp.code === 200 || resp.code === 204) {
+    return {status: 'success'};
+  }
+  return {status: 'error', error: resp.data?.error || resp.message || 'Failed to delete configuration file'};
 }
 
 export async function request_download_config_file(exportId: string): Promise<{blob: Blob, filename: string} | undefined> {

@@ -30,7 +30,9 @@ export default function AITenantRateLimitPage() {
 	const [extraTenants, setExtraTenants] = useState<string[]>([]);
 
 	const tenants = React.useMemo(() => {
-		const fromKeys = (apiKeys ?? []).map(k => k.tenant_id ?? '').filter(id => id.length > 0);
+		// Guard against a non-array hook result (gateway 402 returns an error object).
+		const keyRows = Array.isArray(apiKeys) ? apiKeys : [];
+		const fromKeys = keyRows.map(k => k.tenant_id ?? '').filter(id => id.length > 0);
 		return Array.from(new Set([...fromKeys, ...extraTenants])).sort();
 	}, [apiKeys, extraTenants]);
 

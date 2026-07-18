@@ -230,7 +230,7 @@ export default function ConfigFileUploader({
 						</Alert>
 					)}
 
-					{validationResult.errors.length === 0 && !isImportSuccess && (
+					{validationResult.isValid && validationResult.errors.length === 0 && !isImportSuccess && (
 						<Alert severity="success">
 							Configuration file is valid and ready for import!
 						</Alert>

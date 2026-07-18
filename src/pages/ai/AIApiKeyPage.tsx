@@ -79,7 +79,12 @@ export default function AIApiKeyPage() {
 	const inst = useInstanceFromURL();
 
 	const {data, refetch} = useApiKeys(inst);
-	const keys = React.useMemo(() => [...(data ?? [])].sort((a, b) => (a.key_id ?? '').localeCompare(b.key_id ?? '')), [data]);
+	// Defense in depth: even though the connector normalizes to an array, never
+	// spread an unchecked hook result (a gateway 402 body is a non-iterable object).
+	const keys = React.useMemo(() => {
+		const rows = Array.isArray(data) ? data : [];
+		return [...rows].sort((a, b) => (a.key_id ?? '').localeCompare(b.key_id ?? ''));
+	}, [data]);
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
 	const {openPopUp, enableYes} = usePopUp();
