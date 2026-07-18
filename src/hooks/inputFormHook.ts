@@ -109,7 +109,7 @@ function getDescriptionDefault(param: any): any {
 	return null;
 }
 
-export function getDefaultValueFromParams<T>(params: any, depth: number = 0): T {
+function getDefaultValueFromParams<T>(params: any, depth: number = 0): T {
 	const result: any = {};
 
 	// 무한 루프 방지

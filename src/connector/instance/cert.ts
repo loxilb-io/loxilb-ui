@@ -37,9 +37,3 @@ export async function request_delete_cert_pem(instance: IInstance, certId: strin
 	}
 	return {status: 'success'};
 }
-
-/** certId metadata: id + derived hostnames + public cert/chain (never the key). */
-export async function query_get_cert_pem(instance: IInstance, certId: string): Promise<ICert | null> {
-	const resp = await GET_INST<ICert>(instance, `/config/cert/${encodeURIComponent(certId)}`);
-	return resp.code === 200 ? resp.data : null;
-}
