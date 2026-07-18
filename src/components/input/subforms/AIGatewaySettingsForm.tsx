@@ -20,11 +20,13 @@ export default function AIGatewaySettingsForm(props: {value: IServiceArguments; 
 	const isL7 = value?.mode === 4 || value?.mode === 6;
 	const disabled = !isL7;
 
+	// Delta update — see LBInputForm.handleServiceArguments for why a full
+	// {...value, field} spread here corrupts sibling sub-forms' fields.
 	const handleChange = useCallback(
 		(field: keyof IServiceArguments) => (newValue: any) => {
-			onChange({...value, [field]: newValue});
+			onChange({[field]: newValue});
 		},
-		[value, onChange],
+		[onChange],
 	);
 
 	return (

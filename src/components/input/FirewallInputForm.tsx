@@ -7,7 +7,7 @@ import useFormWithParams from 'hooks/inputFormHook';
 import {t} from 'i18next';
 import {IFirewallRule} from 'types/firewall';
 import FirewallOptionsForm from './subforms/FirewallOptionsForm';
-import FirewallRuleArgsForm from './subforms/FirewallRuleArgsForm';
+import FirewallRuleArgsForm, {getPortRangeError} from './subforms/FirewallRuleArgsForm';
 import React from 'react';
 
 //---------------------------------------------------------
@@ -22,15 +22,21 @@ export default function FirewallInputForm(props: FirewallInputFormProps) {
 	const {onChange, onValidation} = props;
 	const {form, params, handleChange, errors, isValid} = useFormWithParams<IFirewallRule>('IFirewallRule');
 
+	// Gateway accepts min>max port ranges, so the form must block them (F4 class).
+	const ra = form?.ruleArguments;
+	const portRangesValid =
+		!getPortRangeError(ra?.minSourcePort, ra?.maxSourcePort) && !getPortRangeError(ra?.minDestinationPort, ra?.maxDestinationPort);
+	const formValid = isValid && portRangesValid;
+
 	// Notify parent of validation state and form data
 	React.useEffect(() => {
 		if (form) {
-			onChange({ ...form, isValid, errors });
+			onChange({ ...form, isValid: formValid, errors });
 		}
 		if (onValidation) {
-			onValidation(isValid);
+			onValidation(formValid);
 		}
-	}, [form, isValid, errors, onChange, onValidation]);
+	}, [form, formValid, errors, onChange, onValidation]);
 
 	if (!form) return null;
 	return (

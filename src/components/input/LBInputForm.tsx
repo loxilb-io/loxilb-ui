@@ -112,7 +112,16 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 	// (e.g. BasicSettingsForm) then re-fired every render → setState →
 	// "Maximum update depth exceeded" (F14). Memoizing keeps onChange identity
 	// stable so child effects only run on real value changes.
-	const handleServiceArguments = React.useCallback((value: any) => setFormData(prev => ({...prev, serviceArguments: value})), []);
+	// serviceArguments updates are DELTAS merged over prev: at dialog mount
+	// several enum dropdowns auto-announce their defaults in the same effects
+	// flush, and when each sent a full {...staleSA, field} snapshot the last
+	// write clobbered the others (e.g. backend_protocol wiped by kvHashAlgo) —
+	// and MUI Select never re-fires onChange for the already-displayed value,
+	// so a clobbered field could never reach the POST payload afterwards.
+	const handleServiceArguments = React.useCallback(
+		(delta: any) => setFormData(prev => ({...prev, serviceArguments: {...prev.serviceArguments, ...delta}})),
+		[],
+	);
 	const handleSecondaryIPs = React.useCallback((value: any) => setFormData(prev => ({...prev, secondaryIPs: value})), []);
 	const handleAllowedSources = React.useCallback((value: any) => setFormData(prev => ({...prev, allowedSources: value})), []);
 	const handleEndpoints = React.useCallback((value: any) => setFormData(prev => ({...prev, endpoints: value})), []);

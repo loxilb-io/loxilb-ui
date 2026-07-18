@@ -172,6 +172,18 @@ function getDefaultValueFromParams<T>(params: any, depth: number = 0): T {
 	return result as T;
 }
 
+// Recursively lays `defaults` under `current`: existing (non-undefined)
+// form values always win; defaults only fill the gaps.
+function mergeDefaultsUnder(defaults: any, current: any): any {
+	if (current === undefined || current === null) return defaults;
+	if (typeof current !== 'object' || Array.isArray(current)) return current;
+	if (typeof defaults !== 'object' || defaults === null || Array.isArray(defaults)) return current;
+
+	const merged: any = {...defaults};
+	for (const key of Object.keys(current)) merged[key] = mergeDefaultsUnder(defaults[key], current[key]);
+	return merged;
+}
+
 //---------------------------------------------------------
 // Hook
 //---------------------------------------------------------
@@ -198,7 +210,12 @@ export default function useFormWithParams<T>(paramType: string, onChange?: (data
    const [isValid, setIsValid] = useState<boolean>(true);
 
    useEffect(() => {
-	   if (is_fetched) setForm(getDefaultValueFromParams<T>(params));
+	   // Merge schema defaults UNDER whatever is already in the form instead
+	   // of replacing it. Dropdown auto-defaults (and fast user edits) can land
+	   // in the same effects flush as this reset — child effects run before
+	   // parent effects — and a plain setForm(defaults) silently wiped them
+	   // (e.g. the firewall protocol showed ICMP(1) but POSTed no protocol).
+	   if (is_fetched) setForm(prev => mergeDefaultsUnder(getDefaultValueFromParams<T>(params), prev) as T);
    }, [is_fetched, params]);
 
    useEffect(() => {
@@ -211,8 +228,10 @@ export default function useFormWithParams<T>(paramType: string, onChange?: (data
 
    const handleChange = useCallback(
 	   (field: keyof T) => (value: any) => {
-		   if (!Object.keys(params).length) return;
-
+		   // No empty-params guard here: dropdown auto-defaults (ParamBox/
+		   // DropDownSelectBox) fire on mount, often BEFORE the metadata query
+		   // resolves. Dropping those writes left fields (e.g. firewall
+		   // protocol) displayed in the UI but absent from the POST payload.
 		   const processedValue = params[field as string]?.type === 'integer' || typeof field === 'number' ? Number(value) : value;
 		   const newForm = {...(form || ({} as T)), [field]: processedValue} as T;
 		   setForm(newForm);

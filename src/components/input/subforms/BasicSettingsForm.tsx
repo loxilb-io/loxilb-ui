@@ -16,7 +16,10 @@ import {IServiceArguments} from 'types/load_balancer';
 export default function BasicSettingsForm(props: {value: IServiceArguments; onChange: (val: Partial<IServiceArguments>) => void; params?: any; isEdit?: boolean}) {
 	const {value, onChange, params, isEdit = false} = props;
 
-	const handleChange = useCallback((field: keyof IServiceArguments) => (newValue: any) => onChange({...value, [field]: newValue}), [value, onChange]);
+	// Send a DELTA, not {...value, field}: a stale full-object spread from a
+	// mount-time dropdown auto-default clobbers sibling sub-forms' fields
+	// (see LBInputForm.handleServiceArguments).
+	const handleChange = useCallback((field: keyof IServiceArguments) => (newValue: any) => onChange({[field]: newValue}), [onChange]);
 
 	// Note: protocol defaults to 'tcp' upstream (LBInputForm formData init) and in
 	// the dropdown's display value, so no setState-in-effect is needed here — that
