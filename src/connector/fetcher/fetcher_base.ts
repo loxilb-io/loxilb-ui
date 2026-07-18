@@ -96,6 +96,14 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 		const resp = await fetch(url, mergedOptions);
 
 		if (resp.status === 204) return resp; // No content response
+
+		// Gateway pass-through reads (OAM proxy → LoxiLB / inference-gateway;
+		// URL .../loxilbs/{id}/netlox/...) must NOT trigger a full-app error-page
+		// redirect on 404/5xx. An optional or unimplemented gateway endpoint
+		// (e.g. 501 Not Implemented, or 404) would otherwise take down the whole
+		// UI instead of letting the feature page degrade to an empty / inline
+		// error state (F15). OAM control-plane failures still redirect as before.
+		const isGatewayPassthrough = typeof url === 'string' && /\/loxilbs\/\d+\/netlox\//.test(url);
 		// if (resp.status === 401 || resp.status === 403) {
 		if (resp.status === 401) {
 			// Do not force-redirect when the request itself is for the login endpoint,
@@ -111,19 +119,25 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 			// Return response so caller can handle the error message
 			return resp;
 		} else if (resp.status === 402) move_402();
-		else if (resp.status === 404) move_404();
-		else if (resp.status === 503) move_503();
+		else if (resp.status === 404) {
+			if (!isGatewayPassthrough) move_404();
+		}
+		else if (resp.status === 503) {
+			if (!isGatewayPassthrough) move_503();
+		}
 		else if (resp.status >= 500 && resp.status < 600 && resp.status !== 502 && resp.status !== 503) {
-			const resp_json = await resp.json();
-			const code = resp.status;
-			const message = resp_json.message || resp.statusText;
-			const result = resp_json.result || '';
+			if (!isGatewayPassthrough) {
+				const resp_json = await resp.json();
+				const code = resp.status;
+				const message = resp_json.message || resp.statusText;
+				const result = resp_json.result || '';
 
-			// Filter for "not running" messages and redirect to move_503
-			if (message.includes('not running') || result.includes('not running')) {
-				move_503(code, message);
-			} else {
-				move_500(code, message);
+				// Filter for "not running" messages and redirect to move_503
+				if (message.includes('not running') || result.includes('not running')) {
+					move_503(code, message);
+				} else {
+					move_500(code, message);
+				}
 			}
 		}
 
