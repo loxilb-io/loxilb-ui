@@ -46,11 +46,6 @@ export async function request_create_instance(param: IInstanceInput): Promise<Ap
 	else return {status: 'success'};
 }
 
-export async function request_get_instance_by_id(id: number): Promise<IInstance | undefined> {
-	const resp = await GET_OAM<OamGetResp<'/oam/loxilbs/{id}'>>(`/loxilbs/${id}`);
-	return (resp.data ?? undefined) as IInstance | undefined;
-}
-
 export async function request_update_instance(id: number, param: IInstanceInput): Promise<ApiResult> {
 	const resp = await PUT_OAM(`/loxilbs/${id}`, param);
 	if (resp.code !== 200) return {status: 'error', error: `Failed to update instance with id ${id}: ${resp.message}`};
@@ -60,24 +55,6 @@ export async function request_update_instance(id: number, param: IInstanceInput)
 export async function request_delete_instance(id: number): Promise<ApiResult> {
 	const resp = await DELETE_OAM(`/loxilbs/${id}`);
 	if (resp.code !== 200) return {status: 'error', error: `Failed to delete instance with id ${id}: ${resp.message}`};
-	else return {status: 'success'};
-}
-
-export async function request_upload_firmware(id: number): Promise<ApiResult> {
-	const resp = await PUT_OAM(`/loxilbs/${id}/firmware`);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to upload firmware to instance ${id}: ${resp.message}`};
-	else return {status: 'success'};
-}
-
-export async function request_firmware_install_start(id: number): Promise<ApiResult> {
-	const resp = await PUT_OAM(`/loxilbs/${id}/firmware/start`);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to start firmware installation for instance ${id}: ${resp.message}`};
-	else return {status: 'success'};
-}
-
-export async function request_firmware_install_stop(id: number): Promise<ApiResult> {
-	const resp = await PUT_OAM(`/loxilbs/${id}/firmware/stop`);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to stop firmware installation for instance ${id}: ${resp.message}`};
 	else return {status: 'success'};
 }
 

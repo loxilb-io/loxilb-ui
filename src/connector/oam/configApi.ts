@@ -3,7 +3,6 @@
 //---------------------------------------------------------
 import {
   ExportRequest,
-  ExportListResponse,
   FileListResponse
 } from 'types/config';
 import {ApiResult} from '../fetcher/fetcher_base';
@@ -21,20 +20,8 @@ export async function request_export_config(request: ExportRequest): Promise<Api
   return {status: 'error', error: `Failed to export configuration: ${resp.message}`};
 }
 
-export async function query_get_config_exports(): Promise<ExportListResponse | undefined> {
-  const resp = await GET_OAM<OamGetResp<'/oam/config/exports'>>('/config/exports');
-  if (resp.code === 200) {
-    return {
-      exports: (resp.data?.exports ?? []) as ExportListResponse['exports'],
-      count: resp.data?.count || 0,
-      message: resp.data?.message || 'Success'
-    };
-  }
-  return undefined;
-}
-
 //---------------------------------------------------------
-// Configuration Import Functions  
+// Configuration Import Functions
 //---------------------------------------------------------
 export async function request_import_config(file: File): Promise<ApiResult> {
   try {

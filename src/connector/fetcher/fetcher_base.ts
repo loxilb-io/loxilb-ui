@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {forced_relocation_to_login, get_local_storage, move_404, move_403, move_402, move_500, move_503, move_cors, remove_local_storage, save_local_storage} from 'common';
+import {forced_relocation_to_login, get_local_storage, move_404, move_403, move_402, move_500, move_503, move_cors, remove_local_storage} from 'common';
 
 //---------------------------------------------------------
 // Interfaces
@@ -55,18 +55,9 @@ export function createDetailedErrorMessage(resp: any, operation: string): string
 //---------------------------------------------------------
 // Functions
 //---------------------------------------------------------
-export function save_token(token: string) {
-	save_local_storage('access_token', token);
-}
-
 export function load_token(): string {
 	const access_token = get_local_storage('access_token') ?? '';
 	return access_token;
-}
-
-export function check_token(): boolean {
-	const access_token = get_local_storage('access_token');
-	return typeof access_token !== 'undefined';
 }
 
 export function remove_token() {

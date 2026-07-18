@@ -127,28 +127,6 @@ export const prevent_scroll = {
 	'&::-webkit-scrollbar': {display: 'none'},
 };
 
-export const allow_scroll_y = {
-	overflowX: 'hidden',
-	overflowY: 'auto',
-	touchAction: 'pan-y',
-	WebkitOverflowScrolling: 'none',
-	overscrollBehavior: 'contain',
-	scrollbarWidth: 'none',
-	msOverflowStyle: 'none',
-	'&::-webkit-scrollbar': {display: 'none'},
-};
-
-export const allow_scroll_x = {
-	overflowX: 'auto',
-	overflowY: 'hidden',
-	touchAction: 'pan-x',
-	WebkitOverflowScrolling: 'touch',
-	overscrollBehavior: 'contain',
-	scrollbarWidth: 'none',
-	msOverflowStyle: 'none',
-	'&::-webkit-scrollbar': {display: 'none'},
-};
-
 export const get_url_from_2_depth_name = (menu_list: any, name: string): string => {
 	if (!name) return '';
 	const menuItem = (Object.values(menu_list) as IMenuItem[]).find(item => item.items?.some(subItem => subItem.name === name));
@@ -314,14 +292,14 @@ export function get_menu_root(name: string): string {
 	return '';
 }
 
-export function get_speed_rate_str(value: number): string {
+function get_speed_rate_str(value: number): string {
 	if (value >= 1000000000) return `${(value / 1000000000).toFixed(2)} Gbps`;
 	else if (value >= 1000000) return `${(value / 1000000).toFixed(2)} Mbps`;
 	else if (value >= 1000) return `${(value / 1000).toFixed(2)} Kbps`;
 	else return `${value.toFixed(0)} bps`;
 }
 
-export function get_packet_rate_str(value: number): string {
+function get_packet_rate_str(value: number): string {
 	if (value >= 1000000) return `${(value / 1000000).toFixed(2)} Mpps`;
 	else if (value >= 1000) return `${(value / 1000).toFixed(2)} Kpps`;
 	else return `${value.toFixed(0)} pps`;
@@ -329,14 +307,6 @@ export function get_packet_rate_str(value: number): string {
 
 export function formatRate(rate: number, unit: 'bps' | 'pps' | 'eps' | 'fps'): string {
 	return unit === 'bps' ? get_speed_rate_str(rate) : get_packet_rate_str(rate);
-}
-
-export function detectRateUnit(dataKey: string): 'bps' | 'pps' | 'bytes' | 'packets' {
-	const key = dataKey.toLowerCase();
-	if (key.includes('rate') || key.includes('_per_sec') || key.includes('bps')) return 'bps';
-	if (key.includes('pps') || key.includes('packet') && key.includes('rate')) return 'pps';
-	if (key.includes('packet')) return 'packets';
-	return 'bytes';
 }
 
 export function formatRateForAxis(value: number, unit: 'bps' | 'pps' | 'eps' | 'fps'): string {
@@ -374,18 +344,6 @@ export function getFlagUrl(countryCode: string) {
 	return `https://flagcdn.com/w20/${countryCode.toLowerCase()}.png`;
 }
 
-export function getScaleInfo(value: number) {
-	if (value > 1000000000) return {type: 'Gbps', factor: 1000000000};
-	if (value > 1000000) return {type: 'Mbps', factor: 1000000};
-	if (value > 1000) return {type: 'Kbps', factor: 1000};
-	return {type: 'bps', factor: 1};
-}
-
-export function getMaxFromFormat(fieldMeta?: IPostParamFieldDesc): number | undefined {
-	if (!fieldMeta?.format) return undefined;
-	return MAX_VALUE_BY_FORMAT[fieldMeta.format];
-}
-
 // Helper function to normalize log levels from new API format
 function normalizeLogLevel(level: string): string {
 	switch (level.toUpperCase()) {
@@ -398,7 +356,7 @@ function normalizeLogLevel(level: string): string {
 	}
 }
 
-export function parse_log_line(line: string): ILog | null {
+function parse_log_line(line: string): ILog | null {
 	// Example log line from new API:
 	// INFO: 2025/08/17 09:00:00 ebpf unload - lo
 	// DBG:  2025/08/17 09:00:00 RootCA cert loaded  
@@ -511,13 +469,13 @@ export function format_uptime(uptime_str: string): string {
 	return parts.join(' ');
 }
 
-export function isValidIPv4(ip: string): boolean {
+function isValidIPv4(ip: string): boolean {
 	const ipv4Regex =
 		/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
 	return ipv4Regex.test(ip);
 }
 
-export function isValidIPv6(ip: string): boolean {
+function isValidIPv6(ip: string): boolean {
 	// IPv6 regex pattern
 	const ipv6Regex =
 		/^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$/;
@@ -525,7 +483,7 @@ export function isValidIPv6(ip: string): boolean {
 }
 
 // Validate IPv4 CIDR (e.g., 192.168.1.1/24)
-export function isValidIPv4Cidr(cidr: string): boolean {
+function isValidIPv4Cidr(cidr: string): boolean {
 	const match = cidr.match(/^([0-9.]+)\/(\d{1,2})$/);
 	if (!match) return false;
 	const ip = match[1];
@@ -534,7 +492,7 @@ export function isValidIPv4Cidr(cidr: string): boolean {
 }
 
 // Validate IPv6 CIDR (e.g., 2001:db8::/64)
-export function isValidIPv6Cidr(cidr: string): boolean {
+function isValidIPv6Cidr(cidr: string): boolean {
 	const match = cidr.match(/^([0-9a-fA-F:]+)\/(\d{1,3})$/);
 	if (!match) return false;
 	const ip = match[1];
@@ -602,6 +560,3 @@ export function filterUnusedParams(data: any): any {
 	return filteredObject;
 }
 
-export const verify_params = (data: any, params: IPostParamFieldDesc): boolean => {
-	return true;
-};

@@ -45,15 +45,6 @@ export async function query_get_bgp_defined_sets(
 	return resp.data?.definedsetsAttr ?? [];
 }
 
-export async function request_get_defined_set(
-	instance: IInstance,
-	definesetType: 'prefix' | 'neighbor' | 'aspath' | 'community' | 'extcommunity' | 'largecommunity',
-	typeName: string,
-): Promise<GwGetResp<'/config/bgp/policy/definedsets/{defineset_type}/{type_name}'> | null> {
-	const resp = await GET_INST<GwGetResp<'/config/bgp/policy/definedsets/{defineset_type}/{type_name}'>>(instance, `/config/bgp/policy/definedsets/${definesetType}/${typeName}`);
-	return resp.data;
-}
-
 export async function request_create_defined_set(instance: IInstance, param: any): Promise<ApiResult> {
 	const {definedType, ...body} = param;
 	const resp = await POST_INST(instance, `/config/bgp/policy/definedsets/${definedType}`, body);
