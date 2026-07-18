@@ -299,15 +299,82 @@ any `e2e-`/documentation-IP entity remains (leak detector).
 
 ## 10. Implementation status
 
-**Plan under review — nothing implemented yet** (decision 2026-07-18:
-implementation starts in a dedicated session after plan review).
+**Toolchain + both reference specs DONE and green 2× (2026-07-19).**
 
-Build order when we start:
-1. Toolchain: `npm i -D @playwright/test@1.61.x` + `playwright.config.ts`
-   + `auth.setup.ts` + helpers (`table.ts`, `dialogs.ts`, `api.ts`)
-2. Reference specs first: `traffic/fw.spec.ts` (simplest, carries the F16
-   regression) and `traffic/lb.spec.ts` (largest matrix) — run green 2×
-3. Remaining Group 1, then Groups 4 → 5 → 3 → 2 → 6 → 7 + leak detector
+Done:
+1. ✅ Toolchain: `@playwright/test@1.61.1`, `playwright.config.ts`
+   (HTTP dev server reuse, workers=1, 1280×900, storageState auth),
+   `e2e/auth.setup.ts` (1 login/run), `e2e/fixtures.ts` (console-error
+   guard + F15 error-page guard, auto), helpers (`table.ts`, `dialogs.ts`,
+   `api.ts` incl. per-resource sweeps). `npm run e2e`.
+2. ✅ `traffic/fw.spec.ts` — 10 cases, green 2× consecutively.
+3. ✅ `traffic/lb.spec.ts` — 14 cases (full §1.1 matrix incl. aigw), green 2×.
+
+Next: remaining Group 1 (endpoint/ct/qos/mirror/sni-certs), then Groups
+4 → 5 → 3 → 2 → 6 → 7 + `zz-cleanup.spec.ts` leak detector.
+
+Selector notes for future specs (learned the hard way):
+- ParamBox's Tooltip puts the field DESCRIPTION as aria-label on a wrapper
+  div → use anchored-regex `getByLabel(/^Label( \*)?$/)`.
+- AccordionBox's Tooltip hijacks the summary button's accessible name →
+  locate accordions by the h6 title inside, not by button name.
+- MUI Select fires onChange only when the value CHANGES; option lookups
+  need `exact: true` ('onearm' vs 'hostonearm').
+- `baseURL` needs a trailing slash + relative `page.goto()` paths, or the
+  `/netlox` base is silently dropped.
+- Sticky accordion tooltips intercept dialog-button clicks →
+  `page.mouse.move(0,0)` before submit/cancel.
+
+## 11a. Findings from the reference-spec implementation (2026-07-19)
+
+UI bugs found by the specs and FIXED (all F14/F4-family):
+
+- **F17 render loop (F14 sibling, systemic)**: `useMetadata` returned
+  unstable `get_param`/`param_fields` identities → `useFormWithParams`'
+  default-reset effect re-ran every render → infinite `setForm` loop on
+  EVERY `useFormWithParams` page (seen: firewall Add dialog, ~1,200
+  console errors). Fixed with `useMemo`/`useCallback` in `useMetadata`.
+- **F18 swallowed enum defaults**: dropdown auto-defaults fired before
+  metadata resolved were dropped (`handleChange` empty-params guard) and
+  then wiped by the defaults reset — firewall Protocol displayed ICMP(1)
+  but POSTed no protocol. Fixed: guard removed + merge-defaults-under-form
+  (`mergeDefaultsUnder`) + ParamBox re-announce on value wipe.
+- **F19 LB serviceArguments clobber**: LB sub-forms sent full
+  `{...staleSA, field}` snapshots; concurrent mount auto-defaults
+  last-write-wins clobbered sibling fields (backend_protocol wiped by
+  kvHashAlgo) and MUI Select never re-fires for the displayed value →
+  field unreachable. Fixed: delta updates merged over prev.
+- **F20 endpoint row self-delete**: with P/D mode on, the EP Role enum's
+  auto-default announce filtered the still-empty endpoint row out of the
+  parent and synced back — deleting the row just added. Fixed: concrete
+  `ep_role: 0, nixl_port: 0` defaults at row creation.
+- **F21 fullproxy rules undeletable from the UI**: tuple-based DELETE
+  (`/externalipaddress/...`) returns 404 "no-rule error" for mode-4/L7
+  rules; delete-by-name works for every mode. UI now deletes by name when
+  the rule has one.
+- **F22 payload leaks**: FW + LB create POSTs included client-side
+  `isValid`/`errors` keys. Stripped at both pages.
+- **F23 blank numeric-enum options**: ParamBox rendered gateway metadata
+  numeric enums as blank dropdown options. Fixed.
+- FW form now blocks min>max port ranges (F4 sibling; gateway accepts
+  them, so the form must).
+- DropDownSelectBox got `labelId` (Selects previously had NO accessible
+  name — a11y + testability).
+- `sels.json` now includes CHWBL (8) so the AI-gateway KV matrix is
+  reachable from the UI.
+
+GATEWAY bugs found (need gateway-side fixes; specs tolerate them):
+
+- **GW-1 ranged FW rules undeletable**: a firewall rule created with
+  min/max port ranges can never be deleted — every DELETE (any param
+  combination) 404s "no-rule error". Range-less rules delete fine. Two
+  inert doc-IP drop rules are stuck on the testbed until a gateway fix
+  or restart. `fw.spec` C-args-full accepts 200-or-409 because of this.
+- **GW-2 duplicate LB key upserts**: POST of an existing
+  VIP:port/protocol returns 200 and replaces the rule instead of 4xx.
+  V-dup asserts upsert-no-duplicate-row semantics instead.
+- **GW-3 min>max FW port range accepted**: gateway 2xxs a rule with
+  minSourcePort > maxSourcePort (now blocked client-side).
 
 ## 11. Open points for review
 

@@ -128,3 +128,8 @@ docker-compose.commercial.yml
 deploy.ps1
 make-package.ps1
 .env.e2e.local
+
+# Playwright E2E
+/.auth/
+/test-results/
+/playwright-report/
