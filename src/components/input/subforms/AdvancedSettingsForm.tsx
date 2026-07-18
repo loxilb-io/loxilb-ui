@@ -26,11 +26,13 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 	const path_match_mode_list: IEnumItem[] = path_match_modes;
 	const backend_protocol_list: IEnumItem[] = backend_protocols;
 
+	// Delta update — see LBInputForm.handleServiceArguments for why a full
+	// {...value, field} spread here corrupts sibling sub-forms' fields.
 	const handleChange = useCallback(
 		(field: keyof IServiceArguments) => (newValue: any) => {
-			onChange({...value, [field]: newValue});
+			onChange({[field]: newValue});
 		},
-		[value, onChange],
+		[onChange],
 	);
 
 	return (

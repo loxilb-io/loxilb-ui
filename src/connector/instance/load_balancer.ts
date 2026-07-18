@@ -84,6 +84,21 @@ export async function request_patch_load_balancer_config(
 	return {status: 'success'};
 }
 
+/**
+ * Delete by rule name. This is the RELIABLE delete path: the tuple-based
+ * endpoints below return 404 "no-rule error" for fullproxy/L7 (mode 4)
+ * rules — the gateway keys those differently — while name-delete works for
+ * every mode. Prefer this whenever the rule has a name.
+ */
+export async function request_delete_lb_by_name(instance: IInstance, name: string): Promise<ApiResult> {
+	const resp = await DELETE_INST(instance, `/config/loadbalancer/name/${encodeURIComponent(name)}`);
+	if (resp.code !== 200 && resp.code !== 204) {
+		const errorMessage = createDetailedErrorMessage(resp, 'Delete Load Balancer');
+		return {status: 'error', error: errorMessage};
+	}
+	return {status: 'success'};
+}
+
 export async function request_delete_lb_by_ip_port_proto(instance: IInstance, ip: string, port: number, proto: string): Promise<ApiResult> {
 	const resp = await DELETE_INST(instance, `/config/loadbalancer/externalipaddress/${ip}/port/${port}/protocol/${proto}`);
 	if (resp.code !== 200 && resp.code !== 204) {

@@ -3,7 +3,7 @@
 //---------------------------------------------------------
 import {FormControl, InputLabel, MenuItem, Select, SelectChangeEvent} from '@mui/material';
 import {t} from 'i18next';
-import {useEffect, useState} from 'react';
+import {useEffect, useId, useState} from 'react';
 import {IEnumItem} from 'types/global';
 
 //---------------------------------------------------------
@@ -40,12 +40,16 @@ export default function DropDownSelectBox(props: {label: string; item_list: IEnu
 
 	const is_disabled = disabled || item_list.length === 0;
 
+	// InputLabel must be wired to the Select via labelId — without it the
+	// combobox has NO accessible name (screen readers announce nothing).
+	const labelId = useId();
+
 	return (
 		<FormControl fullWidth size="small" disabled={is_disabled}>
-			<InputLabel>{label}</InputLabel>
+			<InputLabel id={labelId}>{label}</InputLabel>
 
 			{item_list.length > 0 ? (
-				<Select label={label} value={cur_idx} onChange={handleChange} fullWidth disabled={is_disabled}>
+				<Select labelId={labelId} label={label} value={cur_idx} onChange={handleChange} fullWidth disabled={is_disabled}>
 					{item_list.map((item, index) => (
 						<MenuItem key={index} value={index}>
 							{item.name}
@@ -53,7 +57,7 @@ export default function DropDownSelectBox(props: {label: string; item_list: IEnu
 					))}
 				</Select>
 			) : (
-				<Select label={label} value="0" disabled>
+				<Select labelId={labelId} label={label} value="0" disabled>
 					<MenuItem value="0">{t('No items available')}</MenuItem>
 				</Select>
 			)}

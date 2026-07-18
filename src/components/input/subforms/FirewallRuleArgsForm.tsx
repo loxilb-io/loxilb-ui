@@ -13,10 +13,20 @@ import {IEnumItem} from 'types/global';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
+// Exported so FirewallInputForm can gate submit on the same rule (F4 class:
+// a min>max range passes the gateway, so the form must block it).
+export function getPortRangeError(min: number | undefined | null, max: number | undefined | null): string | undefined {
+	if (min == null || max == null) return undefined;
+	return Number(min) > Number(max) ? 'Min port must not exceed max port' : undefined;
+}
+
 export default function FirewallRuleArgsForm(props: {value: IRuleArguments; onChange: (data: IRuleArguments) => void; params?: any}) {
 	const {value, onChange, params} = props;
 
 	const protocol_list: IEnumItem[] = protocolList;
+
+	const srcRangeError = getPortRangeError(value?.minSourcePort, value?.maxSourcePort);
+	const dstRangeError = getPortRangeError(value?.minDestinationPort, value?.maxDestinationPort);
 
 	const handleChange = useCallback((field: keyof IRuleArguments) => (newValue: any) => onChange({...value, [field]: newValue}), [value, onChange]);
 
@@ -31,7 +41,14 @@ export default function FirewallRuleArgsForm(props: {value: IRuleArguments; onCh
 
 				<HorizontalStack>
 				   <ParamBox label={t('Port Min')} value={value?.minSourcePort ?? ''} onChange={handleChange('minSourcePort')} param_desc={{...params?.minSourcePort, type: 'port'}} />
-				   <ParamBox label={t('Port Max')} value={value?.maxSourcePort ?? ''} onChange={handleChange('maxSourcePort')} param_desc={{...params?.maxSourcePort, type: 'port'}} />
+				   <ParamBox
+					   label={t('Port Max')}
+					   value={value?.maxSourcePort ?? ''}
+					   onChange={handleChange('maxSourcePort')}
+					   param_desc={{...params?.maxSourcePort, type: 'port'}}
+					   error={!!srcRangeError}
+					   helperText={srcRangeError && t(srcRangeError)}
+				   />
 				</HorizontalStack>
 			</HorizontalStack>
 
@@ -55,6 +72,8 @@ export default function FirewallRuleArgsForm(props: {value: IRuleArguments; onCh
 					   value={value?.maxDestinationPort ?? ''}
 					   onChange={handleChange('maxDestinationPort')}
 					   param_desc={{...params?.maxDestinationPort, type: 'port'}}
+					   error={!!dstRangeError}
+					   helperText={dstRangeError && t(dstRangeError)}
 				   />
 				</HorizontalStack>
 			</HorizontalStack>

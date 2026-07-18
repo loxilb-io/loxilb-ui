@@ -184,9 +184,10 @@ export default function FirewallPage() {
 			<FirewallInputForm
 				key={Date.now()}
 				onChange={data => {
-					instanceRef.current = data;
+					// Keep client-side validation state (isValid/errors) out of the
+					// POST payload — the gateway only knows {ruleArguments, opts}.
+					instanceRef.current = {ruleArguments: data.ruleArguments, opts: data.opts};
 					enableYes(data.isValid);
-					// enableYes(!!data && data.ruleArguments && data.ruleArguments.portName !== '');
 				}}
 			/>
 		);

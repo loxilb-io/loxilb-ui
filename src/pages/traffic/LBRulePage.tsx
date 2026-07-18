@@ -15,7 +15,7 @@ import QoSPanel from 'components/panel/QOSPanel';
 import SecondaryIPsPanel from 'components/panel/SecondaryIPPanel';
 import SettingsPanel from 'components/panel/SettingPanel';
 import LBTable from 'components/table/traffic/LBTable';
-import {request_create_load_balancer_config, request_delete_lb_by_ip_port_proto, request_delete_lb_by_ip_portrange_proto, request_patch_load_balancer_config} from 'connector/instance/load_balancer';
+import {request_create_load_balancer_config, request_delete_lb_by_ip_port_proto, request_delete_lb_by_ip_portrange_proto, request_delete_lb_by_name, request_patch_load_balancer_config} from 'connector/instance/load_balancer';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useErrorPopup} from 'hooks/useErrorPopup';
@@ -128,6 +128,12 @@ export default function LBRulePage() {
 			const port = selectedLB.serviceArguments.port;
 			const protocol = selectedLB.serviceArguments.protocol;
 
+			// Name-delete works for every mode; the tuple endpoints 404 on
+			// fullproxy/L7 rules (gateway keys those differently).
+			if (selectedLB.serviceArguments.name) {
+				return request_delete_lb_by_name(inst, selectedLB.serviceArguments.name);
+			}
+
 			// if selectedLB.serviceArguments.portMax exists and is greater than port, use that API
 			if (selectedLB.serviceArguments.portMax && selectedLB.serviceArguments.portMax > port) {
 				return request_delete_lb_by_ip_portrange_proto(inst, externalIP, port, selectedLB.serviceArguments.portMax, protocol);
@@ -164,9 +170,12 @@ export default function LBRulePage() {
 		const input_form = (
 			<LBInputForm
 				key={Date.now()}
-				onChange={data  => {
-					instanceRef.current = data;;
-					enableYes(data.isValid); // Only enable if form is valid
+				onChange={data => {
+					// Keep client-side validation state (isValid/errors) out of the
+					// POST payload — the gateway schema has no such keys.
+					const {isValid, errors, ...serviceConfig} = data;
+					instanceRef.current = serviceConfig;
+					enableYes(isValid); // Only enable if form is valid
 				}}
 			/>
 		);

@@ -21,6 +21,7 @@ import {query_get_ha_state_all, query_get_metadata} from 'connector/instance/sta
 import {query_get_synflood_all} from 'connector/instance/synflood';
 import {query_get_vlan_all} from 'connector/instance/vlan';
 import {query_get_vxlan_all} from 'connector/instance/vxlan';
+import {useCallback, useMemo} from 'react';
 import {IPostParamFieldDesc} from 'types/global';
 import {IInstance} from 'types/oam';
 import {useQueryInstanceData} from './common';
@@ -31,28 +32,34 @@ import {useQueryInstanceData} from './common';
 export function useMetadata(instance: IInstance | null, api_endpoint: string) {
 	const {data, isFetched} = useQueryInstanceData(['metadata'], query_get_metadata, instance, true, true);
 
-	const get_param_fields = (url: string): Record<string, IPostParamFieldDesc> | undefined => data?.[url]?.fields;
+	// Both returns MUST be referentially stable across renders:
+	// useFormWithParams feeds them into the useMemo that gates its
+	// setForm() default-reset effect — an unstable identity there re-runs
+	// that effect on every render and loops the whole form (F14 class;
+	// surfaced on the Firewall add dialog by the E2E CRUD suite).
+	const param_fields = useMemo<Record<string, IPostParamFieldDesc> | undefined>(() => data?.[api_endpoint]?.fields, [data, api_endpoint]);
 
-	const get_param_desc_by_path = (url: string, path?: string[]): IPostParamFieldDesc | undefined => {
-		let current: any = get_param_fields(url);
-		if (!path || path.length === 0) return current;
+	const get_param = useCallback(
+		(path?: string[]): IPostParamFieldDesc | undefined => {
+			let current: any = data?.[api_endpoint]?.fields;
+			if (!path || path.length === 0) return current;
 
-		for (const segment of path) {
-			if (!current || typeof current !== 'object') return undefined;
-			else {
+			for (const segment of path) {
+				if (!current || typeof current !== 'object') return undefined;
 				current = current.properties?.[segment] ?? current[segment];
 				if (!current) return undefined;
 			}
-		}
 
-		return current as IPostParamFieldDesc;
-	};
+			return current as IPostParamFieldDesc;
+		},
+		[data, api_endpoint],
+	);
 
 	return {
 		full_metadata: data,
 		is_fetched: isFetched,
-		param_fields: get_param_fields(api_endpoint),
-		get_param: (path?: string[]) => get_param_desc_by_path(api_endpoint, path),
+		param_fields,
+		get_param,
 	};
 }
 

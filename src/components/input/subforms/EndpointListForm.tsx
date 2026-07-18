@@ -47,8 +47,13 @@ export default function EndpointListForm(props: {
 	);
 
 	const handleAdd = useCallback(() => {
-		// Add empty endpoint to local state without calling onChange
-		setLocalEndpoints([...localEndpoints, {endpointIP: '', weight: 1, targetPort: 0, state: '', counter: ''}]);
+		// Add empty endpoint to local state without calling onChange.
+		// ep_role/nixl_port get concrete defaults (0 = normal / use target
+		// port): with P/D mode on the EP Role dropdown would otherwise
+		// auto-announce its default, and that announce path filters the
+		// still-empty row out of the parent — which syncs back and deletes
+		// the row the user just added.
+		setLocalEndpoints([...localEndpoints, {endpointIP: '', weight: 1, targetPort: 0, state: '', counter: '', ep_role: 0, nixl_port: 0}]);
 	}, [localEndpoints]);
 
 	const handleDelete = useCallback(
@@ -61,13 +66,15 @@ export default function EndpointListForm(props: {
 		[localEndpoints, onChange],
 	);
 
+	// Delta update — see LBInputForm.handleServiceArguments for why a full
+	// {...serviceArguments, field} spread here corrupts sibling fields.
 	const handleServiceArgChange = useCallback(
 		(field: keyof IServiceArguments) => (newValue: any) => {
-			if (onServiceArgumentsChange && serviceArguments) {
-				onServiceArgumentsChange({...serviceArguments, [field]: newValue});
+			if (onServiceArgumentsChange) {
+				onServiceArgumentsChange({[field]: newValue} as IServiceArguments);
 			}
 		},
-		[serviceArguments, onServiceArgumentsChange],
+		[onServiceArgumentsChange],
 	);
 
 	const isProbePortEnabled: boolean = serviceArguments?.probetype !== '' && serviceArguments?.probetype !== 'ping';
