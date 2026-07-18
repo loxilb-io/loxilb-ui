@@ -47,8 +47,31 @@ export async function scrollGridToBottom(page: Page): Promise<void> {
 	await page.waitForTimeout(150); // let virtualization render the newly-visible rows
 }
 
+/**
+ * Scrolls the DataGrid top→bottom in overlapping steps until a row matching
+ * `text` renders, returning whether it was found. MUI DataGrid virtualizes, so
+ * a row can sit anywhere in a long, hash-sorted list (e.g. the VLAN table) —
+ * scroll-to-bottom alone misses a middle row. A full scan renders every row at
+ * some step. No-op-ish for short lists (one step, content already fits).
+ */
+export async function revealRow(page: Page, text: string | RegExp): Promise<boolean> {
+	if ((await rowByText(page, text).count()) > 0) return true;
+	const scroller = grid(page).locator('.MuiDataGrid-virtualScroller');
+	if ((await scroller.count()) === 0) return false;
+	const {scrollHeight, clientHeight} = await scroller.evaluate(el => ({scrollHeight: el.scrollHeight, clientHeight: el.clientHeight}));
+	const step = Math.max(120, Math.floor(clientHeight * 0.8));
+	for (let top = 0; top <= scrollHeight; top += step) {
+		await scroller.evaluate((el, t) => {
+			el.scrollTop = t;
+		}, top);
+		await page.waitForTimeout(100);
+		if ((await rowByText(page, text).count()) > 0) return true;
+	}
+	return (await rowByText(page, text).count()) > 0;
+}
+
 export async function selectRowByText(page: Page, text: string | RegExp): Promise<void> {
-	await scrollGridToBottom(page);
+	await revealRow(page, text);
 	const row = rowByText(page, text);
 	await expect(row).toHaveCount(1);
 	await row.getByRole('checkbox').check();
@@ -69,13 +92,36 @@ export async function selectRowByClick(page: Page, text: string | RegExp, field 
 /** Refresh via the toolbar and wait for a row matching `text` to appear. */
 export async function refreshUntilRow(page: Page, text: string | RegExp, attempts = 5): Promise<void> {
 	for (let i = 0; i < attempts; i++) {
-		await scrollGridToBottom(page); // long lists virtualize bottom-sorted rows out
-		if ((await rowByText(page, text).count()) > 0) return;
+		if (await revealRow(page, text)) return; // long lists virtualize rows out
 		await toolbarButton(page, 'Refresh').click();
 		await page.waitForTimeout(1500);
 	}
-	await scrollGridToBottom(page);
+	await revealRow(page, text);
 	await expect(rowByText(page, text).first()).toBeVisible();
+}
+
+/**
+ * Like refreshUntilRow but for tables with no Refresh toolbar button (e.g.
+ * VXLAN): re-fetch by reloading the page instead of clicking Refresh.
+ */
+export async function reloadUntilRow(page: Page, text: string | RegExp, attempts = 5): Promise<void> {
+	for (let i = 0; i < attempts; i++) {
+		if (await revealRow(page, text)) return;
+		await page.reload();
+		await page.waitForTimeout(1000);
+	}
+	await revealRow(page, text);
+	await expect(rowByText(page, text).first()).toBeVisible();
+}
+
+/** reloadUntilRow's inverse — reload until no row matches `text`. */
+export async function reloadUntilGone(page: Page, text: string | RegExp, attempts = 5): Promise<void> {
+	for (let i = 0; i < attempts; i++) {
+		await page.reload();
+		await page.waitForTimeout(1000);
+		if (!(await revealRow(page, text))) return;
+	}
+	await expect(rowByText(page, text)).toHaveCount(0);
 }
 
 /** Refresh via the toolbar and wait for rows matching `text` to disappear. */
@@ -83,8 +129,7 @@ export async function refreshUntilGone(page: Page, text: string | RegExp, attemp
 	for (let i = 0; i < attempts; i++) {
 		await toolbarButton(page, 'Refresh').click();
 		await page.waitForTimeout(1500);
-		await scrollGridToBottom(page);
-		if ((await rowByText(page, text).count()) === 0) return;
+		if (!(await revealRow(page, text))) return;
 	}
 	await expect(rowByText(page, text)).toHaveCount(0);
 }
