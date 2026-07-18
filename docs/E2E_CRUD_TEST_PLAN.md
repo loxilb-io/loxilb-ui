@@ -299,19 +299,31 @@ any `e2e-`/documentation-IP entity remains (leak detector).
 
 ## 10. Implementation status
 
-**Toolchain + both reference specs DONE and green 2× (2026-07-19).**
+**Group 1 (Traffic) COMPLETE — all 7 pages, each green 2× (2026-07-19).**
 
 Done:
 1. ✅ Toolchain: `@playwright/test@1.61.1`, `playwright.config.ts`
    (HTTP dev server reuse, workers=1, 1280×900, storageState auth),
    `e2e/auth.setup.ts` (1 login/run), `e2e/fixtures.ts` (console-error
    guard + F15 error-page guard, auto), helpers (`table.ts`, `dialogs.ts`,
-   `api.ts` incl. per-resource sweeps). `npm run e2e`.
-2. ✅ `traffic/fw.spec.ts` — 10 cases, green 2× consecutively.
+   `api.ts` incl. per-resource sweeps, `form.ts` hoisted field/section/
+   setField). `npm run e2e`.
+2. ✅ `traffic/fw.spec.ts` — 10 cases, green 2×.
 3. ✅ `traffic/lb.spec.ts` — 14 cases (full §1.1 matrix incl. aigw), green 2×.
+4. ✅ `traffic/endpoint.spec.ts` — C-min/C-full/E-update/V-host/D-multi.
+5. ✅ `traffic/conntrack.spec.ts` — read + filter (UI is read-only: no
+   add/edit/delete path exists, so plan §1.4 "D-entry" is not implementable).
+6. ✅ `traffic/qos.spec.ts` — C-min/C-full/V-rates (hideCheckbox table →
+   single-select only, no D-multi; policies attach to a Port with inert-high
+   policer rates).
+7. ✅ `traffic/mirror.spec.ts` — C-span (loopback round-trip) / C-rspan /
+   C-erspan (hideCheckbox → single-select; RSPAN/ERSPAN assert payload and
+   tolerate gateway rejection).
+8. ✅ `traffic/sni-certs.spec.ts` — C-min/C-full/V-host/D-multi. NB the page
+   is NOT a multipart upload — it registers hostname→certPath JSON mappings.
+   Round-trip / D-multi skip unless a registration is listable (see GW-4).
 
-Next: remaining Group 1 (endpoint/ct/qos/mirror/sni-certs), then Groups
-4 → 5 → 3 → 2 → 6 → 7 + `zz-cleanup.spec.ts` leak detector.
+Next: Groups 4 → 5 → 3 → 2 → 6 → 7 + `zz-cleanup.spec.ts` leak detector.
 
 Selector notes for future specs (learned the hard way):
 - ParamBox's Tooltip puts the field DESCRIPTION as aria-label on a wrapper
@@ -363,7 +375,44 @@ UI bugs found by the specs and FIXED (all F14/F4-family):
 - `sels.json` now includes CHWBL (8) so the AI-gateway KV matrix is
   reachable from the UI.
 
+### Group 1 completion findings (2026-07-19, second session)
+
+UI bugs found by the endpoint/qos/mirror/sni specs and FIXED:
+
+- **F24 endpoint payload leak + IP validation gap**: `POST /config/endpoint`
+  leaked the form's `isValid`/`errors` (FW/LB were fixed by F22, endpoint was
+  not) — stripped by building an explicit `IEndpointInput` in the connector.
+  Separately, the endpoint form only checked host non-emptiness, so a
+  malformed host IP (`999.1.1.1`) passed `isValid` while ParamBox flagged it
+  inline (F4/F13 family) — added `isValidIPAddress` to `EndpointInputForm`
+  validation (create mode).
+- **F25 QoS payload leak + dropped Type default**: `POST /config/policy` leaked
+  `isValid`/`errors` (stripped in the connector). And the `policyInfo` subform
+  (`PolicyInfoInputForm`) spread a stale `value` snapshot, so the Type
+  dropdown's mount-time auto-default (TrTCM=0) was clobbered by the rate-field
+  writes in the same React batch — the UI showed TrTCM but POSTed no `type`
+  (F19 sibling). Fixed with a ref-merged emit in the subform.
+- **F26 Mirror subform stale-spread (preemptive)**: `MirrorInfoInputForm` had
+  the same F19-class stale-spread across its Type auto-default, port auto-init,
+  and disabled-field clears — routed all emissions through one ref-merged
+  `emit()` so the SPAN default and every field survive concurrent writes.
+  (MirrorPage already stripped `isValid`/`errors`, so no leak there.)
+- **F27 SNI register payload leak**: `POST /sni/certificates` leaked `isValid`
+  (the sibling PEM dialogs strip, this path did not) — stripped in the
+  connector, which now also omits an empty optional `certPath`.
+
 GATEWAY bugs found (need gateway-side fixes; specs tolerate them):
+
+- **GW-4 SNI registration soft-fails 200 + list shape mismatch**: registering
+  a hostname whose cert files are not on the gateway disk returns HTTP **200**
+  with `{"result":"Error: Failed to load certificate ... check files at
+  /opt/loxilb/cert/{host}"}`, so the UI (which keys success off HTTP 200)
+  falsely reports "registered successfully". Worse, `GET /sni/certificates`
+  returns `{"sniAttr": null}` while the UI connector reads `.certificates`
+  (`query_get_sni_certificates`) — a response-shape mismatch, so the SNI
+  table never lists any cert regardless. SNI UI CRUD is effectively
+  non-functional on a testbed without on-disk cert material; the spec asserts
+  payload correctness and skips the (unreachable) list round-trip.
 
 - **GW-1 ranged FW rules undeletable**: a firewall rule created with
   min/max port ranges can never be deleted — every DELETE (any param

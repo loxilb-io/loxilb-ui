@@ -116,6 +116,86 @@ export async function sweepFirewallRules(): Promise<number> {
 	return removed;
 }
 
+/**
+ * Deletes every endpoint with an e2e- name or documentation-range host.
+ * DELETE /config/endpoint/epipaddress/{host}?name=&probe_type=&probe_port=
+ * (the same identifying tuple the UI delete uses).
+ */
+export async function sweepEndpoints(): Promise<number> {
+	const resp = await gw('GET', '/config/endpoint/all');
+	if (!resp.ok) return 0;
+	const data = await resp.json();
+	let removed = 0;
+	for (const ep of data.Attr ?? []) {
+		if (isE2eMarked(ep.name) || isE2eMarked(ep.hostName)) {
+			const q = new URLSearchParams();
+			if (ep.name) q.append('name', ep.name);
+			if (ep.probeType) q.append('probe_type', ep.probeType);
+			if (ep.probePort) q.append('probe_port', String(ep.probePort));
+			const qs = q.toString();
+			const del = await gw('DELETE', `/config/endpoint/epipaddress/${ep.hostName}${qs ? `?${qs}` : ''}`);
+			if (del.ok) removed++;
+		}
+	}
+	return removed;
+}
+
+/** Unregisters every SNI certificate whose hostname is e2e- marked. */
+export async function sweepSniCerts(): Promise<number> {
+	const resp = await gw('GET', '/sni/certificates');
+	if (!resp.ok) return 0;
+	const data = await resp.json();
+	let removed = 0;
+	// The gateway list key has been observed as both `certificates` and
+	// `sniAttr` (and may be null); tolerate all shapes.
+	for (const c of data.certificates ?? data.sniAttr ?? []) {
+		if (isE2eMarked(c.hostname)) {
+			const del = await gw('DELETE', '/sni/certificates', {hostname: c.hostname});
+			if (del.ok) removed++;
+		}
+	}
+	return removed;
+}
+
+/** Deletes every mirror with an e2e- ident. */
+export async function sweepMirrors(): Promise<number> {
+	const resp = await gw('GET', '/config/mirror/all');
+	if (!resp.ok) return 0;
+	const data = await resp.json();
+	let removed = 0;
+	for (const m of data.mirrAttr ?? []) {
+		if (isE2eMarked(m.mirrorIdent)) {
+			const del = await gw('DELETE', `/config/mirror/ident/${encodeURIComponent(m.mirrorIdent)}`);
+			if (del.ok) removed++;
+		}
+	}
+	return removed;
+}
+
+/** Live port names on the active instance (for mirror/QoS attachment). */
+export async function portNames(): Promise<string[]> {
+	const resp = await gw('GET', '/config/port/all');
+	if (!resp.ok) return [];
+	const data = await resp.json();
+	const attr = data.portAttr ?? data.Attr ?? [];
+	return attr.map((p: any) => p.portName).filter(Boolean);
+}
+
+/** Deletes every QoS policy with an e2e- ident. */
+export async function sweepQosPolicies(): Promise<number> {
+	const resp = await gw('GET', '/config/policy/all');
+	if (!resp.ok) return 0;
+	const data = await resp.json();
+	let removed = 0;
+	for (const pol of data.polAttr ?? []) {
+		if (isE2eMarked(pol.policyIdent)) {
+			const del = await gw('DELETE', `/config/policy/ident/${encodeURIComponent(pol.policyIdent)}`);
+			if (del.ok) removed++;
+		}
+	}
+	return removed;
+}
+
 /** Deletes every LB rule with an e2e- name or documentation-range VIP. */
 export async function sweepLbRules(): Promise<number> {
 	const resp = await gw('GET', '/config/loadbalancer/all');
