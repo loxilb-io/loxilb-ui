@@ -196,6 +196,28 @@ export async function sweepQosPolicies(): Promise<number> {
 	return removed;
 }
 
+/**
+ * Deletes every IP-filter rule whose CIDR sits in a documentation range.
+ * DELETE /config/ipfilter?filterType=&cidr=&zone= (the UI delete tuple).
+ * Safety: only documentation-range CIDRs are ever touched — real filter
+ * rules (0.0.0.0/0, mgmt ranges) can never match DOC_IP.
+ */
+export async function sweepIpFilterRules(): Promise<number> {
+	const resp = await gw('GET', '/config/ipfilter/all');
+	if (!resp.ok) return 0;
+	const data = await resp.json();
+	let removed = 0;
+	for (const rule of data.ipFilterAttr ?? []) {
+		if (isE2eMarked(rule.cidr)) {
+			const q = new URLSearchParams({filterType: rule.filterType, cidr: rule.cidr});
+			if (rule.zone !== undefined && rule.zone !== null) q.append('zone', String(rule.zone));
+			const del = await gw('DELETE', `/config/ipfilter?${q.toString()}`);
+			if (del.ok) removed++;
+		}
+	}
+	return removed;
+}
+
 /** Deletes every LB rule with an e2e- name or documentation-range VIP. */
 export async function sweepLbRules(): Promise<number> {
 	const resp = await gw('GET', '/config/loadbalancer/all');
