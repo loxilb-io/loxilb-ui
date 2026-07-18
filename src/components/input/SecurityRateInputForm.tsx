@@ -16,21 +16,43 @@ interface SecurityRateInputFormProps {
 	onChange: (data: ISecurityRateConfigMod & {isValid?: boolean}) => void;
 }
 
+// Per-field defaults. The gateway omits false booleans (omitempty), so an
+// existing config loaded for edit can arrive missing e.g. udpEnabled — merge
+// each field over these defaults rather than taking `value` wholesale, or the
+// POST drops the missing keys and the gateway 422s. (SYNFloodInputForm defends
+// the same way.)
+const DEFAULT_FORM: ISecurityRateConfigMod = {
+	synEnabled: true,
+	synThreshold: 100,
+	cookieThreshold: 50,
+	connRateEnabled: true,
+	ratePerSec: 50,
+	concurrentLimit: 200,
+	udpEnabled: false,
+	udpPktThreshold: 1000,
+	udpBandwidthMB: 100,
+	whitelistIps: [],
+};
+
+function withDefaults(value?: ISecurityRateConfigMod): ISecurityRateConfigMod {
+	return {
+		synEnabled: value?.synEnabled ?? DEFAULT_FORM.synEnabled,
+		synThreshold: value?.synThreshold ?? DEFAULT_FORM.synThreshold,
+		cookieThreshold: value?.cookieThreshold ?? DEFAULT_FORM.cookieThreshold,
+		connRateEnabled: value?.connRateEnabled ?? DEFAULT_FORM.connRateEnabled,
+		ratePerSec: value?.ratePerSec ?? DEFAULT_FORM.ratePerSec,
+		concurrentLimit: value?.concurrentLimit ?? DEFAULT_FORM.concurrentLimit,
+		udpEnabled: value?.udpEnabled ?? DEFAULT_FORM.udpEnabled,
+		udpPktThreshold: value?.udpPktThreshold ?? DEFAULT_FORM.udpPktThreshold,
+		udpBandwidthMB: value?.udpBandwidthMB ?? DEFAULT_FORM.udpBandwidthMB,
+		whitelistIps: value?.whitelistIps ?? DEFAULT_FORM.whitelistIps,
+	};
+}
+
 export default function SecurityRateInputForm(props: SecurityRateInputFormProps) {
 	const {onChange, value} = props;
 
-	const [form, setForm] = React.useState<ISecurityRateConfigMod>(value ?? {
-		synEnabled: true,
-		synThreshold: 100,
-		cookieThreshold: 50,
-		connRateEnabled: true,
-		ratePerSec: 50,
-		concurrentLimit: 200,
-		udpEnabled: false,
-		udpPktThreshold: 1000,
-		udpBandwidthMB: 100,
-		whitelistIps: [],
-	});
+	const [form, setForm] = React.useState<ISecurityRateConfigMod>(withDefaults(value));
 
 	const [whitelistInput, setWhitelistInput] = React.useState((value?.whitelistIps ?? []).join(', '));
 
@@ -59,7 +81,7 @@ export default function SecurityRateInputForm(props: SecurityRateInputFormProps)
 
 	React.useEffect(() => {
 		if (value) {
-			setForm(value);
+			setForm(withDefaults(value));
 			setWhitelistInput((value.whitelistIps ?? []).join(', '));
 		}
 	}, [value]);
