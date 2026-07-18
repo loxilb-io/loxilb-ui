@@ -1,5 +1,15 @@
 # UI Cleanup + License-Removal Plan — RESUME HERE
 
+> **STATUS 2026-07-18c — T1, T2, T3 ALL COMPLETE, committed + deployed + live-validated. Only T4 (testbed teardown) remains. Nothing pushed.**
+> - **T1** ✅ loxilb-ui `579e6ec` (dead code). Correction: `extracts.ts` kept — `extractHaData` is used by HACard; only the 3 named dead exports removed.
+> - **T2b UI** ✅ loxilb-ui `e0a5564` (License tab/hooks/atoms/types/endpoints/instance-gate all removed; tsc + browser clean).
+> - **T2a OAM + T3/F11** ✅ oam-loxilb `5f90ba1` (LicenseValidationMiddleware + all license/trial code gone; proxy auth-only; UpdateUser same-value 500→200). Rebuilt+redeployed to kv-client (reused OAM_JWT_SECRET; dropped OAM_LICENSE_SIGNING_SECRET). DB tables `active_licenses`/`system_trial_history` left in place (no migration).
+> - **T2c gateway** ✅ N/A — no license-management feature exists in loxilb-inference-gateway (all "license" hits are Apache-2.0 headers; the 402 came only from OAM). Do NOT touch OSS LICENSE headers.
+> - **Live acceptance (kv-client):** unlicensed operator+viewer proxy → 200 (were 402); license endpoints → 404; login → {id,token}; T3 same-value PUT → 200; UI instance health "Healthy", 0 console errors.
+> - **Follow-ups (non-blocking):** regen UI `src/api/gen/*.ts` + OAM swagger (`swag init`) to drop residual license *types/prose*; 3 stale 402 comments in status.ts/ai.ts/healthHook.
+> - **T4 remains** (see bottom): teardown temp users 11/12/13 + tokens + active_licenses rows + stray e2e- artifacts. Do only when instructed.
+
+
 Created 2026-07-18. Durable handoff for the production-readiness cleanup after
 the E2E fix→validate loop (that loop is COMPLETE + committed — see
 `docs/E2E_FIX_PROGRESS.md`). Context was cleared mid-task; this doc + memory
