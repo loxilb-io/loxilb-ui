@@ -9,22 +9,28 @@ The suite validates the real stack end to end: local UI dev server →
 testbed-client OAM (`203.0.113.99:8080`) → testbed-gw inference gateway
 (`10.0.0.12`). It exercises everything the RBAC/security work shipped:
 login/logout with server-side token revocation (H-2), the 3-role model
-(Phase 2 server enforcement + Phase 3 UI gating), and every menu page.
+(Phase 2 server enforcement + Phase 3 UI gating), and every menu page —
+including the 2026-07-18 additions: AI API Keys, IPsec VPN (tunnels +
+certificates), the LB merge-PATCH edit path, and Phase 4 login hardening
+(rate limits + exponential lockout, which the suite must respect — see
+safety rules).
 
 ## 1. Environment & prerequisites
 
 | Item | Value |
 |---|---|
-| UI under test | dev server: `npm start` → **https://localhost:3000/netlox** (self-signed cert — `.mcp.json` passes `--ignore-https-errors`) |
+| UI under test | dev server on **plain HTTP**: `HTTPS=false WDS_SOCKET_PORT=0 BROWSER=none npx dotenv -e .env.development react-scripts start` → **http://localhost:3000/netlox**. Do NOT use `npm start` — it hardcodes `HTTPS=true` (and `.env.local` does too), and an HTTPS page cannot call the HTTP testbed OAM (browser mixed-content block ⇒ every API call fails with "Failed to fetch") |
 | Backend | testbed-client OAM (`.env.development` `REACT_APP_API_URL`) — the live testbed, NOT a mock |
 | Browser | Chromium via playwright-mcp (installed in `~/Library/Caches/ms-playwright`) |
-| Credentials | `.env.e2e.local` (gitignored): `E2E_ADMIN_USER`, `E2E_ADMIN_PASSWORD`. If absent, ask the operator — the testbed admin password is not stored anywhere |
-| Test users | `e2e-operator` / `e2e-viewer` (password `E2eTestPass1!`), created by the suite in S2, deleted in S10 cleanup |
+| Credentials | `.env.e2e.local` (gitignored): `E2E_ADMIN_USER`, `E2E_ADMIN_PASSWORD`. If absent, provision a temporary `e2e-admin` user (role `admin`, password `E2eTestPass1!`) directly in the testbed-client MySQL (`docker exec oam-mysql mysql -unetlox -p… loxioam`, hash via `pkg/utils` format) and delete it in S11 — do NOT ask for or use the real admin account |
+| Test users | `e2e-operator` / `e2e-viewer` (password `E2eTestPass1!`), created by the suite in S2, deleted in S11 cleanup |
 
 **Safety rules (testbed is shared):**
-- Never touch firmware routes, config **import** (dry-run only), or the admin account itself.
+- Never touch firmware routes, config **import** (dry-run only), or the real admin account.
 - Every mutation the suite makes must be paired with its own cleanup (create → verify → delete).
 - Prefix all created entities with `e2e-` so strays are identifiable.
+- **Login discipline (Phase 4 hardening is live):** logins are rate-limited per IP (burst 10, ~30/min) and 5 failed attempts on one username trigger an exponential lockout (1m → 2m → … → 15m). Never loop login retries; if a login fails twice, stop and diagnose instead of retrying. The single wrong-password step in S1 is safe (counter clears on the following successful login).
+- IPsec tunnel **initiate** against a dead peer is safe but blocks ~12 s before timing out (no second strongSwan endpoint on the testbed); keep tunnel actions optional.
 
 ## 2. Suites
 
@@ -72,26 +78,37 @@ continue the suite unless the failure blocks later steps (e.g. login broken).
 ### S6 — Full menu smoke (admin)
 For each menu entry, page loads, table/content renders, no error page or spinner deadlock:
 - Traffic: LB Rule, Endpoint, Conntrack, Firewall, QoS, Mirror, SNI Certificates
+- AI Gateway: API Keys *(Tenant Rate Limits is menu-hidden by design — instead deep-link `/netlox/instance/ai/ratelimit` and confirm the route still renders)*
+- IPsec VPN: Tunnels, Certificates
 - Security: IP Filter(XDP), SYN Flood Protection(XDP), Security Rate Limiting(XDP)
-- Networks: Port, IP Address, IP Neighbor, IP Route, BFD
+- Networks: Port, IP Address, IPv6 Address, IP Neighbor(ARP/NDP), IP Route, BFD
 - Status: Device Details, File System, High Availability, Process, Logs
 - Log Settings
 
 ### S7 — Gateway CRUD round-trip (admin)
-On LB Rule (and optionally Firewall): create `e2e-` entry → verify in table → edit if supported → delete → verify gone. Confirms the OAM proxy path end-to-end (admin `gateway_write`).
+1. LB Rule: create `e2e-` entry → verify in table.
+2. **Edit the rule (required, regression for the RFC 7386 merge-PATCH edit path, 2026-07-18):** change a mutable field (e.g. endpoint weight) → save → table reflects the change, no error popup.
+3. Delete → verify gone. Confirms the OAM proxy path end-to-end (admin `gateway_write`).
+4. Optionally repeat create/delete on Firewall.
 
-### S8 — OAM logs & archive download (admin)
+### S8 — New feature pages CRUD (admin) — AI Gateway & IPsec (added 2026-07-18)
+1. AI Gateway → API Keys: create an `e2e-` key → one-time key value shown; row appears in table. Edit (allowed models / enabled toggle — exercises the apikey PATCH) → change persists after refresh. Delete → gone.
+2. IPsec → Tunnels: create tunnel `e2e-tun` (PSK mode, bogus-but-valid remote peer IP, PFS on) → appears with state `down`. Open the **peer config** viewer → mirrored conn block renders. Edit via the form (PUT path; e.g. change subnets, leave PSK empty → key carries over) → change persists. *(Optional: initiate action — expect timeout error toast after ~12 s, state stays down.)* Delete → gone.
+3. IPsec → Certificates: page lists cert slots; upload/delete only if a disposable `e2e-` cert is available, otherwise read-only check.
+
+### S9 — OAM logs & archive download (admin)
 1. Status → Logs: OAM log lines render.
 2. Log archives: list renders; download one archive → progress feedback appears (streaming download feature) and completes.
 
-### S9 — Error handling
+### S10 — Error handling
 1. Navigate to a bogus route → 404 page.
 2. While logged in as `e2e-viewer`, have an admin (API) delete that user's token or the user → next UI action redirects to login without crashing. *(Optional if awkward to orchestrate; the H-2 check in S1.6 covers the main path.)*
 
-### S10 — Cleanup (admin)
+### S11 — Cleanup (admin)
 1. Log in as admin; delete `e2e-operator`, `e2e-viewer`; verify gone from User List.
-2. Delete any `e2e-` LB rules/config exports the run left behind.
-3. Sign out.
+2. Delete any `e2e-` LB rules, API keys, IPsec tunnels, or config exports the run left behind.
+3. If a temporary `e2e-admin` was DB-provisioned (see §1), delete it (and its `api_tokens` rows) via MySQL last.
+4. Sign out.
 
 ## 3. Reporting
 

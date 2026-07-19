@@ -388,6 +388,52 @@ export async function sweepApiKeys(): Promise<number> {
 	return removed;
 }
 
+//---------------------------------------------------------
+// OAM user accounts (Group 7). Throwaway test users use the
+// `e2euser` username prefix so the sweep can find them without
+// ever matching the persistent RBAC fixtures (e2e_operator /
+// e2e_viewer) or the real admin.
+//---------------------------------------------------------
+export interface OamUser {
+	id: number;
+	username: string;
+	email: string;
+	role: string;
+	created_at?: string;
+}
+
+export const TEST_USER_PREFIX = 'e2euser';
+
+export async function listUsers(): Promise<OamUser[]> {
+	const resp = await oamFetch('/users');
+	if (!resp.ok) return [];
+	return (await resp.json()) as OamUser[];
+}
+
+/** Seeds a user directly (for E/D targets that don't test the create flow). */
+export async function createUserApi(u: {username: string; email: string; password: string; role: string}): Promise<number> {
+	const resp = await oamFetch('/users', {method: 'POST', body: JSON.stringify(u)});
+	if (!resp.ok) throw new Error(`createUserApi ${u.username}: ${resp.status} ${await resp.text()}`);
+	const d = (await resp.json()) as {id: number};
+	return d.id;
+}
+
+export async function deleteUserById(id: number): Promise<boolean> {
+	const resp = await oamFetch(`/users/${id}`, {method: 'DELETE'});
+	return resp.ok;
+}
+
+/** Deletes every throwaway test user (username starting with `e2euser`). */
+export async function sweepTestUsers(): Promise<number> {
+	let removed = 0;
+	for (const u of await listUsers()) {
+		if (u.username?.startsWith(TEST_USER_PREFIX)) {
+			if (await deleteUserById(u.id)) removed++;
+		}
+	}
+	return removed;
+}
+
 /** Deletes every LB rule with an e2e- name or documentation-range VIP. */
 export async function sweepLbRules(): Promise<number> {
 	const resp = await gw('GET', '/config/loadbalancer/all');
