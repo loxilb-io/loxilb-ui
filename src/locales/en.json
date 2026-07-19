@@ -364,6 +364,8 @@
 	"Unused": "Unused",
 	"WARNING!! Delete Item": "WARNING!! Delete Item",
 	"Are you sure you want to delete this Item? This action cannot be undone.": "Are you sure you want to delete this Item? This action cannot be undone.",
+	"Are you sure you want to delete \"{{name}}\"? This action cannot be undone.": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
+	"Are you sure you want to delete these {{count}} items? This action cannot be undone.": "Are you sure you want to delete these {{count}} items? This action cannot be undone.",
 	"Invalid IP address format.": "Invalid IP address format.",
 	"Invalid port number.": "Invalid port number.",
 	"Do you want to change the log level to {{level}}?": "Do you want to change the log level to {{level}}?",

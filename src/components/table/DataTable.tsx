@@ -5,7 +5,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ModeIcon from '@mui/icons-material/Mode';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import {Box, IconButton, Stack, Tooltip} from '@mui/material';
+import {Box, IconButton, Stack, Tooltip, Typography} from '@mui/material';
 import {GridColDef, GridRowSelectionModel} from '@mui/x-data-grid';
 import {
 	BooleanCell,
@@ -26,6 +26,7 @@ import {usePopUp} from 'hooks/popupHook';
 import {useRole} from 'hooks/query/oamHooks';
 import {t} from 'i18next';
 import {IDataTableColumnDef} from 'types/global';
+import {ReactNode} from 'react';
 import {TableBase} from './TableBase';
 
 const col_width_value = {
@@ -134,9 +135,45 @@ export default function DataTable(props: {
 
 	const {openPopUp} = usePopUp();
 
+	// Derive a human-readable label for each selected row from its leftmost data
+	// column, so the confirmation names what's being removed instead of the
+	// anonymous "this Item" (F-UX-2 — easy to confirm a wrong/bulk selection).
+	const labelKey = columns[0]?.data_key;
+	const rowLabel = (v: any): string => {
+		if (v == null) return '';
+		if (typeof v === 'object') return String(v.data ?? v.name ?? v.value ?? '');
+		return String(v);
+	};
+
 	const handleDelete = (e: any) => {
 		e.stopPropagation();
-		openPopUp(t('WARNING!! Delete Item'), t('Are you sure you want to delete this Item? This action cannot be undone.'), t('Delete'), t('Cancel'), onDelete);
+		const names = selected_rows
+			.map(id => rows.find(r => r.id === id))
+			.filter(Boolean)
+			.map(r => rowLabel(r[labelKey!]).trim())
+			.filter(n => n.length > 0);
+		const count = selected_rows.length;
+
+		let contents: ReactNode;
+		if (count === 1 && names.length === 1) {
+			contents = t('Are you sure you want to delete "{{name}}"? This action cannot be undone.', {name: names[0]});
+		} else if (names.length > 0) {
+			contents = (
+				<Box>
+					<Typography variant="body1">{t('Are you sure you want to delete these {{count}} items? This action cannot be undone.', {count})}</Typography>
+					<Box component="ul" sx={{mt: 1, mb: 0, pl: 3}}>
+						{names.map((n, i) => (
+							<li key={i}>{n}</li>
+						))}
+					</Box>
+				</Box>
+			);
+		} else {
+			// Fallback: selection didn't resolve to a label (e.g. empty leftmost cell).
+			contents = t('Are you sure you want to delete this Item? This action cannot be undone.');
+		}
+
+		openPopUp(t('WARNING!! Delete Item'), contents, t('Delete'), t('Cancel'), onDelete);
 	};
 
 	return (
