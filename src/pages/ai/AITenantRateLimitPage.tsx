@@ -36,7 +36,7 @@ export default function AITenantRateLimitPage() {
 		return Array.from(new Set([...fromKeys, ...extraTenants])).sort();
 	}, [apiKeys, extraTenants]);
 
-	const {data: entries, refetch} = useQueryInstanceData(
+	const {data: entries, isError, refetch} = useQueryInstanceData(
 		['ai_ratelimits', tenants.join('|')],
 		instance => query_get_tenant_ratelimits_for(instance, tenants),
 		inst,
@@ -143,6 +143,7 @@ export default function AITenantRateLimitPage() {
 				onAdd={handleAdd}
 				onEdit={handleEdit}
 				onRefresh={handleRefresh}
+				error={!!isError}
 			/>
 
 			{/* Error Popup */}

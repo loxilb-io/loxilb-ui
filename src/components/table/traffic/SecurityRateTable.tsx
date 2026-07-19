@@ -14,10 +14,11 @@ interface SecurityRateTableProps {
 	onChangeSelectedRows: (indices: number[]) => void;
 	onEdit?: () => void;
 	onRefresh?: () => void;
+	error?: boolean;
 }
 
 export default function SecurityRateTable(props: SecurityRateTableProps) {
-	const {data, selected_rows, onChangeSelectedRows, onEdit, onRefresh} = props;
+	const {data, selected_rows, onChangeSelectedRows, onEdit, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'synEnabled', header: 'SYN Enabled', width: 'narrow'},
@@ -55,6 +56,7 @@ export default function SecurityRateTable(props: SecurityRateTableProps) {
 			onChangeSelectedRows={onChangeSelectedRows}
 			onEdit={onEdit}
 			onRefresh={onRefresh}
+			error={error}
 		/>
 	);
 }

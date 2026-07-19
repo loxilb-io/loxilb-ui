@@ -23,7 +23,7 @@ import {IConditionSet} from 'types/bgp_policy_condition';
 export default function BGPDefinitionPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, refetch} = useBGPPolicyDefs(inst); // IBgpPolicy[]
+	const {data, isError, refetch} = useBGPPolicyDefs(inst); // IBgpPolicy[]
 	// wire fields are optional in swagger; the policy views require them — narrow once here
 	const def_info: IBgpPolicyInfo = {bgpPolicyAttr: (data ?? []) as IBgpPolicy[]};
 
@@ -120,10 +120,11 @@ export default function BGPDefinitionPage() {
 					onChangeSelectedRows={set_selected_rows}
 					onAdd={handleAdd}
 					onDelete={handleDelete}
+					error={isError}
 				/>
 			)}
 			{cur_tab_idx === 1 && (
-				<BGPActionTable action_list={action_list} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} onAdd={handleAdd} onDelete={handleDelete} />
+				<BGPActionTable action_list={action_list} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} onAdd={handleAdd} onDelete={handleDelete} error={isError} />
 			)}
 		</Fragment>
 	);

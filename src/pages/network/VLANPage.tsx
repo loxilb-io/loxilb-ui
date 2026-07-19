@@ -113,7 +113,7 @@ function MemberView(props: {name: string; vid: number; data: IMember[]; refetch:
 export default function VLANPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, refetch} = useVLANAttr(inst); // IVlanAttribute[]
+	const {data, isError, refetch} = useVLANAttr(inst); // IVlanAttribute[]
 	const vlan_info: IVlanData = {vlanAttr: data ?? []};
 
    const [selected_rows, set_selected_rows] = useState<number[]>([]);
@@ -222,6 +222,7 @@ export default function VLANPage() {
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
 			   onRefresh={refetch}
+			   error={isError}
 		   />
 		   {selected_index !== -1 && (
 			   <LowerSection>

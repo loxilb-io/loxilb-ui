@@ -15,8 +15,9 @@ export default function TenantRateLimitTable(props: {
 	onAdd?: () => void;
 	onEdit?: () => void;
 	onRefresh?: () => void;
+	error?: boolean;
 }) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onEdit, onRefresh} = props;
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onEdit, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'tenant_id', header: 'Tenant', width: 'wide'},
@@ -43,6 +44,7 @@ export default function TenantRateLimitTable(props: {
 			onAdd={onAdd}
 			onEdit={onEdit}
 			onRefresh={onRefresh}
+			error={error}
 			hideCheckbox={true}
 		/>
 	);

@@ -78,7 +78,7 @@ function DetailPanel(props: {data: IApiKeySummary}) {
 export default function AIApiKeyPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, refetch} = useApiKeys(inst);
+	const {data, isError, refetch} = useApiKeys(inst);
 	// Defense in depth: even though the connector normalizes to an array, never
 	// spread an unchecked hook result (a gateway 402 body is a non-iterable object).
 	const keys = React.useMemo(() => {
@@ -164,6 +164,7 @@ export default function AIApiKeyPage() {
 				onAdd={handleAdd}
 				onDelete={handleDelete}
 				onRefresh={handleRefresh}
+				error={!!isError}
 			/>
 			{selected_index !== -1 && keys[selected_index] && (
 				<LowerSection>

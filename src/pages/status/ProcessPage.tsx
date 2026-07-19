@@ -53,7 +53,7 @@ function ProcessPanel(props: {data: IProcessAttribute}) {
 export default function ProcessPage() {
 	const inst = useInstanceFromURL();
 
-	const {processAttr, refetch} = useStatus(inst);
+	const {processAttr, psError, refetch} = useStatus(inst);
 	const process_info: IProcessInfo = {processAttr: processAttr ?? []};
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
@@ -139,8 +139,9 @@ export default function ProcessPage() {
 			<ProcessTable 
 				data={{processAttr: sortedAttr}} 
 				selected_rows={selectedSortedIndices} 
-				onChangeSelectedRows={handleSelectionChange} 
-				onRefresh={handleRefresh} 
+				onChangeSelectedRows={handleSelectionChange}
+				onRefresh={handleRefresh}
+				error={!!psError}
 			/>
 
 			{selected_index !== -1 && (

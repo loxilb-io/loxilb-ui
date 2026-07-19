@@ -25,6 +25,7 @@ export async function query_get_filesystem_status(instance: IInstance): Promise<
 
 export async function query_get_process_status(instance: IInstance): Promise<IProcessAttribute[]> {
 	const resp = await GET_INST<GwGetResp<'/status/process'>>(instance, `/status/process`);
+	assertOk(resp, 'Get Process Status');
 	return (resp.data?.processAttr ?? []) as IProcessAttribute[];
 }
 
@@ -69,6 +70,7 @@ export async function query_get_device_status(instance: IInstance): Promise<ISys
 
 export async function query_get_ha_state_all(instance: IInstance): Promise<IVipAttribute[]> {
 	const resp = await GET_INST<GwGetResp<'/config/cistate/all'>>(instance, `/config/cistate/all`);
+	assertOk(resp, 'Get HA State');
 	return (resp.data?.Attr ?? []) as IVipAttribute[];
 }
 

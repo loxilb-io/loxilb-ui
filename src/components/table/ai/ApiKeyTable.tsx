@@ -15,8 +15,9 @@ export default function ApiKeyTable(props: {
 	onAdd?: () => void;
 	onDelete?: () => void;
 	onRefresh?: () => void;
+	error?: boolean;
 }) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh} = props;
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'key_id', header: 'Key ID', width: 'wide'},
@@ -51,6 +52,7 @@ export default function ApiKeyTable(props: {
 			onAdd={onAdd}
 			onDelete={onDelete}
 			onRefresh={onRefresh}
+			error={error}
 			hideCheckbox={true}
 		/>
 	);

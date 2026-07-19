@@ -21,7 +21,7 @@ import {IFdbAttribute, IFdbData} from 'types/fdb';
 export default function FDBPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, refetch} = useFDB(inst); // IFdbAttribute[]
+	const {data, isError, refetch} = useFDB(inst); // IFdbAttribute[]
 	const fdb_info: IFdbData = {fdbAttr: data ?? []};
 
    const [selected_rows, set_selected_rows] = useState<number[]>([]);
@@ -133,6 +133,7 @@ export default function FDBPage() {
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
 			   onRefresh={refetch}
+			   error={isError}
 		   />
 
 		   {/* Error Popup */}

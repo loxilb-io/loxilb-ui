@@ -9,8 +9,8 @@ import {IRouteData} from 'types/route_attr';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function RouteTable(props: {data: IRouteData; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onRefresh?: any}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh} = props;
+export default function RouteTable(props: {data: IRouteData; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onRefresh?: any; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'destinationIPNet', header: 'CIDR', width: 'wide'},
@@ -52,6 +52,7 @@ export default function RouteTable(props: {data: IRouteData; selected_rows: numb
 			onRefresh={onRefresh}
 			hideIdColumn={true}
 			defaultSort={{field: 'destinationIPNet', sort: 'asc'}}
+			error={error}
 		/>
 	);
 }

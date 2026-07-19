@@ -27,8 +27,9 @@ export default function IPsecTunnelTable(props: {
 	onEdit?: () => void;
 	onDelete?: () => void;
 	onRefresh?: () => void;
+	error?: boolean;
 }) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onEdit, onDelete, onRefresh} = props;
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onEdit, onDelete, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'name', header: 'Name', width: 'medium'},
@@ -66,6 +67,7 @@ export default function IPsecTunnelTable(props: {
 			onEdit={onEdit}
 			onDelete={onDelete}
 			onRefresh={onRefresh}
+			error={error}
 			hideCheckbox={true}
 		/>
 	);

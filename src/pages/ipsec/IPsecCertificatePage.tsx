@@ -26,8 +26,8 @@ import {IIPsecCACertificateMod, IIPsecCertificateMod} from 'types/ipsec';
 export default function IPsecCertificatePage() {
 	const inst = useInstanceFromURL();
 
-	const {data: certs, refetch: refetchCerts} = useIPsecCertificates(inst);
-	const {data: caCerts, refetch: refetchCACerts} = useIPsecCACertificates(inst);
+	const {data: certs, isError: certsError, refetch: refetchCerts} = useIPsecCertificates(inst);
+	const {data: caCerts, isError: caCertsError, refetch: refetchCACerts} = useIPsecCACertificates(inst);
 
 	const [selectedCertRows, setSelectedCertRows] = useState<number[]>([]);
 	const [selectedCARows, setSelectedCARows] = useState<number[]>([]);
@@ -136,6 +136,7 @@ export default function IPsecCertificatePage() {
 						setSelectedCertRows([]);
 						refetchCerts();
 					}}
+					error={certsError}
 				/>
 				<IPsecCACertTable
 					data={caCerts ?? []}
@@ -147,6 +148,7 @@ export default function IPsecCertificatePage() {
 						setSelectedCARows([]);
 						refetchCACerts();
 					}}
+					error={caCertsError}
 				/>
 			</Stack>
 

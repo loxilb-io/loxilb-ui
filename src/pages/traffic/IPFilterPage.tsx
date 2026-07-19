@@ -60,7 +60,7 @@ function DetailPanel(props: {entry: IIPFilterEntry}) {
 //---------------------------------------------------------
 export default function IPFilterPage() {
 	const inst = useInstanceFromURL();
-	const {data, refetch} = useIPFilterRules(inst);
+	const {data, isError, refetch} = useIPFilterRules(inst);
 	const entries: IIPFilterEntry[] = data ?? [];
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
@@ -195,6 +195,7 @@ export default function IPFilterPage() {
 				onAdd={handleAdd}
 				onDelete={selected_rows.length > 0 ? handleDelete : undefined}
 				onRefresh={handleRefresh}
+				error={isError}
 			/>
 			{selected_index !== -1 && sortedEntries[selected_index] && (
 				<LowerSection>

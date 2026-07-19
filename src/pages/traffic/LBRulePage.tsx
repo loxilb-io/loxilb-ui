@@ -36,7 +36,7 @@ export default function LBRulePage() {
 	const [searchParams] = useSearchParams();
 	const servName = searchParams.get('servName');
 
-	const {data: lb_data, refetch} = useLoadBalancerConfig(inst);
+	const {data: lb_data, isError, refetch} = useLoadBalancerConfig(inst);
 	const lb_info: ILBData = useMemo(() => ({lbAttr: lb_data ?? []}), [lb_data]);
 
 	const {data: data_qos} = useQOSPolicies(inst);
@@ -320,6 +320,7 @@ export default function LBRulePage() {
 				onDelete={handleDelete}
 				onUpdate={handleUpdate}
 					onRefresh={handleRefresh}
+					error={isError}
 			/>
 
 			{selected_index !== -1 && (

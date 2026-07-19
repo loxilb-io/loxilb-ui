@@ -54,7 +54,7 @@ function DetailPanel(props: {entry: ISYNFloodEntry}) {
 //---------------------------------------------------------
 export default function SYNFloodPage() {
 	const inst = useInstanceFromURL();
-	const {data, refetch} = useSYNFlood(inst);
+	const {data, isError, refetch} = useSYNFlood(inst);
 	const entries: ISYNFloodEntry[] = data ?? [];
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
@@ -167,6 +167,7 @@ export default function SYNFloodPage() {
 				onChangeSelectedRows={handleSelectionChange}
 				onEdit={handleEdit}
 				onRefresh={handleRefresh}
+				error={isError}
 			/>
 			{selected_index !== -1 && sortedEntries[selected_index] && (
 				<LowerSection>

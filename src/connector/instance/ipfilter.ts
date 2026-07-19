@@ -3,7 +3,7 @@
 //---------------------------------------------------------
 import {IIPFilterEntry, IIPFilterDeleteParams} from 'types/security';
 import {IInstance} from 'types/oam';
-import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
+import {ApiResult, assertOk, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
 import type {GwGetResp} from 'api';
 
@@ -12,6 +12,7 @@ import type {GwGetResp} from 'api';
 //---------------------------------------------------------
 export async function query_get_ipfilter_all(instance: IInstance): Promise<IIPFilterEntry[]> {
 	const resp = await GET_INST<GwGetResp<'/config/ipfilter/all'>>(instance, `/config/ipfilter/all`);
+	assertOk(resp, 'Get IP Filter');
 	return (resp.data?.ipFilterAttr ?? []) as IIPFilterEntry[];
 }
 

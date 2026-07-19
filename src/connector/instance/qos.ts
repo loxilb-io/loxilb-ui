@@ -3,7 +3,7 @@
 //---------------------------------------------------------
 import { IInstance } from 'types/oam';
 import { IPolicyAttribute } from 'types/qos';
-import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
+import {ApiResult, assertOk, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
 import type {GwGetResp} from 'api';
 
@@ -12,6 +12,7 @@ import type {GwGetResp} from 'api';
 //---------------------------------------------------------
 export async function query_get_qos_policy_all(instance: IInstance): Promise<IPolicyAttribute[]> {
 	const resp = await GET_INST<GwGetResp<'/config/policy/all'>>(instance, `/config/policy/all`);
+	assertOk(resp, 'Get QoS');
 	return (resp.data?.polAttr ?? []) as IPolicyAttribute[];
 }
 

@@ -3,7 +3,7 @@
 //---------------------------------------------------------
 import {ISYNFloodConfigMod, ISYNFloodEntry} from 'types/security';
 import {IInstance} from 'types/oam';
-import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
+import {ApiResult, assertOk, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
 import type {GwGetResp} from 'api';
 
@@ -16,6 +16,7 @@ import type {GwGetResp} from 'api';
  */
 export async function query_get_synflood_all(instance: IInstance): Promise<ISYNFloodEntry[]> {
 	const resp = await GET_INST<GwGetResp<'/config/synflood/all'>>(instance, `/config/synflood/all`);
+	assertOk(resp, 'Get SYN Flood');
 	return (resp.data?.synfloodAttr ?? []) as ISYNFloodEntry[];
 }
 

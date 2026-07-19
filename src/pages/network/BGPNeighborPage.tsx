@@ -17,7 +17,7 @@ import {IBgpNeighborAttribute, IBgpNeighborInput, IBgpNeighborState} from 'types
 export default function BGPNeighborPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, refetch} = useBGPNeighbors(inst); // IBgpNeighborAttribute[]
+	const {data, isError, refetch} = useBGPNeighbors(inst); // IBgpNeighborAttribute[]
 	// wire fields are optional in swagger; the table/delete flow requires them — narrow once here
 	const bgp_neighbor_info: IBgpNeighborState = {bgpNeiAttr: (data ?? []) as IBgpNeighborAttribute[]};
 
@@ -74,5 +74,5 @@ export default function BGPNeighborPage() {
 		);
 	};
 
-	return <BGPNeighborTable data={bgp_neighbor_info} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} onAdd={handleAdd} onDelete={handleDelete} />;
+	return <BGPNeighborTable data={bgp_neighbor_info} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} onAdd={handleAdd} onDelete={handleDelete} error={isError} />;
 }

@@ -2,7 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import { IInstance } from 'types/oam';
-import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
+import {ApiResult, assertOk, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
 import { IIpAttribute, IIpAttributeInput } from 'types/ip';
 import type {GwGetResp} from 'api';
@@ -12,6 +12,7 @@ import type {GwGetResp} from 'api';
 //---------------------------------------------------------
 export async function query_get_ipv4_all(instance: IInstance): Promise<IIpAttribute[]> {
 	const resp = await GET_INST<GwGetResp<'/config/ipv4address/all'>>(instance, `/config/ipv4address/all`);
+	assertOk(resp, 'Get IPv4 Address');
 	return (resp.data?.ipAttr ?? []) as IIpAttribute[];
 }
 
@@ -38,6 +39,7 @@ export async function request_delete_ipv4(instance: IInstance, ip: string, mask:
 // IPv6 — same entry shapes as ipv4 (dev + ipAddress / GET returns ipAttr[])
 export async function query_get_ipv6_all(instance: IInstance): Promise<IIpAttribute[]> {
 	const resp = await GET_INST<GwGetResp<'/config/ipv6address/all'>>(instance, `/config/ipv6address/all`);
+	assertOk(resp, 'Get IPv6 Address');
 	return (resp.data?.ipAttr ?? []) as IIpAttribute[];
 }
 

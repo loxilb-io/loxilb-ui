@@ -11,8 +11,8 @@ import {IPolicyConfiguration} from 'types/qos';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function QoSTable(props: {data: IPolicyConfiguration; selected_rows: number[]; onChangeSelectedRows: any; onAdd?: any; onDelete?: any; onRefresh?: any}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh} = props;
+export default function QoSTable(props: {data: IPolicyConfiguration; selected_rows: number[]; onChangeSelectedRows: any; onAdd?: any; onDelete?: any; onRefresh?: any; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
 
 	const inst_name = useInstanceName();
 
@@ -55,5 +55,5 @@ export default function QoSTable(props: {data: IPolicyConfiguration; selected_ro
 	   })()
 	   : undefined;
 
-	return <DataTable name={'QoS'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onRefresh={onRefresh} hideCheckbox={true} />;
+	return <DataTable name={'QoS'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onRefresh={onRefresh} error={error} hideCheckbox={true} />;
 }

@@ -54,7 +54,7 @@ function DetailPanel(props: {cert: ISNICertificateListItem}) {
 //---------------------------------------------------------
 export default function SNICertificatesPage() {
 	const inst = useInstanceFromURL();
-	const {data, refetch} = useSNICertificates(inst);
+	const {data, isError, refetch} = useSNICertificates(inst);
 	const certificates = data?.certificates ?? [];
 	const totalCertificates = data?.totalCertificates ?? 0;
 
@@ -268,6 +268,7 @@ export default function SNICertificatesPage() {
 				onAdd={handleAdd}
 				onDelete={selected_rows.length > 0 ? handleDelete : undefined}
 				onRefresh={handleRefresh}
+				error={isError}
 			/>
 			{selected_index !== -1 && sortedCertificates[selected_index] && (
 				<LowerSection>

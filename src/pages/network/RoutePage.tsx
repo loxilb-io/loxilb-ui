@@ -21,7 +21,7 @@ import { IRouteAttrInput, IRouteData } from 'types/route_attr';
 export default function RoutePage() {
 	const inst = useInstanceFromURL();
 
-	const { data, refetch } = useRouteAttr(inst); // IRouteAttribute[]
+	const { data, isError, refetch } = useRouteAttr(inst); // IRouteAttribute[]
 	const route_info: IRouteData = { routeAttr: data ?? [] };
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
@@ -173,6 +173,7 @@ export default function RoutePage() {
 				onAdd={handleAdd}
 				onDelete={handleDelete}
 				onRefresh={handleRefresh}
+				error={isError}
 			/>
 
 			{/* Error Popup */}
