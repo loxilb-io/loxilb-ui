@@ -27,6 +27,17 @@ export type ApiResult = {
 	error?: string;
 };
 
+// Carries the HTTP status so react-query's retry predicate (which skips 404)
+// and a page's error handling can branch on the code.
+export class ApiError extends Error {
+	status: number;
+	constructor(message: string, status: number) {
+		super(message);
+		this.name = 'ApiError';
+		this.status = status;
+	}
+}
+
 //---------------------------------------------------------
 // Common Error Formatting Function
 //---------------------------------------------------------
@@ -50,6 +61,17 @@ export function createDetailedErrorMessage(resp: any, operation: string): string
 	}
 
 	return message;
+}
+
+// Gateway pass-through reads swallow non-2xx into empty data (F15 keeps the app
+// from redirecting to /500), so a plain `resp.data?.X ?? []` can't tell a real
+// server error from a genuinely empty resource. Call this in a read connector to
+// turn a non-2xx code into a thrown ApiError, so react-query enters its error
+// state and the page can show a "Couldn't load …" banner instead of "No rows"
+// (F-UX-3). 2xx (incl. 204 no-content) passes through untouched.
+export function assertOk(resp: SimpleResponse, operation: string): void {
+	if (resp.code >= 200 && resp.code < 300) return;
+	throw new ApiError(createDetailedErrorMessage(resp, operation), resp.code);
 }
 
 //---------------------------------------------------------

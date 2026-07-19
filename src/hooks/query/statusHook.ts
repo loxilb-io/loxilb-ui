@@ -31,6 +31,11 @@ export function useStatus(instance: IInstance | null) {
 		systemInfo,
 		isLoading,
 		error,
+		// Per-resource errors so a table can flag its own fetch failure without
+		// borrowing a sibling call's error (F-UX-3).
+		fsError,
+		psError,
+		devError,
 		refetch,
 	};
 }

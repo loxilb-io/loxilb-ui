@@ -3,7 +3,7 @@
 //---------------------------------------------------------
 import {IBFDAttribute, IBfdInput} from 'types/bfd';
 import {IInstance} from 'types/oam';
-import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
+import {ApiResult, assertOk, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
 import type {GwGetResp} from 'api';
 
@@ -12,6 +12,7 @@ import type {GwGetResp} from 'api';
 //---------------------------------------------------------
 export async function query_get_bfd_all(instance: IInstance): Promise<IBFDAttribute[]> {
 	const resp = await GET_INST<GwGetResp<'/config/bfd/all'>>(instance, `/config/bfd/all`);
+	assertOk(resp, 'Get BFD');
 	return (resp.data?.Attr ?? []) as IBFDAttribute[];
 }
 
