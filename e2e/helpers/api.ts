@@ -362,6 +362,32 @@ export async function sweepIpsecCerts(): Promise<number> {
 	return removed;
 }
 
+/**
+ * True when the gateway is built WITHOUT --userservice, so every /config/ai/*
+ * endpoint answers 501. The AI CRUD specs probe this once and skip their
+ * mutation cases; the render + client-validation cases always run.
+ */
+export async function gatewayLacksUserservice(): Promise<boolean> {
+	const resp = await gw('GET', '/config/ai/apikey');
+	return resp.status === 501;
+}
+
+/** Deletes every AI API key owned by an e2e- tenant (no-op while AI 501s). */
+export async function sweepApiKeys(): Promise<number> {
+	const resp = await gw('GET', '/config/ai/apikey');
+	if (!resp.ok) return 0;
+	const data = await resp.json();
+	if (!Array.isArray(data)) return 0; // 402/501 error body, not a list
+	let removed = 0;
+	for (const k of data) {
+		if ((isE2eMarked(k.tenant_id) || isE2eMarked(k.name)) && k.key_id) {
+			const del = await gw('DELETE', `/config/ai/apikey/${encodeURIComponent(k.key_id)}`);
+			if (del.ok) removed++;
+		}
+	}
+	return removed;
+}
+
 /** Deletes every LB rule with an e2e- name or documentation-range VIP. */
 export async function sweepLbRules(): Promise<number> {
 	const resp = await gw('GET', '/config/loadbalancer/all');
