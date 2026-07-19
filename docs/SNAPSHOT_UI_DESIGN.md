@@ -1,6 +1,14 @@
 # Instance Snapshots UI — Design (replaces Config Management)
 
-**Status**: DRAFT — for developer review
+**Status**: APPROVED — implementation in progress
+
+## 0. Implementation status (living section — update per task)
+
+| ID | Status | Summary |
+|----|--------|---------|
+| U-0 | ✅ done (`2e2aa31`) | Legacy Config Management fully removed per §2 (page, forms, connector, types, route+guard, header icon, contract-test rows, `config-mgmt.spec.ts`, e2e config-export sweep helpers). rbac spec now asserts the surface is gone for admin (no icon, 404). Verified: tsc, vitest 80/80, api:check-mapping, live browser pass vs testbed (0 console errors). Legacy strings were never in the locale JSONs — nothing to remove. |
+| U-1..U-7 | ⬜ blocked | Waiting on OAM O-3 live on the testbed. |
+
 **Scope**: loxilb-ui (this repo). Phase 3 of the snapshot feature.
 **Master docs** (read first):
 `loxilb-inference-gateway/docs/SNAPSHOT-DESIGN.md` (document format, restore engine),
