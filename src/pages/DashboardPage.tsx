@@ -20,6 +20,11 @@ import 'react-resizable/css/styles.css';
 import {Alert, AlertTitle, CircularProgress} from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 
+// Versioned so the fix for the compaction-reflow bug (gap-free default + no
+// auto-compaction) supersedes any already-corrupted layout persisted under the
+// old `layout` key — stale saves floated the log card above the rate cards.
+const LAYOUT_STORAGE_KEY = 'dashboard_layout_v2';
+
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
@@ -53,6 +58,11 @@ export default function DashboardPage() {
 		{key: 'system-log', component: <SystemLogCard />},
 	];
 
+	// Rows are contiguous with NO vertical gaps: row 2 (h 1.3) ends at y 3.3, the
+	// rate row (h 1) ends at 4.3, the log row starts there. A gappy layout used to
+	// let react-grid-layout's vertical compaction reflow the full-width log card
+	// above the rate cards; the grid below now runs with compaction OFF, so items
+	// stay exactly where they're placed and this must already be gap-free.
 	const DEFAULT_LAYOUT: Layout[] = [
 		// === ROW 1: SYSTEM OVERVIEW ===
 		{i: 'system-usage', x: 0, y: 0, w: 8, h: 2}, // System usage metrics
@@ -64,29 +74,29 @@ export default function DashboardPage() {
 		{i: 'lb-rules', x: 8, y: 2, w: 4, h: 1.3}, // Load balancer rules
 
 		// === ROW 3: REAL-TIME TRAFFIC MONITORING ===
-		{i: 'total-traffic-rate', x: 0, y: 4, w: 4, h: 1}, // Total traffic rate
-		{i: 'total-packet-rate', x: 4, y: 4, w: 4, h: 1}, // Total packet rate
-		{i: 'total-error-rate', x: 8, y: 4, w: 4, h: 1}, // Total error rate
+		{i: 'total-traffic-rate', x: 0, y: 3.3, w: 4, h: 1}, // Total traffic rate
+		{i: 'total-packet-rate', x: 4, y: 3.3, w: 4, h: 1}, // Total packet rate
+		{i: 'total-error-rate', x: 8, y: 3.3, w: 4, h: 1}, // Total error rate
 
 		// === ROW 4: SYSTEM LOGS AND DIAGNOSTICS ===
-		{i: 'system-log', x: 0, y: 5, w: 12, h: 2}, // System logs
+		{i: 'system-log', x: 0, y: 4.3, w: 12, h: 2}, // System logs
 	];
 
 	const [layout, set_layout] = useState<Layout[] | null>(null);
 
 	const handleLayoutChange = (newLayout: any) => {
 		set_layout(newLayout);
-		save_local_storage('layout', JSON.stringify(newLayout));
+		save_local_storage(LAYOUT_STORAGE_KEY, JSON.stringify(newLayout));
 	};
 
 	const handleClick = () => {
 		set_layout(DEFAULT_LAYOUT);
-		save_local_storage('layout', JSON.stringify(DEFAULT_LAYOUT));
+		save_local_storage(LAYOUT_STORAGE_KEY, JSON.stringify(DEFAULT_LAYOUT));
 	};
 
 	useEffect(() => {
 		try {
-			const saved_layout = get_local_storage('layout');
+			const saved_layout = get_local_storage(LAYOUT_STORAGE_KEY);
 			if (saved_layout) {
 				const parsed_layout = JSON.parse(saved_layout);
 				if (parsed_layout.length !== DEFAULT_LAYOUT.length) throw new Error('Invalid layout length');
@@ -155,6 +165,12 @@ export default function DashboardPage() {
 					onLayoutChange={handleLayoutChange}
 					isDraggable={true}
 					isResizable={false}
+					// compaction OFF + collision prevention: cards stay exactly where the
+					// layout places them. Without this, RGL vertical-compacts on every
+					// re-render (e.g. the 1s metrics poll, or a log-filter change) and
+					// persists the reflow, floating the full-width log card upward.
+					compactType={null}
+					preventCollision={true}
 					draggableCancel=".no-drag"
 				>
 					{CARD_CONFIG.map(({key, component}) => (
