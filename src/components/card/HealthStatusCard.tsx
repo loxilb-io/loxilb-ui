@@ -50,8 +50,8 @@ export default function HealthStatusCard(props: HealthStatusCardProps) {
 			};
 		}
 
-		const healthy = liveMetrics.critical.healthy_endpoints_count || 0;
-		const unhealthy = liveMetrics.critical.unhealthy_endpoints_count || 0;
+		const healthy = liveMetrics.critical.loxilb_healthy_endpoints || 0;
+		const unhealthy = liveMetrics.critical.loxilb_unhealthy_endpoints || 0;
 		const total = healthy + unhealthy;
 		const healthPercentage = total > 0 ? (healthy / total) * 100 : 0;
 		
