@@ -11,7 +11,7 @@ import ProcessTable from 'components/table/status/ProcessTable';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useStatus} from 'hooks/query/statusHook';
 import {t} from 'i18next';
-import {Fragment, useState, useMemo} from 'react';
+import {Fragment, useState, useMemo, useEffect} from 'react';
 import {IProcessAttribute, IProcessInfo} from 'types/process';
 
 //---------------------------------------------------------
@@ -120,8 +120,11 @@ export default function ProcessPage() {
 		refetch();
 	};
 
-	// Synchronize selected_key with selected_rows
-	useMemo(() => {
+	// Synchronize selected_key with selected_rows. This MUST be an effect, not
+	// a useMemo: setting state inside a useMemo runs during render and, because
+	// process_info is a fresh object every render, re-triggered itself into a
+	// "Too many re-renders" crash the moment a row was selected (F-STATUS-4).
+	useEffect(() => {
 		if (!process_info.processAttr || process_info.processAttr.length === 0) return;
 		if (selected_rows.length === 1) {
 			const item = process_info.processAttr[selected_rows[0]];
@@ -129,7 +132,7 @@ export default function ProcessPage() {
 		} else if (selected_key !== null) {
 			set_selected_key(null);
 		}
-	}, [process_info, selected_rows, selected_key]);
+	}, [process_info.processAttr, selected_rows, selected_key]);
 
 	return (
 		<Fragment>

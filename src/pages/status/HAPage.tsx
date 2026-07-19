@@ -33,9 +33,9 @@ export default function HAPage() {
 			<VipInputForm
 				key={Date.now()}
 				initialData={selectedItem}
-				onChange={(data: IVipAttribute) => {
+				onChange={(data: IVipAttribute & {isValid?: boolean}) => {
 					instanceRef.current = data;
-					enableYes(true);
+					enableYes(!!data.isValid);
 				}}
 			/>
 		);
