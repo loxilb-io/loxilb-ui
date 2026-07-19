@@ -17,6 +17,7 @@ import {usePopUp} from 'hooks/popupHook';
 import {login_user} from 'connector/user';
 import {save_local_storage, move_forced} from 'common';
 import {t} from 'i18next';
+import {useQueryClient} from '@tanstack/react-query';
 import {Fragment, useState, useMemo, useEffect, useCallback, useRef} from 'react';
 import {getStableHash} from 'common';
 import {IUser} from 'types/oam';
@@ -283,6 +284,7 @@ export default function UserManagementPage() {
 	const my_info = useMyInfo();
 	const isAdmin = my_info?.role === 'admin';
 	const {openPopUp} = usePopUp();
+	const queryClient = useQueryClient();
 	const [tabValue, setTabValue] = useState(0);
 	const [editModalOpen, setEditModalOpen] = useState(false);
 	const [editingUser, setEditingUser] = useState<IUser | null>(null);
@@ -351,6 +353,14 @@ export default function UserManagementPage() {
 				const isCurrentUserUpdate = editingUser.id === my_info?.id;
 
 				await updateUser(editingUser.id, userData);
+
+				// A self-edit changes the identity the whole app renders from
+				// (`my_info`), but updateUser touches no cache — without this the
+				// header profile menu and the Profile tab keep the stale email
+				// until the 5s staleTime lapses (stale-menu-cache regression).
+				if (isCurrentUserUpdate) {
+					await queryClient.invalidateQueries({queryKey: ['my_info']});
+				}
 
 				// If current user changed their username, we need to re-login to get new token
 				if (isCurrentUserUpdate && usernameChanged) {
