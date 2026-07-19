@@ -4,6 +4,7 @@
 import {Alert, Divider, FormControlLabel, Grid2, Stack, Switch, Typography} from '@mui/material';
 import NewBox from 'components/layout/NewBox';
 import ParamBox from 'components/element/ParamBox';
+import {isValidIPAddress, isValidIPAddressCidr} from 'common';
 import {t} from 'i18next';
 import React from 'react';
 import {IIPsecCACertificate, IIPsecCertificate, IIPsecTunnelMod} from 'types/ipsec';
@@ -88,9 +89,6 @@ const DEFAULT_FORM: IIPsecTunnelMod = {
 	dpd: {action: 'restart', delay: 30, timeout: 150},
 };
 
-const CIDR_RE = /^\d{1,3}(\.\d{1,3}){3}\/\d{1,2}$/;
-const IP_RE = /^\d{1,3}(\.\d{1,3}){3}$/;
-
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
@@ -115,12 +113,12 @@ export default function IPsecTunnelInputForm(props: IPsecTunnelInputFormProps) {
 
 	const validateForm = (data: IIPsecTunnelMod): boolean => {
 		if (data.name.trim().length === 0) return false;
-		if (!IP_RE.test(data.localIp) || !IP_RE.test(data.remoteIp)) return false;
+		if (!isValidIPAddress(data.localIp) || !isValidIPAddress(data.remoteIp)) return false;
 		// On edit an empty PSK means "keep the stored one" (PUT carries it over)
 		if (data.authMode === 'psk' && (data.psk ?? '').length === 0 && !isEdit) return false;
 		if (data.authMode === 'cert' && (!data.certName || !data.caCertName)) return false;
-		if (data.selector?.srcCidr && !CIDR_RE.test(data.selector.srcCidr)) return false;
-		if (data.selector?.dstCidr && !CIDR_RE.test(data.selector.dstCidr)) return false;
+		if (data.selector?.srcCidr && !isValidIPAddressCidr(data.selector.srcCidr)) return false;
+		if (data.selector?.dstCidr && !isValidIPAddressCidr(data.selector.dstCidr)) return false;
 		if ((data.ikeLifetime ?? 0) < 0 || (data.espLifetime ?? 0) < 0) return false;
 		return true;
 	};
