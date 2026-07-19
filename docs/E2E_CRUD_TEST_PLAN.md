@@ -323,7 +323,36 @@ Done:
    is NOT a multipart upload — it registers hostname→certPath JSON mappings.
    Round-trip / D-multi skip unless a registration is listable (see GW-4).
 
-Next: Groups 4 → 5 → 3 → 2 → 6 → 7 + `zz-cleanup.spec.ts` leak detector.
+**Group 7 (OAM control plane) COMPLETE — all 6 specs + leak detector, green 2× (52 tests, 2026-07-19).**
+
+9. ✅ `auth.setup.ts` extended — provisions `e2e_operator`/`e2e_viewer` RBAC
+   fixtures via the admin API + captures 3 storageStates. (Logout revocation
+   is per-token, verified, so the auth logout test logs in fresh.)
+10. ✅ `oam/auth.spec.ts` — wrong-pw error, login/logout, H-2 token replay →
+    401, deep-link while authed.
+11. ✅ `oam/users.spec.ts` — C-min/C-role, V-dup/V-weak, E-edit (+F11
+    same-value), E-password, D-single, D-self blocked. **F-USER-1 fixed**:
+    admin self-delete was server-permitted (self-lockout) and unguarded —
+    now blocked in the UI; also dropped the redundant double delete-confirm.
+12. ✅ `oam/rbac.spec.ts` — viewer read-only across every mutable Group-1..6
+    route (no add/edit/delete controls + zero mutation requests); operator
+    gateway-write but no user-admin/config-mgmt; admin all visible.
+13. ✅ `oam/config-mgmt.spec.ts` — export (e2e- desc) listed, download
+    non-empty JSON, import DRY-RUN only (apply never fires), delete file.
+14. ✅ `oam/profile.spec.ts` — self email edit reflected in Profile tab +
+    header menu immediately and after reload. **F-PROFILE-1 fixed**: self-edit
+    now invalidates `['my_info']` (was stale until 5s staleTime lapsed).
+15. ✅ `oam/instances.spec.ts` — dashboard widgets, Check Health round-trip,
+    Modify dialog V-cases. **F-INSTANCE-1 fixed**: Modify dialog never gated
+    Apply on validity (unlike Add) and the form didn't validate the port
+    range — an out-of-range port / empty host could be PUT against the live
+    instance. Now `enableYes(isValid)` + port-range validation.
+16. ✅ `tests/zz-cleanup.spec.ts` (top-level → sorts last) — sweeps every
+    e2e-/doc entity then a leak detector that hard-fails on removable leaks
+    and tolerates (warns on) the documented-undeletable port-range firewall
+    rules + kernel-derived doc-range neighbors.
+
+All Group-1..7 specs green. Suite entry point: `npm run e2e`.
 
 Selector notes for future specs (learned the hard way):
 - ParamBox's Tooltip puts the field DESCRIPTION as aria-label on a wrapper
@@ -336,6 +365,18 @@ Selector notes for future specs (learned the hard way):
   `/netlox` base is silently dropped.
 - Sticky accordion tooltips intercept dialog-button clicks →
   `page.mouse.move(0,0)` before submit/cancel.
+- Plain MUI `<TextField required>` (UserEditForm, NOT ParamBox) renders its
+  asterisk with a THIN space, so `form.ts`'s exact `( \*)?$` regex misses it.
+  Anchor at the start + allow `\s*\*?$` (see `oam/users.spec.ts`).
+- A MUI `<Tooltip>` around an icon-only (or text) button makes the tooltip
+  title the button's ACCESSIBLE NAME — `getByRole('button', {name})` matches
+  the tooltip, not the visible label. Target by `:has-text(...)` or the
+  tooltip string (e.g. Instances "Check Health" → name "Refresh instance
+  health status").
+- A DataGrid `rowByText('admin')` also matches rows whose ROLE cell reads
+  "🛡️ ADMIN" — match the username cell exactly (`getByText(/^admin$/)`).
+- The instance Modify popup + the users delete both stack the generic
+  "WARNING!! Delete Item" DataTable confirm; helper `confirmDelete()` handles it.
 
 ## 11a. Findings from the reference-spec implementation (2026-07-19)
 
