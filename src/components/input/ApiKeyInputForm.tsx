@@ -2,8 +2,12 @@
 // Imports
 //---------------------------------------------------------
 import {Grid2, Stack, Switch, FormControlLabel, Divider} from '@mui/material';
+import {LocalizationProvider} from '@mui/x-date-pickers';
+import {AdapterDayjs} from '@mui/x-date-pickers/AdapterDayjs';
+import {DateTimePicker} from '@mui/x-date-pickers/DateTimePicker';
 import NewBox from 'components/layout/NewBox';
 import ParamBox from 'components/element/ParamBox';
+import dayjs from 'dayjs';
 import {t} from 'i18next';
 import {IApiKeyCreateRequest} from 'types/ai';
 import React from 'react';
@@ -37,10 +41,17 @@ const INITIAL_FORM: IApiKeyFormState = {
 	enabled: true,
 };
 
-// RFC3339, e.g. 2027-01-01T00:00:00Z
-function isValidExpiry(value: string): boolean {
-	if (value.length === 0) return true;
-	return !isNaN(Date.parse(value));
+// Validates the optional RFC3339 expiry, e.g. 2027-01-01T00:00:00Z. Returns
+// the error message for an invalid value, or undefined when acceptable (empty
+// = never expires). A blank string is fine; anything present must parse AND be
+// in the future — an already-expired key is a footgun, not a valid request.
+function expiryError(value: string): string | undefined {
+	const trimmed = value.trim();
+	if (trimmed.length === 0) return undefined;
+	const ms = Date.parse(trimmed);
+	if (isNaN(ms)) return t('Invalid timestamp (use RFC3339, e.g. 2027-01-01T00:00:00Z)');
+	if (ms <= Date.now()) return t('Expiry must be in the future');
+	return undefined;
 }
 
 function toRequest(form: IApiKeyFormState): IApiKeyCreateRequest {
@@ -48,6 +59,12 @@ function toRequest(form: IApiKeyFormState): IApiKeyCreateRequest {
 		.split(',')
 		.map(m => m.trim())
 		.filter(m => m.length > 0);
+
+	// Only emit expires_at once it parses — Date.toISOString() throws a
+	// RangeError on a half-typed / invalid timestamp, and this runs on every
+	// keystroke, so an unguarded conversion crashes the onChange handler.
+	const expiryTrim = form.expires_at.trim();
+	const expiryValid = expiryTrim.length > 0 && !isNaN(Date.parse(expiryTrim));
 
 	// Omit unset optionals so the gateway applies its own defaults
 	return {
@@ -57,7 +74,7 @@ function toRequest(form: IApiKeyFormState): IApiKeyCreateRequest {
 		...(form.rate_limit_rps > 0 && {rate_limit_rps: form.rate_limit_rps}),
 		...(form.burst_size > 0 && {burst_size: form.burst_size}),
 		...(form.tokens_per_min > 0 && {tokens_per_min: form.tokens_per_min}),
-		...(form.expires_at.trim().length > 0 && {expires_at: new Date(form.expires_at).toISOString()}),
+		...(expiryValid && {expires_at: new Date(expiryTrim).toISOString()}),
 		enabled: form.enabled,
 	};
 }
@@ -66,11 +83,22 @@ export default function ApiKeyInputForm(props: ApiKeyInputFormProps) {
 	const {onChange} = props;
 
 	const [form, setForm] = React.useState<IApiKeyFormState>(INITIAL_FORM);
+	// The picker owns a dayjs value (kept even while a typed entry is momentarily
+	// invalid, so the field text persists); form.expires_at mirrors it as the
+	// string the request + validation work on.
+	const [expiresAt, setExpiresAt] = React.useState<dayjs.Dayjs | null>(null);
+
+	const handleExpiryChange = (value: dayjs.Dayjs | null) => {
+		setExpiresAt(value);
+		// null = cleared; a valid instant → ISO; an in-progress invalid entry →
+		// a sentinel that expiryError rejects (never call toISOString on it).
+		handleChange('expires_at')(value == null ? '' : value.isValid() ? value.toISOString() : 'invalid');
+	};
 
 	const validateForm = (data: IApiKeyFormState): boolean => {
 		if (data.tenant_id.trim().length === 0) return false;
 		if (data.rate_limit_rps < 0 || data.burst_size < 0 || data.tokens_per_min < 0) return false;
-		if (!isValidExpiry(data.expires_at.trim())) return false;
+		if (expiryError(data.expires_at) !== undefined) return false;
 		return true;
 	};
 
@@ -134,15 +162,22 @@ export default function ApiKeyInputForm(props: ApiKeyInputFormProps) {
 
 				<Divider />
 
-				<Grid2 container spacing={2}>
-					<ParamBox
-						label={t('Expires At (RFC3339)')}
-						value={form.expires_at}
-						onChange={handleChange('expires_at')}
-						param_desc={{type: 'string', description: 'Optional expiry timestamp, e.g. 2027-01-01T00:00:00Z (empty = never expires)'}}
-						error={!isValidExpiry(form.expires_at.trim())}
-						helperText={!isValidExpiry(form.expires_at.trim()) ? t('Invalid timestamp') : undefined}
-					/>
+				<Grid2 container spacing={2} alignItems="center">
+					<LocalizationProvider dateAdapter={AdapterDayjs}>
+						<DateTimePicker
+							label={t('Expires At')}
+							value={expiresAt}
+							onChange={handleExpiryChange}
+							disablePast
+							slotProps={{
+								textField: {
+									error: expiryError(form.expires_at) !== undefined,
+									helperText: expiryError(form.expires_at) ?? t('Leave empty to never expire'),
+								},
+								actionBar: {actions: ['clear', 'accept']},
+							}}
+						/>
+					</LocalizationProvider>
 					<FormControlLabel
 						control={<Switch checked={form.enabled} onChange={e => handleChange('enabled')(e.target.checked)} />}
 						label={t('Enabled')}
