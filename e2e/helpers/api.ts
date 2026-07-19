@@ -319,6 +319,49 @@ export async function sweepNeighbors(): Promise<number> {
 	return removed;
 }
 
+/**
+ * Deletes every IPsec tunnel with an e2e- name or a documentation-range peer.
+ * DELETE /config/ipsec/tunnels/{name}. Only e2e-/doc-marked tunnels match, so
+ * a real production tunnel can never be swept.
+ */
+export async function sweepIpsecTunnels(): Promise<number> {
+	const resp = await gw('GET', '/config/ipsec/tunnels/all');
+	if (!resp.ok) return 0;
+	const data = await resp.json();
+	let removed = 0;
+	for (const t of data.ipsecTunnelAttr ?? []) {
+		if (isE2eMarked(t.name) || isDocAddr(t.remoteIp)) {
+			const del = await gw('DELETE', `/config/ipsec/tunnels/${encodeURIComponent(t.name)}`);
+			if (del.ok) removed++;
+		}
+	}
+	return removed;
+}
+
+/** Deletes every e2e- named IPsec endpoint + CA certificate. */
+export async function sweepIpsecCerts(): Promise<number> {
+	let removed = 0;
+	const ep = await gw('GET', '/config/ipsec/certificates/all');
+	if (ep.ok) {
+		for (const c of (await ep.json()).ipsecCertificateAttr ?? []) {
+			if (isE2eMarked(c.name)) {
+				const del = await gw('DELETE', `/config/ipsec/certificates/${encodeURIComponent(c.name)}`);
+				if (del.ok) removed++;
+			}
+		}
+	}
+	const ca = await gw('GET', '/config/ipsec/ca-certificates/all');
+	if (ca.ok) {
+		for (const c of (await ca.json()).ipsecCACertificateAttr ?? []) {
+			if (isE2eMarked(c.name)) {
+				const del = await gw('DELETE', `/config/ipsec/ca-certificates/${encodeURIComponent(c.name)}`);
+				if (del.ok) removed++;
+			}
+		}
+	}
+	return removed;
+}
+
 /** Deletes every LB rule with an e2e- name or documentation-range VIP. */
 export async function sweepLbRules(): Promise<number> {
 	const resp = await gw('GET', '/config/loadbalancer/all');
