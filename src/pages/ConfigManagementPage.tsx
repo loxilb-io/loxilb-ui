@@ -4,7 +4,7 @@
 import DownloadIcon from '@mui/icons-material/Download';
 import UploadIcon from '@mui/icons-material/Upload';
 import FolderIcon from '@mui/icons-material/Folder';
-import {Box, Stack, Typography, Tabs, Tab, Button, Paper} from '@mui/material';
+import {Box, Stack, Typography, Tabs, Tab, Button, Paper, Chip, Tooltip} from '@mui/material';
 import ScrollableBox from 'components/layout/ScrollableBox';
 import ErrorPopUp from 'components/modal/ErrorPopUp';
 import {useState, useCallback} from 'react';
@@ -13,7 +13,7 @@ import {usePopUp} from 'hooks/popupHook';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import ConfigExportForm from 'components/input/ConfigExportForm';
 import ConfigFileUploader from 'components/input/ConfigFileUploader';
-import {ExportRequest, OperationProgress, ValidationResult} from 'types/config';
+import {ConfigFileInfo, ExportRequest, OperationProgress, ValidationResult} from 'types/config';
 import {request_export_config, request_validate_import_config, request_import_config, query_get_config_files, request_download_config_file, request_delete_config_file} from 'connector/oam/configApi';
 import {t} from 'i18next';
 
@@ -90,7 +90,7 @@ function ImportTab({
 }
 
 function FileManagementTab() {
-	const [files, setFiles] = useState<any[]>([]);
+	const [files, setFiles] = useState<ConfigFileInfo[]>([]);
 	const [loading, setLoading] = useState(false);
 	const {openPopUp} = usePopUp();
 
@@ -107,17 +107,18 @@ function FileManagementTab() {
 			setLoading(false);
 		}
 	}, []);
-	
+
 	React.useEffect(() => {
 		fetchFiles();
 	}, [fetchFiles]);
-	
-	const handleDownload = useCallback(async (exportId: string, fallbackFilename: string) => {
+
+	const handleDownload = useCallback(async (file: ConfigFileInfo) => {
+		const fallbackFilename = file.filename || `config-${file.id}.json`;
 		try {
-			const result = await request_download_config_file(exportId);
+			const result = await request_download_config_file(file.id);
 			if (result) {
-				const { blob, filename } = result;
-				
+				const {blob, filename} = result;
+
 				// Check if blob contains HTML (indicating an error response)
 				const text = await blob.slice(0, 100).text();
 				if (text.includes('<!DOCTYPE html>') || text.includes('<html')) {
@@ -128,7 +129,7 @@ function FileManagementTab() {
 					);
 					return;
 				}
-				
+
 				const url = window.URL.createObjectURL(blob);
 				const a = document.createElement('a');
 				a.href = url;
@@ -137,14 +138,19 @@ function FileManagementTab() {
 				a.click();
 				window.URL.revokeObjectURL(url);
 				document.body.removeChild(a);
-				
+
 				openPopUp(t('Success'), t('Configuration file "{{filename}}" downloaded successfully.', {filename: filename || fallbackFilename}), t('OK'));
 			} else {
+				// The record exists but the backing file couldn't be fetched (removed
+				// from the server or expired). Say so plainly and refresh the list so
+				// the state reflects reality instead of leaving a dead row that looks
+				// downloadable.
 				openPopUp(
 					t('Download Error'),
-					t('Failed to download configuration file. Please check if the file exists and you have proper permissions.'),
+					t('"{{filename}}" could not be downloaded. The file may have been removed from the server or has expired. You can delete this entry.', {filename: fallbackFilename}),
 					t('OK')
 				);
+				fetchFiles();
 			}
 		} catch (error) {
 			console.error('Download error:', error);
@@ -154,16 +160,17 @@ function FileManagementTab() {
 				t('OK')
 			);
 		}
-	}, [openPopUp]);
+	}, [openPopUp, fetchFiles]);
 
-	const handleDelete = useCallback((exportId: string, filename: string) => {
+	const handleDelete = useCallback((file: ConfigFileInfo) => {
+		const filename = file.filename || `config-${file.id}.json`;
 		openPopUp(
 			t('Delete Configuration File'),
 			t('Are you sure you want to delete "{{filename}}"? This action cannot be undone.', {filename}),
 			t('Delete'),
 			t('Cancel'),
 			async () => {
-				const result = await request_delete_config_file(exportId);
+				const result = await request_delete_config_file(file.id);
 				if (result.status === 'success') {
 					openPopUp(t('Success'), t('Configuration file deleted successfully.'), t('OK'));
 					fetchFiles();
@@ -174,63 +181,88 @@ function FileManagementTab() {
 		);
 	}, [openPopUp, fetchFiles]);
 
+	// One compact metadata line: size · exported by · exported when · expiry.
+	const metaLine = (file: ConfigFileInfo): string => {
+		const parts: string[] = [];
+		if (file.file_size_human) parts.push(file.file_size_human);
+		if (file.exported_by) parts.push(t('by {{user}}', {user: file.exported_by}));
+		if (file.exported_at) parts.push(new Date(file.exported_at).toLocaleString());
+		if (!file.is_expired && file.expires_in) parts.push(t('expires in {{when}}', {when: file.expires_in}));
+		return parts.join('  ·  ');
+	};
+
 	return (
 		<Box>
-			<Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+			<Stack direction="row" justifyContent="space-between" alignItems="center" sx={{mb: 2}}>
 				<Box>
 					<Typography variant="h6" gutterBottom>
-						Configuration Files
+						{t('Configuration Files')}
 					</Typography>
 					<Typography variant="body2" color="text.secondary">
-						Manage exported configuration files.
+						{t('Manage exported configuration files.')}
 					</Typography>
 				</Box>
 				<Button variant="outlined" onClick={fetchFiles} disabled={loading}>
-					Refresh
+					{t('Refresh')}
 				</Button>
 			</Stack>
-			
+
 			{loading ? (
-				<Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-					<Typography>Loading files...</Typography>
+				<Box sx={{display: 'flex', justifyContent: 'center', py: 4}}>
+					<Typography>{t('Loading files...')}</Typography>
 				</Box>
 			) : files.length === 0 ? (
-				<Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-					No configuration files found.
+				<Typography variant="body2" color="text.secondary" sx={{textAlign: 'center', py: 4}}>
+					{t('No configuration files found.')}
 				</Typography>
 			) : (
 				<Stack spacing={1}>
-					{files.map((file: any) => (
-						<Paper key={file.id} sx={{ p: 2 }}>
-							<Stack direction="row" justifyContent="space-between" alignItems="center">
-								<Box>
-									<Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-										{file.filename || `config-${file.id}.json`}
-									</Typography>
+					{files.map(file => (
+						<Paper key={file.id} sx={{p: 2}}>
+							<Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
+								<Box sx={{minWidth: 0}}>
+									<Stack direction="row" alignItems="center" spacing={1} sx={{mb: 0.5}}>
+										<Typography variant="subtitle1" sx={{fontWeight: 'bold', wordBreak: 'break-all'}}>
+											{file.filename || `config-${file.id}.json`}
+										</Typography>
+										{file.is_expired ? (
+											<Chip size="small" color="error" variant="outlined" label={t('Expired')} />
+										) : (
+											<Chip size="small" color="success" variant="outlined" label={t('Available')} />
+										)}
+										{file.download_count > 0 && (
+											<Chip size="small" variant="outlined" label={t('{{count}} downloads', {count: file.download_count})} />
+										)}
+									</Stack>
 									<Typography variant="body2" color="text.secondary">
-										Exported: {new Date(file.exported_at).toLocaleString()}
+										{metaLine(file)}
 									</Typography>
 									{file.description && (
-										<Typography variant="body2" color="text.secondary">
+										<Typography variant="body2" color="text.secondary" sx={{fontStyle: 'italic'}}>
 											{file.description}
 										</Typography>
 									)}
 								</Box>
-								<Stack direction="row" spacing={1}>
-									<Button
-										size="small"
-										variant="outlined"
-										onClick={() => handleDownload(file.id, file.filename || `config-${file.id}.json`)}
-									>
-										Download
-									</Button>
+								<Stack direction="row" spacing={1} sx={{flexShrink: 0}}>
+									<Tooltip title={file.is_expired ? t('This export has expired and can no longer be downloaded.') : ''}>
+										<span>
+											<Button
+												size="small"
+												variant="outlined"
+												disabled={file.is_expired}
+												onClick={() => handleDownload(file)}
+											>
+												{t('Download')}
+											</Button>
+										</span>
+									</Tooltip>
 									<Button
 										size="small"
 										variant="outlined"
 										color="error"
-										onClick={() => handleDelete(file.id, file.filename || `config-${file.id}.json`)}
+										onClick={() => handleDelete(file)}
 									>
-										Delete
+										{t('Delete')}
 									</Button>
 								</Stack>
 							</Stack>

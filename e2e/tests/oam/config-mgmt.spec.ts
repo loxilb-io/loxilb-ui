@@ -50,7 +50,12 @@ test.describe.serial('Config management (admin)', () => {
 
 		await page.getByRole('tab', {name: 'File Management'}).click();
 		await page.getByRole('button', {name: 'Refresh'}).click();
-		await expect(fileCard(page, desc)).toBeVisible({timeout: 20_000});
+		const card = fileCard(page, desc);
+		await expect(card).toBeVisible({timeout: 20_000});
+		// The card carries real metadata (status chip + human size/expiry line),
+		// not just a bare filename.
+		await expect(card.getByText('Available')).toBeVisible();
+		await expect(card).toContainText(/expires in/i);
 	});
 
 	test('Download: the exported file is a non-empty JSON document', async ({page}) => {
@@ -71,6 +76,79 @@ test.describe.serial('Config management (admin)', () => {
 		const parsed = JSON.parse(body);
 		expect(parsed.metadata ?? parsed, 'downloaded file is JSON').toBeTruthy();
 		await expectSuccessAndDismiss(page); // the "downloaded successfully" popup
+	});
+
+	test('Download failure: a missing/removed file surfaces a clear error, not a crash', async ({page, consoleGuard}) => {
+		// The backing file can vanish (ephemeral server storage, expiry). The
+		// fetch 404s and logs to console by design — allow it; what we assert is
+		// that the UI degrades to an honest dialog and refreshes, never crashes.
+		consoleGuard.allow(/Download failed: 404/);
+		consoleGuard.allow(/Failed to load resource.*404/);
+
+		const desc = uniqDesc();
+		await exportConfig(desc);
+
+		await page.goto('config-management');
+		await page.getByRole('tab', {name: 'File Management'}).click();
+		await page.getByRole('button', {name: 'Refresh'}).click();
+		const card = fileCard(page, desc);
+		await expect(card).toBeVisible({timeout: 20_000});
+
+		// Force the backing-file fetch to fail deterministically, independent of
+		// testbed disk state (mirrors the real "Export file not found" 404).
+		await page.route('**/config/download/**', route =>
+			route.fulfill({status: 404, contentType: 'application/json', body: '{"error":"Export file not found"}'}),
+		);
+		try {
+			await card.getByRole('button', {name: 'Download'}).click();
+			await expect(dialogTitle(page, 'Download Error')).toBeVisible({timeout: 20_000});
+			await expect(dialog(page)).toContainText(/could not be downloaded/i);
+			await dialogButton(page, 'OK').click();
+		} finally {
+			await page.unroute('**/config/download/**');
+		}
+	});
+
+	test('Expired export: download is disabled and the file is flagged Expired', async ({page}) => {
+		// No API to expire a file on demand, so inject one expired record into the
+		// list response and assert the UI gates the download on is_expired.
+		await page.route('**/config/files*', route =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					files: [
+						{
+							id: 'e2e-expired-fixture',
+							filename: 'config-e2e-expired.json',
+							description: 'e2e-expired-fixture',
+							exported_at: '2026-01-01T00:00:00Z',
+							exported_by: 'admin',
+							file_size: 100,
+							file_size_human: '100 B',
+							file_exists: false,
+							is_expired: true,
+							expires_in: '0 minutes',
+							download_count: 0,
+						},
+					],
+					pagination: {},
+					filters: {},
+					message: 'ok',
+				}),
+			}),
+		);
+		try {
+			await page.goto('config-management');
+			await page.getByRole('tab', {name: 'File Management'}).click();
+			const card = fileCard(page, 'e2e-expired-fixture');
+			await expect(card).toBeVisible({timeout: 20_000});
+			// Target the status chip exactly (the filename/description also contain "expired").
+			await expect(card.getByText('Expired', {exact: true})).toBeVisible();
+			await expect(card.getByRole('button', {name: 'Download'})).toBeDisabled();
+		} finally {
+			await page.unroute('**/config/files*');
+		}
 	});
 
 	test('Import: dry-run only renders a preview and never applies', async ({page}) => {

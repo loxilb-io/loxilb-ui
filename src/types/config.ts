@@ -49,14 +49,30 @@ export interface FileListResponse {
   message: string;
 }
 
+// Shape of each entry returned by GET /oam/config/files. Mirrors the OAM
+// response (the older name/size/created_at fields never matched the wire, which
+// is why the File Management tab had fallen back to `any`).
 export interface ConfigFileInfo {
   id: string;
-  name: string;
-  size: number;
-  created_at: string;
-  created_by: string;
+  filename: string;
+  description?: string;
+  exported_at: string;
+  exported_by: string;
+  export_type?: string;
+  file_size: number;
+  file_size_human: string;
+  // NOTE: file_exists is currently unreliable from the OAM list endpoint (it
+  // reports false even for files that download fine), so the UI must not gate
+  // downloads on it. is_expired / expires_in are reliable.
+  file_exists: boolean;
+  is_expired: boolean;
+  expires_at?: string;
+  expires_in?: string;
   download_count: number;
-  last_downloaded_at?: string;
+  last_downloaded_at?: string | null;
+  time_since_export?: string;
+  checksum?: string;
+  download_url?: string;
 }
 
 export interface PaginationInfo {
