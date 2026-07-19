@@ -3,7 +3,7 @@
 //---------------------------------------------------------
 import {IEndpointInput, IEndpointItem} from 'types/endpoint';
 import {IInstance} from 'types/oam';
-import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
+import {ApiResult, assertOk, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
 import type {GwGetResp} from 'api';
 
@@ -12,6 +12,7 @@ import type {GwGetResp} from 'api';
 //---------------------------------------------------------
 export async function query_get_endpoint_all(instance: IInstance): Promise<IEndpointItem[]> {
 	const resp = await GET_INST<GwGetResp<'/config/endpoint/all'>>(instance, `/config/endpoint/all`);
+	assertOk(resp, 'Get Endpoint');
 	return (resp.data?.Attr ?? []) as IEndpointItem[];
 }
 

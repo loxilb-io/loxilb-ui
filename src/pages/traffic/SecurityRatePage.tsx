@@ -80,7 +80,7 @@ function DetailPanel(props: {entry: ISecurityRateEntry}) {
 //---------------------------------------------------------
 export default function SecurityRatePage() {
 	const inst = useInstanceFromURL();
-	const {data, refetch} = useSecurityRate(inst);
+	const {data, isError, refetch} = useSecurityRate(inst);
 	const entries: ISecurityRateEntry[] = data ?? [];
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
@@ -219,6 +219,7 @@ export default function SecurityRatePage() {
 				onChangeSelectedRows={handleSelectionChange}
 				onEdit={handleEdit}
 				onRefresh={handleRefresh}
+				error={isError}
 			/>
 			{selected_index !== -1 && sortedEntries[selected_index] && (
 				<LowerSection>

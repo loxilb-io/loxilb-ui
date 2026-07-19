@@ -3,7 +3,7 @@
 //---------------------------------------------------------
 import {IApiKeyCreateRequest, IApiKeyCreateResponse, IApiKeySummary, ITenantRateLimitEntry, ITenantRateLimitMod} from 'types/ai';
 import {IInstance} from 'types/oam';
-import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
+import {ApiResult, assertOk, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
 import type {GwGetResp} from 'api';
 
@@ -16,6 +16,9 @@ import type {GwGetResp} from 'api';
  */
 export async function query_get_apikey_all(instance: IInstance, tenant_id?: string): Promise<IApiKeySummary[]> {
 	const resp = await GET_INST<GwGetResp<'/config/ai/apikey'>>(instance, `/config/ai/apikey`, tenant_id ? {tenant_id} : undefined);
+	// A non-2xx (e.g. gateway 501/502 or license-gate 402) must surface so the
+	// table shows a retry banner instead of a silent "No rows" (F-UX-3).
+	assertOk(resp, 'Get API Keys');
 	// The gateway license-gates AI features with HTTP 402, whose body is a JSON
 	// error *object*, not an array. Never pass a non-array through: spreading /
 	// mapping it in the list pages would throw and white-screen the app.
@@ -73,7 +76,17 @@ export async function query_get_tenant_ratelimit(instance: IInstance, tenant_id:
  */
 export async function query_get_tenant_ratelimits_for(instance: IInstance, tenant_ids: string[]): Promise<ITenantRateLimitEntry[]> {
 	const unique = Array.from(new Set(tenant_ids.filter(id => id.length > 0)));
-	const entries = await Promise.all(unique.map(id => query_get_tenant_ratelimit(instance, id)));
+	const entries = await Promise.all(
+		unique.map(async id => {
+			const resp = await GET_INST<GwGetResp<'/config/ai/tenant/ratelimit/{tenant_id}'>>(instance, `/config/ai/tenant/ratelimit/${encodeURIComponent(id)}`);
+			// A tenant with no configured limit answers 404 — that is expected and
+			// simply contributes no row. Any OTHER non-2xx (e.g. gateway 501/502)
+			// must surface so the table shows a retry banner, not silent "No rows".
+			if (resp.code === 404) return null;
+			assertOk(resp, 'Get Tenant Rate Limits');
+			return resp.data ?? null;
+		}),
+	);
 	return entries.filter((e): e is ITenantRateLimitEntry => e !== null);
 }
 

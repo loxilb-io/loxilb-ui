@@ -161,7 +161,7 @@ function ConntrackPanel(props: {instance: IInstance | null; data: ICtAttribute})
 export default function ConntrackPage() {
 	const inst = useInstanceFromURL();
 
-	const {data: ct_info, refetch} = useConntrack(inst);
+	const {data: ct_info, isError, refetch} = useConntrack(inst);
 
 	// Filter states
 	const [servNameFilter, setServNameFilter] = useState<string>('');
@@ -364,6 +364,7 @@ export default function ConntrackPage() {
 			   data={{ctAttr: sortedCtAttr}}
 			   selected_rows={selected_index !== -1 ? [selected_index] : []}
 			   onRefresh={refetch}
+			   error={isError}
 			   onChangeSelectedRows={(indices: number[]) => {
 				   // Map sorted indices back to original indices
 				   if (indices.length === 1 && ct_info?.ctAttr) {

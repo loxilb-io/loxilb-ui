@@ -17,7 +17,7 @@ import {t} from 'i18next';
 export default function HAPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, refetch} = useHAState(inst); // IVipAttribute[]
+	const {data, isError, refetch} = useHAState(inst); // IVipAttribute[]
 	const ha_info: IVipConfiguration = {Attr: data ?? []};
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
 
@@ -62,5 +62,5 @@ export default function HAPage() {
 		);
 	}, [inst, selected_rows, ha_info, openPopUp, refetch, enableYes]);
 
-	return <HATable data={ha_info} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} onEdit={handleEdit} onRefresh={refetch} />;
+	return <HATable data={ha_info} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} onEdit={handleEdit} onRefresh={refetch} error={!!isError} />;
 }

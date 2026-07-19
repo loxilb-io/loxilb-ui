@@ -17,12 +17,14 @@ import {IBGPDefinedSetInput, IDefinedSetAttribute, IDefinedSetsInfo} from 'types
 export default function BGPDefinedSetPage() {
 	const inst = useInstanceFromURL();
 
-	const {data: prefix_data, refetch: refetch_prefix} = useBGPDefinedSets(inst, 'prefix'); // prefixList is avalable
-	const {data: neighbor_data, refetch: refetch_neighbor} = useBGPDefinedSets(inst, 'neighbor'); // list is avalable
-	const {data: aspath_data, refetch: refetch_aspath} = useBGPDefinedSets(inst, 'aspath'); // list is avalable
-	const {data: community_data, refetch: refetch_comm} = useBGPDefinedSets(inst, 'community'); // list is avalable
-	const {data: extcommunity_data, refetch: refetch_extcomm} = useBGPDefinedSets(inst, 'extcommunity'); // list is avalable
-	const {data: largecommunity_data, refetch: refetch_largecomm} = useBGPDefinedSets(inst, 'largecommunity'); // list is avalable
+	const {data: prefix_data, isError: prefix_error, refetch: refetch_prefix} = useBGPDefinedSets(inst, 'prefix'); // prefixList is avalable
+	const {data: neighbor_data, isError: neighbor_error, refetch: refetch_neighbor} = useBGPDefinedSets(inst, 'neighbor'); // list is avalable
+	const {data: aspath_data, isError: aspath_error, refetch: refetch_aspath} = useBGPDefinedSets(inst, 'aspath'); // list is avalable
+	const {data: community_data, isError: community_error, refetch: refetch_comm} = useBGPDefinedSets(inst, 'community'); // list is avalable
+	const {data: extcommunity_data, isError: extcommunity_error, refetch: refetch_extcomm} = useBGPDefinedSets(inst, 'extcommunity'); // list is avalable
+	const {data: largecommunity_data, isError: largecommunity_error, refetch: refetch_largecomm} = useBGPDefinedSets(inst, 'largecommunity'); // list is avalable
+
+	const isError = prefix_error || neighbor_error || aspath_error || community_error || extcommunity_error || largecommunity_error;
 
 	// The gateway response does not carry definedType — each list is tagged
 	// here with the type it was queried by (delete/refetch route on it).
@@ -127,5 +129,5 @@ export default function BGPDefinedSetPage() {
 		);
 	};
 
-	return <BGPDefinedSetTable data={set_data} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} onAdd={handleAdd} onDelete={handleDelete} />;
+	return <BGPDefinedSetTable data={set_data} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} onAdd={handleAdd} onDelete={handleDelete} error={isError} />;
 }

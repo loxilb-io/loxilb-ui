@@ -95,7 +95,7 @@ function OptionPannel(props: {rule: IFirewallRule}) {
 export default function FirewallPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, refetch} = useFirewallRules(inst);
+	const {data, isError, refetch} = useFirewallRules(inst);
 	const fw_info: IFirewallRules = {fwAttr: data ?? []};
 
    const [selected_rows, set_selected_rows] = useState<number[]>([]);
@@ -238,6 +238,7 @@ export default function FirewallPage() {
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
 			   onRefresh={handleRefresh}
+			   error={isError}
 		   />
 	   {selected_index !== -1 && (
 		   <LowerSection>

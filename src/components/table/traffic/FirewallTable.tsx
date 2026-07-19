@@ -14,8 +14,8 @@ const protocol_list: IEnumItem[] = protocols;
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function FirewallTable(props: {data: IFirewallRules; selected_rows: number[]; onChangeSelectedRows: any; onAdd?: any; onDelete?: any; onRefresh?: any}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh} = props;
+export default function FirewallTable(props: {data: IFirewallRules; selected_rows: number[]; onChangeSelectedRows: any; onAdd?: any; onDelete?: any; onRefresh?: any; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
 
 	// const sorted_data = useMemo(() => {
 	// 	const protocol_map = new Map<number, number>();
@@ -76,5 +76,5 @@ export default function FirewallTable(props: {data: IFirewallRules; selected_row
 	   })()
 	   : undefined;
 
-	return <DataTable name={'Firewall'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onRefresh={onRefresh} />;
+	return <DataTable name={'Firewall'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onRefresh={onRefresh} error={error} />;
 }

@@ -30,8 +30,9 @@ export function IPsecCertTable(props: {
 	onAdd?: () => void;
 	onDelete?: () => void;
 	onRefresh?: () => void;
+	error?: boolean;
 }) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh} = props;
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'name', header: 'Name', width: 'medium'},
@@ -62,6 +63,7 @@ export function IPsecCertTable(props: {
 			onAdd={onAdd}
 			onDelete={onDelete}
 			onRefresh={onRefresh}
+			error={error}
 			hideCheckbox={true}
 		/>
 	);
@@ -74,8 +76,9 @@ export function IPsecCACertTable(props: {
 	onAdd?: () => void;
 	onDelete?: () => void;
 	onRefresh?: () => void;
+	error?: boolean;
 }) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh} = props;
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'name', header: 'Name', width: 'medium'},
@@ -104,6 +107,7 @@ export function IPsecCACertTable(props: {
 			onAdd={onAdd}
 			onDelete={onDelete}
 			onRefresh={onRefresh}
+			error={error}
 			hideCheckbox={true}
 		/>
 	);

@@ -3,7 +3,7 @@
 //---------------------------------------------------------
 import {IServiceConfiguration} from 'types/load_balancer';
 import {IInstance} from 'types/oam';
-import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
+import {ApiResult, assertOk, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, PATCH_INST, POST_INST} from '../fetcher/fetcher_inst';
 import type {GwGetResp} from 'api';
 
@@ -37,6 +37,7 @@ function cleanNegativeNumbers(obj: any): any {
 //---------------------------------------------------------
 export async function query_get_load_balancer_config_all(instance: IInstance): Promise<IServiceConfiguration[]> {
 	const resp = await GET_INST<GwGetResp<'/config/loadbalancer/all'>>(instance, `/config/loadbalancer/all`);
+	assertOk(resp, 'Get Load Balancer');
 	return (resp.data?.lbAttr ?? []) as IServiceConfiguration[];
 }
 

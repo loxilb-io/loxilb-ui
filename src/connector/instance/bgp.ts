@@ -2,7 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {IInstance} from 'types/oam';
-import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
+import {ApiResult, assertOk, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
 import type {GwGetResp, GwSchema} from 'api';
 
@@ -12,6 +12,7 @@ import type {GwGetResp, GwSchema} from 'api';
 // Neighbors
 export async function query_get_bgp_neighbors(instance: IInstance): Promise<GwSchema<'BGPNeighGetEntry'>[]> {
 	const resp = await GET_INST<GwGetResp<'/config/bgp/neigh/all'>>(instance, `/config/bgp/neigh/all`);
+	assertOk(resp, 'Get BGP Neighbor');
 	return resp.data?.bgpNeiAttr ?? [];
 }
 
@@ -42,6 +43,7 @@ export async function query_get_bgp_defined_sets(
 ): Promise<GwSchema<'BGPPolicyDefinedSetGetEntry'>[]> {
 	// served by the swagger route /config/bgp/policy/definedsets/{defineset_type}/{type_name} with type_name='all'
 	const resp = await GET_INST<GwGetResp<'/config/bgp/policy/definedsets/{defineset_type}/{type_name}'>>(instance, `/config/bgp/policy/definedsets/${definesetType}/all`);
+	assertOk(resp, 'Get BGP Defined Set');
 	return resp.data?.definedsetsAttr ?? [];
 }
 
@@ -74,6 +76,7 @@ export async function request_delete_defined_set(
 // Policy Definitions
 export async function query_get_bgp_policy_definitions(instance: IInstance): Promise<GwSchema<'BGPPolicyDefinitionsMod'>[]> {
 	const resp = await GET_INST<GwGetResp<'/config/bgp/policy/definitions/all'>>(instance, `/config/bgp/policy/definitions/all`);
+	assertOk(resp, 'Get BGP Policy Definition');
 	return resp.data?.bgpPolicyAttr ?? [];
 }
 

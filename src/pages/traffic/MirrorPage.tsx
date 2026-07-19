@@ -62,7 +62,7 @@ function DetailPanel(props: {name: string; data: IMirrorAttribute}) {
 export default function MirrorPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, refetch} = useMirrors(inst);
+	const {data, isError, refetch} = useMirrors(inst);
 	const mirror_info: IMirrorConfiguration = {mirrAttr: data ?? []};
 
    const [selected_rows, set_selected_rows] = useState<number[]>([]);
@@ -203,6 +203,7 @@ export default function MirrorPage() {
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
 			   onRefresh={handleRefresh}
+			   error={isError}
 		   />
 		   {selected_index !== -1 && (
 			   <LowerSection>

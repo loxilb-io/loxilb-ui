@@ -15,10 +15,11 @@ interface SNICertificatesTableProps {
 	onAdd?: () => void;
 	onDelete?: () => void;
 	onRefresh?: () => void;
+	error?: boolean;
 }
 
 export default function SNICertificatesTable(props: SNICertificatesTableProps) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh} = props;
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'hostname', header: 'Hostname', width: 'wide'},
@@ -43,6 +44,7 @@ export default function SNICertificatesTable(props: SNICertificatesTableProps) {
 			onAdd={onAdd}
 			onDelete={onDelete}
 			onRefresh={onRefresh}
+			error={error}
 		/>
 	);
 }

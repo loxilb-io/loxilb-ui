@@ -100,7 +100,7 @@ function PeerPanel(props: {name: string; vxlanID: number; data: string[]; refetc
 export default function VxLANPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, refetch} = useVxlanAttr(inst); // IVxlanAttribute[]
+	const {data, isError, refetch} = useVxlanAttr(inst); // IVxlanAttribute[]
 	const vxlan_info: IVxlanData = {vxlanAttr: data ?? []};
 
 	const [selected_rows, set_selected_rows] = useState<any[]>([]);
@@ -159,7 +159,7 @@ export default function VxLANPage() {
 
 	return (
 		<Fragment>
-			<VXLANTable data={vxlan_info} selected_rows={selected_rows} onChangeSelectedRows={handleSelectionChange} onAdd={handleAdd} onDelete={handleDelete} />
+			<VXLANTable data={vxlan_info} selected_rows={selected_rows} onChangeSelectedRows={handleSelectionChange} onAdd={handleAdd} onDelete={handleDelete} error={isError} />
 
 			{selected_rows.length === 1 && (
 				<LowerSection>

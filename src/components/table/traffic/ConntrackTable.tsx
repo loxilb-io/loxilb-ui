@@ -10,8 +10,8 @@ import {IDataTableColumnDef} from 'types/global';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function ConntrackTable(props: {data: ICtData; selected_rows: number[]; onChangeSelectedRows: any; onRefresh?: any}) {
-	const {data, selected_rows, onChangeSelectedRows, onRefresh} = props;
+export default function ConntrackTable(props: {data: ICtData; selected_rows: number[]; onChangeSelectedRows: any; onRefresh?: any; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onRefresh, error} = props;
 
 	const inst_name = useInstanceName();
 
@@ -67,5 +67,5 @@ export default function ConntrackTable(props: {data: ICtData; selected_rows: num
 	   })()
 	   : undefined;
 
-	return <DataTable name={'Connection Track'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onRefresh={onRefresh} hideCheckbox={true} />;
+	return <DataTable name={'Connection Track'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onRefresh={onRefresh} error={error} hideCheckbox={true} />;
 }

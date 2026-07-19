@@ -37,7 +37,7 @@ export default function IPPage(props: {family?: 'ipv4' | 'ipv6'}) {
 	const request_delete_ip = family === 'ipv6' ? request_delete_ipv6 : request_delete_ipv4;
 	const inst = useInstanceFromURL();
 
-	const {data, refetch} = useIPAttr(inst, family); // IIpAttribute[]
+	const {data, isError, refetch} = useIPAttr(inst, family); // IIpAttribute[]
 	
 	// Transform data: split entries with multiple IPs into separate entries
 	const ip_info: IIpData = useMemo(() => {
@@ -285,6 +285,7 @@ export default function IPPage(props: {family?: 'ipv4' | 'ipv6'}) {
 				onDelete={handleDelete}
 				onUpdate={handleUpdate}
 				onRefresh={handleRefresh}
+				error={isError}
 			/>
 
 			{selected_index !== -1 && (

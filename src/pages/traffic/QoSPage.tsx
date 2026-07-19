@@ -21,7 +21,7 @@ import {IPolicyAttribute, IPolicyConfiguration} from 'types/qos';
 export default function QoSPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, refetch} = useQOSPolicies(inst);
+	const {data, isError, refetch} = useQOSPolicies(inst);
 	const qos_info: IPolicyConfiguration = {polAttr: data ?? []};
 
    const [selected_rows, set_selected_rows] = useState<number[]>([]);
@@ -155,6 +155,7 @@ export default function QoSPage() {
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
 			   onRefresh={handleRefresh}
+			   error={isError}
 		   />
 
 		   {/* Error Popup */}

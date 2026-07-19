@@ -17,7 +17,7 @@ import {
 	IIPsecTunnelMod,
 } from 'types/ipsec';
 import {IInstance} from 'types/oam';
-import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
+import {ApiResult, assertOk, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST, PUT_INST} from '../fetcher/fetcher_inst';
 
 //---------------------------------------------------------
@@ -43,6 +43,7 @@ export async function request_set_ipsec_config(instance: IInstance, data: IIPsec
 
 export async function query_get_ipsec_tunnel_all(instance: IInstance): Promise<IIPsecTunnel[]> {
 	const resp = await GET_INST<{ipsecTunnelAttr: IIPsecTunnel[] | null}>(instance, `/config/ipsec/tunnels/all`);
+	assertOk(resp, 'Get IPsec Tunnels');
 	return resp.data?.ipsecTunnelAttr ?? [];
 }
 
@@ -113,6 +114,7 @@ export async function query_get_ipsec_stats(instance: IInstance): Promise<IIPsec
 
 export async function query_get_ipsec_certificate_all(instance: IInstance): Promise<IIPsecCertificate[]> {
 	const resp = await GET_INST<{ipsecCertificateAttr: IIPsecCertificate[] | null}>(instance, `/config/ipsec/certificates/all`);
+	assertOk(resp, 'Get IPsec Certificates');
 	return resp.data?.ipsecCertificateAttr ?? [];
 }
 
@@ -148,6 +150,7 @@ export async function request_validate_ipsec_certificate(instance: IInstance, da
 
 export async function query_get_ipsec_ca_certificate_all(instance: IInstance): Promise<IIPsecCACertificate[]> {
 	const resp = await GET_INST<{ipsecCACertificateAttr: IIPsecCACertificate[] | null}>(instance, `/config/ipsec/ca-certificates/all`);
+	assertOk(resp, 'Get IPsec CA Certificates');
 	return resp.data?.ipsecCACertificateAttr ?? [];
 }
 

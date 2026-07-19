@@ -8,8 +8,8 @@ import {IProcessInfo} from 'types/process';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function ProcessTable(props: {data: IProcessInfo; selected_rows: number[]; onChangeSelectedRows: any; onRefresh?: any}) {
-	const {data, selected_rows, onChangeSelectedRows, onRefresh} = props;
+export default function ProcessTable(props: {data: IProcessInfo; selected_rows: number[]; onChangeSelectedRows: any; onRefresh?: any; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'pid', header: 'PID', tooltip: 'Process ID', width: 'medium'},
@@ -34,5 +34,5 @@ export default function ProcessTable(props: {data: IProcessInfo; selected_rows: 
 		};
 	});
 
-	return <DataTable name={'Process'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onRefresh={onRefresh} />;
+	return <DataTable name={'Process'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onRefresh={onRefresh} error={error} />;
 }

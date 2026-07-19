@@ -53,7 +53,7 @@ function ProbeInfoPanel(props: {name: string; data: IEndpointItem}) {
 export default function EndpointPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, refetch} = useEndpoints(inst);
+	const {data, isError, refetch} = useEndpoints(inst);
 	const ep_info: IEndpointAttr = {Attr: data ?? []};
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
@@ -246,6 +246,7 @@ export default function EndpointPage() {
 				onDelete={handleDelete}
 				onUpdate={handleUpdate}
 				onRefresh={handleRefresh}
+				error={isError}
 			/>
 
 			{selected_index !== -1 && selectedItem && (

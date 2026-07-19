@@ -14,10 +14,11 @@ interface SYNFloodTableProps {
 	onChangeSelectedRows: (indices: number[]) => void;
 	onEdit?: () => void;
 	onRefresh?: () => void;
+	error?: boolean;
 }
 
 export default function SYNFloodTable(props: SYNFloodTableProps) {
-	const {data, selected_rows, onChangeSelectedRows, onEdit, onRefresh} = props;
+	const {data, selected_rows, onChangeSelectedRows, onEdit, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'enabled', header: 'Enabled', width: 'narrow'},
@@ -51,6 +52,7 @@ export default function SYNFloodTable(props: SYNFloodTableProps) {
 			onChangeSelectedRows={onChangeSelectedRows}
 			onEdit={onEdit}
 			onRefresh={onRefresh}
+			error={error}
 		/>
 	);
 }

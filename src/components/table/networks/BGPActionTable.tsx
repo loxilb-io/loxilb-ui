@@ -8,8 +8,8 @@ import {IDataTableColumnDef} from 'types/global';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function BGPActionTable(props: {action_list: IActionSet[]; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any}) {
-	const {action_list, selected_rows, onChangeSelectedRows, onAdd, onDelete} = props;
+export default function BGPActionTable(props: {action_list: IActionSet[]; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; error?: boolean}) {
+	const {action_list, selected_rows, onChangeSelectedRows, onAdd, onDelete, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'routeDisposition', header: 'Route Disposition', tooltip: '“Handling” to specify how the policy should handle matching routes'},
@@ -40,5 +40,5 @@ export default function BGPActionTable(props: {action_list: IActionSet[]; select
 		};
 	});
 
-	return <DataTable name={'Action'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} />;
+	return <DataTable name={'Action'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} error={error} />;
 }

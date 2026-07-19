@@ -99,7 +99,7 @@ export default function IPsecTunnelPage() {
 	const inst = useInstanceFromURL();
 	const {can_write_gateway} = useRole();
 
-	const {data: tunnels, refetch: refetchTunnels} = useIPsecTunnels(inst);
+	const {data: tunnels, isError: tunnelsError, refetch: refetchTunnels} = useIPsecTunnels(inst);
 	const {data: sas, refetch: refetchSAs} = useIPsecSAs(inst);
 	const {data: stats, refetch: refetchStats} = useIPsecStats(inst);
 	const {data: config, refetch: refetchConfig} = useIPsecConfig(inst);
@@ -292,6 +292,7 @@ export default function IPsecTunnelPage() {
 				onEdit={handleEdit}
 				onDelete={handleDelete}
 				onRefresh={handleRefresh}
+				error={tunnelsError}
 			/>
 
 			{selectedTunnel && (
