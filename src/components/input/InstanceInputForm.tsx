@@ -31,14 +31,17 @@ export default function InstanceInputForm(props: {
 		is_active: initialValues?.is_active ?? true, 
 	});
 
-	// Validate required fields
+	// Validate required fields — and the port must be a real 1–65535 value, so
+	// an out-of-range port (matching PortBox's own rejection) disables submit.
 	const isValid = React.useMemo(() => {
-		return !!(form.name?.toString().trim() && 
-		         form.cimage?.toString().trim() && 
-		         form.ctag?.toString().trim() && 
-		         form.host?.toString().trim() && 
-		         form.port?.toString().trim() && 
-		         form.protocol?.toString().trim() && 
+		const portNum = Number(form.port);
+		const portValid = form.port?.toString().trim() !== '' && Number.isInteger(portNum) && portNum >= 1 && portNum <= 65535;
+		return !!(form.name?.toString().trim() &&
+		         form.cimage?.toString().trim() &&
+		         form.ctag?.toString().trim() &&
+		         form.host?.toString().trim() &&
+		         portValid &&
+		         form.protocol?.toString().trim() &&
 		         form.version?.toString().trim());
 	}, [form]);
 
