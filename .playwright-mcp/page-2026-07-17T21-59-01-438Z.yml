@@ -1,0 +1,43 @@
+- generic [ref=f4e4]:
+  - generic [ref=f4e5]:
+    - generic [ref=f4e6]:
+      - img "logo" [ref=f4e306] [cursor=pointer]
+      - generic [ref=f4e8]: v.0.9.0
+    - generic [ref=f4e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f4e307]:
+        - link [ref=f4e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f4e308]:
+        - link [ref=f4e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - generic "Config Management" [ref=f4e309]:
+        - link [ref=f4e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+      - img "flag" [ref=f4e310] [cursor=pointer]
+      - heading "e2e_admin" [level=6] [ref=f4e311] [cursor=pointer]
+  - generic [ref=f4e37]:
+    - tablist "configuration management tabs" [ref=f4e312]:
+      - tab "Export" [ref=f4e313] [cursor=pointer]
+      - tab "Import" [selected] [ref=f4e314] [cursor=pointer]
+      - tab "File Management" [ref=f4e315] [cursor=pointer]
+    - tabpanel "Import" [ref=f4e316]:
+      - generic [ref=f4e205]:
+        - generic [ref=f4e207] [cursor=pointer]:
+          - heading "e2e-wrongschema.json" [level=6] [ref=f4e317]
+          - paragraph [ref=f4e211]: Drag and drop a configuration file here, or click to select
+          - generic [ref=f4e212]: "Supported formats: .json • Max size: 50MB"
+        - alert [ref=f4e277]:
+          - generic [ref=f4e281]: Validation found problems
+        - alert [ref=f4e283]:
+          - generic [ref=f4e287]: Configuration file is valid and ready for import!
+        - button "Clear Selection" [ref=f4e318] [cursor=pointer]
+  - generic [ref=f4e76]:
+    - link [ref=f4e77] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f4e79]:
+      - link "© NETLOX" [ref=f4e319] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f4e320] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f4e321] [cursor=pointer]:
+        - /url: https://netlox.io

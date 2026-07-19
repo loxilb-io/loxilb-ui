@@ -1,0 +1,57 @@
+- generic [ref=f35e1]:
+  - generic [ref=f35e4]:
+    - generic [ref=f35e5]:
+      - generic [ref=f35e6]: v.0.9.0
+      - generic [ref=f35e9]:
+        - link [ref=f35e11] [cursor=pointer]:
+          - /url: /netlox/instance
+        - link [ref=f35e16] [cursor=pointer]:
+          - /url: /netlox/user
+        - link [ref=f35e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+        - heading [level=6] [ref=f35e171] [cursor=pointer]: e2e_admin
+    - generic [ref=f35e37]:
+      - tablist [ref=f35e172]:
+        - tab [ref=f35e173] [cursor=pointer]: Export
+        - tab [ref=f35e174] [cursor=pointer]: Import
+        - tab [selected] [ref=f35e175] [cursor=pointer]: File Management
+      - tabpanel [ref=f35e176]:
+        - generic [ref=f35e133]:
+          - generic [ref=f35e134]:
+            - generic [ref=f35e135]:
+              - heading [level=6] [ref=f35e177]: Configuration Files
+              - paragraph [ref=f35e137]: Manage exported configuration files.
+            - button [ref=f35e178] [cursor=pointer]: Refresh
+          - generic [ref=f35e201]:
+            - generic [ref=f35e203]:
+              - generic [ref=f35e204]:
+                - heading [level=6] [ref=f35e205]: config-90dc8b4a9a112742.json
+                - paragraph [ref=f35e206]: "Exported: 2026. 7. 18. 오전 6:50:06"
+                - paragraph [ref=f35e207]: e2e-export-test
+              - generic [ref=f35e208]:
+                - button [ref=f35e209] [cursor=pointer]: Download
+                - button [ref=f35e210] [cursor=pointer]: Delete
+            - generic [ref=f35e212]:
+              - generic [ref=f35e213]:
+                - heading [level=6] [ref=f35e214]: config-15030b70e8717d33.json
+                - paragraph [ref=f35e215]: "Exported: 2026. 7. 17. 오전 11:57:27"
+              - generic [ref=f35e216]:
+                - button [ref=f35e217] [cursor=pointer]: Download
+                - button [ref=f35e218] [cursor=pointer]: Delete
+    - generic [ref=f35e76]:
+      - link [ref=f35e77] [cursor=pointer]:
+        - /url: https://netlox.io
+      - generic [ref=f35e79]:
+        - link [ref=f35e188] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: © NETLOX
+        - link [ref=f35e189] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Privacy
+        - link [ref=f35e190] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Terms
+  - generic [ref=f35e221]:
+    - heading "Success" [level=2] [ref=f35e222]
+    - paragraph [ref=f35e223]: Configuration file deleted successfully.
+    - button "OK" [ref=f35e226] [cursor=pointer]

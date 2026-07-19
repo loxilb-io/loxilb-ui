@@ -1,0 +1,97 @@
+- generic [ref=f40e1]:
+  - generic [ref=f40e4]:
+    - generic [ref=f40e5]:
+      - generic [ref=f40e6]: v.0.9.0
+      - generic [ref=f40e9]:
+        - link [ref=f40e11] [cursor=pointer]:
+          - /url: /netlox/instance
+        - link [ref=f40e16] [cursor=pointer]:
+          - /url: /netlox/user
+        - link [ref=f40e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+        - heading [level=6] [ref=f40e362] [cursor=pointer]: admin
+    - generic [ref=f40e37]:
+      - tablist [ref=f40e363]:
+        - tab [ref=f40e364] [cursor=pointer]: Profile
+        - tab [selected] [ref=f40e365] [cursor=pointer]: User List
+      - tabpanel [ref=f40e366]:
+        - generic [ref=f40e97]:
+          - heading [level=6] [ref=f40e367]: User Management
+          - generic [ref=f40e102]:
+            - generic [ref=f40e103]:
+              - button [ref=f40e105] [cursor=pointer]
+              - button [ref=f40e109] [cursor=pointer]
+              - button [ref=f40e220] [cursor=pointer]
+              - button [ref=f40e223] [cursor=pointer]
+            - generic [ref=f40e115] [cursor=pointer]:
+              - grid [ref=f40e116]:
+                - row [ref=f40e372]:
+                  - columnheader [ref=f40e373]:
+                    - checkbox [checked] [ref=f40e374]
+                  - columnheader [ref=f40e375]:
+                    - generic [ref=f40e128]: ID
+                  - columnheader [ref=f40e376]:
+                    - generic [ref=f40e132]: Username
+                  - columnheader [ref=f40e377]:
+                    - generic [ref=f40e136]: Email
+                  - columnheader [ref=f40e378]:
+                    - generic [ref=f40e140]: Role
+                  - columnheader [ref=f40e379]:
+                    - generic [ref=f40e144]: Created At
+                - rowgroup [ref=f40e147]:
+                  - row [ref=f40e380]:
+                    - gridcell [ref=f40e381]:
+                      - checkbox [ref=f40e382]
+                    - gridcell [ref=f40e383]:
+                      - paragraph [ref=f40e156]: "0"
+                    - gridcell [ref=f40e384]:
+                      - paragraph [ref=f40e159]: admin
+                    - gridcell [ref=f40e385]:
+                      - paragraph [ref=f40e162]: admin@test.local
+                    - gridcell [ref=f40e386]:
+                      - paragraph [ref=f40e165]: 🛡️ ADMIN
+                    - gridcell [ref=f40e387]:
+                      - paragraph [ref=f40e168]: 2026. 7. 17.
+                  - row [selected] [ref=f40e388]:
+                    - gridcell [ref=f40e389]:
+                      - checkbox [checked] [ref=f40e390]
+                    - gridcell [ref=f40e391]:
+                      - paragraph [ref=f40e177]: "1"
+                    - gridcell [ref=f40e392]:
+                      - paragraph [ref=f40e180]: e2e_viewer
+                    - gridcell [ref=f40e393]:
+                      - paragraph [ref=f40e183]: e2e_viewer+edit@test.local
+                    - gridcell [ref=f40e394]:
+                      - paragraph [ref=f40e186]: 👤 VIEWER
+                    - gridcell [ref=f40e395]:
+                      - paragraph [ref=f40e189]: 2026. 7. 18.
+              - generic [ref=f40e212]:
+                - generic [ref=f40e356]: 1 row selected
+                - generic [ref=f40e214]:
+                  - paragraph [ref=f40e215]: "Rows per page:"
+                  - generic [ref=f40e216]:
+                    - combobox [ref=f40e396]: "5"
+                    - textbox: "5"
+                  - paragraph [ref=f40e218]: 1–2 of 2
+                  - generic [ref=f40e219]:
+                    - button [disabled]
+                    - button [disabled]
+    - generic [ref=f40e88]:
+      - link [ref=f40e89] [cursor=pointer]:
+        - /url: https://netlox.io
+      - generic [ref=f40e91]:
+        - link [ref=f40e397] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: © NETLOX
+        - link [ref=f40e398] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Privacy
+        - link [ref=f40e399] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Terms
+  - generic [ref=f40e402]:
+    - heading "WARNING!! Delete Item" [level=2] [ref=f40e403]
+    - paragraph [ref=f40e404]: Are you sure you want to delete this Item? This action cannot be undone.
+    - generic [ref=f40e405]:
+      - button "Cancel" [ref=f40e407] [cursor=pointer]
+      - button "Delete" [ref=f40e409] [cursor=pointer]

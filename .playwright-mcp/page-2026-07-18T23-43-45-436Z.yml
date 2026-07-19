@@ -1,0 +1,226 @@
+- generic [ref=f3e1]:
+  - generic [ref=f3e4]:
+    - generic [ref=f3e5]:
+      - generic [ref=f3e6]: v.0.9.0
+      - generic [ref=f3e9]:
+        - link [ref=f3e11] [cursor=pointer]:
+          - /url: /netlox/instance
+        - link [ref=f3e16] [cursor=pointer]:
+          - /url: /netlox/user
+        - link [ref=f3e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+        - heading [level=6] [ref=f3e253] [cursor=pointer]: admin
+    - generic [ref=f3e35]:
+      - generic [ref=f3e36]:
+        - button [ref=f3e38] [cursor=pointer]
+        - navigation [ref=f3e42]:
+          - list [ref=f3e43]:
+            - listitem [ref=f3e44]:
+              - paragraph [ref=f3e45]: kv-loxilb-gateway
+            - listitem [ref=f3e46]: /
+            - listitem [ref=f3e47]:
+              - link [ref=f3e254] [cursor=pointer]:
+                - /url: /netlox/instance/ipsec/tunnels?name=kv-loxilb-gateway
+                - paragraph [ref=f3e49]: IPsec VPN
+            - listitem [ref=f3e50]: /
+            - listitem [ref=f3e51]:
+              - link [ref=f3e255] [cursor=pointer]:
+                - /url: /netlox/instance/ipsec/tunnels?name=kv-loxilb-gateway
+                - paragraph [ref=f3e53]: Tunnels
+      - generic [ref=f3e54]:
+        - list [ref=f3e56]:
+          - listitem [ref=f3e57]:
+            - link [ref=f3e256] [cursor=pointer]:
+              - /url: /netlox/instance/dashboard?name=kv-loxilb-gateway
+              - heading [level=6] [ref=f3e257]: kv-loxilb-gateway
+          - button [ref=f3e258] [cursor=pointer]:
+            - heading [level=6] [ref=f3e259]: Traffic
+          - button [ref=f3e260] [cursor=pointer]:
+            - heading [level=6] [ref=f3e261]: AI Gateway
+          - button [ref=f3e262] [cursor=pointer]:
+            - heading [level=6] [ref=f3e263]: IPsec VPN
+          - generic [ref=f3e90]:
+            - button [ref=f3e264] [cursor=pointer]:
+              - heading [level=6] [ref=f3e265]: Tunnels
+            - button [ref=f3e266] [cursor=pointer]:
+              - heading [level=6] [ref=f3e267]: Certificates
+          - button [ref=f3e268] [cursor=pointer]:
+            - heading [level=6] [ref=f3e269]: Security
+          - button [ref=f3e270] [cursor=pointer]:
+            - heading [level=6] [ref=f3e271]: Networks
+          - button [ref=f3e272] [cursor=pointer]:
+            - heading [level=6] [ref=f3e273]: Status
+          - button [ref=f3e274] [cursor=pointer]:
+            - heading [level=6] [ref=f3e275]: Log Settings
+        - generic [ref=f3e129]:
+          - generic [ref=f3e131]:
+            - heading [level=6] [ref=f3e276]: IPsec Overview
+            - generic [ref=f3e134]:
+              - generic [ref=f3e136]:
+                - generic [ref=f3e138]:
+                  - generic [ref=f3e139]: Tunnels Up
+                  - generic [ref=f3e140]:
+                    - textbox [ref=f3e277]: "0"
+                    - group:
+                      - generic: Tunnels Up
+                - generic [ref=f3e143]:
+                  - generic [ref=f3e144]: Tunnels Down
+                  - generic [ref=f3e145]:
+                    - textbox [ref=f3e278]: "0"
+                    - group:
+                      - generic: Tunnels Down
+                - generic [ref=f3e148]:
+                  - generic [ref=f3e149]: Active SAs
+                  - generic [ref=f3e150]:
+                    - textbox [ref=f3e279]: "0"
+                    - group:
+                      - generic: Active SAs
+                - generic [ref=f3e153]:
+                  - generic [ref=f3e154]: Bytes In / Out
+                  - generic [ref=f3e155]:
+                    - textbox [ref=f3e280]: 0 B / 0 B
+                    - group:
+                      - generic: Bytes In / Out
+                - generic [ref=f3e158]:
+                  - generic [ref=f3e159]: Errors
+                  - generic [ref=f3e160]:
+                    - textbox [ref=f3e282]: "0"
+                    - group:
+                      - generic: Errors
+              - button [ref=f3e283] [cursor=pointer]: Global Settings
+          - generic [ref=f3e166]:
+            - generic [ref=f3e167]:
+              - button [ref=f3e169] [cursor=pointer]
+              - button [ref=f3e173] [cursor=pointer]
+              - generic [ref=f3e286]:
+                - button [disabled]
+              - generic [ref=f3e287]:
+                - button [disabled]
+            - generic [ref=f3e179] [cursor=pointer]:
+              - grid [ref=f3e180]:
+                - row [ref=f3e288]:
+                  - columnheader [ref=f3e289]:
+                    - generic [ref=f3e183]: ID
+                  - columnheader [ref=f3e290]:
+                    - generic [ref=f3e187]: Name
+                  - columnheader [ref=f3e291]:
+                    - heading [level=6] [ref=f3e292]: State
+                  - columnheader [ref=f3e293]:
+                    - generic [ref=f3e198]: Local ⇄ Remote
+                  - columnheader [ref=f3e294]:
+                    - generic [ref=f3e202]: Auth
+                  - columnheader [ref=f3e295]:
+                    - generic [ref=f3e206]: IKE
+                  - columnheader [ref=f3e296]:
+                    - heading [level=6] [ref=f3e297]: SAs
+                  - columnheader [ref=f3e298]:
+                    - generic [ref=f3e217]: Bytes In
+                  - columnheader [ref=f3e299]:
+                    - generic [ref=f3e221]: Bytes Out
+                  - columnheader [ref=f3e300]:
+                    - generic [ref=f3e225]: Created
+                - generic [ref=f3e228]: No rows
+              - generic [ref=f3e235]:
+                - paragraph [ref=f3e236]: "Rows per page:"
+                - generic [ref=f3e237]:
+                  - combobox [ref=f3e301]: "5"
+                  - textbox: "5"
+                - paragraph [ref=f3e239]: 0–0 of 0
+                - generic [ref=f3e240]:
+                  - button [disabled]
+                  - button [disabled]
+    - generic [ref=f3e241]:
+      - link [ref=f3e242] [cursor=pointer]:
+        - /url: https://netlox.io
+      - generic [ref=f3e244]:
+        - link [ref=f3e302] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: © NETLOX
+        - link [ref=f3e303] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Privacy
+        - link [ref=f3e304] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Terms
+  - generic [ref=f3e307]:
+    - generic [ref=f3e308]:
+      - heading "New IPsec Tunnel" [level=6] [ref=f3e309]
+      - generic [ref=f3e311]:
+        - generic [ref=f3e312]:
+          - generic "Unique tunnel name" [ref=f3e313]:
+            - generic [ref=f3e314]:
+              - generic [ref=f3e315]: Name *
+              - generic [ref=f3e316]:
+                - textbox "Name *" [invalid] [ref=f3e317]
+                - group:
+                  - generic: Name *
+              - paragraph [ref=f3e318]: Required
+          - generic "Local gateway IP address" [ref=f3e319]:
+            - generic [ref=f3e320]:
+              - generic [ref=f3e321]: Local IP *
+              - generic [ref=f3e322]:
+                - textbox "Local IP *" [invalid] [ref=f3e323]
+                - group:
+                  - generic: Local IP *
+              - paragraph [ref=f3e324]: Required
+          - generic "Remote peer gateway IP address" [ref=f3e325]:
+            - generic [ref=f3e326]:
+              - generic [ref=f3e327]: Remote IP *
+              - generic [ref=f3e328]:
+                - textbox "Remote IP *" [invalid] [ref=f3e329]
+                - group:
+                  - generic: Remote IP *
+              - paragraph [ref=f3e330]: Required
+        - separator [ref=f3e331]
+        - heading "Authentication" [level=6] [ref=f3e332]
+        - generic [ref=f3e333]:
+          - generic "psk = pre-shared key, cert = X.509 certificates" [ref=f3e334]:
+            - generic [ref=f3e335]:
+              - generic [ref=f3e336]: Auth Mode *
+              - generic [ref=f3e337]:
+                - combobox "Auth Mode *" [ref=f3e338] [cursor=pointer]: psk
+                - textbox: "0"
+                - group:
+                  - generic: Auth Mode *
+          - generic "Shared secret — must match the remote peer" [ref=f3e339]:
+            - generic [ref=f3e340]:
+              - generic [ref=f3e341]: Pre-Shared Key *
+              - generic [ref=f3e342]:
+                - textbox "Pre-Shared Key *" [invalid] [ref=f3e343]
+                - group:
+                  - generic: Pre-Shared Key *
+              - paragraph [ref=f3e344]: Required
+        - separator [ref=f3e345]
+        - heading "Traffic Selectors" [level=6] [ref=f3e346]
+        - generic [ref=f3e347]:
+          - generic "Local traffic selector, e.g. 10.0.0.0/24 (empty = host-to-host)" [ref=f3e348]:
+            - generic [ref=f3e349]:
+              - generic [ref=f3e350]: Local Subnet (CIDR)
+              - generic [ref=f3e351]:
+                - textbox "Local Subnet (CIDR)" [ref=f3e352]
+                - group:
+                  - generic: Local Subnet (CIDR)
+          - generic "Remote traffic selector, e.g. 10.1.0.0/24 (empty = host-to-host)" [ref=f3e353]:
+            - generic [ref=f3e354]:
+              - generic [ref=f3e355]: Remote Subnet (CIDR)
+              - generic [ref=f3e356]:
+                - textbox "Remote Subnet (CIDR)" [ref=f3e357]
+                - group:
+                  - generic: Remote Subnet (CIDR)
+        - separator [ref=f3e358]
+        - generic [ref=f3e359]:
+          - generic "Fills the IKE/ESP proposals with a known-good suite (default = recommended; aws / azure = interop values). All values editable under Advanced." [ref=f3e360]:
+            - generic [ref=f3e361]:
+              - generic [ref=f3e362]: Policy Preset
+              - generic [ref=f3e363]:
+                - combobox "Policy Preset" [ref=f3e364] [cursor=pointer]: default
+                - textbox: "0"
+                - group:
+                  - generic: Policy Preset
+          - generic [ref=f3e365] [cursor=pointer]:
+            - checkbox "Show Advanced Settings" [ref=f3e368]
+            - generic [ref=f3e371]: Show Advanced Settings
+    - generic [ref=f3e372]:
+      - button "Cancel" [ref=f3e374] [cursor=pointer]
+      - generic [ref=f3e375]:
+        - button "Add" [disabled]

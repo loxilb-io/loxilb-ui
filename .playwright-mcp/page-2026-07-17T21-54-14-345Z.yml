@@ -1,0 +1,51 @@
+- generic [ref=f4e4]:
+  - generic [ref=f4e5]:
+    - generic [ref=f4e6]:
+      - img "logo" [ref=f4e183] [cursor=pointer]
+      - generic [ref=f4e8]: v.0.9.0
+    - generic [ref=f4e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f4e184]:
+        - link [ref=f4e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f4e185]:
+        - link [ref=f4e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - generic "Config Management" [ref=f4e186]:
+        - link [ref=f4e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+      - img "flag" [ref=f4e187] [cursor=pointer]
+      - heading "e2e_admin" [level=6] [ref=f4e188] [cursor=pointer]
+  - generic [ref=f4e37]:
+    - tablist "configuration management tabs" [ref=f4e189]:
+      - tab "Export" [ref=f4e190] [cursor=pointer]
+      - tab "Import" [ref=f4e191] [cursor=pointer]
+      - tab "File Management" [selected] [ref=f4e192] [cursor=pointer]
+    - tabpanel "File Management" [ref=f4e193]:
+      - generic [ref=f4e133]:
+        - generic [ref=f4e134]:
+          - generic [ref=f4e135]:
+            - heading "Configuration Files" [level=6] [ref=f4e194]
+            - paragraph [ref=f4e137]: Manage exported configuration files.
+          - button "Refresh" [ref=f4e195] [cursor=pointer]
+        - generic [ref=f4e139]:
+          - generic [ref=f4e141]:
+            - generic [ref=f4e142]:
+              - heading "config-90dc8b4a9a112742.json" [level=6] [ref=f4e196]
+              - paragraph [ref=f4e144]: "Exported: 2026. 7. 18. 오전 6:50:06"
+              - paragraph [ref=f4e145]: e2e-export-test
+            - button "Download" [active] [ref=f4e197] [cursor=pointer]
+          - generic [ref=f4e149]:
+            - generic [ref=f4e150]:
+              - heading "config-15030b70e8717d33.json" [level=6] [ref=f4e198]
+              - paragraph [ref=f4e152]: "Exported: 2026. 7. 17. 오전 11:57:27"
+            - button "Download" [ref=f4e199] [cursor=pointer]
+  - generic [ref=f4e76]:
+    - link [ref=f4e77] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f4e79]:
+      - link "© NETLOX" [ref=f4e200] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f4e201] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f4e202] [cursor=pointer]:
+        - /url: https://netlox.io

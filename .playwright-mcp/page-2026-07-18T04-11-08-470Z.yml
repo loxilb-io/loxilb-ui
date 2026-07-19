@@ -1,0 +1,36 @@
+- generic [ref=f77e4]:
+  - generic [ref=f77e6]:
+    - img "logo" [ref=f77e7] [cursor=pointer]
+    - generic [ref=f77e8]: v.0.9.0
+  - main [ref=f77e14]:
+    - generic [ref=f77e15]:
+      - img "LoxiLB Logo" [ref=f77e16]
+      - heading "v.0.9.0" [level=6] [ref=f77e17]
+      - generic [ref=f77e19]:
+        - generic [ref=f77e20]:
+          - generic [ref=f77e21]:
+            - text: Username
+            - generic [ref=f77e22]: "*"
+          - generic [ref=f77e23]:
+            - textbox "Username" [active] [ref=f77e27]
+            - group:
+              - generic: Username *
+        - generic [ref=f77e28]:
+          - generic [ref=f77e29]:
+            - text: Password
+            - generic [ref=f77e30]: "*"
+          - generic [ref=f77e31]:
+            - textbox "Password" [ref=f77e35]
+            - group:
+              - generic: Password *
+        - button "Login" [disabled]
+  - generic [ref=f77e36]:
+    - link [ref=f77e37] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f77e39]:
+      - link "© NETLOX" [ref=f77e40] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f77e41] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f77e42] [cursor=pointer]:
+        - /url: https://netlox.io

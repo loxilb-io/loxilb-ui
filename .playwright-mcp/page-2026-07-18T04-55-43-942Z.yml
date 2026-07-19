@@ -1,0 +1,135 @@
+- generic [ref=f82e1]:
+  - generic [ref=f82e4]:
+    - generic [ref=f82e5]:
+      - generic [ref=f82e6]: v.0.9.0
+      - generic [ref=f82e9]:
+        - link [ref=f82e11] [cursor=pointer]:
+          - /url: /netlox/instance
+        - link [ref=f82e16] [cursor=pointer]:
+          - /url: /netlox/user
+        - link [ref=f82e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+        - heading [level=6] [ref=f82e583] [cursor=pointer]: admin
+    - generic [ref=f82e37]:
+      - tablist [ref=f82e584]:
+        - tab [ref=f82e585] [cursor=pointer]: Profile
+        - tab [selected] [ref=f82e586] [cursor=pointer]: User List
+      - tabpanel [ref=f82e587]:
+        - generic [ref=f82e97]:
+          - heading [level=6] [ref=f82e588]: User Management
+          - generic [ref=f82e102]:
+            - generic [ref=f82e103]:
+              - button [ref=f82e105] [cursor=pointer]
+              - button [ref=f82e109] [cursor=pointer]
+              - generic [ref=f82e591]:
+                - button [disabled]
+              - generic [ref=f82e592]:
+                - button [disabled]
+            - generic [ref=f82e115] [cursor=pointer]:
+              - grid [ref=f82e116]:
+                - row [ref=f82e593]:
+                  - columnheader [ref=f82e594]:
+                    - checkbox [ref=f82e595]
+                  - columnheader [ref=f82e596]:
+                    - generic [ref=f82e128]: ID
+                  - columnheader [ref=f82e597]:
+                    - generic [ref=f82e132]: Username
+                  - columnheader [ref=f82e598]:
+                    - generic [ref=f82e136]: Email
+                  - columnheader [ref=f82e599]:
+                    - generic [ref=f82e140]: Role
+                  - columnheader [ref=f82e600]:
+                    - generic [ref=f82e144]: Created At
+                - rowgroup [ref=f82e147]:
+                  - row [ref=f82e601]:
+                    - gridcell [ref=f82e602]:
+                      - checkbox [ref=f82e603]
+                    - gridcell [ref=f82e604]:
+                      - paragraph [ref=f82e156]: "0"
+                    - gridcell [ref=f82e605]:
+                      - paragraph [ref=f82e159]: admin
+                    - gridcell [ref=f82e606]:
+                      - paragraph [ref=f82e162]: admin@test.local
+                    - gridcell [ref=f82e607]:
+                      - paragraph [ref=f82e165]: 🛡️ ADMIN
+                    - gridcell [ref=f82e608]:
+                      - paragraph [ref=f82e168]: 2026. 7. 17.
+              - generic [ref=f82e235]:
+                - paragraph [ref=f82e236]: "Rows per page:"
+                - generic [ref=f82e237]:
+                  - combobox [ref=f82e609]: "5"
+                  - textbox: "5"
+                - paragraph [ref=f82e239]: 1–1 of 1
+                - generic [ref=f82e240]:
+                  - button [disabled]
+                  - button [disabled]
+    - generic [ref=f82e88]:
+      - link [ref=f82e89] [cursor=pointer]:
+        - /url: https://netlox.io
+      - generic [ref=f82e91]:
+        - link [ref=f82e610] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: © NETLOX
+        - link [ref=f82e611] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Privacy
+        - link [ref=f82e612] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Terms
+  - generic [ref=f82e616]:
+    - generic [ref=f82e618]:
+      - heading [level=6] [ref=f82e679]: Create New User
+      - generic [ref=f82e622]:
+        - generic [ref=f82e623]:
+          - text: Username
+          - generic [ref=f82e624]: "*"
+        - generic [ref=f82e625]:
+          - textbox [ref=f82e680]: e2e_operator
+          - group:
+            - generic: Username *
+      - generic [ref=f82e631]:
+        - generic [ref=f82e632]:
+          - text: Email
+          - generic [ref=f82e633]: "*"
+        - generic [ref=f82e634]:
+          - textbox [ref=f82e681]: e2e_operator@test.local
+          - group:
+            - generic: Email *
+      - generic [ref=f82e645]:
+        - generic [ref=f82e646]: Role
+        - generic [ref=f82e647]:
+          - combobox [expanded] [ref=f82e648] [cursor=pointer]: Viewer (read-only)
+          - textbox: "0"
+          - group:
+            - generic: Role
+      - separator [ref=f82e649]
+      - generic [ref=f82e650]:
+        - generic [ref=f82e651]:
+          - heading [level=6] [ref=f82e682]: Password Settings
+          - button [ref=f82e655] [cursor=pointer]
+        - generic [ref=f82e658]:
+          - generic [ref=f82e659]:
+            - text: Password
+            - generic [ref=f82e660]: "*"
+          - generic [ref=f82e661]:
+            - textbox [ref=f82e683]:
+              - /placeholder: Enter password
+              - text: E2eTestPass1!
+            - group:
+              - generic: Password *
+          - paragraph [ref=f82e666]: Minimum 9 characters with letters and numbers
+        - generic [ref=f82e667]:
+          - generic [ref=f82e668]:
+            - text: Confirm Password
+            - generic [ref=f82e669]: "*"
+          - generic [ref=f82e670]:
+            - textbox [ref=f82e684]: E2eTestPass1!
+            - group:
+              - generic: Confirm Password *
+    - generic [ref=f82e675]:
+      - button [ref=f82e685] [cursor=pointer]: Cancel
+      - button [ref=f82e686] [cursor=pointer]: Create User
+  - listbox [ref=f82e689]:
+    - option "Viewer (read-only)" [active] [selected] [ref=f82e690] [cursor=pointer]
+    - option "Operator" [ref=f82e691] [cursor=pointer]
+    - option "Admin" [ref=f82e692] [cursor=pointer]

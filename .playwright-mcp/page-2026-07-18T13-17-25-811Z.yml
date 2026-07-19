@@ -1,0 +1,110 @@
+- generic [ref=f40e1]:
+  - generic [ref=f40e4]:
+    - generic [ref=f40e5]:
+      - generic [ref=f40e6]: v.0.9.0
+      - generic [ref=f40e9]:
+        - link [ref=f40e11] [cursor=pointer]:
+          - /url: /netlox/instance
+        - link [ref=f40e16] [cursor=pointer]:
+          - /url: /netlox/user
+        - link [ref=f40e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+        - heading [level=6] [ref=f40e242] [cursor=pointer]: admin
+    - generic [ref=f40e37]:
+      - tablist [ref=f40e243]:
+        - tab [ref=f40e244] [cursor=pointer]: Profile
+        - tab [selected] [ref=f40e245] [cursor=pointer]: User List
+      - tabpanel [ref=f40e246]:
+        - generic [ref=f40e97]:
+          - heading [level=6] [ref=f40e247]: User Management
+          - generic [ref=f40e102]:
+            - generic [ref=f40e103]:
+              - button [ref=f40e105] [cursor=pointer]
+              - button [ref=f40e109] [cursor=pointer]
+              - button [ref=f40e220] [cursor=pointer]
+              - button [ref=f40e223] [cursor=pointer]
+            - generic [ref=f40e115] [cursor=pointer]:
+              - grid [ref=f40e116]:
+                - row [ref=f40e252]:
+                  - columnheader [ref=f40e253]:
+                    - checkbox [checked] [ref=f40e254]
+                  - columnheader [ref=f40e255]:
+                    - generic [ref=f40e128]: ID
+                  - columnheader [ref=f40e256]:
+                    - generic [ref=f40e132]: Username
+                  - columnheader [ref=f40e257]:
+                    - generic [ref=f40e136]: Email
+                  - columnheader [ref=f40e258]:
+                    - generic [ref=f40e140]: Role
+                  - columnheader [ref=f40e259]:
+                    - generic [ref=f40e144]: Created At
+                - rowgroup [ref=f40e147]:
+                  - row [selected] [ref=f40e260]:
+                    - gridcell [ref=f40e261]:
+                      - checkbox [checked] [ref=f40e262]
+                    - gridcell [ref=f40e263]:
+                      - paragraph [ref=f40e156]: "0"
+                    - gridcell [ref=f40e264]:
+                      - paragraph [ref=f40e159]: e2e_operator
+                    - gridcell [ref=f40e265]:
+                      - paragraph [ref=f40e162]: e2e_operator@test.local
+                    - gridcell [ref=f40e266]:
+                      - paragraph [ref=f40e165]: 👤 OPERATOR
+                    - gridcell [ref=f40e267]:
+                      - paragraph [ref=f40e168]: 2026. 7. 18.
+                  - row [ref=f40e268]:
+                    - gridcell [ref=f40e269]:
+                      - checkbox [ref=f40e270]
+                    - gridcell [ref=f40e271]:
+                      - paragraph [ref=f40e177]: "1"
+                    - gridcell [ref=f40e272]:
+                      - paragraph [ref=f40e180]: admin
+                    - gridcell [ref=f40e273]:
+                      - paragraph [ref=f40e183]: admin@test.local
+                    - gridcell [ref=f40e274]:
+                      - paragraph [ref=f40e186]: 🛡️ ADMIN
+                    - gridcell [ref=f40e275]:
+                      - paragraph [ref=f40e189]: 2026. 7. 17.
+                  - row [ref=f40e276]:
+                    - gridcell [ref=f40e277]:
+                      - checkbox [ref=f40e278]
+                    - gridcell [ref=f40e279]:
+                      - paragraph [ref=f40e198]: "2"
+                    - gridcell [ref=f40e280]:
+                      - paragraph [ref=f40e201]: e2e_viewer
+                    - gridcell [ref=f40e281]:
+                      - paragraph [ref=f40e204]: e2e_viewer+edit@test.local
+                    - gridcell [ref=f40e282]:
+                      - paragraph [ref=f40e207]: 👤 VIEWER
+                    - gridcell [ref=f40e283]:
+                      - paragraph [ref=f40e210]: 2026. 7. 18.
+              - generic [ref=f40e212]:
+                - generic [ref=f40e236]: 1 row selected
+                - generic [ref=f40e214]:
+                  - paragraph [ref=f40e215]: "Rows per page:"
+                  - generic [ref=f40e216]:
+                    - combobox [ref=f40e284]: "5"
+                    - textbox: "5"
+                  - paragraph [ref=f40e218]: 1–3 of 3
+                  - generic [ref=f40e219]:
+                    - button [disabled]
+                    - button [disabled]
+    - generic [ref=f40e88]:
+      - link [ref=f40e89] [cursor=pointer]:
+        - /url: https://netlox.io
+      - generic [ref=f40e91]:
+        - link [ref=f40e285] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: © NETLOX
+        - link [ref=f40e286] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Privacy
+        - link [ref=f40e287] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Terms
+  - generic [ref=f40e290]:
+    - heading "Confirm Delete" [level=2] [ref=f40e298]
+    - paragraph [ref=f40e292]: "Are you sure you want to delete user(s): \"e2e_operator\"? This action cannot be undone."
+    - generic [ref=f40e293]:
+      - button "Cancel" [ref=f40e295] [cursor=pointer]
+      - button "Delete" [active] [ref=f40e297] [cursor=pointer]

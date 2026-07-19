@@ -1,0 +1,141 @@
+- generic [ref=f38e4]:
+  - generic [ref=f38e5]:
+    - generic [ref=f38e6]:
+      - img "logo" [ref=f38e1228] [cursor=pointer]
+      - generic [ref=f38e8]: v.0.9.0
+    - generic [ref=f38e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f38e1229]:
+        - link [ref=f38e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f38e1230]:
+        - link [ref=f38e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - generic "Config Management" [ref=f38e1231]:
+        - link [ref=f38e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+      - img "flag" [ref=f38e1232] [cursor=pointer]
+      - heading "admin" [level=6] [ref=f38e1233] [cursor=pointer]
+  - generic [ref=f38e35]:
+    - generic [ref=f38e36]:
+      - button [ref=f38e38] [cursor=pointer]
+      - navigation [ref=f38e42]:
+        - list [ref=f38e43]:
+          - listitem [ref=f38e44]:
+            - paragraph [ref=f38e45]: kv-loxilb-gateway
+          - listitem [ref=f38e46]: /
+          - listitem [ref=f38e47]:
+            - link [ref=f38e1234] [cursor=pointer]:
+              - /url: /netlox/instance/ipsec/tunnels?name=kv-loxilb-gateway
+              - paragraph [ref=f38e49]: IPsec VPN
+          - listitem [ref=f38e50]: /
+          - listitem [ref=f38e51]:
+            - link [ref=f38e1235] [cursor=pointer]:
+              - /url: /netlox/instance/ipsec/tunnels?name=kv-loxilb-gateway
+              - paragraph [ref=f38e53]: Tunnels
+    - generic [ref=f38e54]:
+      - list [ref=f38e56]:
+        - listitem [ref=f38e57]:
+          - link [ref=f38e1236] [cursor=pointer]:
+            - /url: /netlox/instance/dashboard?name=kv-loxilb-gateway
+            - heading "kv-loxilb-gateway" [level=6] [ref=f38e1237]
+        - button [ref=f38e1238] [cursor=pointer]:
+          - heading "Traffic" [level=6] [ref=f38e1239]
+        - button [ref=f38e1240] [cursor=pointer]:
+          - heading "AI Gateway" [level=6] [ref=f38e1241]
+        - button [ref=f38e1242] [cursor=pointer]:
+          - heading "IPsec VPN" [level=6] [ref=f38e1243]
+        - generic [ref=f38e90]:
+          - button [ref=f38e1244] [cursor=pointer]:
+            - heading "Tunnels" [level=6] [ref=f38e1245]
+          - button [ref=f38e1246] [cursor=pointer]:
+            - heading "Certificates" [level=6] [ref=f38e1247]
+        - button [ref=f38e1248] [cursor=pointer]:
+          - heading "Security" [level=6] [ref=f38e1249]
+        - button [ref=f38e1250] [cursor=pointer]:
+          - heading "Networks" [level=6] [ref=f38e1251]
+        - button [ref=f38e1252] [cursor=pointer]:
+          - heading "Status" [level=6] [ref=f38e1253]
+        - button [ref=f38e1254] [cursor=pointer]:
+          - heading "Log Settings" [level=6] [ref=f38e1255]
+      - generic [ref=f38e129]:
+        - generic [ref=f38e131]:
+          - heading "IPsec Overview" [level=6] [ref=f38e1256]
+          - generic [ref=f38e134]:
+            - generic [ref=f38e136]:
+              - generic [ref=f38e138]:
+                - generic [ref=f38e139]: Tunnels Up
+                - generic [ref=f38e140]:
+                  - textbox "Tunnels Up" [ref=f38e1257]: "0"
+                  - group:
+                    - generic: Tunnels Up
+              - generic [ref=f38e143]:
+                - generic [ref=f38e144]: Tunnels Down
+                - generic [ref=f38e145]:
+                  - textbox "Tunnels Down" [ref=f38e1258]: "0"
+                  - group:
+                    - generic: Tunnels Down
+              - generic [ref=f38e148]:
+                - generic [ref=f38e149]: Active SAs
+                - generic [ref=f38e150]:
+                  - textbox "Active SAs" [ref=f38e1259]: "0"
+                  - group:
+                    - generic: Active SAs
+              - generic [ref=f38e153]:
+                - generic [ref=f38e154]: Bytes In / Out
+                - generic [ref=f38e155]:
+                  - textbox "Bytes In / Out" [ref=f38e1260]: 0 B / 0 B
+                  - group:
+                    - generic: Bytes In / Out
+              - generic "encrypt + decrypt + auth + replay errors" [ref=f38e1261]:
+                - generic [ref=f38e158]:
+                  - generic [ref=f38e159]: Errors
+                  - generic [ref=f38e160]:
+                    - textbox "Errors" [ref=f38e1262]: "0"
+                    - group:
+                      - generic: Errors
+            - button [ref=f38e1263] [cursor=pointer]
+        - generic [ref=f38e166]:
+          - generic [ref=f38e167]:
+            - generic "Refresh IPsec Tunnels" [ref=f38e1264]:
+              - button [ref=f38e169] [cursor=pointer]
+            - generic "Add IPsec Tunnels" [ref=f38e1265]:
+              - button [ref=f38e173] [cursor=pointer]
+            - generic "Edit IPsec Tunnels" [ref=f38e1266]:
+              - button [disabled]
+            - generic "Delete IPsec Tunnels" [ref=f38e1267]:
+              - button [disabled]
+          - generic [ref=f38e179] [cursor=pointer]:
+            - grid [ref=f38e180]:
+              - row [ref=f38e1268]:
+                - columnheader "ID" [ref=f38e1269]
+                - columnheader "Name" [ref=f38e1270]
+                - columnheader [ref=f38e1271]:
+                  - heading "State" [level=6] [ref=f38e1272]
+                - columnheader "Local ⇄ Remote" [ref=f38e1273]
+                - columnheader "Auth" [ref=f38e1274]
+                - columnheader "IKE" [ref=f38e1275]
+                - columnheader [ref=f38e1276]:
+                  - heading "SAs" [level=6] [ref=f38e1277]
+                - columnheader "Bytes In" [ref=f38e1278]
+                - columnheader "Bytes Out" [ref=f38e1279]
+              - generic: No rows
+              - rowgroup
+            - generic [ref=f38e231]:
+              - paragraph [ref=f38e232]: "Rows per page:"
+              - generic [ref=f38e233]:
+                - 'combobox "Rows per page: 5" [ref=f38e1280]': "5"
+                - textbox: "5"
+              - paragraph [ref=f38e235]: 0–0 of 0
+              - generic [ref=f38e236]:
+                - button "Go to previous page" [disabled]
+                - button "Go to next page" [disabled]
+  - generic [ref=f38e237]:
+    - link [ref=f38e238] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f38e240]:
+      - link "© NETLOX" [ref=f38e1281] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f38e1282] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f38e1283] [cursor=pointer]:
+        - /url: https://netlox.io

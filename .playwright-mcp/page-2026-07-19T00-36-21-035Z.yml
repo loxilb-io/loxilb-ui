@@ -1,0 +1,139 @@
+- generic [ref=f4e72]:
+  - generic [ref=f4e75]:
+    - generic [ref=f4e76]:
+      - generic [ref=f4e77]: v.0.9.0
+      - generic [ref=f4e80]:
+        - link [ref=f4e82] [cursor=pointer]:
+          - /url: /netlox/instance
+        - link [ref=f4e87] [cursor=pointer]:
+          - /url: /netlox/user
+        - link [ref=f4e92] [cursor=pointer]:
+          - /url: /netlox/config-management
+        - heading [level=6] [ref=f4e239] [cursor=pointer]: admin
+    - generic [ref=f4e106]:
+      - generic [ref=f4e107]:
+        - button [ref=f4e109] [cursor=pointer]
+        - navigation [ref=f4e113]:
+          - list [ref=f4e114]:
+            - listitem [ref=f4e115]:
+              - paragraph [ref=f4e116]: kv-loxilb-gateway
+            - listitem [ref=f4e117]: /
+            - listitem [ref=f4e118]:
+              - link [ref=f4e240] [cursor=pointer]:
+                - /url: /netlox/instance/status/device?name=kv-loxilb-gateway
+                - paragraph [ref=f4e120]: Status
+            - listitem [ref=f4e121]: /
+            - listitem [ref=f4e122]:
+              - link [ref=f4e241] [cursor=pointer]:
+                - /url: /netlox/instance/status/ha?name=kv-loxilb-gateway
+                - paragraph [ref=f4e124]: High Availability
+      - generic [ref=f4e125]:
+        - list [ref=f4e127]:
+          - listitem [ref=f4e128]:
+            - link [ref=f4e242] [cursor=pointer]:
+              - /url: /netlox/instance/dashboard?name=kv-loxilb-gateway
+              - heading [level=6] [ref=f4e243]: kv-loxilb-gateway
+          - button [ref=f4e244] [cursor=pointer]:
+            - heading [level=6] [ref=f4e245]: Traffic
+          - button [ref=f4e246] [cursor=pointer]:
+            - heading [level=6] [ref=f4e247]: AI Gateway
+          - button [ref=f4e248] [cursor=pointer]:
+            - heading [level=6] [ref=f4e249]: IPsec VPN
+          - button [ref=f4e250] [cursor=pointer]:
+            - heading [level=6] [ref=f4e251]: Security
+          - button [ref=f4e252] [cursor=pointer]:
+            - heading [level=6] [ref=f4e253]: Networks
+          - button [ref=f4e254] [cursor=pointer]:
+            - heading [level=6] [ref=f4e255]: Status
+          - generic [ref=f4e185]:
+            - button [ref=f4e256] [cursor=pointer]:
+              - heading [level=6] [ref=f4e257]: Device Details
+            - button [ref=f4e258] [cursor=pointer]:
+              - heading [level=6] [ref=f4e259]: File System
+            - button [ref=f4e260] [cursor=pointer]:
+              - heading [level=6] [ref=f4e261]: High Availability
+            - button [ref=f4e262] [cursor=pointer]:
+              - heading [level=6] [ref=f4e263]: Process
+            - button [ref=f4e264] [cursor=pointer]:
+              - heading [level=6] [ref=f4e265]: Logs
+          - button [ref=f4e266] [cursor=pointer]:
+            - heading [level=6] [ref=f4e267]: Log Settings
+        - generic [ref=f4e210]:
+          - generic [ref=f4e1]:
+            - button [ref=f4e3] [cursor=pointer]
+            - button [ref=f4e211] [cursor=pointer]
+          - generic [ref=f4e7] [cursor=pointer]:
+            - grid [ref=f4e8]:
+              - row [ref=f4e270]:
+                - columnheader [ref=f4e271]:
+                  - checkbox [checked] [ref=f4e272]
+                - columnheader [ref=f4e273]:
+                  - generic [ref=f4e20]: ID
+                - columnheader [ref=f4e274]:
+                  - heading [level=6] [ref=f4e275]: Instance
+                - columnheader [ref=f4e276]:
+                  - heading [level=6] [ref=f4e277]: Virtual IP
+                - columnheader [ref=f4e278]:
+                  - heading [level=6] [ref=f4e279]: State
+              - rowgroup [ref=f4e44]:
+                - row [selected] [ref=f4e280]:
+                  - gridcell [ref=f4e281]:
+                    - checkbox [checked] [ref=f4e282]
+                  - gridcell [ref=f4e283]:
+                    - paragraph [ref=f4e53]: "0"
+                  - gridcell [ref=f4e284]:
+                    - paragraph [ref=f4e56]: llb-inst0
+                  - gridcell [ref=f4e285]:
+                    - paragraph [ref=f4e59]: 0.0.0.0
+                  - gridcell [ref=f4e286]:
+                    - paragraph [ref=f4e62]: NOT_DEFINED
+            - generic [ref=f4e64]:
+              - generic [ref=f4e225]: 1 row selected
+              - generic [ref=f4e66]:
+                - paragraph [ref=f4e67]: "Rows per page:"
+                - generic [ref=f4e68]:
+                  - combobox [ref=f4e287]: "5"
+                  - textbox: "5"
+                - paragraph [ref=f4e70]: 1–1 of 1
+                - generic [ref=f4e71]:
+                  - button [disabled]
+                  - button [disabled]
+    - generic [ref=f4e227]:
+      - link [ref=f4e228] [cursor=pointer]:
+        - /url: https://netlox.io
+      - generic [ref=f4e230]:
+        - link [ref=f4e288] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: © NETLOX
+        - link [ref=f4e289] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Privacy
+        - link [ref=f4e290] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Terms
+  - generic [active] [ref=f4e292]:
+    - generic [ref=f4e294]:
+      - heading "New HA VIP" [level=6] [ref=f4e295]
+      - generic [ref=f4e296]:
+        - generic [ref=f4e298]:
+          - generic [ref=f4e299]: Instance Name
+          - generic [ref=f4e300]:
+            - textbox "Instance Name" [ref=f4e301]: llb-inst0
+            - group:
+              - generic: Instance Name
+        - generic [ref=f4e303]:
+          - generic [ref=f4e304]: State
+          - generic [ref=f4e305]:
+            - combobox "State" [ref=f4e306] [cursor=pointer]: NOT_DEFINED
+            - textbox: "0"
+            - group:
+              - generic: State
+        - generic [ref=f4e308]:
+          - generic [ref=f4e309]: VIP Address
+          - generic [ref=f4e310]:
+            - textbox "VIP Address" [ref=f4e311]: 0.0.0.0
+            - group:
+              - generic: VIP Address
+    - generic [ref=f4e312]:
+      - button "Cancel" [ref=f4e314] [cursor=pointer]
+      - button "Update" [ref=f4e316] [cursor=pointer]

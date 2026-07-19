@@ -1,0 +1,214 @@
+- generic [ref=f47e1]:
+  - generic [ref=f47e4]:
+    - generic [ref=f47e5]:
+      - generic [ref=f47e6]: v.0.9.0
+      - generic [ref=f47e9]:
+        - link [ref=f47e11] [cursor=pointer]:
+          - /url: /netlox/instance
+        - link [ref=f47e16] [cursor=pointer]:
+          - /url: /netlox/user
+        - link [ref=f47e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+        - heading [level=6] [ref=f47e787] [cursor=pointer]: admin
+    - generic [ref=f47e35]:
+      - generic [ref=f47e36]:
+        - button [ref=f47e38] [cursor=pointer]
+        - navigation [ref=f47e42]:
+          - list [ref=f47e43]:
+            - listitem [ref=f47e44]:
+              - paragraph [ref=f47e45]: kv-loxilb-gateway
+            - listitem [ref=f47e46]: /
+            - listitem [ref=f47e47]:
+              - link [ref=f47e788] [cursor=pointer]:
+                - /url: /netlox/instance/traffic/lb?name=kv-loxilb-gateway
+                - paragraph [ref=f47e49]: Traffic
+            - listitem [ref=f47e50]: /
+            - listitem [ref=f47e51]:
+              - link [ref=f47e789] [cursor=pointer]:
+                - /url: /netlox/instance/traffic/fw?name=kv-loxilb-gateway
+                - paragraph [ref=f47e53]: Firewall
+      - generic [ref=f47e54]:
+        - list [ref=f47e56]:
+          - listitem [ref=f47e57]:
+            - link [ref=f47e790] [cursor=pointer]:
+              - /url: /netlox/instance/dashboard?name=kv-loxilb-gateway
+              - heading [level=6] [ref=f47e791]: kv-loxilb-gateway
+          - button [ref=f47e792] [cursor=pointer]:
+            - heading [level=6] [ref=f47e793]: Traffic
+          - generic [ref=f47e74]:
+            - button [ref=f47e794] [cursor=pointer]:
+              - heading [level=6] [ref=f47e795]: LB Rule
+            - button [ref=f47e796] [cursor=pointer]:
+              - heading [level=6] [ref=f47e797]: Endpoint
+            - button [ref=f47e798] [cursor=pointer]:
+              - heading [level=6] [ref=f47e799]: Conntrack
+            - button [ref=f47e800] [cursor=pointer]:
+              - heading [level=6] [ref=f47e801]: Firewall
+            - button [ref=f47e802] [cursor=pointer]:
+              - heading [level=6] [ref=f47e803]: QoS
+            - button [ref=f47e804] [cursor=pointer]:
+              - heading [level=6] [ref=f47e805]: Mirror
+            - button [ref=f47e806] [cursor=pointer]:
+              - heading [level=6] [ref=f47e807]: SNI Certificates
+          - button [ref=f47e808] [cursor=pointer]:
+            - heading [level=6] [ref=f47e809]: AI Gateway
+          - button [ref=f47e810] [cursor=pointer]:
+            - heading [level=6] [ref=f47e811]: IPsec VPN
+          - button [ref=f47e812] [cursor=pointer]:
+            - heading [level=6] [ref=f47e813]: Security
+          - button [ref=f47e814] [cursor=pointer]:
+            - heading [level=6] [ref=f47e815]: Networks
+          - button [ref=f47e816] [cursor=pointer]:
+            - heading [level=6] [ref=f47e817]: Status
+          - button [ref=f47e818] [cursor=pointer]:
+            - heading [level=6] [ref=f47e819]: Log Settings
+        - generic [ref=f47e144]:
+          - generic [ref=f47e145]:
+            - generic [ref=f47e146]:
+              - button [ref=f47e148] [cursor=pointer]
+              - button [ref=f47e152] [cursor=pointer]
+              - button [ref=f47e326] [cursor=pointer]
+            - generic [ref=f47e157] [cursor=pointer]:
+              - grid [ref=f47e158]:
+                - row [ref=f47e823]:
+                  - columnheader [ref=f47e824]:
+                    - checkbox [checked] [ref=f47e825]
+                  - columnheader [ref=f47e826]:
+                    - generic [ref=f47e170]: ID
+                  - columnheader [ref=f47e827]:
+                    - generic [ref=f47e174]: Port Name
+                  - columnheader [ref=f47e828]:
+                    - generic [ref=f47e178]: Source IP
+                  - columnheader [ref=f47e829]:
+                    - generic [ref=f47e182]: Dest. IP
+                  - columnheader [ref=f47e830]:
+                    - generic [ref=f47e186]: Source Port
+                  - columnheader [ref=f47e831]:
+                    - generic [ref=f47e190]: Dest. Port
+                  - columnheader [ref=f47e832]:
+                    - generic [ref=f47e194]: Protocol
+                  - columnheader [ref=f47e833]:
+                    - heading [level=6] [ref=f47e834]: Preference
+                  - columnheader [ref=f47e835]:
+                    - heading [level=6] [ref=f47e836]: Counter
+                - rowgroup [ref=f47e211]:
+                  - row [selected] [ref=f47e837]:
+                    - gridcell [ref=f47e838]:
+                      - checkbox [checked] [ref=f47e839]
+                    - gridcell [ref=f47e840]:
+                      - paragraph [ref=f47e220]: "0"
+                    - gridcell [ref=f47e221]
+                    - gridcell [ref=f47e841]:
+                      - paragraph [ref=f47e225]: 51.51.51.0/24
+                    - gridcell [ref=f47e842]:
+                      - paragraph [ref=f47e228]: 52.52.52.51/32
+                    - gridcell [ref=f47e843]:
+                      - paragraph [ref=f47e231]: "-"
+                    - gridcell [ref=f47e844]:
+                      - paragraph [ref=f47e234]: 7001-7001
+                    - gridcell [ref=f47e845]:
+                      - paragraph [ref=f47e237]: TCP(6)
+                    - gridcell [ref=f47e846]:
+                      - paragraph [ref=f47e240]: "101"
+                    - gridcell [ref=f47e847]:
+                      - paragraph [ref=f47e243]: 0:0
+              - generic [ref=f47e311]:
+                - generic [ref=f47e661]: 1 row selected
+                - generic [ref=f47e313]:
+                  - paragraph [ref=f47e314]: "Rows per page:"
+                  - generic [ref=f47e315]:
+                    - combobox [ref=f47e848]: "5"
+                    - textbox: "5"
+                  - paragraph [ref=f47e317]: 1–1 of 1
+                  - generic [ref=f47e318]:
+                    - button [disabled]
+                    - button [disabled]
+          - generic [ref=f47e664]:
+            - heading [level=6] [ref=f47e849]: Details
+            - generic [ref=f47e667]:
+              - generic [ref=f47e668]:
+                - heading [level=6] [ref=f47e850]: Rule Arguments
+                - generic [ref=f47e671]:
+                  - generic [ref=f47e672]: Port Name
+                  - generic [ref=f47e677]:
+                    - generic [ref=f47e678]: Source IP
+                    - paragraph [ref=f47e680]: 51.51.51.0/24
+                  - generic [ref=f47e682]:
+                    - generic [ref=f47e683]: Destination IP
+                    - paragraph [ref=f47e685]: 52.52.52.51/32
+                  - generic [ref=f47e686]: Min Source Port
+                  - generic [ref=f47e690]: Max Source Port
+                  - generic [ref=f47e695]:
+                    - generic [ref=f47e696]: Min Destination Port
+                    - paragraph [ref=f47e698]: "7001"
+                  - generic [ref=f47e700]:
+                    - generic [ref=f47e701]: Max Destination Port
+                    - paragraph [ref=f47e703]: "7001"
+                  - generic [ref=f47e705]:
+                    - generic [ref=f47e706]: Protocol
+                    - paragraph [ref=f47e708]: TCP(6)
+                  - generic [ref=f47e710]:
+                    - generic [ref=f47e711]: Preference
+                    - paragraph [ref=f47e715]: "101"
+              - generic [ref=f47e716]:
+                - heading [level=6] [ref=f47e851]: Traffic Action
+                - radiogroup [ref=f47e719]:
+                  - generic [ref=f47e720]:
+                    - generic:
+                      - radio [disabled]
+                    - generic [ref=f47e721]: Allow
+                  - generic [ref=f47e722]:
+                    - generic:
+                      - radio [checked] [disabled]
+                    - generic [ref=f47e723]: Drop
+                  - generic [ref=f47e724]:
+                    - generic:
+                      - radio [disabled]
+                    - generic [ref=f47e725]: Trap
+                  - generic [ref=f47e726]:
+                    - generic:
+                      - radio [disabled]
+                    - generic [ref=f47e727]: Redirect
+              - generic [ref=f47e728]:
+                - heading [level=6] [ref=f47e852]: Options
+                - generic [ref=f47e731]:
+                  - generic [ref=f47e732]: FW Mark
+                  - generic [ref=f47e739]:
+                    - generic [ref=f47e740]: On Default
+                    - paragraph [ref=f47e742]: "false"
+                  - generic [ref=f47e744]:
+                    - generic [ref=f47e745]: Record
+                    - paragraph [ref=f47e749]: "false"
+                  - generic [ref=f47e751]:
+                    - generic [ref=f47e752]: Counter
+                    - paragraph [ref=f47e756]: 0:0
+              - generic [ref=f47e757]:
+                - heading [level=6] [ref=f47e853]: SNAT Options
+                - generic [ref=f47e760]:
+                  - generic [ref=f47e762]:
+                    - generic [ref=f47e763]: Do SNAT
+                    - paragraph [ref=f47e765]: "false"
+                  - generic [ref=f47e766]: To IP
+                  - generic [ref=f47e770]: To Port
+              - generic [ref=f47e774]:
+                - heading [level=6] [ref=f47e854]: Redirect Options
+                - generic [ref=f47e776]: Redirect Port Name
+    - generic [ref=f47e319]:
+      - link [ref=f47e320] [cursor=pointer]:
+        - /url: https://netlox.io
+      - generic [ref=f47e322]:
+        - link [ref=f47e855] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: © NETLOX
+        - link [ref=f47e856] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Privacy
+        - link [ref=f47e857] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Terms
+  - generic [ref=f47e860]:
+    - heading "WARNING!! Delete Item" [level=2] [ref=f47e861]
+    - paragraph [ref=f47e862]: Are you sure you want to delete this Item? This action cannot be undone.
+    - generic [ref=f47e863]:
+      - button "Cancel" [ref=f47e865] [cursor=pointer]
+      - button "Delete" [ref=f47e867] [cursor=pointer]

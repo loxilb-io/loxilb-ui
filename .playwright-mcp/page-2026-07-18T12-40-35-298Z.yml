@@ -1,0 +1,133 @@
+- generic [ref=f4e4]:
+  - generic [ref=f4e5]:
+    - generic [ref=f4e6]:
+      - img "logo" [ref=f4e991] [cursor=pointer]
+      - generic [ref=f4e8]: v.0.9.0
+    - generic [ref=f4e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f4e992]:
+        - link [ref=f4e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f4e993]:
+        - link [ref=f4e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - img "flag" [ref=f4e994] [cursor=pointer]
+      - heading "e2e_operator" [level=6] [ref=f4e995] [cursor=pointer]
+  - generic [ref=f4e97]:
+    - generic [ref=f4e98]:
+      - button [ref=f4e100] [cursor=pointer]
+      - navigation [ref=f4e104]:
+        - list [ref=f4e105]:
+          - listitem [ref=f4e106]:
+            - paragraph [ref=f4e107]: kv-loxilb-gateway
+          - listitem [ref=f4e639]: /
+          - listitem [ref=f4e640]:
+            - link [ref=f4e996] [cursor=pointer]:
+              - /url: /netlox/instance/traffic/lb?name=kv-loxilb-gateway
+              - paragraph [ref=f4e642]: Traffic
+          - listitem [ref=f4e643]: /
+          - listitem [ref=f4e644]:
+            - link [ref=f4e997] [cursor=pointer]:
+              - /url: /netlox/instance/traffic/lb?name=kv-loxilb-gateway
+              - paragraph [ref=f4e646]: LB Rule
+    - generic [ref=f4e108]:
+      - list [ref=f4e110]:
+        - listitem [ref=f4e111]:
+          - link [ref=f4e998] [cursor=pointer]:
+            - /url: /netlox/instance/dashboard?name=kv-loxilb-gateway
+            - heading "kv-loxilb-gateway" [level=6] [ref=f4e999]
+        - button [ref=f4e1000] [cursor=pointer]:
+          - heading "Traffic" [level=6] [ref=f4e1001]
+        - generic [ref=f4e604]:
+          - button [ref=f4e1002] [cursor=pointer]:
+            - heading "LB Rule" [level=6] [ref=f4e1003]
+          - button [ref=f4e1004] [cursor=pointer]:
+            - heading "Endpoint" [level=6] [ref=f4e1005]
+          - button [ref=f4e1006] [cursor=pointer]:
+            - heading "Conntrack" [level=6] [ref=f4e1007]
+          - button [ref=f4e1008] [cursor=pointer]:
+            - heading "Firewall" [level=6] [ref=f4e1009]
+          - button [ref=f4e1010] [cursor=pointer]:
+            - heading "QoS" [level=6] [ref=f4e1011]
+          - button [ref=f4e1012] [cursor=pointer]:
+            - heading "Mirror" [level=6] [ref=f4e1013]
+          - button [ref=f4e1014] [cursor=pointer]:
+            - heading "SNI Certificates" [level=6] [ref=f4e1015]
+        - button [ref=f4e1016] [cursor=pointer]:
+          - heading "AI Gateway" [level=6] [ref=f4e1017]
+        - button [ref=f4e1018] [cursor=pointer]:
+          - heading "IPsec VPN" [level=6] [ref=f4e1019]
+        - button [ref=f4e1020] [cursor=pointer]:
+          - heading "Security" [level=6] [ref=f4e1021]
+        - button [ref=f4e1022] [cursor=pointer]:
+          - heading "Networks" [level=6] [ref=f4e1023]
+        - button [ref=f4e1024] [cursor=pointer]:
+          - heading "Status" [level=6] [ref=f4e1025]
+        - button [ref=f4e1026] [cursor=pointer]:
+          - heading "Log Settings" [level=6] [ref=f4e1027]
+      - generic [ref=f4e647]:
+        - generic [ref=f4e648]:
+          - generic "Refresh Load Balancer" [ref=f4e1028]:
+            - button [ref=f4e650] [cursor=pointer]
+          - generic "Add Load Balancer" [ref=f4e1029]:
+            - button [active] [ref=f4e654] [cursor=pointer]
+          - generic "Edit Load Balancer" [ref=f4e1030]:
+            - button [disabled]
+          - generic "Delete Load Balancer" [ref=f4e1031]:
+            - button [disabled]
+        - generic [ref=f4e660] [cursor=pointer]:
+          - grid [ref=f4e661]:
+            - row [ref=f4e1032]:
+              - columnheader [ref=f4e1033]:
+                - checkbox "Select all rows" [ref=f4e1034]
+              - columnheader "ID" [ref=f4e1035]
+              - columnheader "External IP" [ref=f4e1036]
+              - columnheader "Port" [ref=f4e1037]
+              - columnheader "Protocol" [ref=f4e1038]
+              - columnheader "Service Name" [ref=f4e1039]
+              - columnheader [ref=f4e1040]:
+                - heading "Sel" [level=6] [ref=f4e1041]
+              - columnheader [ref=f4e1042]:
+                - heading "Mode" [level=6] [ref=f4e1043]
+              - columnheader "Monitor" [ref=f4e1044]
+              - columnheader "Timeout (Sec)" [ref=f4e1045]
+            - rowgroup [ref=f4e957]:
+              - row [ref=f4e1046]:
+                - gridcell [ref=f4e1047]:
+                  - checkbox "Select row" [ref=f4e1048]
+                - gridcell [ref=f4e1049]:
+                  - paragraph [ref=f4e966]: "0"
+                - gridcell [ref=f4e1050]:
+                  - paragraph [ref=f4e969]: 20.20.20.3
+                - gridcell [ref=f4e1051]:
+                  - paragraph [ref=f4e972]: "8080"
+                - gridcell [ref=f4e1052]:
+                  - paragraph [ref=f4e975]: tcp
+                - gridcell [ref=f4e1053]:
+                  - paragraph [ref=f4e978]: e2e-s3-lb
+                - gridcell [ref=f4e1054]:
+                  - paragraph [ref=f4e981]: rr
+                - gridcell [ref=f4e1055]:
+                  - paragraph [ref=f4e984]: dnat
+                - gridcell [ref=f4e1056]:
+                  - paragraph [ref=f4e987]: Disabled
+                - gridcell [ref=f4e1057]:
+                  - paragraph [ref=f4e990]: "1800"
+          - generic [ref=f4e721]:
+            - paragraph [ref=f4e722]: "Rows per page:"
+            - generic [ref=f4e723]:
+              - 'combobox "Rows per page: 5" [ref=f4e1058]': "5"
+              - textbox: "5"
+            - paragraph [ref=f4e725]: 1–1 of 1
+            - generic [ref=f4e726]:
+              - button "Go to previous page" [disabled]
+              - button "Go to next page" [disabled]
+  - generic [ref=f4e90]:
+    - link [ref=f4e91] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f4e93]:
+      - link "© NETLOX" [ref=f4e1059] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f4e1060] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f4e1061] [cursor=pointer]:
+        - /url: https://netlox.io

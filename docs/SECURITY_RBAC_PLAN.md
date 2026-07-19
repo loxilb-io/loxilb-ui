@@ -48,15 +48,15 @@ Severity uses CVSS-style qualitative rating. "Verified" = confirmed against the 
 | H-1 | **Password hashes serialized in API responses.** `models.User.Password` had `json:"password"`; `GetUsers`/`GetMe` return `User` directly. | `model.go:10`; live `/users/me` returns a `password` field. | **[FIXED]** `json:"-"` on the field |
 | H-2 | **Token revocation is non-functional.** Logout deletes a DB token row, but `TokenAuthMiddleware` only checks JWT signature+expiry — never the DB/blacklist. A "logged-out" token works until natural 24h expiry. UI logout never even called `/oam/logout`. | `middleware/auth.go`, `user_service.go:670`; UI `ProfileMenu.tsx:18`. | **[FIXED + DEPLOYED]** `TokenAuthMiddleware(userService)` now also requires the token in the `api_tokens` store (fail-closed). Live: token → 200, logout → 200, same token → **401 "Token has been revoked"**. Residual: a token can outlive revocation by ≤5 min via the in-process validation cache only if deleted from the DB out-of-band (logout purges the cache). |
 | H-3 | **Proxy grants full read+write data-plane control to any licensed user; no method distinction.** `ProxyToLoxiLB` forwards all methods identically; a `viewer` could POST/DELETE gateway config. | `proxy_service.go:111`, `routes.go` licensed group. | **[FIXED + DEPLOYED]** RBAC Phase 2: proxy method-gated (`RequireGatewayCapability`) — GET/HEAD/OPTIONS any role, mutating methods need `gateway_write` (admin/operator). Live: viewer POST/DELETE proxy → **403**; operator/admin writes forwarded. |
-| H-4 | **CORS `Allow-Origin: *` with `Allow-Credentials: true`.** Unsafe/spec-violating combination. | `middleware/cors.go`. | **OPEN — flagged** |
+| H-4 | **CORS `Allow-Origin: *` with `Allow-Credentials: true`.** Unsafe/spec-violating combination. | `middleware/cors.go`. | **[FIXED + DEPLOYED 2026-07-18]** `OAM_ALLOWED_ORIGINS` allowlist: matching origin reflected with credentials + `Vary: Origin`; non-matching gets no CORS headers. Unset = `*` **without** credentials (dev fallback + startup SECURITY warning). Live-verified all three modes. |
 
 ### MEDIUM
 
 | # | Finding | Evidence | Status |
 |---|---|---|---|
-| M-1 | Weak password hashing: PBKDF2-HMAC-SHA256 at **10,000** rounds (OWASP ≈600k). | `pkg/utils/password.go:14`. | OPEN |
-| M-2 | Weak brute-force lockout: 5 attempts → **30-second** lock; no rate-limit on reset/setup/proxy. | `config/constants.go:71`. | OPEN |
-| M-3 | No token expiry/refresh in UI; 24h opaque token in `localStorage` (XSS-exfiltratable). | UI `fetcher_base.ts`; `constants.go:25`. | OPEN |
+| M-1 | Weak password hashing: PBKDF2-HMAC-SHA256 at **10,000** rounds (OWASP ≈600k). | `pkg/utils/password.go:14`. | **[FIXED + DEPLOYED 2026-07-18]** 600k rounds in versioned format `pbkdf2-sha256$<rounds>$<salt>$<hash>`; legacy + bcrypt still verify and are transparently **rehashed on login**. Live-verified: legacy hash upgraded in DB on first login. |
+| M-2 | Weak brute-force lockout: 5 attempts → **30-second** lock; no rate-limit on reset/setup/proxy. | `config/constants.go:71`. | **[FIXED + DEPLOYED 2026-07-18]** Exponential lockout: 1m base doubling per further failure, 15m cap. Per-IP token-bucket rate limits: login/setup 0.5 rps burst 10, proxy 50 rps burst 100. Live-verified: lockout 60s→120s; 15 concurrent logins → 10×401 + 5×429. |
+| M-3 | No token expiry/refresh in UI; 24h opaque token in `localStorage` (XSS-exfiltratable). | UI `fetcher_base.ts`; `constants.go:25`. | **[PARTIAL — TTL FIXED + DEPLOYED 2026-07-18]** Token TTL now `OAM_TOKEN_TTL_MINUTES` (default **480 = 8h**, was 24h); JWT and `api_tokens` row lifetimes unified. Live-verified 8h. Residual: token still in `localStorage`; httpOnly-cookie migration deferred (needs CSRF + UI rework). |
 | M-4 | Hardcoded OAuth client secrets committed (real Google/GitHub secrets in git history). | `config/oauth.go:13`. | **[FIXED — env-wired]** Secrets removed from source; loaded from `OAM_OAUTH_<PROVIDER>_CLIENT_ID/_SECRET`. **Rotate the leaked Google/GitHub secrets at the provider** (git history still holds them). |
 | M-5 | Default admin password hardcoded in 7+ files, incl. imported-user default. | `config/constants.go:65`, `main.go:232`. | **[FIXED — env-wired]** All functional refs route through `config.DefaultConfigPassword` (env `OAM_DEFAULT_ADMIN_PASSWORD`, public fallback + startup warning). |
 
@@ -153,6 +153,8 @@ Set these in production (docker `-e` / compose `environment:` / k8s Secret). Eac
 | `OAM_DEFAULT_ADMIN_PASSWORD` | Bootstrap admin + imported-user password | Affects only fresh installs / new imports |
 | `OAM_OAUTH_GOOGLE_CLIENT_ID` / `_CLIENT_SECRET` | Google OAuth (if used) | — |
 | `OAM_OAUTH_GITHUB_CLIENT_ID` / `_CLIENT_SECRET` | GitHub OAuth (if used) | — |
+| `OAM_TOKEN_TTL_MINUTES` | JWT / API-token lifetime (default 480 = 8h; explicit `-token-expiration` flag wins) | Applies to newly issued tokens only |
+| `OAM_ALLOWED_ORIGINS` | Comma-separated CORS origin allowlist (H-4). Unset = `*` without credentials + startup warning | — |
 
 Testbed (kv-client) is currently deployed with `OAM_JWT_SECRET` (fresh random) and `OAM_LICENSE_SIGNING_SECRET=presto@123` (kept so the installed trial license still validates).
 
@@ -181,9 +183,20 @@ Testbed (kv-client) is currently deployed with `OAM_JWT_SECRET` (fresh random) a
 - Header Config icon admin-only; `DataTable` hides add/edit/delete for viewers (single choke point for every resource table); license panel mutation buttons admin-only; `UserEditForm` role dropdown = Viewer/Operator/Admin with viewer default; `IMenuItem.roles?` + SideMenu filtering mechanism added (no entry restricted yet).
 - All UX-only — server (Phase 2) remains the security boundary. tsc + 79 unit tests + CRA build green. Browser-level validation planned via the Playwright E2E suite.
 
+**Phase 4 hardening — DONE + DEPLOYED (2026-07-18):**
+- **M-1**: PBKDF2 600k rounds, versioned hash format, transparent rehash-on-login (legacy + bcrypt hashes upgrade on first successful login). Unit tests in `tests/local/password`.
+- **M-2**: exponential lockout (1m base, doubles per failure, 15m cap) + per-IP token-bucket rate limiting (`middleware/ratelimit.go`, no new deps) on `/oam/login`, `/oam/setup/update-admin` (0.5 rps / burst 10) and the gateway proxy (50 rps / burst 100).
+- **M-3**: token TTL env-driven (`OAM_TOKEN_TTL_MINUTES`, default 480 = 8h); explicit `-token-expiration` flag wins; Dockerfile CMD no longer forces 1440. JWT + DB token row lifetimes unified.
+- **H-4**: CORS origin allowlist via `OAM_ALLOWED_ORIGINS` (reflect + credentials + `Vary: Origin` for matches; nothing for non-matches; `*` without credentials + startup warning when unset).
+- All live-verified on kv-client (legacy-hash upgrade observed in DB; 429 lockout growth 60s→120s; concurrent burst 10×401+5×429; CORS all three modes; viewer proxy GET 200; 8h token TTL).
+- Testbed note: deployed WITHOUT `OAM_ALLOWED_ORIGINS` (wildcard fallback) so the local-UI dev loop keeps working; set it in production.
+
 **Remaining security work, in priority order — resume here:**
 
-1. **Phase 4 hardening**: M-1 PBKDF2 → ≥600k rounds (rehash-on-login), M-2 stronger lockout + rate-limit setup/proxy, M-3 shorter token TTL / httpOnly cookie, H-4 CORS specific-origin.
+1. **M-3 residual**: httpOnly-cookie session storage to close the XSS-exfiltration path (needs CSRF protection + UI rework; token currently in `localStorage`).
+2. **H-2 follow-up idea**: revoke ALL of a user's tokens on password change (today only the presented token is revoked on logout).
+
+**Login-latency wart — FIXED + DEPLOYED (2026-07-18):** failed logins took ~2s. Two causes, both fixed: `ValidateUser` returned `sql.ErrNoRows` through `RetryOperation` (now a definitive `notFound`, mirroring the H-2 `ValidateToken` pattern), and `RetryOperation` itself slept **after the final attempt** — with `MaxRetries=1` that was a pure 2s penalty on every failing DB call, benefiting all ~39 call sites. Live-verified: bad-username login 2.0s → **~50ms**; lockout still fires (6th attempt, 60s); rehash-on-login still works.
 
 **Owner actions (not code):**
 - Log back into the UI — the JWT-key rotation invalidated the old session token.

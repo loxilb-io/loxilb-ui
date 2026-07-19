@@ -1,0 +1,66 @@
+- generic [ref=f3e4]:
+  - generic [ref=f3e5]:
+    - generic [ref=f3e6]:
+      - img "logo" [ref=f3e561] [cursor=pointer]
+      - generic [ref=f3e8]: v.0.9.0
+    - generic [ref=f3e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f3e562]:
+        - link [ref=f3e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f3e563]:
+        - link [ref=f3e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - generic "Config Management" [ref=f3e564]:
+        - link [ref=f3e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+      - img "flag" [ref=f3e565] [cursor=pointer]
+      - heading "e2e_admin" [level=6] [ref=f3e566] [cursor=pointer]
+  - generic [ref=f3e37]:
+    - tablist "user management tabs" [ref=f3e567]:
+      - tab "Profile" [ref=f3e568] [cursor=pointer]
+      - tab "License" [active] [selected] [ref=f3e569] [cursor=pointer]
+      - tab "User List" [ref=f3e570] [cursor=pointer]
+    - tabpanel [ref=f3e621]:
+      - generic [ref=f3e623]:
+        - generic [ref=f3e624]:
+          - generic "Refresh License Management" [ref=f3e625]:
+            - button [ref=f3e626] [cursor=pointer]
+          - generic "Add License Management" [ref=f3e629]:
+            - button [ref=f3e630] [cursor=pointer]
+          - generic "Edit License Management" [ref=f3e633]:
+            - button [disabled]
+          - generic "Delete License Management" [ref=f3e634]:
+            - button [disabled]
+        - generic [ref=f3e636] [cursor=pointer]:
+          - grid [ref=f3e637]:
+            - row [ref=f3e638]:
+              - columnheader [ref=f3e639]:
+                - checkbox "Select all rows" [ref=f3e642]
+              - columnheader "ID" [ref=f3e648]
+              - columnheader "ID" [ref=f3e652]
+              - columnheader "License Type" [ref=f3e656]
+              - columnheader "Status" [ref=f3e660]
+              - columnheader "Installed At" [ref=f3e664]
+              - columnheader "Expires At" [ref=f3e668]
+              - columnheader "License Key Hash" [ref=f3e672]
+            - generic: No rows
+            - rowgroup
+          - generic [ref=f3e681]:
+            - paragraph [ref=f3e682]: "Rows per page:"
+            - generic [ref=f3e683]:
+              - 'combobox "Rows per page: 5" [ref=f3e684]': "5"
+              - textbox: "5"
+            - paragraph [ref=f3e685]: 0–0 of 0
+            - generic [ref=f3e686]:
+              - button "Go to previous page" [disabled]
+              - button "Go to next page" [disabled]
+  - generic [ref=f3e91]:
+    - link [ref=f3e92] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f3e94]:
+      - link "© NETLOX" [ref=f3e618] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f3e619] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f3e620] [cursor=pointer]:
+        - /url: https://netlox.io

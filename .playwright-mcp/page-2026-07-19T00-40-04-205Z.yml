@@ -1,0 +1,136 @@
+- generic [ref=f6e182]:
+  - generic [ref=f6e183]:
+    - generic [ref=f6e184]:
+      - img "logo" [ref=f6e575] [cursor=pointer]
+      - generic [ref=f6e186]: v.0.9.0
+    - generic [ref=f6e187]:
+      - generic "Return to Screen to 'Instances'" [ref=f6e576]:
+        - link [ref=f6e189] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f6e577]:
+        - link [ref=f6e194] [cursor=pointer]:
+          - /url: /netlox/user
+      - generic "Config Management" [ref=f6e578]:
+        - link [ref=f6e199] [cursor=pointer]:
+          - /url: /netlox/config-management
+      - img "flag" [ref=f6e579] [cursor=pointer]
+      - heading "admin" [level=6] [ref=f6e580] [cursor=pointer]
+  - generic [ref=f6e213]:
+    - generic [ref=f6e214]:
+      - button [ref=f6e216] [cursor=pointer]
+      - navigation [ref=f6e220]:
+        - list [ref=f6e221]:
+          - listitem [ref=f6e222]:
+            - paragraph [ref=f6e223]: kv-loxilb-gateway
+          - listitem [ref=f6e224]: /
+          - listitem [ref=f6e225]:
+            - link [ref=f6e581] [cursor=pointer]:
+              - /url: /netlox/instance/status/device?name=kv-loxilb-gateway
+              - paragraph [ref=f6e227]: Status
+          - listitem [ref=f6e228]: /
+          - listitem [ref=f6e229]:
+            - link [ref=f6e582] [cursor=pointer]:
+              - /url: /netlox/instance/status/logs?name=kv-loxilb-gateway
+              - paragraph [ref=f6e231]: Logs
+    - generic [ref=f6e232]:
+      - list [ref=f6e234]:
+        - listitem [ref=f6e235]:
+          - link [ref=f6e583] [cursor=pointer]:
+            - /url: /netlox/instance/dashboard?name=kv-loxilb-gateway
+            - heading "kv-loxilb-gateway" [level=6] [ref=f6e584]
+        - button [ref=f6e585] [cursor=pointer]:
+          - heading "Traffic" [level=6] [ref=f6e586]
+        - button [ref=f6e587] [cursor=pointer]:
+          - heading "AI Gateway" [level=6] [ref=f6e588]
+        - button [ref=f6e589] [cursor=pointer]:
+          - heading "IPsec VPN" [level=6] [ref=f6e590]
+        - button [ref=f6e591] [cursor=pointer]:
+          - heading "Security" [level=6] [ref=f6e592]
+        - button [ref=f6e593] [cursor=pointer]:
+          - heading "Networks" [level=6] [ref=f6e594]
+        - button [ref=f6e595] [cursor=pointer]:
+          - heading "Status" [level=6] [ref=f6e596]
+        - generic [ref=f6e292]:
+          - button [ref=f6e597] [cursor=pointer]:
+            - heading "Device Details" [level=6] [ref=f6e598]
+          - button [ref=f6e599] [cursor=pointer]:
+            - heading "File System" [level=6] [ref=f6e600]
+          - button [ref=f6e601] [cursor=pointer]:
+            - heading "High Availability" [level=6] [ref=f6e602]
+          - button [ref=f6e603] [cursor=pointer]:
+            - heading "Process" [level=6] [ref=f6e604]
+          - button [ref=f6e605] [cursor=pointer]:
+            - heading "Logs" [level=6] [ref=f6e606]
+        - button [ref=f6e607] [cursor=pointer]:
+          - heading "Log Settings" [level=6] [ref=f6e608]
+      - generic [ref=f6e1]:
+        - heading "Instance Logs" [level=5] [ref=f6e609]
+        - grid [ref=f6e7] [cursor=pointer]:
+          - row [ref=f6e610]:
+            - columnheader "Archived Logs" [ref=f6e611]
+            - columnheader "Download" [ref=f6e612]
+          - rowgroup [ref=f6e15]:
+            - row [ref=f6e613]:
+              - gridcell "loxilbdp.log" [ref=f6e614]
+              - gridcell [ref=f6e18]
+            - row [ref=f6e615]:
+              - gridcell "loxilbs19ed49c8f91.log" [ref=f6e616]
+              - gridcell [ref=f6e23]
+        - separator [ref=f6e26]
+        - generic [ref=f6e27]:
+          - generic [ref=f6e28]:
+            - heading "Log Filters" [level=6] [ref=f6e617]
+            - generic [ref=f6e30]:
+              - generic [ref=f6e328]: Level
+              - generic [ref=f6e31]:
+                - combobox [active] [ref=f6e32] [cursor=pointer]: ERROR
+                - textbox: error
+                - group:
+                  - generic: Level
+            - generic [ref=f6e33]:
+              - generic: Search Keyword
+              - generic [ref=f6e34]:
+                - textbox "Search Keyword" [ref=f6e618]
+                - group:
+                  - generic: Search Keyword
+            - button "Apply Keyword Filters" [ref=f6e619] [cursor=pointer]
+            - button "Clear Keyword Filters" [ref=f6e620] [cursor=pointer]
+            - button "Refresh Logs" [ref=f6e621] [cursor=pointer]
+          - generic [ref=f6e41]:
+            - generic [ref=f6e42]: 0 logs loaded
+            - generic [ref=f6e44]: More logs available
+            - 'button "Level: ERROR" [ref=f6e622]'
+        - generic [ref=f6e46]:
+          - generic [ref=f6e47]:
+            - heading "Logging Period" [level=6] [ref=f6e623]
+            - generic [ref=f6e49]:
+              - generic [ref=f6e50]:
+                - generic [ref=f6e51]: Start Date
+                - generic [ref=f6e52]:
+                  - textbox "Start Date" [ref=f6e624]:
+                    - /placeholder: MM/DD/YYYY hh:mm aa
+                    - text: 07/12/2026 09:38 AM
+                  - button "Choose date, selected date is Jul 12, 2026" [ref=f6e625] [cursor=pointer]
+                  - group:
+                    - generic: Start Date
+              - generic [ref=f6e60]:
+                - generic [ref=f6e61]: End Date
+                - generic [ref=f6e62]:
+                  - textbox "End Date" [ref=f6e626]:
+                    - /placeholder: MM/DD/YYYY hh:mm aa
+                    - text: 07/19/2026 09:38 AM
+                  - button "Choose date, selected date is Jul 19, 2026" [ref=f6e627] [cursor=pointer]
+                  - group:
+                    - generic: End Date
+          - paragraph [ref=f6e628]: No logs in selected period
+        - button "Load More Logs" [ref=f6e629] [cursor=pointer]
+  - generic [ref=f6e371]:
+    - link [ref=f6e372] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f6e374]:
+      - link "© NETLOX" [ref=f6e630] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f6e631] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f6e632] [cursor=pointer]:
+        - /url: https://netlox.io

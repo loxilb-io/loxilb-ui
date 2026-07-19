@@ -1,0 +1,39 @@
+- generic [ref=e4]:
+  - generic [ref=e6]:
+    - img "logo" [ref=e40] [cursor=pointer]
+    - generic [ref=e7]: v.0.9.0
+  - main [ref=e13]:
+    - generic [ref=e14]:
+      - img "LoxiLB Logo" [ref=e15]
+      - heading "v.0.9.0" [level=6] [ref=e16]
+      - generic [ref=e17]:
+        - alert [ref=e45]:
+          - generic [ref=e49]: Failed to fetch
+        - generic [ref=e18]:
+          - generic [ref=e19]:
+            - generic [ref=e20]:
+              - text: Username
+              - generic [ref=e21]: "*"
+            - generic [ref=e22]:
+              - textbox "Username" [ref=e26]: e2e_admin
+              - group:
+                - generic: Username *
+          - generic [ref=e27]:
+            - generic [ref=e28]:
+              - text: Password
+              - generic [ref=e29]: "*"
+            - generic [ref=e30]:
+              - textbox "Password" [ref=e34]: WrongPass999!
+              - group:
+                - generic: Password *
+          - button "Login" [ref=e44] [cursor=pointer]
+  - generic [ref=e35]:
+    - link [ref=e41] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=e36]:
+      - link "© NETLOX" [ref=e37] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=e38] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=e39] [cursor=pointer]:
+        - /url: https://netlox.io

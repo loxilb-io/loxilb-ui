@@ -1,0 +1,188 @@
+- generic [ref=f37e1]:
+  - generic [ref=f37e4]:
+    - generic [ref=f37e5]:
+      - generic [ref=f37e6]: v.0.9.0
+      - generic [ref=f37e9]:
+        - link [ref=f37e11] [cursor=pointer]:
+          - /url: /netlox/instance
+        - link [ref=f37e16] [cursor=pointer]:
+          - /url: /netlox/user
+        - link [ref=f37e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+        - heading [level=6] [ref=f37e237] [cursor=pointer]: e2e_admin
+    - generic [ref=f37e35]:
+      - generic [ref=f37e36]:
+        - button [ref=f37e38] [cursor=pointer]
+        - navigation [ref=f37e42]:
+          - list [ref=f37e43]:
+            - listitem [ref=f37e44]:
+              - paragraph [ref=f37e45]: kv-loxilb-gateway
+            - listitem [ref=f37e46]: /
+            - listitem [ref=f37e47]:
+              - link [ref=f37e238] [cursor=pointer]:
+                - /url: /netlox/instance/traffic/lb?name=kv-loxilb-gateway
+                - paragraph [ref=f37e49]: Traffic
+            - listitem [ref=f37e50]: /
+            - listitem [ref=f37e51]:
+              - link [ref=f37e239] [cursor=pointer]:
+                - /url: /netlox/instance/traffic/lb?name=kv-loxilb-gateway
+                - paragraph [ref=f37e53]: LB Rule
+      - generic [ref=f37e54]:
+        - list [ref=f37e56]:
+          - listitem [ref=f37e57]:
+            - link [ref=f37e240] [cursor=pointer]:
+              - /url: /netlox/instance/dashboard?name=kv-loxilb-gateway
+              - heading [level=6] [ref=f37e241]: kv-loxilb-gateway
+          - button [ref=f37e242] [cursor=pointer]:
+            - heading [level=6] [ref=f37e243]: Traffic
+          - generic [ref=f37e74]:
+            - button [ref=f37e244] [cursor=pointer]:
+              - heading [level=6] [ref=f37e245]: LB Rule
+            - button [ref=f37e246] [cursor=pointer]:
+              - heading [level=6] [ref=f37e247]: Endpoint
+            - button [ref=f37e248] [cursor=pointer]:
+              - heading [level=6] [ref=f37e249]: Conntrack
+            - button [ref=f37e250] [cursor=pointer]:
+              - heading [level=6] [ref=f37e251]: Firewall
+            - button [ref=f37e252] [cursor=pointer]:
+              - heading [level=6] [ref=f37e253]: QoS
+            - button [ref=f37e254] [cursor=pointer]:
+              - heading [level=6] [ref=f37e255]: Mirror
+            - button [ref=f37e256] [cursor=pointer]:
+              - heading [level=6] [ref=f37e257]: SNI Certificates
+          - button [ref=f37e258] [cursor=pointer]:
+            - heading [level=6] [ref=f37e259]: AI Gateway
+          - button [ref=f37e260] [cursor=pointer]:
+            - heading [level=6] [ref=f37e261]: IPsec VPN
+          - button [ref=f37e262] [cursor=pointer]:
+            - heading [level=6] [ref=f37e263]: Security
+          - button [ref=f37e264] [cursor=pointer]:
+            - heading [level=6] [ref=f37e265]: Networks
+          - button [ref=f37e266] [cursor=pointer]:
+            - heading [level=6] [ref=f37e267]: Status
+          - button [ref=f37e268] [cursor=pointer]:
+            - heading [level=6] [ref=f37e269]: Log Settings
+        - generic [ref=f37e145]:
+          - generic [ref=f37e146]:
+            - button [ref=f37e148] [cursor=pointer]
+            - button [ref=f37e152] [cursor=pointer]
+            - generic [ref=f37e272]:
+              - button [disabled]
+            - generic [ref=f37e273]:
+              - button [disabled]
+          - generic [ref=f37e158] [cursor=pointer]:
+            - grid [ref=f37e159]:
+              - row [ref=f37e274]:
+                - columnheader [ref=f37e275]:
+                  - checkbox [ref=f37e276]
+                - columnheader [ref=f37e277]:
+                  - generic [ref=f37e171]: ID
+                - columnheader [ref=f37e278]:
+                  - generic [ref=f37e175]: External IP
+                - columnheader [ref=f37e279]:
+                  - generic [ref=f37e179]: Port
+                - columnheader [ref=f37e280]:
+                  - generic [ref=f37e183]: Protocol
+                - columnheader [ref=f37e281]:
+                  - generic [ref=f37e187]: Service Name
+                - columnheader [ref=f37e282]:
+                  - heading [level=6] [ref=f37e283]: Sel
+                - columnheader [ref=f37e284]:
+                  - heading [level=6] [ref=f37e285]: Mode
+                - columnheader [ref=f37e286]:
+                  - generic [ref=f37e205]: Monitor
+                - columnheader [ref=f37e287]:
+                  - generic [ref=f37e209]: Timeout (Sec)
+              - generic [ref=f37e212]: No rows
+            - generic [ref=f37e219]:
+              - paragraph [ref=f37e220]: "Rows per page:"
+              - generic [ref=f37e221]:
+                - combobox [ref=f37e288]: "5"
+                - textbox: "5"
+              - paragraph [ref=f37e223]: 0–0 of 0
+              - generic [ref=f37e224]:
+                - button [disabled]
+                - button [disabled]
+    - generic [ref=f37e225]:
+      - link [ref=f37e226] [cursor=pointer]:
+        - /url: https://netlox.io
+      - generic [ref=f37e228]:
+        - link [ref=f37e289] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: © NETLOX
+        - link [ref=f37e290] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Privacy
+        - link [ref=f37e291] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Terms
+  - generic [ref=f37e294]:
+    - generic [ref=f37e295]:
+      - heading "Add Load Balancer Rule" [level=6] [ref=f37e296]
+      - generic [ref=f37e297]:
+        - generic "service name" [ref=f37e298]:
+          - generic [ref=f37e299]:
+            - generic [ref=f37e300]: Rule Name
+            - generic [ref=f37e301]:
+              - textbox "Rule Name" [ref=f37e302]
+              - group:
+                - generic: Rule Name
+        - generic [ref=f37e303]:
+          - heading [level=3] [ref=f37e304]:
+            - button [ref=f37e305] [cursor=pointer]:
+              - heading "Basic Settings(*)" [level=6] [ref=f37e307]
+          - generic: Protocol
+          - generic: External IP
+          - generic: Port Min
+          - generic: Port Max
+        - generic [ref=f37e311]:
+          - heading [level=3] [ref=f37e312]:
+            - button "Configure advanced settings for the load balancer, including algorithms and NAT modes." [ref=f37e313] [cursor=pointer]:
+              - heading "Advanced Settings (LB Algo, NAT modes, etc)" [level=6] [ref=f37e315]
+          - generic: SEL
+          - generic: Oper
+          - generic: Mode
+          - generic: Inactive Timeout
+          - generic: Host
+          - generic: Path Match Mode
+          - generic: Path Prefix
+          - generic: Backend Protocol
+          - generic: LLM Type
+        - generic [ref=f37e319]:
+          - heading [level=3] [ref=f37e320]:
+            - button "AI-gateway load-balancing features. Applies to the L7 proxy modes (fullproxy, aigw)." [ref=f37e321] [cursor=pointer]:
+              - heading "AI Gateway (Streaming / Prefill-Decode / KV Routing)" [level=6] [ref=f37e323]
+          - generic: Model Name
+          - generic: Trace Type
+          - generic: Session Header Name
+          - generic: CHWBL Prefix Hash Level
+          - generic: CHWBL Prefix Hash Flags
+          - generic: Max Stream Duration (s)
+          - generic: Backend Keepalive Interval (s)
+          - generic: P/D Session TTL (s)
+          - generic: P/D Cache Threshold
+          - generic: P/D Balance Abs Threshold
+          - generic: KV Exact Mode
+          - generic: KV Block Size
+          - generic: KV Hash Algo
+          - generic: KV ZMQ Port
+        - heading [level=3] [ref=f37e328]:
+          - button "Define the list of secondary IP addresses for this Load Balancer" [ref=f37e329] [cursor=pointer]:
+            - heading "Secondary IPs" [level=6] [ref=f37e331]
+        - heading [level=3] [ref=f37e336]:
+          - button "Define the list of allowed source IP addresses for this Load Balancer" [ref=f37e337] [cursor=pointer]:
+            - heading "Allowed Sources" [level=6] [ref=f37e339]
+        - generic [ref=f37e343]:
+          - heading [level=3] [ref=f37e344]:
+            - button "Define the list of endpoints (IP addresses) for this Load Balancer" [ref=f37e345] [cursor=pointer]:
+              - heading "Endpoints" [level=6] [ref=f37e347]
+          - generic: Probe Type
+          - generic: Probe Port
+          - generic: Probe Request
+          - generic: Probe Response
+          - generic: Probe Timeout
+          - generic: Probe Retries
+    - generic [ref=f37e351]:
+      - button "Cancel" [ref=f37e353] [cursor=pointer]
+      - generic [ref=f37e354]:
+        - button "Create" [disabled]

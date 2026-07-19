@@ -1,0 +1,158 @@
+- generic [ref=f37e4]:
+  - generic [ref=f37e5]:
+    - generic [ref=f37e6]:
+      - img "logo" [ref=f37e1053] [cursor=pointer]
+      - generic [ref=f37e8]: v.0.9.0
+    - generic [ref=f37e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f37e1054]:
+        - link [ref=f37e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f37e1055]:
+        - link [ref=f37e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - generic "Config Management" [ref=f37e1056]:
+        - link [ref=f37e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+      - img "flag" [ref=f37e1057] [cursor=pointer]
+      - heading "admin" [level=6] [ref=f37e1058] [cursor=pointer]
+  - generic [ref=f37e35]:
+    - generic [ref=f37e36]:
+      - button [ref=f37e38] [cursor=pointer]
+      - navigation [ref=f37e42]:
+        - list [ref=f37e43]:
+          - listitem [ref=f37e44]:
+            - paragraph [ref=f37e45]: kv-loxilb-gateway
+          - listitem [ref=f37e46]: /
+          - listitem [ref=f37e47]:
+            - link [ref=f37e1059] [cursor=pointer]:
+              - /url: /netlox/instance/traffic/lb?name=kv-loxilb-gateway
+              - paragraph [ref=f37e49]: Traffic
+          - listitem [ref=f37e50]: /
+          - listitem [ref=f37e51]:
+            - link [ref=f37e1060] [cursor=pointer]:
+              - /url: /netlox/instance/traffic/fw?name=kv-loxilb-gateway
+              - paragraph [ref=f37e53]: Firewall
+    - generic [ref=f37e54]:
+      - list [ref=f37e56]:
+        - listitem [ref=f37e57]:
+          - link [ref=f37e1061] [cursor=pointer]:
+            - /url: /netlox/instance/dashboard?name=kv-loxilb-gateway
+            - heading "kv-loxilb-gateway" [level=6] [ref=f37e1062]
+        - button [ref=f37e1063] [cursor=pointer]:
+          - heading "Traffic" [level=6] [ref=f37e1064]
+        - generic [ref=f37e74]:
+          - button [ref=f37e1065] [cursor=pointer]:
+            - heading "LB Rule" [level=6] [ref=f37e1066]
+          - button [ref=f37e1067] [cursor=pointer]:
+            - heading "Endpoint" [level=6] [ref=f37e1068]
+          - button [ref=f37e1069] [cursor=pointer]:
+            - heading "Conntrack" [level=6] [ref=f37e1070]
+          - button [ref=f37e1071] [cursor=pointer]:
+            - heading "Firewall" [level=6] [ref=f37e1072]
+          - button [ref=f37e1073] [cursor=pointer]:
+            - heading "QoS" [level=6] [ref=f37e1074]
+          - button [ref=f37e1075] [cursor=pointer]:
+            - heading "Mirror" [level=6] [ref=f37e1076]
+          - button [ref=f37e1077] [cursor=pointer]:
+            - heading "SNI Certificates" [level=6] [ref=f37e1078]
+        - button [ref=f37e1079] [cursor=pointer]:
+          - heading "AI Gateway" [level=6] [ref=f37e1080]
+        - button [ref=f37e1081] [cursor=pointer]:
+          - heading "IPsec VPN" [level=6] [ref=f37e1082]
+        - button [ref=f37e1083] [cursor=pointer]:
+          - heading "Security" [level=6] [ref=f37e1084]
+        - button [ref=f37e1085] [cursor=pointer]:
+          - heading "Networks" [level=6] [ref=f37e1086]
+        - button [ref=f37e1087] [cursor=pointer]:
+          - heading "Status" [level=6] [ref=f37e1088]
+        - button [ref=f37e1089] [cursor=pointer]:
+          - heading "Log Settings" [level=6] [ref=f37e1090]
+      - generic [ref=f37e145]:
+        - generic [ref=f37e146]:
+          - generic "Refresh Firewall" [ref=f37e1091]:
+            - button [ref=f37e148] [cursor=pointer]
+          - generic "Add Firewall" [ref=f37e1092]:
+            - button [ref=f37e152] [cursor=pointer]
+          - generic "Delete Firewall" [ref=f37e1093]:
+            - button [disabled]
+        - generic [ref=f37e157] [cursor=pointer]:
+          - grid [ref=f37e158]:
+            - row [ref=f37e1094]:
+              - columnheader [ref=f37e1095]:
+                - checkbox "Select all rows" [ref=f37e1096]
+              - columnheader "ID" [ref=f37e1097]
+              - columnheader "Port Name" [ref=f37e1098]
+              - columnheader "Source IP" [ref=f37e1099]
+              - columnheader "Dest. IP" [ref=f37e1100]
+              - columnheader "Source Port" [ref=f37e1101]
+              - columnheader "Dest. Port" [ref=f37e1102]
+              - columnheader "Protocol" [ref=f37e1103]
+              - columnheader [ref=f37e1104]:
+                - heading "Preference" [level=6] [ref=f37e1105]
+              - columnheader [ref=f37e1106]:
+                - heading "Counter" [level=6] [ref=f37e1107]
+            - rowgroup [ref=f37e211]:
+              - row [ref=f37e1108]:
+                - gridcell [ref=f37e1109]:
+                  - checkbox "Select row" [ref=f37e1110]
+                - gridcell [ref=f37e1111]:
+                  - paragraph [ref=f37e220]: "0"
+                - gridcell [ref=f37e221]:
+                  - generic [ref=f37e222]:
+                    - paragraph
+                - gridcell [ref=f37e1112]:
+                  - paragraph [ref=f37e225]: 0.0.0.0/0
+                - gridcell [ref=f37e1113]:
+                  - paragraph [ref=f37e228]: 20.20.20.3/32
+                - gridcell [ref=f37e1114]:
+                  - paragraph [ref=f37e231]: "-"
+                - gridcell [ref=f37e1115]:
+                  - paragraph [ref=f37e234]: 8080-8080
+                - gridcell [ref=f37e1116]:
+                  - paragraph [ref=f37e237]: TCP(6)
+                - gridcell [ref=f37e238]:
+                  - generic [ref=f37e239]:
+                    - paragraph
+                - gridcell [ref=f37e1117]:
+                  - paragraph [ref=f37e242]: 0:0
+              - row [ref=f37e1118]:
+                - gridcell [ref=f37e1119]:
+                  - checkbox "Select row" [ref=f37e1120]
+                - gridcell [ref=f37e1121]:
+                  - paragraph [ref=f37e251]: "1"
+                - gridcell [ref=f37e252]:
+                  - generic [ref=f37e253]:
+                    - paragraph
+                - gridcell [ref=f37e1122]:
+                  - paragraph [ref=f37e256]: 41.41.41.0/24
+                - gridcell [ref=f37e1123]:
+                  - paragraph [ref=f37e259]: 42.42.42.42/32
+                - gridcell [ref=f37e1124]:
+                  - paragraph [ref=f37e262]: "-"
+                - gridcell [ref=f37e1125]:
+                  - paragraph [ref=f37e265]: 7777-7777
+                - gridcell [ref=f37e1126]:
+                  - paragraph [ref=f37e268]: TCP(6)
+                - gridcell [ref=f37e1127]:
+                  - paragraph [ref=f37e1052]: "100"
+                - gridcell [ref=f37e1128]:
+                  - paragraph [ref=f37e273]: 0:0
+          - generic [ref=f37e279]:
+            - paragraph [ref=f37e280]: "Rows per page:"
+            - generic [ref=f37e281]:
+              - 'combobox "Rows per page: 5" [ref=f37e1129]': "5"
+              - textbox: "5"
+            - paragraph [ref=f37e283]: 1–2 of 2
+            - generic [ref=f37e284]:
+              - button "Go to previous page" [disabled]
+              - button "Go to next page" [disabled]
+  - generic [ref=f37e285]:
+    - link [ref=f37e286] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f37e288]:
+      - link "© NETLOX" [ref=f37e1130] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f37e1131] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f37e1132] [cursor=pointer]:
+        - /url: https://netlox.io

@@ -1,0 +1,82 @@
+- generic [ref=f9e1]:
+  - generic [ref=f9e4]:
+    - generic [ref=f9e5]:
+      - generic [ref=f9e6]: v.0.9.0
+      - generic [ref=f9e9]:
+        - link [ref=f9e11] [cursor=pointer]:
+          - /url: /netlox/instance
+        - link [ref=f9e16] [cursor=pointer]:
+          - /url: /netlox/user
+        - heading [level=6] [ref=f9e179] [cursor=pointer]: e2e_operator
+    - generic [ref=f9e32]:
+      - tablist [ref=f9e180]:
+        - tab [ref=f9e181] [cursor=pointer]: Profile
+        - tab [selected] [ref=f9e182] [cursor=pointer]: License
+      - tabpanel [ref=f9e89]:
+        - generic [ref=f9e91]:
+          - button [ref=f9e94] [cursor=pointer]
+          - generic [ref=f9e98] [cursor=pointer]:
+            - grid [ref=f9e99]:
+              - row [ref=f9e184]:
+                - columnheader [ref=f9e185]:
+                  - checkbox [ref=f9e186]
+                - columnheader [ref=f9e187]:
+                  - generic [ref=f9e111]: ID
+                - columnheader [ref=f9e188]:
+                  - generic [ref=f9e115]: ID
+                - columnheader [ref=f9e189]:
+                  - generic [ref=f9e119]: License Type
+                - columnheader [ref=f9e190]:
+                  - generic [ref=f9e123]: Status
+                - columnheader [ref=f9e191]:
+                  - generic [ref=f9e127]: Installed At
+                - columnheader [ref=f9e192]:
+                  - generic [ref=f9e131]: Expires At
+                - columnheader [ref=f9e193]:
+                  - generic [ref=f9e135]: License Key Hash
+              - rowgroup [ref=f9e138]:
+                - row [ref=f9e194]:
+                  - gridcell [ref=f9e195]:
+                    - checkbox [ref=f9e196]
+                  - gridcell [ref=f9e197]:
+                    - paragraph [ref=f9e147]: "0"
+                  - gridcell [ref=f9e198]:
+                    - paragraph [ref=f9e150]: "0"
+                  - gridcell [ref=f9e199]:
+                    - paragraph [ref=f9e153]: TRIAL
+                  - gridcell [ref=f9e200]:
+                    - paragraph [ref=f9e156]: Active
+                  - gridcell [ref=f9e201]:
+                    - paragraph [ref=f9e159]: 2026. 7. 17.
+                  - gridcell [ref=f9e202]:
+                    - paragraph [ref=f9e162]: 2027. 7. 17.
+                  - gridcell [ref=f9e203]:
+                    - paragraph [ref=f9e165]: lzrXw+8IyofRqk0czyhikSbSF9ak8nuIRSWcKB+BZRg=
+            - generic [ref=f9e169]:
+              - paragraph [ref=f9e170]: "Rows per page:"
+              - generic [ref=f9e171]:
+                - combobox [ref=f9e204]: "5"
+                - textbox: "5"
+              - paragraph [ref=f9e173]: 1–1 of 1
+              - generic [ref=f9e174]:
+                - button [disabled]
+                - button [disabled]
+    - generic [ref=f9e82]:
+      - link [ref=f9e83] [cursor=pointer]:
+        - /url: https://netlox.io
+      - generic [ref=f9e85]:
+        - link [ref=f9e205] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: © NETLOX
+        - link [ref=f9e206] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Privacy
+        - link [ref=f9e207] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Terms
+  - generic [ref=f9e225]:
+    - heading "Sign out" [level=2] [ref=f9e226]
+    - paragraph [ref=f9e227]: Are you sure you want to sign out?
+    - generic [ref=f9e228]:
+      - button "Cancel" [ref=f9e230] [cursor=pointer]
+      - button "Yes" [ref=f9e232] [cursor=pointer]

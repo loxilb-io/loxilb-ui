@@ -1,0 +1,53 @@
+- generic [ref=f4e1]:
+  - generic [ref=f4e4]:
+    - generic [ref=f4e5]:
+      - generic [ref=f4e6]: v.0.9.0
+      - generic [ref=f4e9]:
+        - link [ref=f4e11] [cursor=pointer]:
+          - /url: /netlox/instance
+        - link [ref=f4e16] [cursor=pointer]:
+          - /url: /netlox/user
+        - link [ref=f4e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+        - heading [level=6] [ref=f4e160] [cursor=pointer]: e2e_admin
+    - generic [ref=f4e37]:
+      - tablist [ref=f4e161]:
+        - tab [ref=f4e162] [cursor=pointer]: Export
+        - tab [ref=f4e163] [cursor=pointer]: Import
+        - tab [selected] [ref=f4e164] [cursor=pointer]: File Management
+      - tabpanel [ref=f4e165]:
+        - generic [ref=f4e133]:
+          - generic [ref=f4e134]:
+            - generic [ref=f4e135]:
+              - heading [level=6] [ref=f4e166]: Configuration Files
+              - paragraph [ref=f4e137]: Manage exported configuration files.
+            - button [ref=f4e167] [cursor=pointer]: Refresh
+          - generic [ref=f4e139]:
+            - generic [ref=f4e141]:
+              - generic [ref=f4e142]:
+                - heading [level=6] [ref=f4e168]: config-90dc8b4a9a112742.json
+                - paragraph [ref=f4e144]: "Exported: 2026. 7. 18. 오전 6:50:06"
+                - paragraph [ref=f4e145]: e2e-export-test
+              - button [ref=f4e169] [cursor=pointer]: Download
+            - generic [ref=f4e149]:
+              - generic [ref=f4e150]:
+                - heading [level=6] [ref=f4e170]: config-15030b70e8717d33.json
+                - paragraph [ref=f4e152]: "Exported: 2026. 7. 17. 오전 11:57:27"
+              - button [ref=f4e171] [cursor=pointer]: Download
+    - generic [ref=f4e76]:
+      - link [ref=f4e77] [cursor=pointer]:
+        - /url: https://netlox.io
+      - generic [ref=f4e79]:
+        - link [ref=f4e172] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: © NETLOX
+        - link [ref=f4e173] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Privacy
+        - link [ref=f4e174] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Terms
+  - generic [ref=f4e177]:
+    - heading "Success" [level=2] [ref=f4e178]
+    - paragraph [ref=f4e179]: Configuration file "config-90dc8b4a9a112742.json" downloaded successfully.
+    - button "OK" [ref=f4e182] [cursor=pointer]

@@ -1,0 +1,116 @@
+- generic [ref=f36e4]:
+  - generic [ref=f36e5]:
+    - generic [ref=f36e6]:
+      - img "logo" [ref=f36e1281] [cursor=pointer]
+      - generic [ref=f36e8]: v.0.9.0
+    - generic [ref=f36e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f36e1282]:
+        - link [ref=f36e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f36e1283]:
+        - link [ref=f36e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - generic "Config Management" [ref=f36e1284]:
+        - link [ref=f36e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+      - img "flag" [ref=f36e1285] [cursor=pointer]
+      - heading "admin" [level=6] [ref=f36e1286] [cursor=pointer]
+  - generic [ref=f36e35]:
+    - generic [ref=f36e36]:
+      - button [ref=f36e38] [cursor=pointer]
+      - navigation [ref=f36e42]:
+        - list [ref=f36e43]:
+          - listitem [ref=f36e44]:
+            - paragraph [ref=f36e45]: kv-loxilb-gateway
+          - listitem [ref=f36e46]: /
+          - listitem [ref=f36e47]:
+            - link [ref=f36e1287] [cursor=pointer]:
+              - /url: /netlox/instance/traffic/lb?name=kv-loxilb-gateway
+              - paragraph [ref=f36e49]: Traffic
+          - listitem [ref=f36e50]: /
+          - listitem [ref=f36e51]:
+            - link [ref=f36e1288] [cursor=pointer]:
+              - /url: /netlox/instance/traffic/lb?name=kv-loxilb-gateway
+              - paragraph [ref=f36e53]: LB Rule
+    - generic [ref=f36e54]:
+      - list [ref=f36e56]:
+        - listitem [ref=f36e57]:
+          - link [ref=f36e1289] [cursor=pointer]:
+            - /url: /netlox/instance/dashboard?name=kv-loxilb-gateway
+            - heading "kv-loxilb-gateway" [level=6] [ref=f36e1290]
+        - button [ref=f36e1291] [cursor=pointer]:
+          - heading "Traffic" [level=6] [ref=f36e1292]
+        - generic [ref=f36e74]:
+          - button [ref=f36e1293] [cursor=pointer]:
+            - heading "LB Rule" [level=6] [ref=f36e1294]
+          - button [ref=f36e1295] [cursor=pointer]:
+            - heading "Endpoint" [level=6] [ref=f36e1296]
+          - button [ref=f36e1297] [cursor=pointer]:
+            - heading "Conntrack" [level=6] [ref=f36e1298]
+          - button [ref=f36e1299] [cursor=pointer]:
+            - heading "Firewall" [level=6] [ref=f36e1300]
+          - button [ref=f36e1301] [cursor=pointer]:
+            - heading "QoS" [level=6] [ref=f36e1302]
+          - button [ref=f36e1303] [cursor=pointer]:
+            - heading "Mirror" [level=6] [ref=f36e1304]
+          - button [ref=f36e1305] [cursor=pointer]:
+            - heading "SNI Certificates" [level=6] [ref=f36e1306]
+        - button [ref=f36e1307] [cursor=pointer]:
+          - heading "AI Gateway" [level=6] [ref=f36e1308]
+        - button [ref=f36e1309] [cursor=pointer]:
+          - heading "IPsec VPN" [level=6] [ref=f36e1310]
+        - button [ref=f36e1311] [cursor=pointer]:
+          - heading "Security" [level=6] [ref=f36e1312]
+        - button [ref=f36e1313] [cursor=pointer]:
+          - heading "Networks" [level=6] [ref=f36e1314]
+        - button [ref=f36e1315] [cursor=pointer]:
+          - heading "Status" [level=6] [ref=f36e1316]
+        - button [ref=f36e1317] [cursor=pointer]:
+          - heading "Log Settings" [level=6] [ref=f36e1318]
+      - generic [ref=f36e145]:
+        - generic [ref=f36e146]:
+          - generic "Refresh Load Balancer" [ref=f36e1319]:
+            - button [ref=f36e148] [cursor=pointer]
+          - generic "Add Load Balancer" [ref=f36e1320]:
+            - button [ref=f36e152] [cursor=pointer]
+          - generic "Edit Load Balancer" [ref=f36e1321]:
+            - button [disabled]
+          - generic "Delete Load Balancer" [ref=f36e1322]:
+            - button [disabled]
+        - generic [ref=f36e158] [cursor=pointer]:
+          - grid [ref=f36e159]:
+            - row [ref=f36e1323]:
+              - columnheader [ref=f36e1324]:
+                - checkbox "Select all rows" [ref=f36e1325]
+              - columnheader "ID" [ref=f36e1326]
+              - columnheader "External IP" [ref=f36e1327]
+              - columnheader "Port" [ref=f36e1328]
+              - columnheader "Protocol" [ref=f36e1329]
+              - columnheader "Service Name" [ref=f36e1330]
+              - columnheader [ref=f36e1331]:
+                - heading "Sel" [level=6] [ref=f36e1332]
+              - columnheader [ref=f36e1333]:
+                - heading "Mode" [level=6] [ref=f36e1334]
+              - columnheader "Monitor" [ref=f36e1335]
+              - columnheader "Timeout (Sec)" [ref=f36e1336]
+            - generic: No rows
+            - rowgroup
+          - generic [ref=f36e219]:
+            - paragraph [ref=f36e220]: "Rows per page:"
+            - generic [ref=f36e221]:
+              - 'combobox "Rows per page: 5" [ref=f36e1337]': "5"
+              - textbox: "5"
+            - paragraph [ref=f36e223]: 0–0 of 0
+            - generic [ref=f36e224]:
+              - button "Go to previous page" [disabled]
+              - button "Go to next page" [disabled]
+  - generic [ref=f36e225]:
+    - link [ref=f36e226] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f36e228]:
+      - link "© NETLOX" [ref=f36e1338] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f36e1339] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f36e1340] [cursor=pointer]:
+        - /url: https://netlox.io

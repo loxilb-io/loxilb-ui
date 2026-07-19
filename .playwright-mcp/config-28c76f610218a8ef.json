@@ -1,0 +1,49 @@
+{
+  "metadata": {
+    "exported_at": "2026-07-18T05:22:31.502606685Z",
+    "exported_by": "admin",
+    "oam_version": "1.0.0",
+    "total_users": 3,
+    "total_instances": 1,
+    "total_settings": 0,
+    "config_type": "full_oam",
+    "format": "json",
+    "checksum": "a0ec9f21cf5c72edd0595d8c6fd739320cc4422769cb77d8f48badeb274c83a3"
+  },
+  "users": [
+    {
+      "username": "admin",
+      "role": "admin",
+      "email": "admin@test.local",
+      "created_at": "2026-07-17T02:54:01Z"
+    },
+    {
+      "username": "e2e_operator",
+      "role": "operator",
+      "email": "e2e_operator@test.local",
+      "created_at": "2026-07-18T05:03:02Z"
+    },
+    {
+      "username": "e2e_viewer",
+      "role": "viewer",
+      "email": "e2e_viewer@test.local",
+      "created_at": "2026-07-18T05:12:19Z"
+    }
+  ],
+  "system_settings": null,
+  "loxilb_instances": [
+    {
+      "name": "kv-loxilb-gateway",
+      "host": "10.0.0.12",
+      "port": "11111",
+      "protocol": "http",
+      "description": "loxilb-inference-gateway on kv-loxilb",
+      "version": "v1",
+      "api_endpoint": "http://10.0.0.12:11111/netlox/v1",
+      "cimage": "ghcr.io/loxilb-io/loxilb-inference-gateway",
+      "ctag": "latest-u24",
+      "is_active": true,
+      "created_at": "2026-07-17T02:52:59Z"
+    }
+  ]
+}

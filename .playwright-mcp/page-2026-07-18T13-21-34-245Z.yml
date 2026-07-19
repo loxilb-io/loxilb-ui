@@ -1,0 +1,46 @@
+- generic [ref=f41e4]:
+  - generic [ref=f41e5]:
+    - generic [ref=f41e6]:
+      - img "logo" [ref=f41e157] [cursor=pointer]
+      - generic [ref=f41e8]: v.0.9.0
+    - generic [ref=f41e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f41e158]:
+        - link [ref=f41e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f41e159]:
+        - link [ref=f41e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - generic "Config Management" [ref=f41e160]:
+        - link [ref=f41e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+      - img "flag" [ref=f41e161] [cursor=pointer]
+      - heading "admin" [level=6] [ref=f41e162] [cursor=pointer]
+  - generic [ref=f41e37]:
+    - tablist "configuration management tabs" [ref=f41e163]:
+      - tab "Export" [ref=f41e164] [cursor=pointer]
+      - tab "Import" [ref=f41e165] [cursor=pointer]
+      - tab "File Management" [selected] [ref=f41e166] [cursor=pointer]
+    - tabpanel "File Management" [ref=f41e167]:
+      - generic [ref=f41e84]:
+        - generic [ref=f41e85]:
+          - generic [ref=f41e86]:
+            - heading "Configuration Files" [level=6] [ref=f41e168]
+            - paragraph [ref=f41e88]: Manage exported configuration files.
+          - button "Refresh" [ref=f41e169] [cursor=pointer]
+        - generic [ref=f41e142]:
+          - generic [ref=f41e143]:
+            - heading "config-15030b70e8717d33.json" [level=6] [ref=f41e170]
+            - paragraph [ref=f41e145]: "Exported: 2026. 7. 17. 오전 11:57:27"
+          - generic [ref=f41e146]:
+            - button "Download" [ref=f41e171] [cursor=pointer]
+            - button "Delete" [ref=f41e172] [cursor=pointer]
+  - generic [ref=f41e75]:
+    - link [ref=f41e76] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f41e78]:
+      - link "© NETLOX" [ref=f41e173] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f41e174] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f41e175] [cursor=pointer]:
+        - /url: https://netlox.io

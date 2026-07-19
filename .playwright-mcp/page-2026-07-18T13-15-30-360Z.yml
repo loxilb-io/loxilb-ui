@@ -1,0 +1,165 @@
+- generic [ref=f38e1]:
+  - generic [ref=f38e4]:
+    - generic [ref=f38e5]:
+      - generic [ref=f38e6]: v.0.9.0
+      - generic [ref=f38e9]:
+        - link [ref=f38e11] [cursor=pointer]:
+          - /url: /netlox/instance
+        - link [ref=f38e16] [cursor=pointer]:
+          - /url: /netlox/user
+        - link [ref=f38e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+        - heading [level=6] [ref=f38e1106] [cursor=pointer]: admin
+    - generic [ref=f38e35]:
+      - generic [ref=f38e36]:
+        - button [ref=f38e38] [cursor=pointer]
+        - navigation [ref=f38e42]:
+          - list [ref=f38e43]:
+            - listitem [ref=f38e44]:
+              - paragraph [ref=f38e45]: kv-loxilb-gateway
+            - listitem [ref=f38e46]: /
+            - listitem [ref=f38e47]:
+              - link [ref=f38e1107] [cursor=pointer]:
+                - /url: /netlox/instance/ipsec/tunnels?name=kv-loxilb-gateway
+                - paragraph [ref=f38e49]: IPsec VPN
+            - listitem [ref=f38e50]: /
+            - listitem [ref=f38e51]:
+              - link [ref=f38e1108] [cursor=pointer]:
+                - /url: /netlox/instance/ipsec/tunnels?name=kv-loxilb-gateway
+                - paragraph [ref=f38e53]: Tunnels
+      - generic [ref=f38e54]:
+        - list [ref=f38e56]:
+          - listitem [ref=f38e57]:
+            - link [ref=f38e1109] [cursor=pointer]:
+              - /url: /netlox/instance/dashboard?name=kv-loxilb-gateway
+              - heading [level=6] [ref=f38e1110]: kv-loxilb-gateway
+          - button [ref=f38e1111] [cursor=pointer]:
+            - heading [level=6] [ref=f38e1112]: Traffic
+          - button [ref=f38e1113] [cursor=pointer]:
+            - heading [level=6] [ref=f38e1114]: AI Gateway
+          - button [ref=f38e1115] [cursor=pointer]:
+            - heading [level=6] [ref=f38e1116]: IPsec VPN
+          - generic [ref=f38e90]:
+            - button [ref=f38e1117] [cursor=pointer]:
+              - heading [level=6] [ref=f38e1118]: Tunnels
+            - button [ref=f38e1119] [cursor=pointer]:
+              - heading [level=6] [ref=f38e1120]: Certificates
+          - button [ref=f38e1121] [cursor=pointer]:
+            - heading [level=6] [ref=f38e1122]: Security
+          - button [ref=f38e1123] [cursor=pointer]:
+            - heading [level=6] [ref=f38e1124]: Networks
+          - button [ref=f38e1125] [cursor=pointer]:
+            - heading [level=6] [ref=f38e1126]: Status
+          - button [ref=f38e1127] [cursor=pointer]:
+            - heading [level=6] [ref=f38e1128]: Log Settings
+        - generic [ref=f38e129]:
+          - generic [ref=f38e131]:
+            - heading [level=6] [ref=f38e1129]: IPsec Overview
+            - generic [ref=f38e134]:
+              - generic [ref=f38e136]:
+                - generic [ref=f38e138]:
+                  - generic [ref=f38e139]: Tunnels Up
+                  - generic [ref=f38e140]:
+                    - textbox [ref=f38e1130]: "0"
+                    - group:
+                      - generic: Tunnels Up
+                - generic [ref=f38e143]:
+                  - generic [ref=f38e144]: Tunnels Down
+                  - generic [ref=f38e145]:
+                    - textbox [ref=f38e1131]: "1"
+                    - group:
+                      - generic: Tunnels Down
+                - generic [ref=f38e148]:
+                  - generic [ref=f38e149]: Active SAs
+                  - generic [ref=f38e150]:
+                    - textbox [ref=f38e1132]: "0"
+                    - group:
+                      - generic: Active SAs
+                - generic [ref=f38e153]:
+                  - generic [ref=f38e154]: Bytes In / Out
+                  - generic [ref=f38e155]:
+                    - textbox [ref=f38e1133]: 0 B / 0 B
+                    - group:
+                      - generic: Bytes In / Out
+                - generic [ref=f38e158]:
+                  - generic [ref=f38e159]: Errors
+                  - generic [ref=f38e160]:
+                    - textbox [ref=f38e1135]: "0"
+                    - group:
+                      - generic: Errors
+              - button [ref=f38e1136] [cursor=pointer]: Global Settings
+          - generic [ref=f38e166]:
+            - generic [ref=f38e167]:
+              - button [ref=f38e169] [cursor=pointer]
+              - button [ref=f38e173] [cursor=pointer]
+              - generic [ref=f38e1139]:
+                - button [disabled]
+              - generic [ref=f38e1140]:
+                - button [disabled]
+            - generic [ref=f38e179] [cursor=pointer]:
+              - grid [ref=f38e180]:
+                - row [ref=f38e1141]:
+                  - columnheader [ref=f38e1142]:
+                    - generic [ref=f38e183]: ID
+                  - columnheader [ref=f38e1143]:
+                    - generic [ref=f38e187]: Name
+                  - columnheader [ref=f38e1144]:
+                    - heading [level=6] [ref=f38e1145]: State
+                  - columnheader [ref=f38e1146]:
+                    - generic [ref=f38e198]: Local ⇄ Remote
+                  - columnheader [ref=f38e1147]:
+                    - generic [ref=f38e202]: Auth
+                  - columnheader [ref=f38e1148]:
+                    - generic [ref=f38e206]: IKE
+                  - columnheader [ref=f38e1149]:
+                    - heading [level=6] [ref=f38e1150]: SAs
+                  - columnheader [ref=f38e1151]:
+                    - generic [ref=f38e217]: Bytes In
+                  - columnheader [ref=f38e1152]:
+                    - generic [ref=f38e221]: Bytes Out
+                - rowgroup [ref=f38e380]:
+                  - row [ref=f38e1153]:
+                    - gridcell [ref=f38e1154]:
+                      - paragraph [ref=f38e384]: "0"
+                    - gridcell [ref=f38e1155]:
+                      - paragraph [ref=f38e387]: e2e-tun
+                    - gridcell [ref=f38e1156]:
+                      - paragraph [ref=f38e390]: CONNECTING
+                    - gridcell [ref=f38e1157]:
+                      - paragraph [ref=f38e393]: 10.0.0.12 ⇄ 203.0.113.99
+                    - gridcell [ref=f38e1158]:
+                      - paragraph [ref=f38e396]: psk
+                    - gridcell [ref=f38e1159]:
+                      - paragraph [ref=f38e399]: ikev2
+                    - gridcell [ref=f38e1160]:
+                      - paragraph [ref=f38e402]: "0"
+                    - gridcell [ref=f38e1161]:
+                      - paragraph [ref=f38e405]: 0 B
+                    - gridcell [ref=f38e1162]:
+                      - paragraph [ref=f38e408]: 0 B
+              - generic [ref=f38e231]:
+                - paragraph [ref=f38e232]: "Rows per page:"
+                - generic [ref=f38e233]:
+                  - combobox [ref=f38e1163]: "5"
+                  - textbox: "5"
+                - paragraph [ref=f38e235]: 1–1 of 1
+                - generic [ref=f38e236]:
+                  - button [disabled]
+                  - button [disabled]
+    - generic [ref=f38e237]:
+      - link [ref=f38e238] [cursor=pointer]:
+        - /url: https://netlox.io
+      - generic [ref=f38e240]:
+        - link [ref=f38e1205] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: © NETLOX
+        - link [ref=f38e1206] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Privacy
+        - link [ref=f38e1207] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Terms
+  - generic [ref=f38e1220]:
+    - heading "Success" [level=2] [ref=f38e1221]
+    - paragraph [ref=f38e1222]: Deleted successfully.
+    - button "OK" [ref=f38e1225] [cursor=pointer]

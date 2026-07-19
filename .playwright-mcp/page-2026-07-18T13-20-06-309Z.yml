@@ -1,0 +1,55 @@
+- generic [ref=f41e4]:
+  - generic [ref=f41e5]:
+    - generic [ref=f41e6]:
+      - img "logo" [ref=f41e7] [cursor=pointer]
+      - generic [ref=f41e8]: v.0.9.0
+    - generic [ref=f41e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f41e10]:
+        - link [ref=f41e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f41e15]:
+        - link [ref=f41e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - generic "Config Management" [ref=f41e20]:
+        - link [ref=f41e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+      - img "flag" [ref=f41e26] [cursor=pointer]
+      - heading "admin" [level=6] [ref=f41e31] [cursor=pointer]
+  - generic [ref=f41e37]:
+    - tablist "configuration management tabs" [ref=f41e41]:
+      - tab "Export" [ref=f41e42] [cursor=pointer]
+      - tab "Import" [ref=f41e45] [cursor=pointer]
+      - tab "File Management" [active] [selected] [ref=f41e48] [cursor=pointer]
+    - tabpanel "File Management" [ref=f41e82]:
+      - generic [ref=f41e84]:
+        - generic [ref=f41e85]:
+          - generic [ref=f41e86]:
+            - heading "Configuration Files" [level=6] [ref=f41e87]
+            - paragraph [ref=f41e88]: Manage exported configuration files.
+          - button "Refresh" [ref=f41e89] [cursor=pointer]
+        - generic [ref=f41e90]:
+          - generic [ref=f41e92]:
+            - generic [ref=f41e93]:
+              - heading "config-28c76f610218a8ef.json" [level=6] [ref=f41e94]
+              - paragraph [ref=f41e95]: "Exported: 2026. 7. 18. 오후 2:22:32"
+              - paragraph [ref=f41e96]: e2e-test-export
+            - generic [ref=f41e97]:
+              - button "Download" [ref=f41e98] [cursor=pointer]
+              - button "Delete" [ref=f41e99] [cursor=pointer]
+          - generic [ref=f41e101]:
+            - generic [ref=f41e102]:
+              - heading "config-15030b70e8717d33.json" [level=6] [ref=f41e103]
+              - paragraph [ref=f41e104]: "Exported: 2026. 7. 17. 오전 11:57:27"
+            - generic [ref=f41e105]:
+              - button "Download" [ref=f41e106] [cursor=pointer]
+              - button "Delete" [ref=f41e107] [cursor=pointer]
+  - generic [ref=f41e75]:
+    - link [ref=f41e76] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f41e78]:
+      - link "© NETLOX" [ref=f41e79] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f41e80] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f41e81] [cursor=pointer]:
+        - /url: https://netlox.io

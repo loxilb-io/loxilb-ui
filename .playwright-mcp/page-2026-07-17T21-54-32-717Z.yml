@@ -1,0 +1,37 @@
+- generic [ref=f4e4]:
+  - generic [ref=f4e5]:
+    - generic [ref=f4e6]:
+      - img "logo" [ref=f4e183] [cursor=pointer]
+      - generic [ref=f4e8]: v.0.9.0
+    - generic [ref=f4e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f4e184]:
+        - link [ref=f4e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f4e185]:
+        - link [ref=f4e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - generic "Config Management" [ref=f4e186]:
+        - link [ref=f4e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+      - img "flag" [ref=f4e187] [cursor=pointer]
+      - heading "e2e_admin" [level=6] [ref=f4e188] [cursor=pointer]
+  - generic [ref=f4e37]:
+    - tablist "configuration management tabs" [ref=f4e189]:
+      - tab "Export" [ref=f4e190] [cursor=pointer]
+      - tab "Import" [active] [selected] [ref=f4e191] [cursor=pointer]
+      - tab "File Management" [ref=f4e192] [cursor=pointer]
+    - tabpanel "Import" [ref=f4e203]:
+      - generic [ref=f4e207] [cursor=pointer]:
+        - heading "Select Configuration File" [level=6] [ref=f4e210]
+        - paragraph [ref=f4e211]: Drag and drop a configuration file here, or click to select
+        - generic [ref=f4e212]: "Supported formats: .json • Max size: 50MB"
+  - generic [ref=f4e76]:
+    - link [ref=f4e77] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f4e79]:
+      - link "© NETLOX" [ref=f4e200] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f4e201] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f4e202] [cursor=pointer]:
+        - /url: https://netlox.io

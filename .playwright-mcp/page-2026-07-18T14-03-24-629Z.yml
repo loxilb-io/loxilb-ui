@@ -1,0 +1,114 @@
+- generic [ref=f46e4]:
+  - generic [ref=f46e5]:
+    - generic [ref=f46e6]:
+      - img "logo" [ref=f46e470] [cursor=pointer]
+      - generic [ref=f46e8]: v.0.9.0
+    - generic [ref=f46e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f46e471]:
+        - link [ref=f46e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f46e472]:
+        - link [ref=f46e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - generic "Config Management" [ref=f46e473]:
+        - link [ref=f46e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+      - img "flag" [ref=f46e474] [cursor=pointer]
+      - heading "admin" [level=6] [ref=f46e475] [cursor=pointer]
+  - generic [ref=f46e35]:
+    - generic [ref=f46e36]:
+      - button [ref=f46e38] [cursor=pointer]
+      - navigation [ref=f46e42]:
+        - list [ref=f46e43]:
+          - listitem [ref=f46e44]:
+            - paragraph [ref=f46e45]: kv-loxilb-gateway
+          - listitem [ref=f46e46]: /
+          - listitem [ref=f46e47]:
+            - link [ref=f46e476] [cursor=pointer]:
+              - /url: /netlox/instance/traffic/lb?name=kv-loxilb-gateway
+              - paragraph [ref=f46e49]: Traffic
+          - listitem [ref=f46e50]: /
+          - listitem [ref=f46e51]:
+            - link [ref=f46e477] [cursor=pointer]:
+              - /url: /netlox/instance/traffic/fw?name=kv-loxilb-gateway
+              - paragraph [ref=f46e53]: Firewall
+    - generic [ref=f46e54]:
+      - list [ref=f46e56]:
+        - listitem [ref=f46e57]:
+          - link [ref=f46e478] [cursor=pointer]:
+            - /url: /netlox/instance/dashboard?name=kv-loxilb-gateway
+            - heading "kv-loxilb-gateway" [level=6] [ref=f46e479]
+        - button [ref=f46e480] [cursor=pointer]:
+          - heading "Traffic" [level=6] [ref=f46e481]
+        - generic [ref=f46e74]:
+          - button [ref=f46e482] [cursor=pointer]:
+            - heading "LB Rule" [level=6] [ref=f46e483]
+          - button [ref=f46e484] [cursor=pointer]:
+            - heading "Endpoint" [level=6] [ref=f46e485]
+          - button [ref=f46e486] [cursor=pointer]:
+            - heading "Conntrack" [level=6] [ref=f46e487]
+          - button [ref=f46e488] [cursor=pointer]:
+            - heading "Firewall" [level=6] [ref=f46e489]
+          - button [ref=f46e490] [cursor=pointer]:
+            - heading "QoS" [level=6] [ref=f46e491]
+          - button [ref=f46e492] [cursor=pointer]:
+            - heading "Mirror" [level=6] [ref=f46e493]
+          - button [ref=f46e494] [cursor=pointer]:
+            - heading "SNI Certificates" [level=6] [ref=f46e495]
+        - button [ref=f46e496] [cursor=pointer]:
+          - heading "AI Gateway" [level=6] [ref=f46e497]
+        - button [ref=f46e498] [cursor=pointer]:
+          - heading "IPsec VPN" [level=6] [ref=f46e499]
+        - button [ref=f46e500] [cursor=pointer]:
+          - heading "Security" [level=6] [ref=f46e501]
+        - button [ref=f46e502] [cursor=pointer]:
+          - heading "Networks" [level=6] [ref=f46e503]
+        - button [ref=f46e504] [cursor=pointer]:
+          - heading "Status" [level=6] [ref=f46e505]
+        - button [ref=f46e506] [cursor=pointer]:
+          - heading "Log Settings" [level=6] [ref=f46e507]
+      - generic [ref=f46e145]:
+        - generic [ref=f46e146]:
+          - generic "Refresh Firewall" [ref=f46e508]:
+            - button [ref=f46e148] [cursor=pointer]
+          - generic "Add Firewall" [ref=f46e509]:
+            - button [ref=f46e152] [cursor=pointer]
+          - generic "Delete Firewall" [ref=f46e510]:
+            - button [disabled]
+        - generic [ref=f46e157] [cursor=pointer]:
+          - grid [ref=f46e158]:
+            - row [ref=f46e511]:
+              - columnheader [ref=f46e512]:
+                - checkbox "Select all rows" [ref=f46e513]
+              - columnheader "ID" [ref=f46e514]
+              - columnheader "Port Name" [ref=f46e515]
+              - columnheader "Source IP" [ref=f46e516]
+              - columnheader "Dest. IP" [ref=f46e517]
+              - columnheader "Source Port" [ref=f46e518]
+              - columnheader "Dest. Port" [ref=f46e519]
+              - columnheader "Protocol" [ref=f46e520]
+              - columnheader [ref=f46e521]:
+                - heading "Preference" [level=6] [ref=f46e522]
+              - columnheader [ref=f46e523]:
+                - heading "Counter" [level=6] [ref=f46e524]
+            - generic: No rows
+            - rowgroup
+          - generic [ref=f46e313]:
+            - paragraph [ref=f46e314]: "Rows per page:"
+            - generic [ref=f46e315]:
+              - 'combobox "Rows per page: 5" [ref=f46e525]': "5"
+              - textbox: "5"
+            - paragraph [ref=f46e317]: 0–0 of 0
+            - generic [ref=f46e318]:
+              - button "Go to previous page" [disabled]
+              - button "Go to next page" [disabled]
+  - generic [ref=f46e319]:
+    - link [ref=f46e320] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f46e322]:
+      - link "© NETLOX" [ref=f46e526] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f46e527] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f46e528] [cursor=pointer]:
+        - /url: https://netlox.io

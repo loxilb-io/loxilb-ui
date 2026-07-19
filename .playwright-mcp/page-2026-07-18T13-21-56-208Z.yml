@@ -1,0 +1,52 @@
+- generic [ref=f41e1]:
+  - generic [ref=f41e4]:
+    - generic [ref=f41e5]:
+      - generic [ref=f41e6]: v.0.9.0
+      - generic [ref=f41e9]:
+        - link [ref=f41e11] [cursor=pointer]:
+          - /url: /netlox/instance
+        - link [ref=f41e16] [cursor=pointer]:
+          - /url: /netlox/user
+        - link [ref=f41e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+        - heading [level=6] [ref=f41e181] [cursor=pointer]: admin
+    - generic [ref=f41e37]:
+      - tablist [ref=f41e182]:
+        - tab [ref=f41e183] [cursor=pointer]: Export
+        - tab [ref=f41e184] [cursor=pointer]: Import
+        - tab [selected] [ref=f41e185] [cursor=pointer]: File Management
+      - tabpanel [ref=f41e186]:
+        - generic [ref=f41e84]:
+          - generic [ref=f41e85]:
+            - generic [ref=f41e86]:
+              - heading [level=6] [ref=f41e187]: Configuration Files
+              - paragraph [ref=f41e88]: Manage exported configuration files.
+            - button [ref=f41e188] [cursor=pointer]: Refresh
+          - generic [ref=f41e142]:
+            - generic [ref=f41e143]:
+              - heading [level=6] [ref=f41e189]: config-15030b70e8717d33.json
+              - paragraph [ref=f41e145]: "Exported: 2026. 7. 17. 오전 11:57:27"
+            - generic [ref=f41e146]:
+              - button [ref=f41e190] [cursor=pointer]: Download
+              - button [ref=f41e191] [cursor=pointer]: Delete
+    - generic [ref=f41e75]:
+      - link [ref=f41e76] [cursor=pointer]:
+        - /url: https://netlox.io
+      - generic [ref=f41e78]:
+        - link [ref=f41e192] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: © NETLOX
+        - link [ref=f41e193] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Privacy
+        - link [ref=f41e194] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Terms
+  - menu [active] [ref=f41e197]:
+    - generic [ref=f41e201]:
+      - paragraph [ref=f41e202]: admin
+      - paragraph [ref=f41e203]: admin@test.local
+      - paragraph [ref=f41e204]: ID 1
+    - separator [ref=f41e205]
+    - menuitem [ref=f41e206] [cursor=pointer]:
+      - paragraph [ref=f41e209]: Sign out

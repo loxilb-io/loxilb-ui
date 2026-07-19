@@ -1,0 +1,63 @@
+- generic [ref=f16e4]:
+  - generic [ref=f16e5]:
+    - generic [ref=f16e6]:
+      - img "logo" [ref=f16e7] [cursor=pointer]
+      - generic [ref=f16e8]: v.0.9.0
+    - generic [ref=f16e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f16e10]:
+        - link [ref=f16e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f16e15]:
+        - link [ref=f16e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - generic "Config Management" [ref=f16e20]:
+        - link [ref=f16e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+      - img "flag" [ref=f16e26] [cursor=pointer]
+      - heading "e2e_admin" [level=6] [ref=f16e31] [cursor=pointer]
+  - generic [ref=f16e35]:
+    - generic [ref=f16e36]:
+      - button [ref=f16e38] [cursor=pointer]
+      - navigation [ref=f16e42]:
+        - list [ref=f16e43]:
+          - listitem [ref=f16e44]:
+            - paragraph [ref=f16e45]: kv-loxilb-gateway
+          - listitem [ref=f16e46]: /
+          - listitem [ref=f16e47]:
+            - link [ref=f16e48] [cursor=pointer]:
+              - /url: /netlox/instance/ipsec/tunnels?name=kv-loxilb-gateway
+              - paragraph [ref=f16e49]: IPsec VPN
+    - list [ref=f16e52]:
+      - listitem [ref=f16e53]:
+        - link [ref=f16e54] [cursor=pointer]:
+          - /url: /netlox/instance/dashboard?name=kv-loxilb-gateway
+          - heading "kv-loxilb-gateway" [level=6] [ref=f16e56]
+      - button [ref=f16e59] [cursor=pointer]:
+        - heading "Traffic" [level=6] [ref=f16e64]
+      - button [ref=f16e67] [cursor=pointer]:
+        - heading "AI Gateway" [level=6] [ref=f16e72]
+      - button [active] [ref=f16e75] [cursor=pointer]:
+        - heading "IPsec VPN" [level=6] [ref=f16e80]
+      - generic [ref=f16e128]:
+        - button [ref=f16e129] [cursor=pointer]:
+          - heading "Tunnels" [level=6] [ref=f16e131]
+        - button [ref=f16e132] [cursor=pointer]:
+          - heading "Certificates" [level=6] [ref=f16e134]
+      - button [ref=f16e83] [cursor=pointer]:
+        - heading "Security" [level=6] [ref=f16e88]
+      - button [ref=f16e91] [cursor=pointer]:
+        - heading "Networks" [level=6] [ref=f16e96]
+      - button [ref=f16e99] [cursor=pointer]:
+        - heading "Status" [level=6] [ref=f16e104]
+      - button [ref=f16e107] [cursor=pointer]:
+        - heading "Log Settings" [level=6] [ref=f16e112]
+  - generic [ref=f16e116]:
+    - link [ref=f16e117] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f16e119]:
+      - link "© NETLOX" [ref=f16e120] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f16e121] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f16e122] [cursor=pointer]:
+        - /url: https://netlox.io

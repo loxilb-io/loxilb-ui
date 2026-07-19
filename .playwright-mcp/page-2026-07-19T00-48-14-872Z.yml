@@ -1,0 +1,116 @@
+- generic [ref=f27e4]:
+  - generic [ref=f27e5]:
+    - generic [ref=f27e6]:
+      - img "logo" [ref=f27e7] [cursor=pointer]
+      - generic [ref=f27e8]: v.0.9.0
+    - generic [ref=f27e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f27e10]:
+        - link [ref=f27e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f27e15]:
+        - link [ref=f27e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - generic "Config Management" [ref=f27e20]:
+        - link [ref=f27e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+      - img "flag" [ref=f27e26] [cursor=pointer]
+      - heading "admin" [level=6] [ref=f27e31] [cursor=pointer]
+  - generic [ref=f27e35]:
+    - generic [ref=f27e36]:
+      - button [ref=f27e38] [cursor=pointer]
+      - navigation [ref=f27e42]:
+        - list [ref=f27e43]:
+          - listitem [ref=f27e44]:
+            - paragraph [ref=f27e45]: kv-loxilb-gateway
+          - listitem [ref=f27e46]: /
+          - listitem [ref=f27e47]:
+            - link [ref=f27e48] [cursor=pointer]:
+              - /url: /netlox/instance/status/device?name=kv-loxilb-gateway
+              - paragraph [ref=f27e49]: Status
+          - listitem [ref=f27e50]: /
+          - listitem [ref=f27e51]:
+            - link [ref=f27e52] [cursor=pointer]:
+              - /url: /netlox/instance/status/ha?name=kv-loxilb-gateway
+              - paragraph [ref=f27e53]: High Availability
+    - generic [ref=f27e54]:
+      - list [ref=f27e56]:
+        - listitem [ref=f27e57]:
+          - link [ref=f27e58] [cursor=pointer]:
+            - /url: /netlox/instance/dashboard?name=kv-loxilb-gateway
+            - heading "kv-loxilb-gateway" [level=6] [ref=f27e60]
+        - button [ref=f27e63] [cursor=pointer]:
+          - heading "Traffic" [level=6] [ref=f27e68]
+        - button [ref=f27e71] [cursor=pointer]:
+          - heading "AI Gateway" [level=6] [ref=f27e76]
+        - button [ref=f27e79] [cursor=pointer]:
+          - heading "IPsec VPN" [level=6] [ref=f27e84]
+        - button [ref=f27e87] [cursor=pointer]:
+          - heading "Security" [level=6] [ref=f27e92]
+        - button [ref=f27e95] [cursor=pointer]:
+          - heading "Networks" [level=6] [ref=f27e100]
+        - button [ref=f27e103] [cursor=pointer]:
+          - heading "Status" [level=6] [ref=f27e108]
+        - generic [ref=f27e114]:
+          - button [ref=f27e115] [cursor=pointer]:
+            - heading "Device Details" [level=6] [ref=f27e117]
+          - button [ref=f27e118] [cursor=pointer]:
+            - heading "File System" [level=6] [ref=f27e120]
+          - button [ref=f27e121] [cursor=pointer]:
+            - heading "High Availability" [level=6] [ref=f27e123]
+          - button [ref=f27e124] [cursor=pointer]:
+            - heading "Process" [level=6] [ref=f27e126]
+          - button [ref=f27e127] [cursor=pointer]:
+            - heading "Logs" [level=6] [ref=f27e129]
+        - button [ref=f27e130] [cursor=pointer]:
+          - heading "Log Settings" [level=6] [ref=f27e135]
+      - generic [ref=f27e139]:
+        - generic [ref=f27e140]:
+          - generic "Refresh High Availability" [ref=f27e141]:
+            - button [ref=f27e142] [cursor=pointer]
+          - generic "Edit High Availability" [ref=f27e145]:
+            - button [ref=f27e146] [cursor=pointer]
+        - generic [ref=f27e150] [cursor=pointer]:
+          - grid [ref=f27e151]:
+            - row [ref=f27e152]:
+              - columnheader [ref=f27e153]:
+                - checkbox "Unselect all rows" [checked] [ref=f27e156]
+              - columnheader "ID" [ref=f27e162]
+              - columnheader [ref=f27e166]:
+                - heading "Instance" [level=6] [ref=f27e169]
+              - columnheader [ref=f27e173]:
+                - heading "Virtual IP" [level=6] [ref=f27e176]
+              - columnheader [ref=f27e180]:
+                - heading "State" [level=6] [ref=f27e183]
+            - rowgroup [ref=f27e187]:
+              - row [selected] [ref=f27e188]:
+                - gridcell [ref=f27e189]:
+                  - checkbox "Unselect row" [checked] [active] [ref=f27e191]
+                - gridcell [ref=f27e194]:
+                  - paragraph [ref=f27e196]: "0"
+                - gridcell [ref=f27e197]:
+                  - paragraph [ref=f27e199]: llb-inst0
+                - gridcell [ref=f27e200]:
+                  - paragraph [ref=f27e202]: 0.0.0.0
+                - gridcell [ref=f27e203]:
+                  - paragraph [ref=f27e205]: NOT_DEFINED
+          - generic [ref=f27e207]:
+            - generic [ref=f27e208]: 1 row selected
+            - generic [ref=f27e210]:
+              - paragraph [ref=f27e211]: "Rows per page:"
+              - generic [ref=f27e212]:
+                - 'combobox "Rows per page: 5" [ref=f27e213]': "5"
+                - textbox: "5"
+              - paragraph [ref=f27e214]: 1–1 of 1
+              - generic [ref=f27e215]:
+                - button "Go to previous page" [disabled]
+                - button "Go to next page" [disabled]
+  - generic [ref=f27e217]:
+    - link [ref=f27e218] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f27e220]:
+      - link "© NETLOX" [ref=f27e221] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f27e222] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f27e223] [cursor=pointer]:
+        - /url: https://netlox.io

@@ -1,0 +1,49 @@
+- generic [ref=f4e1]:
+  - generic [ref=f4e4]:
+    - generic [ref=f4e5]:
+      - generic [ref=f4e6]: v.0.9.0
+      - generic [ref=f4e9]:
+        - link [ref=f4e11] [cursor=pointer]:
+          - /url: /netlox/instance
+        - link [ref=f4e16] [cursor=pointer]:
+          - /url: /netlox/user
+        - link [ref=f4e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+        - heading [level=6] [ref=f4e270] [cursor=pointer]: e2e_admin
+    - generic [ref=f4e37]:
+      - tablist [ref=f4e271]:
+        - tab [ref=f4e272] [cursor=pointer]: Export
+        - tab [selected] [ref=f4e273] [cursor=pointer]: Import
+        - tab [ref=f4e274] [cursor=pointer]: File Management
+      - tabpanel [ref=f4e275]:
+        - generic [ref=f4e205]:
+          - generic [ref=f4e207] [cursor=pointer]:
+            - heading [level=6] [ref=f4e276]: e2e-wrongschema.json
+            - paragraph [ref=f4e211]: Drag and drop a configuration file here, or click to select
+            - generic [ref=f4e212]: "Supported formats: .json • Max size: 50MB"
+          - alert [ref=f4e277]:
+            - generic [ref=f4e281]: Validation found problems
+          - alert [ref=f4e283]:
+            - generic [ref=f4e287]: Configuration file is valid and ready for import!
+          - button [ref=f4e289] [cursor=pointer]: Clear Selection
+    - generic [ref=f4e76]:
+      - link [ref=f4e77] [cursor=pointer]:
+        - /url: https://netlox.io
+      - generic [ref=f4e79]:
+        - link [ref=f4e290] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: © NETLOX
+        - link [ref=f4e291] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Privacy
+        - link [ref=f4e292] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Terms
+  - generic [ref=f4e295]:
+    - generic [ref=f4e296]:
+      - generic [ref=f4e297]: ⚠️
+      - heading "Error" [level=2] [ref=f4e298]
+    - generic [ref=f4e300]:
+      - generic [ref=f4e301]: Failed to add configuration validation.
+      - generic [ref=f4e302]: Invalid configuration format
+    - button "OK" [ref=f4e305] [cursor=pointer]

@@ -1,0 +1,49 @@
+- generic [ref=f12e4]:
+  - generic [ref=f12e5]:
+    - generic [ref=f12e6]:
+      - img "logo" [ref=f12e147] [cursor=pointer]
+      - generic [ref=f12e8]: v.0.9.0
+    - generic [ref=f12e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f12e148]:
+        - link [ref=f12e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f12e149]:
+        - link [ref=f12e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - img "flag" [ref=f12e150] [cursor=pointer]
+      - heading "e2e_viewer" [level=6] [ref=f12e151] [cursor=pointer]
+  - generic [ref=f12e32]:
+    - tablist "user management tabs" [ref=f12e152]:
+      - tab "Profile" [selected] [ref=f12e153] [cursor=pointer]
+      - tab "License" [ref=f12e154] [cursor=pointer]
+    - tabpanel "Profile" [ref=f12e155]:
+      - generic [ref=f12e46]:
+        - generic [ref=f12e47]:
+          - heading "Profile Information" [level=6] [ref=f12e156]
+          - button [active] [ref=f12e157] [cursor=pointer]
+        - generic [ref=f12e56]:
+          - generic [ref=f12e58]:
+            - generic [ref=f12e59]: User ID
+            - paragraph [ref=f12e61]: "10"
+          - generic [ref=f12e63]:
+            - generic [ref=f12e64]: Username
+            - paragraph [ref=f12e66]: e2e_viewer
+          - generic [ref=f12e68]:
+            - generic [ref=f12e69]: Email
+            - paragraph [ref=f12e71]: e2e-viewer@test.local
+          - generic [ref=f12e73]:
+            - generic [ref=f12e74]: Role
+            - paragraph [ref=f12e76]: viewer
+          - generic [ref=f12e78]:
+            - generic [ref=f12e79]: Account Created
+            - paragraph [ref=f12e81]: 2026. 7. 18.
+  - generic [ref=f12e82]:
+    - link [ref=f12e83] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f12e85]:
+      - link "© NETLOX" [ref=f12e158] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f12e159] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f12e160] [cursor=pointer]:
+        - /url: https://netlox.io

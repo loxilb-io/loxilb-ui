@@ -1,0 +1,77 @@
+- generic [ref=f40e4]:
+  - generic [ref=f40e5]:
+    - generic [ref=f40e6]:
+      - img "logo" [ref=f40e411] [cursor=pointer]
+      - generic [ref=f40e8]: v.0.9.0
+    - generic [ref=f40e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f40e412]:
+        - link [ref=f40e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f40e413]:
+        - link [ref=f40e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - generic "Config Management" [ref=f40e414]:
+        - link [ref=f40e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+      - img "flag" [ref=f40e415] [cursor=pointer]
+      - heading "admin" [level=6] [ref=f40e416] [cursor=pointer]
+  - generic [ref=f40e37]:
+    - tablist "user management tabs" [ref=f40e417]:
+      - tab "Profile" [ref=f40e418] [cursor=pointer]
+      - tab "User List" [selected] [ref=f40e419] [cursor=pointer]
+    - tabpanel "User List" [ref=f40e420]:
+      - generic [ref=f40e97]:
+        - heading "User Management" [level=6] [ref=f40e421]
+        - generic [ref=f40e102]:
+          - generic [ref=f40e103]:
+            - generic "Refresh Users" [ref=f40e422]:
+              - button [ref=f40e105] [cursor=pointer]
+            - generic "Add Users" [ref=f40e423]:
+              - button [ref=f40e109] [cursor=pointer]
+            - generic "Edit Users" [ref=f40e424]:
+              - button [disabled]
+            - generic "Delete Users" [ref=f40e425]:
+              - button [disabled]
+          - generic [ref=f40e115] [cursor=pointer]:
+            - grid [ref=f40e116]:
+              - row [ref=f40e426]:
+                - columnheader [ref=f40e427]:
+                  - checkbox "Select all rows" [ref=f40e428]
+                - columnheader "ID" [ref=f40e431]
+                - columnheader "Username" [ref=f40e432]
+                - columnheader "Email" [ref=f40e433]
+                - columnheader "Role" [ref=f40e434]
+                - columnheader "Created At" [ref=f40e435]
+              - rowgroup [ref=f40e147]:
+                - row [ref=f40e436]:
+                  - gridcell [ref=f40e437]:
+                    - checkbox "Select row" [ref=f40e438]
+                  - gridcell [ref=f40e439]:
+                    - paragraph [ref=f40e156]: "0"
+                  - gridcell [ref=f40e440]:
+                    - paragraph [ref=f40e159]: admin
+                  - gridcell [ref=f40e441]:
+                    - paragraph [ref=f40e162]: admin@test.local
+                  - gridcell [ref=f40e442]:
+                    - paragraph [ref=f40e165]: 🛡️ ADMIN
+                  - gridcell [ref=f40e443]:
+                    - paragraph [ref=f40e168]: 2026. 7. 17.
+            - generic [ref=f40e214]:
+              - paragraph [ref=f40e215]: "Rows per page:"
+              - generic [ref=f40e216]:
+                - 'combobox "Rows per page: 5" [ref=f40e444]': "5"
+                - textbox: "5"
+              - paragraph [ref=f40e218]: 1–1 of 1
+              - generic [ref=f40e219]:
+                - button "Go to previous page" [disabled]
+                - button "Go to next page" [disabled]
+  - generic [ref=f40e88]:
+    - link [ref=f40e89] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f40e91]:
+      - link "© NETLOX" [ref=f40e445] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f40e446] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f40e447] [cursor=pointer]:
+        - /url: https://netlox.io

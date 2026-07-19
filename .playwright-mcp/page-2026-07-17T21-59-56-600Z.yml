@@ -1,0 +1,30 @@
+- generic [ref=f5e4]:
+  - generic [ref=f5e5]:
+    - generic [ref=f5e6]:
+      - img "logo" [ref=f5e7] [cursor=pointer]
+      - generic [ref=f5e8]: v.0.9.0
+    - generic [ref=f5e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f5e10]:
+        - link [ref=f5e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f5e15]:
+        - link [ref=f5e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - generic "Config Management" [ref=f5e20]:
+        - link [ref=f5e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+      - img "flag" [ref=f5e26] [cursor=pointer]
+      - heading "e2e_admin" [level=6] [ref=f5e31] [cursor=pointer]
+  - generic [ref=f5e36]:
+    - heading "Instances" [level=5] [ref=f5e37]
+    - button "Refresh instance health status" [ref=f5e38] [cursor=pointer]: Check Health
+  - generic [ref=f5e44]:
+    - link [ref=f5e45] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f5e47]:
+      - link "© NETLOX" [ref=f5e48] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f5e49] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f5e50] [cursor=pointer]:
+        - /url: https://netlox.io

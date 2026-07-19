@@ -1,0 +1,54 @@
+- generic [ref=f42e4]:
+  - generic [ref=f42e5]:
+    - generic [ref=f42e6]:
+      - img "logo" [ref=f42e7] [cursor=pointer]
+      - generic [ref=f42e8]: v.0.9.0
+    - generic [ref=f42e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f42e10]:
+        - link [ref=f42e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f42e15]:
+        - link [ref=f42e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - generic "Config Management" [ref=f42e20]:
+        - link [ref=f42e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+      - img "flag" [ref=f42e26] [cursor=pointer]
+      - heading "e2e_admin" [level=6] [ref=f42e31] [cursor=pointer]
+  - generic [ref=f42e37]:
+    - tablist "configuration management tabs" [ref=f42e41]:
+      - tab "Export" [selected] [ref=f42e42] [cursor=pointer]
+      - tab "Import" [ref=f42e45] [cursor=pointer]
+      - tab "File Management" [ref=f42e48] [cursor=pointer]
+    - tabpanel "Export" [ref=f42e52]:
+      - generic [ref=f42e54]:
+        - generic [ref=f42e55]:
+          - heading "Export System Configuration" [level=6] [ref=f42e56]
+          - paragraph [ref=f42e57]: Create a backup of the current system configuration including users, instances, and settings.
+        - generic [ref=f42e59]:
+          - generic: Description (Optional)
+          - generic [ref=f42e60]:
+            - textbox "Description (Optional)" [ref=f42e61]:
+              - /placeholder: Enter a description for this export...
+            - group:
+              - generic: Description (Optional)
+          - paragraph [ref=f42e62]: Provide an optional description to help identify this export later.
+        - button [ref=f42e64] [cursor=pointer]
+        - generic [ref=f42e68]:
+          - paragraph [ref=f42e69]:
+            - strong [ref=f42e70]: "What will be exported:"
+          - list [ref=f42e71]:
+            - listitem [ref=f42e72]: User accounts and roles
+            - listitem [ref=f42e73]: LoxiLB instance configurations
+            - listitem [ref=f42e74]: System settings and preferences
+            - listitem [ref=f42e75]: License information
+  - generic [ref=f42e76]:
+    - link [ref=f42e77] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f42e79]:
+      - link "© NETLOX" [ref=f42e80] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f42e81] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f42e82] [cursor=pointer]:
+        - /url: https://netlox.io

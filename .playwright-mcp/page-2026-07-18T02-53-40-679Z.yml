@@ -1,0 +1,71 @@
+- generic [ref=f58e4]:
+  - generic [ref=f58e5]:
+    - generic [ref=f58e6]:
+      - img "logo" [ref=f58e7] [cursor=pointer]
+      - generic [ref=f58e8]: v.0.9.0
+    - generic [ref=f58e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f58e10]:
+        - link [ref=f58e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f58e15]:
+        - link [ref=f58e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - generic "Config Management" [ref=f58e20]:
+        - link [ref=f58e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+      - img "flag" [ref=f58e26] [cursor=pointer]
+      - heading "e2e_admin" [level=6] [ref=f58e31] [cursor=pointer]
+  - generic [ref=f58e35]:
+    - generic [ref=f58e36]:
+      - heading "Instances" [level=5] [ref=f58e37]
+      - button "Refresh instance health status" [ref=f58e38] [cursor=pointer]: Check Health
+    - generic [ref=f58e45] [cursor=pointer]:
+      - generic [ref=f58e46]:
+        - generic [ref=f58e47]: Created at
+        - generic [ref=f58e48]: Jul 17, 2026
+      - separator [ref=f58e49]
+      - generic [ref=f58e50]:
+        - heading "kv-loxilb-gateway" [level=6] [ref=f58e51]
+        - button [ref=f58e53]
+      - generic [ref=f58e56]:
+        - generic [ref=f58e57]:
+          - generic [ref=f58e58]: ID
+          - paragraph [ref=f58e59]: "1"
+        - button [ref=f58e61]
+      - separator [ref=f58e64]
+      - generic [ref=f58e65]:
+        - generic [ref=f58e66]: Host
+        - generic [ref=f58e67]: 10.0.0.12:11111
+      - generic [ref=f58e68]:
+        - generic [ref=f58e69]: Version
+        - generic [ref=f58e70]: v1
+      - generic [ref=f58e71]:
+        - generic [ref=f58e72]: HA State
+        - generic [ref=f58e73]: NOT_DEFINED
+      - generic [ref=f58e74]:
+        - generic [ref=f58e75]: Health Status
+        - generic [ref=f58e76]: Healthy
+      - generic [ref=f58e77]:
+        - generic [ref=f58e78]: Activation Status
+        - generic [ref=f58e79]: Active
+      - separator [ref=f58e80]
+      - generic [ref=f58e81]:
+        - generic [ref=f58e82]: Tag
+        - generic [ref=f58e83]: latest-u24
+      - generic [ref=f58e84]:
+        - generic [ref=f58e85]: CImage
+        - generic [ref=f58e86]: ghcr.io/loxilb-io/loxilb-inference-gateway
+      - generic [ref=f58e87]: API Endpoint
+      - generic [ref=f58e89]: http://10.0.0.12:11111/netlox/v1
+      - separator [ref=f58e91]
+      - generic [ref=f58e92]: loxilb-inference-gateway on kv-loxilb
+  - generic [ref=f58e95]:
+    - link [ref=f58e96] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f58e98]:
+      - link "© NETLOX" [ref=f58e99] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f58e100] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f58e101] [cursor=pointer]:
+        - /url: https://netlox.io

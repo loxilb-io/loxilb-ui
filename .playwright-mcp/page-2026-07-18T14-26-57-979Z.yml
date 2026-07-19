@@ -1,0 +1,324 @@
+- generic [ref=f48e4]:
+  - generic [ref=f48e5]:
+    - generic [ref=f48e6]:
+      - img "logo" [ref=f48e450] [cursor=pointer]
+      - generic [ref=f48e8]: v.0.9.0
+    - generic [ref=f48e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f48e451]:
+        - link [ref=f48e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f48e452]:
+        - link [ref=f48e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - generic "Config Management" [ref=f48e453]:
+        - link [ref=f48e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+      - img "flag" [ref=f48e454] [cursor=pointer]
+      - heading "admin" [level=6] [ref=f48e455] [cursor=pointer]
+  - generic [ref=f48e35]:
+    - generic [ref=f48e36]:
+      - button [ref=f48e38] [cursor=pointer]
+      - navigation [ref=f48e42]:
+        - list [ref=f48e43]:
+          - listitem [ref=f48e44]:
+            - paragraph [ref=f48e45]: kv-loxilb-gateway
+          - listitem [ref=f48e46]: /
+          - listitem [ref=f48e47]:
+            - link [ref=f48e456] [cursor=pointer]:
+              - /url: /netlox/instance/network/port?name=kv-loxilb-gateway
+              - paragraph [ref=f48e49]: Networks
+          - listitem [ref=f48e50]: /
+          - listitem [ref=f48e51]:
+            - link [ref=f48e457] [cursor=pointer]:
+              - /url: /netlox/instance/network/route?name=kv-loxilb-gateway
+              - paragraph [ref=f48e53]: IP Route
+    - generic [ref=f48e54]:
+      - list [ref=f48e56]:
+        - listitem [ref=f48e57]:
+          - link [ref=f48e458] [cursor=pointer]:
+            - /url: /netlox/instance/dashboard?name=kv-loxilb-gateway
+            - heading "kv-loxilb-gateway" [level=6] [ref=f48e459]
+        - button [ref=f48e460] [cursor=pointer]:
+          - heading "Traffic" [level=6] [ref=f48e461]
+        - button [ref=f48e462] [cursor=pointer]:
+          - heading "AI Gateway" [level=6] [ref=f48e463]
+        - button [ref=f48e464] [cursor=pointer]:
+          - heading "IPsec VPN" [level=6] [ref=f48e465]
+        - button [ref=f48e466] [cursor=pointer]:
+          - heading "Security" [level=6] [ref=f48e467]
+        - button [ref=f48e468] [cursor=pointer]:
+          - heading "Networks" [level=6] [ref=f48e469]
+        - generic [ref=f48e106]:
+          - button [ref=f48e470] [cursor=pointer]:
+            - heading "Port" [level=6] [ref=f48e471]
+          - button [ref=f48e472] [cursor=pointer]:
+            - heading "IP Address" [level=6] [ref=f48e473]
+          - button [ref=f48e474] [cursor=pointer]:
+            - heading "IPv6 Address" [level=6] [ref=f48e475]
+          - button [ref=f48e476] [cursor=pointer]:
+            - heading "IP Neighbor(ARP/NDP)" [level=6] [ref=f48e477]
+          - button [ref=f48e478] [cursor=pointer]:
+            - heading "IP Route" [level=6] [ref=f48e479]
+          - button [ref=f48e480] [cursor=pointer]:
+            - heading "BFD" [level=6] [ref=f48e481]
+        - button [ref=f48e482] [cursor=pointer]:
+          - heading "Status" [level=6] [ref=f48e483]
+        - button [ref=f48e484] [cursor=pointer]:
+          - heading "Log Settings" [level=6] [ref=f48e485]
+      - generic [ref=f48e142]:
+        - generic [ref=f48e143]:
+          - generic "Refresh Route" [ref=f48e486]:
+            - button [ref=f48e145] [cursor=pointer]
+          - generic "Add Route" [ref=f48e487]:
+            - button [ref=f48e149] [cursor=pointer]
+          - generic "Delete Route" [ref=f48e488]:
+            - button [ref=f48e1230] [cursor=pointer]
+        - generic [ref=f48e154] [cursor=pointer]:
+          - grid [ref=f48e155]:
+            - row [ref=f48e1233]:
+              - columnheader [ref=f48e1234]:
+                - checkbox "Unselect all rows" [checked] [ref=f48e1235]
+              - columnheader "CIDR" [ref=f48e1238]
+              - columnheader "Gateway" [ref=f48e494]
+              - columnheader [ref=f48e495]:
+                - heading "Hardware Mark" [level=6] [ref=f48e496]
+              - columnheader [ref=f48e497]:
+                - heading "Protocol" [level=6] [ref=f48e498]
+              - columnheader [ref=f48e499]:
+                - heading "Flags" [level=6] [ref=f48e500]
+              - columnheader "Usages" [ref=f48e501]
+            - rowgroup [ref=f48e203]:
+              - row [ref=f48e1694]:
+                - gridcell [ref=f48e1695]:
+                  - checkbox "Select row" [ref=f48e1697]
+                - gridcell [ref=f48e1700]:
+                  - paragraph [ref=f48e1702]: 10.0.0.0/24
+                - gridcell [ref=f48e1703]:
+                  - generic [ref=f48e1704]:
+                    - paragraph
+                - gridcell [ref=f48e1705]:
+                  - paragraph [ref=f48e1707]: "3"
+                - gridcell [ref=f48e1708]:
+                  - paragraph [ref=f48e1710]: unspec
+                - gridcell [ref=f48e1711]:
+                  - paragraph [ref=f48e1713]: Self
+                - gridcell [ref=f48e1714]:
+                  - paragraph [ref=f48e1716]: 0 bytes 0 pkts
+              - row [ref=f48e1717]:
+                - gridcell [ref=f48e1718]:
+                  - checkbox "Select row" [ref=f48e1720]
+                - gridcell [ref=f48e1723]:
+                  - paragraph [ref=f48e1725]: 10.0.0.1/32
+                - gridcell [ref=f48e1726]:
+                  - paragraph [ref=f48e1728]: 10.0.0.1
+                - gridcell [ref=f48e1729]:
+                  - paragraph [ref=f48e1731]: "6"
+                - gridcell [ref=f48e1732]:
+                  - paragraph [ref=f48e1734]: unspec
+                - gridcell [ref=f48e1735]:
+                  - paragraph [ref=f48e1737]: Ind Host Interface
+                - gridcell [ref=f48e1738]:
+                  - paragraph [ref=f48e1740]: 0 bytes 0 pkts
+              - row [ref=f48e1741]:
+                - gridcell [ref=f48e1742]:
+                  - checkbox "Select row" [ref=f48e1744]
+                - gridcell [ref=f48e1747]:
+                  - paragraph [ref=f48e1749]: 10.0.0.7/32
+                - gridcell [ref=f48e1750]:
+                  - paragraph [ref=f48e1752]: 10.0.0.7
+                - gridcell [ref=f48e1753]:
+                  - paragraph [ref=f48e1755]: "11"
+                - gridcell [ref=f48e1756]:
+                  - paragraph [ref=f48e1758]: unspec
+                - gridcell [ref=f48e1759]:
+                  - paragraph [ref=f48e1761]: Ind Host
+                - gridcell [ref=f48e1762]:
+                  - paragraph [ref=f48e1764]: 0 bytes 0 pkts
+              - row [ref=f48e1765]:
+                - gridcell [ref=f48e1766]:
+                  - checkbox "Select row" [ref=f48e1768]
+                - gridcell [ref=f48e1771]:
+                  - paragraph [ref=f48e1773]: 10.0.0.8/32
+                - gridcell [ref=f48e1774]:
+                  - paragraph [ref=f48e1776]: 10.0.0.8
+                - gridcell [ref=f48e1777]:
+                  - paragraph [ref=f48e1779]: "9"
+                - gridcell [ref=f48e1780]:
+                  - paragraph [ref=f48e1782]: unspec
+                - gridcell [ref=f48e1783]:
+                  - paragraph [ref=f48e1785]: Ind Host
+                - gridcell [ref=f48e1786]:
+                  - paragraph [ref=f48e1788]: 0 bytes 0 pkts
+              - row [ref=f48e1789]:
+                - gridcell [ref=f48e1790]:
+                  - checkbox "Select row" [ref=f48e1792]
+                - gridcell [ref=f48e1795]:
+                  - paragraph [ref=f48e1797]: 10.0.0.9/32
+                - gridcell [ref=f48e1798]:
+                  - paragraph [ref=f48e1800]: 10.0.0.9
+                - gridcell [ref=f48e1801]:
+                  - paragraph [ref=f48e1803]: "5"
+                - gridcell [ref=f48e1804]:
+                  - paragraph [ref=f48e1806]: unspec
+                - gridcell [ref=f48e1807]:
+                  - paragraph [ref=f48e1809]: Ind Host
+                - gridcell [ref=f48e1810]:
+                  - paragraph [ref=f48e1812]: 0 bytes 0 pkts
+              - row [ref=f48e1813]:
+                - gridcell [ref=f48e1814]:
+                  - checkbox "Select row" [ref=f48e1816]
+                - gridcell [ref=f48e1819]:
+                  - paragraph [ref=f48e1821]: 169.254.169.53/32
+                - gridcell [ref=f48e1822]:
+                  - paragraph [ref=f48e1824]: 10.0.0.1
+                - gridcell [ref=f48e1825]:
+                  - paragraph [ref=f48e1827]: "15"
+                - gridcell [ref=f48e1828]:
+                  - paragraph [ref=f48e1830]: "16"
+                - gridcell [ref=f48e1831]:
+                  - paragraph [ref=f48e1833]: Ind
+                - gridcell [ref=f48e1834]:
+                  - paragraph [ref=f48e1836]: 0 bytes 0 pkts
+              - row [ref=f48e1837]:
+                - gridcell [ref=f48e1838]:
+                  - checkbox "Select row" [ref=f48e1840]
+                - gridcell [ref=f48e1843]:
+                  - paragraph [ref=f48e1845]: 169.254.169.54/32
+                - gridcell [ref=f48e1846]:
+                  - paragraph [ref=f48e1848]: 10.0.0.1
+                - gridcell [ref=f48e1849]:
+                  - paragraph [ref=f48e1851]: "16"
+                - gridcell [ref=f48e1852]:
+                  - paragraph [ref=f48e1854]: "16"
+                - gridcell [ref=f48e1855]:
+                  - paragraph [ref=f48e1857]: Ind
+                - gridcell [ref=f48e1858]:
+                  - paragraph [ref=f48e1860]: 0 bytes 0 pkts
+              - row [ref=f48e1861]:
+                - gridcell [ref=f48e1862]:
+                  - checkbox "Select row" [ref=f48e1864]
+                - gridcell [ref=f48e1867]:
+                  - paragraph [ref=f48e1869]: 0.0.0.0/0
+                - gridcell [ref=f48e1870]:
+                  - paragraph [ref=f48e1872]: 10.0.0.1
+                - gridcell [ref=f48e1873]:
+                  - paragraph [ref=f48e1875]: "14"
+                - gridcell [ref=f48e1876]:
+                  - paragraph [ref=f48e1878]: "16"
+                - gridcell [ref=f48e1879]:
+                  - paragraph [ref=f48e1881]: Ind
+                - gridcell [ref=f48e1882]:
+                  - paragraph [ref=f48e1884]: 0 bytes 0 pkts
+              - row [selected] [ref=f48e1239]:
+                - gridcell [ref=f48e1240]:
+                  - checkbox "Unselect row" [checked] [ref=f48e1241]
+                - gridcell [ref=f48e878]:
+                  - paragraph [ref=f48e880]: 203.0.113.64/26
+                - gridcell [ref=f48e881]:
+                  - paragraph [ref=f48e883]: 10.0.0.1
+                - gridcell [ref=f48e884]:
+                  - paragraph [ref=f48e886]: "25"
+                - gridcell [ref=f48e887]:
+                  - paragraph [ref=f48e889]: boot
+                - gridcell [ref=f48e890]:
+                  - paragraph [ref=f48e892]: Ind
+                - gridcell [ref=f48e893]:
+                  - paragraph [ref=f48e895]: 0 bytes 0 pkts
+              - row [ref=f48e1885]:
+                - gridcell [ref=f48e1886]:
+                  - checkbox "Select row" [ref=f48e1888]
+                - gridcell [ref=f48e1891]:
+                  - paragraph [ref=f48e1893]: 172.17.0.0/16
+                - gridcell [ref=f48e1894]:
+                  - generic [ref=f48e1895]:
+                    - paragraph
+                - gridcell [ref=f48e1896]:
+                  - paragraph [ref=f48e1898]: "12"
+                - gridcell [ref=f48e1899]:
+                  - paragraph [ref=f48e1901]: unspec
+                - gridcell [ref=f48e1902]:
+                  - paragraph [ref=f48e1904]: Self
+                - gridcell [ref=f48e1905]:
+                  - paragraph [ref=f48e1907]: 0 bytes 0 pkts
+              - row [ref=f48e1908]:
+                - gridcell [ref=f48e1909]:
+                  - checkbox "Select row" [ref=f48e1911]
+                - gridcell [ref=f48e1914]:
+                  - paragraph [ref=f48e1916]: 172.17.0.1/32
+                - gridcell [ref=f48e1917]:
+                  - generic [ref=f48e1918]:
+                    - paragraph
+                - gridcell [ref=f48e1919]:
+                  - paragraph [ref=f48e1921]: "13"
+                - gridcell [ref=f48e1922]:
+                  - paragraph [ref=f48e1924]: unspec
+                - gridcell [ref=f48e1925]:
+                  - paragraph [ref=f48e1927]: Self
+                - gridcell [ref=f48e1928]:
+                  - paragraph [ref=f48e1930]: 0 bytes 0 pkts
+              - row [ref=f48e1622]:
+                - gridcell [ref=f48e1623]:
+                  - checkbox "Select row" [ref=f48e1625]
+                - gridcell [ref=f48e1628]:
+                  - paragraph [ref=f48e1630]: 169.254.169.123/32
+                - gridcell [ref=f48e1631]:
+                  - paragraph [ref=f48e1633]: 10.0.0.1
+                - gridcell [ref=f48e1634]:
+                  - paragraph [ref=f48e1636]: "17"
+                - gridcell [ref=f48e1637]:
+                  - paragraph [ref=f48e1639]: "16"
+                - gridcell [ref=f48e1640]:
+                  - paragraph [ref=f48e1642]: Ind
+                - gridcell [ref=f48e1643]:
+                  - paragraph [ref=f48e1645]: 0 bytes 0 pkts
+              - row [ref=f48e1646]:
+                - gridcell [ref=f48e1647]:
+                  - checkbox "Select row" [ref=f48e1649]
+                - gridcell [ref=f48e1652]:
+                  - paragraph [ref=f48e1654]: 169.254.169.124/32
+                - gridcell [ref=f48e1655]:
+                  - paragraph [ref=f48e1657]: 10.0.0.1
+                - gridcell [ref=f48e1658]:
+                  - paragraph [ref=f48e1660]: "18"
+                - gridcell [ref=f48e1661]:
+                  - paragraph [ref=f48e1663]: "16"
+                - gridcell [ref=f48e1664]:
+                  - paragraph [ref=f48e1666]: Ind
+                - gridcell [ref=f48e1667]:
+                  - paragraph [ref=f48e1669]: 0 bytes 0 pkts
+              - row [selected] [ref=f48e1931]:
+                - gridcell [ref=f48e1932]:
+                  - checkbox "Unselect row" [checked] [active] [ref=f48e1933]
+                - gridcell [ref=f48e1676]:
+                  - paragraph [ref=f48e1678]: 203.0.113.0/26
+                - gridcell [ref=f48e1679]:
+                  - paragraph [ref=f48e1681]: 10.0.0.1
+                - gridcell [ref=f48e1682]:
+                  - paragraph [ref=f48e1684]: "24"
+                - gridcell [ref=f48e1685]:
+                  - paragraph [ref=f48e1687]: boot
+                - gridcell [ref=f48e1688]:
+                  - paragraph [ref=f48e1690]: Ind
+                - gridcell [ref=f48e1691]:
+                  - paragraph [ref=f48e1693]: 0 bytes 0 pkts
+          - generic [ref=f48e324]:
+            - generic [ref=f48e1503]: 2 rows selected
+            - generic [ref=f48e326]:
+              - paragraph [ref=f48e327]: "Rows per page:"
+              - generic [ref=f48e328]:
+                - 'combobox "Rows per page: 25" [ref=f48e643]': "25"
+                - textbox: "25"
+              - paragraph [ref=f48e330]: 1–20 of 20
+              - generic [ref=f48e331]:
+                - button "Go to previous page" [disabled]
+                - button "Go to next page" [disabled]
+  - generic [ref=f48e336]:
+    - link [ref=f48e337] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f48e339]:
+      - link "© NETLOX" [ref=f48e644] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f48e645] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f48e646] [cursor=pointer]:
+        - /url: https://netlox.io

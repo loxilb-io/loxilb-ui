@@ -195,30 +195,30 @@ function AdminUserManagementPanel(props: {
 		}
 	};
 
-	const handleDeleteUser = () => {
+	// DataTable already gates delete behind its own "WARNING!! Delete Item"
+	// confirmation, so this runs post-confirm — delete directly rather than
+	// stacking a second (redundant) confirm dialog on top of it.
+	const handleDeleteUser = async () => {
 		if (selectedUsers.length === 0) return;
 
 		const selectedUserData = selectedUsers.map(index => users[index]).filter(Boolean);
-		const usernames = selectedUserData.map(user => user.username).join(', ');
 
-		openPopUp(
-			t('Confirm Delete'),
-			t('Are you sure you want to delete user(s): "' + usernames + '"? This action cannot be undone.'),
-			t('Delete'),
-			t('Cancel'),
-			async () => {
-				try {
-					// Delete all selected users
-					await Promise.all(selectedUserData.map(user => deleteUser(user.id)));
-					setSelectedUsers([]);
-					// Refresh the user list
-					onRefresh();
-				} catch (error) {
-					const errorMessage = error instanceof Error ? error.message : t('Failed to delete one or more users');
-					openPopUp(t('Error'), errorMessage, t('OK'));
-				}
-			}
-		);
+		// Guard: an admin must not delete their own account — the server permits
+		// it (no self-delete protection), which would silently lock the admin out
+		// on the next request. Block it here with a clear message (F-USER-1).
+		if (currentUser && selectedUserData.some(user => user.id === currentUser.id)) {
+			openPopUp(t('Cannot Delete'), t('You cannot delete your own account.'), t('OK'));
+			return;
+		}
+
+		try {
+			await Promise.all(selectedUserData.map(user => deleteUser(user.id)));
+			setSelectedUsers([]);
+			onRefresh();
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : t('Failed to delete one or more users');
+			openPopUp(t('Error'), errorMessage, t('OK'));
+		}
 	};
 
 	const handleEditUser = () => {

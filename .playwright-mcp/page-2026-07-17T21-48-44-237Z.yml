@@ -1,0 +1,117 @@
+- generic [ref=f3e4]:
+  - generic [ref=f3e5]:
+    - generic [ref=f3e6]:
+      - img "logo" [ref=f3e561] [cursor=pointer]
+      - generic [ref=f3e8]: v.0.9.0
+    - generic [ref=f3e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f3e562]:
+        - link [ref=f3e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f3e563]:
+        - link [ref=f3e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - generic "Config Management" [ref=f3e564]:
+        - link [ref=f3e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+      - img "flag" [ref=f3e565] [cursor=pointer]
+      - heading "e2e_admin" [level=6] [ref=f3e566] [cursor=pointer]
+  - generic [ref=f3e37]:
+    - tablist "user management tabs" [ref=f3e567]:
+      - tab "Profile" [ref=f3e568] [cursor=pointer]
+      - tab "License" [ref=f3e569] [cursor=pointer]
+      - tab "User List" [selected] [ref=f3e570] [cursor=pointer]
+    - tabpanel "License" [ref=f3e571]:
+      - generic [ref=f3e100]:
+        - heading "User Management" [level=6] [ref=f3e572]
+        - generic [ref=f3e105]:
+          - generic [ref=f3e106]:
+            - generic "Refresh Users" [ref=f3e573]:
+              - button [ref=f3e108] [cursor=pointer]
+            - generic "Add Users" [ref=f3e574]:
+              - button [ref=f3e112] [cursor=pointer]
+            - generic "Edit Users" [ref=f3e575]:
+              - button [disabled]
+            - generic "Delete Users" [ref=f3e576]:
+              - button [disabled]
+          - generic [ref=f3e118] [cursor=pointer]:
+            - grid [ref=f3e119]:
+              - row [ref=f3e577]:
+                - columnheader [ref=f3e578]:
+                  - checkbox "Select all rows" [ref=f3e579]
+                - columnheader "ID" [ref=f3e580]
+                - columnheader "Username" [ref=f3e581]
+                - columnheader "Email" [ref=f3e582]
+                - columnheader "Role" [ref=f3e583]
+                - columnheader "Created At" [ref=f3e584]
+              - rowgroup [ref=f3e150]:
+                - row [ref=f3e585]:
+                  - gridcell [ref=f3e586]:
+                    - checkbox "Select row" [ref=f3e587]
+                  - gridcell [ref=f3e588]:
+                    - paragraph [ref=f3e159]: "0"
+                  - gridcell [ref=f3e589]:
+                    - paragraph [ref=f3e162]: e2e_admin
+                  - gridcell [ref=f3e590]:
+                    - paragraph [ref=f3e165]: e2e-admin@test.local
+                  - gridcell [ref=f3e591]:
+                    - paragraph [ref=f3e168]: 🛡️ ADMIN
+                  - gridcell [ref=f3e592]:
+                    - paragraph [ref=f3e171]: 2026. 7. 18.
+                - row [ref=f3e593]:
+                  - gridcell [ref=f3e594]:
+                    - checkbox "Select row" [ref=f3e595]
+                  - gridcell [ref=f3e596]:
+                    - paragraph [ref=f3e180]: "1"
+                  - gridcell [ref=f3e597]:
+                    - paragraph [ref=f3e183]: e2e_viewer
+                  - gridcell [ref=f3e598]:
+                    - paragraph [ref=f3e186]: e2e-viewer@test.local
+                  - gridcell [ref=f3e599]:
+                    - paragraph [ref=f3e189]: 👤 VIEWER
+                  - gridcell [ref=f3e600]:
+                    - paragraph [ref=f3e192]: 2026. 7. 18.
+                - row [ref=f3e601]:
+                  - gridcell [ref=f3e602]:
+                    - checkbox "Select row" [ref=f3e603]
+                  - gridcell [ref=f3e604]:
+                    - paragraph [ref=f3e341]: "2"
+                  - gridcell [ref=f3e605]:
+                    - paragraph [ref=f3e344]: e2e_operator
+                  - gridcell [ref=f3e606]:
+                    - paragraph [ref=f3e347]: e2e-operator@test.local
+                  - gridcell [ref=f3e607]:
+                    - paragraph [ref=f3e350]: 👤 OPERATOR
+                  - gridcell [ref=f3e608]:
+                    - paragraph [ref=f3e353]: 2026. 7. 18.
+                - row [ref=f3e609]:
+                  - gridcell [ref=f3e610]:
+                    - checkbox "Select row" [ref=f3e611]
+                  - gridcell [ref=f3e612]:
+                    - paragraph [ref=f3e540]: "3"
+                  - gridcell [ref=f3e613]:
+                    - paragraph [ref=f3e543]: admin
+                  - gridcell [ref=f3e614]:
+                    - paragraph [ref=f3e546]: admin@test.local
+                  - gridcell [ref=f3e615]:
+                    - paragraph [ref=f3e549]: 🛡️ ADMIN
+                  - gridcell [ref=f3e616]:
+                    - paragraph [ref=f3e552]: 2026. 7. 17.
+            - generic [ref=f3e196]:
+              - paragraph [ref=f3e197]: "Rows per page:"
+              - generic [ref=f3e198]:
+                - 'combobox "Rows per page: 5" [ref=f3e617]': "5"
+                - textbox: "5"
+              - paragraph [ref=f3e200]: 1–4 of 4
+              - generic [ref=f3e201]:
+                - button "Go to previous page" [disabled]
+                - button "Go to next page" [disabled]
+  - generic [ref=f3e91]:
+    - link [ref=f3e92] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f3e94]:
+      - link "© NETLOX" [ref=f3e618] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f3e619] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f3e620] [cursor=pointer]:
+        - /url: https://netlox.io

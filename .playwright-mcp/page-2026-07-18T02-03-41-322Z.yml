@@ -1,0 +1,53 @@
+- generic [ref=f41e4]:
+  - generic [ref=f41e5]:
+    - generic [ref=f41e6]:
+      - img "logo" [ref=f41e7] [cursor=pointer]
+      - generic [ref=f41e8]: v.0.9.0
+    - generic [ref=f41e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f41e10]:
+        - link [ref=f41e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f41e15]:
+        - link [ref=f41e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - generic "Config Management" [ref=f41e20]:
+        - link [ref=f41e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+      - img "flag" [ref=f41e26] [cursor=pointer]
+      - heading "e2e_admin" [level=6] [ref=f41e31] [cursor=pointer]
+  - generic [ref=f41e37]:
+    - tablist "user management tabs" [ref=f41e41]:
+      - tab "Profile" [selected] [ref=f41e42] [cursor=pointer]
+      - tab "License" [ref=f41e45] [cursor=pointer]
+      - tab "User List" [ref=f41e48] [cursor=pointer]
+    - tabpanel "Profile" [ref=f41e53]:
+      - generic [ref=f41e55]:
+        - generic [ref=f41e56]:
+          - heading "Profile Information" [level=6] [ref=f41e57]
+          - button [ref=f41e60] [cursor=pointer]
+        - generic [ref=f41e65]:
+          - generic [ref=f41e67]:
+            - generic [ref=f41e68]: User ID
+            - paragraph [ref=f41e70]: "11"
+          - generic [ref=f41e72]:
+            - generic [ref=f41e73]: Username
+            - paragraph [ref=f41e75]: e2e_admin
+          - generic [ref=f41e77]:
+            - generic [ref=f41e78]: Email
+            - paragraph [ref=f41e80]: e2e_admin@test.local
+          - generic [ref=f41e82]:
+            - generic [ref=f41e83]: Role
+            - paragraph [ref=f41e85]: admin
+          - generic [ref=f41e87]:
+            - generic [ref=f41e88]: Account Created
+            - paragraph [ref=f41e90]: 2026. 7. 18.
+  - generic [ref=f41e91]:
+    - link [ref=f41e92] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f41e94]:
+      - link "© NETLOX" [ref=f41e95] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f41e96] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f41e97] [cursor=pointer]:
+        - /url: https://netlox.io

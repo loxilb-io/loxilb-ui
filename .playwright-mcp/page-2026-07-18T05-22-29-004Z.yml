@@ -1,0 +1,58 @@
+- generic [ref=f83e1]:
+  - generic [ref=f83e4]:
+    - generic [ref=f83e5]:
+      - generic [ref=f83e6]: v.0.9.0
+      - generic [ref=f83e9]:
+        - link [ref=f83e11] [cursor=pointer]:
+          - /url: /netlox/instance
+        - link [ref=f83e16] [cursor=pointer]:
+          - /url: /netlox/user
+        - link [ref=f83e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+        - heading [level=6] [ref=f83e88] [cursor=pointer]: admin
+    - generic [ref=f83e37]:
+      - tablist [ref=f83e89]:
+        - tab [selected] [ref=f83e90] [cursor=pointer]: Export
+        - tab [ref=f83e91] [cursor=pointer]: Import
+        - tab [ref=f83e92] [cursor=pointer]: File Management
+      - tabpanel [ref=f83e93]:
+        - generic [ref=f83e54]:
+          - generic [ref=f83e55]:
+            - heading [level=6] [ref=f83e94]: Export System Configuration
+            - paragraph [ref=f83e57]: Create a backup of the current system configuration including users, instances, and settings.
+          - generic [ref=f83e59]:
+            - generic [ref=f83e82]: Description (Optional)
+            - generic [ref=f83e60]:
+              - textbox [ref=f83e95]:
+                - /placeholder: Enter a description for this export...
+                - text: e2e-test-export
+              - group:
+                - generic: Description (Optional)
+            - paragraph [ref=f83e62]: Provide an optional description to help identify this export later.
+          - alert [ref=f83e96]:
+            - generic [ref=f83e100]: Configuration exported successfully!
+          - button [ref=f83e101] [cursor=pointer]: Start Export
+          - generic [ref=f83e68]:
+            - paragraph [ref=f83e69]:
+              - strong [ref=f83e70]: "What will be exported:"
+            - list [ref=f83e71]:
+              - listitem [ref=f83e72]: User accounts and roles
+              - listitem [ref=f83e73]: LoxiLB instance configurations
+              - listitem [ref=f83e74]: System settings and preferences
+    - generic [ref=f83e75]:
+      - link [ref=f83e76] [cursor=pointer]:
+        - /url: https://netlox.io
+      - generic [ref=f83e78]:
+        - link [ref=f83e102] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: © NETLOX
+        - link [ref=f83e103] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Privacy
+        - link [ref=f83e104] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Terms
+  - generic [ref=f83e107]:
+    - heading "Success" [level=2] [ref=f83e108]
+    - paragraph [ref=f83e109]: Configuration exported successfully.
+    - button "OK" [ref=f83e112] [cursor=pointer]

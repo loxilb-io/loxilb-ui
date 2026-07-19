@@ -1,0 +1,54 @@
+- generic [ref=f12e1]:
+  - generic [ref=f12e4]:
+    - generic [ref=f12e5]:
+      - generic [ref=f12e6]: v.0.9.0
+      - generic [ref=f12e9]:
+        - link [ref=f12e11] [cursor=pointer]:
+          - /url: /netlox/instance
+        - link [ref=f12e16] [cursor=pointer]:
+          - /url: /netlox/user
+        - heading [level=6] [ref=f12e165] [cursor=pointer]: e2e_viewer
+    - generic [ref=f12e32]:
+      - tablist [ref=f12e166]:
+        - tab [selected] [ref=f12e167] [cursor=pointer]: Profile
+        - tab [ref=f12e168] [cursor=pointer]: License
+      - tabpanel [ref=f12e169]:
+        - generic [ref=f12e46]:
+          - generic [ref=f12e47]:
+            - heading [level=6] [ref=f12e170]: Profile Information
+            - button [ref=f12e171] [cursor=pointer]: Edit Profile
+          - generic [ref=f12e56]:
+            - generic [ref=f12e58]:
+              - generic [ref=f12e59]: User ID
+              - paragraph [ref=f12e61]: "10"
+            - generic [ref=f12e63]:
+              - generic [ref=f12e64]: Username
+              - paragraph [ref=f12e66]: e2e_viewer
+            - generic [ref=f12e68]:
+              - generic [ref=f12e69]: Email
+              - paragraph [ref=f12e71]: e2e-viewer@test.local
+            - generic [ref=f12e73]:
+              - generic [ref=f12e74]: Role
+              - paragraph [ref=f12e76]: viewer
+            - generic [ref=f12e78]:
+              - generic [ref=f12e79]: Account Created
+              - paragraph [ref=f12e81]: 2026. 7. 18.
+    - generic [ref=f12e82]:
+      - link [ref=f12e83] [cursor=pointer]:
+        - /url: https://netlox.io
+      - generic [ref=f12e85]:
+        - link [ref=f12e172] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: © NETLOX
+        - link [ref=f12e173] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Privacy
+        - link [ref=f12e174] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Terms
+  - generic [ref=f12e192]:
+    - heading "Sign out" [level=2] [ref=f12e193]
+    - paragraph [ref=f12e194]: Are you sure you want to sign out?
+    - generic [ref=f12e195]:
+      - button "Cancel" [ref=f12e197] [cursor=pointer]
+      - button "Yes" [ref=f12e199] [cursor=pointer]

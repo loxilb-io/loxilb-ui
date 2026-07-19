@@ -1,0 +1,47 @@
+- generic [ref=f34e1]:
+  - generic [ref=f34e4]:
+    - generic [ref=f34e5]:
+      - generic [ref=f34e6]: v.0.9.0
+      - generic [ref=f34e9]:
+        - link [ref=f34e11] [cursor=pointer]:
+          - /url: /netlox/instance
+        - link [ref=f34e16] [cursor=pointer]:
+          - /url: /netlox/user
+        - link [ref=f34e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+        - heading [level=6] [ref=f34e98] [cursor=pointer]: e2e_admin
+    - generic [ref=f34e37]:
+      - tablist [ref=f34e99]:
+        - tab [ref=f34e100] [cursor=pointer]: Export
+        - tab [selected] [ref=f34e101] [cursor=pointer]: Import
+        - tab [ref=f34e102] [cursor=pointer]: File Management
+      - tabpanel [ref=f34e103]:
+        - generic [ref=f34e85]:
+          - generic [ref=f34e87] [cursor=pointer]:
+            - heading [level=6] [ref=f34e104]: e2e-wrong-schema.json
+            - paragraph [ref=f34e91]: Drag and drop a configuration file here, or click to select
+            - generic [ref=f34e92]: "Supported formats: .json • Max size: 50MB"
+          - alert [ref=f34e105]:
+            - generic [ref=f34e109]: Validation found problems
+          - button [ref=f34e111] [cursor=pointer]: Clear Selection
+    - generic [ref=f34e76]:
+      - link [ref=f34e77] [cursor=pointer]:
+        - /url: https://netlox.io
+      - generic [ref=f34e79]:
+        - link [ref=f34e112] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: © NETLOX
+        - link [ref=f34e113] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Privacy
+        - link [ref=f34e114] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Terms
+  - generic [ref=f34e117]:
+    - generic [ref=f34e118]:
+      - generic [ref=f34e119]: ⚠️
+      - heading "Error" [level=2] [ref=f34e120]
+    - generic [ref=f34e122]:
+      - generic [ref=f34e123]: Failed to validate the configuration file.
+      - generic [ref=f34e124]: Invalid configuration format
+    - button "OK" [ref=f34e127] [cursor=pointer]

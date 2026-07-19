@@ -1,0 +1,57 @@
+- generic [ref=f35e4]:
+  - generic [ref=f35e5]:
+    - generic [ref=f35e6]:
+      - img "logo" [ref=f35e114] [cursor=pointer]
+      - generic [ref=f35e8]: v.0.9.0
+    - generic [ref=f35e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f35e115]:
+        - link [ref=f35e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f35e116]:
+        - link [ref=f35e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - generic "Config Management" [ref=f35e117]:
+        - link [ref=f35e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+      - img "flag" [ref=f35e118] [cursor=pointer]
+      - heading "e2e_admin" [level=6] [ref=f35e119] [cursor=pointer]
+  - generic [ref=f35e37]:
+    - tablist "configuration management tabs" [ref=f35e120]:
+      - tab "Export" [selected] [ref=f35e121] [cursor=pointer]
+      - tab "Import" [ref=f35e122] [cursor=pointer]
+      - tab "File Management" [ref=f35e123] [cursor=pointer]
+    - tabpanel "Export" [ref=f35e124]:
+      - generic [ref=f35e54]:
+        - generic [ref=f35e55]:
+          - heading "Export System Configuration" [level=6] [ref=f35e125]
+          - paragraph [ref=f35e57]: Create a backup of the current system configuration including users, instances, and settings.
+        - generic [ref=f35e59]:
+          - generic [ref=f35e83]: Description (Optional)
+          - generic [ref=f35e60]:
+            - textbox "Description (Optional)" [ref=f35e126]:
+              - /placeholder: Enter a description for this export...
+              - text: e2e-ui-delete-test
+            - group:
+              - generic: Description (Optional)
+          - paragraph [ref=f35e62]: Provide an optional description to help identify this export later.
+        - alert [ref=f35e97]:
+          - generic [ref=f35e101]: Configuration exported successfully!
+        - button [ref=f35e127] [cursor=pointer]
+        - generic [ref=f35e68]:
+          - paragraph [ref=f35e69]:
+            - strong [ref=f35e70]: "What will be exported:"
+          - list [ref=f35e71]:
+            - listitem [ref=f35e72]: User accounts and roles
+            - listitem [ref=f35e73]: LoxiLB instance configurations
+            - listitem [ref=f35e74]: System settings and preferences
+            - listitem [ref=f35e75]: License information
+  - generic [ref=f35e76]:
+    - link [ref=f35e77] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f35e79]:
+      - link "© NETLOX" [ref=f35e128] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f35e129] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f35e130] [cursor=pointer]:
+        - /url: https://netlox.io

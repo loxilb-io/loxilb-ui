@@ -1,0 +1,142 @@
+- generic [ref=f61e4]:
+  - generic [ref=f61e5]:
+    - generic [ref=f61e6]:
+      - img "logo" [ref=f61e7] [cursor=pointer]
+      - generic [ref=f61e8]: v.0.9.0
+    - generic [ref=f61e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f61e10]:
+        - link [ref=f61e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f61e15]:
+        - link [ref=f61e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - generic "Config Management" [ref=f61e20]:
+        - link [ref=f61e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+      - img "flag" [ref=f61e26] [cursor=pointer]
+      - heading "e2e_admin" [level=6] [ref=f61e31] [cursor=pointer]
+  - generic [ref=f61e35]:
+    - generic [ref=f61e36]:
+      - button [ref=f61e38] [cursor=pointer]
+      - navigation [ref=f61e42]:
+        - list [ref=f61e43]:
+          - listitem [ref=f61e44]:
+            - paragraph [ref=f61e45]: kv-loxilb-gateway
+    - generic [ref=f61e46]:
+      - list [ref=f61e48]:
+        - listitem [ref=f61e49]:
+          - link [ref=f61e50] [cursor=pointer]:
+            - /url: /netlox/instance/dashboard?name=kv-loxilb-gateway
+            - heading "kv-loxilb-gateway" [level=6] [ref=f61e52]
+        - button [ref=f61e55] [cursor=pointer]:
+          - heading "Traffic" [level=6] [ref=f61e60]
+        - button [ref=f61e63] [cursor=pointer]:
+          - heading "AI Gateway" [level=6] [ref=f61e68]
+        - button [ref=f61e71] [cursor=pointer]:
+          - heading "IPsec VPN" [level=6] [ref=f61e76]
+        - button [ref=f61e79] [cursor=pointer]:
+          - heading "Security" [level=6] [ref=f61e84]
+        - button [ref=f61e87] [cursor=pointer]:
+          - heading "Networks" [level=6] [ref=f61e92]
+        - button [ref=f61e95] [cursor=pointer]:
+          - heading "Status" [level=6] [ref=f61e100]
+        - button [ref=f61e103] [cursor=pointer]:
+          - heading "Log Settings" [level=6] [ref=f61e108]
+      - generic [ref=f61e112]:
+        - generic [ref=f61e113]:
+          - heading "Dashboard" [level=5] [ref=f61e114]
+          - button "Reset Layout" [ref=f61e115] [cursor=pointer]
+        - generic [ref=f61e116]:
+          - generic [ref=f61e118]:
+            - heading "System Usage" [level=6] [ref=f61e120]
+            - paragraph [ref=f61e123]: Loading...
+          - generic [ref=f61e125]:
+            - generic [ref=f61e126]:
+              - heading "High Availability" [level=6] [ref=f61e127]
+              - link "View Full Data" [ref=f61e128] [cursor=pointer]:
+                - /url: /netlox/instance/status/ha?name=kv-loxilb-gateway
+            - grid [ref=f61e131] [cursor=pointer]:
+              - row [ref=f61e132]
+              - generic: No rows
+              - rowgroup
+          - generic [ref=f61e137]:
+            - heading "Connection Tracking" [level=6] [ref=f61e139]
+            - paragraph [ref=f61e142]: Loading...
+          - generic [ref=f61e144]:
+            - heading "Endpoint Health" [level=6] [ref=f61e146]
+            - paragraph [ref=f61e149]: Loading...
+          - generic [ref=f61e151]:
+            - heading "Load Balancer Rules" [level=6] [ref=f61e153]
+            - generic [ref=f61e156]:
+              - generic [ref=f61e157]:
+                - heading "0" [level=3] [ref=f61e158]
+                - text: Active LB rules
+              - generic [ref=f61e159]: Normal
+          - generic [ref=f61e162]:
+            - heading "Total Traffic Rate" [level=6] [ref=f61e164]
+            - generic [ref=f61e166]:
+              - generic [ref=f61e167]:
+                - generic [ref=f61e168]: Current Rate
+                - paragraph [ref=f61e170]: 0 bps
+              - img [ref=f61e172]:
+                - generic [ref=f61e173]: No data to display
+                - generic [ref=f61e175]:
+                  - generic [ref=f61e176]: "0"
+                  - generic [ref=f61e178]: "50"
+                  - generic [ref=f61e180]: "100"
+          - generic [ref=f61e183]:
+            - heading "Total Packet Rate" [level=6] [ref=f61e185]
+            - generic [ref=f61e187]:
+              - generic [ref=f61e188]:
+                - generic [ref=f61e189]: Current Rate
+                - paragraph [ref=f61e191]: 0 pps
+              - img [ref=f61e193]:
+                - generic [ref=f61e194]: No data to display
+                - generic [ref=f61e196]:
+                  - generic [ref=f61e197]: "0"
+                  - generic [ref=f61e199]: "1"
+                  - generic [ref=f61e201]: "1"
+          - generic [ref=f61e204]:
+            - heading "Total Error Rate" [level=6] [ref=f61e206]
+            - generic [ref=f61e208]:
+              - generic [ref=f61e209]:
+                - generic [ref=f61e210]: Current Rate
+                - paragraph [ref=f61e212]: 0 pps
+              - img [ref=f61e214]:
+                - generic [ref=f61e215]: No data to display
+                - generic [ref=f61e217]:
+                  - generic [ref=f61e218]: "0"
+                  - generic [ref=f61e220]: "50"
+                  - generic [ref=f61e222]: "100"
+          - generic [ref=f61e227]:
+            - generic [ref=f61e228]:
+              - generic [ref=f61e229]:
+                - heading "Log Filters" [level=6] [ref=f61e230]
+                - generic [ref=f61e231]:
+                  - generic: Level
+                  - generic [ref=f61e232]:
+                    - combobox [ref=f61e233] [cursor=pointer]
+                    - textbox
+                    - group:
+                      - generic: Level
+                - generic [ref=f61e234]:
+                  - generic: Search Keyword
+                  - generic [ref=f61e235]:
+                    - textbox "Search Keyword" [ref=f61e236]
+                    - group:
+                      - generic: Search Keyword
+                - button "Apply Keyword Filters" [ref=f61e237] [cursor=pointer]
+                - button "Clear KeywordFilters" [ref=f61e238] [cursor=pointer]
+                - button "Refresh Logs" [ref=f61e239] [cursor=pointer]
+              - generic [ref=f61e242]: 0 logs loaded
+            - paragraph [ref=f61e246]: No logs in selected period
+  - generic [ref=f61e247]:
+    - link [ref=f61e248] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f61e250]:
+      - link "© NETLOX" [ref=f61e251] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f61e252] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f61e253] [cursor=pointer]:
+        - /url: https://netlox.io

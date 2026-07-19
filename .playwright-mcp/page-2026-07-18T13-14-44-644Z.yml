@@ -1,0 +1,314 @@
+- generic [ref=f38e4]:
+  - generic [ref=f38e5]:
+    - generic [ref=f38e6]:
+      - img "logo" [ref=f38e847] [cursor=pointer]
+      - generic [ref=f38e8]: v.0.9.0
+    - generic [ref=f38e9]:
+      - generic "Return to Screen to 'Instances'" [ref=f38e848]:
+        - link [ref=f38e11] [cursor=pointer]:
+          - /url: /netlox/instance
+      - generic "User Management" [ref=f38e849]:
+        - link [ref=f38e16] [cursor=pointer]:
+          - /url: /netlox/user
+      - generic "Config Management" [ref=f38e850]:
+        - link [ref=f38e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+      - img "flag" [ref=f38e851] [cursor=pointer]
+      - heading "admin" [level=6] [ref=f38e852] [cursor=pointer]
+  - generic [ref=f38e35]:
+    - generic [ref=f38e36]:
+      - button [ref=f38e38] [cursor=pointer]
+      - navigation [ref=f38e42]:
+        - list [ref=f38e43]:
+          - listitem [ref=f38e44]:
+            - paragraph [ref=f38e45]: kv-loxilb-gateway
+          - listitem [ref=f38e46]: /
+          - listitem [ref=f38e47]:
+            - link [ref=f38e853] [cursor=pointer]:
+              - /url: /netlox/instance/ipsec/tunnels?name=kv-loxilb-gateway
+              - paragraph [ref=f38e49]: IPsec VPN
+          - listitem [ref=f38e50]: /
+          - listitem [ref=f38e51]:
+            - link [ref=f38e854] [cursor=pointer]:
+              - /url: /netlox/instance/ipsec/tunnels?name=kv-loxilb-gateway
+              - paragraph [ref=f38e53]: Tunnels
+    - generic [ref=f38e54]:
+      - list [ref=f38e56]:
+        - listitem [ref=f38e57]:
+          - link [ref=f38e855] [cursor=pointer]:
+            - /url: /netlox/instance/dashboard?name=kv-loxilb-gateway
+            - heading "kv-loxilb-gateway" [level=6] [ref=f38e856]
+        - button [ref=f38e857] [cursor=pointer]:
+          - heading "Traffic" [level=6] [ref=f38e858]
+        - button [ref=f38e859] [cursor=pointer]:
+          - heading "AI Gateway" [level=6] [ref=f38e860]
+        - button [ref=f38e861] [cursor=pointer]:
+          - heading "IPsec VPN" [level=6] [ref=f38e862]
+        - generic [ref=f38e90]:
+          - button [ref=f38e863] [cursor=pointer]:
+            - heading "Tunnels" [level=6] [ref=f38e864]
+          - button [ref=f38e865] [cursor=pointer]:
+            - heading "Certificates" [level=6] [ref=f38e866]
+        - button [ref=f38e867] [cursor=pointer]:
+          - heading "Security" [level=6] [ref=f38e868]
+        - button [ref=f38e869] [cursor=pointer]:
+          - heading "Networks" [level=6] [ref=f38e870]
+        - button [ref=f38e871] [cursor=pointer]:
+          - heading "Status" [level=6] [ref=f38e872]
+        - button [ref=f38e873] [cursor=pointer]:
+          - heading "Log Settings" [level=6] [ref=f38e874]
+      - generic [ref=f38e129]:
+        - generic [ref=f38e131]:
+          - heading "IPsec Overview" [level=6] [ref=f38e875]
+          - generic [ref=f38e134]:
+            - generic [ref=f38e136]:
+              - generic [ref=f38e138]:
+                - generic [ref=f38e139]: Tunnels Up
+                - generic [ref=f38e140]:
+                  - textbox "Tunnels Up" [ref=f38e876]: "0"
+                  - group:
+                    - generic: Tunnels Up
+              - generic [ref=f38e143]:
+                - generic [ref=f38e144]: Tunnels Down
+                - generic [ref=f38e145]:
+                  - textbox "Tunnels Down" [ref=f38e877]: "1"
+                  - group:
+                    - generic: Tunnels Down
+              - generic [ref=f38e148]:
+                - generic [ref=f38e149]: Active SAs
+                - generic [ref=f38e150]:
+                  - textbox "Active SAs" [ref=f38e878]: "0"
+                  - group:
+                    - generic: Active SAs
+              - generic [ref=f38e153]:
+                - generic [ref=f38e154]: Bytes In / Out
+                - generic [ref=f38e155]:
+                  - textbox "Bytes In / Out" [ref=f38e879]: 0 B / 0 B
+                  - group:
+                    - generic: Bytes In / Out
+              - generic "encrypt + decrypt + auth + replay errors" [ref=f38e880]:
+                - generic [ref=f38e158]:
+                  - generic [ref=f38e159]: Errors
+                  - generic [ref=f38e160]:
+                    - textbox "Errors" [ref=f38e881]: "0"
+                    - group:
+                      - generic: Errors
+            - button [ref=f38e882] [cursor=pointer]
+        - generic [ref=f38e166]:
+          - generic [ref=f38e167]:
+            - generic "Refresh IPsec Tunnels" [ref=f38e883]:
+              - button [ref=f38e169] [cursor=pointer]
+            - generic "Add IPsec Tunnels" [ref=f38e884]:
+              - button [ref=f38e173] [cursor=pointer]
+            - generic "Edit IPsec Tunnels" [ref=f38e885]:
+              - button [ref=f38e475] [cursor=pointer]
+            - generic "Delete IPsec Tunnels" [ref=f38e886]:
+              - button [ref=f38e478] [cursor=pointer]
+          - generic [ref=f38e179] [cursor=pointer]:
+            - grid [ref=f38e180]:
+              - row [ref=f38e887]:
+                - columnheader "ID" [ref=f38e888]
+                - columnheader "Name" [ref=f38e889]
+                - columnheader [ref=f38e890]:
+                  - heading "State" [level=6] [ref=f38e891]
+                - columnheader "Local ⇄ Remote" [ref=f38e892]
+                - columnheader "Auth" [ref=f38e893]
+                - columnheader "IKE" [ref=f38e894]
+                - columnheader [ref=f38e895]:
+                  - heading "SAs" [level=6] [ref=f38e896]
+                - columnheader "Bytes In" [ref=f38e897]
+                - columnheader "Bytes Out" [ref=f38e898]
+              - rowgroup [ref=f38e380]:
+                - row [selected] [ref=f38e899]:
+                  - gridcell [ref=f38e900]:
+                    - paragraph [ref=f38e384]: "0"
+                  - gridcell [ref=f38e901]:
+                    - paragraph [ref=f38e387]: e2e-tun
+                  - gridcell [ref=f38e902]:
+                    - paragraph [ref=f38e390]: CONNECTING
+                  - gridcell [active] [ref=f38e903]:
+                    - paragraph [ref=f38e393]: 10.0.0.12 ⇄ 203.0.113.99
+                  - gridcell [ref=f38e904]:
+                    - paragraph [ref=f38e396]: psk
+                  - gridcell [ref=f38e905]:
+                    - paragraph [ref=f38e399]: ikev2
+                  - gridcell [ref=f38e906]:
+                    - paragraph [ref=f38e402]: "0"
+                  - gridcell [ref=f38e907]:
+                    - paragraph [ref=f38e405]: 0 B
+                  - gridcell [ref=f38e908]:
+                    - paragraph [ref=f38e408]: 0 B
+            - generic [ref=f38e229]:
+              - generic [ref=f38e913]: 1 row selected
+              - generic [ref=f38e231]:
+                - paragraph [ref=f38e232]: "Rows per page:"
+                - generic [ref=f38e233]:
+                  - 'combobox "Rows per page: 5" [ref=f38e909]': "5"
+                  - textbox: "5"
+                - paragraph [ref=f38e235]: 1–1 of 1
+                - generic [ref=f38e236]:
+                  - button "Go to previous page" [disabled]
+                  - button "Go to next page" [disabled]
+        - generic [ref=f38e915]:
+          - generic [ref=f38e917]:
+            - generic [ref=f38e918]:
+              - heading "e2e-tun" [level=6] [ref=f38e919]
+              - heading "Tunnel Details" [level=6] [ref=f38e920]
+            - generic [ref=f38e921]:
+              - generic [ref=f38e922]:
+                - button [ref=f38e923] [cursor=pointer]
+                - button [ref=f38e927] [cursor=pointer]
+                - button [ref=f38e931] [cursor=pointer]
+                - button [ref=f38e935] [cursor=pointer]
+              - generic [ref=f38e939]:
+                - heading "Connection" [level=6] [ref=f38e940]
+                - generic [ref=f38e941]:
+                  - generic [ref=f38e943]:
+                    - generic [ref=f38e944]: State
+                    - generic [ref=f38e945]:
+                      - textbox "State" [ref=f38e946]: CONNECTING
+                      - group:
+                        - generic: State
+                  - generic [ref=f38e948]:
+                    - generic [ref=f38e949]: Local
+                    - generic [ref=f38e950]:
+                      - textbox "Local" [ref=f38e951]: 10.0.0.12
+                      - group:
+                        - generic: Local
+                  - generic [ref=f38e953]:
+                    - generic [ref=f38e954]: Remote
+                    - generic [ref=f38e955]:
+                      - textbox "Remote" [ref=f38e956]: 203.0.113.99
+                      - group:
+                        - generic: Remote
+                  - generic [ref=f38e958]:
+                    - generic [ref=f38e959]: Mode
+                    - generic [ref=f38e960]:
+                      - textbox "Mode" [ref=f38e961]: tunnel
+                      - group:
+                        - generic: Mode
+                  - generic [ref=f38e963]:
+                    - generic [ref=f38e964]: Startup
+                    - generic [ref=f38e965]:
+                      - textbox "Startup" [ref=f38e966]: start
+                      - group:
+                        - generic: Startup
+                  - generic [ref=f38e968]:
+                    - generic [ref=f38e969]: Auth
+                    - generic [ref=f38e970]:
+                      - textbox "Auth" [ref=f38e971]: psk
+                      - group:
+                        - generic: Auth
+              - generic [ref=f38e972]:
+                - heading "IKE (Phase 1)" [level=6] [ref=f38e973]
+                - generic [ref=f38e974]:
+                  - generic [ref=f38e976]:
+                    - generic [ref=f38e977]: Version
+                    - generic [ref=f38e978]:
+                      - textbox "Version" [ref=f38e979]: ikev2
+                      - group:
+                        - generic: Version
+                  - generic [ref=f38e981]:
+                    - generic [ref=f38e982]: Proposal
+                    - generic [ref=f38e983]:
+                      - textbox "Proposal" [ref=f38e984]: aes256-sha256-modp2048
+                      - group:
+                        - generic: Proposal
+                  - generic [ref=f38e986]:
+                    - generic [ref=f38e987]: Lifetime
+                    - generic [ref=f38e988]:
+                      - textbox "Lifetime" [ref=f38e989]: 28800s
+                      - group:
+                        - generic: Lifetime
+              - generic [ref=f38e990]:
+                - heading "ESP (Phase 2)" [level=6] [ref=f38e991]
+                - generic [ref=f38e992]:
+                  - generic [ref=f38e994]:
+                    - generic [ref=f38e995]: Proposal
+                    - generic [ref=f38e996]:
+                      - textbox "Proposal" [ref=f38e997]: aes256-sha256-modp2048 (PFS)
+                      - group:
+                        - generic: Proposal
+                  - generic [ref=f38e999]:
+                    - generic [ref=f38e1000]: Lifetime
+                    - generic [ref=f38e1001]:
+                      - textbox "Lifetime" [ref=f38e1002]: 3600s
+                      - group:
+                        - generic: Lifetime
+                  - generic [ref=f38e1004]:
+                    - generic [ref=f38e1005]: Selectors
+                    - generic [ref=f38e1006]:
+                      - textbox "Selectors" [ref=f38e1007]: 10.9.0.0/24 ⇄ 10.7.0.0/24
+                      - group:
+                        - generic: Selectors
+              - generic [ref=f38e1008]:
+                - heading "Traffic & Lifecycle" [level=6] [ref=f38e1009]
+                - generic [ref=f38e1010]:
+                  - generic [ref=f38e1012]:
+                    - generic [ref=f38e1013]: Bytes In / Out
+                    - generic [ref=f38e1014]:
+                      - textbox "Bytes In / Out" [ref=f38e1015]: 0 B / 0 B
+                      - group:
+                        - generic: Bytes In / Out
+                  - generic [ref=f38e1017]:
+                    - generic [ref=f38e1018]: Packets In / Out
+                    - generic [ref=f38e1019]:
+                      - textbox "Packets In / Out" [ref=f38e1020]: 0 / 0
+                      - group:
+                        - generic: Packets In / Out
+                  - generic [ref=f38e1022]:
+                    - generic [ref=f38e1023]: SAs Installed
+                    - generic [ref=f38e1024]:
+                      - textbox "SAs Installed" [ref=f38e1025]: "0"
+                      - group:
+                        - generic: SAs Installed
+                  - generic [ref=f38e1027]:
+                    - generic [ref=f38e1028]: Last Rekey
+                    - generic [ref=f38e1029]:
+                      - textbox "Last Rekey" [ref=f38e1030]: 0001-01-01T00:00:00.000Z
+                      - group:
+                        - generic: Last Rekey
+                  - generic [ref=f38e1032]:
+                    - generic [ref=f38e1033]: DPD
+                    - generic [ref=f38e1034]:
+                      - textbox "DPD" [ref=f38e1035]: restart 30s/150s
+                      - group:
+                        - generic: DPD
+          - generic [ref=f38e1036]:
+            - generic "Refresh Security Associations" [ref=f38e1038]:
+              - button [ref=f38e1039] [cursor=pointer]
+            - generic [ref=f38e1043] [cursor=pointer]:
+              - grid [ref=f38e1044]:
+                - row [ref=f38e1045]:
+                  - columnheader "ID" [ref=f38e1046]
+                  - columnheader "SPI" [ref=f38e1050]
+                  - columnheader "Tunnel" [ref=f38e1054]
+                  - columnheader "Dir" [ref=f38e1058]
+                  - columnheader [ref=f38e1062]:
+                    - heading "State" [level=6] [ref=f38e1065]
+                  - columnheader "Algorithms" [ref=f38e1069]
+                  - columnheader "Bytes In" [ref=f38e1073]
+                  - columnheader "Bytes Out" [ref=f38e1077]
+                  - columnheader [ref=f38e1081]:
+                    - heading "Expires" [level=6] [ref=f38e1084]
+                - generic: No rows
+                - rowgroup
+              - generic [ref=f38e1095]:
+                - paragraph [ref=f38e1096]: "Rows per page:"
+                - generic [ref=f38e1097]:
+                  - 'combobox "Rows per page: 5" [ref=f38e1098]': "5"
+                  - textbox: "5"
+                - paragraph [ref=f38e1099]: 0–0 of 0
+                - generic [ref=f38e1100]:
+                  - button "Go to previous page" [disabled]
+                  - button "Go to next page" [disabled]
+  - generic [ref=f38e237]:
+    - link [ref=f38e238] [cursor=pointer]:
+      - /url: https://netlox.io
+    - generic [ref=f38e240]:
+      - link "© NETLOX" [ref=f38e910] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Privacy" [ref=f38e911] [cursor=pointer]:
+        - /url: https://netlox.io
+      - link "Terms" [ref=f38e912] [cursor=pointer]:
+        - /url: https://netlox.io

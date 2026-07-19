@@ -1,0 +1,252 @@
+- generic [ref=f4e1]:
+  - generic [ref=f4e4]:
+    - generic [ref=f4e5]:
+      - generic [ref=f4e6]: v.0.9.0
+      - generic [ref=f4e9]:
+        - link [ref=f4e11] [cursor=pointer]:
+          - /url: /netlox/instance
+        - link [ref=f4e16] [cursor=pointer]:
+          - /url: /netlox/user
+        - heading [level=6] [ref=f4e1291] [cursor=pointer]: e2e_operator
+    - generic [ref=f4e97]:
+      - generic [ref=f4e98]:
+        - button [ref=f4e100] [cursor=pointer]
+        - navigation [ref=f4e104]:
+          - list [ref=f4e105]:
+            - listitem [ref=f4e106]:
+              - paragraph [ref=f4e107]: kv-loxilb-gateway
+            - listitem [ref=f4e639]: /
+            - listitem [ref=f4e640]:
+              - link [ref=f4e1292] [cursor=pointer]:
+                - /url: /netlox/instance/traffic/lb?name=kv-loxilb-gateway
+                - paragraph [ref=f4e642]: Traffic
+            - listitem [ref=f4e643]: /
+            - listitem [ref=f4e644]:
+              - link [ref=f4e1293] [cursor=pointer]:
+                - /url: /netlox/instance/traffic/lb?name=kv-loxilb-gateway
+                - paragraph [ref=f4e646]: LB Rule
+      - generic [ref=f4e108]:
+        - list [ref=f4e110]:
+          - listitem [ref=f4e111]:
+            - link [ref=f4e1294] [cursor=pointer]:
+              - /url: /netlox/instance/dashboard?name=kv-loxilb-gateway
+              - heading [level=6] [ref=f4e1295]: kv-loxilb-gateway
+          - button [ref=f4e1296] [cursor=pointer]:
+            - heading [level=6] [ref=f4e1297]: Traffic
+          - generic [ref=f4e604]:
+            - button [ref=f4e1298] [cursor=pointer]:
+              - heading [level=6] [ref=f4e1299]: LB Rule
+            - button [ref=f4e1300] [cursor=pointer]:
+              - heading [level=6] [ref=f4e1301]: Endpoint
+            - button [ref=f4e1302] [cursor=pointer]:
+              - heading [level=6] [ref=f4e1303]: Conntrack
+            - button [ref=f4e1304] [cursor=pointer]:
+              - heading [level=6] [ref=f4e1305]: Firewall
+            - button [ref=f4e1306] [cursor=pointer]:
+              - heading [level=6] [ref=f4e1307]: QoS
+            - button [ref=f4e1308] [cursor=pointer]:
+              - heading [level=6] [ref=f4e1309]: Mirror
+            - button [ref=f4e1310] [cursor=pointer]:
+              - heading [level=6] [ref=f4e1311]: SNI Certificates
+          - button [ref=f4e1312] [cursor=pointer]:
+            - heading [level=6] [ref=f4e1313]: AI Gateway
+          - button [ref=f4e1314] [cursor=pointer]:
+            - heading [level=6] [ref=f4e1315]: IPsec VPN
+          - button [ref=f4e1316] [cursor=pointer]:
+            - heading [level=6] [ref=f4e1317]: Security
+          - button [ref=f4e1318] [cursor=pointer]:
+            - heading [level=6] [ref=f4e1319]: Networks
+          - button [ref=f4e1320] [cursor=pointer]:
+            - heading [level=6] [ref=f4e1321]: Status
+          - button [ref=f4e1322] [cursor=pointer]:
+            - heading [level=6] [ref=f4e1323]: Log Settings
+        - generic [ref=f4e173]:
+          - generic [ref=f4e647]:
+            - generic [ref=f4e648]:
+              - button [ref=f4e650] [cursor=pointer]
+              - button [ref=f4e654] [cursor=pointer]
+              - button [ref=f4e1062] [cursor=pointer]
+              - button [ref=f4e1065] [cursor=pointer]
+            - generic [ref=f4e660] [cursor=pointer]:
+              - grid [ref=f4e661]:
+                - row [ref=f4e1328]:
+                  - columnheader [ref=f4e1329]:
+                    - checkbox [checked] [ref=f4e1330]
+                  - columnheader [ref=f4e1331]:
+                    - generic [ref=f4e673]: ID
+                  - columnheader [ref=f4e1332]:
+                    - generic [ref=f4e677]: External IP
+                  - columnheader [ref=f4e1333]:
+                    - generic [ref=f4e681]: Port
+                  - columnheader [ref=f4e1334]:
+                    - generic [ref=f4e685]: Protocol
+                  - columnheader [ref=f4e1335]:
+                    - generic [ref=f4e689]: Service Name
+                  - columnheader [ref=f4e1336]:
+                    - heading [level=6] [ref=f4e1337]: Sel
+                  - columnheader [ref=f4e1338]:
+                    - heading [level=6] [ref=f4e1339]: Mode
+                  - columnheader [ref=f4e1340]:
+                    - generic [ref=f4e707]: Monitor
+                  - columnheader [ref=f4e1341]:
+                    - generic [ref=f4e711]: Timeout (Sec)
+                - rowgroup [ref=f4e957]:
+                  - row [selected] [ref=f4e1342]:
+                    - gridcell [ref=f4e1343]:
+                      - checkbox [checked] [ref=f4e1344]
+                    - gridcell [ref=f4e1345]:
+                      - paragraph [ref=f4e966]: "0"
+                    - gridcell [ref=f4e1346]:
+                      - paragraph [ref=f4e969]: 20.20.20.3
+                    - gridcell [ref=f4e1347]:
+                      - paragraph [ref=f4e972]: "8080"
+                    - gridcell [ref=f4e1348]:
+                      - paragraph [ref=f4e975]: tcp
+                    - gridcell [ref=f4e1349]:
+                      - paragraph [ref=f4e978]: e2e-s3-lb
+                    - gridcell [ref=f4e1350]:
+                      - paragraph [ref=f4e981]: rr
+                    - gridcell [ref=f4e1351]:
+                      - paragraph [ref=f4e984]: dnat
+                    - gridcell [ref=f4e1352]:
+                      - paragraph [ref=f4e987]: Disabled
+                    - gridcell [ref=f4e1353]:
+                      - paragraph [ref=f4e990]: "1800"
+              - generic [ref=f4e719]:
+                - generic [ref=f4e1078]: 1 row selected
+                - generic [ref=f4e721]:
+                  - paragraph [ref=f4e722]: "Rows per page:"
+                  - generic [ref=f4e723]:
+                    - combobox [ref=f4e1354]: "5"
+                    - textbox: "5"
+                  - paragraph [ref=f4e725]: 1–1 of 1
+                  - generic [ref=f4e726]:
+                    - button [disabled]
+                    - button [disabled]
+          - generic [ref=f4e1080]:
+            - tablist [ref=f4e1084]:
+              - tab [selected] [ref=f4e1355] [cursor=pointer]: Settings
+              - tab [ref=f4e1356] [cursor=pointer]: Endpoints
+              - tab [ref=f4e1357] [cursor=pointer]: Secondary IPs
+              - tab [ref=f4e1358] [cursor=pointer]: Allowed Sources
+              - tab [ref=f4e1359] [cursor=pointer]: Conntrack
+              - tab [ref=f4e1360] [cursor=pointer]: QoS
+              - tab [ref=f4e1361] [cursor=pointer]: Mirror
+            - generic [ref=f4e1093]:
+              - generic [ref=f4e1094]:
+                - heading [level=6] [ref=f4e1362]: Service Identity
+                - generic [ref=f4e1097]:
+                  - generic [ref=f4e1099]:
+                    - generic [ref=f4e1100]: Name
+                    - paragraph [ref=f4e1102]: e2e-s3-lb
+                  - generic [ref=f4e1104]:
+                    - generic [ref=f4e1105]: External IP
+                    - paragraph [ref=f4e1107]: 20.20.20.3
+                  - generic [ref=f4e1109]:
+                    - generic [ref=f4e1110]: Private IP
+                    - paragraph [ref=f4e1112]: None
+                  - generic [ref=f4e1114]:
+                    - generic [ref=f4e1115]: Port
+                    - paragraph [ref=f4e1117]: "8080"
+                  - generic [ref=f4e1119]:
+                    - generic [ref=f4e1120]: Port Max
+                    - paragraph [ref=f4e1122]: None
+                  - generic [ref=f4e1124]:
+                    - generic [ref=f4e1125]: Protocol
+                    - paragraph [ref=f4e1127]: tcp
+                  - generic [ref=f4e1129]:
+                    - generic [ref=f4e1130]: BGP
+                    - paragraph [ref=f4e1134]: "False"
+                  - generic [ref=f4e1136]:
+                    - generic [ref=f4e1137]: SEL
+                    - paragraph [ref=f4e1141]: rr
+                  - generic [ref=f4e1143]:
+                    - generic [ref=f4e1144]: Mode
+                    - paragraph [ref=f4e1148]: dnat
+                  - generic [ref=f4e1150]:
+                    - generic [ref=f4e1151]: Block
+                    - paragraph [ref=f4e1155]: "0"
+                  - generic [ref=f4e1157]:
+                    - generic [ref=f4e1158]: SNAT
+                    - paragraph [ref=f4e1162]: "False"
+                  - generic [ref=f4e1164]:
+                    - generic [ref=f4e1165]: Egress
+                    - paragraph [ref=f4e1169]: None
+                  - generic [ref=f4e1171]:
+                    - generic [ref=f4e1172]: Operation
+                    - paragraph [ref=f4e1176]: None
+                  - generic [ref=f4e1178]:
+                    - generic [ref=f4e1179]: Inactive Timeout
+                    - paragraph [ref=f4e1183]: "240"
+              - generic [ref=f4e1184]:
+                - heading [level=6] [ref=f4e1363]: Probe Information
+                - generic [ref=f4e1187]:
+                  - generic [ref=f4e1189]:
+                    - generic [ref=f4e1190]: Type
+                    - paragraph [ref=f4e1192]: None
+                  - generic [ref=f4e1194]:
+                    - generic [ref=f4e1195]: Port
+                    - paragraph [ref=f4e1197]: None
+                  - generic [ref=f4e1199]:
+                    - generic [ref=f4e1200]: Request
+                    - paragraph [ref=f4e1202]: None
+                  - generic [ref=f4e1204]:
+                    - generic [ref=f4e1205]: Response
+                    - paragraph [ref=f4e1207]: None
+                  - generic [ref=f4e1209]:
+                    - generic [ref=f4e1210]: Timeout
+                    - paragraph [ref=f4e1212]: "1800"
+                  - generic [ref=f4e1214]:
+                    - generic [ref=f4e1215]: Retries
+                    - paragraph [ref=f4e1217]: None
+                  - generic [ref=f4e1219]:
+                    - generic [ref=f4e1220]: Monitoring
+                    - paragraph [ref=f4e1222]: "False"
+              - generic [ref=f4e1223]:
+                - heading [level=6] [ref=f4e1364]: L7 Proxy Information
+                - generic [ref=f4e1226]:
+                  - generic [ref=f4e1228]:
+                    - generic [ref=f4e1229]: Host
+                    - paragraph [ref=f4e1233]: None
+                  - generic [ref=f4e1235]:
+                    - generic [ref=f4e1236]: Path Prefix
+                    - paragraph [ref=f4e1240]: None
+                  - generic [ref=f4e1242]:
+                    - generic [ref=f4e1243]: Path Match Mode
+                    - paragraph [ref=f4e1247]: disabled
+                  - generic [ref=f4e1249]:
+                    - generic [ref=f4e1250]: Security
+                    - paragraph [ref=f4e1254]: None
+                  - generic [ref=f4e1256]:
+                    - generic [ref=f4e1257]: Backend Protocol
+                    - paragraph [ref=f4e1261]: None
+                  - generic [ref=f4e1263]:
+                    - generic [ref=f4e1264]: Proxy Protocol v2
+                    - paragraph [ref=f4e1268]: None
+                  - generic [ref=f4e1270]:
+                    - generic [ref=f4e1271]: LLM Type
+                    - paragraph [ref=f4e1275]: None
+              - generic [ref=f4e1276]:
+                - heading [level=6] [ref=f4e1365]: Kubernetes Information
+                - generic [ref=f4e1281]:
+                  - generic [ref=f4e1282]: Managed
+                  - paragraph [ref=f4e1286]: "False"
+    - generic [ref=f4e90]:
+      - link [ref=f4e91] [cursor=pointer]:
+        - /url: https://netlox.io
+      - generic [ref=f4e93]:
+        - link [ref=f4e1366] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: © NETLOX
+        - link [ref=f4e1367] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Privacy
+        - link [ref=f4e1368] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Terms
+  - generic [ref=f4e1371]:
+    - heading "WARNING!! Delete Item" [level=2] [ref=f4e1372]
+    - paragraph [ref=f4e1373]: Are you sure you want to delete this Item? This action cannot be undone.
+    - generic [ref=f4e1374]:
+      - button "Cancel" [ref=f4e1376] [cursor=pointer]
+      - button "Delete" [ref=f4e1378] [cursor=pointer]

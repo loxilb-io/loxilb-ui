@@ -1,0 +1,48 @@
+- generic [ref=f41e1]:
+  - generic [ref=f41e4]:
+    - generic [ref=f41e5]:
+      - generic [ref=f41e6]: v.0.9.0
+      - generic [ref=f41e9]:
+        - link [ref=f41e11] [cursor=pointer]:
+          - /url: /netlox/instance
+        - link [ref=f41e16] [cursor=pointer]:
+          - /url: /netlox/user
+        - link [ref=f41e21] [cursor=pointer]:
+          - /url: /netlox/config-management
+        - heading [level=6] [ref=f41e113] [cursor=pointer]: admin
+    - generic [ref=f41e37]:
+      - tablist [ref=f41e114]:
+        - tab [ref=f41e115] [cursor=pointer]: Export
+        - tab [ref=f41e116] [cursor=pointer]: Import
+        - tab [selected] [ref=f41e117] [cursor=pointer]: File Management
+      - tabpanel [ref=f41e118]:
+        - generic [ref=f41e84]:
+          - generic [ref=f41e85]:
+            - generic [ref=f41e86]:
+              - heading [level=6] [ref=f41e119]: Configuration Files
+              - paragraph [ref=f41e88]: Manage exported configuration files.
+            - button [ref=f41e120] [cursor=pointer]: Refresh
+          - generic [ref=f41e142]:
+            - generic [ref=f41e143]:
+              - heading [level=6] [ref=f41e144]: config-15030b70e8717d33.json
+              - paragraph [ref=f41e145]: "Exported: 2026. 7. 17. 오전 11:57:27"
+            - generic [ref=f41e146]:
+              - button [ref=f41e147] [cursor=pointer]: Download
+              - button [ref=f41e148] [cursor=pointer]: Delete
+    - generic [ref=f41e75]:
+      - link [ref=f41e76] [cursor=pointer]:
+        - /url: https://netlox.io
+      - generic [ref=f41e78]:
+        - link [ref=f41e127] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: © NETLOX
+        - link [ref=f41e128] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Privacy
+        - link [ref=f41e129] [cursor=pointer]:
+          - /url: https://netlox.io
+          - text: Terms
+  - generic [ref=f41e151]:
+    - heading "Success" [level=2] [ref=f41e152]
+    - paragraph [ref=f41e153]: Configuration file deleted successfully.
+    - button "OK" [ref=f41e156] [cursor=pointer]
