@@ -3,14 +3,13 @@
 // sessions provisioned by auth.setup.ts:
 //   • viewer   — read-only everywhere: no add/edit/delete controls and
 //                zero mutation requests across every mutable Group-1..6 route
-//   • operator — gateway writes allowed, but no user admin / no config mgmt
+//   • operator — gateway writes allowed, but no user admin
 //   • admin    — everything visible
 //
 // The UI guards are UX-only (DataTable hides mutation icons for is_viewer,
-// can_write_gateway gates custom write buttons, RequireAdminRoute + the
-// header gate config-management); the OAM server is the real boundary.
+// can_write_gateway gates custom write buttons); the OAM server is the
+// real boundary.
 //---------------------------------------------------------
-import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {activeInstance} from '../../helpers/api';
 
@@ -47,10 +46,6 @@ const MUTABLE_ROUTES = [
 ];
 
 const MUTATION_ICONS = ['AddIcon', 'ModeIcon', 'DeleteIcon'];
-
-function configLink(page: Page) {
-	return page.locator('#header a[href$="/config-management"]');
-}
 
 test.describe('RBAC — viewer (read-only everywhere)', () => {
 	test.use({storageState: '.auth/viewer.json'});
@@ -92,13 +87,6 @@ test.describe('RBAC — viewer (read-only everywhere)', () => {
 		await expect(page.getByRole('tab', {name: 'User List'})).toHaveCount(0);
 	});
 
-	test('viewer: no Config Management entry point; the route is blocked', async ({page}) => {
-		await page.goto('instance/traffic/lb?name=' + instName);
-		await expect(configLink(page)).toHaveCount(0);
-		await page.goto('config-management');
-		await expect(page).toHaveURL(/\/instance/, {timeout: 20_000});
-		await expect(page).not.toHaveURL(/config-management/);
-	});
 });
 
 test.describe('RBAC — operator', () => {
@@ -115,24 +103,19 @@ test.describe('RBAC — operator', () => {
 		await expect(page.getByRole('tab', {name: 'User List'})).toHaveCount(0);
 	});
 
-	test('operator: no Config Management entry point; the route is blocked', async ({page}) => {
-		await page.goto('instance/traffic/lb?name=' + instName);
-		await expect(configLink(page)).toHaveCount(0);
-		await page.goto('config-management');
-		await expect(page).toHaveURL(/\/instance/, {timeout: 20_000});
-		await expect(page).not.toHaveURL(/config-management/);
-	});
 });
 
 test.describe('RBAC — admin', () => {
 	test.use({storageState: '.auth/admin.json'});
 
-	test('admin: Config Management entry point + route reachable', async ({page}) => {
+	// Legacy config-management was removed (docs/SNAPSHOT_UI_DESIGN.md §2, U-0);
+	// even admin gets no entry point and a 404 on the old route.
+	test('admin: legacy config-management surface is gone (no icon, route 404s)', async ({page}) => {
 		await page.goto('instance/traffic/lb?name=' + instName);
-		await expect(configLink(page)).toHaveCount(1);
+		await expect(page.locator('#header')).toBeVisible({timeout: 20_000});
+		await expect(page.locator('#header a[href$="/config-management"]')).toHaveCount(0);
 		await page.goto('config-management');
-		await expect(page).toHaveURL(/config-management/, {timeout: 20_000});
-		await expect(page.getByRole('tab', {name: 'Export'})).toBeVisible();
+		await expect(page.getByText('Page not found')).toBeVisible({timeout: 20_000});
 	});
 
 	test('admin: User List tab present with mutation controls', async ({page}) => {

@@ -121,8 +121,6 @@ describe('oam spec contract', () => {
 		['/oam/users/me', 'get'],
 		['/oam/logs', 'get'],
 		['/oam/setup/status', 'get'],
-		['/oam/config/files', 'get'],
-		['/oam/config/exports', 'get'],
 		['/oam/login', 'post'],
 	] as [string, string][])('%s %s exists with a success schema', (p, m) => {
 		expect(successSchema(oam, p, m)).toBeTruthy();

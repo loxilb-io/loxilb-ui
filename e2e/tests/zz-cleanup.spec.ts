@@ -9,7 +9,7 @@
 import {test, expect} from '@playwright/test';
 import * as api from '../helpers/api';
 
-const {isE2eMarked, isDocAddr, gw, listUsers, listConfigFiles, TEST_USER_PREFIX} = api;
+const {isE2eMarked, isDocAddr, gw, listUsers, TEST_USER_PREFIX} = api;
 
 test.describe.serial('zz — cleanup & leak detector', () => {
 	test('sweep every e2e-/doc-range resource', async () => {
@@ -31,7 +31,6 @@ test.describe.serial('zz — cleanup & leak detector', () => {
 			api.sweepApiKeys(),
 			api.sweepLbRules(),
 			api.sweepTestUsers(),
-			api.sweepConfigExports(),
 		]);
 		const total = swept.reduce((a, b) => a + b, 0);
 		// Informational — a clean run sweeps 0 here because per-spec hooks already ran.
@@ -91,11 +90,6 @@ test.describe.serial('zz — cleanup & leak detector', () => {
 		for (const u of await listUsers()) {
 			if (u.username?.startsWith(TEST_USER_PREFIX)) leaks.push(`user → ${u.username}`);
 		}
-		// Config exports.
-		for (const f of await listConfigFiles()) {
-			if (isE2eMarked(f.description)) leaks.push(`config-export → ${f.id} (${f.description})`);
-		}
-
 		if (inert.length) console.warn(`zz-cleanup tolerated ${inert.length} known-undeletable artifact(s):\n${inert.join('\n')}`);
 		expect(leaks, `leaked removable e2e-/doc-range entities:\n${leaks.join('\n')}`).toEqual([]);
 	});
