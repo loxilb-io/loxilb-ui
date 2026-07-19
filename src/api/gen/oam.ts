@@ -358,6 +358,56 @@ export interface paths {
       };
     };
   };
+  "/oam/config/files/{id}": {
+    /**
+     * Delete a configuration export
+     * @description Deletes a configuration export by ID, removing its record and file. Admin only.
+     */
+    delete: {
+      parameters: {
+        header: {
+          /** @description Bearer token */
+          Authorization: string;
+        };
+        path: {
+          /** @description Export ID */
+          id: string;
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          content: {
+            "application/json": components["schemas"]["models.MessageResponse"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
   "/oam/config/import": {
     /**
      * Import system configuration
