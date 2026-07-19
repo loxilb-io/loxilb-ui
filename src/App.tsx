@@ -15,7 +15,7 @@ import {theme_config} from 'theme';
 
 import Layout from 'components/layout/Layout';
 import NavLayout from 'components/layout/NavLayout';
-import {RequireAdminRoute, RequireAuth} from 'components/layout/RouteGuards';
+import {RequireAuth} from 'components/layout/RouteGuards';
 import ScrollToTop from 'components/layout/ScrollToTop';
 import PopUp from 'components/modal/PopUp';
 import SetupHandler from 'components/setup/SetupHandler';
@@ -67,7 +67,6 @@ import HAPage from 'pages/status/HAPage';
 import ProcessPage from 'pages/status/ProcessPage';
 
 import UserManagementPage from 'pages/managers/UserManagementPage';
-import ConfigManagementPage from 'pages/ConfigManagementPage';
 
 import {MAX_DURATION_MS} from 'hooks/query/common';
 import LogPage from 'pages/status/LogPage';
@@ -132,11 +131,6 @@ export default function App() {
 								<Route path="/instance" element={<InstancePage />} />
 								<Route path="/system" element={<SystemPage />} />
 								<Route path="/user" element={<UserManagementPage />} />
-
-								{/* Config import/export is an admin capability */}
-								<Route element={<RequireAdminRoute />}>
-									<Route path="/config-management" element={<ConfigManagementPage />} />
-								</Route>
 
 								<Route path="/instance/*" element={<NavLayout />}>
 									<Route path="network" element={<Outlet />}>

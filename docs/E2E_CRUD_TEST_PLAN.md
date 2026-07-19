@@ -275,8 +275,7 @@ cannot cut the mgmt path: documentation IPs, VLAN/VXLAN 3999, routes to
 |---|---|
 | `auth.spec.ts` | login wrong-pw error (single attempt — lockout discipline), login ok, deep-link while authed, logout confirm, H-2 replay → 401 revoked |
 | `users.spec.ts` | C-min username/email/password/role(viewer default); C-role operator/admin; V-dup username 4xx surfaced; V-weak password; E-edit email (+F11 same-value regression), E-password change; D-single; **D-self blocked** (cannot delete own account) |
-| `rbac.spec.ts` | three storageState projects: operator (no Config Mgmt icon/route, no User List, gateway write allowed), viewer (read-only toolbars everywhere — parameterized over all Group-1..6 routes, asserting zero add/edit/delete buttons and zero mutation requests), admin (all visible) |
-| `config-mgmt.spec.ts` | export with `e2e-` description → file listed; download non-empty JSON; import **dry-run only** (assert diff preview, never apply); D-file |
+| `rbac.spec.ts` | three storageState projects: operator (no User List, gateway write allowed), viewer (read-only toolbars everywhere — parameterized over all Group-1..6 routes, asserting zero add/edit/delete buttons and zero mutation requests), admin (all visible + legacy config-management surface gone: no icon, route 404s) |
 | `profile.spec.ts` | self email edit persists after reload (catches the stale-menu-cache issue observed 2026-07-18) |
 | `instances.spec.ts` | Check Health round-trip; dashboard widgets render; instance edit dialog V-cases (bad host/port) — no create/delete of the real instance |
 
@@ -336,9 +335,13 @@ Done:
     now blocked in the UI; also dropped the redundant double delete-confirm.
 12. ✅ `oam/rbac.spec.ts` — viewer read-only across every mutable Group-1..6
     route (no add/edit/delete controls + zero mutation requests); operator
-    gateway-write but no user-admin/config-mgmt; admin all visible.
-13. ✅ `oam/config-mgmt.spec.ts` — export (e2e- desc) listed, download
-    non-empty JSON, import DRY-RUN only (apply never fires), delete file.
+    gateway-write but no user-admin; admin all visible + legacy
+    config-management surface gone (removed by U-0,
+    docs/SNAPSHOT_UI_DESIGN.md §2; replacement covered by the future
+    `snapshots.spec.ts`).
+13. ~~`oam/config-mgmt.spec.ts`~~ — REMOVED with the legacy
+    config-management page (U-0); superseded by the snapshot feature's
+    `e2e/snapshots.spec.ts` (docs/SNAPSHOT_UI_DESIGN.md §9.3).
 14. ✅ `oam/profile.spec.ts` — self email edit reflected in Profile tab +
     header menu immediately and after reload. **F-PROFILE-1 fixed**: self-edit
     now invalidates `['my_info']` (was stale until 5s staleTime lapsed).

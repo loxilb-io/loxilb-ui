@@ -448,54 +448,6 @@ export async function sweepTestUsers(): Promise<number> {
 	return removed;
 }
 
-//---------------------------------------------------------
-// OAM config-management exports (Group 7). Test exports carry
-// an `e2e-` description so the sweep finds them.
-//---------------------------------------------------------
-export interface ConfigFile {
-	id: string;
-	description: string;
-	exported_at?: string;
-	file_size?: number;
-}
-
-export async function exportConfig(description: string): Promise<string> {
-	const resp = await oamFetch('/config/export', {method: 'POST', body: JSON.stringify({description})});
-	if (!resp.ok) throw new Error(`exportConfig: ${resp.status} ${await resp.text()}`);
-	const d = (await resp.json()) as {export_data: {id: string}};
-	return d.export_data.id;
-}
-
-export async function listConfigFiles(): Promise<ConfigFile[]> {
-	const resp = await oamFetch('/config/files');
-	if (!resp.ok) return [];
-	const d = (await resp.json()) as {files?: ConfigFile[]};
-	return d.files ?? [];
-}
-
-/** Downloads an export's JSON body as text. */
-export async function downloadConfigFile(id: string): Promise<string> {
-	const resp = await oamFetch(`/config/download/${id}`);
-	if (!resp.ok) throw new Error(`downloadConfigFile ${id}: ${resp.status}`);
-	return await resp.text();
-}
-
-export async function deleteConfigFile(id: string): Promise<boolean> {
-	const resp = await oamFetch(`/config/files/${id}`, {method: 'DELETE'});
-	return resp.ok;
-}
-
-/** Deletes every export whose description is e2e- marked. */
-export async function sweepConfigExports(): Promise<number> {
-	let removed = 0;
-	for (const f of await listConfigFiles()) {
-		if (isE2eMarked(f.description)) {
-			if (await deleteConfigFile(f.id)) removed++;
-		}
-	}
-	return removed;
-}
-
 /** Deletes every LB rule with an e2e- name or documentation-range VIP. */
 export async function sweepLbRules(): Promise<number> {
 	const resp = await gw('GET', '/config/loadbalancer/all');
