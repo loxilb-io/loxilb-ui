@@ -145,72 +145,45 @@ export interface ILiveMetricsResponse {
 }
 
 /**
- * Strongly typed Live Metrics snapshot with known metric names
- * Use this when you need type safety for specific metrics
+ * Strongly typed Live Metrics snapshot with known metric names.
+ *
+ * Keys are the **canonical** post-rename gateway metric names (`loxilb_*`); the
+ * connector's `normalize_metric_names` shim populates them from the legacy names
+ * on a pre-rename gateway, so this type is correct against both. Deleted
+ * fabricated metrics (the old `rps_*` rate gauges, `inactive_flow_count`,
+ * per-service request/error rollups) are intentionally gone — rate panels are
+ * computed client-side from the cumulative counters below. See
+ * `connector/instance/metrics.ts` and the gateway's METRICS-MIGRATION-UI.md.
  */
 export interface ITypedLiveMetricsResponse {
 	timestamp: number;
 	critical: {
-		// Connection tracking metrics
-		active_conntrack_count?: number;
-		active_flow_count_tcp?: number;
-		active_flow_count_udp?: number;
-		active_flow_count_sctp?: number;
-		inactive_flow_count?: number;
-		new_flow_count?: number;
+		// Connection tracking
+		loxilb_active_conntrack_entries?: number;
+		loxilb_active_flow_count_tcp?: number;
+		loxilb_active_flow_count_udp?: number;
+		loxilb_active_flow_count_sctp?: number;
+		loxilb_new_flows?: number;
+		loxilb_conntrack_max_entries?: number; // added on rename; absent pre-rename (→ util view hidden)
 
-		// Load balancer metrics
-		lb_rule_count?: number;
-		lb_rules_per_service?: number;
-		total_requests?: number;
-		total_requests_per_service?: number;
-		total_errors?: number;
+		// Load balancer
+		loxilb_lb_rules?: number;
 
-		// Endpoint health metrics
-		healthy_endpoints_count?: number;
-		unhealthy_endpoints_count?: number;
-		endpoint_health?: number;
+		// Endpoint health
+		loxilb_healthy_endpoints?: number;
+		loxilb_unhealthy_endpoints?: number;
 
-		// Firewall metrics
-		firewall_rules_count?: number;
-		total_fw_drops?: number;
-		total_fw_drops_per_rule?: number;
-
-		// System metrics
-		system_cpu_utilization?: number;
-		system_memory_utilization?: number;
-		system_disk_utilization?: number;
+		// System utilization (percent)
+		loxilb_system_cpu_utilization_percent?: number;
+		loxilb_system_memory_utilization_percent?: number;
+		loxilb_system_disk_utilization_percent?: number;
 	};
 	important?: {
-		// Traffic processing metrics
-		processed_bytes_total?: number;
-		processed_packets_total?: number;
-		processed_tcp_bytes?: number;
-		processed_udp_bytes?: number;
-		processed_sctp_bytes?: number;
-		processed_tcp_packets?: number;
-		processed_udp_packets?: number;
-		processed_sctp_packets?: number;
-
-		// RPS Calculator metrics
-		rps_1m_avg?: number;
-		rps_1m_peak?: number;
-		rps_bps?: number;
-		rps_pps?: number;
-		rps_eps?: number;
-		rps_requests?: number;
-		rps_time_window?: number;
-		rps_trend_score?: number;
-		rps_tcp_bps?: number;
-		rps_udp_bps?: number;
-		rps_sctp_bps?: number;
-		rps_tcp_pps?: number;
-		rps_udp_pps?: number;
-		rps_sctp_pps?: number;
-
-		// LB interaction RPS metrics
-		rps_lb_interaction_bps?: number;
-		rps_lb_interaction_pps?: number;
+		// Cumulative traffic/error counters — the rate cards derive per-second
+		// deltas from these (the old pre-computed rps_* gauges were deleted).
+		loxilb_processed_bytes_total?: number;
+		loxilb_processed_packets_total?: number;
+		loxilb_errors_total?: number;
 	};
 	total_metrics: number;
 }
