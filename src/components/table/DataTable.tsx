@@ -5,7 +5,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ModeIcon from '@mui/icons-material/Mode';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import {Box, IconButton, Stack, Tooltip, Typography} from '@mui/material';
+import {Alert, Box, Button, IconButton, Stack, Tooltip, Typography} from '@mui/material';
 import {GridColDef, GridRowSelectionModel} from '@mui/x-data-grid';
 import {
 	BooleanCell,
@@ -54,9 +54,13 @@ export default function DataTable(props: {
 	onEdit?: () => void;
 	onDelete?: () => void;
 	onRefresh?: () => void;
+	// When the data fetch fails, callers pass error=true so the table shows a
+	// "Couldn't load …" banner instead of a bare "No rows" that reads as an
+	// empty resource (F-UX-3). Retry reuses onRefresh.
+	error?: boolean;
 	defaultSort?: {field: string; sort: 'asc' | 'desc'};
 }) {
-	const {name, columns, rows, selected_rows, onChangeSelectedRows, hideMenuBar, hideCheckbox, hideIdColumn, disableSelect, onRefresh, defaultSort} = props;
+	const {name, columns, rows, selected_rows, onChangeSelectedRows, hideMenuBar, hideCheckbox, hideIdColumn, disableSelect, onRefresh, error, defaultSort} = props;
 
 	// RBAC Phase 3: viewers are read-only everywhere, so hide the mutation
 	// buttons for them (UX only — the server rejects viewer writes with 403).
@@ -220,6 +224,22 @@ export default function DataTable(props: {
 						</Tooltip>
 					)}
 				</Box>
+			)}
+
+			{error && (
+				<Alert
+					severity="error"
+					sx={{width: '100%'}}
+					action={
+						onRefresh ? (
+							<Button color="inherit" size="small" onClick={onRefresh}>
+								{t('Retry')}
+							</Button>
+						) : undefined
+					}
+				>
+					{t("Couldn't load {{name}}. The server returned an error.", {name})}
+				</Alert>
 			)}
 
 			<Box width="100%" height="400px">

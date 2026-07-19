@@ -21,7 +21,7 @@ import {IBFDAttribureInfo, IBfdInput} from 'types/bfd';
 export default function BFDPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, refetch} = useBFD(inst); // IBFDAttribute[]
+	const {data, isError, refetch} = useBFD(inst); // IBFDAttribute[]
 	const attr_info: IBFDAttribureInfo = {Attr: data ?? []};
 
    const [selected_rows, set_selected_rows] = useState<number[]>([]);
@@ -157,6 +157,7 @@ export default function BFDPage() {
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
 		   onRefresh={handleRefresh}
+		   error={isError}
 		   />
 
 		   {/* Error Popup */}

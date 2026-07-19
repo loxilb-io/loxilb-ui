@@ -2,7 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {clean_string, format_uptime, parse_log_lines} from 'common';
-import {ApiResult, createDetailedErrorMessage, DOWNLOAD_FILE_STREAM, DownloadProgress} from 'connector/fetcher/fetcher_base';
+import {ApiResult, assertOk, createDetailedErrorMessage, DOWNLOAD_FILE_STREAM, DownloadProgress} from 'connector/fetcher/fetcher_base';
 import {t} from 'i18next';
 import {ISystemInfo} from 'types/device';
 import {IFilesystemAttribute} from 'types/filesystem';
@@ -19,6 +19,7 @@ import type {GwGetResp, GwSchema} from 'api';
 //---------------------------------------------------------
 export async function query_get_filesystem_status(instance: IInstance): Promise<IFilesystemAttribute[]> {
 	const resp = await GET_INST<GwGetResp<'/status/filesystem'>>(instance, `/status/filesystem`);
+	assertOk(resp, 'Get File System Status');
 	return (resp.data?.filesystemAttr ?? []) as IFilesystemAttribute[];
 }
 
