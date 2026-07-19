@@ -261,8 +261,18 @@ export default function IPsecTunnelPage() {
 
 	return (
 		<Fragment>
-			{/* Overview strip: aggregate stats + global settings entry point */}
-			<SubTitlePannel title={t('IPsec Overview')} sub_title={''}>
+			{/* Overview strip: aggregate stats + global settings entry point.
+			    The Global Settings control is anchored to the header's right edge
+			    (F-UX-1) so it no longer wraps onto its own floating band. */}
+			<SubTitlePannel
+				title={t('IPsec Overview')}
+				sub_title={''}
+				action={
+					<Button variant="outlined" size="small" startIcon={<SettingsIcon />} onClick={handleGlobalSettings}>
+						{t('Global Settings')}
+					</Button>
+				}
+			>
 				<Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
 					<ValueBunch name={''}>
 						<SingleTextField label={t('Tunnels Up')} value={(stats?.tunnelsUp ?? 0).toString()} />
@@ -271,9 +281,6 @@ export default function IPsecTunnelPage() {
 						<SingleTextField label={t('Bytes In / Out')} value={`${formatBytes(stats?.totalBytesIn)} / ${formatBytes(stats?.totalBytesOut)}`} />
 						<SingleTextField label={t('Errors')} value={totalErrors.toString()} tooltip={t('encrypt + decrypt + auth + replay errors') as string} />
 					</ValueBunch>
-					<Button variant="outlined" size="small" startIcon={<SettingsIcon />} onClick={handleGlobalSettings}>
-						{t('Global Settings')}
-					</Button>
 				</Stack>
 			</SubTitlePannel>
 
