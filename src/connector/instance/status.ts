@@ -33,6 +33,13 @@ export async function query_get_device_status(instance: IInstance): Promise<ISys
 	if (resp.data) {
 		const system_info = resp.data as ISystemInfo;
 
+		// Boot time must be derived from the RAW uptime seconds (e.g.
+		// "249349.74 …") — once format_uptime() turns it into "2d 21h 14m",
+		// parseFloat sees "2d" as 2 seconds and the boot timestamp collapses to
+		// ~now (F-STATUS-1). So compute it here, before formatting.
+		const uptime_seconds = parseFloat((system_info.uptime ?? '').trim().split(' ')[0] ?? '');
+		const boot_time = Number.isFinite(uptime_seconds) ? new Date(Date.now() - uptime_seconds * 1000).toLocaleString() : '';
+
 		const system_info_cleaned: ISystemInfo = {
 			hostName: clean_string(system_info.hostName),
 			kernel: clean_string(system_info.kernel),
@@ -40,6 +47,7 @@ export async function query_get_device_status(instance: IInstance): Promise<ISys
 			architecture: clean_string(system_info.architecture),
 			bootID: clean_string(system_info.bootID),
 			uptime: format_uptime(system_info.uptime),
+			bootTime: boot_time,
 			OS: clean_string(system_info.OS),
 		};
 
@@ -52,6 +60,7 @@ export async function query_get_device_status(instance: IInstance): Promise<ISys
 			architecture: t('Unknown'),
 			bootID: t('Unknown'),
 			uptime: t('Unknown'),
+			bootTime: t('Unknown'),
 			OS: t('Unknown'),
 		};
 	}
@@ -64,7 +73,10 @@ export async function query_get_ha_state_all(instance: IInstance): Promise<IVipA
 
 // not for frontend use, only for backend to update HA state
 export async function request_update_ha_state(instance: IInstance, data: IVipAttribute): Promise<ApiResult> {
-	const resp = await POST_INST(instance, `/config/cistate`, data);
+	// Send only the schema fields — the form rides an `isValid` flag on its
+	// onChange payload for button-gating, which must never reach the gateway.
+	const payload: IVipAttribute = {instance: data.instance, state: data.state, vip: data.vip};
+	const resp = await POST_INST(instance, `/config/cistate`, payload);
 	if (resp.code !== 200 && resp.code !== 204) {
 		const errorMessage = createDetailedErrorMessage(resp, 'Update HA State');
 		return {status: 'error', error: errorMessage};

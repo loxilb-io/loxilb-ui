@@ -8,7 +8,6 @@ import ValueBunch from 'components/element/ValueBunch';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useDeviceStatus} from 'hooks/query/deviceHooks';
 import {t} from 'i18next';
-import {useMemo} from 'react';
 import {ISystemInfo} from 'types/device';
 
 //---------------------------------------------------------
@@ -26,20 +25,8 @@ export default function DevicePage() {
 		kernel: '',
 		architecture: '',
 		uptime: '0d 0h 0m',
+		bootTime: '',
 	};
-
-	const boot_up = useMemo(() => {
-		const uptime_str = device_info.uptime?.trim(); // "2938518.46 5852110.16"
-		if (!uptime_str) return '';
-
-		const parts = uptime_str.split(' ');
-		const uptime_seconds = parseFloat(parts[0]);
-
-		if (isNaN(uptime_seconds)) return '';
-
-		const bootTime = new Date(Date.now() - uptime_seconds * 1000).toLocaleString();
-		return bootTime;
-	}, [device_info.uptime]);
 
 	return (
 		<Stack spacing={3}>
@@ -56,7 +43,7 @@ export default function DevicePage() {
 			</ValueBunch>
 
 			<ValueBunch name={t('Device Status')}>
-				<SingleTextBox label={t('Boot Up')} value={boot_up} />
+				<SingleTextBox label={t('Boot Up')} value={device_info.bootTime} />
 				<SingleTextBox label={t('Uptime')} value={device_info.uptime} />
 			</ValueBunch>
 
