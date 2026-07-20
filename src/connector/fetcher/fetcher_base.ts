@@ -126,6 +126,13 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 		// UI instead of letting the feature page degrade to an empty / inline
 		// error state (F15). OAM control-plane failures still redirect as before.
 		const isGatewayPassthrough = typeof url === 'string' && /\/loxilbs\/\d+\/netlox\//.test(url);
+		// OAM snapshot endpoints surface failures INLINE (F-UX-3 banner /
+		// verbatim error popup / wizard error panel) — snapshots are
+		// user-deletable rows, so a stale action (another session removed the
+		// row → 404) or an OAM-side 5xx is an expected per-row outcome, not an
+		// app-level failure. Ejecting the user to the global /404 or /500 page
+		// mid-flow would discard their context (found by snapshot §9.2).
+		const isInlineErrorEndpoint = typeof url === 'string' && /\/oam\/(snapshots\/|instances\/[^/]+\/snapshot)/.test(url);
 		// if (resp.status === 401 || resp.status === 403) {
 		if (resp.status === 401) {
 			// Do not force-redirect when the request itself is for the login endpoint,
@@ -142,13 +149,13 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 			return resp;
 		} else if (resp.status === 402) move_402();
 		else if (resp.status === 404) {
-			if (!isGatewayPassthrough) move_404();
+			if (!isGatewayPassthrough && !isInlineErrorEndpoint) move_404();
 		}
 		else if (resp.status === 503) {
-			if (!isGatewayPassthrough) move_503();
+			if (!isGatewayPassthrough && !isInlineErrorEndpoint) move_503();
 		}
 		else if (resp.status >= 500 && resp.status < 600 && resp.status !== 502 && resp.status !== 503) {
-			if (!isGatewayPassthrough) {
+			if (!isGatewayPassthrough && !isInlineErrorEndpoint) {
 				const resp_json = await resp.json();
 				const code = resp.status;
 				const message = resp_json.message || resp.statusText;
