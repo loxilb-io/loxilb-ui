@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import { getStableHash, isValidIPAddressCidr } from 'common';
+import { getStableHash, isValidIPAddress, isValidIPAddressCidr } from 'common';
 import RouteInputForm from 'components/input/RouteInputForm';
 import ErrorPopUp from 'components/modal/ErrorPopUp';
 import RouteTable from 'components/table/networks/RouteTable';
@@ -111,8 +111,10 @@ export default function RoutePage() {
 				key={Date.now()}
 				onChange={data => {
 					instanceRef.current = data;
+					// F-CICD-4 sibling: the gateway (nexthop) was gated on presence
+					// only — a malformed nexthop must be rejected, not just a blank one.
 					enableYes(isValidIPAddressCidr(data.destinationIPNet ?? '')
-						&& !!data.gateway && data.gateway !== '');
+						&& isValidIPAddress(data.gateway ?? ''));
 				}}
 			/>
 		);
