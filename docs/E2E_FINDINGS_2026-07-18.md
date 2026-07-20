@@ -1,7 +1,7 @@
 # loxilb-ui E2E Findings & Fix Plan — 2026-07-18
 
 Adversarial end-to-end run via playwright-mcp against the live stack (local dev
-UI → testbed-client OAM `203.0.113.99:8080` → testbed-gw inference gateway
+UI → testbed-client OAM `<oam-host>:8080` → testbed-gw inference gateway
 `10.0.0.12`). This is a **defect + root-cause** report for developers, not a
 pass/fail log — passing RBAC steps are recorded only as evidence (§ *Verified
 behavior*). Every finding lists a concrete repro, the root cause at

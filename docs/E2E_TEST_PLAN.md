@@ -6,7 +6,7 @@ Agent-driven browser E2E suite executed through the
 skill (`.claude/skills/e2e-ui-test/SKILL.md`), which follows this plan.
 
 The suite validates the real stack end to end: local UI dev server →
-testbed-client OAM (`203.0.113.99:8080`) → testbed-gw inference gateway
+testbed-client OAM (`<oam-host>:8080`) → testbed-gw inference gateway
 (`10.0.0.12`). It exercises everything the RBAC/security work shipped:
 login/logout with server-side token revocation (H-2), the 3-role model
 (Phase 2 server enforcement + Phase 3 UI gating), and every menu page —
