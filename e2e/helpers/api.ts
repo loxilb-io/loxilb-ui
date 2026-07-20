@@ -470,3 +470,62 @@ export async function sweepLbRules(): Promise<number> {
 	}
 	return removed;
 }
+
+//---------------------------------------------------------
+// OAM instance snapshots (docs/SNAPSHOT_UI_DESIGN.md §9.3).
+//---------------------------------------------------------
+export interface SnapshotMeta {
+	id: string;
+	name: string;
+	description?: string;
+	trigger_type?: string;
+	pinned?: boolean;
+	checksum?: string;
+	checksum_ok?: boolean;
+	gateway_version?: string;
+	last_restore_result?: string;
+}
+
+export async function listSnapshots(): Promise<SnapshotMeta[]> {
+	const inst = await activeInstance();
+	const resp = await oamFetch(`/instances/${inst.id}/snapshots?limit=100`);
+	if (!resp.ok) return [];
+	const body = await resp.json();
+	return (body.data ?? []) as SnapshotMeta[];
+}
+
+export async function deleteSnapshotById(sid: string, force = false): Promise<boolean> {
+	const resp = await oamFetch(`/snapshots/${sid}${force ? '?force=true' : ''}`, {method: 'DELETE'});
+	return resp.ok;
+}
+
+/** Raw download (with headers) — the spec checks X-Snapshot-Checksum. */
+export async function downloadSnapshot(sid: string): Promise<Response> {
+	return oamFetch(`/snapshots/${sid}/download`);
+}
+
+export async function disableSnapshotSchedule(): Promise<void> {
+	const inst = await activeInstance();
+	await oamFetch(`/instances/${inst.id}/snapshot-schedule`, {
+		method: 'PUT',
+		body: JSON.stringify({enabled: false, interval_hours: 24, retain_count: 10}),
+	});
+}
+
+/** Deletes every e2e-marked snapshot (force covers pinned leftovers), plus
+ * the side-products spec runs create with non-e2e names: `pre_restore`
+ * safety rows referencing an e2e- snapshot, and the UI Pre-Upgrade button's
+ * rows (identified by its fixed description — testbed-only heuristic). */
+export async function sweepSnapshots(): Promise<number> {
+	let removed = 0;
+	for (const s of await listSnapshots()) {
+		const specMade =
+			isE2eMarked(s.name) ||
+			(s.trigger_type === 'pre_restore' && isE2eMarked(s.description?.match(/restoring "([^"]+)"/)?.[1])) ||
+			(s.trigger_type === 'pre_upgrade' && s.description === 'Automatic pre-upgrade safety snapshot');
+		if (specMade) {
+			if (await deleteSnapshotById(s.id, true)) removed++;
+		}
+	}
+	return removed;
+}
