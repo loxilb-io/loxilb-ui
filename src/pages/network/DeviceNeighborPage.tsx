@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {isValidIPAddress, getStableHash} from 'common';
+import {isValidIPAddress, isValidMacAddress, getStableHash} from 'common';
 import DeviceNeighborInputForm from 'components/input/DeviceNeighborInputForm';
 import ErrorPopUp from 'components/modal/ErrorPopUp';
 import DeviceNeighborTable from 'components/table/networks/DeviceNeighborTable';
@@ -111,7 +111,9 @@ export default function DeviceNeighborPage() {
 				key={Date.now()}
 				onChange={data => {
 					instanceRef.current = data;
-					enableYes(isValidIPAddress(data.ipAddress));
+					// F-CICD-4 sibling: a static neighbor is an IP→MAC binding, so the
+					// MAC must be well-formed too — the gate ignored it entirely.
+					enableYes(isValidIPAddress(data.ipAddress) && isValidMacAddress(data.macAddress ?? ''));
 				}}
 			/>
 		);

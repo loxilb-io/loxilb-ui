@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {isValidIPAddress} from 'common';
 import BGPNeighborInputForm from 'components/input/BGPNeighborInputForm';
 import BGPNeighborTable from 'components/table/networks/BGPNeighborTable';
 import {request_create_bgp_neighbor, request_delete_bgp_neighbor} from 'connector/instance/bgp';
@@ -51,7 +52,9 @@ export default function BGPNeighborPage() {
 				key={Date.now()}
 				onChange={data => {
 					instanceRef.current = data;
-					enableYes(!!data.ipAddress && data.ipAddress !== '');
+					// F-CICD-4 sibling: gate on address VALIDITY, not just presence —
+					// a malformed peer IP ("999.1.1.1") must not reach the gateway.
+					enableYes(isValidIPAddress(data.ipAddress ?? ''));
 				}}
 			/>
 		);

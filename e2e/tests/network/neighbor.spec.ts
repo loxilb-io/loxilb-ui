@@ -95,8 +95,7 @@ test.describe('Device Neighbor page CRUD', () => {
 		await openAddDialog(page);
 		const addBtn = dialogButton(page, 'Add');
 
-		// The page gates Add on isValidIPAddress(ipAddress) only, but drive the
-		// full form: empty IP must block.
+		// Empty IP must block.
 		expect(await isEventuallyDisabled(addBtn), 'empty IP must block').toBe(true);
 
 		await field(page, 'IP Address').fill('203.0.113.41');
@@ -107,6 +106,16 @@ test.describe('Device Neighbor page CRUD', () => {
 		// Malformed IP → blocked.
 		await field(page, 'IP Address').fill('999.1.1.1');
 		expect(await isEventuallyDisabled(addBtn), 'bad IP must block').toBe(true);
+		await field(page, 'IP Address').fill('203.0.113.41');
+		await expect(addBtn).toBeEnabled();
+
+		// Malformed MAC → blocked (F-CICD-4 sibling: a static neighbor is an
+		// IP→MAC binding, so the MAC must be gated too — the page previously
+		// ignored it entirely, matching this test's name but not its old body).
+		await field(page, 'MAC Address').fill('not-a-mac');
+		expect(await isEventuallyDisabled(addBtn), 'bad MAC must block').toBe(true);
+		await field(page, 'MAC Address').fill('02:00:00:zz:0e:2e'); // non-hex octet
+		expect(await isEventuallyDisabled(addBtn), 'non-hex MAC must block').toBe(true);
 
 		await dialogButton(page, 'Cancel').click();
 	});
