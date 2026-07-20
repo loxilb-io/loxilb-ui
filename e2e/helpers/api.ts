@@ -124,7 +124,10 @@ export async function sweepFirewallRules(): Promise<number> {
 	let removed = 0;
 	for (const rule of data.fwAttr ?? []) {
 		const ra = rule.ruleArguments ?? {};
-		if (isE2eMarked(ra.sourceIP) || isE2eMarked(ra.destinationIP)) {
+		// isE2eMarked covers e2e- names + v4 documentation ranges; isDocAddr
+		// additionally covers the v6 documentation range (2001:db8::/32) so the
+		// ipmasquerade6 masquerade rule can never leak past the safety net.
+		if (isE2eMarked(ra.sourceIP) || isE2eMarked(ra.destinationIP) || isDocAddr(ra.sourceIP) || isDocAddr(ra.destinationIP)) {
 			const del = await gw('DELETE', `/config/firewall?${firewallDeleteQuery(ra)}`);
 			if (del.ok) removed++;
 		}
