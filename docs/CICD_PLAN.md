@@ -9,8 +9,11 @@ Decisions locked with the maintainer (2026-07-19):
   (no testbed creds leave GitHub-hosted infra; no firewall opening).
 - **Image publishing** → build & push to **`ghcr.io/loxilb-io/loxilb-ui`** on
   release tags (`v*`); build-only (no push) on PRs.
-- **This document is plan-only.** No workflow files are created until it's
-  reviewed and approved.
+- **This document is plan-only** for the CI/security/release workflows (§2.1,
+  §2.3–2.5) — those are created only once reviewed and approved.
+  **Exception (2026-07-20):** the E2E workflow `e2e.yml` (§2.2) was approved and
+  landed to complete the cicd-scenario test plan's P10; it stays inert until the
+  self-hosted runner + `testbed` secrets are provisioned (§5, §6).
 
 ---
 
@@ -179,7 +182,7 @@ mature codebase usually surfaces hundreds of pre-existing warnings, so stage it:
 | **P1** | Repo hygiene: `.gitignore`, `.nvmrc`, `engines`, `docker-build` on PR, bump action versions, split `ci.yml` into parallel jobs | low | proposed |
 | **P2** | Security: `codeql.yml`, `dependency-review.yml`, `dependabot.yml`, enable secret scanning + push protection | low | proposed |
 | **P3** | ESLint config + non-blocking `lint` job → later blocking | medium (noise) | proposed |
-| **P4** | Self-hosted runner + `e2e.yml` (manual + nightly) | medium (ops) | proposed |
+| **P4** | Self-hosted runner + `e2e.yml` (manual + nightly) | medium (ops) | **workflow landed** — `.github/workflows/e2e.yml` created (manual dispatch + nightly schedule, self-hosted `loxilb-testbed` runner, pre-flight ping, artifact upload). Remaining = the one-time ops task: register the runner + populate the `testbed` environment secrets (§6). |
 | **P5** | `release.yml` → GHCR image + GitHub Release on `v*` tags | medium | proposed |
 | **P6** | Governance: CODEOWNERS, issue/PR templates, branch protection, README status badges | low | proposed |
 
