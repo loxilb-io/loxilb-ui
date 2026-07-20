@@ -133,3 +133,10 @@ make-package.ps1
 /.auth/
 /test-results/
 /playwright-report/
+
+# Browser-automation session artifacts (playwright-mcp page snapshots,
+# downloads, configs) — never part of the source tree
+.playwright-mcp/
+
+# Ad-hoc verification screenshots at the repo root
+/*.png

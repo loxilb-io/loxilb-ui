@@ -1,7 +1,0 @@
-- iframe [ref=f20e1]:
-  - generic [ref=f21e2]:
-    - text: "Compiled with problems:"
-    - button "X" [ref=f21e3] [cursor=pointer]
-    - generic [ref=f21e4]:
-      - text: ERROR
-      - generic [ref=f21e5]: "src/pages/status/ProcessPage.tsx Line 135:3: Definition for rule 'react-hooks/exhaustive-deps' was not found react-hooks/exhaustive-deps Search for the keywords to learn more about each error."
