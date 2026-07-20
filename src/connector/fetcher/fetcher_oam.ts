@@ -2,7 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {filterUnusedParams} from 'common';
-import {DELETE, GET, POST, PUT, SimpleResponse, UPLOAD_FILE, DOWNLOAD_FILE} from './fetcher_base';
+import {DELETE, GET, PATCH, POST, PUT, SimpleResponse, UPLOAD_FILE, DOWNLOAD_FILE} from './fetcher_base';
 
 //---------------------------------------------------------
 // Custom Fetchers
@@ -22,6 +22,11 @@ export async function POST_OAM<T = any>(url: string, data?: any): Promise<Simple
 export async function PUT_OAM<T = any>(url: string, data?: any): Promise<SimpleResponse<T>> {
 	const full_url = `${process.env.REACT_APP_API_URL}${url}`;
 	return await PUT<T>(full_url, data);
+}
+
+export async function PATCH_OAM<T = any>(url: string, data?: any): Promise<SimpleResponse<T>> {
+	const full_url = `${process.env.REACT_APP_API_URL}${url}`;
+	return await PATCH<T>(full_url, data);
 }
 
 export async function DELETE_OAM<T = any>(url: string): Promise<SimpleResponse<T>> {
