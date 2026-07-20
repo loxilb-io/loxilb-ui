@@ -7,7 +7,44 @@
 | ID | Status | Summary |
 |----|--------|---------|
 | U-0 | ✅ done (`2e2aa31`) | Legacy Config Management fully removed per §2 (page, forms, connector, types, route+guard, header icon, contract-test rows, `config-mgmt.spec.ts`, e2e config-export sweep helpers). rbac spec now asserts the surface is gone for admin (no icon, 404). Verified: tsc, vitest 80/80, api:check-mapping, live browser pass vs testbed (0 console errors). Legacy strings were never in the locale JSONs — nothing to remove. |
-| U-1..U-7 | ⬜ blocked | Waiting on OAM O-3 live on the testbed. |
+| U-1 | ✅ done | OAM spec re-vendored (snapshot endpoints) + `src/api/gen/oam.ts` regenerated. Gateway spec deliberately NOT re-vendored (upstream branch moved 16+ commits and removed `/config/synflood/*` — the live testbed gateway 404s it; UI compat sweep for that bump is a separate task, note in `api-spec/SOURCES.json`). |
+| U-2 | ✅ done | `src/connector/oam/snapshotApi.ts` (+ `PATCH_OAM` fetcher, `src/types/snapshot.ts`, `src/hooks/query/snapshotHooks.ts`). Key contract encoded + unit-tested: OAM answers 200 with `gateway_status`/`gateway_response` even when the gateway restore failed — the wizard renders the outcome body, never the OAM code. 8 connector tests (`snapshotApi.test.ts`). Download uses `DOWNLOAD_FILE_STREAM` (throws with the server body — honest failures). |
+| U-3 | ✅ done | Route `/instance/*/maintenance/snapshots`, `Maintenance` MENU_LIST group, `SnapshotPage` + `SnapshotTable` (new shared `chip` DataTable cell type). Live-verified. |
+| U-4 | ✅ done | Take / Pre-Upgrade (auto-pin + rename to the REAL `gateway_version` from the take response via the pin PATCH) / Upload / Pin / typed-confirm Delete (pinned rows blocked until unpin) / streaming Download. All live-verified on the testbed incl. verbatim 502 with the gateway stopped. |
+| U-5 | ✅ done | `RestoreWizard` + pure `wizardLogic.ts` (unit-tested: dry-run gating, 3 result branches, unknown-result ⇒ never success). Full commit loop live-verified: LB captured → deleted → dry-run plan (`loadbalancer to_apply 1`) → typed confirm → commit ok → `pre_restore` row → LB back on the gateway. Tampered doc blocked at dry-run with the gateway checksum error verbatim. |
+| U-6 | ✅ done | Schedule dialog (bounds 1–168 h / 1–100 validated) + strip; live-verified incl. scheduler fire + keep-N retention trim observed. |
+| U-7 | ✅ done | 86 keys added to en/ko/ja (append-only diff); chips carry text labels, wizard is `role="dialog"` + `aria-labelledby`, typed-confirm inputs labeled. |
+| §9.3 | ✅ done | `e2e/tests/snapshot/snapshots.spec.ts` — 10 admin cases + viewer case, **13/13 green ×2 consecutive** vs the live testbed. Includes the two post-review adversarial cases (9: stale-row 404 stays inline; 10: double-click = one commit). Snapshot helpers + prefix-aware sweep in `e2e/helpers/api.ts`. |
+| §9.4 | ✅ done ×2 | Full upgrade runbook UI-only, twice: Pre-Upgrade (pin) → `docker rm -f` + host `snapshot.json` wiped (upgrade-loses-local-state scenario) → fresh empty gateway → UI dry-run → typed-confirm commit → **ok** → LB restored with endpoint health `active`. Testbed left clean (0 lb / 0 snapshots / schedule off). |
+
+**Adversarial-round findings (all FIXED + regression-covered)**:
+1. *Wizard stuck forever on network death* — `fetch` rejections (OAM host truly
+   unreachable) propagated uncaught, freezing the non-dismissable "committing"
+   screen. Fix: every `snapshotApi` mutation catches and returns an honest
+   error result (unit + spec case 3).
+2. *Stale-row action ejected the user to the global /404-/500 pages* — the
+   fetcher's app-wide redirect fired for OAM snapshot endpoints; snapshots are
+   user-deletable rows, so per-row 404/5xx must surface inline. Fix:
+   `isInlineErrorEndpoint` carve-out in `fetcher_base.ts` (spec case 9).
+3. *"Restore Now" double-click double-committed* (2 restores + duplicate
+   pre_restore snapshots) — both clicks ran before React re-rendered the step.
+   Fix: ref guard in `RestoreWizard.handleCommit` (spec case 10).
+4. Row-mapping (chip labels, Corrupt only on explicit `checksum_ok=false`,
+   verbatim unknown trigger types) now unit-tested (`SnapshotTable.test.ts`).
+
+**§9.3 case-4 correction (learned live)**: OAM's upload checks only the
+envelope and *cannot* recompute the gateway's canonical-JSON checksum
+(`snapshot_service.go`), so a content-tampered file is ACCEPTED at upload;
+the protection fires at restore dry-run (gateway VALIDATE, verbatim checksum
+mismatch, Commit disabled). The spec asserts that actual contract.
+
+**⚠ Testbed incident 2026-07-20**: `docker stop loxilb` during the §9.2
+gateway-down test took the whole kv-loxilb VM off the network (XDP/eBPF
+datapath left attached with no daemon — 100% packet loss incl. SSH/ICMP on
+both NICs). Requires a cloud-console reboot; afterwards the gateway
+boot-restores from its host-volume `snapshot.json`. Do NOT plain-`docker
+stop` the gateway on this testbed — use the OAM-side abort or an
+unreachable-host instance fixture to simulate outages.
 
 **Scope**: loxilb-ui (this repo). Phase 3 of the snapshot feature.
 **Master docs** (read first):
