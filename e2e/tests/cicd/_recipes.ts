@@ -45,6 +45,19 @@ export interface RecipeEndpoint {
 }
 
 /**
+ * Frontend mTLS (cicd `mtls_frontend`) — client-certificate verification on a
+ * fullproxy TLS rule. Only reachable in the UI when mode=fullproxy + a TLS
+ * security is set (the controls are gated). Drives the AdvancedSettingsForm
+ * mTLS sub-form; asserted as the nested `serviceArguments.mtls_frontend`.
+ */
+export interface RecipeMtls {
+	clientCertMode: 'disabled' | 'optional' | 'required';
+	clientCaPath?: string;
+	requireClientCn?: boolean;
+	clientCnPattern?: string;
+}
+
+/**
  * LB-level health-probe config (cicd `loxicmd create endpoint --probetype=…`).
  * The probe fields are serviceArguments on the LB rule, driven from inside the
  * Endpoints accordion (EndpointListForm). Used by `httpsep` (https probe).
@@ -105,6 +118,8 @@ export interface LbRecipe {
 	backendProtocol?: BackendProtocol;
 	/** cicd `--probetype=…` endpoint health check (drives LB-level probe args). */
 	probe?: RecipeProbe;
+	/** cicd `mtls_frontend`: frontend client-cert verification (fullproxy + TLS). */
+	mtls?: RecipeMtls;
 	/**
 	 * serviceArgument keys the UI sends (asserted in the POST body) but the
 	 * gateway does NOT echo on read-back, so they're skipped in the read-back
@@ -138,6 +153,13 @@ export function expectedServiceArguments(r: LbRecipe): Record<string, unknown> {
 	if (r.pathPrefix) sa.path_prefix = r.pathPrefix;
 	if (r.pathMatchMode) sa.path_match_mode = r.pathMatchMode;
 	if (r.backendProtocol) sa.backend_protocol = r.backendProtocol;
+	if (r.mtls) {
+		const mf: Record<string, unknown> = {client_cert_mode: r.mtls.clientCertMode};
+		if (r.mtls.clientCaPath) mf.client_ca_path = r.mtls.clientCaPath;
+		if (r.mtls.requireClientCn !== undefined) mf.require_client_cn = r.mtls.requireClientCn;
+		if (r.mtls.clientCnPattern) mf.client_cn_pattern = r.mtls.clientCnPattern;
+		sa.mtls_frontend = mf;
+	}
 	if (r.probe) {
 		sa.probetype = PROBE_SEND[r.probe.type];
 		if (r.probe.port) sa.probeport = Number(r.probe.port);
@@ -184,7 +206,8 @@ export async function driveLbCreate(page: Page, r: LbRecipe): Promise<any> {
 		r.host ||
 		r.pathPrefix ||
 		r.pathMatchMode ||
-		r.backendProtocol;
+		r.backendProtocol ||
+		r.mtls;
 	if (usesAdvanced) {
 		await expandSection(page, /^Advanced Settings/);
 		// Mode must be set before Security — the Security control is disabled
@@ -204,6 +227,14 @@ export async function driveLbCreate(page: Page, r: LbRecipe): Promise<any> {
 		if (r.pathMatchMode) await selectOption(page, 'Path Match Mode', r.pathMatchMode);
 		if (r.pathPrefix) await field(page, 'Path Prefix').fill(r.pathPrefix);
 		if (r.backendProtocol) await selectOption(page, 'Backend Protocol', r.backendProtocol);
+		// Frontend mTLS — gated on fullproxy + TLS security (both set above).
+		// Require Client CN must be enabled before the CN Pattern field unlocks.
+		if (r.mtls) {
+			await selectOption(page, 'Client Cert Mode', r.mtls.clientCertMode);
+			if (r.mtls.clientCaPath) await field(page, 'Client CA Path').fill(r.mtls.clientCaPath);
+			if (r.mtls.requireClientCn) await field(page, 'Require Client CN').check();
+			if (r.mtls.clientCnPattern) await field(page, 'Client CN Pattern').fill(r.mtls.clientCnPattern);
+		}
 	}
 
 	// Allowed Sources (cicd --sources=): one prefix row per CIDR.

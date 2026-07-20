@@ -1,6 +1,20 @@
 //---------------------------------------------------------
 // Interfaces
 //---------------------------------------------------------
+// Frontend mTLS (client-certificate verification). Mirrors the gateway's
+// serviceArguments.mtls_frontend schema. Only valid with mode=fullproxy and a
+// TLS security (https/tls/e2ehttps).
+export interface IMtlsFrontend {
+	// disabled: no verification (default) · optional: accept with/without cert ·
+	// required: reject without a valid client cert.
+	client_cert_mode?: 'disabled' | 'optional' | 'required';
+	client_ca_path?: string;			// path to client CA bundle (PEM) on the gateway
+	client_ca_cert_data?: string;		// inline base64 PEM (alternative to path)
+	require_client_cn?: boolean;		// additionally require a CN pattern match
+	client_cn_pattern?: string;			// CN pattern, wildcard supported (require_client_cn)
+	client_crl_path?: string;			// optional static CRL (PEM) for leaf revocation
+}
+
 export interface IServiceArguments {
 	name: string;
 
@@ -32,6 +46,7 @@ export interface IServiceArguments {
 	path_match_mode?: 'disabled' | 'prefix' | 'exact';	// Path matching mode
 	llm_type?: string;				// LLM catalog profile name for GPU-aware load balancing
 	backend_protocol?: 'http1' | 'http2' | 'both';		// Backend protocol capability for ALPN negotiation
+	mtls_frontend?: IMtlsFrontend;	// Frontend mTLS (client-cert verification); fullproxy + TLS only
 
 	// NOTE: Octavia lifecycle/limit fields (id, adminStateUp, projectId,
 	// connectionLimit, annotations, timeoutMember*, timeoutTcpInspect) are
