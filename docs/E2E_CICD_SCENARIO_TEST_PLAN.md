@@ -310,8 +310,8 @@ Status legend: **BUILD** = confirmed product change to make (user decision
 | CG-1 | **mTLS client-cert** control on L7 proxy | `httpsproxy-mtls`, `e2ehttpsproxy-mtls` | loxilb-ui `AdvancedSettingsForm` (+ type + connector) | **DONE (P4)** — added the frontend-mTLS sub-form (`mtls_frontend`: client_cert_mode / ca_path / require_cn / cn_pattern), gated on fullproxy+TLS. **UI-only**: the gateway already supports `mtls_frontend` end-to-end (swagger + model + `dpebpf_mtls.go`); no gateway change. | ✅ DONE |
 | CG-2 | ~~gRPC backend protocol option~~ | `e2ehttpsproxy-grpc` | — | **NOT A GAP (P4)** — the cicd `e2ehttpsproxy-grpc` recipe expresses gRPC as `backend_protocol: http2` (gRPC rides HTTP/2); there is no distinct `grpc` value in the gateway or the cicd config. The existing `http2` backend value already covers it. No build. | ✅ RESOLVED |
 | CG-3 | **LB `--mark`** (fwmark on rule) | `tcplbmark` | LB form / `IServiceConfiguration` | Verify `block`/mark field maps; add if missing | VERIFY |
-| CG-4 | **Egress LB / cistate** surface | `egresslb` | LB egress + `/config/cistate` | **Add egress UI controls** (egress rule + cistate) | **BUILD** |
-| CG-5 | **Tunnel endpoint** (tunlb) control | `tcptunlb`, `sctptunlb` | LB endpoint config | **Add tunnel-endpoint UI control** (remote-VIP / tunnel type) | **BUILD** |
+| CG-4 | **Egress LB / cistate** surface | `egresslb` | LB egress + `/config/cistate` | **PARTIAL (P6)** — the LB `egress` flag was re-enabled in P2 and VERIFIED to round-trip via REST (not write-only). The egress **firewall** SNAT rule (`--egress`) is a genuine **gateway-REST gap**: `api/models/firewall_option_entry.go` has no `egress` field (only the loxicmd path does), so it cannot be POSTed. Not built in the UI — a control that POSTs an `egress` the gateway silently drops is worse than none. **Hand-off to the gateway team** to add `egress` to the firewall REST model. | ⚠️ GATEWAY HAND-OFF |
+| CG-5 | ~~Tunnel endpoint (tunlb) control~~ | `tcptunlb`, `sctptunlb` | — | **NOT A GAP (P6)** — the cicd `tcptunlb`/`sctptunlb` recipes create a **plain dnat LB rule** (`loxicmd create lb <vip> --tcp/sctp=… --endpoints=…`); the tunnel is network TOPOLOGY (backends reached over an out-of-band tunnel iface), not an LB config flag. No tunnel option exists in the loxicmd line, the gateway LB model, or the cicd config. So (like CG-2) the gap dissolves against the source of truth — the LB rule is already UI-expressible. No build. | ✅ RESOLVED |
 | CG-6 | **HA cistate** edit round-trip on single node | `ha1`, `cluster*` | `status/ha` page / OAM | Confirm PUT + read-back works standalone | VERIFY |
 | CG-7 | **L3DSR** distinct flag | `tcplbl3dsr` | LB mode/args | Confirm dsr vs l3dsr distinction in gateway metadata | VERIFY |
 | CG-8 | **`llm_type`** field surfaced | `vllm-*` proxy modes | LB AI subform | Verify present in AI-gateway sub-form | VERIFY |
@@ -652,3 +652,57 @@ deliverable. Suite green 2× (12 each incl. setup) on the Naver testbed; lb-l4
 - Full l7-proxy suite (13 specs + setup = 16) green 2×; lb-l4 (32) + all 103
   unit tests green — no regression from the type/form/connector change.
   Frontend mTLS is the L7-proxy group's last feature; the group is complete.
+
+### F-CICD-4 — Firewall form accepts malformed IPs (loxilb-ui, FIXED) + systematic audit
+Surfaced by the P5 `ipmasquerade` scenario — the Firewall form is the only IP
+surface with no prior e2e coverage.
+- **Symptom:** the Firewall Add dialog let a garbage Source IP / Destination IP /
+  SNAT To IP (e.g. `999.1.1.1`, `not-an-ip`, `203.0.113.0/33`) enable submit and
+  POST to the gateway.
+- **RCA:** `useFormWithParams`' shared `validateForm` only checks required /
+  integer / enum — it never validates `ipaddress`/`ipaddress_cidr`/`port`/
+  `macaddress` string formats. `IPAddressBox` shows a red helper but still
+  forwards the invalid value on `onChange`. So every form must gate submit on
+  IP validity itself; `FirewallInputForm` gated only on port ranges — the lone
+  omission among IP-bearing forms.
+- **Fix:** `FirewallInputForm.formValid` now also requires src/dst/toIP valid-or-
+  empty (mirrors IPFilter/IPsec/LB/Endpoint/Vip). Guarded by
+  `cicd/nat/fw-validation.spec.ts`.
+- **Systematic audit (same root cause, all FIXED):** auditing every IP/MAC-bearing
+  form found three more gating on PRESENCE not validity —
+  - `BGPNeighborPage`: peer IP gated on `!!ipAddress` → accepted `999.1.1.1`
+    (BGP create is un-exercisable on this BGP-disabled testbed; fix mirrors the
+    four sibling pages that already gate correctly).
+  - `RoutePage`: nexthop `gateway` gated on presence only → accepted a malformed
+    nexthop. Now `isValidIPAddress`.
+  - `DeviceNeighborPage`: the MAC of a static IP→MAC binding was never validated.
+    Now `isValidMacAddress`. `neighbor.spec.ts` V-mac (which was named for a bad-
+    MAC check but never drove one) now actually exercises it.
+  Route + Neighbor fixes validated live (network suite green); BFD/IP pages were
+  already correctly gated.
+
+### P5 status — NAT group complete
+6 specs: `nat64tcp`/`nat66tcp`/`nat66udp`/`nat66sctp` (v6-VIP LB, v4/v6 eps — all
+round-trip incl. the full endpoint tuple) + `ipmasquerade`/`ipmasquerade6`
+(source-NAT firewall rule via the new `_fw.ts` drive helper; `doSnat`+`toIP`
+round-trip verified). `sweepFirewallRules` hardened to also sweep v6
+documentation-range sources. Green 2×. Real bug found+fixed: F-CICD-4 (above).
+
+### P7 status — Security + IPsec groups complete
+`secfilter` (LB VIP + XDP ipfilter blacklist + the equal-priority
+whitelist/blacklist precedence pair) asserts ipfilter `priority` round-trips
+EXACTLY — the precedence invariant depends on it; the gateway stores it
+faithfully (no bug). `ipsec{1,2,3,-e2e}` create a UI PSK tunnel + the scenario's
+LB rule (dnat/dnat/onearm/fullnat) via the new `_ipsec.ts` helper; both
+round-trip, tunnel lands DOWN (config-created only — the cicd raw-`xfrm` form is
+reproduced with the UI's strongswan model, a CG-2-style dissolution). Green 2×.
+
+### P6 status — Tunnel + egress complete (both feature-gaps dissolved/handed-off)
+- **CG-5 tunnel-endpoint — NOT A GAP (dissolved).** `tcptunlb`/`sctptunlb` are
+  plain dnat LB rules; the tunnel is topology, not LB config. Reproduced as plain
+  LB specs (`tunnel-egress/{tcptunlb,sctptunlb}`).
+- **CG-4 egress — PARTIAL.** The LB `egress` flag (re-enabled P2) is VERIFIED to
+  round-trip (`egresslb` spec — not write-only like `privateIP`). The egress
+  **firewall** `--egress` is a gateway-REST gap (`firewall_option_entry.go` has
+  no `egress` field) → documented hand-off, not shipped as a silently-dropping
+  control. Green 2×.
