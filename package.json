@@ -66,7 +66,8 @@
 		"build:dev": "dotenv -e .env.development react-scripts build",
 		"build:prod": "dotenv -e .env.production react-scripts build",
 		"e2e": "playwright test",
-		"e2e:headed": "playwright test --headed"
+		"e2e:headed": "playwright test --headed",
+		"e2e:cicd": "playwright test tests/cicd"
 	},
 	"browserslist": {
 		"production": [

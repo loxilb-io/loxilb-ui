@@ -85,8 +85,30 @@ HTTPS=false BROWSER=none WDS_SOCKET_PORT=0 npx dotenv -e .env.development react-
 ```
 
 Test groups (folders under `e2e/tests/`): `traffic`, `security`, `network`,
-`ipsec`, `ai`, `status`, `oam`. `zz-cleanup.spec.ts` sorts **last** and is a
-leak detector that fails if a spec left any `e2e-`/doc entity behind.
+`ipsec`, `ai`, `status`, `oam`, and **`cicd`** — the scenario suite that
+replays each `loxilb-inference-gateway/cicd/*` recipe as a UI config +
+REST read-back (see [`E2E_CICD_SCENARIO_TEST_PLAN.md`](./E2E_CICD_SCENARIO_TEST_PLAN.md)).
+`zz-cleanup.spec.ts` sorts **last** and is a leak detector that fails if a spec
+left any `e2e-`/doc entity behind.
+
+Run just the cicd scenario suite:
+
+```bash
+npm run e2e:cicd                 # all tests/cicd/** groups, in order
+npx playwright test tests/cicd/ai-gateway    # one cicd group
+```
+
+## 3a. Nightly / on-demand CI run
+
+`.github/workflows/e2e.yml` runs the full suite on a **self-hosted runner
+inside the testbed network** (label `loxilb-testbed`) — manual dispatch (with
+an optional `grep` subset input) plus a nightly schedule. It writes
+`.env.e2e.local` / `.env.development` from the `testbed` environment secrets
+(`E2E_OAM_URL`, `E2E_ADMIN_USER`, `E2E_ADMIN_PASSWORD`, `E2E_FIXTURE_PASSWORD`),
+pre-flights the OAM (skips cleanly if the testbed is down), and always uploads
+the Playwright report. Registering the runner + populating those secrets is a
+one-time ops task (see [`CICD_PLAN.md`](./CICD_PLAN.md) §2.2, §5); until then
+the scheduled run has no runner to pick it up.
 
 ## 4. Read the results
 

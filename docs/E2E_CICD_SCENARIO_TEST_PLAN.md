@@ -478,7 +478,7 @@ changes always land before the specs that depend on them.
 | **P7 — Security + IPsec** | `cicd/security/secfilter.spec.ts`; `cicd/ipsec/ipsec{1,2,3,-e2e}.spec.ts` (config-created only). | P0 |
 | **P8 — HA/BGP slices** | `cicd/ha/{ha-cistate,bgp-neighbor}.spec.ts` (verify CG-6 cistate round-trip). | P0 |
 | **P9 — AI-gateway [needs CG-9]** | Enable `--userservice` on CI gateway (oam-loxilb), then `cicd/ai-gateway/*.spec.ts` (ai-* + collapsed vllm/sglang/mcp surfaces). | CG-9 |
-| **P10 — Suite wire-up + CI** | cicd suite ordering into `npm run e2e`, extend `zz-cleanup` sweeps for any new entity kinds, nightly CI job. | all |
+| **P10 — Suite wire-up + CI** | **DONE.** cicd suite already auto-runs under `npm run e2e` (runner `testMatch` covers `tests/cicd/**`) with `zz-cleanup` sorting last; added `npm run e2e:cicd` for the subset. `zz-cleanup` already covers every cicd entity kind (LB + firewall rules; cistate is restored by its spec; BGP neighbors are never created — 403). Nightly CI = `.github/workflows/e2e.yml` (self-hosted `loxilb-testbed` runner, manual dispatch + nightly schedule). | all |
 
 Parallelizable: P1/P5/P7/P8 need no feature and can proceed right after
 P0. P2→P3 and P4, P6, P9 are feature-gated. Authoring loop per spec uses
@@ -766,3 +766,23 @@ only the apikey/ratelimit CRUD does (CG-9, still off → auto-skips).
   integer ParamBoxes) render as a **Select**, not a textbox, when the gateway
   metadata supplies an enum — the `_recipes.ts` AI drive uses `setField`
   (combobox-or-textbox aware) for every numeric AI field.
+
+### P10 status — suite wire-up + CI complete
+- **Auto-inclusion:** the whole `tests/cicd/**` tree already runs under
+  `npm run e2e` — the runner's `testMatch` (`/tests\/.*\.spec\.ts/`) covers it
+  with no config change. `zz-cleanup.spec.ts` sorts last (workers=1, alphabetic
+  discovery), so the leak detector always runs after every cicd group. Added
+  `npm run e2e:cicd` (`playwright test tests/cicd`) for the scenario subset.
+- **Leak-detector coverage:** no new entity kinds — the cicd specs only persist
+  LB rules + their auto firewall allow-rules (both already swept + scanned by
+  `zz-cleanup`); HA cistate is a singleton the `ha-cistate` spec restores
+  (read-modify-restore), and BGP neighbors are never created on this
+  BGP-disabled testbed (403). So `zz-cleanup` needed no extension.
+- **Nightly CI:** `.github/workflows/e2e.yml` — full suite on a self-hosted
+  runner inside the testbed network (label `loxilb-testbed`), manual dispatch
+  (optional `grep` subset) + nightly schedule, `pull_request` deliberately
+  excluded (fork-secret safety). Writes `.env.e2e.local`/`.env.development` from
+  the `testbed` environment secrets, pre-flights the OAM (skips cleanly if
+  down), always uploads the report. Follows `docs/CICD_PLAN.md` §2.2. Inert
+  until the one-time ops task (register the runner + populate the four secrets)
+  is done — the maintainer's call (CICD_PLAN §6–7).
