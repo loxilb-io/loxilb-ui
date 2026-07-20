@@ -124,6 +124,7 @@ for (const file of walk(path.join(root, 'src/connector'))) {
 calls.push(
 	{file: 'src/connector/instance/status.ts', line: 0, method: 'get', target: 'gateway', path: '/log-archives/{p}'},
 	{file: 'src/connector/oam/oam.ts', line: 0, method: 'get', target: 'oam', path: '/logs/archives/{p}'},
+	{file: 'src/connector/oam/snapshotApi.ts', line: 0, method: 'get', target: 'oam', path: '/snapshots/{sid}/download'},
 );
 
 //---------------------------------------------------------
