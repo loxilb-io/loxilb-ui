@@ -30,11 +30,19 @@ npx playwright install chromium   # first run only
 
 The runner reads two env files (both are git-ignored — never commit them):
 
-**`.env.e2e.local`** — the testbed admin credentials the suite logs in with:
+**`.env.e2e.local`** — the testbed address + credentials the suite uses. All
+four are **required** (`auth.setup.ts` and `helpers/api.ts` throw at startup if
+any is missing):
 
 ```dotenv
+# OAM base the API helpers call directly (read-back + cleanup sweeps).
+E2E_OAM_URL=http://<your-oam-host>:8080/oam
+# Admin login the suite authenticates with (once per run).
 E2E_ADMIN_USER=admin
 E2E_ADMIN_PASSWORD=YourAdminPassword
+# Password used to provision + log in the e2e_operator / e2e_viewer RBAC
+# fixtures (see §5). Any strong value; it is set on those accounts on first run.
+E2E_FIXTURE_PASSWORD=YourFixturePassword
 ```
 
 **`.env.development`** — points the dev server at the OAM backend. A working
@@ -54,18 +62,20 @@ WDS_SOCKET_PORT=0
 > **not** use `npm start` for E2E (it forces HTTPS) — let Playwright boot the
 > dev server, or use the exact command in §3.
 
-Optional override: set `E2E_OAM_URL` to point the API helpers at a different
-OAM base (defaults to the testbed URL above).
-
 ## 3. Run the suite
 
 Playwright **auto-starts the dev server** for you (config `webServer`,
 `reuseExistingServer: true`), so in most cases you just run:
 
 ```bash
-npm run e2e                      # full suite, ~9 min (serial, 1 worker)
+npm run e2e                      # full suite (serial, 1 worker) — tens of minutes
 npm run e2e:headed               # same, but watch it in a visible browser
 ```
+
+> The suite is **serial** (`workers: 1`) against one live gateway, so wall-clock
+> scales with spec count. The per-page CRUD groups run in ~9 min; the `cicd`
+> scenario suite (66 specs) is the long pole — budget tens of minutes for a full
+> run, or scope to a group (below) while iterating.
 
 Run a subset while iterating:
 

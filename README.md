@@ -25,24 +25,30 @@ A modern React-based web dashboard for efficiently managing LoxiLB load balancer
 ## 🚀 Features
 
 ### Core Functionality
-- **LoxiLB Management**: Comprehensive load balancer configuration and monitoring
-- **Real-time Monitoring**: Live network service and device status tracking
-- **Statistics & Visualization**: Advanced charts and metrics using MUI X Charts
+- **Load Balancer Management**: L4/L7 rules across every mode (dnat, onearm, fullnat, dsr, fullproxy) with selects (rr, hash, priority, persist, lc, chwbl), health probes, TLS termination (https / e2ehttps), and frontend mTLS
+- **AI Gateway**: model-based routing, weighted CHWBL, KV-cache-aware routing, prefill/decode (P/D) disaggregation, SSE streaming tuning, MCP session routing, plus API-key and per-tenant rate-limit management
+- **Networking**: BGP (neighbors, global, policy, defined-sets, apply), BFD, VLAN/VXLAN, routes, FDB, ports, neighbors
+- **Security & Traffic**: firewall rules, IP filters, SYN-flood protection, security rate limits, conntrack, mirrors, QoS, SNI certificates, endpoints
+- **IPsec VPN**: tunnel and certificate management
+- **High Availability**: cluster instance state (cistate) management
+- **Instance Snapshots**: back up and restore an instance's configuration via a guided wizard
+- **Real-time Monitoring**: live device/service status, Prometheus-backed dashboards and rate cards (MUI X Charts)
 - **Multi-language Support**: Korean, English, and Japanese localization
-- **Responsive Design**: Mobile-first approach with Material-UI components
+- **Responsive Design**: mobile-first Material-UI layout
 
 ### Security & Deployment
-- **SSL/HTTPS Support**: Self-signed and commercial certificates
-- **Docker Ready**: Multiple compose configurations for different scenarios
-- **Kubernetes Native**: Production-ready manifests with security contexts
-- **Authentication**: JWT-based authentication with automatic token refresh
+- **Role-Based Access Control**: three roles (admin / operator / viewer) with route guards and capability-gated menus and actions
+- **Authentication**: JWT-based login with server-side session revocation on logout; unauthorized/expired sessions redirect to login
+- **SSL/HTTPS Support**: self-signed and commercial certificates
+- **Docker Ready**: multiple compose configurations for different scenarios
+- **Kubernetes Native**: production-ready manifests with security contexts
 - **Security Headers**: HSTS, CSP, and other security best practices
 
 ### Developer Experience
-- **TypeScript**: Full type safety with modern React patterns
-- **State Management**: Recoil for global state, React Query for server state
-- **Hot Reload**: Fast development with React Scripts
-- **Code Quality**: ESLint, Prettier, and TypeScript integration
+- **TypeScript**: full type safety; API types generated from the vendored gateway/OAM swagger specs, with a connector↔spec mapping guard in CI
+- **State Management**: Recoil for global state, TanStack React Query for server state
+- **Hot Reload**: fast development with React Scripts (Create React App)
+- **Testing**: Vitest unit + backend-contract tests, and a Playwright end-to-end browser suite (see [`docs/E2E_RUNNING.md`](docs/E2E_RUNNING.md))
 
 ## 🏗 Architecture
 
@@ -56,12 +62,13 @@ A modern React-based web dashboard for efficiently managing LoxiLB load balancer
 ```
 
 ### Tech Stack
-- **Frontend**: React 18, TypeScript 4.9+, Material-UI v6
-- **State Management**: Recoil, Tanstack React Query v5
+- **Frontend**: React 18, TypeScript 4.9, Material-UI v6
+- **State Management**: Recoil, TanStack React Query v5
 - **Routing**: React Router v7
 - **Styling**: Emotion, MUI System
-- **Build Tools**: React Scripts, Docker, Kubernetes
-- **Internationalization**: i18next
+- **Build Tools**: React Scripts (CRA), Docker, Kubernetes
+- **Testing**: Vitest (unit + backend-contract), Playwright (E2E)
+- **Internationalization**: i18next (ko / en / ja)
 
 ## 🚀 Quick Start
 
@@ -241,8 +248,8 @@ docker exec <container> /usr/local/bin/ssl-setup.sh validate    # Validate certi
 ## 💻 Development Setup
 
 ### Prerequisites
-- Node.js 16+
-- npm or yarn
+- Node.js 22.x (matches CI; use `npm ci` for exact locked deps)
+- npm
 - Git
 
 ### Installation
@@ -263,9 +270,11 @@ vim .env.local
 
 ### Development Scripts
 ```bash
-npm start        # Start development server with HTTPS
-npm run build    # Build for local environment
-npm test         # Run tests (when implemented)
+npm start          # Start development server (HTTPS) against .env.development
+npm run build      # Build for local environment
+npm test           # Run unit + backend-contract tests (Vitest)
+npm run typecheck  # TypeScript check (tsc --noEmit)
+npm run e2e        # Run the Playwright E2E suite (needs a live testbed — see docs/E2E_RUNNING.md)
 ```
 
 ### Project Structure
@@ -299,16 +308,23 @@ src/
 - `.env.production` - Production environment
 
 ### Key Variables
+
+See [`.env.example`](.env.example) for the full, annotated list. The build-time
+(`REACT_APP_*`) variables the app actually reads:
+
 ```env
-# API Configuration
-REACT_APP_API_BASE_URL=/api              # API path prefix
-BACKEND_URL=http://localhost:8080        # Backend server URL
+# OAM API base URL.
+#  - Development (npm start): direct URL of your OAM backend, e.g. https://oam.example.com/oam
+#  - Production (Docker/nginx): keep the proxied path /api/oam (nginx forwards to BACKEND_URL)
+REACT_APP_API_URL=/api/oam
 
-# Frontend Configuration  
-REACT_APP_PUBLIC_URL=/netlox             # Public URL prefix
-REACT_APP_ENV=local                      # Environment type
+# Public URL prefix the app is served under
+REACT_APP_PUBLIC_URL=/netlox
 
-# Development
+# Environment name: local | production
+REACT_APP_ENV=local
+
+# Dev server
 PORT=3000                                # Development server port
 HTTPS=true                               # Enable HTTPS in development
 ```
@@ -324,21 +340,20 @@ PUBLIC_PATH=/netlox                      # Public path prefix
 
 ## 🔌 API Integration
 
-### Authentication
-- **JWT tokens** stored in localStorage
-- **Automatic refresh** on token expiry
-- **Redirect to login** on unauthorized access
+### Authentication & Authorization
+- **JWT tokens** issued by the OAM login endpoint
+- **Server-side session revocation** on logout; expired/unauthorized responses redirect to login
+- **RBAC** — the connector gates mutating requests by role (admin / operator / viewer)
 
 ### API Structure
 ```typescript
-// Base API configuration
+// Requests target the OAM base, which proxies to the LoxiLB gateway.
 const api = {
-  baseURL: process.env.REACT_APP_API_BASE_URL,
-  timeout: 10000,
+  baseURL: process.env.REACT_APP_API_URL,   // e.g. /api/oam or https://oam.example.com/oam
   headers: {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`
-  }
+    'Authorization': `Bearer ${token}`,
+  },
 }
 ```
 
@@ -359,13 +374,16 @@ const api = {
 | `npm run build:prod` | Build for production environment |
 | `npm test` | Run unit + backend-contract tests (Vitest) |
 | `npm run typecheck` | TypeScript check (`tsc --noEmit`) |
+| `npm run e2e` | Playwright end-to-end browser suite (needs a live testbed) |
+| `npm run e2e:cicd` | Just the cicd scenario E2E suite (`tests/cicd/**`) |
 | `npm run gen:api` | Regenerate API types from `api-spec/*` |
 | `npm run api:check-mapping` | Verify every connector call exists in the backend specs |
 | `npm run sync:specs` | Re-vendor backend specs from sibling repos |
 
 API type-safety and backend-compatibility tooling is documented in
 [`docs/API_TOOLING.md`](docs/API_TOOLING.md); UI-vs-API gap analysis in
-[`docs/API_COVERAGE_REPORT.md`](docs/API_COVERAGE_REPORT.md).
+[`docs/API_COVERAGE_REPORT.md`](docs/API_COVERAGE_REPORT.md); running the
+end-to-end browser suite in [`docs/E2E_RUNNING.md`](docs/E2E_RUNNING.md).
 
 ### Build Optimization
 - **Code splitting** with React.lazy()
@@ -455,15 +473,21 @@ test: add unit tests for SSL configuration
 
 ### Testing
 ```bash
-# Run linting
-npm run lint
+# Type check
+npm run typecheck
 
-# Run type checking  
-npm run type-check
-
-# Run tests (when implemented)
+# Unit + backend-contract tests
 npm test
+
+# Verify connector calls map to the vendored backend specs (H4 guard)
+npm run api:check-mapping
+
+# End-to-end browser suite (needs a live testbed — see docs/E2E_RUNNING.md)
+npm run e2e
 ```
+
+> These are the same gates CI runs (`.github/workflows/ci.yml`): `typecheck`,
+> `gen:api:check`, `api:check-mapping`, `test`, and a production build.
 
 ## 📄 License
 
@@ -472,9 +496,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📚 Additional Resources
 
 ### Documentation
-- [Development Guide](DEVELOPMENT.md) - Comprehensive development documentation
-- [SSL Setup Guide](SSL_SETUP_GUIDE.md) - Detailed SSL configuration
-- [Kubernetes Manifests](k8s/) - Production-ready Kubernetes deployment
+- [Contributing Guide](CONTRIBUTING.md) — how to contribute
+- [Security Policy](SECURITY.md) — reporting vulnerabilities
+- [E2E Test Guide](docs/E2E_RUNNING.md) — running the Playwright browser suite
+- [API Tooling](docs/API_TOOLING.md) — spec vendoring, type generation, mapping guard
+- [SSL/HTTPS Configuration](#-ssl-https-configuration) — certificate modes (in this README)
+- [Kubernetes Manifests](k8s/) — production-ready Kubernetes deployment
 
 ### External Resources
 - [React Documentation](https://react.dev/)
