@@ -101,6 +101,8 @@ export interface LbRecipe {
 	block?: string;
 	/** cicd `--snat`: source-NAT client traffic. */
 	snat?: boolean;
+	/** cicd `--bgp`: announce the VIP over BGP (cluster/HA scenarios). */
+	bgp?: boolean;
 	/** cicd egress rule flag. */
 	egress?: boolean;
 	/** PROXY protocol v2 header to backends. */
@@ -146,6 +148,7 @@ export function expectedServiceArguments(r: LbRecipe): Record<string, unknown> {
 	if (r.security) sa.security = SECURITY_ID[r.security];
 	if (r.block) sa.block = Number(r.block);
 	if (r.snat) sa.snat = true;
+	if (r.bgp) sa.bgp = true;
 	if (r.egress) sa.egress = true;
 	if (r.proxyprotocolv2) sa.proxyprotocolv2 = true;
 	if (r.privateIP) sa.privateIP = r.privateIP;
@@ -200,6 +203,7 @@ export async function driveLbCreate(page: Page, r: LbRecipe): Promise<any> {
 		r.security ||
 		r.block ||
 		r.snat ||
+		r.bgp ||
 		r.egress ||
 		r.proxyprotocolv2 ||
 		r.privateIP ||
@@ -219,6 +223,7 @@ export async function driveLbCreate(page: Page, r: LbRecipe): Promise<any> {
 		if (r.security) await selectOption(page, 'Security', r.security);
 		if (r.block) await field(page, 'Block').fill(r.block);
 		if (r.snat) await field(page, 'SNAT').check();
+		if (r.bgp) await field(page, 'BGP').check();
 		if (r.egress) await field(page, 'Egress').check();
 		if (r.proxyprotocolv2) await field(page, 'Proxy Protocol v2').check();
 		if (r.privateIP) await field(page, 'Private IP').fill(r.privateIP);
