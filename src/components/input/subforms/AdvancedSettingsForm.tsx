@@ -48,18 +48,22 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 							   <ParamBox label={t('Inactive Timeout')} value={value?.inactiveTimeOut ?? 0} onChange={handleChange('inactiveTimeOut')} param_desc={params?.inactiveTimeOut} />
 					   </HorizontalStack>
 
-					   {/* <HorizontalStack>
-								<ParamBox label={t('Security')} value={value?.security ?? ''} onChange={handleChange('security')} param_desc={{...params?.security, enum: security_list}} disabled={value?.mode !== 4} />
-								<ParamBox label={t('Block')} value={value?.block ?? ''} onChange={handleChange('block')} param_desc={params?.block} />
-						</HorizontalStack> */}
+						<HorizontalStack>
+							<ParamBox label={t('Security')} value={value?.security ?? ''} onChange={handleChange('security')} param_desc={{...params?.security, enum: security_list, description: t('TLS termination mode — only applies to fullproxy (Plain, https, tls, e2ehttps).')}} disabled={value?.mode !== 4} />
+							<ParamBox label={t('Block')} value={value?.block ?? ''} onChange={handleChange('block')} param_desc={{...params?.block, type: 'integer', description: t('Firewall mark (fwmark) stamped on matched traffic; 0 = none.')}} />
+						</HorizontalStack>
 						<HorizontalStack>
 							<ParamBox label={t('Enable Monitor')} value={value.monitor} onChange={handleChange('monitor')} param_desc={params?.monitor} />
 							<ParamBox label={t('BGP')} value={value?.bgp ?? ''} onChange={handleChange('bgp')} param_desc={params?.bgp} />
 						</HorizontalStack>
-					   {/* <HorizontalStack>
-							   <ParamBox label={t('Host')} value={value?.host ?? ''} onChange={handleChange('host')} param_desc={params?.host} disabled={value?.mode !== 4} />
-							   <ParamBox label={t('Private IP')} value={value?.privateIP ?? ''} onChange={handleChange('privateIP')} param_desc={{...params?.privateIP, type: 'ipaddress'}} />
-					   </HorizontalStack> */}
+						<HorizontalStack>
+							<ParamBox label={t('SNAT')} value={value?.snat} onChange={handleChange('snat')} param_desc={{...params?.snat, type: 'boolean', description: t('Source-NAT client traffic to the LB address.')}} />
+							<ParamBox label={t('Egress')} value={value?.egress} onChange={handleChange('egress')} param_desc={{...params?.egress, type: 'boolean', description: t('Treat this as an egress (outbound) load-balancer rule.')}} />
+						</HorizontalStack>
+						<HorizontalStack>
+							<ParamBox label={t('Proxy Protocol v2')} value={value?.proxyprotocolv2} onChange={handleChange('proxyprotocolv2')} param_desc={{...params?.proxyprotocolv2, type: 'boolean', description: t('Prepend a PROXY protocol v2 header to backend connections.')}} />
+							<ParamBox label={t('Private IP')} value={value?.privateIP ?? ''} onChange={handleChange('privateIP')} param_desc={{...params?.privateIP, type: 'ipaddress', description: t('Private (NAT-translated) address the VIP maps to.')}} />
+						</HorizontalStack>
 
 					   {/* L7 Routing Configuration */}
 					   <HorizontalStack>

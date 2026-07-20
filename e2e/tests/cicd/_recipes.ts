@@ -23,10 +23,13 @@ export const LB_PATH = '/config/loadbalancer';
 // Enum → send_value maps (mirror src/assets/json/{sels,modes}.json).
 export const SEL_ID = {rr: 0, hash: 1, priority: 2, persist: 3, lc: 4, chwbl: 8} as const;
 export const MODE_ID = {dnat: 0, onearm: 1, fullnat: 2, dsr: 3, fullproxy: 4, hostonearm: 5, aigw: 6} as const;
+// mirror src/assets/json/securities.json (send_value)
+export const SECURITY_ID = {Plain: 0, https: 1, tls: 2, e2ehttps: 3} as const;
 
 export type Proto = 'tcp' | 'udp' | 'sctp';
 export type SelName = keyof typeof SEL_ID;
 export type ModeName = keyof typeof MODE_ID;
+export type SecurityName = keyof typeof SECURITY_ID;
 
 export interface RecipeEndpoint {
 	ip: string;
@@ -55,6 +58,26 @@ export interface LbRecipe {
 	monitor?: boolean;
 	/** cicd `--sources=`: CIDR prefixes for the Allowed Sources accordion. */
 	allowedSources?: string[];
+	// ── P2 re-enabled Advanced fields ──────────────────────────────
+	/** TLS termination mode; only reachable when mode=fullproxy. */
+	security?: SecurityName;
+	/** cicd `--block=`: firewall mark stamped on matched traffic. */
+	block?: string;
+	/** cicd `--snat`: source-NAT client traffic. */
+	snat?: boolean;
+	/** cicd egress rule flag. */
+	egress?: boolean;
+	/** PROXY protocol v2 header to backends. */
+	proxyprotocolv2?: boolean;
+	/** private (NAT-translated) address the VIP maps to. */
+	privateIP?: string;
+	/**
+	 * serviceArgument keys the UI sends (asserted in the POST body) but the
+	 * gateway does NOT echo on read-back, so they're skipped in the read-back
+	 * match only. Use to pin a documented gateway/loxilb persistence gap without
+	 * losing the UI-wiring proof. See plan §16.
+	 */
+	readbackOmit?: string[];
 	endpoints: RecipeEndpoint[];
 }
 
@@ -71,6 +94,12 @@ export function expectedServiceArguments(r: LbRecipe): Record<string, unknown> {
 	if (r.portMax) sa.portMax = Number(r.portMax);
 	if (r.inactiveTimeout) sa.inactiveTimeOut = Number(r.inactiveTimeout);
 	if (r.monitor) sa.monitor = true;
+	if (r.security) sa.security = SECURITY_ID[r.security];
+	if (r.block) sa.block = Number(r.block);
+	if (r.snat) sa.snat = true;
+	if (r.egress) sa.egress = true;
+	if (r.proxyprotocolv2) sa.proxyprotocolv2 = true;
+	if (r.privateIP) sa.privateIP = r.privateIP;
 	return sa;
 }
 
@@ -95,12 +124,31 @@ export async function driveLbCreate(page: Page, r: LbRecipe): Promise<any> {
 	if (r.portMax) await field(page, 'Port Max').fill(r.portMax);
 
 	// Advanced Settings — only when the recipe diverges from rr/dnat.
-	if ((r.sel && r.sel !== 'rr') || (r.mode && r.mode !== 'dnat') || r.inactiveTimeout || r.monitor) {
+	const usesAdvanced =
+		(r.sel && r.sel !== 'rr') ||
+		(r.mode && r.mode !== 'dnat') ||
+		r.inactiveTimeout ||
+		r.monitor ||
+		r.security ||
+		r.block ||
+		r.snat ||
+		r.egress ||
+		r.proxyprotocolv2 ||
+		r.privateIP;
+	if (usesAdvanced) {
 		await expandSection(page, /^Advanced Settings/);
-		if (r.sel && r.sel !== 'rr') await selectOption(page, 'SEL', r.sel);
+		// Mode must be set before Security — the Security control is disabled
+		// until mode=fullproxy (P2 re-enable keeps the fullproxy gating).
 		if (r.mode && r.mode !== 'dnat') await selectOption(page, 'Mode', r.mode);
+		if (r.sel && r.sel !== 'rr') await selectOption(page, 'SEL', r.sel);
 		if (r.inactiveTimeout) await field(page, 'Inactive Timeout').fill(r.inactiveTimeout);
 		if (r.monitor) await field(page, 'Enable Monitor').check();
+		if (r.security) await selectOption(page, 'Security', r.security);
+		if (r.block) await field(page, 'Block').fill(r.block);
+		if (r.snat) await field(page, 'SNAT').check();
+		if (r.egress) await field(page, 'Egress').check();
+		if (r.proxyprotocolv2) await field(page, 'Proxy Protocol v2').check();
+		if (r.privateIP) await field(page, 'Private IP').fill(r.privateIP);
 	}
 
 	// Allowed Sources (cicd --sources=): one prefix row per CIDR.
@@ -144,7 +192,12 @@ export async function assertLbReadback(r: LbRecipe): Promise<void> {
 	// loxilb's GET omits zero-valued defaults (sel=rr=0, mode=dnat=0), so
 	// fill them back before matching the recipe's expected numeric values.
 	const sa = {sel: 0, mode: 0, ...rule.serviceArguments};
-	expect(sa).toMatchObject(expectedServiceArguments(r));
+	// The UI-send of every field is already proven by the POST-body assertion in
+	// runLbScenario; here we assert the gateway PERSISTED them, minus any keys it
+	// is known not to echo back (readbackOmit — a documented gateway gap).
+	const expected = expectedServiceArguments(r);
+	for (const k of r.readbackOmit ?? []) delete (expected as Record<string, unknown>)[k];
+	expect(sa).toMatchObject(expected);
 	// Full endpoint round-trip: IP + targetPort + weight, not just the IP set.
 	// This is what makes the weighted (wrr) scenarios meaningful — a dropped or
 	// coerced weight is a real gateway/UI bug, and asserting only IPs hid it.
