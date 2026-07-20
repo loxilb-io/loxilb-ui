@@ -2,6 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {Divider} from '@mui/material';
+import {isValidIPAddress, isValidIPAddressCidr} from 'common';
 import NewBox from 'components/layout/NewBox';
 import useFormWithParams from 'hooks/inputFormHook';
 import {t} from 'i18next';
@@ -26,7 +27,19 @@ export default function FirewallInputForm(props: FirewallInputFormProps) {
 	const ra = form?.ruleArguments;
 	const portRangesValid =
 		!getPortRangeError(ra?.minSourcePort, ra?.maxSourcePort) && !getPortRangeError(ra?.minDestinationPort, ra?.maxDestinationPort);
-	const formValid = isValid && portRangesValid;
+
+	// IP-format gate. useFormWithParams' validateForm only checks required/
+	// integer/enum — it does NOT validate ipaddress/ipaddress_cidr string
+	// formats, and IPAddressBox forwards an invalid value on onChange (it only
+	// shows a red helper). Every other IP-bearing form (IPFilter/IPsec/LB/
+	// Endpoint/Vip) gates submit on isValidIPAddress; the Firewall form was the
+	// lone omission, so a garbage Source/Destination IP or SNAT To IP could be
+	// POSTed to the gateway. Optional fields: only reject a NON-empty malformed
+	// value (an empty field is a legitimately-unset rule key).
+	const srcIpValid = !ra?.sourceIP || isValidIPAddress(ra.sourceIP) || isValidIPAddressCidr(ra.sourceIP);
+	const dstIpValid = !ra?.destinationIP || isValidIPAddress(ra.destinationIP) || isValidIPAddressCidr(ra.destinationIP);
+	const toIpValid = !form?.opts?.toIP || isValidIPAddress(form.opts.toIP);
+	const formValid = isValid && portRangesValid && srcIpValid && dstIpValid && toIpValid;
 
 	// Notify parent of validation state and form data
 	React.useEffect(() => {
