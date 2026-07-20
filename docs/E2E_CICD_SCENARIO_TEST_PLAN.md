@@ -521,3 +521,39 @@ green table. Fixes land in whichever repo owns the defect.
 L4 group complete: `_recipes.ts` extended (`monitor`, `allowedSources`, full
 endpoint-fidelity readback) + 24 new specs (one per in-scope cicd L4 dir).
 Suite (26 specs + setup) green 2× on the Naver testbed.
+
+### F-CICD-2 — gateway does not echo `privateIP` (write-only) and mode-subsumes `snat` on read-back (loxilb-inference-gateway, FOR THE GATEWAY TEAM)
+Surfaced by the P2 re-enable validation (`advanced-fields.spec.ts`, fullnat).
+- **UI side is correct** — the re-enabled AdvancedSettingsForm controls emit
+  `snat`, `privateIP`, `proxyprotocolv2`, `block` in the POST body (proven by
+  runLbScenario's body assertion). This is the P2 deliverable and it passes.
+- **Gateway side:** create is accepted (2xx) but the read-back omits `snat`
+  and `privateIP` for a fullnat rule, while `block`/`proxyprotocolv2`/`mode`
+  persist. RCA in `pkg/loxinet/rules.go`:
+  - `privateIP` — parsed and used at create (`rules.go:2671`) but the GET
+    serializer (~`rules.go:1150-1235`) has **no `ret.Serv.PrivateIP =`**
+    assignment (unlike `Bgp`/`BlockNum`/`ProxyProtocolV2`/`Snat`). It is a
+    **write-only** field: consumed for NAT setup, never echoed — yet
+    `LoadbalanceEntry.serviceArguments.privateIP` is declared in the GET schema.
+    → real read-back gap; the gateway team should populate it in the GET path.
+  - `snat` — only echoed when `act.actType == RtActSnat` (`rules.go:1234`). A
+    fullnat rule's actType is the NAT mode's, not `RtActSnat`, so the standalone
+    snat flag is subsumed by the mode. Mode-dependent (echoes on a plain rule
+    whose act becomes RtActSnat), not a plain drop. Documented, not asserted on
+    fullnat read-back.
+- **Test stance:** pinned via `readbackOmit: ['snat','privateIP']` on the
+  fullnat recipe — UI-wiring proof (POST body) is kept; the two fields are
+  excluded from the read-back match only, so the gap is documented rather than
+  silently green. NOTE: cannot commit to the gateway repo (engineers own it,
+  see git-authorship rule) — this is a hand-off finding.
+- **Secondary (schema):** GET `serviceArguments.security` enum is `0|1|2` but
+  `securities.json`/the create path allow `3` (e2ehttps) — a GET-schema
+  under-declaration to flag alongside.
+
+### P2 status
+LB-form Advanced controls re-enabled in `AdvancedSettingsForm.tsx` (Security
+fullproxy-gated, Block, SNAT, Egress, Proxy Protocol v2, Private IP) using the
+delta-onChange pattern (SecurityOptionsForm left unmounted — F19-buggy).
+Validated: `tcplbmark` (Block) + fullproxy Security=https round-trip; fullnat
+SNAT/privateIP/ppv2/block UI-wiring proven (F-CICD-2 for the gateway). P1 (26
+specs) green with the shared-form change — no regression.
