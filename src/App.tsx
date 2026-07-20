@@ -67,6 +67,7 @@ import HAPage from 'pages/status/HAPage';
 import ProcessPage from 'pages/status/ProcessPage';
 
 import UserManagementPage from 'pages/managers/UserManagementPage';
+import SnapshotPage from 'pages/maintenance/SnapshotPage';
 
 import {MAX_DURATION_MS} from 'hooks/query/common';
 import LogPage from 'pages/status/LogPage';
@@ -180,6 +181,9 @@ export default function App() {
 										<Route path="ha" element={<HAPage />} />
 										<Route path="process" element={<ProcessPage />} />
 										<Route path="logs" element={<LogPage />} />
+									</Route>
+									<Route path="maintenance" element={<Outlet />}>
+										<Route path="snapshots" element={<SnapshotPage />} />
 									</Route>
 									<Route path="settings" element={<InstanceSettingPage />} />
 									<Route path="dashboard" element={<DashboardPage />} />

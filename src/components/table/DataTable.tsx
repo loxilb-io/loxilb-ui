@@ -9,6 +9,7 @@ import {Alert, Box, Button, IconButton, Stack, Tooltip, Typography} from '@mui/m
 import {GridColDef, GridRowSelectionModel} from '@mui/x-data-grid';
 import {
 	BooleanCell,
+	ChipCell,
 	LinkCell,
 	LogLevelCell,
 	MultiLineCell,
@@ -126,6 +127,8 @@ export default function DataTable(props: {
 					? StatusCell
 					: col.type === 'usage'
 					? UsageCell
+					: col.type === 'chip'
+					? ChipCell
 					: TextCell,
 		};
 	});
