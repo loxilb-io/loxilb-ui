@@ -35,6 +35,25 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 		[onChange],
 	);
 
+	// mtls_frontend is a nested object — merge one sub-field at a time onto the
+	// prior mtls_frontend so sibling mTLS fields survive, then emit it as a delta
+	// on serviceArguments (same delta contract as handleChange).
+	const handleMtls = useCallback(
+		(field: keyof NonNullable<IServiceArguments['mtls_frontend']>) => (newValue: any) => {
+			onChange({mtls_frontend: {...(value?.mtls_frontend ?? {}), [field]: newValue}});
+		},
+		[onChange, value?.mtls_frontend],
+	);
+
+	// Frontend mTLS applies only to a TLS-terminating fullproxy rule
+	// (mode=fullproxy + security != Plain) — mirrors the gateway constraint.
+	const mtlsEnabled = value?.mode === 4 && !!value?.security;
+	const clientCertModeList: IEnumItem[] = [
+		{id: 0, name: 'disabled', send_value: 'disabled'},
+		{id: 1, name: 'optional', send_value: 'optional'},
+		{id: 2, name: 'required', send_value: 'required'},
+	];
+
 	return (
 	   <AccordionBox title={t('Advanced Settings (LB Algo, NAT modes, etc)')} tooltip={"Configure advanced settings for the load balancer, including algorithms and NAT modes."}>
 			   <Stack spacing={2}>
@@ -102,6 +121,40 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 								   param_desc={{...params?.llm_type, description: t('LLM catalog profile for GPU-aware load balancing (e.g., chat-interactive, rag-longcontext, batch-inference)')}}
 								   disabled={value?.mode !== 4}
 							   />
+					   </HorizontalStack>
+
+					   {/* Frontend mTLS — client-certificate verification (fullproxy + TLS only) */}
+					   <HorizontalStack>
+							<ParamBox
+								label={t('Client Cert Mode')}
+								value={value?.mtls_frontend?.client_cert_mode ?? ''}
+								onChange={handleMtls('client_cert_mode')}
+								param_desc={{type: 'string', enum: clientCertModeList, description: t('Frontend mTLS client-certificate requirement (disabled, optional, required). Requires fullproxy + a TLS security.')}}
+								disabled={!mtlsEnabled}
+							/>
+							<ParamBox
+								label={t('Client CA Path')}
+								value={value?.mtls_frontend?.client_ca_path ?? ''}
+								onChange={handleMtls('client_ca_path')}
+								param_desc={{type: 'string', description: t('Path to the client CA bundle (PEM) on the gateway used to verify client certificates.')}}
+								disabled={!mtlsEnabled}
+							/>
+					   </HorizontalStack>
+					   <HorizontalStack>
+							<ParamBox
+								label={t('Require Client CN')}
+								value={value?.mtls_frontend?.require_client_cn}
+								onChange={handleMtls('require_client_cn')}
+								param_desc={{type: 'boolean', description: t('Additionally require the client certificate CN to match a pattern.')}}
+								disabled={!mtlsEnabled}
+							/>
+							<ParamBox
+								label={t('Client CN Pattern')}
+								value={value?.mtls_frontend?.client_cn_pattern ?? ''}
+								onChange={handleMtls('client_cn_pattern')}
+								param_desc={{type: 'string', description: t('Required client CN pattern, wildcards supported (e.g. *.internal.corp.com). Used only when Require Client CN is on.')}}
+								disabled={!mtlsEnabled || !value?.mtls_frontend?.require_client_cn}
+							/>
 					   </HorizontalStack>
 			   </Stack>
 	   </AccordionBox>

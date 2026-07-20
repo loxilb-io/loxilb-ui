@@ -307,8 +307,8 @@ Status legend: **BUILD** = confirmed product change to make (user decision
 
 | # | Gap | cicd needing it | Where | Action | Status |
 |---|---|---|---|---|---|
-| CG-1 | **mTLS client-cert** control on L7 proxy | `httpsproxy-mtls`, `e2ehttpsproxy-mtls` | loxilb-ui LB `SecurityOptionsForm` (+ connector, + gateway if needed) | **Add mTLS control** — client CA / verify mode fields | **BUILD** |
-| CG-2 | **gRPC backend** protocol option | `e2ehttpsproxy-grpc` | `backend_protocols.json` (+ LB subform + connector) | **Add `grpc`** as a distinct backend protocol value | **BUILD** |
+| CG-1 | **mTLS client-cert** control on L7 proxy | `httpsproxy-mtls`, `e2ehttpsproxy-mtls` | loxilb-ui `AdvancedSettingsForm` (+ type + connector) | **DONE (P4)** — added the frontend-mTLS sub-form (`mtls_frontend`: client_cert_mode / ca_path / require_cn / cn_pattern), gated on fullproxy+TLS. **UI-only**: the gateway already supports `mtls_frontend` end-to-end (swagger + model + `dpebpf_mtls.go`); no gateway change. | ✅ DONE |
+| CG-2 | ~~gRPC backend protocol option~~ | `e2ehttpsproxy-grpc` | — | **NOT A GAP (P4)** — the cicd `e2ehttpsproxy-grpc` recipe expresses gRPC as `backend_protocol: http2` (gRPC rides HTTP/2); there is no distinct `grpc` value in the gateway or the cicd config. The existing `http2` backend value already covers it. No build. | ✅ RESOLVED |
 | CG-3 | **LB `--mark`** (fwmark on rule) | `tcplbmark` | LB form / `IServiceConfiguration` | Verify `block`/mark field maps; add if missing | VERIFY |
 | CG-4 | **Egress LB / cistate** surface | `egresslb` | LB egress + `/config/cistate` | **Add egress UI controls** (egress rule + cistate) | **BUILD** |
 | CG-5 | **Tunnel endpoint** (tunlb) control | `tcptunlb`, `sctptunlb` | LB endpoint config | **Add tunnel-endpoint UI control** (remote-VIP / tunnel type) | **BUILD** |
@@ -621,3 +621,34 @@ L7 `backend_protocol` behind fullproxy, so the spec drives it under fullproxy.
 Two real gateway bugs found + fixed (F-CICD-3, probe read-back) — the actual
 deliverable. Suite green 2× (12 each incl. setup) on the Naver testbed; lb-l4
 (32) re-run green — no regression from the shared `_recipes.ts` change.
+
+### P4 status — mTLS [FEATURE] built (UI-only) + gRPC gap dissolved
+- **CG-1 mTLS — BUILT in loxilb-ui (no gateway change).** The LB dialog now
+  exposes a frontend-mTLS sub-form in `AdvancedSettingsForm`: Client Cert Mode
+  (disabled/optional/required), Client CA Path, Require Client CN, Client CN
+  Pattern — emitting the nested `serviceArguments.mtls_frontend`, gated on
+  mode=fullproxy + a TLS security. Added `IMtlsFrontend` to `types/load_balancer.ts`.
+  The gateway already supported `mtls_frontend` fully (swagger + model +
+  `pkg/loxinet/dpebpf_mtls.go`) and round-trips it verbatim — verified live
+  (create 2xx, no client_ca_path existence check at create, full read-back).
+- **Connector guard (real bug avoided):** `ParamBox` auto-fires its enum default
+  on mount, so the Client Cert Mode dropdown would inject an inert
+  `mtls_frontend:{client_cert_mode:'disabled'}` into *every* LB create — including
+  dnat/non-TLS rules the gateway rejects it on. `request_create_load_balancer_config`
+  now strips `mtls_frontend` when client_cert_mode is 'disabled'/empty (mirrors
+  the probe-when-monitor-off strip). Verified: lb-l4 (dnat) + non-mTLS fullproxy
+  specs stay clean.
+- **CG-2 gRPC — NOT A GAP (dissolved).** cicd `e2ehttpsproxy-grpc` sets
+  `backend_protocol: http2` (gRPC = HTTP/2); no distinct `grpc` value exists in
+  the gateway (`http1|http2|both`) or cicd. So no feature — it's a plain
+  fullproxy (tls + http2 backend) spec, already UI-supported. The plan §13.2
+  "add distinct grpc value" decision is superseded by the cicd source of truth.
+- **Specs:** `httpsproxy-mtls`, `e2ehttpsproxy-mtls` (mTLS feature),
+  `e2ehttpsproxy-grpc`, `http2-prefix-lb` (http2-backend; the latter's cicd dir
+  has no `config.sh` — only a `grpc-server/` stub — so it's reconstructed from
+  the dir intent). `e2ehttpsproxy-mtls` uses security=e2ehttps(3): the cicd
+  config.sh set security:2 under the old buggy enum-doc ("2-e2ehttps"), so this
+  spec uses the corrected value and exercises the F-CICD-3 fix with mTLS.
+- Full l7-proxy suite (13 specs + setup = 16) green 2×; lb-l4 (32) + all 103
+  unit tests green — no regression from the type/form/connector change.
+  Frontend mTLS is the L7-proxy group's last feature; the group is complete.

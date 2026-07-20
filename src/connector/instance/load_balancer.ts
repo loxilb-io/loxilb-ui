@@ -54,7 +54,22 @@ export async function request_create_load_balancer_config(instance: IInstance, d
 			serviceArguments: serviceArgs
 		};
 	}
-	
+
+	// Drop mtls_frontend when client-cert verification is off. The Client Cert
+	// Mode dropdown auto-defaults to 'disabled' on mount (ParamBox enum default),
+	// so without this every rule — including non-TLS/dnat rules the gateway
+	// rejects mtls_frontend on — would carry an inert mtls_frontend. 'disabled'
+	// is the gateway's own default (no verification), so stripping it is a no-op
+	// semantically and keeps the payload clean.
+	const mf = cleanedData.serviceArguments?.mtls_frontend;
+	if (mf && (!mf.client_cert_mode || mf.client_cert_mode === 'disabled')) {
+		const {mtls_frontend, ...serviceArgs} = cleanedData.serviceArguments;
+		cleanedData = {
+			...cleanedData,
+			serviceArguments: serviceArgs
+		};
+	}
+
 	const resp = await POST_INST(instance, `/config/loadbalancer`, cleanedData);
 	if (resp.code !== 200 && resp.code !== 204) {
 		const errorMessage = createDetailedErrorMessage(resp, 'Create Load Balancer');
