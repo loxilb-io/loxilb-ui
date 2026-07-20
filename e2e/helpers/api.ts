@@ -7,7 +7,14 @@
 import fs from 'fs';
 import path from 'path';
 
-export const OAM_BASE = process.env.E2E_OAM_URL ?? 'http://203.0.113.99:8080/oam';
+// No default on purpose: the suite runs against a live OAM/gateway stack the
+// operator owns, so the address must come from the environment
+// (.env.e2e.local, loaded by playwright.config.ts) — never from the repo.
+const envOamBase = process.env.E2E_OAM_URL;
+if (!envOamBase) {
+	throw new Error('E2E_OAM_URL is not set — point it at your OAM base (e.g. http://<oam-host>:8080/oam) in .env.e2e.local');
+}
+export const OAM_BASE = envOamBase;
 const ADMIN_STATE = path.resolve(__dirname, '../../.auth/admin.json');
 
 export interface Instance {
