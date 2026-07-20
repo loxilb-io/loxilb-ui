@@ -557,3 +557,67 @@ delta-onChange pattern (SecurityOptionsForm left unmounted — F19-buggy).
 Validated: `tcplbmark` (Block) + fullproxy Security=https round-trip; fullnat
 SNAT/privateIP/ppv2/block UI-wiring proven (F-CICD-2 for the gateway). P1 (26
 specs) green with the shared-form change — no regression.
+
+### F-CICD-3 — REST rejects `security=e2ehttps` (3); loxilb-inference-gateway FIXED + DEPLOYED
+Surfaced by the P3 `e2ehttpsproxy` / `e2ehttpsproxy-prefix` specs (fullproxy,
+security=e2ehttps).
+- **Symptom:** a fullproxy POST with `serviceArguments.security=3` is rejected
+  with **HTTP 422, code 606: "serviceArguments.serviceArguments.security in body
+  should be one of [0 1 2]"**. So the UI (which drives the REST JSON API) cannot
+  create *any* e2ehttps rule — even though `securities.json` and the
+  `loxicmd create_lb_rule --security=e2ehttps` path (used by cicd/e2ehttpsproxy)
+  accept it. The go-swagger request validator enforces the schema enum, so the
+  create never reaches the LB engine.
+- **RCA:** the `security` property schema was capped at `enum: [0,1,2]` in all
+  three generated/authored copies — `api/swagger.yml`, the model
+  `api/models/loadbalance_entry.go` (`…SecurityPropEnum` init + `validateSecurityEnum`),
+  and `api/restapi/embedded_spec.go` (×3 — the spec the runtime validator reads).
+  The accompanying description was also wrong/stale
+  (`0-Plain, 1-https, 1-tls, 2-e2ehttps` — duplicate `1`, off-by-one) vs the real
+  mapping `0-Plain, 1-https, 2-tls, 3-e2ehttps`.
+- **Fix (gateway):** widened the enum to `[0,1,2,3]` and corrected the
+  description in all three files. Deployed to the testbed (rebuild + redeploy).
+  Verified: e2ehttps create now returns 2xx and `security:3` round-trips on GET;
+  the `e2ehttpsproxy*` specs go green. **Hand-off:** per the git-authorship rule
+  the gateway change is left UNCOMMITTED in `loxilb-inference-gateway` for the
+  engineers to review/commit (5-file diff: swagger.yml, loadbalance_entry.go,
+  embedded_spec.go, + the probe fix below).
+- **Secondary:** the `hosturl` delete route
+  (`DELETE /config/loadbalancer/hosturl/{hosturl}/externalipaddress/…`) is the
+  only way to remove a fullproxy+`host` rule; the plain
+  `externalipaddress/port/protocol` key 404s for host rules (an unnamed host
+  rule is otherwise un-deletable). Named rules delete fine via `/name/{name}` —
+  the suite always names its rules, so `sweepLbRules` stays effective.
+
+### Probe read-back gap — loxilb-inference-gateway FIXED + DEPLOYED
+Surfaced by the P3 `httpsep` spec (dnat + `--monitor` + endpoint `probetype=https`).
+- **Symptom:** create is accepted (2xx) and the UI sends every probe field
+  (proven by the POST-body assertion), but the GET read-back echoed only
+  `probetype` + `probeport` — `probereq`, `proberesp`, `probeTimeout`,
+  `probeRetries` were silently dropped. (The pre-existing `traffic/lb.spec.ts`
+  C-probe test only asserted the POST body, never the read-back, so this hid.)
+- **RCA:** two incomplete serializers. (1) `pkg/loxinet/rules.go` GET path set
+  `ProbeType/ProbePort/ProbeReq/ProbeResp` on the returned `cmn` struct but never
+  `ProbeTimeout`/`ProbeRetries`. (2) The handler's cmn→API mapping in
+  `api/restapi/handler/loadbalancer.go` mapped only `Probetype`/`Probeport`,
+  dropping `Probereq`/`Proberesp`/`ProbeTimeout`/`ProbeRetries`. The create/parse
+  path stored all of them correctly — only the read paths were lossy.
+- **Fix (gateway):** added `ret.Serv.ProbeTimeout`/`ProbeRetries` in `rules.go`
+  and the four missing `tmpSvc.*` assignments in `loadbalancer.go`. Deployed +
+  verified: all six probe fields now round-trip; `httpsep` goes green.
+  Same UNCOMMITTED hand-off as F-CICD-3.
+
+### P3 status
+L7-proxy group complete. `_recipes.ts` extended (`host`, `pathPrefix`,
+`pathMatchMode`, `backendProtocol` L7 fields — all fullproxy-gated in the UI, so
+`driveLbCreate` sets Mode before them; plus an LB-level `probe` drive for the
+Endpoints form). 9 specs written (one per in-scope L7 dir): `httpproxy`,
+`httpproxy-prefix`, `httpsproxy`, `httpsproxy-prefix`, `httpshostproxy`,
+`e2ehttpsproxy`, `e2ehttpsproxy-prefix`, `http2ep`, `httpsep`.
+`http2-prefix-lb` is deferred to P4 (no `config.sh` — only a `grpc-server/`
+stub, i.e. a gRPC scenario). `http2ep` documents a deliberate deviation: cicd
+sets `backend_protocol` on a default (dnat) rule, but the UI (correctly) gates
+L7 `backend_protocol` behind fullproxy, so the spec drives it under fullproxy.
+Two real gateway bugs found + fixed (F-CICD-3, probe read-back) — the actual
+deliverable. Suite green 2× (12 each incl. setup) on the Naver testbed; lb-l4
+(32) re-run green — no regression from the shared `_recipes.ts` change.

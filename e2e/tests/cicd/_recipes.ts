@@ -30,12 +30,35 @@ export type Proto = 'tcp' | 'udp' | 'sctp';
 export type SelName = keyof typeof SEL_ID;
 export type ModeName = keyof typeof MODE_ID;
 export type SecurityName = keyof typeof SECURITY_ID;
+// mirror src/assets/json/path_match_modes.json + backend_protocols.json (send_value === name)
+export type PathMatchMode = 'disabled' | 'prefix' | 'exact';
+export type BackendProtocol = 'http1' | 'http2' | 'both';
+// Endpoint health-probe (EndpointListForm) — display label → send_value.
+export type ProbeType = 'PING' | 'TCP' | 'UDP' | 'HTTP' | 'HTTPS';
+const PROBE_SEND: Record<ProbeType, string> = {PING: 'ping', TCP: 'tcp', UDP: 'udp', HTTP: 'http', HTTPS: 'https'};
 
 export interface RecipeEndpoint {
 	ip: string;
 	targetPort: string;
 	/** default '1' */
 	weight?: string;
+}
+
+/**
+ * LB-level health-probe config (cicd `loxicmd create endpoint --probetype=…`).
+ * The probe fields are serviceArguments on the LB rule, driven from inside the
+ * Endpoints accordion (EndpointListForm). Used by `httpsep` (https probe).
+ */
+export interface RecipeProbe {
+	/** display option in the Probe Type dropdown (send_value derived). */
+	type: ProbeType;
+	port?: string;
+	/** probe request payload (http/https/udp only). */
+	req?: string;
+	/** expected probe response (http/https/udp only). */
+	resp?: string;
+	timeout?: string;
+	retries?: string;
 }
 
 export interface LbRecipe {
@@ -71,6 +94,17 @@ export interface LbRecipe {
 	proxyprotocolv2?: boolean;
 	/** private (NAT-translated) address the VIP maps to. */
 	privateIP?: string;
+	// ── P3 L7-proxy fields (all fullproxy-gated in the UI) ─────────────
+	/** cicd `--host=`: HTTP Host header the fullproxy rule matches. */
+	host?: string;
+	/** cicd `path_prefix`: URL path prefix for L7 routing. */
+	pathPrefix?: string;
+	/** cicd `path_match_mode`: disabled | prefix | exact. */
+	pathMatchMode?: PathMatchMode;
+	/** cicd `backend_protocol`: ALPN to the backend (http1 | http2 | both). */
+	backendProtocol?: BackendProtocol;
+	/** cicd `--probetype=…` endpoint health check (drives LB-level probe args). */
+	probe?: RecipeProbe;
 	/**
 	 * serviceArgument keys the UI sends (asserted in the POST body) but the
 	 * gateway does NOT echo on read-back, so they're skipped in the read-back
@@ -100,6 +134,18 @@ export function expectedServiceArguments(r: LbRecipe): Record<string, unknown> {
 	if (r.egress) sa.egress = true;
 	if (r.proxyprotocolv2) sa.proxyprotocolv2 = true;
 	if (r.privateIP) sa.privateIP = r.privateIP;
+	if (r.host) sa.host = r.host;
+	if (r.pathPrefix) sa.path_prefix = r.pathPrefix;
+	if (r.pathMatchMode) sa.path_match_mode = r.pathMatchMode;
+	if (r.backendProtocol) sa.backend_protocol = r.backendProtocol;
+	if (r.probe) {
+		sa.probetype = PROBE_SEND[r.probe.type];
+		if (r.probe.port) sa.probeport = Number(r.probe.port);
+		if (r.probe.req) sa.probereq = r.probe.req;
+		if (r.probe.resp) sa.proberesp = r.probe.resp;
+		if (r.probe.timeout) sa.probeTimeout = Number(r.probe.timeout);
+		if (r.probe.retries) sa.probeRetries = Number(r.probe.retries);
+	}
 	return sa;
 }
 
@@ -134,7 +180,11 @@ export async function driveLbCreate(page: Page, r: LbRecipe): Promise<any> {
 		r.snat ||
 		r.egress ||
 		r.proxyprotocolv2 ||
-		r.privateIP;
+		r.privateIP ||
+		r.host ||
+		r.pathPrefix ||
+		r.pathMatchMode ||
+		r.backendProtocol;
 	if (usesAdvanced) {
 		await expandSection(page, /^Advanced Settings/);
 		// Mode must be set before Security — the Security control is disabled
@@ -149,6 +199,11 @@ export async function driveLbCreate(page: Page, r: LbRecipe): Promise<any> {
 		if (r.egress) await field(page, 'Egress').check();
 		if (r.proxyprotocolv2) await field(page, 'Proxy Protocol v2').check();
 		if (r.privateIP) await field(page, 'Private IP').fill(r.privateIP);
+		// L7 routing — reachable only after Mode=fullproxy (set above).
+		if (r.host) await field(page, 'Host').fill(r.host);
+		if (r.pathMatchMode) await selectOption(page, 'Path Match Mode', r.pathMatchMode);
+		if (r.pathPrefix) await field(page, 'Path Prefix').fill(r.pathPrefix);
+		if (r.backendProtocol) await selectOption(page, 'Backend Protocol', r.backendProtocol);
 	}
 
 	// Allowed Sources (cicd --sources=): one prefix row per CIDR.
@@ -162,6 +217,16 @@ export async function driveLbCreate(page: Page, r: LbRecipe): Promise<any> {
 
 	// Endpoints.
 	const sec = await expandSection(page, /^Endpoints$/);
+	// Health probe (EndpointListForm) — cicd `--probetype=…`; the probe fields
+	// live above the endpoint rows and are LB-level serviceArguments.
+	if (r.probe) {
+		await selectOption(page, 'Probe Type', r.probe.type);
+		if (r.probe.port) await field(page, 'Probe Port', sec).fill(r.probe.port);
+		if (r.probe.req) await field(page, 'Probe Request', sec).fill(r.probe.req);
+		if (r.probe.resp) await field(page, 'Probe Response', sec).fill(r.probe.resp);
+		if (r.probe.timeout) await field(page, 'Probe Timeout', sec).fill(r.probe.timeout);
+		if (r.probe.retries) await field(page, 'Probe Retries', sec).fill(r.probe.retries);
+	}
 	for (let i = 0; i < r.endpoints.length; i++) {
 		const ep = r.endpoints[i];
 		await sec.getByRole('button', {name: 'Add', exact: true}).click();
