@@ -7,7 +7,7 @@ import CoronavirusIcon from '@mui/icons-material/Coronavirus';
 import HotelIcon from '@mui/icons-material/Hotel';
 import PauseIcon from '@mui/icons-material/Pause';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import {Box, capitalize, Typography} from '@mui/material';
+import {Box, capitalize, Chip, Typography} from '@mui/material';
 import {get_root_url, is_active_status} from 'common';
 import {t} from 'i18next';
 import SimpleButton from './SimpleButton';
@@ -136,6 +136,17 @@ export const TextCell = (params: any) => (
 		</Typography>
 	</Box>
 );
+
+// Generic labelled chip. value: {label, color?} | null — null renders nothing.
+// The label always carries the meaning in text (a11y: never color alone).
+export const ChipCell = (params: any) => {
+	if (!params.value?.label) return null;
+	return (
+		<Box height="100%" display="flex" alignItems="center">
+			<Chip size="small" label={t(params.value.label)} color={params.value.color ?? 'default'} sx={{borderRadius: '4px'}} />
+		</Box>
+	);
+};
 
 export const LogLevelCell = (params: any) => {
 	// Handle both old format (severity/level) and new format (just level)

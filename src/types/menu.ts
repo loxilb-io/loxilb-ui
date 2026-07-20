@@ -2,6 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import CloudIcon from '@mui/icons-material/Cloud';
+import SettingsBackupRestoreIcon from '@mui/icons-material/SettingsBackupRestore';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import VpnLockIcon from '@mui/icons-material/VpnLock';
 import MonitorIcon from '@mui/icons-material/Monitor';
@@ -201,6 +202,19 @@ export const MENU_LIST: IMenuItem[] = [
 			{
 				name: 'Logs',
 				path: 'logs',
+			},
+		],
+	},
+	{
+		// Instance lifecycle operations (upgrade runbook); room for future
+		// items (upgrade assistant, log bundles) — docs/SNAPSHOT_UI_DESIGN.md §3.
+		name: 'Maintenance',
+		icon: SettingsBackupRestoreIcon,
+		path: 'maintenance',
+		items: [
+			{
+				name: 'Snapshots',
+				path: 'snapshots',
 			},
 		],
 	},
