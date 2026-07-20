@@ -171,351 +171,6 @@ export interface paths {
       };
     };
   };
-  "/oam/config/download/{id}": {
-    /**
-     * Download exported configuration file
-     * @description Downloads a previously exported configuration file by export ID
-     */
-    get: {
-      parameters: {
-        header: {
-          /** @description Bearer token */
-          Authorization: string;
-        };
-        path: {
-          /** @description Export ID */
-          id: string;
-        };
-      };
-      responses: {
-        /** @description Configuration file download */
-        200: {
-          content: {
-            "application/octet-stream": string;
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          content: {
-            "application/octet-stream": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          content: {
-            "application/octet-stream": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          content: {
-            "application/octet-stream": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          content: {
-            "application/octet-stream": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-      };
-    };
-  };
-  "/oam/config/export": {
-    /**
-     * Export system configuration
-     * @description Exports the current OAM system configuration including users, instances, and settings to a downloadable file
-     */
-    post: {
-      parameters: {
-        header: {
-          /** @description Bearer token */
-          Authorization: string;
-        };
-      };
-      /** @description Export request with optional description */
-      requestBody: {
-        content: {
-          "application/json": {
-            description?: string;
-          };
-        };
-      };
-      responses: {
-        /** @description Configuration exported successfully */
-        200: {
-          content: {
-            "application/json": {
-              export_data?: components["schemas"]["models.ConfigExport"];
-              export_id?: string;
-              message?: string;
-            };
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-      };
-    };
-  };
-  "/oam/config/exports": {
-    /**
-     * List configuration exports
-     * @description Retrieves a list of all available configuration exports with basic metadata
-     */
-    get: {
-      parameters: {
-        header: {
-          /** @description Bearer token */
-          Authorization: string;
-        };
-      };
-      responses: {
-        /** @description Exports retrieved successfully */
-        200: {
-          content: {
-            "application/json": {
-              count?: number;
-              exports?: components["schemas"]["models.ConfigExport"][];
-              message?: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-      };
-    };
-  };
-  "/oam/config/files": {
-    /**
-     * Get downloadable configuration files
-     * @description Retrieves a detailed list of downloadable configuration files with enhanced metadata, pagination, and filtering
-     */
-    get: {
-      parameters: {
-        query?: {
-          /** @description Filter by user who exported the configuration */
-          exported_by?: string;
-          /** @description Maximum number of files to return (1-100, default: 50) */
-          limit?: number;
-          /** @description Number of files to skip for pagination (default: 0) */
-          offset?: number;
-        };
-        header: {
-          /** @description Bearer token */
-          Authorization: string;
-        };
-      };
-      responses: {
-        /** @description Downloadable files retrieved successfully */
-        200: {
-          content: {
-            "application/json": {
-              files?: Record<string, never>[];
-              filters?: Record<string, never>;
-              message?: string;
-              pagination?: Record<string, never>;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-      };
-    };
-  };
-  "/oam/config/files/{id}": {
-    /**
-     * Delete a configuration export
-     * @description Deletes a configuration export by ID, removing its record and file. Admin only.
-     */
-    delete: {
-      parameters: {
-        header: {
-          /** @description Bearer token */
-          Authorization: string;
-        };
-        path: {
-          /** @description Export ID */
-          id: string;
-        };
-      };
-      responses: {
-        /** @description OK */
-        200: {
-          content: {
-            "application/json": components["schemas"]["models.MessageResponse"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-      };
-    };
-  };
-  "/oam/config/import": {
-    /**
-     * Import system configuration
-     * @description Imports system configuration from uploaded JSON file with mandatory backup creation
-     */
-    post: {
-      parameters: {
-        header: {
-          /** @description Bearer token */
-          Authorization: string;
-        };
-      };
-      requestBody: {
-        content: {
-          "multipart/form-data": {
-            /**
-             * Format: binary
-             * @description Configuration JSON file to import
-             */
-            file: string;
-          };
-        };
-      };
-      responses: {
-        /** @description Configuration imported successfully */
-        200: {
-          content: {
-            "application/json": {
-              message?: string;
-              result?: components["schemas"]["models.ConfigImportResponseOAM"];
-            };
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-      };
-    };
-  };
-  "/oam/config/import/dry-run": {
-    /**
-     * Dry-run configuration import
-     * @description Validates configuration import data without making changes to the system
-     */
-    post: {
-      parameters: {
-        header: {
-          /** @description Bearer token */
-          Authorization: string;
-        };
-      };
-      requestBody: {
-        content: {
-          "multipart/form-data": {
-            /**
-             * Format: binary
-             * @description Configuration JSON file to validate
-             */
-            file: string;
-          };
-        };
-      };
-      responses: {
-        /** @description Dry-run validation completed */
-        200: {
-          content: {
-            "application/json": {
-              message?: string;
-              result?: components["schemas"]["models.ConfigImportResponseOAM"];
-            };
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-      };
-    };
-  };
   "/oam/health": {
     /**
      * Health check
@@ -538,60 +193,144 @@ export interface paths {
       };
     };
   };
-  "/oam/license/feature-access": {
+  "/oam/instances/{id}/snapshot-schedule": {
     /**
-     * Check feature access
-     * @description Checks if the authenticated user's license allows access to a specific feature
+     * Read an instance's snapshot schedule
+     * @description Returns the scheduled-snapshot/retention settings; defaults (disabled, every 24h, keep 10) when never configured.
      */
     get: {
       parameters: {
-        query: {
-          /** @description Feature name to check (e.g., 'export', 'custom_integration', 'unlimited_users') */
-          feature: string;
-        };
         header: {
           /** @description Bearer token */
           Authorization: string;
+        };
+        path: {
+          /** @description LoxiLB Instance ID */
+          id: number;
         };
       };
       responses: {
         /** @description OK */
         200: {
           content: {
-            "*/*": components["schemas"]["models.SuccessResponse"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          content: {
-            "*/*": components["schemas"]["models.ErrorResponse"];
+            "application/json": components["schemas"]["models.InstanceSnapshotSchedule"];
           };
         };
         /** @description Unauthorized */
         401: {
           content: {
-            "*/*": components["schemas"]["models.ErrorResponse"];
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+      };
+    };
+    /**
+     * Update an instance's snapshot schedule
+     * @description Enables/disables scheduled snapshots and sets interval and per-instance retention (keep-N unpinned; pre_upgrade and pinned snapshots are exempt).
+     */
+    put: {
+      parameters: {
+        header: {
+          /** @description Bearer token */
+          Authorization: string;
+        };
+        path: {
+          /** @description LoxiLB Instance ID */
+          id: number;
+        };
+      };
+      /** @description Schedule settings */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["models.SnapshotScheduleRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          content: {
+            "application/json": components["schemas"]["models.InstanceSnapshotSchedule"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
           };
         };
         /** @description Forbidden */
         403: {
           content: {
-            "*/*": components["schemas"]["models.ErrorResponse"];
+            "application/json": components["schemas"]["models.ErrorResponse"];
           };
         };
-        /** @description Internal Server Error */
-        500: {
+        /** @description Not Found */
+        404: {
           content: {
-            "*/*": components["schemas"]["models.ErrorResponse"];
+            "application/json": components["schemas"]["models.ErrorResponse"];
           };
         };
       };
     };
   };
-  "/oam/license/install": {
+  "/oam/instances/{id}/snapshots": {
     /**
-     * Install license
-     * @description Installs a new license key for the authenticated user
+     * List snapshots of an instance
+     * @description Returns snapshot metadata (never blobs) for one instance, newest first, paginated.
+     */
+    get: {
+      parameters: {
+        query?: {
+          /** @description Page number (default 1) */
+          page?: number;
+          /** @description Page size (default 20, max 100) */
+          limit?: number;
+        };
+        header: {
+          /** @description Bearer token */
+          Authorization: string;
+        };
+        path: {
+          /** @description LoxiLB Instance ID */
+          id: number;
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          content: {
+            "application/json": components["schemas"]["models.PaginatedSnapshotsResponse"];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+      };
+    };
+    /**
+     * Take an instance config snapshot now
+     * @description Calls the gateway's GET /config/snapshot on the managed instance and stores the document (gzip, AES-256-GCM at rest when SNAPSHOT_ENC_KEY is set) in the OAM database. Returns metadata only, never the blob.
      */
     post: {
       parameters: {
@@ -599,18 +338,22 @@ export interface paths {
           /** @description Bearer token */
           Authorization: string;
         };
+        path: {
+          /** @description LoxiLB Instance ID */
+          id: number;
+        };
       };
-      /** @description License installation data */
-      requestBody: {
+      /** @description Snapshot name/description/trigger */
+      requestBody?: {
         content: {
-          "application/json": components["schemas"]["models.InstallLicenseRequest"];
+          "application/json": components["schemas"]["models.TakeSnapshotRequest"];
         };
       };
       responses: {
-        /** @description OK */
-        200: {
+        /** @description Created */
+        201: {
           content: {
-            "application/json": components["schemas"]["models.SuccessResponse"];
+            "application/json": components["schemas"]["models.InstanceSnapshot"];
           };
         };
         /** @description Bad Request */
@@ -625,8 +368,26 @@ export interface paths {
             "application/json": components["schemas"]["models.ErrorResponse"];
           };
         };
-        /** @description Internal Server Error */
-        500: {
+        /** @description Forbidden */
+        403: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Request Entity Too Large */
+        413: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Gateway unreachable (connection error passed through verbatim) */
+        502: {
           content: {
             "application/json": components["schemas"]["models.ErrorResponse"];
           };
@@ -634,10 +395,10 @@ export interface paths {
       };
     };
   };
-  "/oam/license/validate": {
+  "/oam/instances/{id}/snapshots/upload": {
     /**
-     * Validate license key
-     * @description Validates a license key format and expiration without installing it
+     * Re-import an off-box snapshot archive
+     * @description Accepts a previously downloaded snapshot document (multipart field "file"). Only the envelope (schema_version, gateway_version, checksum) is parsed — deep validation stays the gateway's job at restore time.
      */
     post: {
       parameters: {
@@ -645,18 +406,31 @@ export interface paths {
           /** @description Bearer token */
           Authorization: string;
         };
+        path: {
+          /** @description LoxiLB Instance ID */
+          id: number;
+        };
       };
-      /** @description License validation data */
       requestBody: {
         content: {
-          "application/json": components["schemas"]["models.InstallLicenseRequest"];
+          "multipart/form-data": {
+            /**
+             * Format: binary
+             * @description Snapshot document JSON
+             */
+            file: string;
+            /** @description Snapshot name */
+            name?: string;
+            /** @description Description */
+            description?: string;
+          };
         };
       };
       responses: {
-        /** @description OK */
-        200: {
+        /** @description Created */
+        201: {
           content: {
-            "application/json": components["schemas"]["models.LicensePayload"];
+            "application/json": components["schemas"]["models.InstanceSnapshot"];
           };
         };
         /** @description Bad Request */
@@ -671,8 +445,20 @@ export interface paths {
             "application/json": components["schemas"]["models.ErrorResponse"];
           };
         };
-        /** @description Internal Server Error */
-        500: {
+        /** @description Forbidden */
+        403: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Request Entity Too Large */
+        413: {
           content: {
             "application/json": components["schemas"]["models.ErrorResponse"];
           };
@@ -1668,6 +1454,268 @@ export interface paths {
       };
     };
   };
+  "/oam/snapshots/{sid}": {
+    /**
+     * Get one snapshot's metadata
+     * @description Returns snapshot metadata including restore history and the full gateway response of the last restore (the audit record).
+     */
+    get: {
+      parameters: {
+        header: {
+          /** @description Bearer token */
+          Authorization: string;
+        };
+        path: {
+          /** @description Snapshot ID (UUID) */
+          sid: string;
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          content: {
+            "application/json": components["schemas"]["models.InstanceSnapshot"];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+      };
+    };
+    /**
+     * Delete a snapshot
+     * @description Deletes a stored snapshot. Pinned snapshots require force=true.
+     */
+    delete: {
+      parameters: {
+        query?: {
+          /** @description Required to delete a pinned snapshot */
+          force?: boolean;
+        };
+        header: {
+          /** @description Bearer token */
+          Authorization: string;
+        };
+        path: {
+          /** @description Snapshot ID (UUID) */
+          sid: string;
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          content: {
+            "application/json": components["schemas"]["models.MessageResponse"];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Forbidden */
+        403: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Snapshot is pinned and force was not set */
+        409: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+      };
+    };
+    /**
+     * Update snapshot metadata
+     * @description Updates name, description and/or pinned. Pinned snapshots are exempt from retention.
+     */
+    patch: {
+      parameters: {
+        header: {
+          /** @description Bearer token */
+          Authorization: string;
+        };
+        path: {
+          /** @description Snapshot ID (UUID) */
+          sid: string;
+        };
+      };
+      /** @description Fields to update */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["models.UpdateSnapshotRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          content: {
+            "application/json": components["schemas"]["models.InstanceSnapshot"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Forbidden */
+        403: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/oam/snapshots/{sid}/download": {
+    /**
+     * Download a snapshot document
+     * @description Streams the decrypted, decompressed snapshot JSON. The document contains IPsec PSKs and certificate private keys, so this is write-gated and audit-logged. X-Snapshot-Checksum carries the gateway's document checksum; X-Content-Checksum is sha256 over the exact bytes served.
+     */
+    get: {
+      parameters: {
+        header: {
+          /** @description Bearer token */
+          Authorization: string;
+        };
+        path: {
+          /** @description Snapshot ID (UUID) */
+          sid: string;
+        };
+      };
+      responses: {
+        /** @description snapshot document JSON */
+        200: {
+          content: {
+            "application/json": string;
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Forbidden */
+        403: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Stored blob failed integrity verification */
+        422: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/oam/snapshots/{sid}/restore": {
+    /**
+     * Restore a stored snapshot to a gateway
+     * @description Default mode is dry-run: the gateway validates and returns its plan without mutating anything. Commit first takes an automatic pre_restore safety snapshot of the target, then applies. The gateway's response is returned verbatim in gateway_response. Cross-instance restore is allowed and flagged with cross_instance=true.
+     */
+    post: {
+      parameters: {
+        header: {
+          /** @description Bearer token */
+          Authorization: string;
+        };
+        path: {
+          /** @description Snapshot ID (UUID) */
+          sid: string;
+        };
+      };
+      /** @description mode: dry-run (default) | commit; optional target_instance_id */
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["models.RestoreSnapshotRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          content: {
+            "application/json": components["schemas"]["models.RestoreOutcome"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Forbidden */
+        403: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Stored blob failed integrity verification (never sent to the gateway) */
+        422: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Gateway unreachable (connection error passed through verbatim) */
+        502: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
   "/oam/users": {
     /**
      * Fetch all users
@@ -1715,188 +1763,6 @@ export interface paths {
         };
         /** @description Bad Request */
         400: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-      };
-    };
-  };
-  "/oam/users/licenses": {
-    /**
-     * Get user's valid licenses
-     * @description Retrieves all active and non-expired licenses for the authenticated user
-     */
-    get: {
-      parameters: {
-        header: {
-          /** @description Bearer token */
-          Authorization: string;
-        };
-      };
-      responses: {
-        /** @description OK */
-        200: {
-          content: {
-            "application/json": components["schemas"]["models.UserLicensesResponse"];
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-      };
-    };
-  };
-  "/oam/users/licenses/{license_id}": {
-    /**
-     * Update specific license
-     * @description Updates a specific license key by license ID for the authenticated user
-     */
-    put: {
-      parameters: {
-        header: {
-          /** @description Bearer token */
-          Authorization: string;
-        };
-        path: {
-          /** @description License ID to update */
-          license_id: number;
-        };
-      };
-      /** @description License update data */
-      requestBody: {
-        content: {
-          "application/json": components["schemas"]["models.UpdateLicenseRequest"];
-        };
-      };
-      responses: {
-        /** @description OK */
-        200: {
-          content: {
-            "application/json": components["schemas"]["models.SuccessResponse"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-      };
-    };
-    /**
-     * Deactivate a user license
-     * @description Deactivates a specific license by ID for the authenticated user
-     */
-    delete: {
-      parameters: {
-        header: {
-          /** @description Bearer token */
-          Authorization: string;
-        };
-        path: {
-          /** @description License ID */
-          license_id: number;
-        };
-      };
-      responses: {
-        /** @description OK */
-        200: {
-          content: {
-            "application/json": components["schemas"]["models.MessageResponse"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-      };
-    };
-  };
-  "/oam/users/licenses/{license_id}/status": {
-    /**
-     * Get specific license status
-     * @description Retrieves status and information for a specific license by ID for the authenticated user
-     */
-    get: {
-      parameters: {
-        header: {
-          /** @description Bearer token */
-          Authorization: string;
-        };
-        path: {
-          /** @description License ID */
-          license_id: number;
-        };
-      };
-      responses: {
-        /** @description OK */
-        200: {
-          content: {
-            "application/json": components["schemas"]["models.ActiveLicense"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          content: {
-            "application/json": components["schemas"]["models.ErrorResponse"];
-          };
-        };
-        /** @description Not Found */
-        404: {
           content: {
             "application/json": components["schemas"]["models.ErrorResponse"];
           };
@@ -2046,16 +1912,6 @@ export interface components {
       alert_id?: number;
       status?: string;
     };
-    "models.ActiveLicense": {
-      expires_at?: string;
-      id?: number;
-      installed_at?: string;
-      is_active?: boolean;
-      license_key_hash?: string;
-      license_type?: components["schemas"]["models.LicenseType"];
-      user_id?: number;
-      username?: string;
-    };
     "models.AdminUpdateRequest": {
       confirmPassword: string;
       currentPassword: string;
@@ -2081,36 +1937,6 @@ export interface components {
       /** @description DB_DISCONNECT, API_UNREACHABLE, HIGH_CPU, MEMORY_LEAK. */
       type?: string;
     };
-    "models.ConfigExport": {
-      checksum?: string;
-      description?: string;
-      download_count?: number;
-      expires_at?: string;
-      export_type?: string;
-      exported_at?: string;
-      exported_by?: string;
-      file_path?: string;
-      file_size?: number;
-      id?: string;
-      last_downloaded_at?: string;
-    };
-    "models.ConfigImportResponseOAM": {
-      backup_id?: string;
-      dry_run?: boolean;
-      errors?: components["schemas"]["models.ImportError"][];
-      import_summary?: components["schemas"]["models.ConfigImportSummaryOAM"];
-      message?: string;
-      success?: boolean;
-    };
-    "models.ConfigImportSummaryOAM": {
-      instances_imported?: number;
-      instances_skipped?: number;
-      settings_updated?: number;
-      trial_history_imported?: number;
-      trial_history_skipped?: number;
-      users_imported?: number;
-      users_skipped?: number;
-    };
     "models.CreateAlertRequest": {
       instance_id: number;
       message: string;
@@ -2123,19 +1949,13 @@ export interface components {
     };
     "models.CreateUserRequest": {
       email: string;
-      /** @description Optional: Admin can provide license key during creation */
-      license_key?: string;
       password: string;
       /** @description Optional: Admin can set role (defaults to "user") */
       role?: string;
       username: string;
     };
     "models.EnhancedLoginResponse": {
-      days_left?: number;
-      has_valid_license?: boolean;
       id?: number;
-      license_expiring?: boolean;
-      license_status?: components["schemas"]["models.LicenseStatusResponse"];
       token?: string;
     };
     "models.ErrorResponse": {
@@ -2155,38 +1975,44 @@ export interface components {
     "models.HealthCheckResponse": {
       status?: string;
     };
-    "models.ImportError": {
-      field?: string;
-      message?: string;
-      record?: string;
-      record_index?: number;
-      type?: string;
+    "models.InstanceSnapshot": {
+      /** @description "sha256:<hex>", gateway-computed (envelope) */
+      checksum?: string;
+      /** @description integrity-sweep verdict */
+      checksum_ok?: boolean;
+      created_at?: string;
+      created_by?: string;
+      description?: string;
+      encrypted?: boolean;
+      gateway_version?: string;
+      id?: string;
+      instance_id?: number;
+      /**
+       * @description LastRestoreResponse is the full gateway response JSON of the most
+       * recent restore attempt (the audit record, design §5). Only populated
+       * on the single-snapshot GET, not in lists.
+       */
+      last_restore_response?: string;
+      last_restore_result?: string;
+      last_restored_at?: string;
+      name?: string;
+      pinned?: boolean;
+      restore_count?: number;
+      schema_version?: string;
+      /** @description uncompressed JSON size */
+      size_bytes?: number;
+      /** @description "sha256:<hex>" over raw JSON bytes as received, OAM-computed */
+      stored_checksum?: string;
+      trigger_type?: string;
     };
-    "models.InstallLicenseRequest": {
-      license_key: string;
+    "models.InstanceSnapshotSchedule": {
+      enabled?: boolean;
+      instance_id?: number;
+      interval_hours?: number;
+      last_run_at?: string;
+      last_run_result?: string;
+      retain_count?: number;
     };
-    "models.LicensePayload": {
-      expiry?: string;
-      features?: string[];
-      issued_at?: string;
-      license_type?: string;
-      /** @description Enterprise license specific fields (optional) */
-      system_installation_id?: string;
-      user_id?: number;
-      /** @description Common fields for all license types */
-      username?: string;
-    };
-    "models.LicenseStatusResponse": {
-      days_left?: number;
-      /** @description < 7 days */
-      is_expiring?: boolean;
-      is_valid?: boolean;
-      license?: components["schemas"]["models.ActiveLicense"];
-      message?: string;
-      upgrade_url?: string;
-    };
-    /** @enum {string} */
-    "models.LicenseType": "trial" | "enterprise";
     "models.LogArchivesResponse": {
       /** @description List of log archive filenames. */
       archives?: string[];
@@ -2234,6 +2060,10 @@ export interface components {
       /** @description Pagination metadata */
       pagination?: components["schemas"]["models.PaginationMeta"];
     };
+    "models.PaginatedSnapshotsResponse": {
+      data?: components["schemas"]["models.InstanceSnapshot"][];
+      pagination?: components["schemas"]["models.PaginationMeta"];
+    };
     "models.PaginationMeta": {
       /** @description Whether there's a next page */
       has_next?: boolean;
@@ -2248,12 +2078,37 @@ export interface components {
       /** @description Total number of pages */
       total_pages?: number;
     };
+    "models.RestoreOutcome": {
+      cross_instance?: boolean;
+      gateway_response?: Record<string, never>;
+      gateway_status?: number;
+      /** @description restore target */
+      instance_id?: number;
+      mode?: string;
+      pre_restore_snapshot_id?: string;
+      snapshot_id?: string;
+    };
+    "models.RestoreSnapshotRequest": {
+      /** @description "dry-run" (default) | "commit" */
+      mode?: string;
+      /**
+       * @description TargetInstanceID restores the snapshot onto a different instance than
+       * the one it was taken from (cross-instance restore). Defaults to the
+       * snapshot's own instance.
+       */
+      target_instance_id?: number;
+    };
     "models.SetupStatusResponse": {
       adminExists?: boolean;
       credentialsUpdated?: boolean;
       hasDefaultCredentials?: boolean;
       needsCredentialUpdate?: boolean;
       systemInfo?: components["schemas"]["models.SystemInfo"];
+    };
+    "models.SnapshotScheduleRequest": {
+      enabled?: boolean;
+      interval_hours?: number;
+      retain_count?: number;
     };
     "models.SuccessPostResponse": {
       /** @description code */
@@ -2269,6 +2124,12 @@ export interface components {
       installationId?: string;
       version?: string;
     };
+    "models.TakeSnapshotRequest": {
+      description?: string;
+      name?: string;
+      /** @description defaults to "manual" */
+      trigger_type?: string;
+    };
     "models.UpdateFirmwareRequest": {
       /** @example ghcr.io/loxilb-io/loxilb */
       cimage: string;
@@ -2282,8 +2143,10 @@ export interface components {
       /** @example v0.9.8 */
       version?: string;
     };
-    "models.UpdateLicenseRequest": {
-      license_key: string;
+    "models.UpdateSnapshotRequest": {
+      description?: string;
+      name?: string;
+      pinned?: boolean;
     };
     "models.User": {
       created_at?: string;
@@ -2301,12 +2164,6 @@ export interface components {
     };
     "models.UserIdResponse": {
       id?: number;
-    };
-    "models.UserLicensesResponse": {
-      expired_count?: number;
-      licenses?: components["schemas"]["models.ActiveLicense"][];
-      total_count?: number;
-      valid_count?: number;
     };
   };
   responses: never;

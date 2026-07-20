@@ -253,497 +253,6 @@
                 }
             }
         },
-        "/oam/config/download/{id}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Downloads a previously exported configuration file by export ID",
-                "produces": [
-                    "application/octet-stream"
-                ],
-                "tags": [
-                    "configuration"
-                ],
-                "summary": "Download exported configuration file",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Export ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Configuration file download",
-                        "schema": {
-                            "type": "file"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/oam/config/export": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Exports the current OAM system configuration including users, instances, and settings to a downloadable file",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "configuration"
-                ],
-                "summary": "Export system configuration",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "Export request with optional description",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "description": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Configuration exported successfully",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "export_data": {
-                                    "$ref": "#/definitions/models.ConfigExport"
-                                },
-                                "export_id": {
-                                    "type": "string"
-                                },
-                                "message": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/oam/config/exports": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieves a list of all available configuration exports with basic metadata",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "configuration"
-                ],
-                "summary": "List configuration exports",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Exports retrieved successfully",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "count": {
-                                    "type": "integer"
-                                },
-                                "exports": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/definitions/models.ConfigExport"
-                                    }
-                                },
-                                "message": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/oam/config/files": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieves a detailed list of downloadable configuration files with enhanced metadata, pagination, and filtering",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "configuration"
-                ],
-                "summary": "Get downloadable configuration files",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by user who exported the configuration",
-                        "name": "exported_by",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Maximum number of files to return (1-100, default: 50)",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Number of files to skip for pagination (default: 0)",
-                        "name": "offset",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Downloadable files retrieved successfully",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "files": {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "object"
-                                    }
-                                },
-                                "filters": {
-                                    "type": "object"
-                                },
-                                "message": {
-                                    "type": "string"
-                                },
-                                "pagination": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/oam/config/files/{id}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Deletes a configuration export by ID, removing its record and file. Admin only.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "configuration"
-                ],
-                "summary": "Delete a configuration export",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Export ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.MessageResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/oam/config/import": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Imports system configuration from uploaded JSON file with mandatory backup creation",
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "configuration"
-                ],
-                "summary": "Import system configuration",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "file",
-                        "description": "Configuration JSON file to import",
-                        "name": "file",
-                        "in": "formData",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Configuration imported successfully",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "message": {
-                                    "type": "string"
-                                },
-                                "result": {
-                                    "$ref": "#/definitions/models.ConfigImportResponseOAM"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/oam/config/import/dry-run": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Validates configuration import data without making changes to the system",
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "configuration"
-                ],
-                "summary": "Dry-run configuration import",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "file",
-                        "description": "Configuration JSON file to validate",
-                        "name": "file",
-                        "in": "formData",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Dry-run validation completed",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "message": {
-                                    "type": "string"
-                                },
-                                "result": {
-                                    "$ref": "#/definitions/models.ConfigImportResponseOAM"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/oam/health": {
             "get": {
                 "description": "Checks the health of the application and database connection.",
@@ -770,18 +279,21 @@
                 }
             }
         },
-        "/oam/license/feature-access": {
+        "/oam/instances/{id}/snapshot-schedule": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Checks if the authenticated user's license allows access to a specific feature",
-                "tags": [
-                    "license"
+                "description": "Returns the scheduled-snapshot/retention settings; defaults (disabled, every 24h, keep 10) when never configured.",
+                "produces": [
+                    "application/json"
                 ],
-                "summary": "Check feature access",
+                "tags": [
+                    "snapshots"
+                ],
+                "summary": "Read an instance's snapshot schedule",
                 "parameters": [
                     {
                         "type": "string",
@@ -791,10 +303,10 @@
                         "required": true
                     },
                     {
-                        "type": "string",
-                        "description": "Feature name to check (e.g., 'export', 'custom_integration', 'unlimited_users')",
-                        "name": "feature",
-                        "in": "query",
+                        "type": "integer",
+                        "description": "LoxiLB Instance ID",
+                        "name": "id",
+                        "in": "path",
                         "required": true
                     }
                 ],
@@ -802,7 +314,70 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.SuccessResponse"
+                            "$ref": "#/definitions/models.InstanceSnapshotSchedule"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Enables/disables scheduled snapshots and sets interval and per-instance retention (keep-N unpinned; pre_upgrade and pinned snapshots are exempt).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "snapshots"
+                ],
+                "summary": "Update an instance's snapshot schedule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "LoxiLB Instance ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Schedule settings",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.SnapshotScheduleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.InstanceSnapshotSchedule"
                         }
                     },
                     "400": {
@@ -823,8 +398,8 @@
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -832,24 +407,21 @@
                 }
             }
         },
-        "/oam/license/install": {
-            "post": {
+        "/oam/instances/{id}/snapshots": {
+            "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Installs a new license key for the authenticated user",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Returns snapshot metadata (never blobs) for one instance, newest first, paginated.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "license"
+                    "snapshots"
                 ],
-                "summary": "Install license",
+                "summary": "List snapshots of an instance",
                 "parameters": [
                     {
                         "type": "string",
@@ -859,20 +431,92 @@
                         "required": true
                     },
                     {
-                        "description": "License installation data",
-                        "name": "license",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.InstallLicenseRequest"
-                        }
+                        "type": "integer",
+                        "description": "LoxiLB Instance ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number (default 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 20, max 100)",
+                        "name": "limit",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.SuccessResponse"
+                            "$ref": "#/definitions/models.PaginatedSnapshotsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Calls the gateway's GET /config/snapshot on the managed instance and stores the document (gzip, AES-256-GCM at rest when SNAPSHOT_ENC_KEY is set) in the OAM database. Returns metadata only, never the blob.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "snapshots"
+                ],
+                "summary": "Take an instance config snapshot now",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "LoxiLB Instance ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Snapshot name/description/trigger",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/models.TakeSnapshotRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.InstanceSnapshot"
                         }
                     },
                     "400": {
@@ -887,8 +531,26 @@
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Gateway unreachable (connection error passed through verbatim)",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -896,24 +558,24 @@
                 }
             }
         },
-        "/oam/license/validate": {
+        "/oam/instances/{id}/snapshots/upload": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Validates a license key format and expiration without installing it",
+                "description": "Accepts a previously downloaded snapshot document (multipart field \"file\"). Only the envelope (schema_version, gateway_version, checksum) is parsed — deep validation stays the gateway's job at restore time.",
                 "consumes": [
-                    "application/json"
+                    "multipart/form-data"
                 ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "license"
+                    "snapshots"
                 ],
-                "summary": "Validate license key",
+                "summary": "Re-import an off-box snapshot archive",
                 "parameters": [
                     {
                         "type": "string",
@@ -923,20 +585,37 @@
                         "required": true
                     },
                     {
-                        "description": "License validation data",
-                        "name": "license",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.InstallLicenseRequest"
-                        }
+                        "type": "integer",
+                        "description": "LoxiLB Instance ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Snapshot document JSON",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Snapshot name",
+                        "name": "name",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Description",
+                        "name": "description",
+                        "in": "formData"
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "201": {
+                        "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.LicensePayload"
+                            "$ref": "#/definitions/models.InstanceSnapshot"
                         }
                     },
                     "400": {
@@ -951,8 +630,20 @@
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -2277,6 +1968,356 @@
                 }
             }
         },
+        "/oam/snapshots/{sid}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns snapshot metadata including restore history and the full gateway response of the last restore (the audit record).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "snapshots"
+                ],
+                "summary": "Get one snapshot's metadata",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Snapshot ID (UUID)",
+                        "name": "sid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.InstanceSnapshot"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes a stored snapshot. Pinned snapshots require force=true.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "snapshots"
+                ],
+                "summary": "Delete a snapshot",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Snapshot ID (UUID)",
+                        "name": "sid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Required to delete a pinned snapshot",
+                        "name": "force",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.MessageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Snapshot is pinned and force was not set",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates name, description and/or pinned. Pinned snapshots are exempt from retention.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "snapshots"
+                ],
+                "summary": "Update snapshot metadata",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Snapshot ID (UUID)",
+                        "name": "sid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateSnapshotRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.InstanceSnapshot"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/oam/snapshots/{sid}/download": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Streams the decrypted, decompressed snapshot JSON. The document contains IPsec PSKs and certificate private keys, so this is write-gated and audit-logged. X-Snapshot-Checksum carries the gateway's document checksum; X-Content-Checksum is sha256 over the exact bytes served.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "snapshots"
+                ],
+                "summary": "Download a snapshot document",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Snapshot ID (UUID)",
+                        "name": "sid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "snapshot document JSON",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Stored blob failed integrity verification",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/oam/snapshots/{sid}/restore": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Default mode is dry-run: the gateway validates and returns its plan without mutating anything. Commit first takes an automatic pre_restore safety snapshot of the target, then applies. The gateway's response is returned verbatim in gateway_response. Cross-instance restore is allowed and flagged with cross_instance=true.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "snapshots"
+                ],
+                "summary": "Restore a stored snapshot to a gateway",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Snapshot ID (UUID)",
+                        "name": "sid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "mode: dry-run (default) | commit; optional target_instance_id",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/models.RestoreSnapshotRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.RestoreOutcome"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Stored blob failed integrity verification (never sent to the gateway)",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Gateway unreachable (connection error passed through verbatim)",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/oam/users": {
             "get": {
                 "security": [
@@ -2356,254 +2397,6 @@
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/oam/users/licenses": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieves all active and non-expired licenses for the authenticated user",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "license"
-                ],
-                "summary": "Get user's valid licenses",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.UserLicensesResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/oam/users/licenses/{license_id}": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Updates a specific license key by license ID for the authenticated user",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "license"
-                ],
-                "summary": "Update specific license",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "License ID to update",
-                        "name": "license_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "License update data",
-                        "name": "license",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.UpdateLicenseRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.SuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Deactivates a specific license by ID for the authenticated user",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "license"
-                ],
-                "summary": "Deactivate a user license",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "License ID",
-                        "name": "license_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.MessageResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/oam/users/licenses/{license_id}/status": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieves status and information for a specific license by ID for the authenticated user",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "license"
-                ],
-                "summary": "Get specific license status",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "License ID",
-                        "name": "license_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.ActiveLicense"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -2816,35 +2609,6 @@
                 }
             }
         },
-        "models.ActiveLicense": {
-            "type": "object",
-            "properties": {
-                "expires_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "installed_at": {
-                    "type": "string"
-                },
-                "is_active": {
-                    "type": "boolean"
-                },
-                "license_key_hash": {
-                    "type": "string"
-                },
-                "license_type": {
-                    "$ref": "#/definitions/models.LicenseType"
-                },
-                "user_id": {
-                    "type": "integer"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
         "models.AdminUpdateRequest": {
             "type": "object",
             "required": [
@@ -2922,96 +2686,6 @@
                 }
             }
         },
-        "models.ConfigExport": {
-            "type": "object",
-            "properties": {
-                "checksum": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "download_count": {
-                    "type": "integer"
-                },
-                "expires_at": {
-                    "type": "string"
-                },
-                "export_type": {
-                    "type": "string"
-                },
-                "exported_at": {
-                    "type": "string"
-                },
-                "exported_by": {
-                    "type": "string"
-                },
-                "file_path": {
-                    "type": "string"
-                },
-                "file_size": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "last_downloaded_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.ConfigImportResponseOAM": {
-            "type": "object",
-            "properties": {
-                "backup_id": {
-                    "type": "string"
-                },
-                "dry_run": {
-                    "type": "boolean"
-                },
-                "errors": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.ImportError"
-                    }
-                },
-                "import_summary": {
-                    "$ref": "#/definitions/models.ConfigImportSummaryOAM"
-                },
-                "message": {
-                    "type": "string"
-                },
-                "success": {
-                    "type": "boolean"
-                }
-            }
-        },
-        "models.ConfigImportSummaryOAM": {
-            "type": "object",
-            "properties": {
-                "instances_imported": {
-                    "type": "integer"
-                },
-                "instances_skipped": {
-                    "type": "integer"
-                },
-                "settings_updated": {
-                    "type": "integer"
-                },
-                "trial_history_imported": {
-                    "type": "integer"
-                },
-                "trial_history_skipped": {
-                    "type": "integer"
-                },
-                "users_imported": {
-                    "type": "integer"
-                },
-                "users_skipped": {
-                    "type": "integer"
-                }
-            }
-        },
         "models.CreateAlertRequest": {
             "type": "object",
             "required": [
@@ -3057,10 +2731,6 @@
                 "email": {
                     "type": "string"
                 },
-                "license_key": {
-                    "description": "Optional: Admin can provide license key during creation",
-                    "type": "string"
-                },
                 "password": {
                     "type": "string"
                 },
@@ -3076,20 +2746,8 @@
         "models.EnhancedLoginResponse": {
             "type": "object",
             "properties": {
-                "days_left": {
-                    "type": "integer"
-                },
-                "has_valid_license": {
-                    "type": "boolean"
-                },
                 "id": {
                     "type": "integer"
-                },
-                "license_expiring": {
-                    "type": "boolean"
-                },
-                "license_status": {
-                    "$ref": "#/definitions/models.LicenseStatusResponse"
                 },
                 "token": {
                     "type": "string"
@@ -3136,106 +2794,95 @@
                 }
             }
         },
-        "models.ImportError": {
+        "models.InstanceSnapshot": {
             "type": "object",
             "properties": {
-                "field": {
+                "checksum": {
+                    "description": "\"sha256:\u003chex\u003e\", gateway-computed (envelope)",
                     "type": "string"
                 },
-                "message": {
-                    "type": "string"
-                },
-                "record": {
-                    "type": "string"
-                },
-                "record_index": {
-                    "type": "integer"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.InstallLicenseRequest": {
-            "type": "object",
-            "required": [
-                "license_key"
-            ],
-            "properties": {
-                "license_key": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.LicensePayload": {
-            "type": "object",
-            "properties": {
-                "expiry": {
-                    "type": "string"
-                },
-                "features": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "issued_at": {
-                    "type": "string"
-                },
-                "license_type": {
-                    "type": "string"
-                },
-                "system_installation_id": {
-                    "description": "Enterprise license specific fields (optional)",
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "integer"
-                },
-                "username": {
-                    "description": "Common fields for all license types",
-                    "type": "string"
-                }
-            }
-        },
-        "models.LicenseStatusResponse": {
-            "type": "object",
-            "properties": {
-                "days_left": {
-                    "type": "integer"
-                },
-                "is_expiring": {
-                    "description": "\u003c 7 days",
+                "checksum_ok": {
+                    "description": "integrity-sweep verdict",
                     "type": "boolean"
                 },
-                "is_valid": {
-                    "type": "boolean"
-                },
-                "license": {
-                    "$ref": "#/definitions/models.ActiveLicense"
-                },
-                "message": {
+                "created_at": {
                     "type": "string"
                 },
-                "upgrade_url": {
+                "created_by": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "encrypted": {
+                    "type": "boolean"
+                },
+                "gateway_version": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "instance_id": {
+                    "type": "integer"
+                },
+                "last_restore_response": {
+                    "description": "LastRestoreResponse is the full gateway response JSON of the most\nrecent restore attempt (the audit record, design §5). Only populated\non the single-snapshot GET, not in lists.",
+                    "type": "string"
+                },
+                "last_restore_result": {
+                    "type": "string"
+                },
+                "last_restored_at": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "pinned": {
+                    "type": "boolean"
+                },
+                "restore_count": {
+                    "type": "integer"
+                },
+                "schema_version": {
+                    "type": "string"
+                },
+                "size_bytes": {
+                    "description": "uncompressed JSON size",
+                    "type": "integer"
+                },
+                "stored_checksum": {
+                    "description": "\"sha256:\u003chex\u003e\" over raw JSON bytes as received, OAM-computed",
+                    "type": "string"
+                },
+                "trigger_type": {
                     "type": "string"
                 }
             }
         },
-        "models.LicenseType": {
-            "type": "string",
-            "enum": [
-                "trial",
-                "enterprise"
-            ],
-            "x-enum-comments": {
-                "LicenseTypeEnterprise": "Full features",
-                "LicenseTypeTrial": "Limited features"
-            },
-            "x-enum-varnames": [
-                "LicenseTypeTrial",
-                "LicenseTypeEnterprise"
-            ]
+        "models.InstanceSnapshotSchedule": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "instance_id": {
+                    "type": "integer"
+                },
+                "interval_hours": {
+                    "type": "integer"
+                },
+                "last_run_at": {
+                    "type": "string"
+                },
+                "last_run_result": {
+                    "type": "string"
+                },
+                "retain_count": {
+                    "type": "integer"
+                }
+            }
         },
         "models.LogArchivesResponse": {
             "type": "object",
@@ -3386,6 +3033,20 @@
                 }
             }
         },
+        "models.PaginatedSnapshotsResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.InstanceSnapshot"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/models.PaginationMeta"
+                }
+            }
+        },
         "models.PaginationMeta": {
             "type": "object",
             "properties": {
@@ -3415,6 +3076,46 @@
                 }
             }
         },
+        "models.RestoreOutcome": {
+            "type": "object",
+            "properties": {
+                "cross_instance": {
+                    "type": "boolean"
+                },
+                "gateway_response": {
+                    "type": "object"
+                },
+                "gateway_status": {
+                    "type": "integer"
+                },
+                "instance_id": {
+                    "description": "restore target",
+                    "type": "integer"
+                },
+                "mode": {
+                    "type": "string"
+                },
+                "pre_restore_snapshot_id": {
+                    "type": "string"
+                },
+                "snapshot_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.RestoreSnapshotRequest": {
+            "type": "object",
+            "properties": {
+                "mode": {
+                    "description": "\"dry-run\" (default) | \"commit\"",
+                    "type": "string"
+                },
+                "target_instance_id": {
+                    "description": "TargetInstanceID restores the snapshot onto a different instance than\nthe one it was taken from (cross-instance restore). Defaults to the\nsnapshot's own instance.",
+                    "type": "integer"
+                }
+            }
+        },
         "models.SetupStatusResponse": {
             "type": "object",
             "properties": {
@@ -3432,6 +3133,24 @@
                 },
                 "systemInfo": {
                     "$ref": "#/definitions/models.SystemInfo"
+                }
+            }
+        },
+        "models.SnapshotScheduleRequest": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "interval_hours": {
+                    "type": "integer",
+                    "maximum": 8760,
+                    "minimum": 1
+                },
+                "retain_count": {
+                    "type": "integer",
+                    "maximum": 1000,
+                    "minimum": 1
                 }
             }
         },
@@ -3470,6 +3189,21 @@
                 }
             }
         },
+        "models.TakeSnapshotRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "trigger_type": {
+                    "description": "defaults to \"manual\"",
+                    "type": "string"
+                }
+            }
+        },
         "models.UpdateFirmwareRequest": {
             "type": "object",
             "required": [
@@ -3496,14 +3230,17 @@
                 }
             }
         },
-        "models.UpdateLicenseRequest": {
+        "models.UpdateSnapshotRequest": {
             "type": "object",
-            "required": [
-                "license_key"
-            ],
             "properties": {
-                "license_key": {
+                "description": {
                     "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "pinned": {
+                    "type": "boolean"
                 }
             }
         },
@@ -3544,26 +3281,6 @@
             "type": "object",
             "properties": {
                 "id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "models.UserLicensesResponse": {
-            "type": "object",
-            "properties": {
-                "expired_count": {
-                    "type": "integer"
-                },
-                "licenses": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.ActiveLicense"
-                    }
-                },
-                "total_count": {
-                    "type": "integer"
-                },
-                "valid_count": {
                     "type": "integer"
                 }
             }
