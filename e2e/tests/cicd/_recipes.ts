@@ -15,7 +15,7 @@
 import {expect, Page} from '@playwright/test';
 import {gw, gwJson} from '../../helpers/api';
 import {dialog, dialogButton, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
-import {expandSection, field} from '../../helpers/form';
+import {expandSection, field, setField} from '../../helpers/form';
 import {refreshUntilGone, refreshUntilRow, showAllRows, toolbarButton} from '../../helpers/table';
 
 export const LB_PATH = '/config/loadbalancer';
@@ -37,11 +37,55 @@ export type BackendProtocol = 'http1' | 'http2' | 'both';
 export type ProbeType = 'PING' | 'TCP' | 'UDP' | 'HTTP' | 'HTTPS';
 const PROBE_SEND: Record<ProbeType, string> = {PING: 'ping', TCP: 'tcp', UDP: 'udp', HTTP: 'http', HTTPS: 'https'};
 
+// Endpoint prefill/decode role (cicd `ep_role`) — mirror src/assets/json/ep_roles.json.
+export const EP_ROLE_ID = {normal: 0, prefill: 1, decode: 2} as const;
+export type EpRoleName = keyof typeof EP_ROLE_ID;
+
 export interface RecipeEndpoint {
 	ip: string;
 	targetPort: string;
 	/** default '1' */
 	weight?: string;
+	/** cicd `ep_role`: prefill/decode disaggregation role (only rendered when ai.pdDisaggMode). */
+	epRole?: EpRoleName;
+	/** cicd `nixl_port`: NIXL side-channel port for KV transfer. */
+	nixlPort?: string;
+}
+
+/**
+ * AI-gateway serviceArguments (cicd ai-*, vllm-*, sglang-*, mcp-*) driven from the
+ * AIGatewaySettingsForm accordion. Reachable only when mode is an L7 proxy
+ * (fullproxy=4 / aigw=6); driveLbCreate sets Mode before expanding this section.
+ * KV / SSE / P/D / model-routing fields all round-trip on the gateway GET
+ * (verified live); the exceptions are noted per-spec via readbackOmit.
+ */
+export interface RecipeAi {
+	/** endpoint-pool selector for model routing (e.g. "llama-70b"). */
+	modelName?: string;
+	/** tracing catalog name. */
+	traceType?: string;
+	/** header carrying the session key (mcp-session-id, X-Conversation-Id). */
+	sessionHeaderName?: string;
+	/** CHWBL prefix hash level (sel=chwbl). */
+	chwblPrefixHashLevel?: string;
+	/** CHWBL prefix hash flags. */
+	chwblPrefixHashFlags?: string;
+	/** SSE streaming; suppresses idle-timeout during active streams. */
+	sseMode?: boolean;
+	maxStreamDurationSec?: string;
+	backendKeepaliveIntervalSec?: string;
+	/** vLLM prefill/decode disaggregation. */
+	pdDisaggMode?: boolean;
+	pdCacheAwareMode?: boolean;
+	pdSessionTtlSec?: string;
+	pdCacheThreshold?: string;
+	pdBalanceAbsThreshold?: string;
+	/** KV-cache exact routing mode (0-3). */
+	kvExactMode?: string;
+	kvBlockSize?: string;
+	/** KV block hash algorithm (kv_hash_algos.json send_value). */
+	kvHashAlgo?: 'sha256_cbor' | 'xxhash_cbor';
+	kvZmqPort?: string;
 }
 
 /**
@@ -122,6 +166,8 @@ export interface LbRecipe {
 	probe?: RecipeProbe;
 	/** cicd `mtls_frontend`: frontend client-cert verification (fullproxy + TLS). */
 	mtls?: RecipeMtls;
+	/** cicd AI-gateway serviceArguments (ai-*, vllm-*, sglang-*, mcp-*). */
+	ai?: RecipeAi;
 	/**
 	 * serviceArgument keys the UI sends (asserted in the POST body) but the
 	 * gateway does NOT echo on read-back, so they're skipped in the read-back
@@ -162,6 +208,26 @@ export function expectedServiceArguments(r: LbRecipe): Record<string, unknown> {
 		if (r.mtls.requireClientCn !== undefined) mf.require_client_cn = r.mtls.requireClientCn;
 		if (r.mtls.clientCnPattern) mf.client_cn_pattern = r.mtls.clientCnPattern;
 		sa.mtls_frontend = mf;
+	}
+	if (r.ai) {
+		const a = r.ai;
+		if (a.modelName !== undefined) sa.model_name = a.modelName;
+		if (a.traceType !== undefined) sa.trace_type = a.traceType;
+		if (a.sessionHeaderName !== undefined) sa.session_header_name = a.sessionHeaderName;
+		if (a.chwblPrefixHashLevel !== undefined) sa.chwbl_prefix_hash_level = Number(a.chwblPrefixHashLevel);
+		if (a.chwblPrefixHashFlags !== undefined) sa.chwbl_prefix_hash_flags = Number(a.chwblPrefixHashFlags);
+		if (a.sseMode) sa.sse_mode = true;
+		if (a.maxStreamDurationSec !== undefined) sa.max_stream_duration_sec = Number(a.maxStreamDurationSec);
+		if (a.backendKeepaliveIntervalSec !== undefined) sa.backend_keepalive_interval_sec = Number(a.backendKeepaliveIntervalSec);
+		if (a.pdDisaggMode) sa.pd_disagg_mode = true;
+		if (a.pdCacheAwareMode) sa.pd_cache_aware_mode = true;
+		if (a.pdSessionTtlSec !== undefined) sa.pd_session_ttl_sec = Number(a.pdSessionTtlSec);
+		if (a.pdCacheThreshold !== undefined) sa.pd_cache_threshold = Number(a.pdCacheThreshold);
+		if (a.pdBalanceAbsThreshold !== undefined) sa.pd_balance_abs_threshold = Number(a.pdBalanceAbsThreshold);
+		if (a.kvExactMode !== undefined) sa.kvExactMode = Number(a.kvExactMode);
+		if (a.kvBlockSize !== undefined) sa.kvBlockSize = Number(a.kvBlockSize);
+		if (a.kvHashAlgo !== undefined) sa.kvHashAlgo = a.kvHashAlgo;
+		if (a.kvZmqPort !== undefined) sa.kvZmqPort = Number(a.kvZmqPort);
 	}
 	if (r.probe) {
 		sa.probetype = PROBE_SEND[r.probe.type];
@@ -242,6 +308,35 @@ export async function driveLbCreate(page: Page, r: LbRecipe): Promise<any> {
 		}
 	}
 
+	// AI Gateway settings (cicd ai-*, vllm-*, sglang-*, mcp-*). Gated on an L7
+	// proxy mode — Mode is already set above, so the accordion's fields are live.
+	// pd_disagg_mode must be set HERE (before the Endpoints loop) so the per-
+	// endpoint EP Role / NIXL Port controls render for the PD scenarios.
+	if (r.ai) {
+		const a = r.ai;
+		const aigw = await expandSection(page, /^AI Gateway/);
+		if (a.modelName !== undefined) await field(page, 'Model Name', aigw).fill(a.modelName);
+		if (a.traceType !== undefined) await field(page, 'Trace Type', aigw).fill(a.traceType);
+		if (a.sessionHeaderName !== undefined) await field(page, 'Session Header Name', aigw).fill(a.sessionHeaderName);
+		// Integer ParamBoxes render as a Select when the gateway metadata carries
+		// an enum (e.g. CHWBL Prefix Hash Level) or a textbox otherwise — setField
+		// handles both.
+		if (a.chwblPrefixHashLevel !== undefined) await setField(page, 'CHWBL Prefix Hash Level', a.chwblPrefixHashLevel, aigw);
+		if (a.chwblPrefixHashFlags !== undefined) await setField(page, 'CHWBL Prefix Hash Flags', a.chwblPrefixHashFlags, aigw);
+		if (a.sseMode) await field(page, 'SSE Mode', aigw).check();
+		if (a.maxStreamDurationSec !== undefined) await setField(page, 'Max Stream Duration (s)', a.maxStreamDurationSec, aigw);
+		if (a.backendKeepaliveIntervalSec !== undefined) await setField(page, 'Backend Keepalive Interval (s)', a.backendKeepaliveIntervalSec, aigw);
+		if (a.pdDisaggMode) await field(page, 'P/D Disaggregation Mode', aigw).check();
+		if (a.pdCacheAwareMode) await field(page, 'P/D Cache-Aware Mode', aigw).check();
+		if (a.pdSessionTtlSec !== undefined) await setField(page, 'P/D Session TTL (s)', a.pdSessionTtlSec, aigw);
+		if (a.pdCacheThreshold !== undefined) await setField(page, 'P/D Cache Threshold', a.pdCacheThreshold, aigw);
+		if (a.pdBalanceAbsThreshold !== undefined) await setField(page, 'P/D Balance Abs Threshold', a.pdBalanceAbsThreshold, aigw);
+		if (a.kvExactMode !== undefined) await setField(page, 'KV Exact Mode', a.kvExactMode, aigw);
+		if (a.kvBlockSize !== undefined) await setField(page, 'KV Block Size', a.kvBlockSize, aigw);
+		if (a.kvHashAlgo !== undefined) await selectOption(page, 'KV Hash Algo', a.kvHashAlgo);
+		if (a.kvZmqPort !== undefined) await setField(page, 'KV ZMQ Port', a.kvZmqPort, aigw);
+	}
+
 	// Allowed Sources (cicd --sources=): one prefix row per CIDR.
 	if (r.allowedSources?.length) {
 		const secA = await expandSection(page, /^Allowed Sources$/);
@@ -269,6 +364,10 @@ export async function driveLbCreate(page: Page, r: LbRecipe): Promise<any> {
 		await field(page, 'IP', sec).nth(i).fill(ep.ip);
 		await field(page, 'Target Port', sec).nth(i).fill(ep.targetPort);
 		if (ep.weight !== undefined) await field(page, 'Weight', sec).nth(i).fill(ep.weight);
+		// P/D disaggregation per-endpoint controls (rendered only when
+		// ai.pdDisaggMode was enabled above).
+		if (ep.epRole !== undefined) await selectOption(page, 'EP Role', ep.epRole, i);
+		if (ep.nixlPort !== undefined) await field(page, 'NIXL Port', sec).nth(i).fill(ep.nixlPort);
 	}
 
 	await page.mouse.move(0, 0); // dismiss sticky accordion tooltip
@@ -304,13 +403,29 @@ export async function assertLbReadback(r: LbRecipe): Promise<void> {
 	// coerced weight is a real gateway/UI bug, and asserting only IPs hid it.
 	// loxilb may omit weight when it equals the default 1, so normalize missing
 	// weight to 1 before comparing (mirrors the sel/mode zero-default handling).
-	const gotEps = (rule.endpoints ?? [])
-		.map((e: any) => ({ip: e.endpointIP, targetPort: Number(e.targetPort), weight: Number(e.weight ?? 1)}))
-		.sort((a: any, b: any) => a.ip.localeCompare(b.ip));
-	const wantEps = r.endpoints
-		.map(e => ({ip: e.ip, targetPort: Number(e.targetPort), weight: Number(e.weight ?? '1')}))
-		.sort((a, b) => a.ip.localeCompare(b.ip));
-	expect(gotEps, `${r.cicd}: endpoint IP/targetPort/weight round-trip`).toEqual(wantEps);
+	// When a recipe carries prefill/decode roles (cicd P/D disaggregation), the
+	// endpoint tuple also validates ep_role + nixl_port round-trip (both echoed
+	// by the gateway — verified live). Otherwise the tuple stays IP/port/weight.
+	const usesRoles = r.endpoints.some(e => e.epRole !== undefined || e.nixlPort !== undefined);
+	const mapGot = (e: any) => {
+		const base: Record<string, unknown> = {ip: e.endpointIP, targetPort: Number(e.targetPort), weight: Number(e.weight ?? 1)};
+		if (usesRoles) {
+			base.ep_role = Number(e.ep_role ?? 0);
+			base.nixl_port = Number(e.nixl_port ?? 0);
+		}
+		return base;
+	};
+	const mapWant = (e: RecipeEndpoint) => {
+		const base: Record<string, unknown> = {ip: e.ip, targetPort: Number(e.targetPort), weight: Number(e.weight ?? '1')};
+		if (usesRoles) {
+			base.ep_role = EP_ROLE_ID[e.epRole ?? 'normal'];
+			base.nixl_port = Number(e.nixlPort ?? '0');
+		}
+		return base;
+	};
+	const gotEps = (rule.endpoints ?? []).map(mapGot).sort((a: any, b: any) => (a.ip as string).localeCompare(b.ip as string));
+	const wantEps = r.endpoints.map(mapWant).sort((a, b) => (a.ip as string).localeCompare(b.ip as string));
+	expect(gotEps, `${r.cicd}: endpoint tuple round-trip`).toEqual(wantEps);
 }
 
 /** API delete-by-name (afterEach cleanup); tolerant if already gone. */

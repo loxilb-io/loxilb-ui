@@ -312,10 +312,10 @@ Status legend: **BUILD** = confirmed product change to make (user decision
 | CG-3 | **LB `--mark`** (fwmark on rule) | `tcplbmark` | LB form / `IServiceConfiguration` | Verify `block`/mark field maps; add if missing | VERIFY |
 | CG-4 | **Egress LB / cistate** surface | `egresslb` | LB egress + `/config/cistate` | **PARTIAL (P6)** — the LB `egress` flag was re-enabled in P2 and VERIFIED to round-trip via REST (not write-only). The egress **firewall** SNAT rule (`--egress`) is a genuine **gateway-REST gap**: `api/models/firewall_option_entry.go` has no `egress` field (only the loxicmd path does), so it cannot be POSTed. Not built in the UI — a control that POSTs an `egress` the gateway silently drops is worse than none. **Hand-off to the gateway team** to add `egress` to the firewall REST model. | ⚠️ GATEWAY HAND-OFF |
 | CG-5 | ~~Tunnel endpoint (tunlb) control~~ | `tcptunlb`, `sctptunlb` | — | **NOT A GAP (P6)** — the cicd `tcptunlb`/`sctptunlb` recipes create a **plain dnat LB rule** (`loxicmd create lb <vip> --tcp/sctp=… --endpoints=…`); the tunnel is network TOPOLOGY (backends reached over an out-of-band tunnel iface), not an LB config flag. No tunnel option exists in the loxicmd line, the gateway LB model, or the cicd config. So (like CG-2) the gap dissolves against the source of truth — the LB rule is already UI-expressible. No build. | ✅ RESOLVED |
-| CG-6 | **HA cistate** edit round-trip on single node | `ha1`, `cluster*` | `status/ha` page / OAM | Confirm PUT + read-back works standalone | VERIFY |
+| CG-6 | **HA cistate** edit round-trip on single node | `ha1`, `cluster*` | `status/ha` page / OAM | **DONE (P8)** — the cistate PUT + read-back round-trips standalone through the HA page (state kept NOT_DEFINED, read-modify-restore). `cicd/ha/ha-cistate.spec.ts`. | ✅ DONE |
 | CG-7 | **L3DSR** distinct flag | `tcplbl3dsr` | LB mode/args | Confirm dsr vs l3dsr distinction in gateway metadata | VERIFY |
-| CG-8 | **`llm_type`** field surfaced | `vllm-*` proxy modes | LB AI subform | Verify present in AI-gateway sub-form | VERIFY |
-| CG-9 | **AI userservice** on CI gateway | `ai-apikey`, `ai-sse-quota` | oam-loxilb / gateway launch | **Enable `--userservice`** on the CI gateway so AI specs run for real (no auto-skip) | **BUILD** |
+| CG-8 | **`llm_type`** field surfaced | `vllm-*` proxy modes | LB AI subform | **RESOLVED (P9)** — `llm_type` IS surfaced (`AdvancedSettingsForm` 'LLM Type', typed in `IServiceArguments`). But NO cicd config actually sets it (grep-verified across all ai-*/vllm-*/sglang-*/mcp-* dirs), so no P9 spec drives it. Secondary: it is **write-only on the gateway GET** (not echoed on read-back, like `privateIP`) — a minor gateway readback gap (§16). | ✅ RESOLVED |
+| CG-9 | **AI userservice** on CI gateway | `ai-apikey`, `ai-sse-quota` | oam-loxilb / gateway launch | **STILL PENDING (P9)** — the testbed gateway is built WITHOUT `--userservice` (probe → 501). The LB-based AI surfaces (`ai-sse-quota` and the rest) DON'T need it and are green; only the AI **apikey / tenant-ratelimit** CRUD does. `cicd/ai-gateway/ai-apikey.spec.ts` documents the 501 gate and auto-skips its CRUD leg, lighting up the moment `--userservice` is enabled. Enabling it is a gateway/oam launch decision owned by the engineers — not a UI change. | ⚠️ GATEWAY LAUNCH |
 
 **Build items (CG-1, CG-2, CG-4, CG-5, CG-9)** are prerequisites: land the
 product change first, then the corresponding cicd spec goes green. Each
@@ -706,3 +706,63 @@ reproduced with the UI's strongswan model, a CG-2-style dissolution). Green 2×.
   **firewall** `--egress` is a gateway-REST gap (`firewall_option_entry.go` has
   no `egress` field) → documented hand-off, not shipped as a silently-dropping
   control. Green 2×.
+
+### P8 status — HA / BGP config slices complete
+`cicd/ha/` — the single-node config slices distilled from the multi-node
+cluster*/ha1 scenarios (no failover ever triggered; state kept NOT_DEFINED).
+- **ha-cistate** (cicd/ha1 + cluster*): the fullnat LB rule the cluster fronts
+  round-trips via REST, and the cluster-instance state (`/config/cistate`)
+  edits round-trip through the HA page (read-modify-restore on the original
+  cistate). CG-6 resolved.
+- **bgp-neighbor** (cicd/cluster1): the `--bgp` fullnat LB rule round-trips —
+  the LB `bgp` announce flag is accepted and echoed back on GET **even with
+  BGP mode disabled** (verified live). The BGP neighbor form reproduces the
+  cluster recipe (peer + `remoteAs 64512`) in the POST body, bounded by the
+  disabled-BGP **403** the testbed returns (documented, not hidden — BGP
+  create is un-exercisable here). The F-CICD-4 sibling gate blocks a malformed
+  peer IP; the BGP global page renders (assert-only, routing-safe).
+- `_recipes.ts`: added the LB `bgp` announce flag (cicd `--bgp`). Green 2×;
+  lb-l4 (32) re-run green (no regression).
+
+### P9 status — AI-gateway group complete (LB-based surfaces; CG-9 apikey pending)
+`cicd/ai-gateway/` — the AI serviceArgument config surfaces (plan §8). All are
+plain LB rules with AI fields (mode=fullproxy) and DON'T need `--userservice`;
+only the apikey/ratelimit CRUD does (CG-9, still off → auto-skips).
+- **Specs (all green 2×):** `ai-model-routing` (model_name per rule),
+  `ai-sse-quota` (sse_mode + max_stream_duration + backend keepalive),
+  `ai-proxy-modes` (Plain/https/e2ehttps fullproxy — the e2ehttps value uses
+  the F-CICD-3-corrected `3`, like the mcp-e2ehttps cicd's old `security:2`),
+  `ai-wrr` (CHWBL sel + 8:2 weighted eps + prefix-hash-level), `ai-kvcache-routing`
+  (pd_disagg + kvExactMode/kvHashAlgo/kvBlockSize/kvZmqPort + prefill/decode
+  endpoint roles), `ai-pd-disagg` (pd_disagg_mode + pd_cache_aware_mode +
+  sse_mode + per-endpoint ep_role + nixl_port), `ai-mcp-session`
+  (session_header_name=mcp-session-id, sel rr + persist). `ai-apikey` documents
+  the CG-9 501 gate and auto-skips CRUD.
+- `_recipes.ts`: added the AI drive surface (`RecipeAi` + endpoint
+  `epRole`/`nixlPort`) driven from the AIGatewaySettingsForm accordion (set
+  before the Endpoints loop so the PD per-endpoint controls render). Verified
+  live: model/trace/session/CHWBL/SSE/P/D/KV serviceArguments **and** endpoint
+  `ep_role`+`nixl_port` all round-trip on the gateway GET.
+
+**Gateway/UI gaps surfaced (findings, not blockers):**
+- **`llm_type` write-only on GET** (loxilb-inference-gateway): accepted at
+  create but never echoed on read-back (like `privateIP`, F-CICD-2 family).
+  Also no cicd config sets it, so no P9 spec drives it — CG-8 resolved on the
+  UI side, this is the residual gateway readback gap. Hand-off.
+- **`kvWarmupSec` not surfaced (loxilb-ui):** cicd/vllm-kvcache-routing-cpu
+  sets `kvWarmupSec` on the LB rule, but the AIGatewaySettingsForm exposes no
+  KV-warmup control and `IServiceArguments` doesn't type it → the field can't
+  be driven from the UI. `ai-kvcache-routing` drives the expressible KV subset.
+- **`chwbl_mean_load_factor` / `chwbl_replication` not surfaced (loxilb-ui):**
+  the CHWBL L2/L3 tuning params used by vllm-fullproxy/httpproxy's higher-level
+  rules are neither typed in `IServiceArguments` nor exposed in the AIGateway
+  form (only `chwbl_prefix_hash_level`/`_flags` are). CHWBL L1 is expressible;
+  L2/L3 load-factor/replication tuning is a UI gap.
+- **`session_header_name` dropped when combined with `sel=chwbl` (gateway):**
+  round-trips fine with sel=rr/persist (proven by `ai-mcp-session`), but a
+  chwbl rule's GET omitted it in probing — a minor mode-dependent readback
+  nuance, avoided by the specs (mcp session uses rr/persist).
+- **Test-infra note:** `CHWBL Prefix Hash Level` (and other enum-carrying
+  integer ParamBoxes) render as a **Select**, not a textbox, when the gateway
+  metadata supplies an enum — the `_recipes.ts` AI drive uses `setField`
+  (combobox-or-textbox aware) for every numeric AI field.
