@@ -11,7 +11,7 @@ schema, not memory.
 
 **Live validation.** Each closed row is exercised against the real gateway
 through the OAM proxy — no browser/credentials needed:
-`http://223.130.142.175:8080/oam/loxilbs/1/netlox/v1/config/<resource>`
+`http://<oam-host>:8080/oam/loxilbs/1/netlox/v1/config/<resource>`
 (admin bearer token). This validates the exact JSON body the UI builds.
 
 **Scope (agreed 2026-07-17).**

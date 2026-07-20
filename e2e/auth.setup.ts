@@ -16,13 +16,19 @@ import fs from 'fs';
 import path from 'path';
 
 const AUTH_DIR = path.resolve(__dirname, '../.auth');
-const OAM_BASE = process.env.E2E_OAM_URL ?? 'http://223.130.142.175:8080/oam';
+// Environment-only, like every address/credential in this suite — the repo
+// never carries a reachable host or a live password.
+const OAM_BASE = process.env.E2E_OAM_URL;
+if (!OAM_BASE) throw new Error('E2E_OAM_URL missing — set it in .env.e2e.local (e.g. http://<oam-host>:8080/oam)');
+const FIXTURE_PASSWORD = process.env.E2E_FIXTURE_PASSWORD;
+if (!FIXTURE_PASSWORD) throw new Error('E2E_FIXTURE_PASSWORD missing — set it in .env.e2e.local (used for the auto-provisioned e2e_operator/e2e_viewer accounts)');
 
-// Fixed RBAC fixture accounts. Usernames use `_` (the validator forbids `-`),
-// so they never match the `e2e-` sweep marker and survive cleanup.
+// Fixed RBAC fixture accounts, provisioned by the admin setup below with the
+// password from the environment. Usernames use `_` (the validator forbids
+// `-`), so they never match the `e2e-` sweep marker and survive cleanup.
 export const FIXTURES = {
-	operator: {username: 'e2e_operator', email: 'e2e_operator@test.local', password: 'Kp7#mZq2v', role: 'operator'},
-	viewer: {username: 'e2e_viewer', email: 'e2e_viewer@test.local', password: 'Rb5$tNx8w', role: 'viewer'},
+	operator: {username: 'e2e_operator', email: 'e2e_operator@test.local', password: FIXTURE_PASSWORD, role: 'operator'},
+	viewer: {username: 'e2e_viewer', email: 'e2e_viewer@test.local', password: FIXTURE_PASSWORD, role: 'viewer'},
 } as const;
 
 function adminTokenFrom(stateFile: string): string {

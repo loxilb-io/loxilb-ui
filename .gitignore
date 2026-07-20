@@ -140,3 +140,6 @@ make-package.ps1
 
 # Ad-hoc verification screenshots at the repo root
 /*.png
+
+# Local AI-assistant tooling (skills, per-session context)
+.claude/
