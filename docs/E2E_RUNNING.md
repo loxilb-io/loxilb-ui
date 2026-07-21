@@ -105,7 +105,7 @@ Run just the cicd scenario suite:
 
 ```bash
 npm run e2e:cicd                 # all tests/cicd/** groups, in order
-npx playwright test tests/cicd/ai-gateway    # one cicd group
+npx playwright test e2e/tests/cicd/ai-gateway    # one cicd group
 ```
 
 ## 3a. Nightly / on-demand CI run

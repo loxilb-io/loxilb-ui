@@ -30,7 +30,6 @@ export default function UploadSnapshotForm(props: UploadSnapshotFormProps) {
 	const {onChange} = props;
 
 	const [form, setForm] = React.useState<IUploadSnapshotEntry>({file: null, name: '', description: ''});
-	const inputRef = React.useRef<HTMLInputElement>(null);
 
 	const tooLarge = form.file !== null && form.file.size > SNAPSHOT_UPLOAD_MAX_BYTES;
 	const validateForm = (data: IUploadSnapshotEntry): boolean => data.file !== null && data.file.size <= SNAPSHOT_UPLOAD_MAX_BYTES;
@@ -49,20 +48,23 @@ export default function UploadSnapshotForm(props: UploadSnapshotFormProps) {
 		<NewBox item_name={t('Upload Snapshot')}>
 			<Stack spacing={3}>
 				<Stack direction="row" spacing={2} alignItems="center">
-					<Button variant="outlined" startIcon={<UploadFileIcon />} onClick={() => inputRef.current?.click()}>
+					{/* MUI-canonical file button: the input is a child of the label so a
+					    click opens the chooser via native label activation — no
+					    programmatic inputRef.click(), which is more robust across browsers
+					    and accessibility. */}
+					<Button variant="outlined" component="label" startIcon={<UploadFileIcon />}>
 						{t('Choose File')}
+						<input
+							type="file"
+							accept=".json,application/json"
+							hidden
+							aria-label={t('Snapshot document file')}
+							onChange={e => update({file: e.target.files?.[0] ?? null})}
+						/>
 					</Button>
 					<Typography variant="body2" color={form.file ? 'text.primary' : 'text.secondary'}>
 						{form.file ? `${form.file.name} (${formatBytes(form.file.size)})` : t('No file selected')}
 					</Typography>
-					<input
-						ref={inputRef}
-						type="file"
-						accept=".json,application/json"
-						hidden
-						aria-label={t('Snapshot document file')}
-						onChange={e => update({file: e.target.files?.[0] ?? null})}
-					/>
 				</Stack>
 				{tooLarge && (
 					<Alert severity="error">
