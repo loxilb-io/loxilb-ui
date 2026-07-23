@@ -2,6 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import AddIcon from '@mui/icons-material/Add';
+import BlockIcon from '@mui/icons-material/Block';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ModeIcon from '@mui/icons-material/Mode';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -54,6 +55,12 @@ export default function DataTable(props: {
 	onAdd?: () => void;
 	onEdit?: () => void;
 	onDelete?: () => void;
+	// Optional override for the delete action's presentation. Singleton/config
+	// resources (e.g. Security Rate Limiting) map DELETE to a reversible
+	// "Disable", not a hard row removal — the generic confirm ("delete \"Yes\"?
+	// … cannot be undone") would be inaccurate there. When set, it replaces the
+	// name-derived confirm text, the button tooltip, and (optionally) the icon.
+	deleteConfirm?: {title: string; message: string; confirmLabel: string; tooltip?: string; icon?: 'delete' | 'block'};
 	onRefresh?: () => void;
 	// When the data fetch fails, callers pass error=true so the table shows a
 	// "Couldn't load …" banner instead of a bare "No rows" that reads as an
@@ -61,7 +68,7 @@ export default function DataTable(props: {
 	error?: boolean;
 	defaultSort?: {field: string; sort: 'asc' | 'desc'};
 }) {
-	const {name, columns, rows, selected_rows, onChangeSelectedRows, hideMenuBar, hideCheckbox, hideIdColumn, disableSelect, onRefresh, error, defaultSort} = props;
+	const {name, columns, rows, selected_rows, onChangeSelectedRows, hideMenuBar, hideCheckbox, hideIdColumn, disableSelect, onRefresh, error, defaultSort, deleteConfirm} = props;
 
 	// RBAC Phase 3: viewers are read-only everywhere, so hide the mutation
 	// buttons for them (UX only — the server rejects viewer writes with 403).
@@ -154,6 +161,13 @@ export default function DataTable(props: {
 
 	const handleDelete = (e: any) => {
 		e.stopPropagation();
+
+		// Caller-supplied wording for non-destructive/singleton semantics.
+		if (deleteConfirm) {
+			openPopUp(deleteConfirm.title, deleteConfirm.message, deleteConfirm.confirmLabel, t('Cancel'), onDelete);
+			return;
+		}
+
 		const names = selected_rows
 			.map(id => rows.find(r => r.id === id))
 			.filter(Boolean)
@@ -218,10 +232,10 @@ export default function DataTable(props: {
 					)}
 
 					{onDelete && (
-						<Tooltip title={t('Delete {{name}}', {name})} placement="top" arrow>
+						<Tooltip title={deleteConfirm?.tooltip ?? t('Delete {{name}}', {name})} placement="top" arrow>
 							<span>
 								<IconButton disabled={selected_rows.length === 0} onClick={handleDelete}>
-									<DeleteIcon />
+									{deleteConfirm?.icon === 'block' ? <BlockIcon /> : <DeleteIcon />}
 								</IconButton>
 							</span>
 						</Tooltip>

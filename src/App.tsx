@@ -59,7 +59,6 @@ import MirrorPage from 'pages/traffic/MirrorPage';
 import QoSPage from 'pages/traffic/QoSPage';
 import SecurityRatePage from 'pages/traffic/SecurityRatePage';
 import SNICertificatesPage from 'pages/traffic/SNICertificatesPage';
-import SYNFloodPage from 'pages/traffic/SYNFloodPage';
 
 import DevicePage from 'pages/status/DevicePage';
 import FileSystemPage from 'pages/status/FileSystemPage';
@@ -171,7 +170,6 @@ export default function App() {
 										<Route path="certs" element={<IPsecCertificatePage />} />
 									</Route>
 									<Route path="security" element={<Outlet />}>
-										<Route path="synflood" element={<SYNFloodPage />} />
 										<Route path="ipfilter" element={<IPFilterPage />} />
 										<Route path="securityrate" element={<SecurityRatePage />} />
 									</Route>								

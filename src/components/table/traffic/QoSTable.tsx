@@ -34,9 +34,9 @@ export default function QoSTable(props: {data: IPolicyConfiguration; selected_ro
    const rows = data.polAttr
 	   ? (() => {
 		   const sorted = [...data.polAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
-		   return sorted.map((item, index) => {
+		   return sorted.map(item => {
 			   return {
-				   id: index,
+				   id: getHashKey(item),
 				   policyIdent: item.policyIdent,
 				   type: item.policyInfo.type,
 				   rate: `${formatRate(item.policyInfo.committedInfoRate, 'bps')} / ${formatRate(item.policyInfo.peakInfoRate, 'bps')}`,

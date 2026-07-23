@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {getStableHash} from 'common';
 import SearchIcon from '@mui/icons-material/Search';
 import {Button, Stack, TextField} from '@mui/material';
 import TenantRateLimitInputForm from 'components/input/TenantRateLimitInputForm';
@@ -109,7 +110,7 @@ export default function AITenantRateLimitPage() {
 
 	const handleEdit = () => {
 		if (selected_rows.length !== 1) return;
-		const item = rows[selected_rows[0]];
+		const item = rows.find(r => getStableHash(String(r.tenant_id ?? '')) === selected_rows[0]);
 		if (!item) return;
 		openUpsertForm({tenant_id: item.tenant_id, rps: item.rps ?? 0, tokens_per_min: item.tokens_per_min ?? 0});
 	};

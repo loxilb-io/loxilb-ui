@@ -1,29 +1,8 @@
 //---------------------------------------------------------
-// SYN Flood Protection Types
-//---------------------------------------------------------
-export interface ISYNFloodConfigMod {
-	enabled: boolean;
-	synThreshold: number;
-	cookieThreshold: number;
-	whitelistIps?: string[];
-}
-
-export interface ISYNFloodEntry {
-	enabled: boolean;
-	synThreshold: number;
-	cookieThreshold: number;
-	whitelistIps: string[];
-	totalSyns: number;
-	blockedSyns: number;
-	passedSyns: number;
-	cookieActivations: number;
-	uniqueIps: number;
-}
-
-export interface ISYNFloodResponse {
-	synfloodAttr: ISYNFloodEntry[];
-}
-
+// NOTE: standalone SYN Flood Protection was removed from the gateway in the
+// wrap-up and folded into the unified Security Rate Limiting config
+// (/config/securityrate: synEnabled/synThreshold/cookieThreshold). The old
+// /config/synflood endpoint and its types no longer exist.
 //---------------------------------------------------------
 // Unified Security Rate Limiting Types (P0-5 + P0-6 + P0-7)
 //---------------------------------------------------------
@@ -33,7 +12,6 @@ export interface ISecurityRateConfigMod {
 	cookieThreshold: number;
 	connRateEnabled: boolean;
 	ratePerSec: number;
-	concurrentLimit: number;
 	udpEnabled: boolean;
 	udpPktThreshold: number;
 	udpBandwidthMB: number;
@@ -46,7 +24,6 @@ export interface ISecurityRateEntry {
 	cookieThreshold: number;
 	connRateEnabled: boolean;
 	ratePerSec: number;
-	concurrentLimit: number;
 	udpEnabled: boolean;
 	udpPktThreshold: number;
 	udpBandwidthMB: number;

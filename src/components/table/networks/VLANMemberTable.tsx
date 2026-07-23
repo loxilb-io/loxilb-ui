@@ -27,9 +27,9 @@ export default function VLANMemberTable(props: {data: IMember[]; selected_rows: 
 	   return hash >>> 0;
    };
    const sorted = data ? [...data].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
-   const rows: any[] = sorted.map((item, index) => {
+   const rows: any[] = sorted.map(item => {
 	   return {
-		   id: index,
+		   id: getHashKey(item),
 		   dev: item.dev,
 		   tag: item.tagged ? 'Yes' : 'No',
 		   _uniqueKey: getHashKey(item),

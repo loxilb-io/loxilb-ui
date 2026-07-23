@@ -23,8 +23,8 @@ export default function IPTable(props: {data: IIpData; title?: string; selected_
 
    // Use data as provided (already sorted by parent component)
    const rows = data.ipAttr
-	   ? data.ipAttr.map((item, index) => ({
-		   id: index,
+	   ? data.ipAttr.map(item => ({
+		   id: getHashKey(item),
 		   dev: item.dev,
 		   ipAddress: item.ipAddress.join(', '),
 		   sync: item.sync,

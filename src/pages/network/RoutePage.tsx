@@ -11,9 +11,8 @@ import { usePopUp } from 'hooks/popupHook';
 import { useErrorPopup } from 'hooks/useErrorPopup';
 import { useRouteAttr } from 'hooks/query/queryHooks';
 import { t } from 'i18next';
-import { useRef, useState } from 'react';
-import React from 'react';
-import { IRouteAttrInput, IRouteData } from 'types/route_attr';
+import { useMemo, useRef, useState } from 'react';
+import { IRouteAttribute, IRouteAttrInput, IRouteData } from 'types/route_attr';
 
 //---------------------------------------------------------
 // Functional Component
@@ -24,65 +23,30 @@ export default function RoutePage() {
 	const { data, isError, refetch } = useRouteAttr(inst); // IRouteAttribute[]
 	const route_info: IRouteData = { routeAttr: data ?? [] };
 
-	const [selected_rows, set_selected_rows] = useState<number[]>([]);
-	// Track selected destinationIPNet for synchronization
-	const [selected_key, set_selected_key] = useState<string | null>(null);
+	const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds stable hash ids
 	const { openPopUp, enableYes } = usePopUp();
 	const { errorPopup, showAddError, showDeleteError, closeErrorPopup } = useErrorPopup();
 
-	// Hash function for Route entry
-	const getHashKey = (item: any) => {
-		const str = `${item?.destinationIPNet || ''}`;
-		return getStableHash(str);
-	};
+	// Hash function for Route entry (must match RouteTable's getHashKey)
+	const getHashKey = (item: any) => getStableHash(`${item?.destinationIPNet || ''}`);
 
-	// Sorted route entries
-	const sortedAttr = route_info.routeAttr ? [...route_info.routeAttr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
+	// Resolve selected items by matching the stable hash
+	const selectedItems = useMemo(
+		() =>
+			selected_rows
+				.map(h => route_info.routeAttr.find(a => getHashKey(a) === h))
+				.filter((x): x is IRouteAttribute => x != null),
+		[selected_rows, route_info.routeAttr],
+	);
+	const selectedItem: IRouteAttribute | null = selectedItems.length === 1 ? selectedItems[0] : null;
 
-	// Map selected original indices to sorted indices for display
-	const selectedSortedIndices = React.useMemo(() => {
-		if (!route_info.routeAttr || selected_rows.length === 0) return [];
-
-		return selected_rows
-			.map(originalIdx => {
-				const original = route_info.routeAttr[originalIdx];
-				return sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
-			})
-			.filter(idx => idx !== -1);
-	}, [selected_rows, route_info.routeAttr, sortedAttr]);
-
-	// Find single selected index for detail panel
-	const selected_index = selectedSortedIndices.length === 1 ? selectedSortedIndices[0] :
-		(selected_key ? sortedAttr.findIndex(attr => `${attr.destinationIPNet}` === selected_key) : -1);
-
-	// Selection handler: map sorted indices back to original indices
-	const handleSelectionChange = (indices: number[]) => {
-		if (!route_info.routeAttr) {
-			set_selected_rows([]);
-			return;
-		}
-
-		if (indices.length === 0) {
-			set_selected_rows([]);
-			return;
-		}
-
-		// Map each sorted index back to original index
-		const originalIndices = indices
-			.map(sortedIdx => {
-				const sortedItem = sortedAttr[sortedIdx];
-				return route_info.routeAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
-			})
-			.filter(idx => idx !== -1);
-
-		set_selected_rows(originalIndices);
-	};
+	const handleSelectionChange = (hashes: number[]) => set_selected_rows(hashes);
 	const handleDelete = async () => {
-		if (!inst || selected_rows.length === 0) return;
+		if (!inst || selectedItems.length === 0) return;
 
 		const results = await Promise.all(
-			selected_rows.map(rowIndex => {
-				const [ip, maskStr] = route_info.routeAttr[rowIndex].destinationIPNet.split('/');
+			selectedItems.map(item => {
+				const [ip, maskStr] = item.destinationIPNet.split('/');
 				return request_delete_route(inst, ip, parseInt(maskStr, 10));
 			}),
 		);
@@ -151,26 +115,14 @@ export default function RoutePage() {
 
 	const handleRefresh = () => {
 		set_selected_rows([]);
-		set_selected_key(null);
 		refetch();
 	};
-
-	// Synchronize selected_key with selected_rows
-	React.useEffect(() => {
-		if (!route_info.routeAttr || route_info.routeAttr.length === 0) return;
-		if (selected_rows.length === 1) {
-			const item = route_info.routeAttr[selected_rows[0]];
-			set_selected_key(`${item.destinationIPNet}`);
-		} else if (selected_key !== null) {
-			set_selected_key(null);
-		}
-	}, [route_info, selected_rows, selected_key]);
 
 	return (
 		<>
 			<RouteTable
-				data={{ routeAttr: sortedAttr }}
-				selected_rows={selectedSortedIndices}
+				data={route_info}
+				selected_rows={selected_rows}
 				onChangeSelectedRows={handleSelectionChange}
 				onAdd={handleAdd}
 				onDelete={handleDelete}

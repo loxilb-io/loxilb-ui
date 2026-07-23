@@ -31,9 +31,9 @@ export default function EndpointTable(props: {data: IEndpointAttr; selected_rows
    const rows = data.Attr
 	   ? (() => {
 		   const sorted = [...data.Attr].sort((a, b) => getHashKey(a) - getHashKey(b));
-		   return sorted.map((item, index) => {
+		   return sorted.map(item => {
 			   return {
-				   id: index,
+				   id: getHashKey(item),
 				   name: item.name,
 				   hostName: item.hostName,
 				   inactiveReTries: item.inactiveReTries,

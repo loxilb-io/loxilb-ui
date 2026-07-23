@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IDataTableColumnDef} from 'types/global';
 import {IVxlanData} from 'types/vxlan';
@@ -18,9 +19,9 @@ export default function VXLANTable(props: {data: IVxlanData; selected_rows: numb
 		{data_key: 'peerIP', header: 'Peer IPs', width: 'wide'},
 	];
 
-	const rows = data.vxlanAttr.map((item, index) => {
+	const rows = data.vxlanAttr.map(item => {
 		return {
-			id: index,
+			id: getStableHash(String(item.vxlanID ?? '')),
 			vxlanID: item.vxlanID,
 			vxlanName: item.vxlanName,
 			epIntf: item.epIntf,

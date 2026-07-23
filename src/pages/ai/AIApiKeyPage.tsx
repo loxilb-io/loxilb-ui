@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {getStableHash} from 'common';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import {Alert, IconButton, Stack, Tooltip, Typography} from '@mui/material';
 import SingleTextField from 'components/element/SingleTextField';
@@ -90,7 +91,9 @@ export default function AIApiKeyPage() {
 	const {openPopUp, enableYes} = usePopUp();
 	const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
 
-	const selected_index = selected_rows.length === 1 ? selected_rows[0] : -1;
+	// selected_rows holds a stable hash of key_id (the row id the table assigns),
+	// so selection tracks the key across refetches/re-sorts, not array position.
+	const selectedKey = selected_rows.length === 1 ? keys.find(k => getStableHash(k.key_id ?? '') === selected_rows[0]) ?? null : null;
 
 	const formRef = useRef<IApiKeyCreateRequest | null>(null);
 	const handleAdd = () => {
@@ -130,7 +133,7 @@ export default function AIApiKeyPage() {
 	const handleDelete = async () => {
 		if (!inst || selected_rows.length === 0) return;
 
-		const targets = selected_rows.map(rowIndex => keys[rowIndex]).filter(item => item?.key_id);
+		const targets = selected_rows.map(hash => keys.find(k => getStableHash(k.key_id ?? '') === hash)).filter((item): item is IApiKeySummary => !!item?.key_id);
 		if (targets.length === 0) return;
 
 		const results = await Promise.all(targets.map(item => request_delete_apikey(inst, item.key_id!)));
@@ -166,9 +169,9 @@ export default function AIApiKeyPage() {
 				onRefresh={handleRefresh}
 				error={!!isError}
 			/>
-			{selected_index !== -1 && keys[selected_index] && (
+			{selectedKey && (
 				<LowerSection>
-					<DetailPanel data={keys[selected_index]} />
+					<DetailPanel data={selectedKey} />
 				</LowerSection>
 			)}
 

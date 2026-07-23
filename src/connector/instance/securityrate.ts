@@ -37,7 +37,6 @@ export async function request_configure_securityrate(
 		cookieThreshold: data.cookieThreshold,
 		connRateEnabled: data.connRateEnabled,
 		ratePerSec: data.ratePerSec,
-		concurrentLimit: data.concurrentLimit,
 		udpEnabled: data.udpEnabled,
 		udpPktThreshold: data.udpPktThreshold,
 		udpBandwidthMB: data.udpBandwidthMB,

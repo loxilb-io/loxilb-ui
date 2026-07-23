@@ -11,8 +11,7 @@ import {usePopUp} from 'hooks/popupHook';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useQOSPolicies} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
-import {useRef, useState} from 'react';
-import React from 'react';
+import {useMemo, useRef, useState} from 'react';
 import {IPolicyAttribute, IPolicyConfiguration} from 'types/qos';
 
 //---------------------------------------------------------
@@ -24,61 +23,29 @@ export default function QoSPage() {
 	const {data, isError, refetch} = useQOSPolicies(inst);
 	const qos_info: IPolicyConfiguration = {polAttr: data ?? []};
 
+   // Holds STABLE content-hash row ids (not array indices)
    const [selected_rows, set_selected_rows] = useState<number[]>([]);
-   // Track selected policy for synchronization
-   const [selected_policyIdent, set_selected_policyIdent] = useState<string | null>(null);
    const {openPopUp, enableYes} = usePopUp();
    const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
-   // Hash function for QoS policy
+   // Hash function for QoS policy — MUST match QoSTable.getHashKey
    const getHashKey = (item: IPolicyAttribute) => {
 	   const str = `${item.policyIdent || ''}_${item.policyInfo.type || ''}_${item.targetObject.attachment || ''}_${item.targetObject.polObjName || ''}`;
 	   return getStableHash(str);
    };
-   // Sorted policies
-   const sortedAttr = qos_info.polAttr ? [...qos_info.polAttr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
-   
-   // Map selected original indices to sorted indices for display
-   const selectedSortedIndices = React.useMemo(() => {
-	   if (!qos_info.polAttr || selected_rows.length === 0) return [];
-	   
-	   return selected_rows
-		   .map(originalIdx => {
-			   const original = qos_info.polAttr[originalIdx];
-			   return sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
-		   })
-		   .filter(idx => idx !== -1);
-   }, [selected_rows, qos_info.polAttr, sortedAttr]);
 
-   // Find single selected index for detail panel
-   const selected_index = selectedSortedIndices.length === 1 ? selectedSortedIndices[0] : 
-	   (selected_policyIdent ? sortedAttr.findIndex(attr => attr.policyIdent === selected_policyIdent) : -1);
+   // Resolve selected items by matching stable hash ids against the raw data
+   const selectedItems = useMemo(
+	   () => selected_rows.map(h => qos_info.polAttr.find(a => getHashKey(a) === h)).filter((x): x is IPolicyAttribute => x != null),
+	   [selected_rows, qos_info.polAttr],
+   );
+   const selectedItem: IPolicyAttribute | null = selectedItems.length === 1 ? selectedItems[0] : null;
 
-   // Selection handler: map sorted indices back to original indices
-   const handleSelectionChange = (indices: number[]) => {
-	   if (!qos_info.polAttr) {
-		   set_selected_rows([]);
-		   return;
-	   }
+   const handleSelectionChange = (hashes: number[]) => set_selected_rows(hashes);
 
-	   if (indices.length === 0) {
-		   set_selected_rows([]);
-		   return;
-	   }
-
-	   // Map each sorted index back to original index
-	   const originalIndices = indices
-		   .map(sortedIdx => {
-			   const sortedItem = sortedAttr[sortedIdx];
-			   return qos_info.polAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
-		   })
-		   .filter(idx => idx !== -1);
-
-	   set_selected_rows(originalIndices);
-   };
 	const handleDelete = async () => {
-		if (!inst || selected_rows.length === 0) return;
+		if (!inst || selectedItems.length === 0) return;
 
-		const results = await Promise.all(selected_rows.map(rowIndex => request_delete_qos_policy(inst, qos_info.polAttr[rowIndex].policyIdent)));
+		const results = await Promise.all(selectedItems.map(item => request_delete_qos_policy(inst, item.policyIdent)));
 		const failures = results.filter(res => res.status === 'error');
 
 		if (failures.length === 0) {
@@ -132,25 +99,14 @@ export default function QoSPage() {
 
 	const handleRefresh = () => {
 		set_selected_rows([]);
-		set_selected_policyIdent(null);
 		refetch();
 	};
-
-   React.useEffect(() => {
-	   if (!qos_info.polAttr || qos_info.polAttr.length === 0) return;
-	   if (selected_rows.length === 1) {
-		   const policyIdent = qos_info.polAttr[selected_rows[0]].policyIdent;
-		   set_selected_policyIdent(policyIdent);
-	   } else if (selected_policyIdent !== null) {
-		   set_selected_policyIdent(null);
-	   }
-   }, [qos_info, selected_rows, selected_policyIdent]);
 
    return (
 	   <>
 		   <QoSTable
-			   data={{polAttr: sortedAttr}}
-			   selected_rows={selectedSortedIndices}
+			   data={qos_info}
+			   selected_rows={selected_rows}
 			   onChangeSelectedRows={handleSelectionChange}
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}

@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {ISNICertificateListItem} from 'types/security';
 import {IDataTableColumnDef} from 'types/global';
@@ -27,8 +28,10 @@ export default function SNICertificatesTable(props: SNICertificatesTableProps) {
 		{data_key: 'refCount', header: 'Reference Count', width: 'medium'},
 	];
 
-	const rows = data.map((item, index) => ({
-		id: index,
+	const getHashKey = (item: ISNICertificateListItem) => getStableHash(`${item.hostname}_${item.certPath}`);
+
+	const rows = data.map(item => ({
+		id: getHashKey(item),
 		hostname: item.hostname,
 		certPath: item.certPath,
 		refCount: item.refCount.toString(),

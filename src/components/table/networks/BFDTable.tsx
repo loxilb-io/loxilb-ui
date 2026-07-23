@@ -27,8 +27,8 @@ export default function BFDTable(props: {data: IBFDAttribureInfo; selected_rows:
    const rows = data.Attr && Array.isArray(data.Attr)
 	   ? (() => {
 		   const sorted = [...data.Attr].sort((a, b) => getHashKey(a) - getHashKey(b));
-		   return sorted.map((item, index) => ({
-			   id: index,
+		   return sorted.map(item => ({
+			   id: getHashKey(item),
 			   instance: item.instance,
 			   remoteIp: item.remoteIp,
 			   sourceIP: item.sourceIP,

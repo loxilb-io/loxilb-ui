@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {getStableHash} from 'common';
 import DownloadIcon from '@mui/icons-material/Download';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import ReplayIcon from '@mui/icons-material/Replay';
@@ -112,8 +113,10 @@ export default function IPsecTunnelPage() {
 	const {openPopUp, enableYes} = usePopUp();
 	const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
 
-	const selected_index = selected_rows.length === 1 ? selected_rows[0] : -1;
-	const selectedTunnel = selected_index !== -1 ? tunnelList[selected_index] : null;
+	// selected_rows holds a stable hash of the tunnel name (the row id the table
+	// assigns), so selection tracks the tunnel across refetches/re-sorts instead
+	// of a shifting array position.
+	const selectedTunnel = selected_rows.length === 1 ? tunnelList.find(tn => getStableHash(tn.name ?? '') === selected_rows[0]) ?? null : null;
 
 	const refetchAll = () => {
 		refetchTunnels();

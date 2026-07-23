@@ -50,20 +50,22 @@ export default function BGPDefinitionPage() {
 	}, [cur_policy]);
 
 	const handleDelete = async () => {
-		if (!inst || selected_rows.length === 0) return;
+		// The Conditions/Actions tables list the statements of the CURRENTLY
+		// selected policy (cur_policy), so a selected row means "delete this
+		// policy definition". The only delete API is per-policy-by-name, so we
+		// remove cur_policy. (The old code indexed bgpPolicyAttr by the
+		// statement-row index — deleting an unrelated policy.)
+		if (!inst || !cur_policy || selected_rows.length === 0) return;
 
-		const results = await Promise.all(selected_rows.map(rowIndex => request_delete_bgp_policy_definition(inst, def_info.bgpPolicyAttr[rowIndex].name)));
-		const failures = results.filter(res => res.status === 'error');
-
-		if (failures.length === 0) {
-			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
-		} else if (failures.length < results.length) {
-			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`}), t('OK'));
+		const res = await request_delete_bgp_policy_definition(inst, cur_policy.name);
+		if (res.status === 'success') {
+			openPopUp(t('Success'), t('Deleted "{{name}}" successfully.', {name: cur_policy.name}), t('OK'));
 		} else {
-			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: failures[0].error}), t('OK'));
+			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
 			return;
 		}
 		set_selected_rows([]);
+		set_cur_policy(undefined);
 		refetch();
 	};
 

@@ -98,66 +98,34 @@ export default function FirewallPage() {
 	const {data, isError, refetch} = useFirewallRules(inst);
 	const fw_info: IFirewallRules = {fwAttr: data ?? []};
 
+   // Selection is keyed by a stable content hash (the row id assigned by
+   // FirewallTable), not by array position — a background refetch or re-sort
+   // can no longer shift the selection onto a different rule or drop it.
    const [selected_rows, set_selected_rows] = useState<number[]>([]);
-   // Track selected rule for synchronization
-   const [selected_portName, set_selected_portName] = useState<string | null>(null);
    const {openPopUp, enableYes} = usePopUp();
-   
-   // Hash function for firewall rule
+
+   // Hash function for firewall rule — must match FirewallTable's row id.
    const getHashKey = (item: IFirewallRule) => {
 	   const str = `${item.ruleArguments.portName || ''}_${item.ruleArguments.sourceIP || ''}_${item.ruleArguments.minSourcePort || ''}_${item.ruleArguments.maxSourcePort || ''}_${item.ruleArguments.destinationIP || ''}_${item.ruleArguments.minDestinationPort || ''}_${item.ruleArguments.maxDestinationPort || ''}_${item.ruleArguments.protocol || ''}`;
 		return getStableHash(str);
    };
-   
-   // Sorted firewall rules
-   const sortedAttr = fw_info.fwAttr ? [...fw_info.fwAttr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
+
    const instanceRef = useRef<IFirewallRule | null>(null);
 
-   // Map selected original indices to sorted indices for display
-   const selectedSortedIndices = React.useMemo(() => {
-	   if (!fw_info.fwAttr || selected_rows.length === 0) return [];
-	   
-	   return selected_rows
-		   .map(originalIdx => {
-			   const original = fw_info.fwAttr[originalIdx];
-			   return sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
-		   })
-		   .filter(idx => idx !== -1);
-   }, [selected_rows, fw_info.fwAttr, sortedAttr]);
+   // Resolve the selected hashes back to their firewall rules.
+   const selectedItems = React.useMemo(
+	   () => selected_rows.map(hash => fw_info.fwAttr.find(attr => getHashKey(attr) === hash)).filter((item): item is IFirewallRule => item != null),
+	   [selected_rows, fw_info.fwAttr],
+   );
+   const selectedItem: IFirewallRule | null = selectedItems.length === 1 ? selectedItems[0] : null;
 
-   // Find single selected index for detail panel
-   const selected_index = selectedSortedIndices.length === 1 ? selectedSortedIndices[0] : 
-	   (selected_portName ? sortedAttr.findIndex(attr => attr.ruleArguments.portName === selected_portName) : -1);
-
-   // Selection handler: map sorted indices back to original indices
-   const handleSelectionChange = (indices: number[]) => {
-	   if (!fw_info.fwAttr) {
-		   set_selected_rows([]);
-		   return;
-	   }
-
-	   if (indices.length === 0) {
-		   set_selected_rows([]);
-		   return;
-	   }
-
-	   // Map each sorted index back to original index
-	   const originalIndices = indices
-		   .map(sortedIdx => {
-			   const sortedItem = sortedAttr[sortedIdx];
-			   return fw_info.fwAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
-		   })
-		   .filter(idx => idx !== -1);
-
-	   set_selected_rows(originalIndices);
-   };
+   const handleSelectionChange = (hashes: number[]) => set_selected_rows(hashes);
 
 	const handleDelete = async () => {
-		if (!inst || selected_rows.length === 0) return;
+		if (!inst || selectedItems.length === 0) return;
 
 		const results = await Promise.all(
-			selected_rows.map(rowIndex => {
-				const item = fw_info.fwAttr[rowIndex];
+			selectedItems.map(item => {
 				return request_delete_all_firewall_rules(inst, {...item.ruleArguments});
 			}),
 		);
@@ -214,35 +182,23 @@ export default function FirewallPage() {
 
 	const handleRefresh = () => {
 		set_selected_rows([]);
-		set_selected_portName(null);
 		refetch();
 	};
-
-   // Synchronize selected_portName with selected_rows
-   React.useEffect(() => {
-	   if (!fw_info.fwAttr || fw_info.fwAttr.length === 0) return;
-	   if (selected_rows.length === 1) {
-		   const portName = fw_info.fwAttr[selected_rows[0]].ruleArguments.portName;
-		   set_selected_portName(portName);
-	   } else if (selected_portName !== null) {
-		   set_selected_portName(null);
-	   }
-   }, [fw_info, selected_rows, selected_portName]);
 
    return (
 	   <Fragment>
 		   <FirewallTable
-			   data={{fwAttr: sortedAttr}}
-			   selected_rows={selectedSortedIndices}
+			   data={fw_info}
+			   selected_rows={selected_rows}
 			   onChangeSelectedRows={handleSelectionChange}
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
 			   onRefresh={handleRefresh}
 			   error={isError}
 		   />
-	   {selected_index !== -1 && (
+	   {selectedItem && (
 		   <LowerSection>
-			   <OptionPannel rule={sortedAttr[selected_index]} />
+			   <OptionPannel rule={selectedItem} />
 		   </LowerSection>
 	   )}
 	   </Fragment>

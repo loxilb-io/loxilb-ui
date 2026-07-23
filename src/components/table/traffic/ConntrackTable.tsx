@@ -47,9 +47,9 @@ export default function ConntrackTable(props: {data: ICtData; selected_rows: num
 			   const keyB = getHashKey(b);
 			   return keyA - keyB;
 		   });
-		   return sorted.map((item, index) => {
+		   return sorted.map(item => {
 			   return {
-				   id: index,
+				   id: getHashKey(item),
 				   servename: {data: item.servName, url: `/instance/traffic/lb?name=${inst_name}&servName=${item.servName}`, toString: () => item.servName},
 				   source: get_ip_port_str(item.sourceIP, item.sourcePort),
 				   destination: get_ip_port_str(item.destinationIP, item.destinationPort),

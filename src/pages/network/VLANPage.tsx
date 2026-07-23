@@ -15,9 +15,8 @@ import {usePopUp} from 'hooks/popupHook';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useVLANAttr} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
-import React from 'react';
-import {Fragment, useRef, useState} from 'react';
-import {IMember, IVlanData, IVlanInput, IVlanMemberInput} from 'types/vlan';
+import {Fragment, useMemo, useRef, useState} from 'react';
+import {IMember, IVlanAttribute, IVlanData, IVlanInput, IVlanMemberInput} from 'types/vlan';
 
 //---------------------------------------------------------
 // Functional Component
@@ -26,18 +25,26 @@ function MemberView(props: {name: string; vid: number; data: IMember[]; refetch:
 	const {name, vid, data, refetch} = props;
 
 	const inst = useInstanceFromURL();
-	const [selected_rows, set_selected_rows] = useState<number[]>([]);
+	const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds stable hash ids
 	const {openPopUp, enableYes} = usePopUp();
 	const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
 
-	const handleSelectionChange = (selection: number[]) => set_selected_rows(selection);
+	// Hash function for VLAN member (must match VLANMemberTable's getHashKey)
+	const getHashKey = (item: IMember) => getStableHash(`${item.dev || ''}_${item.tagged ? 'tagged' : 'untagged'}`);
+
+	// Resolve selected members by matching the stable hash
+	const selectedItems = useMemo(
+		() => selected_rows.map(h => data.find(a => getHashKey(a) === h)).filter((x): x is IMember => x != null),
+		[selected_rows, data],
+	);
+
+	const handleSelectionChange = (hashes: number[]) => set_selected_rows(hashes);
 
 	const handleDelete = async () => {
-		if (!inst || selected_rows.length === 0) return;
+		if (!inst || selectedItems.length === 0) return;
 
 		const results = await Promise.all(
-			selected_rows.map(rowIndex => {
-				const member = data[rowIndex];
+			selectedItems.map(member => {
 				// The gateway lists a tagged member as "<dev>.<vid>" (e.g. eth0.3999)
 				// but its delete endpoint expects the base device name — passing the
 				// suffixed name 404s and the member is undeletable. Strip the suffix.
@@ -116,41 +123,26 @@ export default function VLANPage() {
 	const {data, isError, refetch} = useVLANAttr(inst); // IVlanAttribute[]
 	const vlan_info: IVlanData = {vlanAttr: data ?? []};
 
-   const [selected_rows, set_selected_rows] = useState<number[]>([]);
-   // Track selected vid for synchronization
-   const [selected_vid, set_selected_vid] = useState<number | null>(null);
+   const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds stable hash ids
    const {openPopUp, enableYes} = usePopUp();
    const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
-   // Hash function for VLAN
-   const getHashKey = (item: any) => {
-	   const str = `${item.vid || ''}_${item.dev || ''}`;
-	   return getStableHash(str);
-   };
-   // Sorted VLANs
-   const sortedAttr = vlan_info.vlanAttr ? [...vlan_info.vlanAttr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
-   // Find selected index in sortedAttr
-   let selected_index = -1;
-   if (selected_rows.length === 1 && vlan_info.vlanAttr) {
-	   const original = vlan_info.vlanAttr[selected_rows[0]];
-	   selected_index = sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
-   } else if (selected_vid !== null) {
-	   selected_index = sortedAttr.findIndex(attr => attr.vid === selected_vid);
-   }
-   // Selection handler: map sorted index back to original
-   const handleSelectionChange = (indices: number[]) => {
-	   if (indices.length === 1 && vlan_info.vlanAttr) {
-		   const sortedItem = sortedAttr[indices[0]];
-		   const originalIndex = vlan_info.vlanAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
-		   set_selected_rows(originalIndex !== -1 ? [originalIndex] : []);
-	   } else {
-		   set_selected_rows([]);
-	   }
-   };
+
+   // Hash function for VLAN (must match VLANTable's getHashKey)
+   const getHashKey = (item: any) => getStableHash(`${item.vid || ''}_${item.dev || ''}`);
+
+   // Resolve selected VLANs by matching the stable hash
+   const selectedItems = useMemo(
+	   () => selected_rows.map(h => vlan_info.vlanAttr.find(a => getHashKey(a) === h)).filter((x): x is IVlanAttribute => x != null),
+	   [selected_rows, vlan_info.vlanAttr],
+   );
+   const selectedItem: IVlanAttribute | null = selectedItems.length === 1 ? selectedItems[0] : null;
+
+   const handleSelectionChange = (hashes: number[]) => set_selected_rows(hashes);
 
 	const handleDelete = async () => {
-		if (!inst || selected_rows.length === 0) return;
+		if (!inst || selectedItems.length === 0) return;
 
-		const results = await Promise.all(selected_rows.map(rowIndex => request_delete_vlan(inst, vlan_info.vlanAttr[rowIndex].vid)));
+		const results = await Promise.all(selectedItems.map(item => request_delete_vlan(inst, item.vid)));
 		const failures = results.filter(res => res.status === 'error');
 
 		if (failures.length === 0) {
@@ -202,34 +194,23 @@ export default function VLANPage() {
 		);
 	};
 
-   // Synchronize selected_vid with selected_rows
-   React.useEffect(() => {
-	   if (!vlan_info.vlanAttr || vlan_info.vlanAttr.length === 0) return;
-	   if (selected_rows.length === 1) {
-		   const vid = vlan_info.vlanAttr[selected_rows[0]].vid;
-		   set_selected_vid(vid);
-	   } else if (selected_vid !== null) {
-		   set_selected_vid(null);
-	   }
-   }, [vlan_info, selected_rows, selected_vid]);
-
    return (
 	   <Fragment>
 		   <VLANTable
-			   data={{vlanAttr: sortedAttr}}
-			   selected_rows={selected_index !== -1 ? [selected_index] : []}
+			   data={vlan_info}
+			   selected_rows={selected_rows}
 			   onChangeSelectedRows={handleSelectionChange}
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
 			   onRefresh={refetch}
 			   error={isError}
 		   />
-		   {selected_index !== -1 && (
+		   {selectedItem && (
 			   <LowerSection>
 				   <MemberView
-					   name={sortedAttr[selected_index].dev}
-					   vid={sortedAttr[selected_index].vid}
-					   data={sortedAttr[selected_index].member}
+					   name={selectedItem.dev}
+					   vid={selectedItem.vid}
+					   data={selectedItem.member}
 					   refetch={refetch}
 				   />
 			   </LowerSection>

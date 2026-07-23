@@ -41,8 +41,8 @@ export default function IPFilterTable(props: {
 		if (!data) return [];
 
 		const sorted = [...data].sort((a, b) => getHashKey(a) - getHashKey(b));
-		return sorted.map((item, index) => ({
-			id: index,
+		return sorted.map(item => ({
+			id: getHashKey(item),
 			filterType: item.filterType,
 			cidr: item.cidr,
 			action: item.action,

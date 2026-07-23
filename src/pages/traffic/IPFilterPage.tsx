@@ -63,7 +63,7 @@ export default function IPFilterPage() {
 	const {data, isError, refetch} = useIPFilterRules(inst);
 	const entries: IIPFilterEntry[] = data ?? [];
 
-	const [selected_rows, set_selected_rows] = useState<number[]>([]);
+	const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds hash ids
 	const {openPopUp, enableYes} = usePopUp();
 	const formRef = useRef<IIPFilterEntry | null>(null);
 
@@ -73,56 +73,23 @@ export default function IPFilterPage() {
 		return getStableHash(str);
 	};
 
-	// Sorted entries
-	const sortedEntries = useMemo(() => 
-		[...entries].sort((a, b) => getHashKey(a) - getHashKey(b)),
-		[entries]
+	// Resolve selected entries by matching stable hash ids
+	const selectedItems = useMemo(
+		() =>
+			selected_rows
+				.map(h => entries.find(a => getHashKey(a) === h))
+				.filter((x): x is IIPFilterEntry => x != null),
+		[selected_rows, entries],
 	);
+	const selectedItem: IIPFilterEntry | null = selectedItems.length === 1 ? selectedItems[0] : null;
 
-	// Map selected original indices to sorted indices for display
-	const selectedSortedIndices = useMemo(() => {
-		if (entries.length === 0 || selected_rows.length === 0) return [];
-		
-		return selected_rows
-			.map(originalIdx => {
-				const original = entries[originalIdx];
-				return sortedEntries.findIndex(entry => getHashKey(entry) === getHashKey(original));
-			})
-			.filter(idx => idx !== -1);
-	}, [selected_rows, entries, sortedEntries]);
-
-	// Find single selected index for detail panel
-	const selected_index = selectedSortedIndices.length === 1 ? selectedSortedIndices[0] : -1;
-
-	// Selection handler: map sorted indices back to original indices
-	const handleSelectionChange = (indices: number[]) => {
-		if (entries.length === 0) {
-			set_selected_rows([]);
-			return;
-		}
-
-		if (indices.length === 0) {
-			set_selected_rows([]);
-			return;
-		}
-
-		// Map each sorted index back to original index
-		const originalIndices = indices
-			.map(sortedIdx => {
-				const sortedItem = sortedEntries[sortedIdx];
-				return entries.findIndex(entry => getHashKey(entry) === getHashKey(sortedItem));
-			})
-			.filter(idx => idx !== -1);
-
-		set_selected_rows(originalIndices);
-	};
+	const handleSelectionChange = (hashes: number[]) => set_selected_rows(hashes);
 
 	const handleDelete = async () => {
-		if (!inst || selected_rows.length === 0) return;
+		if (!inst || selectedItems.length === 0) return;
 
 		// Delete multiple selected IP filter rules
-		const deletePromises = selected_rows.map(async (rowIndex) => {
-			const item = entries[rowIndex];
+		const deletePromises = selectedItems.map(async (item) => {
 			return request_delete_ipfilter_rule(inst, {
 				filterType: item.filterType,
 				cidr: item.cidr,
@@ -134,7 +101,7 @@ export default function IPFilterPage() {
 		const failures = results.filter(res => res.status === 'error');
 
 		if (failures.length === 0) {
-			openPopUp(t('Success'), t('Deleted {{count}} rule(s) successfully.', {count: selected_rows.length}), t('OK'));
+			openPopUp(t('Success'), t('Deleted {{count}} rule(s) successfully.', {count: selectedItems.length}), t('OK'));
 			set_selected_rows([]);
 			setTimeout(() => refetch(), 1000);
 		} else if (failures.length < results.length) {
@@ -189,17 +156,17 @@ export default function IPFilterPage() {
 	return (
 		<Fragment>
 			<IPFilterTable
-				data={sortedEntries}
-				selected_rows={selectedSortedIndices}
+				data={entries}
+				selected_rows={selected_rows}
 				onChangeSelectedRows={handleSelectionChange}
 				onAdd={handleAdd}
 				onDelete={selected_rows.length > 0 ? handleDelete : undefined}
 				onRefresh={handleRefresh}
 				error={isError}
 			/>
-			{selected_index !== -1 && sortedEntries[selected_index] && (
+			{selectedItem && (
 				<LowerSection>
-					<DetailPanel entry={sortedEntries[selected_index]} />
+					<DetailPanel entry={selectedItem} />
 				</LowerSection>
 			)}
 		</Fragment>

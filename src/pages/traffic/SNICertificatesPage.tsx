@@ -62,62 +62,27 @@ export default function SNICertificatesPage() {
 	const {openPopUp, enableYes} = usePopUp();
 	const formRef = useRef<ISNICertificateEntry | null>(null);
 
-	// Hash function for SNI certificate
-	const getHashKey = (item: ISNICertificateListItem) => {
-		const str = `${item.hostname}_${item.certPath}`;
-		return getStableHash(str);
-	};
+	// Hash function for SNI certificate (must match SNICertificatesTable row id)
+	const getHashKey = (item: ISNICertificateListItem) => getStableHash(`${item.hostname}_${item.certPath}`);
 
-	// Sorted certificates
-	const sortedCertificates = useMemo(() => 
-		[...certificates].sort((a, b) => getHashKey(a) - getHashKey(b)),
-		[certificates]
+	// Resolve selected hash ids back to certificate items (stable across refetch/re-sort)
+	const selectedItems = useMemo(
+		() =>
+			selected_rows
+				.map(h => certificates.find(a => getHashKey(a) === h))
+				.filter((x): x is ISNICertificateListItem => x != null),
+		[selected_rows, certificates],
 	);
+	const selectedItem: ISNICertificateListItem | null = selectedItems.length === 1 ? selectedItems[0] : null;
 
-	// Map selected original indices to sorted indices for display
-	const selectedSortedIndices = useMemo(() => {
-		if (certificates.length === 0 || selected_rows.length === 0) return [];
-		
-		return selected_rows
-			.map(originalIdx => {
-				const original = certificates[originalIdx];
-				return sortedCertificates.findIndex(cert => getHashKey(cert) === getHashKey(original));
-			})
-			.filter(idx => idx !== -1);
-	}, [selected_rows, certificates, sortedCertificates]);
-
-	// Find single selected index for detail panel
-	const selected_index = selectedSortedIndices.length === 1 ? selectedSortedIndices[0] : -1;
-
-	// Selection handler: map sorted indices back to original indices
-	const handleSelectionChange = (indices: number[]) => {
-		if (certificates.length === 0) {
-			set_selected_rows([]);
-			return;
-		}
-
-		if (indices.length === 0) {
-			set_selected_rows([]);
-			return;
-		}
-
-		// Map each sorted index back to original index
-		const originalIndices = indices
-			.map(sortedIdx => {
-				const sortedItem = sortedCertificates[sortedIdx];
-				return certificates.findIndex(cert => getHashKey(cert) === getHashKey(sortedItem));
-			})
-			.filter(idx => idx !== -1);
-
-		set_selected_rows(originalIndices);
-	};
+	// Selection handler: grid emits stable hash ids
+	const handleSelectionChange = (hashes: number[]) => set_selected_rows(hashes);
 
 	const handleDelete = async () => {
-		if (!inst || selected_rows.length === 0) return;
+		if (!inst || selectedItems.length === 0) return;
 
 		// Delete multiple selected certificates
-		const deletePromises = selected_rows.map(async (rowIndex) => {
-			const cert = certificates[rowIndex];
+		const deletePromises = selectedItems.map(async (cert) => {
 			return request_unregister_sni_certificate(inst, {hostname: cert.hostname});
 		});
 
@@ -125,7 +90,7 @@ export default function SNICertificatesPage() {
 		const failures = results.filter(res => res.status === 'error');
 
 		if (failures.length === 0) {
-			openPopUp(t('Success'), t('Deleted {{count}} certificate(s) successfully.', {count: selected_rows.length}), t('OK'));
+			openPopUp(t('Success'), t('Deleted {{count}} certificate(s) successfully.', {count: results.length}), t('OK'));
 			set_selected_rows([]);
 			setTimeout(() => refetch(), 1000);
 		} else if (failures.length < results.length) {
@@ -262,17 +227,17 @@ export default function SNICertificatesPage() {
 				</Stack>
 			)}
 			<SNICertificatesTable
-				data={sortedCertificates}
-				selected_rows={selectedSortedIndices}
+				data={certificates}
+				selected_rows={selected_rows}
 				onChangeSelectedRows={handleSelectionChange}
 				onAdd={handleAdd}
-				onDelete={selected_rows.length > 0 ? handleDelete : undefined}
+				onDelete={selectedItems.length > 0 ? handleDelete : undefined}
 				onRefresh={handleRefresh}
 				error={isError}
 			/>
-			{selected_index !== -1 && sortedCertificates[selected_index] && (
+			{selectedItem && (
 				<LowerSection>
-					<DetailPanel cert={sortedCertificates[selected_index]} />
+					<DetailPanel cert={selectedItem} />
 				</LowerSection>
 			)}
 		</Fragment>

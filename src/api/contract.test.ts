@@ -59,7 +59,6 @@ const GATEWAY_LIST_KEYS: [string, string][] = [
 	['/config/cistate/all', 'Attr'],
 	['/config/ipfilter/all', 'ipFilterAttr'],
 	['/config/securityrate/all', 'securityrateAttr'],
-	['/config/synflood/all', 'synfloodAttr'],
 	['/config/bgp/neigh/all', 'bgpNeiAttr'],
 	['/config/bgp/policy/definitions/all', 'bgpPolicyAttr'],
 ];
