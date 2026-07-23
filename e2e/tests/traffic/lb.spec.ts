@@ -257,7 +257,6 @@ test.describe('LB Rule page CRUD', () => {
 		await selectOption(page, 'Path Match Mode', 'prefix');
 		await field(page, 'Path Prefix').fill('/v1/chat');
 		await selectOption(page, 'Backend Protocol', 'http1');
-		await field(page, 'LLM Type').fill('chat-interactive');
 		await addEndpoint(page, 0, '198.51.100.50', '8443');
 		const body = await submitCreate(page);
 
@@ -266,8 +265,7 @@ test.describe('LB Rule page CRUD', () => {
 			host: 'e2e.example.com',
 			path_match_mode: 'prefix',
 			path_prefix: '/v1/chat',
-			backend_protocol: 'http1',
-			llm_type: 'chat-interactive',
+			backend_protocol: 'http1'
 		});
 		await refreshUntilRow(page, 'e2e-lb-l7');
 	});

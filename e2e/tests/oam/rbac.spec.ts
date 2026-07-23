@@ -41,7 +41,6 @@ const MUTABLE_ROUTES = [
 	'ipsec/tunnels',
 	'ipsec/certs',
 	'security/ipfilter',
-	'security/synflood',
 	'security/securityrate',
 ];
 

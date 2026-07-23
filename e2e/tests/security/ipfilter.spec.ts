@@ -137,18 +137,21 @@ test.describe('IP Filter page CRUD', () => {
 		await refreshUntilRow(page, '203.0.113.16/28');
 	});
 
-	test('C-full: zone + priority land in the POST body', async ({page}) => {
+	test('C-full: priority lands in the POST body; zone stays 0 (gateway XDP ipfilter is zone-less)', async ({page}) => {
 		await openAddDialog(page);
 		await field(page, 'CIDR').fill('203.0.113.32/28');
 		await field(page, 'Priority').fill('250');
-		await field(page, 'Security Zone').fill('3');
+		// Security Zone is intentionally not offered: the gateway rejects any
+		// nonzero zone with 400 ("zone must be 0 or omitted"), so the form pins
+		// it to 0. Assert the payload carries the accepted value, not a field
+		// the user could set to a guaranteed-400 value.
 
 		const [req] = await Promise.all([
 			page.waitForRequest(r => r.method() === 'POST' && r.url().includes(IPF_PATH)),
 			dialogButton(page, 'Add').click(),
 		]);
 		const body = req.postDataJSON();
-		expect(body).toMatchObject({cidr: '203.0.113.32/28', priority: 250, zone: 3});
+		expect(body).toMatchObject({cidr: '203.0.113.32/28', priority: 250, zone: 0});
 		expect(body.isValid).toBeUndefined();
 
 		const resp = await req.response();
