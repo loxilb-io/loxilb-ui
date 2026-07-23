@@ -64,9 +64,14 @@ export async function driveTunnelCreate(page: Page, instName: string, r: TunnelR
 	expect(resp?.status(), `gateway accepted ${r.cicd} tunnel`).toBeLessThan(300);
 	await expectSuccessAndDismiss(page);
 
-	// A documentation-range peer is unreachable → the row must land DOWN.
+	// A documentation-range peer is unreachable and the tunnel is a responder
+	// (startup=add, never dials out), so strongSwan never establishes it — it
+	// sits in CONNECTING (loaded, retrying/awaiting the peer) and, once given
+	// up on, DOWN. Either non-established state is correct; assert it is simply
+	// not UP. (The UI faithfully surfaces the gateway's real state — it must not
+	// be forced to DOWN just because the peer will never answer.)
 	await refreshUntilRow(page, r.name);
-	await expect(page.locator('.MuiDataGrid-row', {hasText: r.name}).first()).toContainText('DOWN');
+	await expect(page.locator('.MuiDataGrid-row', {hasText: r.name}).first()).toContainText(/DOWN|CONNECTING/);
 	return req.postDataJSON();
 }
 
