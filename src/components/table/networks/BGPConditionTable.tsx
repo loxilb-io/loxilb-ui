@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IConditionSet} from 'types/bgp_policy_condition';
 import {IDataTableColumnDef} from 'types/global';
@@ -28,7 +29,7 @@ export default function BGPConditionTable(props: {condition_list: IConditionSet[
 
 	const rows = condition_list.map((condition, index) => {
 		return {
-			id: index,
+			id: getStableHash(`${index}_${JSON.stringify(condition)}`),
 			matchPrefixSet: condition.matchPrefixSet ? `${condition.matchPrefixSet.prefixSet} (${condition.matchPrefixSet.matchSetOption})` : '',
 			matchNeighborSet: condition.matchNeighborSet ? `${condition.matchNeighborSet.neighborSet} (${condition.matchNeighborSet.matchSetOption})` : '',
 

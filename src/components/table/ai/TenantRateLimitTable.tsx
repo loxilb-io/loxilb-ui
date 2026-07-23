@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IDataTableColumnDef} from 'types/global';
 import {ITenantRateLimitEntry} from 'types/ai';
@@ -26,8 +27,8 @@ export default function TenantRateLimitTable(props: {
 		{data_key: 'updated_at', header: 'Updated', width: 'medium', tooltip: 'Timestamp of the last rate limit update'},
 	];
 
-	const rows = data.map((item, index) => ({
-		id: index,
+	const rows = data.map(item => ({
+		id: getStableHash(String(item.tenant_id ?? '')),
 		tenant_id: item.tenant_id,
 		rps: item.rps ?? 0,
 		tokens_per_min: item.tokens_per_min ?? 0,

@@ -34,10 +34,9 @@ export default function VLANTable(props: {data: IVlanData; selected_rows: number
    const rows = data.vlanAttr
 	   ? (() => {
 		   const sorted = [...data.vlanAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
-		   return sorted.map((item, index) => {
+		   return sorted.map(item => {
 			   return {
-			//    id: getHashKey(item),
-				   id: index,
+				   id: getHashKey(item),
 				   vid: item.vid,
 				   dev: item.dev,
 				   member: item.member.map(member => `${member.dev}${member.tagged ? '(tagged)' : '(untagged)'}`).join(', '),

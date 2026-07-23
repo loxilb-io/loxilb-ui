@@ -5,6 +5,7 @@
 // verbatim instead of being guessed at.
 //---------------------------------------------------------
 import {describe, expect, it} from 'vitest';
+import {getStableHash} from 'common';
 import {snapshot_to_row} from './SnapshotTable';
 
 describe('snapshot_to_row', () => {
@@ -32,9 +33,9 @@ describe('snapshot_to_row', () => {
 		expect(snapshot_to_row({}, 0).last_restore).toBeNull();
 	});
 
-	it('carries the snapshot UUID out-of-band from the grid row id', () => {
+	it('keys the grid row by a stable hash of the snapshot UUID, carrying the UUID out-of-band', () => {
 		const row = snapshot_to_row({id: 'abc-uuid', name: 'x'}, 3);
-		expect(row.id).toBe(3);
+		expect(row.id).toBe(getStableHash('abc-uuid')); // stable across refetch, not the array index
 		expect(row.sid).toBe('abc-uuid');
 	});
 });

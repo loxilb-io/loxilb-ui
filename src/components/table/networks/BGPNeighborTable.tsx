@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IBgpNeighborState} from 'types/bgp_neighbor';
 import {IDataTableColumnDef} from 'types/global';
@@ -23,9 +24,9 @@ export default function BGPNeighborTable(props: {data: IBgpNeighborState; select
 		{data_key: 'updowntime', header: 'Up(Down) Time', align: 'right', width: 'wide'},
 	];
 
-	const rows = data.bgpNeiAttr.map((item, index) => {
+	const rows = data.bgpNeiAttr.map(item => {
 		return {
-			id: index,
+			id: getStableHash(String(item.ipAddress ?? '')),
 			ipAddress: item.ipAddress,
 			remoteAs: item.remoteAs,
 			state: item.state,

@@ -108,15 +108,13 @@ export default function IPFilterInputForm(props: IPFilterInputFormProps) {
 					/>
 				</Grid2>
 
-				<ParamBox
-					label={t('Security Zone')}
-					value={form.zone?.toString() ?? '0'}
-					onChange={(value: string) => handleChange('zone')(parseInt(value) || 0)}
-					param_desc={{
-						type: 'integer',
-						description: 'Security zone (0 = all zones)',
-					}}
-				/>
+				{/*
+				  * Security Zone is intentionally not exposed: the gateway's XDP
+				  * ipfilter is zone-less and rejects any nonzero zone with 400
+				  * ("zone must be 0 or omitted"). `zone` stays pinned to 0 in form
+				  * state so the payload is always accepted; surfacing it as an
+				  * editable field only produced guaranteed-to-fail submissions.
+				  */}
 			</Stack>
 		</NewBox>
 	);

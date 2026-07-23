@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IActionSet} from 'types/bgp_policy_action';
 import {IDataTableColumnDef} from 'types/global';
@@ -24,7 +25,7 @@ export default function BGPActionTable(props: {action_list: IActionSet[]; select
 
 	const rows = action_list.map((action, index) => {
 		return {
-			id: index,
+			id: getStableHash(`${index}_${JSON.stringify(action)}`),
 			routeDisposition: action.routeDisposition,
 			setMed: action.bgpActions.setMed || '',
 			setAsPathPrepend: action.bgpActions.setAsPathPrepend ? `AS: ${action.bgpActions.setAsPathPrepend.as}, Repeat: ${action.bgpActions.setAsPathPrepend.repeatN}` : '',

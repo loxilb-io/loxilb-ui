@@ -19,15 +19,13 @@ interface SecurityRateInputFormProps {
 // Per-field defaults. The gateway omits false booleans (omitempty), so an
 // existing config loaded for edit can arrive missing e.g. udpEnabled — merge
 // each field over these defaults rather than taking `value` wholesale, or the
-// POST drops the missing keys and the gateway 422s. (SYNFloodInputForm defends
-// the same way.)
+// POST drops the missing keys and the gateway 422s.
 const DEFAULT_FORM: ISecurityRateConfigMod = {
 	synEnabled: true,
 	synThreshold: 100,
 	cookieThreshold: 50,
 	connRateEnabled: true,
 	ratePerSec: 50,
-	concurrentLimit: 200,
 	udpEnabled: false,
 	udpPktThreshold: 1000,
 	udpBandwidthMB: 100,
@@ -41,7 +39,6 @@ function withDefaults(value?: ISecurityRateConfigMod): ISecurityRateConfigMod {
 		cookieThreshold: value?.cookieThreshold ?? DEFAULT_FORM.cookieThreshold,
 		connRateEnabled: value?.connRateEnabled ?? DEFAULT_FORM.connRateEnabled,
 		ratePerSec: value?.ratePerSec ?? DEFAULT_FORM.ratePerSec,
-		concurrentLimit: value?.concurrentLimit ?? DEFAULT_FORM.concurrentLimit,
 		udpEnabled: value?.udpEnabled ?? DEFAULT_FORM.udpEnabled,
 		udpPktThreshold: value?.udpPktThreshold ?? DEFAULT_FORM.udpPktThreshold,
 		udpBandwidthMB: value?.udpBandwidthMB ?? DEFAULT_FORM.udpBandwidthMB,
@@ -62,11 +59,18 @@ export default function SecurityRateInputForm(props: SecurityRateInputFormProps)
 		onChange({...newForm, isValid: validateForm(newForm)});
 	};
 
+	// Gateway upper bounds (securityrate.go): PPS thresholds cap at 2^24 and
+	// udpBandwidthMB at 4095 — and the gateway range-checks every field
+	// unconditionally, even when its section is off. Enforce them client-side so
+	// an out-of-range value is caught here instead of coming back as a 400.
+	const PPS_MAX = 1 << 24; // secRateMaxPPSThreshold
+	const UDP_BW_MAX = 4095; // secRateMaxUDPBandwidthMB
+
 	const validateForm = (data: ISecurityRateConfigMod): boolean => {
 		if (data.synEnabled && data.cookieThreshold >= data.synThreshold) return false;
-		if (data.synThreshold < 0 || data.cookieThreshold < 0) return false;
-		if (data.ratePerSec < 0 || data.concurrentLimit < 0) return false;
-		if (data.udpPktThreshold < 0 || data.udpBandwidthMB < 0) return false;
+		if (data.synThreshold < 0 || data.cookieThreshold < 0 || data.ratePerSec < 0 || data.udpPktThreshold < 0 || data.udpBandwidthMB < 0) return false;
+		if (data.synThreshold > PPS_MAX || data.cookieThreshold > PPS_MAX || data.ratePerSec > PPS_MAX || data.udpPktThreshold > PPS_MAX) return false;
+		if (data.udpBandwidthMB > UDP_BW_MAX) return false;
 		return true;
 	};
 
@@ -132,12 +136,6 @@ export default function SecurityRateInputForm(props: SecurityRateInputFormProps)
 								value={form.ratePerSec.toString()}
 								onChange={(value: string) => handleChange('ratePerSec')(parseInt(value) || 0)}
 								param_desc={{type: 'integer', description: 'Maximum new connections per second per IP', required: true}}
-							/>
-							<ParamBox
-								label={t('Concurrent Limit')}
-								value={form.concurrentLimit.toString()}
-								onChange={(value: string) => handleChange('concurrentLimit')(parseInt(value) || 0)}
-								param_desc={{type: 'integer', description: 'Maximum concurrent connections per IP', required: true}}
 							/>
 						</Grid2>
 					)}

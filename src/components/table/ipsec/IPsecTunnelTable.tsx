@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IDataTableColumnDef} from 'types/global';
 import {IIPsecTunnel} from 'types/ipsec';
@@ -43,8 +44,8 @@ export default function IPsecTunnelTable(props: {
 		{data_key: 'installedAt', header: 'Created', width: 'medium'},
 	];
 
-	const rows = data.map((item, index) => ({
-		id: index,
+	const rows = data.map(item => ({
+		id: getStableHash(item.name ?? ''),
 		name: item.name ?? '',
 		state: (item.state ?? 'down').toUpperCase(),
 		peers: `${item.localIp ?? ''} ⇄ ${item.remoteIp ?? ''}`,

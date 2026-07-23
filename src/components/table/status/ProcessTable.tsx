@@ -1,9 +1,13 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IDataTableColumnDef} from 'types/global';
 import {IProcessInfo} from 'types/process';
+
+// Stable row id derived from process identity — must match ProcessPage.
+const getHashKey = (item: any) => getStableHash(`${item.pid || ''}_${item.command || ''}`);
 
 //---------------------------------------------------------
 // Functional Component
@@ -21,9 +25,9 @@ export default function ProcessTable(props: {data: IProcessInfo; selected_rows: 
 		{data_key: 'time', header: 'Runtime', align: 'right', width: 'wide'},
 	];
 
-	const rows = data.processAttr.map((item, index) => {
+	const rows = data.processAttr.map(item => {
 		return {
-			id: index,
+			id: getHashKey(item),
 			status: item.status,
 			pid: item.pid,
 			user: item.user,

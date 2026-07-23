@@ -15,7 +15,7 @@ import {usePopUp} from 'hooks/popupHook';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useIPAttr} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
-import {Fragment, useRef, useState, useEffect, useMemo} from 'react';
+import {Fragment, useRef, useState, useMemo} from 'react';
 import {IIpAttribute, IIpAttributeInput, IIpData} from 'types/ip';
 
 //---------------------------------------------------------
@@ -65,8 +65,7 @@ export default function IPPage(props: {family?: 'ipv4' | 'ipv6'}) {
 	
 	const instanceRef = useRef<IIpAttributeInput | null>(null);
 
-	const [selected_rows, set_selected_rows] = useState<number[]>([]);
-	const [selected_key, set_selected_key] = useState<string | null>(null);
+	const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds hash ids
 	const {openPopUp, enableYes} = usePopUp();
 	const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
 
@@ -76,61 +75,20 @@ export default function IPPage(props: {family?: 'ipv4' | 'ipv6'}) {
 		   return getStableHash(str);
 	   };
 
-	// Sorted IP entries - sort by device name alphabetically for natural order
-	const sortedAttr = ip_info.ipAttr ? [...ip_info.ipAttr].sort((a, b) => {
-		const devCompare = (a.dev || '').localeCompare(b.dev || '');
-		if (devCompare !== 0) return devCompare;
-		// If same device, sort by first IP address
-		const ipA = a.ipAddress?.[0] || '';
-		const ipB = b.ipAddress?.[0] || '';
-		return ipA.localeCompare(ipB);
-	}) : [];
+	// Resolve selected items by matching the stable hash
+	const selectedItems = useMemo(
+		() => selected_rows.map(h => ip_info.ipAttr.find(a => getHashKey(a) === h)).filter((x): x is IIpAttribute => x != null),
+		[selected_rows, ip_info.ipAttr],
+	);
+	const selectedItem: IIpAttribute | null = selectedItems.length === 1 ? selectedItems[0] : null;
 
-	// Map selected original indices to sorted indices for display
-	const selectedSortedIndices = useMemo(() => {
-		if (!ip_info.ipAttr || selected_rows.length === 0) return [];
-		
-		return selected_rows
-			.map(originalIdx => {
-				const original = ip_info.ipAttr[originalIdx];
-				return sortedAttr.findIndex(attr => String(getHashKey(attr)) === String(getHashKey(original)));
-			})
-			.filter(idx => idx !== -1);
-	}, [selected_rows, ip_info.ipAttr, sortedAttr]);
-
-	// Find single selected index for detail panel
-	const selected_index = selectedSortedIndices.length === 1 ? selectedSortedIndices[0] : 
-		(selected_key ? sortedAttr.findIndex(attr => String(getHashKey(attr)) === selected_key) : -1);
-
-	// Selection handler: map sorted indices back to original indices
-	const handleSelectionChange = (indices: number[]) => {
-		if (!ip_info.ipAttr) {
-			set_selected_rows([]);
-			return;
-		}
-
-		if (indices.length === 0) {
-			set_selected_rows([]);
-			return;
-		}
-
-		// Map each sorted index back to original index
-		const originalIndices = indices
-			.map(sortedIdx => {
-				const sortedItem = sortedAttr[sortedIdx];
-				return ip_info.ipAttr.findIndex(attr => String(getHashKey(attr)) === String(getHashKey(sortedItem)));
-			})
-			.filter(idx => idx !== -1);
-
-		set_selected_rows(originalIndices);
-	};
+	// Selection handler: page holds hash ids directly
+	const handleSelectionChange = (hashes: number[]) => set_selected_rows(hashes);
 
 	const handleDelete = async () => {
-		if (!inst || selected_rows.length === 0) return;
+		if (!inst || selectedItems.length === 0) return;
 
-		const targets = selected_rows
-			.map(rowIndex => ip_info.ipAttr[rowIndex])
-			.filter(item => item && item.ipAddress && item.ipAddress[0]);
+		const targets = selectedItems.filter(item => item && item.ipAddress && item.ipAddress[0]);
 		if (targets.length === 0) return;
 
 		const results = await Promise.all(
@@ -186,10 +144,10 @@ export default function IPPage(props: {family?: 'ipv4' | 'ipv6'}) {
 
 	const updateFormRef = useRef<IIpAttributeInput | null>(null);
 	const handleUpdate = () => {
-		if (!inst || selected_rows.length !== 1) return;
+		if (!inst || !selectedItem) return;
 
-		const selectedIP = ip_info.ipAttr[selected_rows[0]];
-		
+		const selectedIP = selectedItem;
+
 		// Convert selected IP to format expected by IpInputForm
 		const formData: Partial<IIpAttributeInput> = {
 			dev: selectedIP.dev,
@@ -238,49 +196,15 @@ export default function IPPage(props: {family?: 'ipv4' | 'ipv6'}) {
 
 	const handleRefresh = () => {
 		set_selected_rows([]);
-		set_selected_key(null);
 		refetch();
 	};
-
-	// Clear selection when data changes (after refresh)
-	useEffect(() => {
-		if (!ip_info.ipAttr || ip_info.ipAttr.length === 0) {
-			set_selected_rows([]);
-			set_selected_key(null);
-			return;
-		}
-		
-		// Validate that selected indices still point to the same items
-		if (selected_rows.length > 0) {
-			const validIndices = selected_rows.filter(idx => {
-				return idx >= 0 && idx < ip_info.ipAttr.length;
-			});
-			
-			if (validIndices.length !== selected_rows.length) {
-				// Some indices are invalid, clear selection
-				set_selected_rows([]);
-				set_selected_key(null);
-			}
-		}
-	}, [ip_info.ipAttr]);
-
-	// Synchronize selected_key with selected_rows
-	useEffect(() => {
-		if (!ip_info.ipAttr || ip_info.ipAttr.length === 0) return;
-		if (selected_rows.length === 1) {
-			const item = ip_info.ipAttr[selected_rows[0]];
-			set_selected_key(String(getHashKey(item)));
-		} else if (selected_key !== null) {
-			set_selected_key(null);
-		}
-	}, [ip_info, selected_rows, selected_key]);
 
 	return (
 		<Fragment>
 			<IPTable
 				title={family === 'ipv6' ? t('IPv6 Address') : undefined}
-				data={{ipAttr: sortedAttr}}
-				selected_rows={selectedSortedIndices}
+				data={ip_info}
+				selected_rows={selected_rows}
 				onChangeSelectedRows={handleSelectionChange}
 				onDelete={handleDelete}
 				onUpdate={handleUpdate}
@@ -288,10 +212,10 @@ export default function IPPage(props: {family?: 'ipv4' | 'ipv6'}) {
 				error={isError}
 			/>
 
-			{selected_index !== -1 && (
+			{selectedItem && (
 				<LowerSection>
-					{false && <AddressPannel name={sortedAttr[selected_index].dev} data={sortedAttr[selected_index]} />}
-					<IPAddressView device_name={sortedAttr[selected_index].dev} />
+					{false && <AddressPannel name={selectedItem!.dev} data={selectedItem!} />}
+					<IPAddressView device_name={selectedItem.dev} />
 				</LowerSection>
 			)}
 

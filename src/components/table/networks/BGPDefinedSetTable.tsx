@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IDefinedSetsInfo} from 'types/bgp_defined_set';
 import {IDataTableColumnDef} from 'types/global';
@@ -30,10 +31,13 @@ export default function BGPDefinedSetTable(props: {data: IDefinedSetsInfo; selec
 		return acc;
 	}, {} as Record<string, typeof data.definedsetsAttr>);
 
-	// Create rows from grouped data
-	const rows = Object.entries(groupedData).map(([name, items], index) => {
+	// Create rows from grouped data. Row id is a stable hash of the group name
+	// (the row's identity), so selection survives refetch and the page can map a
+	// selection back to every defined-set sharing that name — the grouped row
+	// index does NOT line up with the flat definedsetsAttr array.
+	const rows = Object.entries(groupedData).map(([name, items]) => {
 		return {
-			id: index,
+			id: getStableHash(name),
 			name,
 			prefixList:
 				items

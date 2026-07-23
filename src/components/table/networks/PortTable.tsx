@@ -38,13 +38,13 @@ export default function PortTable(props: {data: IPortInfo; selected_rows: number
    const rows = data.portAttr
 	   ? (() => {
 		   const sorted = [...data.portAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
-		   return sorted.map((item, index) => {
+		   return sorted.map(item => {
 			   const hw = item.portHardwareInformation ?? {};
 			   const l3 = item.portL3Information ?? {};
 			   const stat = item.portStatisticInformation ?? {};
 
 			   return {
-				   id: index,
+				   id: getHashKey(item),
 				   name: item.portName,
 				   port: item.portNo,
 				   mac: hw.macAddress ?? '',

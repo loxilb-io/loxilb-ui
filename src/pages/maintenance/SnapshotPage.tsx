@@ -36,6 +36,7 @@ import {useRole} from 'hooks/query/oamHooks';
 import {useInvalidateSnapshots, useSnapshotSchedule, useSnapshots} from 'hooks/query/snapshotHooks';
 import {t} from 'i18next';
 import {Fragment, useRef, useState} from 'react';
+import {getStableHash} from 'common';
 import {ISnapshot} from 'types/snapshot';
 
 // Server page size. Retention caps unpinned snapshots at 100 per instance, so
@@ -67,7 +68,11 @@ export default function SnapshotPage() {
 	const scheduleFormRef = useRef<(IScheduleEntry & {isValid: boolean}) | null>(null);
 	const deleteConfirmRef = useRef<string>('');
 
-	const selected: ISnapshot | null = selected_rows.length === 1 ? snapshots[selected_rows[0]] ?? null : null;
+	// selected_rows carries the grid row id, which is a stable hash of the
+	// snapshot UUID (see SnapshotTable) — resolve back to the snapshot by that
+	// hash, never by array position, so a refetch can't move the selection.
+	const selected: ISnapshot | null =
+		selected_rows.length === 1 ? snapshots.find(s => getStableHash(s.id ?? '') === selected_rows[0]) ?? null : null;
 	const selectedCorrupt = selected?.checksum_ok === false;
 
 	const refreshAll = () => {

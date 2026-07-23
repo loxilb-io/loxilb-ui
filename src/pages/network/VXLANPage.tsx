@@ -16,7 +16,8 @@ import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useVxlanAttr} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {Fragment, useRef, useState} from 'react';
-import {IVxlanData, IVxlanInput} from 'types/vxlan';
+import {getStableHash} from 'common';
+import {IVxlanAttribute, IVxlanData, IVxlanInput} from 'types/vxlan';
 
 //---------------------------------------------------------
 // Functional Component
@@ -103,15 +104,20 @@ export default function VxLANPage() {
 	const {data, isError, refetch} = useVxlanAttr(inst); // IVxlanAttribute[]
 	const vxlan_info: IVxlanData = {vxlanAttr: data ?? []};
 
-	const [selected_rows, set_selected_rows] = useState<any[]>([]);
+	// selected_rows holds a stable hash of vxlanID (the row id the table
+	// assigns), so selection tracks the VXLAN across refetches, not array order.
+	const [selected_rows, set_selected_rows] = useState<number[]>([]);
 	const {openPopUp, enableYes} = usePopUp();
 	const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
 
-	const handleSelectionChange = (selection: any) => set_selected_rows(selection);
+	const selectedVxlan = selected_rows.length === 1 ? vxlan_info.vxlanAttr.find(v => getStableHash(String(v.vxlanID ?? '')) === selected_rows[0]) ?? null : null;
+
+	const handleSelectionChange = (selection: number[]) => set_selected_rows(selection);
 	const handleDelete = async () => {
 		if (!inst || selected_rows.length === 0) return;
 
-		const results = await Promise.all(selected_rows.map(rowIndex => request_delete_vxlan(inst, vxlan_info.vxlanAttr[rowIndex].vxlanID)));
+		const targets = selected_rows.map(hash => vxlan_info.vxlanAttr.find(v => getStableHash(String(v.vxlanID ?? '')) === hash)).filter((v): v is IVxlanAttribute => v != null);
+		const results = await Promise.all(targets.map(v => request_delete_vxlan(inst, v.vxlanID)));
 		const failures = results.filter(res => res.status === 'error');
 
 		if (failures.length === 0) {
@@ -161,12 +167,12 @@ export default function VxLANPage() {
 		<Fragment>
 			<VXLANTable data={vxlan_info} selected_rows={selected_rows} onChangeSelectedRows={handleSelectionChange} onAdd={handleAdd} onDelete={handleDelete} error={isError} />
 
-			{selected_rows.length === 1 && (
+			{selectedVxlan && (
 				<LowerSection>
 					<PeerPanel
-						name={vxlan_info.vxlanAttr[selected_rows[0]].vxlanName}
-						data={vxlan_info.vxlanAttr[selected_rows[0]].peerIP}
-						vxlanID={vxlan_info.vxlanAttr[selected_rows[0]].vxlanID}
+						name={selectedVxlan.vxlanName}
+						data={selectedVxlan.peerIP}
+						vxlanID={selectedVxlan.vxlanID}
 						refetch={refetch}
 					/>
 				</LowerSection>

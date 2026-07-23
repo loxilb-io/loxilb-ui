@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {formatBytes} from 'common';
+import {formatBytes, getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IDataTableColumnDef} from 'types/global';
 import {ISnapshot} from 'types/snapshot';
@@ -25,9 +25,11 @@ const RESTORE_CHIP: Record<string, {label: string; color?: string}> = {
 
 export function snapshot_to_row(snap: ISnapshot, index: number) {
 	return {
-		// DataGrid selection returns row ids — carry the snapshot id (UUID)
-		// out-of-band and use the index as the grid id like every other table.
-		id: index,
+		// Grid id is a stable hash of the snapshot UUID, so selection survives
+		// the periodic list refetch/re-sort instead of shifting with array
+		// position. The UUID itself is carried out-of-band as `sid` (DataTable
+		// coerces selection ids with Number(), which a UUID string would break).
+		id: getStableHash(snap.id ?? String(index)),
 		sid: snap.id ?? '',
 		name: snap.name ?? '',
 		description: snap.description ?? '',

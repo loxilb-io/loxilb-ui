@@ -18,7 +18,6 @@ import {query_get_route_all} from 'connector/instance/route_attr';
 import {query_get_securityrate_all} from 'connector/instance/securityrate';
 import {query_get_sni_certificates} from 'connector/instance/sni_certificates';
 import {query_get_ha_state_all, query_get_metadata} from 'connector/instance/status';
-import {query_get_synflood_all} from 'connector/instance/synflood';
 import {query_get_vlan_all} from 'connector/instance/vlan';
 import {query_get_vxlan_all} from 'connector/instance/vxlan';
 import {useCallback, useMemo} from 'react';
@@ -121,10 +120,6 @@ export function useVLANAttr(instance: IInstance | null) {
 
 export function useVxlanAttr(instance: IInstance | null) {
 	return useQueryInstanceData(['vxlan_attr'], query_get_vxlan_all, instance);
-}
-
-export function useSYNFlood(instance: IInstance | null) {
-	return useQueryInstanceData(['synflood'], query_get_synflood_all, instance);
 }
 
 export function useSecurityRate(instance: IInstance | null) {

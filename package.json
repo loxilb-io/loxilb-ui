@@ -61,7 +61,7 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"typecheck": "tsc --noEmit",
-		"start": "HTTPS=true WDS_SOCKET_PORT=0 HOST=0.0.0.0 dotenv -e .env.development react-scripts start",
+		"start": "HTTPS=false WDS_SOCKET_PORT=0 HOST=0.0.0.0 dotenv -e .env.development react-scripts start",
 		"build": "dotenv -e .env.local react-scripts build",
 		"build:dev": "dotenv -e .env.development react-scripts build",
 		"build:prod": "dotenv -e .env.production react-scripts build",

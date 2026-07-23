@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {isValidIPAddress} from 'common';
+import {getStableHash, isValidIPAddress} from 'common';
 import BGPNeighborInputForm from 'components/input/BGPNeighborInputForm';
 import BGPNeighborTable from 'components/table/networks/BGPNeighborTable';
 import {request_create_bgp_neighbor, request_delete_bgp_neighbor} from 'connector/instance/bgp';
@@ -28,7 +28,8 @@ export default function BGPNeighborPage() {
 	const handleDelete = async () => {
 		if (!inst || selected_rows.length === 0) return;
 
-		const results = await Promise.all(selected_rows.map(rowIndex => request_delete_bgp_neighbor(inst, bgp_neighbor_info.bgpNeiAttr[rowIndex].ipAddress)));
+		const targets = selected_rows.map(hash => bgp_neighbor_info.bgpNeiAttr.find(n => getStableHash(String(n.ipAddress ?? '')) === hash)).filter((n): n is IBgpNeighborAttribute => n != null);
+		const results = await Promise.all(targets.map(n => request_delete_bgp_neighbor(inst, n.ipAddress)));
 		const failures = results.filter(res => res.status === 'error');
 
 		if (failures.length === 0) {

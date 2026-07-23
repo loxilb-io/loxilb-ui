@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {getStableHash} from 'common';
 import BGPDefinedSetInputForm from 'components/input/BGPDefineSetInputForm';
 import BGPDefinedSetTable from 'components/table/networks/BGPDefinedSetTable';
 import {request_create_defined_set, request_delete_defined_set} from 'connector/instance/bgp';
@@ -81,7 +82,12 @@ export default function BGPDefinedSetPage() {
 	const handleDelete = async () => {
 		if (!inst || selected_rows.length === 0) return;
 
-		const targets = selected_rows.map(rowIndex => set_data.definedsetsAttr[rowIndex]);
+		// selected_rows carries the stable hash of the group NAME (see
+		// BGPDefinedSetTable). Resolve it back to every defined-set that shares
+		// that name (a name can span types), and delete each by (type, name) —
+		// the old code indexed the flat array by the grouped row index, which
+		// deleted an unrelated entry.
+		const targets = selected_rows.flatMap(hash => set_data.definedsetsAttr.filter(d => getStableHash(d.name) === hash));
 		const results = await Promise.all(targets.map(item => request_delete_defined_set(inst, item.definedType, item.name)));
 		const failures = results.filter(res => res.status === 'error');
 

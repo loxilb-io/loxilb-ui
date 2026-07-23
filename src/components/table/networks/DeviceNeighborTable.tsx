@@ -24,8 +24,8 @@ export default function DeviceNeighborTable(props: {data: INeighborData; selecte
 	const rows = data.neighborAttr && Array.isArray(data.neighborAttr)
 		? (() => {
 			const sorted = [...data.neighborAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
-			return sorted.map((item, index) => ({
-				id: index,
+			return sorted.map(item => ({
+				id: getHashKey(item),
 				dev: item.dev,
 				ipAddress: item.ipAddress,
 				macAddress: item.macAddress,

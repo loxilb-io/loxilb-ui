@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {ISecurityRateEntry} from 'types/security';
 import {IDataTableColumnDef} from 'types/global';
@@ -13,12 +14,13 @@ interface SecurityRateTableProps {
 	selected_rows: number[];
 	onChangeSelectedRows: (indices: number[]) => void;
 	onEdit?: () => void;
+	onDisable?: () => void;
 	onRefresh?: () => void;
 	error?: boolean;
 }
 
 export default function SecurityRateTable(props: SecurityRateTableProps) {
-	const {data, selected_rows, onChangeSelectedRows, onEdit, onRefresh, error} = props;
+	const {data, selected_rows, onChangeSelectedRows, onEdit, onDisable, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'synEnabled', header: 'SYN Enabled', width: 'narrow'},
@@ -33,8 +35,13 @@ export default function SecurityRateTable(props: SecurityRateTableProps) {
 		{data_key: 'uniqueIps', header: 'Unique IPs', width: 'medium'},
 	];
 
-	const rows = data.map((item, index) => ({
-		id: index,
+	const getHashKey = (item: ISecurityRateEntry) => {
+		const str = `${item.synEnabled}_${item.connRateEnabled}_${item.udpEnabled}`;
+		return getStableHash(str);
+	};
+
+	const rows = data.map(item => ({
+		id: getHashKey(item),
 		synEnabled: item.synEnabled ? 'Yes' : 'No',
 		synThreshold: (item.synThreshold ?? 0).toString(),
 		connRateEnabled: item.connRateEnabled ? 'Yes' : 'No',
@@ -55,6 +62,19 @@ export default function SecurityRateTable(props: SecurityRateTableProps) {
 			selected_rows={selected_rows}
 			onChangeSelectedRows={onChangeSelectedRows}
 			onEdit={onEdit}
+			onDelete={onDisable}
+			deleteConfirm={
+				onDisable
+					? {
+							title: 'Disable Security Rate Limiting',
+							message:
+								'This disables SYN flood, connection-rate, and UDP flood protection and clears all tracking state. Statistics counters are reset. You can re-enable it anytime via Configure.',
+							confirmLabel: 'Disable',
+							tooltip: 'Disable Security Rate Limiting',
+							icon: 'block',
+					  }
+					: undefined
+			}
 			onRefresh={onRefresh}
 			error={error}
 		/>

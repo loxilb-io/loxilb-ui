@@ -23,9 +23,9 @@ export default function FDBTable(props: {data: IFdbData; selected_rows: number[]
    const rows = data.fdbAttr
 	   ? (() => {
 		   const sorted = [...data.fdbAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
-		   return sorted.map((item, index) => {
+		   return sorted.map(item => {
 			   return {
-				   id: index,
+				   id: getHashKey(item),
 				   dev: item.dev,
 				   macAddress: item.macAddress,
 				   description: '',

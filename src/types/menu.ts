@@ -104,10 +104,6 @@ export const MENU_LIST: IMenuItem[] = [
 				path: 'ipfilter',
 			},
 			{
-				name: 'SYN Flood Protection(XDP)',
-				path: 'synflood',
-			},
-			{
 				name: 'Security Rate Limiting(XDP)',
 				path: 'securityrate',
 			},

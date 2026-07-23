@@ -11,7 +11,7 @@ import ProcessTable from 'components/table/status/ProcessTable';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useStatus} from 'hooks/query/statusHook';
 import {t} from 'i18next';
-import {Fragment, useState, useMemo, useEffect} from 'react';
+import {Fragment, useState, useMemo} from 'react';
 import {IProcessAttribute, IProcessInfo} from 'types/process';
 
 //---------------------------------------------------------
@@ -56,97 +56,45 @@ export default function ProcessPage() {
 	const {processAttr, psError, refetch} = useStatus(inst);
 	const process_info: IProcessInfo = {processAttr: processAttr ?? []};
 
+	// Selection is keyed by a stable content hash (the row id assigned by
+	// ProcessTable), not by array position. Deriving the selected item purely
+	// (no setState in render) also sidesteps the old "Too many re-renders"
+	// crash that a state-syncing useMemo caused here (F-STATUS-4).
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
-	const [selected_key, set_selected_key] = useState<string | null>(null);
 
-	// Hash function for Process entry
+	// Hash function for Process entry — must match ProcessTable's row id.
 	const getHashKey = (item: any) => {
 		const str = `${item.pid || ''}_${item.command || ''}`;
 		return getStableHash(str);
 	};
 
-	// Sorted process entries - sort by PID numerically for natural order
-	const sortedAttr = useMemo(() => {
-		if (!process_info.processAttr) return [];
-		return [...process_info.processAttr].sort((a, b) => {
-			const pidA = parseInt(a.pid, 10);
-			const pidB = parseInt(b.pid, 10);
-			return pidA - pidB;
-		});
-	}, [process_info.processAttr]);
+	// Resolve the selected hashes back to their process entries.
+	const selectedItems = useMemo(
+		() => selected_rows.map(hash => process_info.processAttr.find(attr => getHashKey(attr) === hash)).filter((item): item is IProcessAttribute => item != null),
+		[selected_rows, process_info.processAttr],
+	);
+	const selectedItem: IProcessAttribute | null = selectedItems.length === 1 ? selectedItems[0] : null;
 
-	// Map selected original indices to sorted indices for display
-	const selectedSortedIndices = useMemo(() => {
-		if (!process_info.processAttr || selected_rows.length === 0) return [];
-		
-		return selected_rows
-			.map(originalIdx => {
-				const original = process_info.processAttr[originalIdx];
-				return sortedAttr.findIndex(attr => String(getHashKey(attr)) === String(getHashKey(original)));
-			})
-			.filter(idx => idx !== -1);
-	}, [selected_rows, process_info.processAttr, sortedAttr]);
-
-	// Find single selected index for detail panel
-	const selected_index = selectedSortedIndices.length === 1 ? selectedSortedIndices[0] : 
-		(selected_key ? sortedAttr.findIndex(attr => String(getHashKey(attr)) === selected_key) : -1);
-
-	// Selection handler: map sorted indices back to original indices
-	const handleSelectionChange = (indices: number[]) => {
-		if (!process_info.processAttr) {
-			set_selected_rows([]);
-			return;
-		}
-
-		if (indices.length === 0) {
-			set_selected_rows([]);
-			return;
-		}
-
-		// Map each sorted index back to original index
-		const originalIndices = indices
-			.map(sortedIdx => {
-				const sortedItem = sortedAttr[sortedIdx];
-				return process_info.processAttr.findIndex(attr => String(getHashKey(attr)) === String(getHashKey(sortedItem)));
-			})
-			.filter(idx => idx !== -1);
-
-		set_selected_rows(originalIndices);
-	};
+	const handleSelectionChange = (hashes: number[]) => set_selected_rows(hashes);
 
 	const handleRefresh = () => {
 		set_selected_rows([]);
-		set_selected_key(null);
 		refetch();
 	};
 
-	// Synchronize selected_key with selected_rows. This MUST be an effect, not
-	// a useMemo: setting state inside a useMemo runs during render and, because
-	// process_info is a fresh object every render, re-triggered itself into a
-	// "Too many re-renders" crash the moment a row was selected (F-STATUS-4).
-	useEffect(() => {
-		if (!process_info.processAttr || process_info.processAttr.length === 0) return;
-		if (selected_rows.length === 1) {
-			const item = process_info.processAttr[selected_rows[0]];
-			set_selected_key(String(getHashKey(item)));
-		} else if (selected_key !== null) {
-			set_selected_key(null);
-		}
-	}, [process_info.processAttr, selected_rows, selected_key]);
-
 	return (
 		<Fragment>
-			<ProcessTable 
-				data={{processAttr: sortedAttr}} 
-				selected_rows={selectedSortedIndices} 
+			<ProcessTable
+				data={process_info}
+				selected_rows={selected_rows}
 				onChangeSelectedRows={handleSelectionChange}
 				onRefresh={handleRefresh}
 				error={!!psError}
 			/>
 
-			{selected_index !== -1 && (
+			{selectedItem && (
 				<LowerSection>
-					<ProcessPanel data={sortedAttr[selected_index]} />
+					<ProcessPanel data={selectedItem} />
 				</LowerSection>
 			)}
 		</Fragment>

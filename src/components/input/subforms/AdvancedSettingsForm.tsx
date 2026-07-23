@@ -114,13 +114,6 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 								   param_desc={{...params?.backend_protocol, enum: backend_protocol_list, description: t('Backend protocol for ALPN negotiation (http1: HTTP/1.1 only, http2: HTTP/2 only, both: supports both)')}}
 								   disabled={value?.mode !== 4}
 							   />
-							   <ParamBox
-								   label={t('LLM Type')}
-								   value={value?.llm_type ?? ''}
-								   onChange={handleChange('llm_type')}
-								   param_desc={{...params?.llm_type, description: t('LLM catalog profile for GPU-aware load balancing (e.g., chat-interactive, rag-longcontext, batch-inference)')}}
-								   disabled={value?.mode !== 4}
-							   />
 					   </HorizontalStack>
 
 					   {/* Frontend mTLS — client-certificate verification (fullproxy + TLS only) */}

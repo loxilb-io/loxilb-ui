@@ -137,26 +137,23 @@ function AdminUserManagementPanel(props: {
 	const {users, isLoading, refetch} = useAllUsers();
 
 	const {openPopUp} = usePopUp();
-	const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
-	const [selectedKey, setSelectedKey] = useState<string | null>(null);
+	const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds hash ids
 
-	// Hash function for user
-	const getUserHashKey = (item: any) => {
+	// Hash function for user — MUST match UserManagementTable.getHashKey
+	const getHashKey = (item: IUser) => {
 		const str = `${item.id || ''}_${item.username || ''}_${item.email || ''}`;
 		return getStableHash(str);
 	};
 
-	// Sorted users
-	const sortedUsers = users ? [...users].sort((a, b) => getUserHashKey(a) - getUserHashKey(b)) : [];
-
-	// Find selected index in sortedUsers
-	let selectedIndex = -1;
-	if (selectedUsers.length === 1 && users) {
-		const original = users[selectedUsers[0]];
-		selectedIndex = sortedUsers.findIndex(user => getUserHashKey(user) === getUserHashKey(original));
-	} else if (selectedKey) {
-		selectedIndex = sortedUsers.findIndex(user => getUserHashKey(user).toString() === selectedKey);
-	}
+	// Resolve selected users by matching stable hash ids
+	const selectedItems = useMemo(
+		() =>
+			selected_rows
+				.map(h => users?.find(a => getHashKey(a) === h))
+				.filter((x): x is IUser => x != null),
+		[selected_rows, users]
+	);
+	const selectedItem: IUser | null = selectedItems.length === 1 ? selectedItems[0] : null;
 
 	// Expose refetch function to parent via ref
 	useEffect(() => {
@@ -165,44 +162,16 @@ function AdminUserManagementPanel(props: {
 		}
 	}, [refetch, refetchRef]);
 
-	// Update selectedKey when selection changes
-	useEffect(() => {
-		if (!users || users.length === 0) return;
-		if (selectedUsers.length === 1) {
-			const item = users[selectedUsers[0]];
-			setSelectedKey(getUserHashKey(item).toString());
-		} else if (selectedKey !== null) {
-			setSelectedKey(null);
-		}
-	}, [users, selectedUsers, selectedKey]);
-
-	// Selection handler: map sorted index back to original
-	const handleSelectionChange = (indices: number[]) => {
-		if (indices.length === 1 && users) {
-			const sortedItem = sortedUsers[indices[0]];
-			const originalIndex = users.findIndex(user => getUserHashKey(user) === getUserHashKey(sortedItem));
-			setSelectedUsers(originalIndex !== -1 ? [originalIndex] : []);
-		} else if (indices.length > 1) {
-			// Multiple selections: map each sorted index back to original
-			const originalIndices = indices
-				.map(idx => {
-					const sortedItem = sortedUsers[idx];
-					return users.findIndex(user => getUserHashKey(user) === getUserHashKey(sortedItem));
-				})
-				.filter(idx => idx !== -1);
-			setSelectedUsers(originalIndices);
-		} else {
-			setSelectedUsers([]);
-		}
-	};
+	// Selection handler: selection model is a list of stable hash ids
+	const handleSelectionChange = (hashes: number[]) => set_selected_rows(hashes);
 
 	// DataTable already gates delete behind its own "WARNING!! Delete Item"
 	// confirmation, so this runs post-confirm — delete directly rather than
 	// stacking a second (redundant) confirm dialog on top of it.
 	const handleDeleteUser = async () => {
-		if (selectedUsers.length === 0) return;
+		if (selectedItems.length === 0) return;
 
-		const selectedUserData = selectedUsers.map(index => users[index]).filter(Boolean);
+		const selectedUserData = selectedItems;
 
 		// Guard: an admin must not delete their own account — the server permits
 		// it (no self-delete protection), which would silently lock the admin out
@@ -214,7 +183,7 @@ function AdminUserManagementPanel(props: {
 
 		try {
 			await Promise.all(selectedUserData.map(user => deleteUser(user.id)));
-			setSelectedUsers([]);
+			set_selected_rows([]);
 			onRefresh();
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : t('Failed to delete one or more users');
@@ -223,16 +192,13 @@ function AdminUserManagementPanel(props: {
 	};
 
 	const handleEditUser = () => {
-		if (selectedUsers.length !== 1) return;
-		const selectedUser = users[selectedUsers[0]];
-		if (selectedUser) {
-			onEditUser(selectedUser);
+		if (selectedItem) {
+			onEditUser(selectedItem);
 		}
 	};
 
 	const handleRefresh = () => {
-		setSelectedUsers([]);
-		setSelectedKey(null);
+		set_selected_rows([]);
 		onRefresh();
 	};
 
@@ -259,11 +225,8 @@ function AdminUserManagementPanel(props: {
 
 			<Fragment>
 				<UserManagementTable
-					data={{users: sortedUsers}}
-					selected_rows={selectedIndex !== -1 ? [selectedIndex] : selectedUsers.length > 1 ? selectedUsers.map(idx => {
-						const original = users[idx];
-						return sortedUsers.findIndex(user => getUserHashKey(user) === getUserHashKey(original));
-					}).filter(idx => idx !== -1) : []}
+					data={{users: users ?? []}}
+					selected_rows={selected_rows}
 					onChangeSelectedRows={handleSelectionChange}
 					onAdd={onAddUser}
 					onUpdate={handleEditUser}

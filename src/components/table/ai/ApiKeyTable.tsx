@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IDataTableColumnDef} from 'types/global';
 import {IApiKeySummary} from 'types/ai';
@@ -30,8 +31,8 @@ export default function ApiKeyTable(props: {
 		{data_key: 'enabled', header: 'Enabled', type: 'on-off'},
 	];
 
-	const rows = data.map((item, index) => ({
-		id: index,
+	const rows = data.map(item => ({
+		id: getStableHash(item.key_id ?? ''),
 		key_id: item.key_id ?? '',
 		tenant_id: item.tenant_id ?? '',
 		name: item.name ?? '',
