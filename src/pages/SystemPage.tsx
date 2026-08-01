@@ -27,10 +27,6 @@ function LogDetailPannel(props: {data: ILog}) {
 			<Stack spacing={2}>
 				<ValueBunch>
 					<SingleTextBox label={t('Timestamp')} value={props.data.timestamp} />
-					{/*<SingleTextBox label={t('Host')} value={props.data.host} />
-					<SingleTextBox label={t('Program')} value={props.data.programname} />
-					<SingleTextBox label={t('Level')} value={`${props.data.level}/${props.data.severity}`} />
-					<SingleTextBox label={t('Facility')} value={props.data.facility} />*/}
 					<SingleTextBox label={t('Message')} value={props.data.message} />
 				</ValueBunch>
 			</Stack>
@@ -81,7 +77,7 @@ export default function SystemPage() {
 						{is_online !== undefined && renderServerState(is_online)}
 					</Box>
 
-					<ArchivedLogCard log_file_list={log_file_list} onRowClick={(row: any) => download_oam_log_archive(row.filename)} />
+					<ArchivedLogCard log_file_list={log_file_list} onDownload={(filename, onProgress) => download_oam_log_archive(filename, onProgress)} />
 				</Box>
 
 				<Divider />

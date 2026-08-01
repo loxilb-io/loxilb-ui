@@ -64,9 +64,9 @@ export default function SystemUsageCard(props: {instance: IInstance | null}) {
 		}
 
 		return {
-			cpu_usage: createUsagePieData(liveMetrics.critical.system_cpu_utilization, 'CPU'),
-			mem_usage: createUsagePieData(liveMetrics.critical.system_memory_utilization, 'Memory'),
-			disk_usage: createUsagePieData(liveMetrics.critical.system_disk_utilization, 'Disk')
+			cpu_usage: createUsagePieData(liveMetrics.critical.loxilb_system_cpu_utilization_percent, 'CPU'),
+			mem_usage: createUsagePieData(liveMetrics.critical.loxilb_system_memory_utilization_percent, 'Memory'),
+			disk_usage: createUsagePieData(liveMetrics.critical.loxilb_system_disk_utilization_percent, 'Disk')
 		};
 	}, [liveMetrics]);
 

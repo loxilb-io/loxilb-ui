@@ -14,8 +14,8 @@ const protocol_list: IEnumItem[] = protocols;
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function FirewallTable(props: {data: IFirewallRules; selected_rows: number[]; onChangeSelectedRows: any; onAdd?: any; onDelete?: any; onRefresh?: any}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh} = props;
+export default function FirewallTable(props: {data: IFirewallRules; selected_rows: number[]; onChangeSelectedRows: any; onAdd?: any; onDelete?: any; onRefresh?: any; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
 
 	// const sorted_data = useMemo(() => {
 	// 	const protocol_map = new Map<number, number>();
@@ -52,7 +52,7 @@ export default function FirewallTable(props: {data: IFirewallRules; selected_row
    const rows = data.fwAttr
 	   ? (() => {
 		   const sorted = [...data.fwAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
-		   return sorted.map((item, index) => {
+		   return sorted.map(item => {
 			   const protocol_id: number = item.ruleArguments.protocol;
 			   const protocol_name = protocol_list.find(p => p.id === protocol_id)?.name || 'Unknown';
 			   const minSourcePort = item.ruleArguments.minSourcePort ? item.ruleArguments.minSourcePort.toString() : '';
@@ -61,7 +61,7 @@ export default function FirewallTable(props: {data: IFirewallRules; selected_row
 			   const maxDestinationPort = item.ruleArguments.maxDestinationPort ? item.ruleArguments.maxDestinationPort.toString() : '';
 
 			   return {
-				   id: index, 
+				   id: getHashKey(item),
 				   portName: item.ruleArguments.portName ? item.ruleArguments.portName : '',
 				   sourceIP: item.ruleArguments.sourceIP ? item.ruleArguments.sourceIP : '',
 				   sourcePort: `${minSourcePort}-${maxSourcePort}`,
@@ -76,5 +76,5 @@ export default function FirewallTable(props: {data: IFirewallRules; selected_row
 	   })()
 	   : undefined;
 
-	return <DataTable name={'Firewall'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onRefresh={onRefresh} />;
+	return <DataTable name={'Firewall'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onRefresh={onRefresh} error={error} />;
 }

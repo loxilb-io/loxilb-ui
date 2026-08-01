@@ -8,8 +8,9 @@ import {
 	ISNICertificatesResponse,
 } from 'types/security';
 import {IInstance} from 'types/oam';
-import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
+import {ApiResult, assertOk, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
+import type {GwGetResp} from 'api';
 
 //---------------------------------------------------------
 // API Caller Functions
@@ -20,13 +21,9 @@ import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
  * Returns all SNI certificates in the global certificate store (shared by all proxies)
  */
 export async function query_get_sni_certificates(instance: IInstance): Promise<ISNICertificatesResponse> {
-	const resp = await GET_INST(instance, `/sni/certificates`);
-	return (
-		(resp.data as ISNICertificatesResponse) ?? {
-			certificates: [],
-			totalCertificates: 0,
-		}
-	);
+	const resp = await GET_INST<GwGetResp<'/sni/certificates'>>(instance, `/sni/certificates`);
+	assertOk(resp, 'Get SNI Certificates');
+	return (resp.data ?? {certificates: [], totalCertificates: 0}) as ISNICertificatesResponse;
 }
 
 /**
@@ -35,7 +32,13 @@ export async function query_get_sni_certificates(instance: IInstance): Promise<I
  * Multiple loadbalancer rules can share the same certificate by hostname.
  */
 export async function request_register_sni_certificate(instance: IInstance, data: ISNICertificateEntry): Promise<ApiResult> {
-	const resp = await POST_INST(instance, `/sni/certificates`, data);
+	// The input form's onChange emits its validation state (isValid) alongside
+	// the fields; build an explicit ISNICertificateEntry so that client-only key
+	// can never leak into the gateway POST (F22 family), and omit an empty
+	// certPath so the gateway applies its default path.
+	const payload: ISNICertificateEntry = {hostname: data.hostname};
+	if (data.certPath && data.certPath.trim() !== '') payload.certPath = data.certPath;
+	const resp = await POST_INST(instance, `/sni/certificates`, payload);
 	if (resp.code !== 200 && resp.code !== 204) {
 		const errorMessage = createDetailedErrorMessage(resp, 'SNI Certificate Registration');
 		return {status: 'error', error: errorMessage};

@@ -9,8 +9,8 @@ import {getStableHash} from 'common';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function FDBTable(props: {data: IFdbData; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onRefresh?: any}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh} = props;
+export default function FDBTable(props: {data: IFdbData; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onRefresh?: any; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'dev', header: 'Device', width: 'wide'},
@@ -23,9 +23,9 @@ export default function FDBTable(props: {data: IFdbData; selected_rows: number[]
    const rows = data.fdbAttr
 	   ? (() => {
 		   const sorted = [...data.fdbAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
-		   return sorted.map((item, index) => {
+		   return sorted.map(item => {
 			   return {
-				   id: index,
+				   id: getHashKey(item),
 				   dev: item.dev,
 				   macAddress: item.macAddress,
 				   description: '',
@@ -45,6 +45,7 @@ export default function FDBTable(props: {data: IFdbData; selected_rows: number[]
 			onAdd={onAdd}
 			onDelete={onDelete}
 			onRefresh={onRefresh}
+			error={error}
 		/>
 	);
 }

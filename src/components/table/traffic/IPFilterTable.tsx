@@ -17,8 +17,9 @@ export default function IPFilterTable(props: {
 	onAdd?: any;
 	onDelete?: any;
 	onRefresh?: any;
+	error?: boolean;
 }) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh} = props;
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'filterType', header: 'Filter Type', width: 'medium'},
@@ -40,8 +41,8 @@ export default function IPFilterTable(props: {
 		if (!data) return [];
 
 		const sorted = [...data].sort((a, b) => getHashKey(a) - getHashKey(b));
-		return sorted.map((item, index) => ({
-			id: index,
+		return sorted.map(item => ({
+			id: getHashKey(item),
 			filterType: item.filterType,
 			cidr: item.cidr,
 			action: item.action,
@@ -63,6 +64,7 @@ export default function IPFilterTable(props: {
 			onAdd={onAdd}
 			onDelete={onDelete}
 			onRefresh={onRefresh}
+			error={error}
 		/>
 	);
 }

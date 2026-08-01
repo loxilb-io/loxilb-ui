@@ -8,8 +8,8 @@ import {ITimeSeriesPoint} from 'types/global';
 import {IInstance} from 'types/oam';
 
 export const MAX_DURATION_MS = 24 * 60 * 60 * 1000;
-export const MAX_DATA_POINTS = 100; // Limit number of data points to prevent storage overflow
-export const POLLING_INTERVAL_MS = parseInt(process.env.REACT_APP_REPATCH_INTERVAL || '1000');
+const MAX_DATA_POINTS = 100; // Limit number of data points to prevent storage overflow
+const POLLING_INTERVAL_MS = parseInt(process.env.REACT_APP_REPATCH_INTERVAL || '1000');
 
 //---------------------------------------------------------
 // Internal Helper Functions

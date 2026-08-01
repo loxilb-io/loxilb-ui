@@ -16,7 +16,7 @@ import {usePopUp} from 'hooks/popupHook';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useEndpoints} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
-import {Fragment, useEffect, useRef, useState, useMemo} from 'react';
+import {Fragment, useRef, useState, useMemo} from 'react';
 import {IEndpointAttr, IEndpointInput, IEndpointItem} from 'types/endpoint';
 
 //---------------------------------------------------------
@@ -53,86 +53,49 @@ function ProbeInfoPanel(props: {name: string; data: IEndpointItem}) {
 export default function EndpointPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, refetch} = useEndpoints(inst);
+	const {data, isError, refetch} = useEndpoints(inst);
 	const ep_info: IEndpointAttr = {Attr: data ?? []};
 
+	// Selection is keyed by a stable content hash (the same id the table assigns
+	// to each row), not by array position — so a background refetch or re-sort
+	// can't shift the selection onto a different endpoint or silently drop it.
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
-	const [selected_key, set_selected_key] = useState<string | null>(null);
 	const {openPopUp, enableYes} = usePopUp();
 	const {errorPopup, showAddError, showUpdateError, showDeleteError, closeErrorPopup} = useErrorPopup();
 
-	// Hash function for endpoint
+	// Hash function for endpoint — must match EndpointTable's row id.
 	const getHashKey = (item: any) => {
 		const str = `${item.name || ''}_${item.hostName || ''}_${item.probePort || ''}_${item.probeType || ''}`;
 		return getStableHash(str);
 	};
 
-	// Sorted endpoints
-	const sortedAttr = ep_info.Attr ? [...ep_info.Attr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
+	// Resolve the selected hashes back to their endpoint items.
+	const selectedItems = useMemo(
+		() => selected_rows.map(hash => ep_info.Attr.find(attr => getHashKey(attr) === hash)).filter((item): item is IEndpointItem => item != null),
+		[selected_rows, ep_info.Attr],
+	);
+	const selectedItem: IEndpointItem | null = selectedItems.length === 1 ? selectedItems[0] : null;
 
-	// Map selected original indices to sorted indices for display
-	const selectedSortedIndices = useMemo(() => {
-		if (!ep_info.Attr || selected_rows.length === 0) return [];
-		
-		return selected_rows
-			.map(originalIdx => {
-				const original = ep_info.Attr[originalIdx];
-				return sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
-			})
-			.filter(idx => idx !== -1);
-	}, [selected_rows, ep_info.Attr, sortedAttr]);
-
-	// Find single selected index for detail panel
-	const selected_index = selectedSortedIndices.length === 1 ? selectedSortedIndices[0] : 
-		(selected_key ? sortedAttr.findIndex(attr => getHashKey(attr).toString() === selected_key) : -1);
-
-	// Selection handler: map sorted indices back to original indices
-	const handleSelectionChange = (indices: number[]) => {
-		if (!ep_info.Attr) {
-			set_selected_rows([]);
-			return;
-		}
-
-		if (indices.length === 0) {
-			set_selected_rows([]);
-			return;
-		}
-
-		// Map each sorted index back to original index
-		const originalIndices = indices
-			.map(sortedIdx => {
-				const sortedItem = sortedAttr[sortedIdx];
-				return ep_info.Attr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
-			})
-			.filter(idx => idx !== -1);
-
-		set_selected_rows(originalIndices);
-	};
-
-	const [selectedItem, setSelectedItem] = useState<IEndpointItem | null>(null);
-	useEffect(() => {
-		if (!ep_info || ep_info.Attr.length === 0) return;
-		if (selected_rows.length === 1) {
-			const item = ep_info.Attr[selected_rows[0]];
-			set_selected_key(getHashKey(item).toString());
-			setSelectedItem(item ?? null);
-		} else if (selected_key !== null) {
-			set_selected_key(null);
-			setSelectedItem(null);
-		}
-	}, [ep_info, selected_rows, selected_key]);
+	const handleSelectionChange = (hashes: number[]) => set_selected_rows(hashes);
 
 	const handleDelete = async () => {
-		if (!inst || !selectedItem) return;
+		if (!inst || selectedItems.length === 0) return;
 
-		const res = await request_delete_endpoint_by_ip(inst, selectedItem);
-		if (res.status === 'success') {
-			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
-			set_selected_rows([]);
-			setTimeout(() => {
-				refetch();
-			}, 1000);
-		} else showDeleteError('endpoint', res.error);
+		const results = await Promise.all(selectedItems.map(item => request_delete_endpoint_by_ip(inst, item)));
+		const failures = results.filter(res => res.status === 'error');
+
+		if (failures.length === 0) {
+			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
+		} else if (failures.length < results.length) {
+			showDeleteError('endpoint', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+		} else {
+			showDeleteError('endpoint', failures[0].error);
+			return;
+		}
+		set_selected_rows([]);
+		setTimeout(() => {
+			refetch();
+		}, 1000);
 	};
 
 	const instanceRef = useRef<IEndpointInput | null>(null);
@@ -224,26 +187,25 @@ export default function EndpointPage() {
 
 	const handleRefresh = () => {
 		set_selected_rows([]);
-		set_selected_key(null);
-		setSelectedItem(null);
 		refetch();
 	};
 
 	return (
 		<Fragment>
 			<EndpointTable
-				data={{Attr: sortedAttr}}
-				selected_rows={selectedSortedIndices}
+				data={ep_info}
+				selected_rows={selected_rows}
 				onChangeSelectedRows={handleSelectionChange}
 				onAdd={handleAdd}
 				onDelete={handleDelete}
 				onUpdate={handleUpdate}
 				onRefresh={handleRefresh}
+				error={isError}
 			/>
 
-			{selected_index !== -1 && selectedItem && (
+			{selectedItem && (
 				<LowerSection>
-					<ProbeInfoPanel name={sortedAttr[selected_index].name} data={sortedAttr[selected_index]} />
+					<ProbeInfoPanel name={selectedItem.name} data={selectedItem} />
 				</LowerSection>
 			)}
 

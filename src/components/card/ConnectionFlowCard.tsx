@@ -48,18 +48,21 @@ export default function ConnectionFlowCard(props: ConnectionFlowCardProps) {
 				tcp: 0,
 				udp: 0,
 				sctp: 0,
-				inactive: 0,
-				newFlows: 0
+				newFlows: 0,
+				utilizationPct: undefined as number | undefined
 			};
 		}
 
-		const tcp = liveMetrics.critical.active_flow_count_tcp || 0;
-		const udp = liveMetrics.critical.active_flow_count_udp || 0;
-		const sctp = liveMetrics.critical.active_flow_count_sctp || 0;
+		const tcp = liveMetrics.critical.loxilb_active_flow_count_tcp || 0;
+		const udp = liveMetrics.critical.loxilb_active_flow_count_udp || 0;
+		const sctp = liveMetrics.critical.loxilb_active_flow_count_sctp || 0;
 		const totalActive = tcp + udp + sctp;
-		const totalTracked = liveMetrics.critical.active_conntrack_count || 0;
-		const inactive = liveMetrics.critical.inactive_flow_count || 0;
-		const newFlows = liveMetrics.critical.new_flow_count || 0;
+		const totalTracked = liveMetrics.critical.loxilb_active_conntrack_entries || 0;
+		const newFlows = liveMetrics.critical.loxilb_new_flows || 0;
+		// Conntrack-table utilization (active / capacity). loxilb_conntrack_max_entries
+		// is only exported by post-rename gateways — treat its absence as N/A.
+		const maxTracked = liveMetrics.critical.loxilb_conntrack_max_entries || 0;
+		const utilizationPct = maxTracked > 0 ? Math.round((totalTracked / maxTracked) * 100) : undefined;
 
 		return {
 			totalActive,
@@ -67,8 +70,8 @@ export default function ConnectionFlowCard(props: ConnectionFlowCardProps) {
 			tcp,
 			udp,
 			sctp,
-			inactive,
-			newFlows
+			newFlows,
+			utilizationPct
 		};
 	}, [liveMetrics]);
 
@@ -157,16 +160,6 @@ export default function ConnectionFlowCard(props: ConnectionFlowCardProps) {
 						<Grid container spacing={1}>
 							<Grid item xs={6}>
 								<Box textAlign="center">
-									<Typography variant="body1" fontWeight="bold" color="error.main">
-										{connectionData.inactive.toLocaleString()}
-									</Typography>
-									<Typography variant="caption" color="textSecondary">
-										{t('Inactive')}
-									</Typography>
-								</Box>
-							</Grid>
-							<Grid item xs={6}>
-								<Box textAlign="center">
 									<Typography variant="body1" fontWeight="bold" color="primary.main">
 										{connectionData.newFlows.toLocaleString()}
 									</Typography>
@@ -175,6 +168,22 @@ export default function ConnectionFlowCard(props: ConnectionFlowCardProps) {
 									</Typography>
 								</Box>
 							</Grid>
+							{connectionData.utilizationPct !== undefined && (
+								<Grid item xs={6}>
+									<Box textAlign="center">
+										<Typography
+											variant="body1"
+											fontWeight="bold"
+											color={connectionData.utilizationPct >= 80 ? 'error.main' : 'success.main'}
+										>
+											{connectionData.utilizationPct}%
+										</Typography>
+										<Typography variant="caption" color="textSecondary">
+											{t('Conntrack Usage')}
+										</Typography>
+									</Box>
+								</Grid>
+							)}
 						</Grid>
 					</>
 				)}

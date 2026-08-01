@@ -89,7 +89,7 @@ export interface IDataTableColumnDef {
 	header: string;
 	width?: 'narrow' | 'medium' | 'wide' | 'super_wide' | 'full';
 	align?: 'left' | 'right' | 'center';
-	type?: 'value' | 'state' | 'multi-line' | 'on-off' | 'log-level' | 'state-and-name' | 'link' | 'status' | 'usage' | 'graph' | 'boolean' | 'sync';
+	type?: 'value' | 'state' | 'multi-line' | 'on-off' | 'log-level' | 'state-and-name' | 'link' | 'status' | 'usage' | 'graph' | 'boolean' | 'sync' | 'chip';
 	tooltip?: string;
 	sortComparator?: (v1: any, v2: any) => number;
 }

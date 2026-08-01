@@ -3,8 +3,9 @@
 //---------------------------------------------------------
 import {IServiceConfiguration} from 'types/load_balancer';
 import {IInstance} from 'types/oam';
-import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
-import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
+import {ApiResult, assertOk, createDetailedErrorMessage} from '../fetcher/fetcher_base';
+import {DELETE_INST, GET_INST, PATCH_INST, POST_INST} from '../fetcher/fetcher_inst';
+import type {GwGetResp} from 'api';
 
 //---------------------------------------------------------
 // Helper Functions
@@ -35,8 +36,9 @@ function cleanNegativeNumbers(obj: any): any {
 // API Caller Functions
 //---------------------------------------------------------
 export async function query_get_load_balancer_config_all(instance: IInstance): Promise<IServiceConfiguration[]> {
-	const resp = await GET_INST(instance, `/config/loadbalancer/all`);
-	return (resp.data?.lbAttr as IServiceConfiguration[]) ?? [];
+	const resp = await GET_INST<GwGetResp<'/config/loadbalancer/all'>>(instance, `/config/loadbalancer/all`);
+	assertOk(resp, 'Get Load Balancer');
+	return (resp.data?.lbAttr ?? []) as IServiceConfiguration[];
 }
 
 export async function request_create_load_balancer_config(instance: IInstance, data: IServiceConfiguration): Promise<ApiResult> {
@@ -52,7 +54,22 @@ export async function request_create_load_balancer_config(instance: IInstance, d
 			serviceArguments: serviceArgs
 		};
 	}
-	
+
+	// Drop mtls_frontend when client-cert verification is off. The Client Cert
+	// Mode dropdown auto-defaults to 'disabled' on mount (ParamBox enum default),
+	// so without this every rule — including non-TLS/dnat rules the gateway
+	// rejects mtls_frontend on — would carry an inert mtls_frontend. 'disabled'
+	// is the gateway's own default (no verification), so stripping it is a no-op
+	// semantically and keeps the payload clean.
+	const mf = cleanedData.serviceArguments?.mtls_frontend;
+	if (mf && (!mf.client_cert_mode || mf.client_cert_mode === 'disabled')) {
+		const {mtls_frontend, ...serviceArgs} = cleanedData.serviceArguments;
+		cleanedData = {
+			...cleanedData,
+			serviceArguments: serviceArgs
+		};
+	}
+
 	const resp = await POST_INST(instance, `/config/loadbalancer`, cleanedData);
 	if (resp.code !== 200 && resp.code !== 204) {
 		const errorMessage = createDetailedErrorMessage(resp, 'Create Load Balancer');
@@ -62,24 +79,40 @@ export async function request_create_load_balancer_config(instance: IInstance, d
 	}
 }
 
-export async function request_delete_all_load_balancers(instance: IInstance): Promise<ApiResult> {
-	const resp = await DELETE_INST(instance, `/config/loadbalancer/all`);
+/**
+ * Apply an RFC 7386 JSON merge-patch to an existing LB rule identified by its
+ * VIP/port/protocol composite key. Fields present are overwritten, absent
+ * fields untouched. Immutable fields (mode, security, egress, protocol, VIP
+ * key) are rejected by the gateway with 400 — callers must exclude them.
+ */
+export async function request_patch_load_balancer_config(
+	instance: IInstance,
+	ip: string,
+	port: number,
+	proto: string,
+	patch: Partial<IServiceConfiguration>,
+): Promise<ApiResult> {
+	const resp = await PATCH_INST(instance, `/config/loadbalancer/externalipaddress/${ip}/port/${port}/protocol/${proto}`, patch);
 	if (resp.code !== 200 && resp.code !== 204) {
-		const errorMessage = createDetailedErrorMessage(resp, 'Delete All Load Balancers');
+		const errorMessage = createDetailedErrorMessage(resp, 'Load Balancer Patch');
 		return {status: 'error', error: errorMessage};
-	} else {
-		return {status: 'success'};
 	}
+	return {status: 'success'};
 }
 
-export async function request_delete_lb_by_name(instance: IInstance, lb_name: string): Promise<ApiResult> {
-	const resp = await DELETE_INST(instance, `/config/loadbalancer/name/${lb_name}`);
+/**
+ * Delete by rule name. This is the RELIABLE delete path: the tuple-based
+ * endpoints below return 404 "no-rule error" for fullproxy/L7 (mode 4)
+ * rules — the gateway keys those differently — while name-delete works for
+ * every mode. Prefer this whenever the rule has a name.
+ */
+export async function request_delete_lb_by_name(instance: IInstance, name: string): Promise<ApiResult> {
+	const resp = await DELETE_INST(instance, `/config/loadbalancer/name/${encodeURIComponent(name)}`);
 	if (resp.code !== 200 && resp.code !== 204) {
-		const errorMessage = createDetailedErrorMessage(resp, 'Delete Load Balancer by Name');
+		const errorMessage = createDetailedErrorMessage(resp, 'Delete Load Balancer');
 		return {status: 'error', error: errorMessage};
-	} else {
-		return {status: 'success'};
 	}
+	return {status: 'success'};
 }
 
 export async function request_delete_lb_by_ip_port_proto(instance: IInstance, ip: string, port: number, proto: string): Promise<ApiResult> {
@@ -102,22 +135,3 @@ export async function request_delete_lb_by_ip_portrange_proto(instance: IInstanc
 	}
 }
 
-export async function request_delete_lb_by_hosturl_ip_port_proto(instance: IInstance, hosturl: string, ip: string, port: number, proto: string): Promise<ApiResult> {
-	const resp = await DELETE_INST(instance, `/config/loadbalancer/hosturl/${hosturl}/externalipaddress/${ip}/port/${port}/protocol/${proto}`);
-	if (resp.code !== 200 && resp.code !== 204) {
-		const errorMessage = createDetailedErrorMessage(resp, 'Delete Load Balancer');
-		return {status: 'error', error: errorMessage};
-	} else {
-		return {status: 'success'};
-	}
-}
-
-export async function request_delete_lb_by_hosturl_ip_portrange_proto(instance: IInstance, hosturl: string, ip: string, port: number, portmax: number, proto: string): Promise<ApiResult> {
-	const resp = await DELETE_INST(instance, `/config/loadbalancer/hosturl/${hosturl}/externalipaddress/${ip}/port/${port}/portmax/${portmax}/protocol/${proto}`);
-	if (resp.code !== 200 && resp.code !== 204) {
-		const errorMessage = createDetailedErrorMessage(resp, 'Delete Load Balancer');
-		return {status: 'error', error: errorMessage};
-	} else {
-		return {status: 'success'};
-	}
-}

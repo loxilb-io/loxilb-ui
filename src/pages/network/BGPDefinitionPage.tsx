@@ -23,8 +23,9 @@ import {IConditionSet} from 'types/bgp_policy_condition';
 export default function BGPDefinitionPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, refetch} = useBGPPolicyDefs(inst); // IBgpPolicy[]
-	const def_info: IBgpPolicyInfo = {bgpPolicyAttr: data ?? []};
+	const {data, isError, refetch} = useBGPPolicyDefs(inst); // IBgpPolicy[]
+	// wire fields are optional in swagger; the policy views require them — narrow once here
+	const def_info: IBgpPolicyInfo = {bgpPolicyAttr: (data ?? []) as IBgpPolicy[]};
 
 	const [cur_tab_idx, set_cur_tab_idx] = useState(0);
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
@@ -49,15 +50,23 @@ export default function BGPDefinitionPage() {
 	}, [cur_policy]);
 
 	const handleDelete = async () => {
-		if (!inst) return;
+		// The Conditions/Actions tables list the statements of the CURRENTLY
+		// selected policy (cur_policy), so a selected row means "delete this
+		// policy definition". The only delete API is per-policy-by-name, so we
+		// remove cur_policy. (The old code indexed bgpPolicyAttr by the
+		// statement-row index — deleting an unrelated policy.)
+		if (!inst || !cur_policy || selected_rows.length === 0) return;
 
-		const item = def_info.bgpPolicyAttr[selected_rows[0]];
-		const res = await request_delete_bgp_policy_definition(inst, item.name);
+		const res = await request_delete_bgp_policy_definition(inst, cur_policy.name);
 		if (res.status === 'success') {
-			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
-			set_selected_rows([]);
-			refetch();
-		} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
+			openPopUp(t('Success'), t('Deleted "{{name}}" successfully.', {name: cur_policy.name}), t('OK'));
+		} else {
+			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
+			return;
+		}
+		set_selected_rows([]);
+		set_cur_policy(undefined);
+		refetch();
 	};
 
 	const instanceRef = useRef<IBgpPolicy | null>(null);
@@ -113,10 +122,11 @@ export default function BGPDefinitionPage() {
 					onChangeSelectedRows={set_selected_rows}
 					onAdd={handleAdd}
 					onDelete={handleDelete}
+					error={isError}
 				/>
 			)}
 			{cur_tab_idx === 1 && (
-				<BGPActionTable action_list={action_list} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} onAdd={handleAdd} onDelete={handleDelete} />
+				<BGPActionTable action_list={action_list} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} onAdd={handleAdd} onDelete={handleDelete} error={isError} />
 			)}
 		</Fragment>
 	);

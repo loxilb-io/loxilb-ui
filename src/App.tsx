@@ -15,13 +15,13 @@ import {theme_config} from 'theme';
 
 import Layout from 'components/layout/Layout';
 import NavLayout from 'components/layout/NavLayout';
+import {RequireAuth} from 'components/layout/RouteGuards';
 import ScrollToTop from 'components/layout/ScrollToTop';
 import PopUp from 'components/modal/PopUp';
 import SetupHandler from 'components/setup/SetupHandler';
 
 import LoginPage from './pages/LoginPage';
 import SimpleSetupPage from 'pages/SimpleSetupPage';
-import OAuthCallbackPage from 'pages/OAuthCallbackPage';
 import Page404 from 'pages/Page404';
 import Page500 from 'pages/Page500';
 import Page503 from 'pages/Page503';
@@ -33,6 +33,7 @@ import InstanceSettingPage from 'pages/InstanceSettingPage';
 import SystemPage from 'pages/SystemPage';
 
 import BGPApplyPage from 'pages/network/BGPApplyPage';
+import BGPGlobalPage from 'pages/network/BGPGlobalPage';
 import BGPDefinedSetPage from 'pages/network/BGPDefinedSetPage';
 import BGPDefinitionPage from 'pages/network/BGPDefinitionPage';
 import BGPNeighborPage from 'pages/network/BGPNeighborPage';
@@ -45,31 +46,27 @@ import RoutePage from 'pages/network/RoutePage';
 import VLANPage from 'pages/network/VLANPage';
 import VxLANPage from 'pages/network/VXLANPage';
 
-import AlertManagementPage from 'pages/traffic/AlertManagementPage';
+import AIApiKeyPage from 'pages/ai/AIApiKeyPage';
+import AITenantRateLimitPage from 'pages/ai/AITenantRateLimitPage';
+import IPsecTunnelPage from 'pages/ipsec/IPsecTunnelPage';
+import IPsecCertificatePage from 'pages/ipsec/IPsecCertificatePage';
 import ConntrackPage from 'pages/traffic/ConntrackPage';
 import EndpointPage from 'pages/traffic/EndpointPage';
 import FirewallPage from 'pages/traffic/FirewallPage';
 import IPFilterPage from 'pages/traffic/IPFilterPage';
 import LoadBalancerPage from 'pages/traffic/LBRulePage';
 import MirrorPage from 'pages/traffic/MirrorPage';
-import NetworkTopologyPage from 'pages/traffic/NetworkTopologyPage';
-import NTopPage from 'pages/traffic/NTopPage';
 import QoSPage from 'pages/traffic/QoSPage';
 import SecurityRatePage from 'pages/traffic/SecurityRatePage';
 import SNICertificatesPage from 'pages/traffic/SNICertificatesPage';
-import SYNFloodPage from 'pages/traffic/SYNFloodPage';
-// import TelecomPage from 'pages/traffic/TelecomPage';
 
 import DevicePage from 'pages/status/DevicePage';
 import FileSystemPage from 'pages/status/FileSystemPage';
 import HAPage from 'pages/status/HAPage';
 import ProcessPage from 'pages/status/ProcessPage';
 
-import AlertManagerPage from 'pages/managers/AlertManagerPage';
-import BackupManagerPage from 'pages/managers/BackupManagerPage';
 import UserManagementPage from 'pages/managers/UserManagementPage';
-import ConfigManagementPage from 'pages/ConfigManagementPage';
-import AdvancedMetricsPage from 'pages/AdvancedMetricsPage';
+import SnapshotPage from 'pages/maintenance/SnapshotPage';
 
 import {MAX_DURATION_MS} from 'hooks/query/common';
 import LogPage from 'pages/status/LogPage';
@@ -128,11 +125,12 @@ export default function App() {
 
 								<Route path="/login" element={<LoginPage />} />
 								<Route path="/setup" element={<SimpleSetupPage />} />
-								<Route path="/oauth/callback" element={<OAuthCallbackPage />} />
+
+								{/* Authenticated routes (RBAC Phase 3 route guard) */}
+								<Route element={<RequireAuth />}>
 								<Route path="/instance" element={<InstancePage />} />
 								<Route path="/system" element={<SystemPage />} />
 								<Route path="/user" element={<UserManagementPage />} />
-								<Route path="/config-management" element={<ConfigManagementPage />} />
 
 								<Route path="/instance/*" element={<NavLayout />}>
 									<Route path="network" element={<Outlet />}>
@@ -142,9 +140,11 @@ export default function App() {
 											<Route path="def" element={<BGPDefinitionPage />} />
 											<Route path="apply" element={<BGPApplyPage />} />
 											<Route path="neighbor" element={<BGPNeighborPage />} />
+											<Route path="global" element={<BGPGlobalPage />} />
 										</Route>
 										<Route path="fdb" element={<FDBPage />} />
 										<Route path="ip" element={<IPPage />} />
+										<Route path="ip6" element={<IPPage family="ipv6" />} />
 										<Route path="port" element={<PortPage />} />
 										<Route path="neighbor" element={<NeighborPage />} />
 										<Route path="route" element={<RoutePage />} />
@@ -153,7 +153,6 @@ export default function App() {
 									</Route>
 
 									<Route path="traffic" element={<Outlet />}>
-										<Route path="alerts" element={<AlertManagementPage />} />
 										<Route path="ct" element={<ConntrackPage />} />
 										<Route path="endpoint" element={<EndpointPage />} />
 										<Route path="fw" element={<FirewallPage />} />										
@@ -161,13 +160,16 @@ export default function App() {
 										<Route path="mirror" element={<MirrorPage />} />
 										<Route path="qos" element={<QoSPage />} />										
 										<Route path="sni-certs" element={<SNICertificatesPage />} />
-										
-										<Route path="topology" element={<NetworkTopologyPage />} />
-										<Route path="ntop" element={<NTopPage />} />
-										{/* <Route path="telecom" element={<TelecomPage />} /> */}
-									</Route>	
+									</Route>
+									<Route path="ai" element={<Outlet />}>
+										<Route path="apikey" element={<AIApiKeyPage />} />
+										<Route path="ratelimit" element={<AITenantRateLimitPage />} />
+									</Route>
+									<Route path="ipsec" element={<Outlet />}>
+										<Route path="tunnels" element={<IPsecTunnelPage />} />
+										<Route path="certs" element={<IPsecCertificatePage />} />
+									</Route>
 									<Route path="security" element={<Outlet />}>
-										<Route path="synflood" element={<SYNFloodPage />} />
 										<Route path="ipfilter" element={<IPFilterPage />} />
 										<Route path="securityrate" element={<SecurityRatePage />} />
 									</Route>								
@@ -178,13 +180,14 @@ export default function App() {
 										<Route path="process" element={<ProcessPage />} />
 										<Route path="logs" element={<LogPage />} />
 									</Route>
-									<Route path="managers" element={<Outlet />}>										
-										<Route path="alert" element={<AlertManagerPage />} />
-										<Route path="backup" element={<BackupManagerPage />} />
-										<Route path="metrics" element={<AdvancedMetricsPage />} />
+									<Route path="maintenance" element={<Outlet />}>
+										<Route path="snapshots" element={<SnapshotPage />} />
 									</Route>
 									<Route path="settings" element={<InstanceSettingPage />} />
 									<Route path="dashboard" element={<DashboardPage />} />
+									{/* Unknown instance sub-route → 404 instead of a blank content area */}
+									<Route path="*" element={<Page404 />} />
+								</Route>
 								</Route>
 
 								<Route path="/*" element={<Page404 />} />

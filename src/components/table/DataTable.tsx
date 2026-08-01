@@ -2,13 +2,15 @@
 // Imports
 //---------------------------------------------------------
 import AddIcon from '@mui/icons-material/Add';
+import BlockIcon from '@mui/icons-material/Block';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ModeIcon from '@mui/icons-material/Mode';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import {Box, IconButton, Stack, Tooltip} from '@mui/material';
+import {Alert, Box, Button, IconButton, Stack, Tooltip, Typography} from '@mui/material';
 import {GridColDef, GridRowSelectionModel} from '@mui/x-data-grid';
 import {
 	BooleanCell,
+	ChipCell,
 	LinkCell,
 	LogLevelCell,
 	MultiLineCell,
@@ -23,8 +25,10 @@ import {
 	UsageCell,
 } from 'components/element/CustomGridCell';
 import {usePopUp} from 'hooks/popupHook';
+import {useRole} from 'hooks/query/oamHooks';
 import {t} from 'i18next';
 import {IDataTableColumnDef} from 'types/global';
+import {ReactNode} from 'react';
 import {TableBase} from './TableBase';
 
 const col_width_value = {
@@ -51,10 +55,28 @@ export default function DataTable(props: {
 	onAdd?: () => void;
 	onEdit?: () => void;
 	onDelete?: () => void;
+	// Optional override for the delete action's presentation. Singleton/config
+	// resources (e.g. Security Rate Limiting) map DELETE to a reversible
+	// "Disable", not a hard row removal — the generic confirm ("delete \"Yes\"?
+	// … cannot be undone") would be inaccurate there. When set, it replaces the
+	// name-derived confirm text, the button tooltip, and (optionally) the icon.
+	deleteConfirm?: {title: string; message: string; confirmLabel: string; tooltip?: string; icon?: 'delete' | 'block'};
 	onRefresh?: () => void;
+	// When the data fetch fails, callers pass error=true so the table shows a
+	// "Couldn't load …" banner instead of a bare "No rows" that reads as an
+	// empty resource (F-UX-3). Retry reuses onRefresh.
+	error?: boolean;
 	defaultSort?: {field: string; sort: 'asc' | 'desc'};
 }) {
-	const {name, columns, rows, selected_rows, onChangeSelectedRows, hideMenuBar, hideCheckbox, hideIdColumn, disableSelect, onAdd, onEdit, onDelete, onRefresh, defaultSort} = props;
+	const {name, columns, rows, selected_rows, onChangeSelectedRows, hideMenuBar, hideCheckbox, hideIdColumn, disableSelect, onRefresh, error, defaultSort, deleteConfirm} = props;
+
+	// RBAC Phase 3: viewers are read-only everywhere, so hide the mutation
+	// buttons for them (UX only — the server rejects viewer writes with 403).
+	// While the role is still loading (is_viewer false) buttons stay visible.
+	const {is_viewer} = useRole();
+	const onAdd = is_viewer ? undefined : props.onAdd;
+	const onEdit = is_viewer ? undefined : props.onEdit;
+	const onDelete = is_viewer ? undefined : props.onDelete;
 
 	const handleRowSelectionChange = (selection: GridRowSelectionModel) => {
 		const indices = selection.map(id => Number(id));
@@ -112,17 +134,67 @@ export default function DataTable(props: {
 					? StatusCell
 					: col.type === 'usage'
 					? UsageCell
+					: col.type === 'chip'
+					? ChipCell
 					: TextCell,
 		};
 	});
 
-	cols.unshift({field: 'id', headerName: 'ID', type: 'number', width: col_width_value['narrow'], align: 'left', headerAlign: 'left', renderCell: TextCell});
+	// Prepend the implicit ID column only when a caller hasn't already declared
+	// one. DataGrid keys columns by `field`; a second `field: 'id'` collides
+	// (duplicate React key → duplicate/omitted cells). Defensive for every caller.
+	if (!cols.some(c => c.field === 'id')) {
+		cols.unshift({field: 'id', headerName: 'ID', type: 'number', width: col_width_value['narrow'], align: 'left', headerAlign: 'left', renderCell: TextCell});
+	}
 
 	const {openPopUp} = usePopUp();
 
+	// Derive a human-readable label for each selected row from its leftmost data
+	// column, so the confirmation names what's being removed instead of the
+	// anonymous "this Item" (F-UX-2 — easy to confirm a wrong/bulk selection).
+	const labelKey = columns[0]?.data_key;
+	const rowLabel = (v: any): string => {
+		if (v == null) return '';
+		if (typeof v === 'object') return String(v.data ?? v.name ?? v.value ?? '');
+		return String(v);
+	};
+
 	const handleDelete = (e: any) => {
 		e.stopPropagation();
-		openPopUp(t('WARNING!! Delete Item'), t('Are you sure you want to delete this Item? This action cannot be undone.'), t('Delete'), t('Cancel'), onDelete);
+
+		// Caller-supplied wording for non-destructive/singleton semantics.
+		if (deleteConfirm) {
+			openPopUp(deleteConfirm.title, deleteConfirm.message, deleteConfirm.confirmLabel, t('Cancel'), onDelete);
+			return;
+		}
+
+		const names = selected_rows
+			.map(id => rows.find(r => r.id === id))
+			.filter(Boolean)
+			.map(r => rowLabel(r[labelKey!]).trim())
+			.filter(n => n.length > 0);
+		const count = selected_rows.length;
+
+		let contents: ReactNode;
+		if (count === 1 && names.length === 1) {
+			contents = t('Are you sure you want to delete "{{name}}"? This action cannot be undone.', {name: names[0]});
+		} else if (names.length > 0) {
+			contents = (
+				<Box>
+					<Typography variant="body1">{t('Are you sure you want to delete these {{count}} items? This action cannot be undone.', {count})}</Typography>
+					<Box component="ul" sx={{mt: 1, mb: 0, pl: 3}}>
+						{names.map((n, i) => (
+							<li key={i}>{n}</li>
+						))}
+					</Box>
+				</Box>
+			);
+		} else {
+			// Fallback: selection didn't resolve to a label (e.g. empty leftmost cell).
+			contents = t('Are you sure you want to delete this Item? This action cannot be undone.');
+		}
+
+		openPopUp(t('WARNING!! Delete Item'), contents, t('Delete'), t('Cancel'), onDelete);
 	};
 
 	return (
@@ -160,15 +232,31 @@ export default function DataTable(props: {
 					)}
 
 					{onDelete && (
-						<Tooltip title={t('Delete {{name}}', {name})} placement="top" arrow>
+						<Tooltip title={deleteConfirm?.tooltip ?? t('Delete {{name}}', {name})} placement="top" arrow>
 							<span>
 								<IconButton disabled={selected_rows.length === 0} onClick={handleDelete}>
-									<DeleteIcon />
+									{deleteConfirm?.icon === 'block' ? <BlockIcon /> : <DeleteIcon />}
 								</IconButton>
 							</span>
 						</Tooltip>
 					)}
 				</Box>
+			)}
+
+			{error && (
+				<Alert
+					severity="error"
+					sx={{width: '100%'}}
+					action={
+						onRefresh ? (
+							<Button color="inherit" size="small" onClick={onRefresh}>
+								{t('Retry')}
+							</Button>
+						) : undefined
+					}
+				>
+					{t("Couldn't load {{name}}. The server returned an error.", {name})}
+				</Alert>
 			)}
 
 			<Box width="100%" height="400px">

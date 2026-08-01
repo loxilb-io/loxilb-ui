@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {isValidIPAddress, getStableHash} from 'common';
+import {isValidIPAddress, isValidMacAddress, getStableHash} from 'common';
 import DeviceNeighborInputForm from 'components/input/DeviceNeighborInputForm';
 import ErrorPopUp from 'components/modal/ErrorPopUp';
 import DeviceNeighborTable from 'components/table/networks/DeviceNeighborTable';
@@ -11,8 +11,7 @@ import {usePopUp} from 'hooks/popupHook';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useDeviceNeighbors} from 'hooks/query/deviceHooks';
 import {t} from 'i18next';
-import {useRef, useState} from 'react';
-import React from 'react';
+import {useMemo, useRef, useState} from 'react';
 import {INeighborAttr, INeighborData} from 'types/device_neighbor';
 
 //---------------------------------------------------------
@@ -21,74 +20,49 @@ import {INeighborAttr, INeighborData} from 'types/device_neighbor';
 export default function DeviceNeighborPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, refetch} = useDeviceNeighbors(inst); // INeighborAttr[]
+	const {data, isError, refetch} = useDeviceNeighbors(inst); // INeighborAttr[]
 	const neighbor_info: INeighborData = {neighborAttr: data ?? []};
 
-   const [selected_rows, set_selected_rows] = useState<number[]>([]);
-   // Track selected dev/ipAddress for synchronization
-   const [selected_key, set_selected_key] = useState<string | null>(null);
+   const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds hash ids
    const {openPopUp, enableYes} = usePopUp();
    const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
-   
+
    // Hash function for Device Neighbor entry
    const getHashKey = (item: any) => {
 	   const str = `${item.dev || ''}_${item.ipAddress || ''}`;
 	   return getStableHash(str);
    };
-   
-   // Sorted neighbor entries
-   const sortedAttr = neighbor_info.neighborAttr ? [...neighbor_info.neighborAttr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
-   
-   // Map selected original indices to sorted indices for display
-   const selectedSortedIndices = React.useMemo(() => {
-	   if (!neighbor_info.neighborAttr || selected_rows.length === 0) return [];
-	   
-	   return selected_rows
-		   .map(originalIdx => {
-			   const original = neighbor_info.neighborAttr[originalIdx];
-			   return sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
-		   })
-		   .filter(idx => idx !== -1);
-   }, [selected_rows, neighbor_info.neighborAttr, sortedAttr]);
 
-   // Find single selected index for detail panel
-   const selected_index = selectedSortedIndices.length === 1 ? selectedSortedIndices[0] : 
-	   (selected_key ? sortedAttr.findIndex(attr => `${attr.dev}_${attr.ipAddress}` === selected_key) : -1);
+   // Resolve selected items by matching the stable hash
+   const selectedItems = useMemo(
+	   () => selected_rows.map(h => neighbor_info.neighborAttr.find(a => getHashKey(a) === h)).filter((x): x is INeighborAttr => x != null),
+	   [selected_rows, neighbor_info.neighborAttr],
+   );
 
-   // Selection handler: map sorted indices back to original indices
-   const handleSelectionChange = (indices: number[]) => {
-	   if (!neighbor_info.neighborAttr) {
-		   set_selected_rows([]);
-		   return;
-	   }
-
-	   if (indices.length === 0) {
-		   set_selected_rows([]);
-		   return;
-	   }
-
-	   // Map each sorted index back to original index
-	   const originalIndices = indices
-		   .map(sortedIdx => {
-			   const sortedItem = sortedAttr[sortedIdx];
-			   return neighbor_info.neighborAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
-		   })
-		   .filter(idx => idx !== -1);
-
-	   set_selected_rows(originalIndices);
-   };
+   // Selection handler: page holds hash ids directly
+   const handleSelectionChange = (hashes: number[]) => set_selected_rows(hashes);
 	const handleDelete = async () => {
-		if (!inst) return;
+		if (!inst || selectedItems.length === 0) return;
 
-		const item = neighbor_info.neighborAttr[selected_rows[0]];
-		const res = await request_delete_device_neighbor(inst, item.ipAddress, item.dev);
-		if (res.status === 'success') {
-			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
-			set_selected_rows([]);
-			setTimeout(() => {
-				refetch();
-			}, 1000);
-		} else showDeleteError('device neighbor', res.error);
+		const results = await Promise.all(
+			selectedItems.map(item => {
+				return request_delete_device_neighbor(inst, item.ipAddress, item.dev);
+			}),
+		);
+		const failures = results.filter(res => res.status === 'error');
+
+		if (failures.length === 0) {
+			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
+		} else if (failures.length < results.length) {
+			showDeleteError('device neighbor', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+		} else {
+			showDeleteError('device neighbor', failures[0].error);
+			return;
+		}
+		set_selected_rows([]);
+		setTimeout(() => {
+			refetch();
+		}, 1000);
 	};
 
 	const instanceRef = useRef<INeighborAttr | null>(null);
@@ -100,7 +74,9 @@ export default function DeviceNeighborPage() {
 				key={Date.now()}
 				onChange={data => {
 					instanceRef.current = data;
-					enableYes(isValidIPAddress(data.ipAddress));
+					// F-CICD-4 sibling: a static neighbor is an IP→MAC binding, so the
+					// MAC must be well-formed too — the gate ignored it entirely.
+					enableYes(isValidIPAddress(data.ipAddress) && isValidMacAddress(data.macAddress ?? ''));
 				}}
 			/>
 		);
@@ -127,30 +103,19 @@ export default function DeviceNeighborPage() {
 
 	const handleRefresh = () => {
 		set_selected_rows([]);
-		set_selected_key(null);
 		refetch();
 	};
-
-   // Synchronize selected_key with selected_rows
-   React.useEffect(() => {
-	   if (!neighbor_info.neighborAttr || neighbor_info.neighborAttr.length === 0) return;
-	   if (selected_rows.length === 1) {
-		   const item = neighbor_info.neighborAttr[selected_rows[0]];
-		   set_selected_key(`${item.dev}_${item.ipAddress}`);
-	   } else if (selected_key !== null) {
-		   set_selected_key(null);
-	   }
-   }, [neighbor_info, selected_rows, selected_key]);
 
    return (
 	   <>
 		   <DeviceNeighborTable
-			   data={{neighborAttr: sortedAttr}}
-			   selected_rows={selectedSortedIndices}
+			   data={neighbor_info}
+			   selected_rows={selected_rows}
 			   onChangeSelectedRows={handleSelectionChange}
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
 		   onRefresh={handleRefresh}
+		   error={isError}
 		   />
 
 		   {/* Error Popup */}

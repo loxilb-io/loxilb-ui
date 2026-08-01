@@ -55,7 +55,7 @@ export default function UserManagementTable(props: UserManagementTableProps) {
 				const isAdminUser = role === 'admin';
 
 				return {
-					id: index,
+					id: getHashKey(item),
 					username: item.username || `User ${index + 1}`,
 					email: item.email || '-',
 					role: isAdminUser ? `🛡️ ${role.toUpperCase()}` : `👤 ${role.toUpperCase()}`,

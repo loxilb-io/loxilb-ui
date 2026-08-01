@@ -9,8 +9,8 @@ import {getStableHash} from 'common';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function DeviceNeighborTable(props: {data: INeighborData; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onRefresh?: any}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh} = props;
+export default function DeviceNeighborTable(props: {data: INeighborData; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onRefresh?: any; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'ipAddress', header: 'IP Address', width: 'wide', tooltip: 'Assigned IP address for routing or interface use.'},
@@ -24,8 +24,8 @@ export default function DeviceNeighborTable(props: {data: INeighborData; selecte
 	const rows = data.neighborAttr && Array.isArray(data.neighborAttr)
 		? (() => {
 			const sorted = [...data.neighborAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
-			return sorted.map((item, index) => ({
-				id: index,
+			return sorted.map(item => ({
+				id: getHashKey(item),
 				dev: item.dev,
 				ipAddress: item.ipAddress,
 				macAddress: item.macAddress,
@@ -44,6 +44,7 @@ export default function DeviceNeighborTable(props: {data: INeighborData; selecte
 			onAdd={onAdd}
 			onDelete={onDelete}
 			onRefresh={onRefresh}
+			error={error}
 		/>
 	);
 }

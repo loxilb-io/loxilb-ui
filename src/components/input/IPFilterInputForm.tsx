@@ -2,6 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {Grid2, Stack, MenuItem} from '@mui/material';
+import {isValidIPAddress, isValidIPAddressCidr} from 'common';
 import NewBox from 'components/layout/NewBox';
 import ParamBox from 'components/element/ParamBox';
 import {t} from 'i18next';
@@ -37,9 +38,10 @@ export default function IPFilterInputForm(props: IPFilterInputFormProps) {
 		// CIDR is required
 		if (!data.cidr || data.cidr.trim() === '') return false;
 
-		// Basic CIDR format validation (simple check)
-		const cidrRegex = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/;
-		if (!cidrRegex.test(data.cidr)) return false;
+		// Accept a bare IP or a CIDR, but reject out-of-range octets and
+		// prefixes (the old regex let 999.1.1.1 and /33 through).
+		const cidr = data.cidr.trim();
+		if (!isValidIPAddress(cidr) && !isValidIPAddressCidr(cidr)) return false;
 
 		// Priority should be positive
 		if (data.priority !== undefined && data.priority < 0) return false;
@@ -106,15 +108,13 @@ export default function IPFilterInputForm(props: IPFilterInputFormProps) {
 					/>
 				</Grid2>
 
-				<ParamBox
-					label={t('Security Zone')}
-					value={form.zone?.toString() ?? '0'}
-					onChange={(value: string) => handleChange('zone')(parseInt(value) || 0)}
-					param_desc={{
-						type: 'integer',
-						description: 'Security zone (0 = all zones)',
-					}}
-				/>
+				{/*
+				  * Security Zone is intentionally not exposed: the gateway's XDP
+				  * ipfilter is zone-less and rejects any nonzero zone with 400
+				  * ("zone must be 0 or omitted"). `zone` stays pinned to 0 in form
+				  * state so the payload is always accepted; surfacing it as an
+				  * editable field only produced guaranteed-to-fail submissions.
+				  */}
 			</Stack>
 		</NewBox>
 	);

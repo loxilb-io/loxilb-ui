@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {ISNICertificateListItem} from 'types/security';
 import {IDataTableColumnDef} from 'types/global';
@@ -15,10 +16,11 @@ interface SNICertificatesTableProps {
 	onAdd?: () => void;
 	onDelete?: () => void;
 	onRefresh?: () => void;
+	error?: boolean;
 }
 
 export default function SNICertificatesTable(props: SNICertificatesTableProps) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh} = props;
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'hostname', header: 'Hostname', width: 'wide'},
@@ -26,8 +28,10 @@ export default function SNICertificatesTable(props: SNICertificatesTableProps) {
 		{data_key: 'refCount', header: 'Reference Count', width: 'medium'},
 	];
 
-	const rows = data.map((item, index) => ({
-		id: index,
+	const getHashKey = (item: ISNICertificateListItem) => getStableHash(`${item.hostname}_${item.certPath}`);
+
+	const rows = data.map(item => ({
+		id: getHashKey(item),
 		hostname: item.hostname,
 		certPath: item.certPath,
 		refCount: item.refCount.toString(),
@@ -43,6 +47,7 @@ export default function SNICertificatesTable(props: SNICertificatesTableProps) {
 			onAdd={onAdd}
 			onDelete={onDelete}
 			onRefresh={onRefresh}
+			error={error}
 		/>
 	);
 }

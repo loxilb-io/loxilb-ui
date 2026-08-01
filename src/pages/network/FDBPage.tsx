@@ -11,8 +11,7 @@ import {usePopUp} from 'hooks/popupHook';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useFDB} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
-import {useRef, useState} from 'react';
-import React from 'react';
+import {useMemo, useRef, useState} from 'react';
 import {IFdbAttribute, IFdbData} from 'types/fdb';
 
 //---------------------------------------------------------
@@ -21,12 +20,10 @@ import {IFdbAttribute, IFdbData} from 'types/fdb';
 export default function FDBPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, refetch} = useFDB(inst); // IFdbAttribute[]
+	const {data, isError, refetch} = useFDB(inst); // IFdbAttribute[]
 	const fdb_info: IFdbData = {fdbAttr: data ?? []};
 
-   const [selected_rows, set_selected_rows] = useState<number[]>([]);
-   // Track selected dev/macAddress for synchronization
-   const [selected_key, set_selected_key] = useState<string | null>(null);
+   const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds hash ids
    const {openPopUp, enableYes} = usePopUp();
    const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
    // Hash function for FDB entry
@@ -34,38 +31,35 @@ export default function FDBPage() {
 	   const str = `${item.dev || ''}_${item.macAddress || ''}`;
 	   return getStableHash(str);
    };
-   // Sorted FDB entries
-   const sortedAttr = fdb_info.fdbAttr ? [...fdb_info.fdbAttr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
-   // Find selected index in sortedAttr
-   let selected_index = -1;
-   if (selected_rows.length === 1 && fdb_info.fdbAttr) {
-	   const original = fdb_info.fdbAttr[selected_rows[0]];
-	   selected_index = sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
-   } else if (selected_key) {
-	   selected_index = sortedAttr.findIndex(attr => `${attr.dev}_${attr.macAddress}` === selected_key);
-   }
-   // Selection handler: map sorted index back to original
-   const handleSelectionChange = (indices: number[]) => {
-	   if (indices.length === 1 && fdb_info.fdbAttr) {
-		   const sortedItem = sortedAttr[indices[0]];
-		   const originalIndex = fdb_info.fdbAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
-		   set_selected_rows(originalIndex !== -1 ? [originalIndex] : []);
-	   } else {
-		   set_selected_rows([]);
-	   }
-   };
+   // Resolve selected items by matching the stable hash
+   const selectedItems = useMemo(
+	   () => selected_rows.map(h => fdb_info.fdbAttr.find(a => getHashKey(a) === h)).filter((x): x is IFdbAttribute => x != null),
+	   [selected_rows, fdb_info.fdbAttr],
+   );
+   // Selection handler: page holds hash ids directly
+   const handleSelectionChange = (hashes: number[]) => set_selected_rows(hashes);
 	const handleDelete = async () => {
-		if (!inst) return;
+		if (!inst || selectedItems.length === 0) return;
 
-		const item = fdb_info.fdbAttr[selected_rows[0]];
-		const res = await request_delete_fdb(inst, item.macAddress, item.dev);
-		if (res.status === 'success') {
-			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
-			set_selected_rows([]);
-			setTimeout(() => {
-				refetch();
-			}, 1000);
-		} else showDeleteError('FDB entry', res.error);
+		const results = await Promise.all(
+			selectedItems.map(item => {
+				return request_delete_fdb(inst, item.macAddress, item.dev);
+			}),
+		);
+		const failures = results.filter(res => res.status === 'error');
+
+		if (failures.length === 0) {
+			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
+		} else if (failures.length < results.length) {
+			showDeleteError('FDB entry', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+		} else {
+			showDeleteError('FDB entry', failures[0].error);
+			return;
+		}
+		set_selected_rows([]);
+		setTimeout(() => {
+			refetch();
+		}, 1000);
 	};
 
 	const instanceRef = useRef<IFdbAttribute | null>(null);
@@ -102,26 +96,16 @@ export default function FDBPage() {
 		);
 	};
 
-   // Synchronize selected_key with selected_rows
-   React.useEffect(() => {
-	   if (!fdb_info.fdbAttr || fdb_info.fdbAttr.length === 0) return;
-	   if (selected_rows.length === 1) {
-		   const item = fdb_info.fdbAttr[selected_rows[0]];
-		   set_selected_key(`${item.dev}_${item.macAddress}`);
-	   } else if (selected_key !== null) {
-		   set_selected_key(null);
-	   }
-   }, [fdb_info, selected_rows, selected_key]);
-
    return (
 	   <>
 		   <FDBTable
-			   data={{fdbAttr: sortedAttr}}
-			   selected_rows={selected_index !== -1 ? [selected_index] : []}
+			   data={fdb_info}
+			   selected_rows={selected_rows}
 			   onChangeSelectedRows={handleSelectionChange}
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
 			   onRefresh={refetch}
+			   error={isError}
 		   />
 
 		   {/* Error Popup */}

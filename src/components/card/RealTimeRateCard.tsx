@@ -17,10 +17,15 @@ import CardBase from './CardBase';
 //---------------------------------------------------------
 // Component Props
 //---------------------------------------------------------
+// The gateway deleted the pre-computed rps_* rate gauges (they were fabricated
+// and already read 0). Rates are now derived client-side as per-second deltas
+// of a cumulative counter — the same technique DeltaTrafficCard uses — so this
+// card takes a monotonic counter field, not a rate field.
+type CounterField = keyof NonNullable<ITypedLiveMetricsResponse['important']>;
 interface RealTimeRateCardProps {
 	title: string;
 	instance: IInstance | null;
-	rateField: 'rps_bps' | 'rps_pps' | 'rps_tcp_bps' | 'rps_udp_bps' | 'rps_sctp_bps' | 'rps_tcp_pps' | 'rps_udp_pps' | 'rps_sctp_pps' | 'rps_eps';
+	counterField: CounterField;
 	unit: 'bps' | 'pps' | 'eps' | 'fps';
 	maxPoints?: number;
 }
@@ -29,9 +34,9 @@ interface RealTimeRateCardProps {
 // Functional Component
 //---------------------------------------------------------
 export default function RealTimeRateCard(props: RealTimeRateCardProps) {
-	const {title, instance, rateField, unit, maxPoints = 300} = props;
+	const {title, instance, counterField, unit, maxPoints = 300} = props;
 
-	// Get live metrics with 10-second polling
+	// Get live metrics with polling (shared query key → one poll for all rate cards)
 	const {data: rawLiveMetrics} = useQuery({
 		queryKey: ['live-metrics-realtime', instance?.id],
 		queryFn: async () => {
@@ -39,35 +44,41 @@ export default function RealTimeRateCard(props: RealTimeRateCardProps) {
 			return await query_get_live_metrics(instance, 2);
 		},
 		enabled: !!instance,
-		refetchInterval: 1000, // 10-second polling
+		refetchInterval: 1000, // 1-second polling
 		refetchIntervalInBackground: false,
 		staleTime: 5000,
 	});
 	const liveMetrics = rawLiveMetrics as ITypedLiveMetricsResponse | undefined;
-	
-	// State to accumulate time series data
-	const [rateHistory, setRateHistory] = useState<ITimeSeriesPoint<number>[]>([]);
 
-	// Update rate history when new metrics arrive
+	// Accumulate raw cumulative-counter samples; the rate is the delta between
+	// consecutive samples divided by the elapsed time.
+	const [counterHistory, setCounterHistory] = useState<ITimeSeriesPoint<number>[]>([]);
+
 	useEffect(() => {
 		if (!liveMetrics?.important) return;
-		
-		const rawRate = liveMetrics.important[rateField] || 0;
-		// Convert bytes to bits if unit is bps (multiply by 8)
-		const currentRate = unit === 'bps' ? rawRate * 8 : rawRate;
-		const timestamp = Date.now();
-		
-		setRateHistory(prev => {
-			// Add new data point
-			const newHistory = [...prev, {
-				timestamp,
-				data: currentRate
-			}];
-			
-			// Keep only the last N points for performance and moving window effect
-			return newHistory.slice(-maxPoints);
+		const counter = liveMetrics.important[counterField];
+		if (typeof counter !== 'number' || !Number.isFinite(counter)) return;
+
+		setCounterHistory(prev => {
+			const next = [...prev, {timestamp: liveMetrics.timestamp, data: counter}];
+			// Keep one extra sample so we always have a previous point to diff against.
+			return next.slice(-(maxPoints + 1));
 		});
-	}, [liveMetrics, rateField, maxPoints]);
+	}, [liveMetrics, counterField, maxPoints]);
+
+	// Derive the per-second rate series from the cumulative counter samples.
+	const rateHistory = useMemo<ITimeSeriesPoint<number>[]>(() => {
+		return counterHistory.slice(1).map((point, i) => {
+			const prev = counterHistory[i]; // i is offset by slice(1)
+			const deltaValue = point.data - prev.data;
+			const deltaSeconds = (point.timestamp - prev.timestamp) / 1000;
+			// Clamp negatives: a counter reset (gateway restart / metrics re-enable)
+			// or a sub-tick sample must not render as a huge negative spike.
+			const rawRate = deltaSeconds > 0 ? Math.max(deltaValue, 0) / deltaSeconds : 0;
+			// Byte counters are reported in bytes; bps panels want bits.
+			return {timestamp: point.timestamp, data: unit === 'bps' ? rawRate * 8 : rawRate};
+		});
+	}, [counterHistory, unit]);
 
 	// Prepare data for the graph component
 	const graphData = useMemo(() => ({
@@ -92,10 +103,10 @@ export default function RealTimeRateCard(props: RealTimeRateCardProps) {
 						</Typography>
 					</RateTooltip>
 				</Box>
-				
+
 				{/* Real-time Moving Graph */}
 				<RateLineGraph data={graphData} unit={unit} />
-				
+
 			</Box>
 		</CardBase>
 	);

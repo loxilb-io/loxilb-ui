@@ -1,8 +1,8 @@
 //---------------------------------------------------------
 // User Management Connector Functions
 //---------------------------------------------------------
-import { SimpleResponse } from './fetcher/fetcher_base';
 import { POST_OAM } from './fetcher/fetcher_oam';
+import type { OamPostResp } from 'api';
 import { ICreateUserRequest, IUserIdResponse, ILoginRequest, IEnhancedLoginResponse } from 'types/user';
 
 /**
@@ -11,17 +11,17 @@ import { ICreateUserRequest, IUserIdResponse, ILoginRequest, IEnhancedLoginRespo
  */
 export async function create_user(userData: ICreateUserRequest): Promise<IUserIdResponse> {
 	try {
-		console.log('Creating user with data:', { username: userData.username, email: userData.email });
-		const response: SimpleResponse = await POST_OAM('/users', userData);
-		console.log('User creation API response:', response);
-		
+		const response = await POST_OAM<OamPostResp<'/oam/users'>>('/users', userData);
+
 		// Accept both 200 and 201 as success (some APIs return 200 instead of 201)
 		if (response.code !== 200 && response.code !== 201) {
 			// Parse error message from API response
 			let errorMessage = 'Unknown error';
-			
-			if (response.data && typeof response.data === 'object' && response.data.error) {
-				errorMessage = response.data.error;
+
+			// non-2xx bodies are models.ErrorResponse, not the success type
+			const errBody = response.data as {error?: string} | null;
+			if (errBody && typeof errBody === 'object' && errBody.error) {
+				errorMessage = errBody.error;
 			} else if (response.message) {
 				errorMessage = response.message;
 			}
@@ -35,14 +35,12 @@ export async function create_user(userData: ICreateUserRequest): Promise<IUserId
 			return response.data as IUserIdResponse;
 		} else if (response.data) {
 			// If response.data is just the ID number
-			return { id: response.data } as IUserIdResponse;
+			return { id: response.data as unknown as number } as IUserIdResponse;
 		} else {
 			// If no data returned but status is success, assume creation worked
-			console.log('User created successfully but no ID returned');
 			return { id: 0 } as IUserIdResponse; // Placeholder ID
 		}
 	} catch (error) {
-		console.error('User creation failed:', error);
 		throw error;
 	}
 }
@@ -53,16 +51,16 @@ export async function create_user(userData: ICreateUserRequest): Promise<IUserId
  */
 export async function login_user(credentials: ILoginRequest): Promise<IEnhancedLoginResponse> {
 	try {
-		console.log('Logging in user:', credentials.username);
-		const response: SimpleResponse = await POST_OAM('/login', credentials);
-		console.log('Login API response:', response);
-		
+		const response = await POST_OAM<OamPostResp<'/oam/login'>>('/login', credentials);
+
 		if (response.code !== 200) {
 			// Parse error message from API response
 			let errorMessage = 'Login failed';
-			
-			if (response.data && typeof response.data === 'object' && response.data.error) {
-				errorMessage = response.data.error;
+
+			// non-2xx bodies are models.ErrorResponse, not the success type
+			const errBody = response.data as {error?: string} | null;
+			if (errBody && typeof errBody === 'object' && errBody.error) {
+				errorMessage = errBody.error;
 			} else if (response.message) {
 				errorMessage = response.message;
 			}
@@ -74,61 +72,10 @@ export async function login_user(credentials: ILoginRequest): Promise<IEnhancedL
 			throw new Error('No authentication data returned from server');
 		}
 
-		// Handle both legacy and enhanced login responses
-		const loginData = response.data;
-		
-		// Check if it's enhanced response with license data
-		if (loginData.license_status) {
-			return loginData as IEnhancedLoginResponse;
-		} else {
-			// Legacy response - convert to enhanced format
-			return {
-				...loginData,
-				has_valid_license: false,
-				license_expiring: false,
-				days_left: 0,
-				license_status: null as any
-			} as IEnhancedLoginResponse;
-		}
+		return response.data as IEnhancedLoginResponse;
 	} catch (error) {
-		console.error('User login failed:', error);
 		throw error;
 	}
-}
-
-/**
- * Create user account and automatically log them in
- * @param userData - User creation data
- */
-export async function signup_and_login(userData: ICreateUserRequest): Promise<IEnhancedLoginResponse> {
-	try {
-		// Step 1: Create user account
-		const createResult = await create_user(userData);
-		console.log('User created successfully with ID:', createResult.id);
-
-		// Step 2: Automatically log in the new user
-		const loginResult = await login_user({
-			username: userData.username,
-			password: userData.password,
-		});
-
-		return loginResult;
-	} catch (error) {
-		console.error('Signup and login failed:', error);
-		throw error;
-	}
-}
-
-/**
- * Validate username availability (placeholder - would need API endpoint)
- * @param username - Username to check
- */
-export async function check_username_availability(username: string): Promise<boolean> {
-	// Note: This would require a specific API endpoint like GET /users/check?username=xxx
-	// Since it's not in the swagger spec, we'll return true for now
-	// In a real implementation, you'd call the API here
-	console.log('Username availability check for:', username);
-	return true;
 }
 
 /**

@@ -12,8 +12,8 @@ import {ILBData} from 'types/load_balancer';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function LBTable(props: {data: ILBData; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onUpdate?: any; onRefresh?: any}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onUpdate, onRefresh} = props;
+export default function LBTable(props: {data: ILBData; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onUpdate?: any; onRefresh?: any; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onUpdate, onRefresh, error} = props;
 
 	const sel_list: IEnumItem[] = sels;
 	const mode_list: IEnumItem[] = modes;
@@ -41,7 +41,7 @@ export default function LBTable(props: {data: ILBData; selected_rows: number[]; 
    const rows = data.lbAttr
 	   ? (() => {
 		   const sorted = [...data.lbAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
-		   return sorted.map((item, index) => {
+		   return sorted.map(item => {
 			   const hashKey = getHashKey(item);
 			   const mark = item.serviceArguments.block ?? 0;
 			   const timeout = item.serviceArguments.probeTimeout ?? 1800;
@@ -53,7 +53,7 @@ export default function LBTable(props: {data: ILBData; selected_rows: number[]; 
 			   const mode_value = mode_list.find(item2 => item2.id === mode)?.name || '';
 
 			   return {
-				   id: index, // Use hash as row ID
+				   id: getHashKey(item), // Use hash as row ID
 				   externalIP: item.serviceArguments.externalIP,
 				   port: item.serviceArguments.port + (item.serviceArguments.portMax ? ` - ${item.serviceArguments.portMax}` : ''),
 				   protocol: item.serviceArguments.protocol,
@@ -72,6 +72,6 @@ export default function LBTable(props: {data: ILBData; selected_rows: number[]; 
 	   : undefined;
 
 	return (
-	   <DataTable name={'Load Balancer'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onEdit={onUpdate} onRefresh={onRefresh} />
+	   <DataTable name={'Load Balancer'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onEdit={onUpdate} onRefresh={onRefresh} error={error} />
 	);
 }

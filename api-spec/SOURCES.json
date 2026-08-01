@@ -1,0 +1,16 @@
+{
+  "vendoredAt": "2026-07-20T05:01:57Z",
+  "gateway": {
+    "repo": "loxilb-inference-gateway",
+    "path": "api/swagger.yml + api/swagger-extras.yml",
+    "commit": "1e38a275",
+    "dirty": true,
+    "note": "gateway spec intentionally NOT re-vendored on 2026-07-20 (branch moved 16+ commits incl. synflood removal; UI compat sweep pending) — only the OAM spec was refreshed for the snapshot API"
+  },
+  "oam": {
+    "repo": "oam-loxilb",
+    "path": "docs/swagger.json (swag init)",
+    "commit": "26c6e9f",
+    "dirty": true
+  }
+}

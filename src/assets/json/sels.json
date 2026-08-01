@@ -3,5 +3,6 @@
 	{"id": 1, "name": "hash", "send_value": 1},
 	{"id": 2, "name": "priority", "send_value": 2},
 	{"id": 3, "name": "persist", "send_value": 3},
-	{"id": 4, "name": "lc", "send_value": 4}
+	{"id": 4, "name": "lc", "send_value": 4},
+	{"id": 8, "name": "chwbl", "send_value": 8}
 ]

@@ -49,8 +49,8 @@ COPY --from=builder /app/build /usr/share/nginx/html
 RUN mkdir -p /etc/nginx/ssl
 
 # Set default environment variables
-ENV BACKEND_URL="https://oam-1.loxilb.io"
-ENV BACKEND_HOST="oam-1.loxilb.io"
+ENV BACKEND_URL="https://oam.example.com"
+ENV BACKEND_HOST="oam.example.com"
 ENV FRONTEND_URL="http://localhost:3000"
 ENV PUBLIC_PATH="/netlox"
 ENV SSL_MODE="enabled"

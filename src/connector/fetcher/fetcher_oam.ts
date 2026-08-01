@@ -7,31 +7,31 @@ import {DELETE, GET, PATCH, POST, PUT, SimpleResponse, UPLOAD_FILE, DOWNLOAD_FIL
 //---------------------------------------------------------
 // Custom Fetchers
 //---------------------------------------------------------
-export async function GET_OAM(url: string, params?: Record<string, any>): Promise<SimpleResponse> {
+export async function GET_OAM<T = any>(url: string, params?: Record<string, any>): Promise<SimpleResponse<T>> {
 	const full_url = `${process.env.REACT_APP_API_URL}${url}`;
-	return await GET(full_url, params);
+	return await GET<T>(full_url, params);
 }
 
-export async function POST_OAM(url: string, data?: any): Promise<SimpleResponse> {
+export async function POST_OAM<T = any>(url: string, data?: any): Promise<SimpleResponse<T>> {
 	const full_url = `${process.env.REACT_APP_API_URL}${url}`;
 
 	const filteredData = filterUnusedParams(data);
-	return await POST(full_url, filteredData);
+	return await POST<T>(full_url, filteredData);
 }
 
-export async function PUT_OAM(url: string, data?: any): Promise<SimpleResponse> {
+export async function PUT_OAM<T = any>(url: string, data?: any): Promise<SimpleResponse<T>> {
 	const full_url = `${process.env.REACT_APP_API_URL}${url}`;
-	return await PUT(full_url, data);
+	return await PUT<T>(full_url, data);
 }
 
-export async function PATCH_OAM(url: string, data?: any, contentType?: 'application/json' | 'multipart/form-data'): Promise<SimpleResponse> {
+export async function PATCH_OAM<T = any>(url: string, data?: any): Promise<SimpleResponse<T>> {
 	const full_url = `${process.env.REACT_APP_API_URL}${url}`;
-	return await PATCH(full_url, data, contentType);
+	return await PATCH<T>(full_url, data);
 }
 
-export async function DELETE_OAM(url: string): Promise<SimpleResponse> {
+export async function DELETE_OAM<T = any>(url: string): Promise<SimpleResponse<T>> {
 	const full_url = `${process.env.REACT_APP_API_URL}${url}`;
-	return await DELETE(full_url);
+	return await DELETE<T>(full_url);
 }
 
 //---------------------------------------------------------

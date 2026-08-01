@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IConditionSet} from 'types/bgp_policy_condition';
 import {IDataTableColumnDef} from 'types/global';
@@ -8,8 +9,8 @@ import {IDataTableColumnDef} from 'types/global';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function BGPConditionTable(props: {condition_list: IConditionSet[]; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any}) {
-	const {condition_list, selected_rows, onChangeSelectedRows, onAdd, onDelete} = props;
+export default function BGPConditionTable(props: {condition_list: IConditionSet[]; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; error?: boolean}) {
+	const {condition_list, selected_rows, onChangeSelectedRows, onAdd, onDelete, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'matchPrefixSet', header: 'Prefix'},
@@ -28,7 +29,7 @@ export default function BGPConditionTable(props: {condition_list: IConditionSet[
 
 	const rows = condition_list.map((condition, index) => {
 		return {
-			id: index,
+			id: getStableHash(`${index}_${JSON.stringify(condition)}`),
 			matchPrefixSet: condition.matchPrefixSet ? `${condition.matchPrefixSet.prefixSet} (${condition.matchPrefixSet.matchSetOption})` : '',
 			matchNeighborSet: condition.matchNeighborSet ? `${condition.matchNeighborSet.neighborSet} (${condition.matchNeighborSet.matchSetOption})` : '',
 
@@ -50,5 +51,5 @@ export default function BGPConditionTable(props: {condition_list: IConditionSet[
 		};
 	});
 
-	return <DataTable name={'Condition'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} />;
+	return <DataTable name={'Condition'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} error={error} />;
 }
