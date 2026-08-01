@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IBgpNeighborState} from 'types/bgp_neighbor';
 import {IDataTableColumnDef} from 'types/global';
@@ -8,8 +9,8 @@ import {IDataTableColumnDef} from 'types/global';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function BGPNeighborTable(props: {data: IBgpNeighborState; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete} = props;
+export default function BGPNeighborTable(props: {data: IBgpNeighborState; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'ipAddress', header: 'IP Address', width: 'wide', tooltip: 'Assigned IP address for routing or interface use.'},
@@ -23,9 +24,9 @@ export default function BGPNeighborTable(props: {data: IBgpNeighborState; select
 		{data_key: 'updowntime', header: 'Up(Down) Time', align: 'right', width: 'wide'},
 	];
 
-	const rows = data.bgpNeiAttr.map((item, index) => {
+	const rows = data.bgpNeiAttr.map(item => {
 		return {
-			id: index,
+			id: getStableHash(String(item.ipAddress ?? '')),
 			ipAddress: item.ipAddress,
 			remoteAs: item.remoteAs,
 			state: item.state,
@@ -34,6 +35,6 @@ export default function BGPNeighborTable(props: {data: IBgpNeighborState; select
 	});
 
 	return (
-		<DataTable name={'BGP Neighbor'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} />
+		<DataTable name={'BGP Neighbor'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} error={error} />
 	);
 }

@@ -2,10 +2,12 @@
 // Imports
 //---------------------------------------------------------
 import CloudIcon from '@mui/icons-material/Cloud';
+import SettingsBackupRestoreIcon from '@mui/icons-material/SettingsBackupRestore';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
+import VpnLockIcon from '@mui/icons-material/VpnLock';
 import MonitorIcon from '@mui/icons-material/Monitor';
 import RouteIcon from '@mui/icons-material/Route';
 import WysiwygIcon from '@mui/icons-material/Wysiwyg';
-import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import SecurityIcon from '@mui/icons-material/Security';
 import {SvgIconTypeMap} from '@mui/material';
 import {OverridableComponent} from '@mui/material/OverridableComponent';
@@ -18,6 +20,9 @@ export interface IMenuItem {
 	path: string;
 	icon?: OverridableComponent<SvgIconTypeMap<{}, 'svg'>> & {muiName: string};
 	items?: readonly IMenuItem[];
+	// RBAC Phase 3: when set, the item is shown only to these roles
+	// ('admin' | 'operator' | 'viewer'); unset = visible to every role.
+	roles?: readonly string[];
 }
 
 export const MENU_LIST: IMenuItem[] = [
@@ -53,23 +58,40 @@ export const MENU_LIST: IMenuItem[] = [
 			{
 				name: 'SNI Certificates',
 				path: 'sni-certs',
-			},			
-			{
-				name: 'Alerts',
-				path: 'alerts',
 			},
-			// {
-			// 	name: 'Topology',
-			// 	path: 'topology',
-			// },
+		],
+	},
+	{
+		name: 'AI Gateway',
+		icon: SmartToyIcon,
+		path: 'ai',
+		items: [
 			{
-				name: 'nTop Analytics',
-				path: 'ntop',
+				name: 'API Keys',
+				path: 'apikey',
 			},
+			// Tenant Rate Limits hidden (decision 2026-07-17): the gateway's
+			// AI quota API is tenant-mandatory and only active when the gateway
+			// runs with --userservice; page + route stay at /instance/ai/ratelimit.
 			// {
-			// 	name: 'Telecom',
-			// 	path: 'telecom',
+			// 	name: 'Tenant Rate Limits',
+			// 	path: 'ratelimit',
 			// },
+		],
+	},
+	{
+		name: 'IPsec VPN',
+		icon: VpnLockIcon,
+		path: 'ipsec',
+		items: [
+			{
+				name: 'Tunnels',
+				path: 'tunnels',
+			},
+			{
+				name: 'Certificates',
+				path: 'certs',
+			},
 		],
 	},
 	{
@@ -80,10 +102,6 @@ export const MENU_LIST: IMenuItem[] = [
 			{
 				name: 'IP Filter(XDP)',
 				path: 'ipfilter',
-			},
-			{
-				name: 'SYN Flood Protection(XDP)',
-				path: 'synflood',
 			},
 			{
 				name: 'Security Rate Limiting(XDP)',
@@ -115,6 +133,10 @@ export const MENU_LIST: IMenuItem[] = [
 			{
 				name: 'IP Address',
 				path: 'ip',
+			},
+			{
+				name: 'IPv6 Address',
+				path: 'ip6',
 			},
 			{
 				name: 'IP Neighbor(ARP/NDP)',
@@ -153,29 +175,6 @@ export const MENU_LIST: IMenuItem[] = [
 		],
 	},	
 	{
-		name: 'Managers',
-		icon: ManageAccountsIcon,
-		path: 'managers',
-		items: [
-			{
-				name: 'Alert Manager',
-				path: 'alert',
-			},
-			// {
-			// 	name: 'Backup Manager',
-			// 	path: 'backup',
-			// },
-			// {
-			// 	name: 'Advanced Metrics',
-			// 	path: 'metrics',
-			// },
-			// {
-			// 	name: 'Compression Manager',
-			// 	path: 'compression',
-			// },
-		],
-	},
-	{
 		name: 'Status',
 		icon: MonitorIcon,
 		path: 'status',
@@ -199,6 +198,19 @@ export const MENU_LIST: IMenuItem[] = [
 			{
 				name: 'Logs',
 				path: 'logs',
+			},
+		],
+	},
+	{
+		// Instance lifecycle operations (upgrade runbook); room for future
+		// items (upgrade assistant, log bundles) — docs/SNAPSHOT_UI_DESIGN.md §3.
+		name: 'Maintenance',
+		icon: SettingsBackupRestoreIcon,
+		path: 'maintenance',
+		items: [
+			{
+				name: 'Snapshots',
+				path: 'snapshots',
 			},
 		],
 	},

@@ -8,8 +8,8 @@ import {IDataTableColumnDef} from 'types/global';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function FSTable(props: {data: IFilesystemInfo; selected_rows: number[]; onChangeSelectedRows: any; onRefresh?: any}) {
-	const {data, selected_rows, onChangeSelectedRows, onRefresh} = props;
+export default function FSTable(props: {data: IFilesystemInfo; selected_rows: number[]; onChangeSelectedRows: any; onRefresh?: any; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'fileSystem', header: 'File System', width: 'wide'},
@@ -45,5 +45,5 @@ export default function FSTable(props: {data: IFilesystemInfo; selected_rows: nu
 			})
 		: undefined
 
-	return <DataTable name={'File System'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onRefresh={onRefresh} disableSelect />;
+	return <DataTable name={'File System'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onRefresh={onRefresh} error={error} disableSelect />;
 }

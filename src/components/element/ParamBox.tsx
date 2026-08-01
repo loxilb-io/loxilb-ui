@@ -56,11 +56,13 @@ export default function ParamBox(props: ParamBoxProps) {
 		}
 		const result: IEnumItem[] = [];
 		if (!value_list || value_list.length === 0) return [];
-		else if (typeof value_list[0] === 'string') {
+		else if (typeof value_list[0] === 'string' || typeof value_list[0] === 'number') {
+			// Gateway metadata enums can be plain numbers; without this branch
+			// they fell into the IEnumItem path and rendered BLANK option names.
 			result.push(
-				...(value_list as string[]).map((item, index) => ({
+				...(value_list as (string | number)[]).map((item, index) => ({
 				id: index,
-				name: item,
+				name: String(item),
 				send_value: item,
 				})),
 			);
@@ -85,12 +87,16 @@ export default function ParamBox(props: ParamBoxProps) {
 	   return value;
    }, [enumOptions, value]);
 
-   // Notify parent when auto-selecting default value
+   // Notify parent when auto-selecting default value. `value` must be a dep:
+   // when the metadata query resolves, useFormWithParams resets the form to
+   // schema defaults, wiping a mount-time auto-default — the value flipping
+   // back to empty must re-announce it (converges: once the parent applies
+   // the default, value is non-empty and the effect stops firing).
    useEffect(() => {
 	   if (enumOptions.length > 0 && (value === undefined || value === '' || value === null)) {
 		   onChange(enumOptions[0].send_value);
 	   }
-   }, [enumOptions.length]); // Only run when enumOptions length changes, not on every render
+   }, [enumOptions.length, value]);
 
    const renderInput = () => {
 	if (enumOptions.length > 0) 

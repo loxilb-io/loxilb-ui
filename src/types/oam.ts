@@ -6,9 +6,6 @@ export interface IUser {
 	email: string;
 	id: number;
 	role?: string;
-	oauth_id: string;
-	oauth_provider: string;
-	oauth_token: string;
 	password: string;
 	username: string;
 }

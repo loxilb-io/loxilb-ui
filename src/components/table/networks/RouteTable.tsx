@@ -9,8 +9,8 @@ import {IRouteData} from 'types/route_attr';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function RouteTable(props: {data: IRouteData; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onRefresh?: any}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh} = props;
+export default function RouteTable(props: {data: IRouteData; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onRefresh?: any; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'destinationIPNet', header: 'CIDR', width: 'wide'},
@@ -27,8 +27,8 @@ export default function RouteTable(props: {data: IRouteData; selected_rows: numb
    const rows = data.routeAttr && Array.isArray(data.routeAttr)
 	   ? (() => {
 		   const sorted = [...data.routeAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
-			return sorted.map((item, index) => ({
-			   id: index,
+			return sorted.map(item => ({
+			   id: getHashKey(item),
 			   destinationIPNet: item.destinationIPNet,
 			   gateway: item.gateway,
 			   hardwareMark: item.hardwareMark,
@@ -52,6 +52,7 @@ export default function RouteTable(props: {data: IRouteData; selected_rows: numb
 			onRefresh={onRefresh}
 			hideIdColumn={true}
 			defaultSort={{field: 'destinationIPNet', sort: 'asc'}}
+			error={error}
 		/>
 	);
 }

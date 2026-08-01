@@ -45,7 +45,6 @@ function DetailPanel(props: {entry: ISecurityRateEntry}) {
 					<Grid2 container spacing={2}>
 						<SingleTextBox label={t('Enabled')} value={entry.connRateEnabled ? 'Yes' : 'No'} />
 						<SingleTextBox label={t('Rate Per Second')} value={formatNumberForAxis(entry.ratePerSec ?? 0)} tooltip="Maximum new connections per second per IP" />
-						<SingleTextBox label={t('Concurrent Limit')} value={formatNumberForAxis(entry.concurrentLimit ?? 0)} tooltip="Maximum concurrent connections per IP" />
 						<SingleTextBox label={t('Conn Blocked (Rate)')} value={formatNumberForAxis(entry.connBlocked ?? 0)} />
 						<SingleTextBox label={t('Conn Passed')} value={formatNumberForAxis(entry.connPassed ?? 0)} />
 						<SingleTextBox label={t('Conn Blocked (Concurrent)')} value={formatNumberForAxis(entry.concurrentBlocked ?? 0)} />
@@ -80,10 +79,10 @@ function DetailPanel(props: {entry: ISecurityRateEntry}) {
 //---------------------------------------------------------
 export default function SecurityRatePage() {
 	const inst = useInstanceFromURL();
-	const {data, refetch} = useSecurityRate(inst);
+	const {data, isError, refetch} = useSecurityRate(inst);
 	const entries: ISecurityRateEntry[] = data ?? [];
 
-	const [selected_rows, set_selected_rows] = useState<number[]>([]);
+	const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds hash ids
 	const {openPopUp, enableYes} = usePopUp();
 	const formRef = useRef<ISecurityRateConfigMod | null>(null);
 
@@ -93,49 +92,17 @@ export default function SecurityRatePage() {
 		return getStableHash(str);
 	};
 
-	// Sorted entries
-	const sortedEntries = useMemo(() => 
-		[...entries].sort((a, b) => getHashKey(a) - getHashKey(b)),
-		[entries]
+	// Resolve selected entries by matching stable hash ids
+	const selectedItems = useMemo(
+		() =>
+			selected_rows
+				.map(h => entries.find(a => getHashKey(a) === h))
+				.filter((x): x is ISecurityRateEntry => x != null),
+		[selected_rows, entries],
 	);
+	const selectedItem: ISecurityRateEntry | null = selectedItems.length === 1 ? selectedItems[0] : null;
 
-	// Map selected original indices to sorted indices for display
-	const selectedSortedIndices = useMemo(() => {
-		if (entries.length === 0 || selected_rows.length === 0) return [];
-		
-		return selected_rows
-			.map(originalIdx => {
-				const original = entries[originalIdx];
-				return sortedEntries.findIndex(entry => getHashKey(entry) === getHashKey(original));
-			})
-			.filter(idx => idx !== -1);
-	}, [selected_rows, entries, sortedEntries]);
-
-	// Find single selected index for detail panel
-	const selected_index = selectedSortedIndices.length === 1 ? selectedSortedIndices[0] : -1;
-
-	// Selection handler: map sorted indices back to original indices
-	const handleSelectionChange = (indices: number[]) => {
-		if (entries.length === 0) {
-			set_selected_rows([]);
-			return;
-		}
-
-		if (indices.length === 0) {
-			set_selected_rows([]);
-			return;
-		}
-
-		// Map each sorted index back to original index
-		const originalIndices = indices
-			.map(sortedIdx => {
-				const sortedItem = sortedEntries[sortedIdx];
-				return entries.findIndex(entry => getHashKey(entry) === getHashKey(sortedItem));
-			})
-			.filter(idx => idx !== -1);
-
-		set_selected_rows(originalIndices);
-	};
+	const handleSelectionChange = (hashes: number[]) => set_selected_rows(hashes);
 
 	const handleEdit = () => {
 		if (!inst) return;
@@ -148,7 +115,6 @@ export default function SecurityRatePage() {
 			cookieThreshold: currentConfig.cookieThreshold,
 			connRateEnabled: currentConfig.connRateEnabled,
 			ratePerSec: currentConfig.ratePerSec,
-			concurrentLimit: currentConfig.concurrentLimit,
 			udpEnabled: currentConfig.udpEnabled,
 			udpPktThreshold: currentConfig.udpPktThreshold,
 			udpBandwidthMB: currentConfig.udpBandwidthMB,
@@ -186,6 +152,17 @@ export default function SecurityRatePage() {
 		);
 	};
 
+	const handleDisable = async () => {
+		if (!inst) return;
+		const res = await request_disable_securityrate(inst);
+		if (res.status === 'success') {
+			openPopUp(t('Success'), t('Security rate limiting disabled.'), t('OK'));
+			setTimeout(() => refetch(), 1000);
+		} else {
+			openPopUp(t('Error'), t('Failed to disable. {{error}}', {error: res.error}), t('OK'));
+		}
+	};
+
 	const handleReset = async () => {
 		if (!inst) return;
 
@@ -214,15 +191,17 @@ export default function SecurityRatePage() {
 	return (
 		<Fragment>
 			<SecurityRateTable
-				data={sortedEntries}
-				selected_rows={selectedSortedIndices}
+				data={entries}
+				selected_rows={selected_rows}
 				onChangeSelectedRows={handleSelectionChange}
 				onEdit={handleEdit}
+				onDisable={handleDisable}
 				onRefresh={handleRefresh}
+				error={isError}
 			/>
-			{selected_index !== -1 && sortedEntries[selected_index] && (
+			{selectedItem && (
 				<LowerSection>
-					<DetailPanel entry={sortedEntries[selected_index]} />
+					<DetailPanel entry={selectedItem} />
 				</LowerSection>
 			)}
 		</Fragment>

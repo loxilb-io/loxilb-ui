@@ -1,0 +1,118 @@
+# Full browser E2E suite (Playwright) against the live LoxiLB testbed.
+#
+# Runs on a SELF-HOSTED runner registered INSIDE the testbed network
+# (label `loxilb-testbed`), so testbed credentials never leave the network and
+# no firewall is opened to GitHub-hosted infra. See docs/CICD_PLAN.md §2.2 and
+# docs/E2E_RUNNING.md.
+#
+# Triggers: manual dispatch (with an optional grep/subset input) + a nightly
+# schedule. Never triggered by pull_request (fork PRs must not reach testbed
+# secrets). Until the runner + `testbed` environment secrets are provisioned
+# (a one-time ops task), the scheduled run simply has no runner to pick it up.
+#
+# Required environment (`testbed`) secrets:
+#   E2E_OAM_URL           — OAM base the API helpers + dev server target
+#                           (e.g. http://<oam-host>:8080/oam)
+#   E2E_ADMIN_USER        — testbed OAM admin username
+#   E2E_ADMIN_PASSWORD    — testbed OAM admin password
+#   E2E_FIXTURE_PASSWORD  — password for the auto-provisioned e2e_operator /
+#                           e2e_viewer RBAC fixtures (auth.setup.ts)
+name: E2E
+
+on:
+  workflow_dispatch:
+    inputs:
+      grep:
+        description: 'Optional -g title substring / path to run a subset (e.g. "cicd" or "F-NET-1"). Blank = full suite.'
+        required: false
+        default: ''
+  schedule:
+    # Nightly at 17:00 UTC (~02:00 KST) — low testbed traffic.
+    - cron: '0 17 * * *'
+
+# One E2E run at a time: the suite is serial and mutating, and the shared OAM
+# rate-limits logins — a second concurrent run would interleave mutations.
+concurrency:
+  group: e2e-testbed
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: [self-hosted, loxilb-testbed]
+    # Holds the testbed secrets; can require maintainer approval before running.
+    environment: testbed
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Browsers + OS deps are a one-time runner-setup task; this keeps the
+      # Chromium build in sync with the pinned @playwright/test version.
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium
+
+      # Testbed config from environment secrets — written at runtime, never
+      # committed (both files are git-ignored).
+      - name: Write testbed config
+        run: |
+          cat > .env.e2e.local <<EOF
+          E2E_OAM_URL=${{ secrets.E2E_OAM_URL }}
+          E2E_ADMIN_USER=${{ secrets.E2E_ADMIN_USER }}
+          E2E_ADMIN_PASSWORD=${{ secrets.E2E_ADMIN_PASSWORD }}
+          E2E_FIXTURE_PASSWORD=${{ secrets.E2E_FIXTURE_PASSWORD }}
+          EOF
+          cat > .env.development <<EOF
+          REACT_APP_API_URL=${{ secrets.E2E_OAM_URL }}
+          REACT_APP_ENV=local
+          REACT_APP_PUBLIC_URL=/netlox
+          PORT=3000
+          HTTPS=false
+          WDS_SOCKET_PORT=0
+          EOF
+
+      # Skip cleanly if the testbed is unreachable (avoids the cold-boot /
+      # transient failures documented in E2E_RUNNING.md §6).
+      - name: Pre-flight — testbed reachable?
+        id: preflight
+        run: |
+          code=$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' "${{ secrets.E2E_OAM_URL }}" || echo 000)
+          echo "OAM responded: $code"
+          if [ "$code" = "000" ]; then
+            echo "::warning::Testbed OAM unreachable — skipping the E2E run."
+            echo "up=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "up=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run E2E suite
+        if: steps.preflight.outputs.up == 'true'
+        env:
+          CI: 'true'
+        run: |
+          if [ -n "${{ github.event.inputs.grep }}" ]; then
+            npx playwright test -g "${{ github.event.inputs.grep }}"
+          else
+            npm run e2e
+          fi
+
+      # Report + traces/screenshots for every run (pass or fail).
+      - name: Upload Playwright report
+        if: always() && steps.preflight.outputs.up == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+          if-no-files-found: ignore

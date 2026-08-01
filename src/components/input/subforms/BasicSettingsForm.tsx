@@ -16,14 +16,15 @@ import {IServiceArguments} from 'types/load_balancer';
 export default function BasicSettingsForm(props: {value: IServiceArguments; onChange: (val: Partial<IServiceArguments>) => void; params?: any; isEdit?: boolean}) {
 	const {value, onChange, params, isEdit = false} = props;
 
-	const handleChange = useCallback((field: keyof IServiceArguments) => (newValue: any) => onChange({...value, [field]: newValue}), [value, onChange]);
+	// Send a DELTA, not {...value, field}: a stale full-object spread from a
+	// mount-time dropdown auto-default clobbers sibling sub-forms' fields
+	// (see LBInputForm.handleServiceArguments).
+	const handleChange = useCallback((field: keyof IServiceArguments) => (newValue: any) => onChange({[field]: newValue}), [onChange]);
 
-	// Ensure protocol has a default value when undefined
-	React.useEffect(() => {
-		if (!value?.protocol) {
-			onChange({...value, protocol: 'tcp'});
-		}
-	}, [value, onChange]);
+	// Note: protocol defaults to 'tcp' upstream (LBInputForm formData init) and in
+	// the dropdown's display value, so no setState-in-effect is needed here — that
+	// pattern (with an onChange identity that changed every render) drove F14's
+	// "Maximum update depth exceeded" render loop.
 
 	// Validate port range
 	const portRangeError = React.useMemo(() => {

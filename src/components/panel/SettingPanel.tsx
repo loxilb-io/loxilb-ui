@@ -69,7 +69,6 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 					<SingleTextBox label={t('Security')} value={serviceArguments.security} tooltip='Value for Security mode (0-Plain, 1-https, 1-tls, 2-e2ehttps, 0-default) in fullproxy mode'/>
 					<SingleTextBox label={t('Backend Protocol')} value={serviceArguments.backend_protocol} tooltip="Backend protocol capability for ALPN negotiation ('http1', 'http2', or 'both')"/>
 					<SingleTextBox label={t('Proxy Protocol v2')} value={serviceArguments.proxyprotocolv2} tooltip='Flag to enable proxy protocol v2' />
-					<SingleTextBox label={t('LLM Type')} value={serviceArguments.llm_type} tooltip='LLM catalog profile name for GPU-aware load balancing'/>
 				</Grid2>
 			</ValueBunch>			
 			<ValueBunch name={t('Kubernetes Information')}>

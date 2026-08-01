@@ -52,8 +52,15 @@ export default function UserEditModal(props: UserEditModalProps) {
 		const updateData: IUserUpdateRequest = {
 			username: formData.username,
 			email: formData.email,
-			role: formData.role,
 		};
+
+		// Send `role` only when it can legitimately change: creating a user, or an
+		// admin editing someone else. For a self-edit (any role, incl. admin) omit
+		// it — the server rejects a non-admin update whose body carries a role
+		// field, breaking self-service profile edits (E2E F8).
+		if (isCreateMode || (isAdmin && !isCurrentUser)) {
+			updateData.role = formData.role;
+		}
 
 		// Only include password if it's provided
 		if (formData.password && formData.password.trim()) {

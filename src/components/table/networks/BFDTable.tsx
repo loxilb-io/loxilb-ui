@@ -9,8 +9,8 @@ import {getStableHash} from 'common';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function BFDTable(props: {data: IBFDAttribureInfo; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onRefresh?: any}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh} = props;
+export default function BFDTable(props: {data: IBFDAttribureInfo; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onRefresh?: any; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'instance', header: 'Instance', width: 'medium', tooltip: 'Displays the instance or node where this service or rule is applied.'},
@@ -27,8 +27,8 @@ export default function BFDTable(props: {data: IBFDAttribureInfo; selected_rows:
    const rows = data.Attr && Array.isArray(data.Attr)
 	   ? (() => {
 		   const sorted = [...data.Attr].sort((a, b) => getHashKey(a) - getHashKey(b));
-		   return sorted.map((item, index) => ({
-			   id: index,
+		   return sorted.map(item => ({
+			   id: getHashKey(item),
 			   instance: item.instance,
 			   remoteIp: item.remoteIp,
 			   sourceIP: item.sourceIP,
@@ -41,5 +41,5 @@ export default function BFDTable(props: {data: IBFDAttribureInfo; selected_rows:
 	   : [];
 
 	const name = 'Instance of Bidirectional Forwarding Detection';
-	return <DataTable name={name} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onRefresh={onRefresh} />;
+	return <DataTable name={name} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onRefresh={onRefresh} error={error} />;
 }

@@ -161,7 +161,7 @@ function ConntrackPanel(props: {instance: IInstance | null; data: ICtAttribute})
 export default function ConntrackPage() {
 	const inst = useInstanceFromURL();
 
-	const {data: ct_info, refetch} = useConntrack(inst);
+	const {data: ct_info, isError, refetch} = useConntrack(inst);
 
 	// Filter states
 	const [servNameFilter, setServNameFilter] = useState<string>('');
@@ -170,9 +170,7 @@ export default function ConntrackPage() {
 	const [destinationIPFilter, setDestinationIPFilter] = useState<string>('');
 	const [destinationPortFilter, setDestinationPortFilter] = useState<string>('');
 
-   const [selected_rows, set_selected_rows] = useState<number[]>([]);
-   // Track selected servName for synchronization
-   const [selected_servName, set_selected_servName] = useState<string | null>(null);
+   const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds stable hash ids
    // Apply filters and clear filters functions
    const applyFilters = useCallback(() => {
 	   // Filters will be applied in the filteredCtAttr useMemo
@@ -237,30 +235,21 @@ export default function ConntrackPage() {
 	   return filtered.sort((a, b) => getHashKey(a) - getHashKey(b));
    }, [ct_info?.ctAttr, servNameFilter, sourceIPFilter, sourcePortFilter, destinationIPFilter, destinationPortFilter]);
 
-   const sortedCtAttr = filteredCtAttr;
-   // Always map selected_rows (original index) to filtered/sorted index
-   let selected_index = -1;
-   if (selected_rows.length === 1 && ct_info?.ctAttr) {
-	   const original = ct_info.ctAttr[selected_rows[0]];
-	   selected_index = sortedCtAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
-   } else if (selected_servName) {
-	   selected_index = sortedCtAttr.findIndex(attr => attr.servName === selected_servName);
-   }
-   const selected_attr = selected_index !== -1 ? sortedCtAttr[selected_index] : undefined;
+   // Resolve selected hash ids back to items in the filtered list (stable across refetch/re-sort)
+   const selectedItems = useMemo(
+	   () =>
+		   selected_rows
+			   .map(h => filteredCtAttr.find(a => getHashKey(a) === h))
+			   .filter((x): x is ICtAttribute => x != null),
+	   [selected_rows, filteredCtAttr],
+   );
+   const selected_attr: ICtAttribute | undefined = selectedItems.length === 1 ? selectedItems[0] : undefined;
+
+   const handleSelectionChange = (hashes: number[]) => set_selected_rows(hashes);
 
    useEffect(() => {
 	   if (inst) refetch();
    }, [inst, refetch]);
-   // Synchronize selected row index after sorting
-   useEffect(() => {
-	   if (!ct_info || !ct_info.ctAttr || ct_info.ctAttr.length === 0) return;
-	   if (selected_rows.length === 1) {
-		   const servName = ct_info.ctAttr[selected_rows[0]].servName;
-		   set_selected_servName(servName);
-	   } else if (selected_servName !== null) {
-		   set_selected_servName(null);
-	   }
-   }, [ct_info, selected_rows, selected_servName]);
 
    return (
 	   <Fragment>
@@ -361,19 +350,11 @@ export default function ConntrackPage() {
 		   </Box>
 
 		   <ConntrackTable
-			   data={{ctAttr: sortedCtAttr}}
-			   selected_rows={selected_index !== -1 ? [selected_index] : []}
+			   data={{ctAttr: filteredCtAttr}}
+			   selected_rows={selected_rows}
 			   onRefresh={refetch}
-			   onChangeSelectedRows={(indices: number[]) => {
-				   // Map sorted indices back to original indices
-				   if (indices.length === 1 && ct_info?.ctAttr) {
-					   const sortedItem = sortedCtAttr[indices[0]];
-					   const originalIndex = ct_info.ctAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
-					   set_selected_rows(originalIndex !== -1 ? [originalIndex] : []);
-				   } else {
-					   set_selected_rows([]);
-				   }
-			   }}
+			   error={isError}
+			   onChangeSelectedRows={handleSelectionChange}
 		   />
 		   {selected_attr && (
 			   <LowerSection>

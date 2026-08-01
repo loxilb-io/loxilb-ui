@@ -3,7 +3,6 @@
 //---------------------------------------------------------
 import PersonIcon from '@mui/icons-material/Person';
 import LockIcon from '@mui/icons-material/Lock';
-import LicenseIcon from '@mui/icons-material/CardMembership';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import EditIcon from '@mui/icons-material/Edit';
 import {Box, Stack, Typography, Tabs, Tab, Button} from '@mui/material';
@@ -12,21 +11,17 @@ import ValueBunch from 'components/element/ValueBunch';
 import ScrollableBox from 'components/layout/ScrollableBox';
 import UserManagementTable from 'components/table/managers/UserManagementTable';
 import UserEditModal from 'components/modal/UserEditModal';
-import {useMyInfo} from 'hooks/query/oamHooks';
-import {useUserLicenses} from 'hooks/query/licenseHooks';
+import {useMyInfo, useRole} from 'hooks/query/oamHooks';
 import {useAllUsers, updateUser, deleteUser, createUser} from 'hooks/query/userManagementHooks';
 import {usePopUp} from 'hooks/popupHook';
 import {login_user} from 'connector/user';
 import {save_local_storage, move_forced} from 'common';
 import {t} from 'i18next';
+import {useQueryClient} from '@tanstack/react-query';
 import {Fragment, useState, useMemo, useEffect, useCallback, useRef} from 'react';
 import {getStableHash} from 'common';
-import {updateUserLicense, deactivateUserLicense, installLicense} from 'hooks/query/licenseHooks';
-import LicenseManagementTable from 'components/table/managers/LicenseManagementTable';
-import LicenseUpdateForm from 'components/input/LicenseUpdateForm';
 import {IUser} from 'types/oam';
 import {IUserUpdateRequest, ICreateUserRequest} from 'types/user';
-import {IUpdateLicenseRequest, IInstallLicenseRequest} from 'types/license';
 
 //---------------------------------------------------------
 // Tab Panel Component
@@ -129,206 +124,6 @@ function PasswordManagementPanel() {
 }
 
 //---------------------------------------------------------
-// License Management Panel
-//---------------------------------------------------------
-function LicenseManagementPanel() {
-	const {userLicenses, refetch, isLoading} = useUserLicenses();
-
-	const {openPopUp} = usePopUp();
-	
-	const [selectedRows, setSelectedRows] = useState<number[]>([]);
-	const [selectedKey, setSelectedKey] = useState<string | null>(null);
-
-
-	const licenseInfo = useMemo(() => ({licenses: userLicenses?.licenses ?? []}), [userLicenses]);
-
-	// Hash function for license
-	const getHashKey = (item: any) => {
-		const str = `${item.id || ''}_${item.license_type || ''}_${item.license_key_hash || ''}`;
-		return getStableHash(str);
-	};
-
-	// Sorted licenses
-	const sortedLicenses = licenseInfo.licenses ? [...licenseInfo.licenses].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
-
-	// Find selected index in sortedLicenses
-	let selectedIndex = -1;
-	if (selectedRows.length === 1 && licenseInfo.licenses) {
-		const original = licenseInfo.licenses[selectedRows[0]];
-		selectedIndex = sortedLicenses.findIndex(license => getHashKey(license) === getHashKey(original));
-	} else if (selectedKey) {
-		selectedIndex = sortedLicenses.findIndex(license => getHashKey(license).toString() === selectedKey);
-	}
-
-	// Selection handler: map sorted index back to original
-	const handleSelectionChange = (indices: number[]) => {
-		if (indices.length === 1 && licenseInfo.licenses) {
-			const sortedItem = sortedLicenses[indices[0]];
-			const originalIndex = licenseInfo.licenses.findIndex(license => getHashKey(license) === getHashKey(sortedItem));
-			setSelectedRows(originalIndex !== -1 ? [originalIndex] : []);
-		} else {
-			setSelectedRows([]);
-		}
-	};
-
-	useEffect(() => {
-		if (!licenseInfo || licenseInfo.licenses.length === 0) return;
-		if (selectedRows.length === 1) {
-			const item = licenseInfo.licenses[selectedRows[0]];
-			setSelectedKey(getHashKey(item).toString());
-		} else if (selectedKey !== null) {
-			setSelectedKey(null);
-		}
-	}, [licenseInfo, selectedRows, selectedKey]);
-
-	const handleDelete = useCallback(async () => {
-		if (selectedRows.length !== 1) return;
-
-		const licenseId = licenseInfo.licenses[selectedRows[0]].id;
-
-		openPopUp(
-			t('Confirm Delete'),
-			t('Are you sure you want to deactivate this license? This action cannot be undone.'),
-			t('Delete'),
-			t('Cancel'),
-			async () => {
-				try {
-					await deactivateUserLicense(licenseId);
-					openPopUp(t('Success'), t('License deactivated successfully.'), t('OK'));
-					setSelectedRows([]);
-					setTimeout(() => {
-						refetch();
-					}, 1000);
-				} catch (error: any) {
-					openPopUp(t('Error'), t('Failed to deactivate license. {{error}}', {error: error?.message || error}), t('OK'));
-				}
-			}
-		);
-	}, [selectedRows, licenseInfo, openPopUp, refetch]);
-
-	const licenseFormRef = useRef<IInstallLicenseRequest | null>(null);
-	const [isFormValid, setIsFormValid] = useState(false);
-	
-	const handleAdd = useCallback(() => {
-		setIsFormValid(false); // Reset validation state
-		licenseFormRef.current = null; // Reset form data
-		
-		const inputForm = (
-			<LicenseUpdateForm
-				key={Date.now()}
-				onChange={(data: IUpdateLicenseRequest & { isValid?: boolean; errors?: any }) => {
-					licenseFormRef.current = data as IInstallLicenseRequest;
-				}}
-				onValidation={(isValid: boolean) => {
-					setIsFormValid(isValid);
-				}}
-				mode="install"
-			/>
-		);
-
-		openPopUp(
-			'',
-			inputForm,
-			t('Install'),
-			t('Cancel'),
-			async () => {
-				if (!licenseFormRef.current) return;
-
-				try {
-					await installLicense(licenseFormRef.current!);
-					openPopUp(t('Success'), t('License installed successfully.'), t('OK'));
-					setTimeout(() => {
-						refetch();
-					}, 1000);
-				} catch (error: any) {
-					openPopUp(t('Error'), t('Failed to install license. {{error}}', {error: error?.message || error}), t('OK'));
-				}
-			},
-			isFormValid
-		);
-	}, [openPopUp, refetch, isFormValid]);
-
-	const updateFormRef = useRef<IUpdateLicenseRequest | null>(null);
-	const [isUpdateFormValid, setIsUpdateFormValid] = useState(false);
-	
-	const handleUpdate = useCallback(() => {
-		if (selectedRows.length !== 1) return;
-
-		const selectedLicense = licenseInfo.licenses[selectedRows[0]];
-		setIsUpdateFormValid(false); // Reset validation state
-		updateFormRef.current = null; // Reset form data
-
-		const updateForm = (
-			<LicenseUpdateForm
-				key={Date.now()}
-				onChange={(data: IUpdateLicenseRequest & { isValid?: boolean; errors?: any }) => {
-					updateFormRef.current = data;
-				}}
-				onValidation={(isValid: boolean) => {
-					setIsUpdateFormValid(isValid);
-				}}
-				mode="update"
-			/>
-		);
-
-		openPopUp(
-			'',
-			updateForm,
-			t('Update'),
-			t('Cancel'),
-			async () => {
-				if (!updateFormRef.current) return;
-
-				try {
-					await updateUserLicense(selectedLicense.id, updateFormRef.current!);
-					openPopUp(t('Success'), t('License updated successfully.'), t('OK'));
-					setTimeout(() => {
-						refetch();
-					}, 1000);
-				} catch (error: any) {
-					openPopUp(t('Error'), t('Failed to update license. {{error}}', {error: error?.message || error}), t('OK'));
-				}
-			},
-			isUpdateFormValid
-		);
-	}, [selectedRows, licenseInfo, openPopUp, refetch, isUpdateFormValid]);
-
-	const handleRefresh = () => {
-		setSelectedRows([]);
-		setSelectedKey(null);
-		refetch();
-	};
-
-	if (isLoading) {
-		return (
-			<Stack spacing={3}>
-				<Typography variant="h6" display="flex" alignItems="center" gap={1}>
-					<LicenseIcon />
-					{t('License Management')}
-				</Typography>
-				<Typography variant="body2" color="text.secondary">
-					{t('Loading license information...')}
-				</Typography>
-			</Stack>
-		);
-	}
-
-	return licenseInfo ? (
-		<Fragment>
-			<LicenseManagementTable
-				data={{licenses: sortedLicenses}}
-				selected_rows={selectedIndex !== -1 ? [selectedIndex] : []}
-				onChangeSelectedRows={handleSelectionChange}
-				onAdd={handleAdd}
-				onDelete={handleDelete}
-				onUpdate={handleUpdate}
-				onRefresh={handleRefresh}
-			/>
-		</Fragment>
-	) : null;
-}
-
-//---------------------------------------------------------
 // Admin User Management Panel
 //---------------------------------------------------------
 function AdminUserManagementPanel(props: {
@@ -342,26 +137,23 @@ function AdminUserManagementPanel(props: {
 	const {users, isLoading, refetch} = useAllUsers();
 
 	const {openPopUp} = usePopUp();
-	const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
-	const [selectedKey, setSelectedKey] = useState<string | null>(null);
+	const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds hash ids
 
-	// Hash function for user
-	const getUserHashKey = (item: any) => {
+	// Hash function for user — MUST match UserManagementTable.getHashKey
+	const getHashKey = (item: IUser) => {
 		const str = `${item.id || ''}_${item.username || ''}_${item.email || ''}`;
 		return getStableHash(str);
 	};
 
-	// Sorted users
-	const sortedUsers = users ? [...users].sort((a, b) => getUserHashKey(a) - getUserHashKey(b)) : [];
-
-	// Find selected index in sortedUsers
-	let selectedIndex = -1;
-	if (selectedUsers.length === 1 && users) {
-		const original = users[selectedUsers[0]];
-		selectedIndex = sortedUsers.findIndex(user => getUserHashKey(user) === getUserHashKey(original));
-	} else if (selectedKey) {
-		selectedIndex = sortedUsers.findIndex(user => getUserHashKey(user).toString() === selectedKey);
-	}
+	// Resolve selected users by matching stable hash ids
+	const selectedItems = useMemo(
+		() =>
+			selected_rows
+				.map(h => users?.find(a => getHashKey(a) === h))
+				.filter((x): x is IUser => x != null),
+		[selected_rows, users]
+	);
+	const selectedItem: IUser | null = selectedItems.length === 1 ? selectedItems[0] : null;
 
 	// Expose refetch function to parent via ref
 	useEffect(() => {
@@ -370,74 +162,43 @@ function AdminUserManagementPanel(props: {
 		}
 	}, [refetch, refetchRef]);
 
-	// Update selectedKey when selection changes
-	useEffect(() => {
-		if (!users || users.length === 0) return;
-		if (selectedUsers.length === 1) {
-			const item = users[selectedUsers[0]];
-			setSelectedKey(getUserHashKey(item).toString());
-		} else if (selectedKey !== null) {
-			setSelectedKey(null);
+	// Selection handler: selection model is a list of stable hash ids
+	const handleSelectionChange = (hashes: number[]) => set_selected_rows(hashes);
+
+	// DataTable already gates delete behind its own "WARNING!! Delete Item"
+	// confirmation, so this runs post-confirm — delete directly rather than
+	// stacking a second (redundant) confirm dialog on top of it.
+	const handleDeleteUser = async () => {
+		if (selectedItems.length === 0) return;
+
+		const selectedUserData = selectedItems;
+
+		// Guard: an admin must not delete their own account — the server permits
+		// it (no self-delete protection), which would silently lock the admin out
+		// on the next request. Block it here with a clear message (F-USER-1).
+		if (currentUser && selectedUserData.some(user => user.id === currentUser.id)) {
+			openPopUp(t('Cannot Delete'), t('You cannot delete your own account.'), t('OK'));
+			return;
 		}
-	}, [users, selectedUsers, selectedKey]);
 
-	// Selection handler: map sorted index back to original
-	const handleSelectionChange = (indices: number[]) => {
-		if (indices.length === 1 && users) {
-			const sortedItem = sortedUsers[indices[0]];
-			const originalIndex = users.findIndex(user => getUserHashKey(user) === getUserHashKey(sortedItem));
-			setSelectedUsers(originalIndex !== -1 ? [originalIndex] : []);
-		} else if (indices.length > 1) {
-			// Multiple selections: map each sorted index back to original
-			const originalIndices = indices
-				.map(idx => {
-					const sortedItem = sortedUsers[idx];
-					return users.findIndex(user => getUserHashKey(user) === getUserHashKey(sortedItem));
-				})
-				.filter(idx => idx !== -1);
-			setSelectedUsers(originalIndices);
-		} else {
-			setSelectedUsers([]);
+		try {
+			await Promise.all(selectedUserData.map(user => deleteUser(user.id)));
+			set_selected_rows([]);
+			onRefresh();
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : t('Failed to delete one or more users');
+			openPopUp(t('Error'), errorMessage, t('OK'));
 		}
-	};
-
-	const handleDeleteUser = () => {
-		if (selectedUsers.length === 0) return;
-
-		const selectedUserData = selectedUsers.map(index => users[index]).filter(Boolean);
-		const usernames = selectedUserData.map(user => user.username).join(', ');
-
-		openPopUp(
-			t('Confirm Delete'),
-			t('Are you sure you want to delete user(s): "' + usernames + '"? This action cannot be undone.'),
-			t('Delete'),
-			t('Cancel'),
-			async () => {
-				try {
-					// Delete all selected users
-					await Promise.all(selectedUserData.map(user => deleteUser(user.id)));
-					setSelectedUsers([]);
-					// Refresh the user list
-					onRefresh();
-				} catch (error) {
-					const errorMessage = error instanceof Error ? error.message : t('Failed to delete one or more users');
-					openPopUp(t('Error'), errorMessage, t('OK'));
-				}
-			}
-		);
 	};
 
 	const handleEditUser = () => {
-		if (selectedUsers.length !== 1) return;
-		const selectedUser = users[selectedUsers[0]];
-		if (selectedUser) {
-			onEditUser(selectedUser);
+		if (selectedItem) {
+			onEditUser(selectedItem);
 		}
 	};
 
 	const handleRefresh = () => {
-		setSelectedUsers([]);
-		setSelectedKey(null);
+		set_selected_rows([]);
 		onRefresh();
 	};
 
@@ -464,11 +225,8 @@ function AdminUserManagementPanel(props: {
 
 			<Fragment>
 				<UserManagementTable
-					data={{users: sortedUsers}}
-					selected_rows={selectedIndex !== -1 ? [selectedIndex] : selectedUsers.length > 1 ? selectedUsers.map(idx => {
-						const original = users[idx];
-						return sortedUsers.findIndex(user => getUserHashKey(user) === getUserHashKey(original));
-					}).filter(idx => idx !== -1) : []}
+					data={{users: users ?? []}}
+					selected_rows={selected_rows}
 					onChangeSelectedRows={handleSelectionChange}
 					onAdd={onAddUser}
 					onUpdate={handleEditUser}
@@ -489,6 +247,7 @@ export default function UserManagementPage() {
 	const my_info = useMyInfo();
 	const isAdmin = my_info?.role === 'admin';
 	const {openPopUp} = usePopUp();
+	const queryClient = useQueryClient();
 	const [tabValue, setTabValue] = useState(0);
 	const [editModalOpen, setEditModalOpen] = useState(false);
 	const [editingUser, setEditingUser] = useState<IUser | null>(null);
@@ -557,6 +316,14 @@ export default function UserManagementPage() {
 				const isCurrentUserUpdate = editingUser.id === my_info?.id;
 
 				await updateUser(editingUser.id, userData);
+
+				// A self-edit changes the identity the whole app renders from
+				// (`my_info`), but updateUser touches no cache — without this the
+				// header profile menu and the Profile tab keep the stale email
+				// until the 5s staleTime lapses (stale-menu-cache regression).
+				if (isCurrentUserUpdate) {
+					await queryClient.invalidateQueries({queryKey: ['my_info']});
+				}
 
 				// If current user changed their username, we need to re-login to get new token
 				if (isCurrentUserUpdate && usernameChanged) {
@@ -663,18 +430,12 @@ export default function UserManagementPage() {
 								label={t('Security')} 
 								{...a11yProps(1)} 
 							/> */}
-							<Tab 
-								icon={<LicenseIcon fontSize="small" />}
-								iconPosition="start"
-								label={t('License')} 
-								{...a11yProps(2)} 
-							/>
 							{isAdmin && (
 								<Tab 
 									icon={<AdminPanelSettingsIcon fontSize="small" />}
 									iconPosition="start"
 									label={t('User List')} 
-									{...a11yProps(3)} 
+									{...a11yProps(1)}
 								/>
 							)}
 						</Tabs>
@@ -688,13 +449,9 @@ export default function UserManagementPage() {
 						<PasswordManagementPanel />
 					</TabPanel> */}
 
-					<TabPanel value={tabValue} index={1}>
-						<LicenseManagementPanel />
-					</TabPanel>
-
 					{isAdmin && (
-						<TabPanel value={tabValue} index={2}>
-							<AdminUserManagementPanel 
+						<TabPanel value={tabValue} index={1}>
+							<AdminUserManagementPanel
 								onRefresh={handleUserRefresh}
 								refetchRef={userRefetchRef}
 								currentUser={my_info}

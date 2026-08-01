@@ -23,6 +23,14 @@ export function usePopUp() {
 				disable_yes: disable_yes,
 			});
 		},
-		enableYes: (enable?: boolean) => set_props(prev => ({...prev, disable_yes: enable !== undefined ? !enable : false})),
+		// Idempotent: if disable_yes is already the requested value, return the
+		// SAME atom object so Recoil skips the re-render. A form's onChange→
+		// enableYes on every render would otherwise churn this atom and re-render
+		// the whole popup subtree, feeding a render loop (F14).
+		enableYes: (enable?: boolean) =>
+			set_props(prev => {
+				const next = enable !== undefined ? !enable : false;
+				return prev.disable_yes === next ? prev : {...prev, disable_yes: next};
+			}),
 	};
 }

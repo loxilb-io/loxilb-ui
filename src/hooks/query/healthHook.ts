@@ -13,6 +13,9 @@ export interface IInstanceHealth {
 	instanceId: number;
 	isHealthy: boolean;
 	error?: string;
+	// HTTP status of the probe. 402 = license-gated (reachable but unlicensed),
+	// which the card surfaces distinctly from an actual outage (E2E F7).
+	code?: number;
 	lastChecked: number;
 }
 
@@ -43,6 +46,7 @@ export function useInstanceHealth(instance: IInstance | null, enabled: boolean =
 					instanceId: instance.id,
 					isHealthy: result.isHealthy,
 					error: result.error,
+					code: result.code,
 					lastChecked: Date.now(),
 				};
 			} catch (error) {
@@ -99,6 +103,7 @@ export function useInstancesHealthRefresh(instances: IInstance[] = []) {
 						instanceId: instance.id,
 						isHealthy: result.isHealthy,
 						error: result.error,
+						code: result.code,
 						lastChecked: Date.now(),
 					} as IInstanceHealth;
 					return healthResult;

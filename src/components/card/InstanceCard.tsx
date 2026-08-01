@@ -25,7 +25,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 
 	const navigate = useNavigate();
 	const [elevation, set_elevation] = useState(3);
-	const {openPopUp} = usePopUp();
+	const {openPopUp, enableYes} = usePopUp();
 	const {refetch} = useInstances();
 	const [languageKey, setLanguageKey] = useState(0);
 
@@ -60,6 +60,10 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 				initialValues={currentInstanceData}
 				onChange={data => {
 					instanceRef.current = data;
+					// Gate Apply on validity — otherwise an invalid edit (bad port,
+					// empty host) would be submitted against the live instance
+					// (F-INSTANCE-1). enableYes is idempotent, so this is loop-safe.
+					enableYes(data.isValid);
 				}}
 			/>
 		);
@@ -186,8 +190,8 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 							{t('Health Status')}
 						</Typography>
 
-						<Typography 
-							variant="caption" 
+						<Typography
+							variant="caption"
 							color={isHealthy ? 'success.main' : 'error.main'}
 							sx={{ fontWeight: 'bold' }}
 						>

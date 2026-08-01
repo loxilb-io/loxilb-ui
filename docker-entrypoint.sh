@@ -6,8 +6,8 @@
 set -e
 
 # Default values
-export BACKEND_URL=${BACKEND_URL:-"https://oam-1.loxilb.io"}
-export BACKEND_HOST=${BACKEND_HOST:-"oam-1.loxilb.io"}
+export BACKEND_URL=${BACKEND_URL:-"https://oam.example.com"}
+export BACKEND_HOST=${BACKEND_HOST:-"oam.example.com"}
 export FRONTEND_URL=${FRONTEND_URL:-"http://localhost:3000"}
 export PUBLIC_PATH=${PUBLIC_PATH:-"/netlox"}
 export SSL_MODE=${SSL_MODE:-"disabled"}

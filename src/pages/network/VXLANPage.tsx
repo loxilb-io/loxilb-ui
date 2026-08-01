@@ -16,7 +16,8 @@ import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useVxlanAttr} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {Fragment, useRef, useState} from 'react';
-import {IVxlanData, IVxlanInput} from 'types/vxlan';
+import {getStableHash} from 'common';
+import {IVxlanAttribute, IVxlanData, IVxlanInput} from 'types/vxlan';
 
 //---------------------------------------------------------
 // Functional Component
@@ -100,23 +101,35 @@ function PeerPanel(props: {name: string; vxlanID: number; data: string[]; refetc
 export default function VxLANPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, refetch} = useVxlanAttr(inst); // IVxlanAttribute[]
+	const {data, isError, refetch} = useVxlanAttr(inst); // IVxlanAttribute[]
 	const vxlan_info: IVxlanData = {vxlanAttr: data ?? []};
 
-	const [selected_rows, set_selected_rows] = useState<any[]>([]);
+	// selected_rows holds a stable hash of vxlanID (the row id the table
+	// assigns), so selection tracks the VXLAN across refetches, not array order.
+	const [selected_rows, set_selected_rows] = useState<number[]>([]);
 	const {openPopUp, enableYes} = usePopUp();
 	const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
 
-	const handleSelectionChange = (selection: any) => set_selected_rows(selection);
+	const selectedVxlan = selected_rows.length === 1 ? vxlan_info.vxlanAttr.find(v => getStableHash(String(v.vxlanID ?? '')) === selected_rows[0]) ?? null : null;
+
+	const handleSelectionChange = (selection: number[]) => set_selected_rows(selection);
 	const handleDelete = async () => {
-		if (!inst) return;
-		const item = vxlan_info.vxlanAttr[selected_rows[0]];
-		const res = await request_delete_vxlan(inst, item.vxlanID);
-		if (res.status === 'success') {
-			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
-			set_selected_rows([]);
-			refetch();
-		} else showDeleteError('VXLAN', res.error);
+		if (!inst || selected_rows.length === 0) return;
+
+		const targets = selected_rows.map(hash => vxlan_info.vxlanAttr.find(v => getStableHash(String(v.vxlanID ?? '')) === hash)).filter((v): v is IVxlanAttribute => v != null);
+		const results = await Promise.all(targets.map(v => request_delete_vxlan(inst, v.vxlanID)));
+		const failures = results.filter(res => res.status === 'error');
+
+		if (failures.length === 0) {
+			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
+		} else if (failures.length < results.length) {
+			showDeleteError('VXLAN', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+		} else {
+			showDeleteError('VXLAN', failures[0].error);
+			return;
+		}
+		set_selected_rows([]);
+		refetch();
 	};
 
 	const instanceRef = useRef<IVxlanInput | null>(null);
@@ -152,14 +165,14 @@ export default function VxLANPage() {
 
 	return (
 		<Fragment>
-			<VXLANTable data={vxlan_info} selected_rows={selected_rows} onChangeSelectedRows={handleSelectionChange} onAdd={handleAdd} onDelete={handleDelete} />
+			<VXLANTable data={vxlan_info} selected_rows={selected_rows} onChangeSelectedRows={handleSelectionChange} onAdd={handleAdd} onDelete={handleDelete} error={isError} />
 
-			{selected_rows.length === 1 && (
+			{selectedVxlan && (
 				<LowerSection>
 					<PeerPanel
-						name={vxlan_info.vxlanAttr[selected_rows[0]].vxlanName}
-						data={vxlan_info.vxlanAttr[selected_rows[0]].peerIP}
-						vxlanID={vxlan_info.vxlanAttr[selected_rows[0]].vxlanID}
+						name={selectedVxlan.vxlanName}
+						data={selectedVxlan.peerIP}
+						vxlanID={selectedVxlan.vxlanID}
 						refetch={refetch}
 					/>
 				</LowerSection>

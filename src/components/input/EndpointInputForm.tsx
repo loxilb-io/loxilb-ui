@@ -2,6 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {Divider} from '@mui/material';
+import {isValidIPAddress} from 'common';
 import ParamBox from 'components/element/ParamBox';
 import DropDownSelectBox from 'components/element/DropDownSelectBox';
 import HorizontalStack from 'components/layout/HorizontalStack';
@@ -44,6 +45,10 @@ export default function EndpointInputForm({ initialData, isEdit = false, onChang
 
 		if (!formData.hostName?.trim()) {
 			newErrors.hostName = t('Host Name is required');
+		} else if (!isEdit && !isValidIPAddress(formData.hostName.trim())) {
+			// On create the Host Name is an IP field; a malformed address must
+			// block submit, not just show an inline error (F4/F13 family).
+			newErrors.hostName = t('Invalid IP address format.');
 		}
 
 		if (!formData.name?.trim()) {
@@ -52,7 +57,7 @@ export default function EndpointInputForm({ initialData, isEdit = false, onChang
 
 		setErrors(newErrors);
 		return Object.keys(newErrors).length === 0;
-	}, [formData]);
+	}, [formData, isEdit]);
 
 	// Update parent component when form changes
 	React.useEffect(() => {
@@ -118,9 +123,11 @@ export default function EndpointInputForm({ initialData, isEdit = false, onChang
 					{id: 1, name: 'PING', send_value: 'ping'},
 					{id: 2, name: 'TCP', send_value: 'tcp'},
 					{id: 3, name: 'UDP', send_value: 'udp'},
-					{id: 4, name: 'HTTP', send_value: 'http'},
-					{id: 5, name: 'HTTPS', send_value: 'https'},
-					{id: 6, name: 'NONE', send_value: 'none'},
+					{id: 4, name: 'SCTP', send_value: 'sctp'},
+					{id: 5, name: 'HTTP', send_value: 'http'},
+					{id: 6, name: 'HTTPS', send_value: 'https'},
+					{id: 7, name: 'TLS-HELLO', send_value: 'tls-hello'},
+					{id: 8, name: 'NONE', send_value: 'none'},
 				]}
 				/>
 			   <ParamBox

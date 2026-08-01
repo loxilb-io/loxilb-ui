@@ -9,8 +9,8 @@ import {IDataTableColumnDef} from 'types/global';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function EndpointTable(props: {data: IEndpointAttr; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onUpdate?: any; onRefresh?: any}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onUpdate, onRefresh} = props;
+export default function EndpointTable(props: {data: IEndpointAttr; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onUpdate?: any; onRefresh?: any; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onUpdate, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'hostName', header: 'Host Name'},
@@ -31,9 +31,9 @@ export default function EndpointTable(props: {data: IEndpointAttr; selected_rows
    const rows = data.Attr
 	   ? (() => {
 		   const sorted = [...data.Attr].sort((a, b) => getHashKey(a) - getHashKey(b));
-		   return sorted.map((item, index) => {
+		   return sorted.map(item => {
 			   return {
-				   id: index,
+				   id: getHashKey(item),
 				   name: item.name,
 				   hostName: item.hostName,
 				   inactiveReTries: item.inactiveReTries,
@@ -47,5 +47,5 @@ export default function EndpointTable(props: {data: IEndpointAttr; selected_rows
 	   })()
 	   : undefined;
 
-	return <DataTable name={'Endpoint'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onEdit={onUpdate} onRefresh={onRefresh} />;
+	return <DataTable name={'Endpoint'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onEdit={onUpdate} onRefresh={onRefresh} error={error} />;
 }

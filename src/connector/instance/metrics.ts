@@ -1,444 +1,101 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {
-	IEndpointDistributionTraffic,
-	IErrorCount,
-	IFirewallDropReport,
-	IHostCount,
-	ILBProcessedTraffic,
-	ILBRuleCount,
-	INetworkFlowStats,
-	INewFlowCount,
-	IProcessedTraffic,
-	IRequestCount,
-	IRequestCountPerClient,
-	IServiceDistTrafficData,
-	// Advanced Metrics Types
-	ILiveMetricsResponse,
-	ICacheStatsResponse,
-	IMetricHistoryResponse,
-	IMetricValueResponse,
-	IQueryResponse,
-	IHealthResponse,
-	IMetricsQueryParams,
-	IMetricsAggregateParams,
-	IUnifiedMetricsParams,
-	IHistoricalMetricsParams,
-	// Backup Management Types
-	ICreateBackupRequest,
-	IBackupResponse,
-	IBackupListResponse,
-	IRestoreBackupRequest,
-	IRestoreResponse,
-	IBackupStatsResponse,
-	// Compression Management Types
-	IRunCompressionRequest,
-	ICompressionResponse,
-	ICompressionStatsResponse,
-	ICompressionCandidatesResponse,
-	ICompressionEstimateResponse,
-	// Alert Management Types
-	ICreateAlertRuleRequest,
-	IUpdateAlertRuleRequest,
-	IAlertRuleResponse,
-	IAlertRulesListResponse,
-	IActiveAlertsResponse,
-	IAllAlertsResponse,
-	IAlertStatsResponse,
-	IResolveAlertRequest,
-	IResolveAlertResponse,
-	IAlertResponse,
-	IDeleteResponse,
-} from 'types/metrics';
+import {ILiveMetricsResponse} from 'types/metrics';
 import {IInstance} from 'types/oam';
-import {GET_INST, POST_INST, PUT_INST, DELETE_INST} from '../fetcher/fetcher_inst';
+import {GET_INST_TEXT} from '../fetcher/fetcher_inst';
 
 //---------------------------------------------------------
-// API Caller Functions
+// Live Metrics via Prometheus exposition (gateway: /netlox/v1/metrics)
 //---------------------------------------------------------
-export async function query_get_metrics_endpoint(instance: IInstance): Promise<IEndpointDistributionTraffic> {
-	const resp = await GET_INST(instance, `/api/v1/metrics/epdisttraffic`);
-	return (resp.data as IEndpointDistributionTraffic) ?? {};
-}
 
-export async function query_get_metrics_service_dist_traffic(instance: IInstance): Promise<IServiceDistTrafficData> {
-	const resp = await GET_INST(instance, `/api/v1/metrics/servicedisttraffic`);
-	return (resp.data as IServiceDistTrafficData) ?? {};
-}
-
-export async function query_get_metrics_traffic(instance: IInstance): Promise<IProcessedTraffic> {
-	const resp = await GET_INST(instance, `/api/v1/metrics/processedtraffic`);
-	return (resp.data as IProcessedTraffic) ?? {};
-}
-
-export async function query_get_metrics_error(instance: IInstance): Promise<IErrorCount> {
-	const resp = await GET_INST(instance, `/api/v1/metrics/errorcount`);
-	return (resp.data as IErrorCount) ?? {};
-}
-
-export async function query_get_metrics_fwdrops(instance: IInstance): Promise<IFirewallDropReport> {
-	const resp = await GET_INST(instance, `/api/v1/metrics/fwdrops`);
-	return (resp.data as IFirewallDropReport) ?? {};
-}
-
-export async function query_get_metrics_lbrules(instance: IInstance): Promise<ILBRuleCount> {
-	const resp = await GET_INST(instance, `/api/v1/metrics/lbrulecount`);
-	return (resp.data as ILBRuleCount) ?? {};
-}
-
-export async function query_get_metrics_netflow(instance: IInstance): Promise<INetworkFlowStats> {
-	const resp = await GET_INST(instance, `/api/v1/metrics/flowcount`);
-	return (resp.data as INetworkFlowStats) ?? {};
-}
-
-export async function query_get_metrics_req_count(instance: IInstance): Promise<IRequestCount> {
-	const resp = await GET_INST(instance, `/api/v1/metrics/requestcount`);
-	return (resp.data as IRequestCount) ?? {};
-}
-
-export async function query_get_metrics_req_count_per_client(instance: IInstance): Promise<IRequestCountPerClient> {
-	const resp = await GET_INST(instance, `/api/v1/metrics/reqcountperclient`);
-	return (resp.data as IRequestCountPerClient) ?? {};
-}
-
-export async function query_get_metrics_hostcount(instance: IInstance): Promise<IHostCount> {
-	const resp = await GET_INST(instance, `/api/v1/metrics/hostcount`);
-	return (resp.data as IHostCount) ?? {};
-}
-
-export async function query_get_metrics_newflowcount(instance: IInstance): Promise<INewFlowCount> {
-	const resp = await GET_INST(instance, `/api/v1/metrics/newflowcount`);
-	return (resp.data as INewFlowCount) ?? {};
-}
-
-export async function query_get_metrics_lbprocessedtraffic(instance: IInstance): Promise<ILBProcessedTraffic> {
-	const resp = await GET_INST(instance, `/api/v1/metrics/lbprocessedtraffic`);
-	return (resp.data as ILBProcessedTraffic) ?? {};
+// Parses Prometheus text format into a flat {metric_name: value} map.
+// Labeled samples of the same metric are summed, which matches how the
+// dashboard cards consume a flat metric snapshot.
+export function parse_prometheus_text(text: string): Record<string, number> {
+	const values: Record<string, number> = {};
+	for (const line of text.split('\n')) {
+		if (!line || line.startsWith('#')) continue;
+		const match = line.match(/^([a-zA-Z_:][a-zA-Z0-9_:]*)(\{[^}]*\})?\s+(-?[0-9.eE+]+)/);
+		if (!match) continue;
+		const value = Number(match[3]);
+		if (!Number.isFinite(value)) continue;
+		values[match[1]] = (values[match[1]] ?? 0) + value;
+	}
+	return values;
 }
 
 //---------------------------------------------------------
-// Advanced Metrics API Functions (New)
+// Metric-name migration shim (canonical = post-`loxilb_` names)
 //---------------------------------------------------------
+// The gateway's Prometheus surface was renamed ahead of public release: every
+// metric now carries the `loxilb_` namespace, unit suffixes were fixed, and a
+// handful of fabricated metrics were deleted (see the gateway team's
+// METRICS-MIGRATION-UI.md). The UI reads the raw scrape, so the dashboard cards
+// would break the day the gateway ships the rename.
+//
+// To decouple the UI from the rollout, the cards read a stable **canonical**
+// key set (the new `loxilb_*` names). `normalize_metric_names` resolves each
+// canonical key new-name-first and falls back to the legacy name, so the same
+// build works against both a pre-rename gateway (current testbed) and a
+// post-rename one — no flag-day coupling between UI and gateway deploys.
+//
+// `canonicalName: legacyName`
+const METRIC_ALIASES: Record<string, string> = {
+	// Connection tracking
+	loxilb_active_conntrack_entries: 'active_conntrack_count',
+	loxilb_active_flow_count_tcp: 'active_flow_count_tcp',
+	loxilb_active_flow_count_udp: 'active_flow_count_udp',
+	loxilb_active_flow_count_sctp: 'active_flow_count_sctp',
+	loxilb_new_flows: 'new_flow_count',
+	// Load balancer
+	loxilb_lb_rules: 'lb_rule_count',
+	// Endpoint health
+	loxilb_healthy_endpoints: 'healthy_endpoints_count',
+	loxilb_unhealthy_endpoints: 'unhealthy_endpoints_count',
+	// System utilization (unit suffix added on rename)
+	loxilb_system_cpu_utilization_percent: 'system_cpu_utilization',
+	loxilb_system_memory_utilization_percent: 'system_memory_utilization',
+	loxilb_system_disk_utilization_percent: 'system_disk_utilization',
+	// Cumulative traffic/error counters (drive the client-side rate cards, since
+	// the old pre-computed rps_* rate gauges were deleted as fabricated).
+	loxilb_processed_bytes_total: 'processed_bytes_total',
+	loxilb_processed_packets_total: 'processed_packets_total',
+	loxilb_errors_total: 'total_errors',
+};
 
-/**
- * Get real-time metrics from cache
- * @param instance - LoxiLB instance
- * @param phase - Metrics phase (1: Critical only, 2: Critical + Important)
- */
-export async function query_get_live_metrics(instance: IInstance, phase: 1 | 2 = 2): Promise<ILiveMetricsResponse> {
-	const resp = await GET_INST(instance, `/api/v1/metrics/live`, { phase });
-	return (resp.data as ILiveMetricsResponse) ?? {};
+// Populate each canonical key from its legacy name when the canonical one is
+// absent (pre-rename gateway). Mutates and returns the same map. Metrics with
+// no legacy equivalent (e.g. loxilb_conntrack_max_entries, added on rename) are
+// simply absent against an old gateway — the cards treat absence as N/A.
+export function normalize_metric_names(metrics: Record<string, number>): Record<string, number> {
+	for (const [canonical, legacy] of Object.entries(METRIC_ALIASES)) {
+		if (metrics[canonical] === undefined && metrics[legacy] !== undefined) {
+			metrics[canonical] = metrics[legacy];
+		}
+	}
+	return metrics;
 }
 
 /**
- * Get metrics cache statistics
- * @param instance - LoxiLB instance
+ * Get a real-time snapshot of all gateway metrics.
+ * The gateway exposes its metric registry in Prometheus text format. Names are
+ * normalized to the canonical `loxilb_*` surface (with legacy fallback) so the
+ * dashboard cards read a stable key set across the metric rename.
+ *
+ * When Prometheus collection is disabled the gateway returns HTTP 503 (enable
+ * via `POST /netlox/v1/config/metrics`); we surface that as an empty snapshot so
+ * the cards render zeros/placeholders rather than erroring.
  */
-export async function query_get_cache_stats(instance: IInstance): Promise<ICacheStatsResponse> {
-	const resp = await GET_INST(instance, `/api/v1/metrics/cache/stats`);
-	return (resp.data as ICacheStatsResponse) ?? {};
-}
-
-/**
- * Get historical data for a specific metric
- * @param instance - LoxiLB instance
- * @param metricName - Name of the metric
- * @param count - Number of historical entries (1-1000)
- */
-export async function query_get_metric_history(instance: IInstance, metricName: string, count: number = 10): Promise<IMetricHistoryResponse> {
-	const resp = await GET_INST(instance, `/api/v1/metrics/history/${metricName}`, { count });
-	return (resp.data as IMetricHistoryResponse) ?? {};
-}
-
-/**
- * Get latest value for a specific metric
- * @param instance - LoxiLB instance
- * @param metricName - Name of the metric
- */
-export async function query_get_metric_value(instance: IInstance, metricName: string): Promise<IMetricValueResponse> {
-	const resp = await GET_INST(instance, `/api/v1/metrics/value/${metricName}`);
-	return (resp.data as IMetricValueResponse) ?? {};
-}
-
-/**
- * Query historical metrics from database
- * @param instance - LoxiLB instance
- * @param params - Query parameters
- */
-export async function query_metrics_database(instance: IInstance, params: IMetricsQueryParams): Promise<IQueryResponse> {
-	const resp = await GET_INST(instance, `/api/v1/metrics/db/query`, params);
-	return (resp.data as IQueryResponse) ?? {};
-}
-
-/**
- * Execute aggregation queries on metrics
- * @param instance - LoxiLB instance
- * @param params - Aggregation parameters
- */
-export async function query_metrics_aggregate(instance: IInstance, params: IMetricsAggregateParams): Promise<IQueryResponse> {
-	const resp = await GET_INST(instance, `/api/v1/metrics/db/aggregate`, params);
-	return (resp.data as IQueryResponse) ?? {};
-}
-
-/**
- * Unified intelligent metrics query
- * @param instance - LoxiLB instance
- * @param params - Unified query parameters
- */
-export async function query_unified_metrics(instance: IInstance, params: IUnifiedMetricsParams): Promise<ILiveMetricsResponse | IQueryResponse> {
-	const resp = await GET_INST(instance, `/api/v1/metrics/query`, params);
-	return resp.data ?? {};
-}
-
-/**
- * Get historical metrics (database-only)
- * @param instance - LoxiLB instance
- * @param params - Historical query parameters
- */
-export async function query_historical_metrics(instance: IInstance, params: IHistoricalMetricsParams): Promise<IQueryResponse> {
-	const resp = await GET_INST(instance, `/api/v1/metrics/historical`, params);
-	return (resp.data as IQueryResponse) ?? {};
-}
-
-/**
- * Get advanced live metrics (cache-only)
- * @param instance - LoxiLB instance
- * @param phase - Metrics phase
- * @param metrics - Filter specific metrics
- */
-export async function query_advanced_live_metrics(instance: IInstance, phase: 1 | 2 = 2, metrics?: string): Promise<ILiveMetricsResponse> {
-	const params: any = { phase };
-	if (metrics) params.metrics = metrics;
-	
-	const resp = await GET_INST(instance, `/api/v1/metrics/live/advanced`, params);
-	return (resp.data as ILiveMetricsResponse) ?? {};
-}
-
-/**
- * Get metrics system health
- * @param instance - LoxiLB instance
- */
-export async function query_metrics_health(instance: IInstance): Promise<IHealthResponse> {
-	const resp = await GET_INST(instance, `/api/v1/metrics/health`);
-	return (resp.data as IHealthResponse) ?? {};
-}
-
-//---------------------------------------------------------
-// Backup Management API Functions
-//---------------------------------------------------------
-
-/**
- * Create a new backup
- * @param instance - LoxiLB instance
- * @param request - Backup creation parameters
- */
-export async function query_create_backup(instance: IInstance, request?: ICreateBackupRequest): Promise<IBackupResponse> {
-	const resp = await POST_INST(instance, `/backup/create`, request);
-	return (resp.data as IBackupResponse) ?? {};
-}
-
-/**
- * List all available backups
- * @param instance - LoxiLB instance
- */
-export async function query_list_backups(instance: IInstance): Promise<IBackupListResponse> {
-	const resp = await GET_INST(instance, `/backup/list`);
-	return (resp.data as IBackupListResponse) ?? {};
-}
-
-/**
- * Restore from backup
- * @param instance - LoxiLB instance
- * @param request - Backup restoration parameters
- */
-export async function query_restore_backup(instance: IInstance, request: IRestoreBackupRequest): Promise<IRestoreResponse> {
-	const resp = await POST_INST(instance, `/backup/restore`, request);
-	return (resp.data as IRestoreResponse) ?? {};
-}
-
-/**
- * Get backup system statistics
- * @param instance - LoxiLB instance
- */
-export async function query_backup_stats(instance: IInstance): Promise<IBackupStatsResponse> {
-	const resp = await GET_INST(instance, `/backup/stats`);
-	return (resp.data as IBackupStatsResponse) ?? {};
-}
-
-//---------------------------------------------------------
-// Compression Management API Functions
-//---------------------------------------------------------
-
-/**
- * Run data compression
- * @param instance - LoxiLB instance
- * @param request - Compression operation parameters
- */
-export async function query_run_compression(instance: IInstance, request?: IRunCompressionRequest): Promise<ICompressionResponse> {
-	const resp = await POST_INST(instance, `/compression/run`, request);
-	return (resp.data as ICompressionResponse) ?? {};
-}
-
-/**
- * Get compression system statistics
- * @param instance - LoxiLB instance
- */
-export async function query_compression_stats(instance: IInstance): Promise<ICompressionStatsResponse> {
-	const resp = await GET_INST(instance, `/compression/stats`);
-	return (resp.data as ICompressionStatsResponse) ?? {};
-}
-
-/**
- * Get compression candidates analysis
- * @param instance - LoxiLB instance
- */
-export async function query_compression_candidates(instance: IInstance): Promise<ICompressionCandidatesResponse> {
-	const resp = await GET_INST(instance, `/compression/candidates`);
-	return (resp.data as ICompressionCandidatesResponse) ?? {};
-}
-
-/**
- * Get compression savings estimate
- * @param instance - LoxiLB instance
- */
-export async function query_compression_estimate(instance: IInstance): Promise<ICompressionEstimateResponse> {
-	const resp = await GET_INST(instance, `/compression/estimate`);
-	return (resp.data as ICompressionEstimateResponse) ?? {};
-}
-
-//---------------------------------------------------------
-// Alert Management API Functions
-//---------------------------------------------------------
-
-/**
- * Create a new alert rule
- * @param instance - LoxiLB instance
- * @param request - Alert rule creation parameters
- */
-export async function query_create_alert_rule(instance: IInstance, request: ICreateAlertRuleRequest): Promise<IAlertRuleResponse> {
-	const resp = await POST_INST(instance, `/alerts/rules`, request);
-	return (resp.data as IAlertRuleResponse) ?? {};
-}
-
-/**
- * List alert rules
- * @param instance - LoxiLB instance
- * @param params - Optional filter parameters
- */
-export async function query_list_alert_rules(instance: IInstance, params?: {
-	enabled?: boolean;
-	metric_name?: string;
-	severity?: string;
-	limit?: number;
-	offset?: number;
-}): Promise<IAlertRulesListResponse> {
-	const resp = await GET_INST(instance, `/alerts/rules`, params);
-	return (resp.data as IAlertRulesListResponse) ?? {};
-}
-
-/**
- * Get specific alert rule
- * @param instance - LoxiLB instance
- * @param ruleId - The unique identifier of the alert rule
- */
-export async function query_get_alert_rule(instance: IInstance, ruleId: string): Promise<IAlertRuleResponse> {
-	const resp = await GET_INST(instance, `/alerts/rules/${ruleId}`);
-	return (resp.data as IAlertRuleResponse) ?? {};
-}
-
-/**
- * Update alert rule
- * @param instance - LoxiLB instance
- * @param ruleId - The unique identifier of the alert rule
- * @param request - Updated alert rule parameters
- */
-export async function query_update_alert_rule(instance: IInstance, ruleId: string, request: IUpdateAlertRuleRequest): Promise<IAlertRuleResponse> {
-	const resp = await PUT_INST(instance, `/alerts/rules/${ruleId}`, request);
-	return (resp.data as IAlertRuleResponse) ?? {};
-}
-
-/**
- * Delete alert rule
- * @param instance - LoxiLB instance
- * @param ruleId - The unique identifier of the alert rule
- */
-export async function query_delete_alert_rule(instance: IInstance, ruleId: string): Promise<IDeleteResponse> {
-	const resp = await DELETE_INST(instance, `/alerts/rules/${ruleId}`);
-	return (resp.data as IDeleteResponse) ?? {};
-}
-
-/**
- * Get all alerts
- * @param instance - LoxiLB instance
- * @param params - Optional filter parameters
- */
-export async function query_get_all_alerts(instance: IInstance, params?: {
-	status?: string;
-	severity?: string;
-	rule_name?: string;
-	metric_name?: string;
-	limit?: number;
-	offset?: number;
-}): Promise<IAllAlertsResponse> {
-	const resp = await GET_INST(instance, `/alerts/all`, params);
-	return (resp.data as IAllAlertsResponse) ?? {};
-}
-
-/**
- * Get active alerts
- * @param instance - LoxiLB instance
- */
-export async function query_get_active_alerts(instance: IInstance): Promise<IActiveAlertsResponse> {
-	const resp = await GET_INST(instance, `/alerts/active`);
-	return (resp.data as IActiveAlertsResponse) ?? {};
-}
-
-/**
- * Get alert system statistics
- * @param instance - LoxiLB instance
- */
-export async function query_alert_stats(instance: IInstance): Promise<IAlertStatsResponse> {
-	const resp = await GET_INST(instance, `/alerts/stats`);
-	return (resp.data as IAlertStatsResponse) ?? {};
-}
-
-/**
- * Manually resolve alerts
- * @param instance - LoxiLB instance
- * @param request - Alert resolution parameters
- */
-export async function query_resolve_alert(instance: IInstance, request: IResolveAlertRequest): Promise<IResolveAlertResponse> {
-	const resp = await POST_INST(instance, `/alerts/resolve`, request);
-	return (resp.data as IResolveAlertResponse) ?? {};
-}
-
-/**
- * Manually resolve alerts (PUT method)
- * @param instance - LoxiLB instance
- * @param request - Alert resolution parameters
- */
-export async function query_resolve_alert_put(instance: IInstance, request: IResolveAlertRequest): Promise<IResolveAlertResponse> {
-	const resp = await PUT_INST(instance, `/alerts/resolve`, request);
-	return (resp.data as IResolveAlertResponse) ?? {};
-}
-
-/**
- * Get specific alert by ID
- * @param instance - LoxiLB instance
- * @param alertId - The unique identifier of the alert
- */
-export async function query_get_alert(instance: IInstance, alertId: string): Promise<IAlertResponse> {
-	const resp = await GET_INST(instance, `/alerts/alert/${alertId}`);
-	return (resp.data as IAlertResponse) ?? {};
-}
-
-/**
- * Get alerts by metric name
- * @param instance - LoxiLB instance
- * @param metricName - The name of the metric
- */
-export async function query_get_alerts_by_metric(instance: IInstance, metricName: string): Promise<IAlertRulesListResponse> {
-	const resp = await GET_INST(instance, `/alerts/metric/${metricName}`);
-	return (resp.data as IAlertRulesListResponse) ?? {};
+export async function query_get_live_metrics(instance: IInstance, _phase: 1 | 2 = 2): Promise<ILiveMetricsResponse> {
+	const resp = await GET_INST_TEXT(instance, `/metrics`);
+	// 503 = collection disabled; any non-200 (401 on --userservice, etc.) is not
+	// a valid exposition — treat as an empty snapshot.
+	const metrics = resp.code === 200 && typeof resp.data === 'string' ? normalize_metric_names(parse_prometheus_text(resp.data)) : {};
+	return {
+		timestamp: Date.now(),
+		critical: metrics,
+		important: metrics,
+		total_metrics: Object.keys(metrics).length,
+	};
 }

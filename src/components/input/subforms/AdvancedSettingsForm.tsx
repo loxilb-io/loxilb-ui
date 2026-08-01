@@ -26,12 +26,33 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 	const path_match_mode_list: IEnumItem[] = path_match_modes;
 	const backend_protocol_list: IEnumItem[] = backend_protocols;
 
+	// Delta update — see LBInputForm.handleServiceArguments for why a full
+	// {...value, field} spread here corrupts sibling sub-forms' fields.
 	const handleChange = useCallback(
 		(field: keyof IServiceArguments) => (newValue: any) => {
-			onChange({...value, [field]: newValue});
+			onChange({[field]: newValue});
 		},
-		[value, onChange],
+		[onChange],
 	);
+
+	// mtls_frontend is a nested object — merge one sub-field at a time onto the
+	// prior mtls_frontend so sibling mTLS fields survive, then emit it as a delta
+	// on serviceArguments (same delta contract as handleChange).
+	const handleMtls = useCallback(
+		(field: keyof NonNullable<IServiceArguments['mtls_frontend']>) => (newValue: any) => {
+			onChange({mtls_frontend: {...(value?.mtls_frontend ?? {}), [field]: newValue}});
+		},
+		[onChange, value?.mtls_frontend],
+	);
+
+	// Frontend mTLS applies only to a TLS-terminating fullproxy rule
+	// (mode=fullproxy + security != Plain) — mirrors the gateway constraint.
+	const mtlsEnabled = value?.mode === 4 && !!value?.security;
+	const clientCertModeList: IEnumItem[] = [
+		{id: 0, name: 'disabled', send_value: 'disabled'},
+		{id: 1, name: 'optional', send_value: 'optional'},
+		{id: 2, name: 'required', send_value: 'required'},
+	];
 
 	return (
 	   <AccordionBox title={t('Advanced Settings (LB Algo, NAT modes, etc)')} tooltip={"Configure advanced settings for the load balancer, including algorithms and NAT modes."}>
@@ -46,18 +67,22 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 							   <ParamBox label={t('Inactive Timeout')} value={value?.inactiveTimeOut ?? 0} onChange={handleChange('inactiveTimeOut')} param_desc={params?.inactiveTimeOut} />
 					   </HorizontalStack>
 
-					   {/* <HorizontalStack>
-								<ParamBox label={t('Security')} value={value?.security ?? ''} onChange={handleChange('security')} param_desc={{...params?.security, enum: security_list}} disabled={value?.mode !== 4} />
-								<ParamBox label={t('Block')} value={value?.block ?? ''} onChange={handleChange('block')} param_desc={params?.block} />
-						</HorizontalStack> */}
+						<HorizontalStack>
+							<ParamBox label={t('Security')} value={value?.security ?? ''} onChange={handleChange('security')} param_desc={{...params?.security, enum: security_list, description: t('TLS termination mode — only applies to fullproxy (Plain, https, tls, e2ehttps).')}} disabled={value?.mode !== 4} />
+							<ParamBox label={t('Block')} value={value?.block ?? ''} onChange={handleChange('block')} param_desc={{...params?.block, type: 'integer', description: t('Firewall mark (fwmark) stamped on matched traffic; 0 = none.')}} />
+						</HorizontalStack>
 						<HorizontalStack>
 							<ParamBox label={t('Enable Monitor')} value={value.monitor} onChange={handleChange('monitor')} param_desc={params?.monitor} />
 							<ParamBox label={t('BGP')} value={value?.bgp ?? ''} onChange={handleChange('bgp')} param_desc={params?.bgp} />
 						</HorizontalStack>
-					   {/* <HorizontalStack>
-							   <ParamBox label={t('Host')} value={value?.host ?? ''} onChange={handleChange('host')} param_desc={params?.host} disabled={value?.mode !== 4} />
-							   <ParamBox label={t('Private IP')} value={value?.privateIP ?? ''} onChange={handleChange('privateIP')} param_desc={{...params?.privateIP, type: 'ipaddress'}} />
-					   </HorizontalStack> */}
+						<HorizontalStack>
+							<ParamBox label={t('SNAT')} value={value?.snat} onChange={handleChange('snat')} param_desc={{...params?.snat, type: 'boolean', description: t('Source-NAT client traffic to the LB address.')}} />
+							<ParamBox label={t('Egress')} value={value?.egress} onChange={handleChange('egress')} param_desc={{...params?.egress, type: 'boolean', description: t('Treat this as an egress (outbound) load-balancer rule.')}} />
+						</HorizontalStack>
+						<HorizontalStack>
+							<ParamBox label={t('Proxy Protocol v2')} value={value?.proxyprotocolv2} onChange={handleChange('proxyprotocolv2')} param_desc={{...params?.proxyprotocolv2, type: 'boolean', description: t('Prepend a PROXY protocol v2 header to backend connections.')}} />
+							<ParamBox label={t('Private IP')} value={value?.privateIP ?? ''} onChange={handleChange('privateIP')} param_desc={{...params?.privateIP, type: 'ipaddress', description: t('Private (NAT-translated) address the VIP maps to.')}} />
+						</HorizontalStack>
 
 					   {/* L7 Routing Configuration */}
 					   <HorizontalStack>
@@ -89,13 +114,40 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 								   param_desc={{...params?.backend_protocol, enum: backend_protocol_list, description: t('Backend protocol for ALPN negotiation (http1: HTTP/1.1 only, http2: HTTP/2 only, both: supports both)')}}
 								   disabled={value?.mode !== 4}
 							   />
-							   <ParamBox
-								   label={t('LLM Type')}
-								   value={value?.llm_type ?? ''}
-								   onChange={handleChange('llm_type')}
-								   param_desc={{...params?.llm_type, description: t('LLM catalog profile for GPU-aware load balancing (e.g., chat-interactive, rag-longcontext, batch-inference)')}}
-								   disabled={value?.mode !== 4}
-							   />
+					   </HorizontalStack>
+
+					   {/* Frontend mTLS — client-certificate verification (fullproxy + TLS only) */}
+					   <HorizontalStack>
+							<ParamBox
+								label={t('Client Cert Mode')}
+								value={value?.mtls_frontend?.client_cert_mode ?? ''}
+								onChange={handleMtls('client_cert_mode')}
+								param_desc={{type: 'string', enum: clientCertModeList, description: t('Frontend mTLS client-certificate requirement (disabled, optional, required). Requires fullproxy + a TLS security.')}}
+								disabled={!mtlsEnabled}
+							/>
+							<ParamBox
+								label={t('Client CA Path')}
+								value={value?.mtls_frontend?.client_ca_path ?? ''}
+								onChange={handleMtls('client_ca_path')}
+								param_desc={{type: 'string', description: t('Path to the client CA bundle (PEM) on the gateway used to verify client certificates.')}}
+								disabled={!mtlsEnabled}
+							/>
+					   </HorizontalStack>
+					   <HorizontalStack>
+							<ParamBox
+								label={t('Require Client CN')}
+								value={value?.mtls_frontend?.require_client_cn}
+								onChange={handleMtls('require_client_cn')}
+								param_desc={{type: 'boolean', description: t('Additionally require the client certificate CN to match a pattern.')}}
+								disabled={!mtlsEnabled}
+							/>
+							<ParamBox
+								label={t('Client CN Pattern')}
+								value={value?.mtls_frontend?.client_cn_pattern ?? ''}
+								onChange={handleMtls('client_cn_pattern')}
+								param_desc={{type: 'string', description: t('Required client CN pattern, wildcards supported (e.g. *.internal.corp.com). Used only when Require Client CN is on.')}}
+								disabled={!mtlsEnabled || !value?.mtls_frontend?.require_client_cn}
+							/>
 					   </HorizontalStack>
 			   </Stack>
 	   </AccordionBox>

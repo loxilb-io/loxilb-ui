@@ -29,6 +29,7 @@ import {
 	validate_password,
 	validate_username,
 } from 'connector/user';
+import {normalize_role} from 'hooks/query/oamHooks';
 import {IUser} from 'types/oam';
 import {IUserUpdateRequest} from 'types/user';
 import {IEnumItem} from 'types/global';
@@ -73,18 +74,21 @@ export default function UserEditForm(props: UserEditFormProps) {
 
 	const isCreateMode = mode === 'create';
 
-	// Initialize form data with user data (similar to LBInputForm pattern)
+	// Initialize form data with user data (similar to LBInputForm pattern).
+	// New users default to the least-privilege viewer role (RBAC Phase 3).
 	const [formData, setFormData] = useState<IUserUpdateRequest>({
 		username: user?.username || '',
 		email: user?.email || '',
 		password: '',
-		role: user?.role || 'user',
+		role: normalize_role(user?.role) || 'viewer',
 	});
 
-	// Role options for DropDownSelectBox
+	// Role options for DropDownSelectBox — the 3-role model (legacy 'user'
+	// still exists on old accounts and is treated as operator by the server)
 	const roleOptions: IEnumItem[] = [
-		{ id: 0, name: t('User'), send_value: 'user' },
-		{ id: 1, name: t('Admin'), send_value: 'admin' }
+		{ id: 0, name: t('Viewer (read-only)'), send_value: 'viewer' },
+		{ id: 1, name: t('Operator'), send_value: 'operator' },
+		{ id: 2, name: t('Admin'), send_value: 'admin' }
 	];
 
 	const [errors, setErrors] = useState<IFormErrors>({});

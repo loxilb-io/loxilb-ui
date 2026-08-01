@@ -2,6 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {Box, Stack} from '@mui/material';
+import {getStableHash} from 'common';
 import ChipField from 'components/element/ChipField';
 import SingleTextBox from 'components/element/SingleTextBox';
 import ValueBunch from 'components/element/ValueBunch';
@@ -11,10 +12,9 @@ import TabView from 'components/view/TabView';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePortAttr} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
-import {Fragment, useState} from 'react';
-import React from 'react';
+import {Fragment, useMemo, useState} from 'react';
 import {useSearchParams} from 'react-router-dom';
-import {IPortHardwareInfo, IPortInfo, IPortL2Info, IPortL3Info, IPortSoftwareInfo} from 'types/port';
+import {IPortAttribute, IPortHardwareInfo, IPortInfo, IPortL2Info, IPortL3Info, IPortSoftwareInfo} from 'types/port';
 
 //---------------------------------------------------------
 // Functional Component
@@ -101,96 +101,53 @@ export default function PortPage() {
 	const url_param = searchParams.get('port') ?? '';
 
    const [cur_tab_idx, set_cur_tab_idx] = useState(0);
-   const [selected_rows, set_selected_rows] = useState<number[]>([]);
-   // Track selected portNo for synchronization
-   const [selected_portNo, set_selected_portNo] = useState<number | null>(null);
+   const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds stable hash ids
 
    const tabs = [t('Software'), t('Hardware'), t('Layer 2'), t('Layer 3')];
 
-   // Hash function for port
-   const getHashKey = (item: any) => {
-	   const str = `${item.portNo || ''}_${item.portName || ''}`;
-	   let hash = 0;
-	   for (let i = 0; i < str.length; i++) {
-		   hash = ((hash << 5) - hash) + str.charCodeAt(i);
-		   hash |= 0;
-	   }
-	   return hash >>> 0;
-   };
-   // Sorted ports
-   const sortedAttr = port_info.portAttr ? [...port_info.portAttr].sort((a, b) => getHashKey(a) - getHashKey(b)) : [];
-   
-   // Map selected original indices to sorted indices for display
-   const selectedSortedIndices = React.useMemo(() => {
-	   if (!port_info.portAttr || selected_rows.length === 0) return [];
-	   
-	   return selected_rows
-		   .map(originalIdx => {
-			   const original = port_info.portAttr[originalIdx];
-			   return sortedAttr.findIndex(attr => getHashKey(attr) === getHashKey(original));
-		   })
-		   .filter(idx => idx !== -1);
-   }, [selected_rows, port_info.portAttr, sortedAttr]);
+   // Hash function for port (must match PortTable's getHashKey)
+   const getHashKey = (item: any) => getStableHash(`${item.portNo || ''}_${item.portName || ''}`);
 
-   // Find single selected index for detail panel
-   const selected_index = selectedSortedIndices.length === 1 ? selectedSortedIndices[0] : 
-	   (selected_portNo !== null ? sortedAttr.findIndex(attr => attr.portNo === selected_portNo) : -1);
+   // Resolve selected items by matching the stable hash
+   const selectedItems = useMemo(
+	   () => selected_rows.map(h => port_info.portAttr.find(a => getHashKey(a) === h)).filter((x): x is IPortAttribute => x != null),
+	   [selected_rows, port_info.portAttr],
+   );
+   const selectedItem: IPortAttribute | null = selectedItems.length === 1 ? selectedItems[0] : null;
 
-   // Selection handler: map sorted indices back to original indices
-   const handleChangeRows = (indices: number[]) => {
-	   if (!port_info.portAttr) {
-		   set_selected_rows([]);
-		   return;
-	   }
-
-	   if (indices.length === 0) {
-		   set_selected_rows([]);
-		   return;
-	   }
-
-	   // Map each sorted index back to original index
-	   const originalIndices = indices
-		   .map(sortedIdx => {
-			   const sortedItem = sortedAttr[sortedIdx];
-			   return port_info.portAttr.findIndex(attr => getHashKey(attr) === getHashKey(sortedItem));
-		   })
-		   .filter(idx => idx !== -1);
-
-	   set_selected_rows(originalIndices);
-   };
+   const handleChangeRows = (hashes: number[]) => set_selected_rows(hashes);
 
 	const handleRefresh = () => {
 		set_selected_rows([]);
-		set_selected_portNo(null);
 		refetch();
 	};
 
    return (
 	   <Fragment>
 		   <PortTable
-			   data={{portAttr: sortedAttr}}
-			   selected_rows={selectedSortedIndices}
+			   data={port_info}
+			   selected_rows={selected_rows}
 			   onChangeSelectedRows={handleChangeRows}
 		   onRefresh={handleRefresh}
 		   />
-		   {selected_index !== -1 && sortedAttr.length > selected_index && (
+		   {selectedItem && (
 			   <LowerSection>
-				   <TabView title={sortedAttr[selected_index].portName} sub_title={t('Details')} tabs={tabs} onChangeTab={set_cur_tab_idx}>
+				   <TabView title={selectedItem.portName} sub_title={t('Details')} tabs={tabs} onChangeTab={set_cur_tab_idx}>
 					   <Box id="sub-menu" marginTop="20px" padding="10px">
 						   <Box role="tabpanel" hidden={cur_tab_idx !== 0}>
-							   <SoftwarePanel sw_info={sortedAttr[selected_index].portSoftwareInformation} />
+							   <SoftwarePanel sw_info={selectedItem.portSoftwareInformation} />
 						   </Box>
 
 						   <Box role="tabpanel" hidden={cur_tab_idx !== 1}>
-							   <HardwarePanel hw_info={sortedAttr[selected_index].portHardwareInformation} />
+							   <HardwarePanel hw_info={selectedItem.portHardwareInformation} />
 						   </Box>
 
 						   <Box role="tabpanel" hidden={cur_tab_idx !== 2}>
-							   <Layer2Panel l2_info={sortedAttr[selected_index].portL2Information} />
+							   <Layer2Panel l2_info={selectedItem.portL2Information} />
 						   </Box>
 
 						   <Box role="tabpanel" hidden={cur_tab_idx !== 3}>
-							   <Layer3Panel l3_info={sortedAttr[selected_index].portL3Information} />
+							   <Layer3Panel l3_info={selectedItem.portL3Information} />
 						   </Box>
 					   </Box>
 				   </TabView>

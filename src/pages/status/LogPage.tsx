@@ -159,7 +159,7 @@ export default function LogPage() {
 				<Typography variant="h5">{t('Instance Logs')}</Typography>
 
 				<Box maxWidth="400px">
-					<ArchivedLogCard log_file_list={log_file_list} onRowClick={(row: any) => download_inst_log_archive(inst, row.filename)} />
+					<ArchivedLogCard log_file_list={log_file_list} onDownload={(filename, onProgress) => download_inst_log_archive(inst, filename, onProgress)} />
 				</Box>
 
 				<Divider />

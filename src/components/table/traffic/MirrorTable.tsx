@@ -10,8 +10,8 @@ import {IMirrorConfiguration} from 'types/mirror';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function MirrorTable(props: {data: IMirrorConfiguration; selected_rows: number[]; onChangeSelectedRows: any; onAdd?: any; onDelete?: any; onRefresh?: any}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh} = props;
+export default function MirrorTable(props: {data: IMirrorConfiguration; selected_rows: number[]; onChangeSelectedRows: any; onAdd?: any; onDelete?: any; onRefresh?: any; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
 	const type_name_set = mirrortypes.map(type => type.name);
 
 	const cols: IDataTableColumnDef[] = [
@@ -42,9 +42,9 @@ export default function MirrorTable(props: {data: IMirrorConfiguration; selected
    const rows = data.mirrAttr
 	   ? (() => {
 		   const sorted = [...data.mirrAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
-		   return sorted.map((item, index) => {
+		   return sorted.map(item => {
 			   return {
-				   id: index,
+				   id: getHashKey(item),
 				   mirrorIdent: item.mirrorIdent,
 				   type: item.mirrorInfo.type ? `${item.mirrorInfo.type}(${type_name_set[item.mirrorInfo.type]})` : '0',
 				   attachment: {
@@ -61,5 +61,5 @@ export default function MirrorTable(props: {data: IMirrorConfiguration; selected
 	   })()
 	   : undefined;
 
-	return <DataTable name={'Mirror'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onRefresh={onRefresh} hideCheckbox={true} />;
+	return <DataTable name={'Mirror'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onRefresh={onRefresh} error={error} hideCheckbox={true} />;
 }

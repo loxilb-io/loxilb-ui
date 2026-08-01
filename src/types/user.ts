@@ -1,7 +1,6 @@
 //---------------------------------------------------------
 // User Management Types
 //---------------------------------------------------------
-import { ILicenseStatusResponse } from './license';
 
 /**
  * User Creation Request (Traditional Signup)
@@ -10,7 +9,6 @@ export interface ICreateUserRequest {
 	username: string;
 	password: string;
 	email: string; // Make required based on new API
-	license_key?: string; // Optional license assignment
 	role?: string; // Optional role assignment
 }
 
@@ -30,9 +28,6 @@ export interface IUser {
 	password?: string; // Usually not returned in responses
 	email?: string;
 	created_at?: string;
-	oauth_id?: string;
-	oauth_provider?: string;
-	oauth_token?: string;
 }
 
 /**
@@ -44,7 +39,7 @@ export interface ILoginRequest {
 }
 
 /**
- * Login Response (Traditional and OAuth)
+ * Login Response
  */
 export interface ILoginResponse {
 	id: number;
@@ -52,54 +47,11 @@ export interface ILoginResponse {
 }
 
 /**
- * Enhanced Login Response (with license information)
+ * Login Response returned by login_user.
  */
 export interface IEnhancedLoginResponse {
 	id: number;
 	token: string;
-	has_valid_license: boolean;
-	license_expiring: boolean;
-	days_left: number;
-	license_status: ILicenseStatusResponse;
-}
-
-/**
- * Form Validation State
- */
-export interface IAuthFormErrors {
-	username?: string;
-	password?: string;
-	email?: string;
-	confirmPassword?: string;
-	general?: string;
-}
-
-/**
- * Auth Form Data
- */
-export interface IAuthFormData {
-	username: string;
-	password: string;
-	email: string;
-	confirmPassword: string;
-}
-
-/**
- * Auth Mode
- */
-export type AuthMode = 'login' | 'signup';
-
-/**
- * OAuth Provider
- */
-export type OAuthProvider = 'google' | 'github';
-
-/**
- * OAuth Loading State
- */
-export interface IOAuthLoadingState {
-	google: boolean;
-	github: boolean;
 }
 
 /**
