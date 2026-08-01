@@ -143,3 +143,8 @@ make-package.ps1
 
 # Local AI-assistant tooling (skills, per-session context)
 .claude/
+.mcp.json
+
+# Local REST-client scratch files (hold dev tokens; never commit)
+test.http
+*.http

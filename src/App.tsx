@@ -126,7 +126,7 @@ export default function App() {
 								<Route path="/login" element={<LoginPage />} />
 								<Route path="/setup" element={<SimpleSetupPage />} />
 
-								{/* Authenticated routes (RBAC Phase 3 route guard) */}
+								{/* Authenticated routes (RBAC route guard) */}
 								<Route element={<RequireAuth />}>
 								<Route path="/instance" element={<InstancePage />} />
 								<Route path="/system" element={<SystemPage />} />
