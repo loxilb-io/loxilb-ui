@@ -1,0 +1,22 @@
+# Gitleaks configuration for loxilb-ui.
+# Extends the default gitleaks ruleset and allowlists paths that are never part
+# of a published release (internal-only docs, local TLS material, example values).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Paths and values that are not shipped or are documentation placeholders"
+paths = [
+  '''docs/internal/.*''',       # internal design/migration notes — gitignored, not shipped
+  '''ssl/.*''',                 # local dev TLS material — gitignored, not shipped
+  '''\.codegraph/.*''',         # local AI-tooling index — gitignored, not shipped
+  '''\.serena/.*''',            # local AI-tooling cache — gitignored, not shipped
+  '''\.claude/.*''',            # local AI-tooling data — gitignored, not shipped
+  '''.*\.example$''',           # *.example templates hold placeholders, not secrets
+  '''package-lock\.json$''',    # npm dependency integrity hashes are not secrets
+]
+regexes = [
+  '''<[A-Za-z0-9_-]+>''',       # angle-bracket placeholders like <jwt-token>, <OAM_...>
+  '''CHANGE_ME''',
+  '''changeme-dev-only''',
+]
