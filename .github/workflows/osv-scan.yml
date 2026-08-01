@@ -1,0 +1,51 @@
+name: OSV Scan
+
+# Dependency vulnerability scan over the npm lockfile. This is the loxilb-ui
+# analogue of the Go govulncheck gate, adapted to the npm ecosystem.
+#
+# ADVISORY (non-blocking) BY DESIGN. Unlike govulncheck, osv-scanner has no
+# reachability analysis for npm — it flags every advisory that touches a locked
+# dependency, whether or not our code can actually reach the vulnerable path. If
+# this gate blocked, the whole transitive tree would routinely turn it falsely
+# red on un-actionable CVEs (a poor signal, mirroring why govulncheck only
+# blocks on reachable+fixable in the Go module). Remediation flows through
+# Dependabot (see .github/dependabot.yml), which opens PRs for fixable updates;
+# this scan is here to surface findings early. The step is continue-on-error so
+# it never blocks a PR.
+#
+# We install a pinned osv-scanner CLI release directly (same pattern as
+# gitleaks.yml) rather than google/osv-scanner-action, so the exact scanner
+# version is reproducible and SHA-independent of a third-party action.
+on:
+  pull_request:
+    branches: [main, 'feat/**']
+  schedule:
+    - cron: '0 3 * * 1'  # weekly, Monday 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  OSV_SCANNER_VERSION: 2.4.0
+
+jobs:
+  osv-scan:
+    name: osv-scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Install osv-scanner
+        run: |
+          curl -sSfL "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64" \
+            -o /tmp/osv-scanner
+          sudo install /tmp/osv-scanner /usr/local/bin/osv-scanner
+          osv-scanner --version
+
+      - name: Run osv-scanner (advisory)
+        # Advisory: never blocks the PR — surfacing is the point. Remediation is
+        # via Dependabot. exit code is swallowed so a finding does not fail CI.
+        run: osv-scanner scan -L package-lock.json
+        continue-on-error: true
