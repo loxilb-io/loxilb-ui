@@ -100,6 +100,11 @@ npm start
 
 ## 🐳 Docker Deployment
 
+> **Full deployment guide: [DEPLOYMENT.md](DEPLOYMENT.md).** It covers the
+> recommended **unified management-plane bundle** (Caddy edge + OAM + database in
+> one stack) alongside the standalone Docker and Kubernetes options summarized
+> below.
+
 ### Deployment Options
 
 #### 1. HTTPS with Self-Signed Certificates (Default)
@@ -125,8 +130,8 @@ mkdir -p ssl
 cp your-certificate.pem ssl/cert.pem
 cp your-private-key.pem ssl/key.pem
 
-# Deploy with commercial certificates
-docker-compose -f docker-compose.commercial.yml up --build -d
+# Deploy with your certificates (SSL_MODE=commercial)
+docker-compose -f docker-compose.https.yml up --build -d
 ```
 - **Access**: https://localhost:3443
 - **Features**: Production-grade SSL certificates
@@ -224,9 +229,9 @@ kubectl apply -k k8s/
    chmod 600 ssl/key.pem
    ```
 
-2. **Deploy with commercial certs**:
+2. **Deploy with your certs** (`SSL_MODE=commercial`):
    ```bash
-   docker-compose -f docker-compose.commercial.yml up --build -d
+   docker-compose -f docker-compose.https.yml up --build -d
    ```
 
 ### Security Features
@@ -503,6 +508,7 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 ## 📚 Additional Resources
 
 ### Documentation
+- [Deployment Guide](DEPLOYMENT.md) — Docker, Kubernetes, and the unified management-plane bundle
 - [Contributing Guide](CONTRIBUTING.md) — how to build, test, and submit changes (incl. DCO sign-off)
 - [Governance](GOVERNANCE.md) — project governance and decision-making
 - [Maintainers](MAINTAINERS.md) — current maintainers
