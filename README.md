@@ -1,7 +1,7 @@
 # LoxiLB UI Dashboard
 
 [![Version](https://img.shields.io/badge/version-0.9.0-blue.svg)](package.json)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](#license)
+[![License](https://img.shields.io/badge/license-Apache_2.0-green.svg)](#license)
 [![Docker](https://img.shields.io/badge/docker-supported-blue.svg)](#docker-deployment)
 [![Kubernetes](https://img.shields.io/badge/kubernetes-ready-green.svg)](#kubernetes-deployment)
 
@@ -446,6 +446,13 @@ curl -k https://localhost:3443/health
 
 ## 🤝 Contributing
 
+All changes land through pull requests — direct pushes to `main` are disabled, every PR needs an
+approving review from a maintainer (see [.github/CODEOWNERS](.github/CODEOWNERS)) and green CI, and
+commits must be [DCO](https://developercertificate.org/)-signed (`git commit -s`). The full policy —
+development setup, coding conventions, and the requirements to merge — is in
+**[CONTRIBUTING.md](CONTRIBUTING.md)**; project roles and decision-making are in
+**[GOVERNANCE.md](GOVERNANCE.md)**.
+
 ### Development Workflow
 1. **Fork** the repository
 2. **Create feature branch**: `git checkout -b feature/description`
@@ -491,12 +498,16 @@ npm run e2e
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
 ## 📚 Additional Resources
 
 ### Documentation
-- [Contributing Guide](CONTRIBUTING.md) — how to contribute
+- [Contributing Guide](CONTRIBUTING.md) — how to build, test, and submit changes (incl. DCO sign-off)
+- [Governance](GOVERNANCE.md) — project governance and decision-making
+- [Maintainers](MAINTAINERS.md) — current maintainers
+- [Code of Conduct](CODE_OF_CONDUCT.md) — community standards
+- [Changelog](CHANGELOG.md) — notable changes per release
 - [Security Policy](SECURITY.md) — reporting vulnerabilities
 - [E2E Test Guide](docs/E2E_RUNNING.md) — running the Playwright browser suite
 - [API Tooling](docs/API_TOOLING.md) — spec vendoring, type generation, mapping guard

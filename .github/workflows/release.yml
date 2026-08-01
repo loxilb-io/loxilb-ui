@@ -1,0 +1,181 @@
+name: Release
+
+# Tag-triggered release (push a tag like v1.2.3, or v1.2.3-rc.1 for a
+# prerelease). Produces:
+#   - a static SPA bundle tarball (the built CRA `build/` dir) + SHA256SUMS
+#     attached to a GitHub Release
+#   - a container image pushed to GHCR (ghcr.io/<owner>/loxilb-ui) — the
+#     multi-stage Node build served by nginx — which is Cosign-signed
+#     (keyless/OIDC), carries a SLSA build-provenance attestation, and an
+#     SPDX SBOM attestation.
+# A Trivy CRITICAL+fixable scan gates the image BEFORE it is pushed/published.
+# `-rc.` / `-alpha.` / `-beta.` tags publish as prereleases and do NOT move
+# the `:latest` image tag.
+#
+# AUTHORIZATION: this job targets the `release` Environment, so publishing
+# waits for a required-reviewer approval even after a tag is pushed — a tag
+# alone cannot ship a release.
+#
+# NOTE: pushing to GHCR requires the org to grant this repo `packages: write`.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag to release (e.g. v1.2.3 or v1.2.3-rc.1)'
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Gated deployment target: publishing requires an approval from a
+    # required reviewer configured on the `release` environment.
+    environment: release
+    permissions:
+      contents: write # create the GitHub Release
+      packages: write # push the image to GHCR
+      id-token: write # keyless Cosign signing + attestation OIDC
+      attestations: write # record build-provenance / SBOM attestations
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Resolve version
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.tag }}"
+          else
+            VERSION="${GITHUB_REF_NAME}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          # Prerelease when the tag carries an -rc./-alpha./-beta. suffix.
+          if echo "$VERSION" | grep -Eq -- '-(rc|alpha|beta)\.'; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compute image tags
+        id: tags
+        run: |
+          IMAGE="${REGISTRY}/${IMAGE_NAME}"
+          VERSION="${{ steps.ver.outputs.version }}"
+          TAGS="${IMAGE}:${VERSION}"
+          # Only a final (non-prerelease) tag moves :latest.
+          if [ "${{ steps.ver.outputs.prerelease }}" = "false" ]; then
+            TAGS="${TAGS}"$'\n'"${IMAGE}:latest"
+          fi
+          {
+            echo 'list<<EOF'
+            echo "${TAGS}"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Build static SPA bundle
+        run: |
+          npm ci
+          npm run build
+
+      - name: Package tarball + checksums
+        run: |
+          VERSION="${{ steps.ver.outputs.version }}"
+          DIST="loxilb-ui_${VERSION}_static"
+          mkdir -p "dist/${DIST}"
+          cp -R build/. "dist/${DIST}/"
+          cp LICENSE README.md "dist/${DIST}/" 2>/dev/null || true
+          tar -C dist -czf "dist/${DIST}.tar.gz" "${DIST}"
+          ( cd dist && sha256sum "${DIST}.tar.gz" > SHA256SUMS )
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image (load for scan)
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.ver.outputs.version }}
+
+      - name: Trivy gate (CRITICAL + fixable) — blocks publish
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.ver.outputs.version }}
+          format: table
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: Push image
+        id: push
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.tags.outputs.list }}
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
+
+      - name: Sign image (keyless)
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: cosign sign --yes "${REGISTRY}/${IMAGE_NAME}@${DIGEST}"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+      - name: Generate SBOM (SPDX)
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.push.outputs.digest }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Attest SBOM
+        uses: actions/attest-sbom@bd218ad0dbcb3e146bd073d1d9c6d78e08aa8a0b # v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          sbom-path: sbom.spdx.json
+          push-to-registry: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          tag_name: ${{ steps.ver.outputs.version }}
+          prerelease: ${{ steps.ver.outputs.prerelease }}
+          generate_release_notes: true
+          files: |
+            dist/*.tar.gz
+            dist/SHA256SUMS
+            sbom.spdx.json
