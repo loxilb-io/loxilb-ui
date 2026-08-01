@@ -3,7 +3,7 @@
 	"version": "0.9.0",
 	"private": true,
 	"description": "Web dashboard for managing LoxiLB load balancers and network services",
-	"license": "MIT",
+	"license": "Apache-2.0",
 	"author": "NetLOX Inc.",
 	"repository": {
 		"type": "git",

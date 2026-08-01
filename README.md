@@ -1,7 +1,7 @@
 # LoxiLB UI Dashboard
 
 [![Version](https://img.shields.io/badge/version-0.9.0-blue.svg)](package.json)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](#license)
+[![License](https://img.shields.io/badge/license-Apache_2.0-green.svg)](#license)
 [![Docker](https://img.shields.io/badge/docker-supported-blue.svg)](#docker-deployment)
 [![Kubernetes](https://img.shields.io/badge/kubernetes-ready-green.svg)](#kubernetes-deployment)
 
@@ -498,7 +498,7 @@ npm run e2e
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
 ## 📚 Additional Resources
 

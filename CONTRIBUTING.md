@@ -125,4 +125,4 @@ Do **not** open public issues for security vulnerabilities. Follow the process i
 ## License
 
 By contributing, you agree that your contributions are licensed under the
-[MIT License](LICENSE).
+[Apache License 2.0](LICENSE).
