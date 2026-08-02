@@ -12,7 +12,7 @@
 import {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {activeInstance, gw, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
-import {confirmDelete, dialog, dialogButton, dialogTitle, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
+import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
 import {refreshUntilGone, refreshUntilRow, rowByText, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 
 const LB_PATH = '/config/loadbalancer';
@@ -424,7 +424,7 @@ test.describe('LB Rule page CRUD', () => {
 		await refreshUntilRow(page, 'e2e-lb-multiep');
 	});
 
-	test('V-port / V-ip: invalid port, inverted range and bad IP all block submit (F4/F13)', async ({page}) => {
+	test('V-port / V-ip: invalid port, inverted range and bad IP all block submit', async ({page}) => {
 		await openAddDialog(page);
 		const createBtn = dialogButton(page, 'Create');
 
@@ -444,6 +444,28 @@ test.describe('LB Rule page CRUD', () => {
 		expect(await isEventuallyDisabled(createBtn), 'bad IP must block').toBe(true);
 
 		await page.mouse.move(0, 0); // dismiss any sticky accordion tooltip
+		await dialogButton(page, 'Cancel').click();
+	});
+
+	test('V-l7-proto: UDP + fullproxy blocks submit; switching to TCP clears it', async ({page}) => {
+		// The gateway accepts a UDP fullproxy rule and programs it into the
+		// TCP-only L7 sockproxy, where it dead-drops. The form blocks the combo.
+		await openAddDialog(page);
+		const createBtn = dialogButton(page, 'Create');
+		await fillBasics(page, 'e2e-lb-l7proto', '203.0.113.62', '8081', {protocolOption: 'UDP'});
+		await expandSection(page, ADVANCED);
+		await selectOption(page, 'Mode', 'fullproxy');
+		await addEndpoint(page, 0, '198.51.100.62', '8081');
+
+		await expect(dialog(page).getByText(/require the TCP protocol/i)).toBeVisible();
+		expect(await isEventuallyDisabled(createBtn), 'udp+fullproxy must block submit').toBe(true);
+
+		// Positive: switching the protocol back to TCP clears the block.
+		await expandSection(page, BASIC);
+		await selectOption(page, 'Protocol', 'TCP');
+		await expect(dialog(page).getByText(/require the TCP protocol/i)).toHaveCount(0);
+
+		await page.mouse.move(0, 0);
 		await dialogButton(page, 'Cancel').click();
 	});
 
@@ -506,7 +528,7 @@ test.describe('LB Rule page CRUD', () => {
 		await dialogButton(page, 'OK').click();
 	});
 
-	test('D-multi: bulk delete fires one DELETE per selected rule (F16 sibling)', async ({page}) => {
+	test('D-multi: bulk delete fires one DELETE per selected rule', async ({page}) => {
 		await apiCreateLb({name: 'e2e-lb-d1', externalIP: '203.0.113.31', port: 8081, endpointIP: '198.51.100.31'});
 		await apiCreateLb({name: 'e2e-lb-d2', externalIP: '203.0.113.32', port: 8081, endpointIP: '198.51.100.32'});
 		await apiCreateLb({name: 'e2e-lb-d3', externalIP: '203.0.113.33', port: 8081, endpointIP: '198.51.100.33'});
