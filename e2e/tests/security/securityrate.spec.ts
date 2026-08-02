@@ -133,7 +133,7 @@ test.describe('Security Rate Limiting page (edit-only)', () => {
 		// concurrentLimit was removed from the gateway's SecurityRateConfig in the
 		// wrap-up (never stored/returned), so the UI no longer sends it.
 		expect(body.concurrentLimit, 'concurrentLimit is no longer part of the config').toBeUndefined();
-		// F24-family regression: validation flag must not leak into the payload.
+		// The form's client-side validation flag must not leak into the payload.
 		expect(body.isValid, 'isValid must not leak into the securityrate payload').toBeUndefined();
 
 		const resp = await req.response();
@@ -153,6 +153,43 @@ test.describe('Security Rate Limiting page (edit-only)', () => {
 		// cookieThreshold ≥ synThreshold → invalid.
 		await field(page, 'Cookie Threshold').fill('300000');
 		expect(await isEventuallyDisabled(configureBtn), 'cookie ≥ syn must block').toBe(true);
+
+		await dialogButton(page, 'Cancel').click();
+	});
+
+	test('V-zero-threshold: an enabled protection with a zero threshold blocks submit', async ({page}) => {
+		await openEditDialog(page);
+		const configureBtn = dialogButton(page, 'Configure');
+		await expect(configureBtn).toBeEnabled();
+
+		// Connection-rate protection is on in the baseline; zeroing its
+		// threshold must block (the gateway rejects it with a 400).
+		await field(page, 'Rate Per Second').fill('0');
+		expect(await isEventuallyDisabled(configureBtn), 'zero ratePerSec must block').toBe(true);
+		await expect(dialog(page).getByText(/threshold greater than zero/)).toBeVisible();
+
+		// Restoring the threshold unblocks.
+		await field(page, 'Rate Per Second').fill('100000');
+		await expect(configureBtn).toBeEnabled();
+
+		await dialogButton(page, 'Cancel').click();
+	});
+
+	test('V-all-disabled: switching every protection off blocks submit (Disable is the honest path)', async ({page}) => {
+		await openEditDialog(page);
+		const configureBtn = dialogButton(page, 'Configure');
+		await expect(configureBtn).toBeEnabled();
+
+		// Baseline has SYN + conn-rate on and UDP off; turning the two off
+		// leaves no protection enabled — the gateway rejects that config.
+		await dialog(page).getByRole('checkbox', {name: 'Enable SYN Flood Protection'}).click();
+		await dialog(page).getByRole('checkbox', {name: 'Enable Connection Rate Limiting'}).click();
+		expect(await isEventuallyDisabled(configureBtn), 'all protections off must block').toBe(true);
+		await expect(dialog(page).getByText(/At least one protection/)).toBeVisible();
+
+		// Re-enabling any protection unblocks.
+		await dialog(page).getByRole('checkbox', {name: 'Enable SYN Flood Protection'}).click();
+		await expect(configureBtn).toBeEnabled();
 
 		await dialogButton(page, 'Cancel').click();
 	});

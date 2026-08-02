@@ -94,8 +94,8 @@ test.describe('IP Filter page CRUD', () => {
 		expect(body.filterType).toBe('whitelist');
 		expect(body.cidr).toBe('203.0.113.0/28');
 		expect(body.action).toBe('allow');
-		// F24-family regression: the form's onChange validation flag must never
-		// ride along into the POST payload.
+		// The form's onChange validation flag must never ride along into the
+		// POST payload.
 		expect(body.isValid, 'isValid must not leak into the ipfilter payload').toBeUndefined();
 
 		const resp = await req.response();
@@ -135,6 +135,25 @@ test.describe('IP Filter page CRUD', () => {
 		expect(resp?.status(), 'gateway accepted ipfilter create').toBeLessThan(300);
 		await expectSuccessAndDismiss(page);
 		await refreshUntilRow(page, '203.0.113.16/28');
+	});
+
+	test('V-bare-ip: a bare host IP is normalized to /32 in the POST and accepted', async ({page}) => {
+		await openAddDialog(page);
+		// The gateway only parses CIDR notation — a bare IP must reach it as a
+		// single-host prefix, not verbatim (which it rejects with a 400).
+		await field(page, 'CIDR').fill('203.0.113.55');
+
+		const [req] = await Promise.all([
+			page.waitForRequest(r => r.method() === 'POST' && r.url().includes(IPF_PATH)),
+			dialogButton(page, 'Add').click(),
+		]);
+		const body = req.postDataJSON();
+		expect(body.cidr, 'bare IP normalized to a host prefix').toBe('203.0.113.55/32');
+
+		const resp = await req.response();
+		expect(resp?.status(), 'gateway accepted the normalized rule').toBeLessThan(300);
+		await expectSuccessAndDismiss(page);
+		await refreshUntilRow(page, '203.0.113.55/32');
 	});
 
 	test('C-full: priority lands in the POST body; zone stays 0 (gateway XDP ipfilter is zone-less)', async ({page}) => {
@@ -186,7 +205,29 @@ test.describe('IP Filter page CRUD', () => {
 		await dialogButton(page, 'Cancel').click();
 	});
 
-	test('D-multi (F16 sibling): bulk delete fires one DELETE per selected rule', async ({page}) => {
+	test('V-pairing: whitelist+drop and blacklist+allow are blocked (gateway couples type↔action)', async ({page}) => {
+		await openAddDialog(page);
+		const addBtn = dialogButton(page, 'Add');
+		await field(page, 'CIDR').fill('203.0.113.208/28');
+		// whitelist defaults to allow → valid baseline.
+		await expect(addBtn).toBeEnabled();
+
+		// Force the invalid whitelist+drop pairing.
+		await selectOption(page, 'Action', 'drop');
+		expect(await isEventuallyDisabled(addBtn), 'whitelist+drop must block').toBe(true);
+
+		// Switching to blacklist auto-corrects action to drop → valid again.
+		await selectOption(page, 'Filter Type', 'blacklist');
+		await expect(addBtn).toBeEnabled();
+
+		// Force the invalid blacklist+allow pairing.
+		await selectOption(page, 'Action', 'allow');
+		expect(await isEventuallyDisabled(addBtn), 'blacklist+allow must block').toBe(true);
+
+		await dialogButton(page, 'Cancel').click();
+	});
+
+	test('D-multi: bulk delete fires one DELETE per selected rule', async ({page}) => {
 		await apiCreateRule({filterType: 'whitelist', cidr: '203.0.113.64/28', action: 'allow'});
 		await apiCreateRule({filterType: 'blacklist', cidr: '203.0.113.80/28', action: 'drop'});
 		await apiCreateRule({filterType: 'whitelist', cidr: '203.0.113.96/28', action: 'allow'});
