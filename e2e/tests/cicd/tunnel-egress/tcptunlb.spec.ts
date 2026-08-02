@@ -5,7 +5,7 @@
 // The "tunnel" here is NETWORK TOPOLOGY (the backends are reached over an
 // out-of-band tunnel interface), NOT an LB config flag — the loxicmd line
 // carries no tunnel option, and neither the gateway LB model nor the cicd
-// recipe expresses one. So (like the CG-2 gRPC dissolution) the CG-5
+// recipe expresses one. So (like the gRPC-value dissolution) the
 // "tunnel-endpoint control" gap dissolves against the source of truth: the
 // LB rule itself is a plain dnat rule, already fully UI-expressible. The
 // public VIP/backends are re-keyed onto documentation ranges.

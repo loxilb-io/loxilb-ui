@@ -17,7 +17,7 @@ import {cleanupLbByName, LbRecipe, runLbScenario} from '../_recipes';
 // once — proves the re-enabled controls each reach the POST body (UI wiring)
 // and don't clobber a sibling field.
 //
-// FINDING (plan §16, F-CICD-2): the UI sends `snat` and `privateIP` correctly
+// FINDING: the UI sends `snat` and `privateIP` correctly
 // (verified by the POST-body assertion in runLbScenario), but the gateway
 // accepts the create and then does NOT echo them on read-back for a fullnat
 // rule — while `block`/`proxyprotocolv2`/`mode` DO persist. The GET schema

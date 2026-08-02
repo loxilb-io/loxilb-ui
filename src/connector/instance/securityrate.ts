@@ -13,7 +13,7 @@ import type {GwGetResp} from 'api';
 
 /**
  * Get unified security rate limiting configuration and statistics
- * Includes SYN flood (P0-5), connection rate limiting (P0-6), and UDP flood (P0-7)
+ * Includes SYN flood, connection rate limiting, and UDP flood protection
  */
 export async function query_get_securityrate_all(instance: IInstance): Promise<ISecurityRateEntry[]> {
 	const resp = await GET_INST<GwGetResp<'/config/securityrate/all'>>(instance, `/config/securityrate/all`);

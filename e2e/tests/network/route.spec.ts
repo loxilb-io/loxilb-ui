@@ -134,7 +134,7 @@ test.describe('Route page CRUD', () => {
 		await dialogButton(page, 'Cancel').click();
 	});
 
-	test('D-multi (F16 sibling): bulk delete fires one DELETE per selected route', async ({page}) => {
+	test('D-multi: bulk delete fires one DELETE per selected route', async ({page}) => {
 		await apiCreateRoute('203.0.113.128/26');
 		await apiCreateRoute('203.0.113.192/26');
 		await apiCreateRoute('198.51.100.0/26');

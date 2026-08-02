@@ -8,7 +8,7 @@
 // P4 [FEATURE]: the LB dialog now exposes a frontend-mTLS sub-form
 // (AdvancedSettingsForm), gated on mode=fullproxy + a TLS security. The gateway
 // already supported mtls_frontend end-to-end (swagger + model + data plane) —
-// this was a UI gap, so CG-1 is UI-only (no gateway change). The connector
+// this was a UI-only gap (no gateway change needed). The connector
 // drops mtls_frontend when client_cert_mode is 'disabled' so non-mTLS rules stay
 // clean (the dropdown auto-defaults to 'disabled').
 //---------------------------------------------------------

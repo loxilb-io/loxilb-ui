@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // cicd source: cicd/sctptunlb — SCTP LB whose backends sit across a tunnel.
 //   loxicmd create lb 88.88.88.88 --sctp=2020:8080 --endpoints=25.25.25.1:1,…
-// Same tunnel-is-topology dissolution as tcptunlb (CG-5): a plain dnat SCTP
+// Same tunnel-is-topology dissolution as tcptunlb: a plain dnat SCTP
 // LB rule, re-keyed onto documentation ranges.
 //---------------------------------------------------------
 import {test} from '../../../fixtures';

@@ -4,7 +4,7 @@
 // (/config/securityrate: synEnabled/synThreshold/cookieThreshold). The old
 // /config/synflood endpoint and its types no longer exist.
 //---------------------------------------------------------
-// Unified Security Rate Limiting Types (P0-5 + P0-6 + P0-7)
+// Unified Security Rate Limiting Types (SYN flood + connection rate + UDP flood)
 //---------------------------------------------------------
 export interface ISecurityRateConfigMod {
 	synEnabled: boolean;

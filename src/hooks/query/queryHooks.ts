@@ -34,8 +34,8 @@ export function useMetadata(instance: IInstance | null, api_endpoint: string) {
 	// Both returns MUST be referentially stable across renders:
 	// useFormWithParams feeds them into the useMemo that gates its
 	// setForm() default-reset effect — an unstable identity there re-runs
-	// that effect on every render and loops the whole form (F14 class;
-	// surfaced on the Firewall add dialog by the E2E CRUD suite).
+	// that effect on every render and loops the whole form (the render-loop
+	// class surfaced on the Firewall add dialog by the E2E CRUD suite).
 	const param_fields = useMemo<Record<string, IPostParamFieldDesc> | undefined>(() => data?.[api_endpoint]?.fields, [data, api_endpoint]);
 
 	const get_param = useCallback(

@@ -14,10 +14,9 @@
 //   • the BGP neighbor page reproduces the cluster recipe (peer + remoteAs
 //     64512) in the POST body — UI→gateway fidelity — bounded by the 403 the
 //     disabled testbed returns (documented, not hidden);
-//   • the F-CICD-4 sibling gate holds: a malformed peer IP can't submit;
+//   • the IP-validity gate holds: a malformed peer IP can't submit;
 //   • the BGP global page renders (assert-only; a bad global config is the one
 //     mutation that could disturb testbed routing — never sent).
-// (plan §7 Group F, CG-6 note.)
 //---------------------------------------------------------
 import {Page} from '@playwright/test';
 import {ConsoleGuard, expect, test} from '../../../fixtures';
@@ -83,7 +82,7 @@ test.describe('cicd/cluster1 — BGP config slice (--bgp LB + neighbor recipe; B
 		await runLbScenario(page, instName, lb);
 	});
 
-	test('neighbor page renders and degrades on the disabled-BGP 403 (F15 guard)', async ({page, consoleGuard}) => {
+	test('neighbor page renders and degrades on the disabled-BGP 403 (no-redirect guard)', async ({page, consoleGuard}) => {
 		allowBgpDisabled(consoleGuard);
 		await gotoBgp(page, 'neighbor');
 		await expect(page.locator('.MuiDataGrid-root').first()).toBeVisible({timeout: 20_000});
@@ -99,7 +98,7 @@ test.describe('cicd/cluster1 — BGP config slice (--bgp LB + neighbor recipe; B
 		await expect(dialog(page).getByText('BGP Neighbor')).toBeVisible();
 
 		const add = dialogButton(page, 'Add');
-		// Gated on a valid peer IP (F-CICD-4 sibling) — empty form can't submit.
+		// Gated on a valid peer IP — empty form can't submit.
 		expect(await isEventuallyDisabled(add), 'empty peer IP blocks Add').toBe(true);
 
 		await field(page, 'IP Address').fill(PEER_IP);
@@ -122,7 +121,7 @@ test.describe('cicd/cluster1 — BGP config slice (--bgp LB + neighbor recipe; B
 		await expectErrorAndDismiss(page);
 	});
 
-	test('F-CICD-4 gate: a malformed peer IP cannot be submitted', async ({page, consoleGuard}) => {
+	test('V-peer-ip: a malformed peer IP cannot be submitted', async ({page, consoleGuard}) => {
 		allowBgpDisabled(consoleGuard);
 		await gotoBgp(page, 'neighbor');
 		await expect(toolbarButton(page, 'Add')).toBeVisible({timeout: 20_000});

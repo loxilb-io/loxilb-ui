@@ -6,7 +6,7 @@
 // from its name (http2 backend + path-prefix under fullproxy), combining the
 // proven `http2ep` (backend_protocol=http2) and `*-prefix` (path_prefix +
 // path_match_mode=prefix) surfaces. Since gRPC = HTTP/2 at the config layer
-// (see e2ehttpsproxy-grpc, CG-2), no distinct grpc value is involved. Validates
+// (see e2ehttpsproxy-grpc), no distinct grpc value is involved. Validates
 // the http2 + prefix combination round-trips via REST.
 //---------------------------------------------------------
 import {test} from '../../../fixtures';
