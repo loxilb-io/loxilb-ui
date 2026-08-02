@@ -91,7 +91,7 @@ test.describe('Device Neighbor page CRUD', () => {
 		await refreshUntilGone(page, '203.0.113.40');
 	});
 
-	test('V-mac: empty IP and malformed MAC block submit', async ({page}) => {
+	test('V-mac: empty IP, empty device and malformed MAC all block submit', async ({page}) => {
 		await openAddDialog(page);
 		const addBtn = dialogButton(page, 'Add');
 
@@ -99,8 +99,12 @@ test.describe('Device Neighbor page CRUD', () => {
 		expect(await isEventuallyDisabled(addBtn), 'empty IP must block').toBe(true);
 
 		await field(page, 'IP Address').fill('203.0.113.41');
-		await selectOption(page, 'Device Name', DEV);
 		await field(page, 'MAC Address').fill(MAC);
+		// Valid IP + MAC but no device selected: the gateway resolves the
+		// neighbor's link by name, so an empty device must block here.
+		expect(await isEventuallyDisabled(addBtn), 'empty device must block').toBe(true);
+
+		await selectOption(page, 'Device Name', DEV);
 		await expect(addBtn).toBeEnabled();
 
 		// Malformed IP → blocked.
@@ -109,9 +113,9 @@ test.describe('Device Neighbor page CRUD', () => {
 		await field(page, 'IP Address').fill('203.0.113.41');
 		await expect(addBtn).toBeEnabled();
 
-		// Malformed MAC → blocked (F-CICD-4 sibling: a static neighbor is an
-		// IP→MAC binding, so the MAC must be gated too — the page previously
-		// ignored it entirely, matching this test's name but not its old body).
+		// Malformed MAC → blocked (a static neighbor is an IP→MAC binding, so
+		// the MAC must be gated too — the page previously ignored it entirely,
+		// matching this test's name but not its old body).
 		await field(page, 'MAC Address').fill('not-a-mac');
 		expect(await isEventuallyDisabled(addBtn), 'bad MAC must block').toBe(true);
 		await field(page, 'MAC Address').fill('02:00:00:zz:0e:2e'); // non-hex octet
@@ -120,7 +124,7 @@ test.describe('Device Neighbor page CRUD', () => {
 		await dialogButton(page, 'Cancel').click();
 	});
 
-	test('D-multi (F16 sibling): bulk delete fires one DELETE per selected neighbor', async ({page}) => {
+	test('D-multi: bulk delete fires one DELETE per selected neighbor', async ({page}) => {
 		await apiCreateNeighbor('203.0.113.51');
 		await apiCreateNeighbor('203.0.113.52');
 		await apiCreateNeighbor('203.0.113.53');

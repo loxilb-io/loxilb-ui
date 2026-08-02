@@ -74,9 +74,11 @@ export default function DeviceNeighborPage() {
 				key={Date.now()}
 				onChange={data => {
 					instanceRef.current = data;
-					// F-CICD-4 sibling: a static neighbor is an IP→MAC binding, so the
-					// MAC must be well-formed too — the gate ignored it entirely.
-					enableYes(isValidIPAddress(data.ipAddress) && isValidMacAddress(data.macAddress ?? ''));
+					// A static neighbor is an IP→MAC binding, so the MAC must be
+					// well-formed too — the gate once ignored it entirely.
+					// The device is equally required: the gateway resolves it by name
+					// and an empty one just fails the create.
+					enableYes(isValidIPAddress(data.ipAddress) && isValidMacAddress(data.macAddress ?? '') && !!data.dev?.trim());
 				}}
 			/>
 		);
