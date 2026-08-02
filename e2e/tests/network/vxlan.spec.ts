@@ -112,7 +112,31 @@ test.describe('VXLAN page CRUD', () => {
 		expect(deletes[0].pathname).toContain(`/vxlan/${VXID}/peer/${PEER}`);
 	});
 
-	test('V-id: empty vxlanID blocks submit', async ({page}) => {
+	test('V-peer-ip: malformed peer IP blocks submit in the peer sub-panel', async ({page}) => {
+		expect((await gw('POST', VX_PATH, {epIntf: 'eth0', vxlanID: VXID})).status).toBeLessThan(300);
+
+		await reloadUntilRow(page, String(VXID));
+		await selectRowByText(page, String(VXID)); // opens the peer sub-panel
+
+		await page.getByRole('button', {name: 'Add', exact: true}).click();
+		await expect(dialog(page).getByText('New VxLAN Peer')).toBeVisible();
+		const addBtn = dialogButton(page, 'Add');
+
+		expect(await isEventuallyDisabled(addBtn), 'empty peer IP must block').toBe(true);
+
+		// A malformed peer IP would be programmed as a zero-IP FDB entry — the
+		// form must block it, not the gateway.
+		await field(page, 'Peer IP').fill('999.1.2.3');
+		expect(await isEventuallyDisabled(addBtn), 'malformed peer IP must block').toBe(true);
+		await expect(dialog(page).getByText(/valid IP address/)).toBeVisible();
+
+		await field(page, 'Peer IP').fill(PEER);
+		await expect(addBtn).toBeEnabled();
+
+		await dialogButton(page, 'Cancel').click();
+	});
+
+	test('V-id: empty/zero/out-of-range vxlanID and empty epIntf all block submit', async ({page}) => {
 		await toolbarButton(page, 'Add').click();
 		await expect(dialog(page).getByText('New VxLAN')).toBeVisible();
 		const addBtn = dialogButton(page, 'Add');
@@ -125,6 +149,19 @@ test.describe('VXLAN page CRUD', () => {
 
 		await field(page, 'VXLAN ID').fill('0');
 		expect(await isEventuallyDisabled(addBtn), 'vxlanID 0 must block').toBe(true);
+
+		// VNI is a 24-bit field — one past the ceiling must block with a visible
+		// reason; the ceiling itself is valid.
+		await field(page, 'VXLAN ID').fill('16777216');
+		expect(await isEventuallyDisabled(addBtn), 'vni 2^24 must block').toBe(true);
+		await expect(dialog(page).getByText(/between 1 and 16777215/)).toBeVisible();
+		await field(page, 'VXLAN ID').fill('16777215');
+		await expect(addBtn).toBeEnabled();
+
+		// The endpoint interface is required — the gateway just fails the create
+		// without one.
+		await field(page, 'Endpoint Interface').fill('');
+		expect(await isEventuallyDisabled(addBtn), 'empty epIntf must block').toBe(true);
 
 		await dialogButton(page, 'Cancel').click();
 	});
