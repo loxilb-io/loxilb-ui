@@ -175,7 +175,7 @@ function AdminUserManagementPanel(props: {
 
 		// Guard: an admin must not delete their own account — the server permits
 		// it (no self-delete protection), which would silently lock the admin out
-		// on the next request. Block it here with a clear message (F-USER-1).
+		// on the next request. Block it here with a clear message.
 		if (currentUser && selectedUserData.some(user => user.id === currentUser.id)) {
 			openPopUp(t('Cannot Delete'), t('You cannot delete your own account.'), t('OK'));
 			return;

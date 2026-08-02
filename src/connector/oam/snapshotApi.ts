@@ -3,7 +3,7 @@
 //
 // All endpoints are OAM's — the UI never talks to the gateway's
 // /config/snapshot|restore directly; OAM proxies, stores and audits.
-// Reads throw through assertOk (F-UX-3 error banner); mutations return
+// Reads throw through assertOk (inline error banner); mutations return
 // ApiResult with createDetailedErrorMessage payloads.
 //---------------------------------------------------------
 import type {OamGetResp, OamPostResp} from 'api';

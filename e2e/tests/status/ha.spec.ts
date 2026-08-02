@@ -94,7 +94,7 @@ test.describe('High Availability page', () => {
 		]);
 		const body = req.postDataJSON();
 		expect(body).toMatchObject({state: 'NOT_DEFINED', vip: DOC_VIP});
-		// F24/F-SEC-family: the form's validity flag must never reach the gateway.
+		// The form's validity flag must never reach the gateway.
 		expect(body.isValid, 'isValid must not leak into the cistate payload').toBeUndefined();
 
 		// Gateway accepts it and the UI shows the Success popup. NOTE: loxilb only

@@ -96,7 +96,7 @@ test.describe('IPsec Tunnel page CRUD', () => {
 			authMode: 'psk',
 			psk: 'e2e-secret-key',
 		});
-		// Displayed defaults must be POSTed, not dropped (F19/F-SEC-5 sibling).
+		// Displayed defaults must be POSTed, not dropped (stale-snapshot class).
 		expect(body.ikeVersion).toBe('ikev2');
 		expect(body.espDhGroup).toBe('modp2048'); // PFS on by default
 		// No form-internal keys must leak into the payload.

@@ -4,7 +4,7 @@
 // capture the current level, drive every level through the confirm dialog
 // asserting the POST /config/params payload, then restore the original.
 // OperParams carries only logLevel, so a partial POST is complete (no
-// F-SEC-5 field-wipe risk) and changing verbosity is benign on the testbed.
+// field-wipe risk) and changing verbosity is benign on the testbed.
 //---------------------------------------------------------
 import {expect, test} from '../../fixtures';
 import {activeInstance, gw, gwJson} from '../../helpers/api';

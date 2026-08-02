@@ -189,7 +189,7 @@ export async function query_instance_health(instance: IInstance): Promise<{isHea
 			// Non-success status codes indicate unhealthy instance. Note 402
 			// ("Insufficient licenses") comes from the OAM license gate before the
 			// request reaches the gateway, so it means "license required", not
-			// "gateway down" — the caller distinguishes this (E2E F7).
+			// "gateway down" — the caller distinguishes this.
 			return {
 				isHealthy: false,
 				code: response.code,
