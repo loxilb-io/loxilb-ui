@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {Divider} from '@mui/material';
+import {Alert, Divider} from '@mui/material';
 import {isValidIPAddress} from 'common';
 import ParamBox from 'components/element/ParamBox';
 import DropDownSelectBox from 'components/element/DropDownSelectBox';
@@ -39,6 +39,14 @@ export default function EndpointInputForm({ initialData, isEdit = false, onChang
 	// Get params for validation only (don't use form state from this hook)
 	const {params} = useFormWithParams<IEndpointInput>('IEndpointInput');
 
+	// A connect-type probe targets a specific port; without one the gateway
+	// either rejects the request (tcp/udp/sctp) or programs a health check
+	// that can never succeed (http/https/tls-hello), so require a valid port
+	// before submit.
+	const needsProbePort = ['tcp', 'udp', 'sctp', 'http', 'https', 'tls-hello'].includes(formData.probeType || '');
+	const probePort = Number(formData.probePort);
+	const probePortMissing = needsProbePort && !(probePort >= 1 && probePort <= 65535);
+
 	// Validation function
 	const validateForm = React.useCallback(() => {
 		const newErrors: Record<string, string> = {};
@@ -47,7 +55,7 @@ export default function EndpointInputForm({ initialData, isEdit = false, onChang
 			newErrors.hostName = t('Host Name is required');
 		} else if (!isEdit && !isValidIPAddress(formData.hostName.trim())) {
 			// On create the Host Name is an IP field; a malformed address must
-			// block submit, not just show an inline error (F4/F13 family).
+			// block submit, not just show an inline error.
 			newErrors.hostName = t('Invalid IP address format.');
 		}
 
@@ -55,9 +63,13 @@ export default function EndpointInputForm({ initialData, isEdit = false, onChang
 			newErrors.name = t('Name is required');
 		}
 
+		if (probePortMissing) {
+			newErrors.probePort = t('Probe Port is required for this probe type.');
+		}
+
 		setErrors(newErrors);
 		return Object.keys(newErrors).length === 0;
-	}, [formData, isEdit]);
+	}, [formData, isEdit, probePortMissing]);
 
 	// Update parent component when form changes
 	React.useEffect(() => {
@@ -144,6 +156,10 @@ export default function EndpointInputForm({ initialData, isEdit = false, onChang
 				disabled={formData.probeType === 'ping'}
 			   />
 		   </HorizontalStack>
+
+		   {probePortMissing && (
+			   <Alert severity="warning">{t('Probe Port (1-65535) is required for TCP, UDP, SCTP, HTTP, HTTPS and TLS-HELLO probe types.')}</Alert>
+		   )}
 
 		   <HorizontalStack>
 			   <ParamBox
