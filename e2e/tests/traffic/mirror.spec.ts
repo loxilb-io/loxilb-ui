@@ -13,8 +13,8 @@
 import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {activeInstance, gw, portNames, sweepMirrors} from '../../helpers/api';
-import {confirmDelete, dialog, dialogButton, dialogTitle, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
-import {field, setField} from '../../helpers/form';
+import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
+import {field, isEventuallyDisabled, setField} from '../../helpers/form';
 import {refreshUntilGone, refreshUntilRow, selectRowByClick, showAllRows, toolbarButton} from '../../helpers/table';
 
 const MIRROR_PATH = '/config/mirror';
@@ -90,7 +90,7 @@ test.describe('Mirror page CRUD', () => {
 
 		expect(body.mirrorIdent).toBe('e2e-mir-span');
 		// type:0 (SPAN) is the displayed default — must be POSTed, not dropped
-		// (F19-sibling regression in the mirrorInfo subform).
+		// (stale-snapshot regression in the mirrorInfo subform).
 		expect(body.mirrorInfo).toMatchObject({type: 0, port: destPort});
 		expect(body.targetObject).toMatchObject({attachment: 1, mirrObjName: srcPort});
 		expect(body.isValid).toBeUndefined();
@@ -112,32 +112,46 @@ test.describe('Mirror page CRUD', () => {
 		await refreshUntilGone(page, 'e2e-mir-span');
 	});
 
-	test('C-rspan: RSPAN type + VLAN 3999 land in the POST body', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/Failed to load resource/);
-		consoleGuard.allow(/status of 4\d\d/);
-
+	test('V-rspan-vlan: RSPAN with a VLAN blocks submit (the gateway rejects the pair)', async ({page}) => {
 		await openAddDialog(page);
 		await field(page, 'Mirror Identifier').fill('e2e-mir-rspan');
 		await selectOption(page, 'Type', 'RSPAN');
 		await setField(page, 'Port', destPort);
-		await field(page, 'VLAN').fill('3999');
 		await attachSourcePort(page);
+		const addBtn = dialogButton(page, 'Add');
+		await expect(addBtn, 'RSPAN with no VLAN is submittable').toBeEnabled();
 
-		const req = await submit(page);
-		const body = req.postDataJSON();
-		expect(body.mirrorIdent).toBe('e2e-mir-rspan');
-		expect(body.mirrorInfo).toMatchObject({type: 1, vlan: 3999});
+		await field(page, 'VLAN').fill('3999');
+		expect(await isEventuallyDisabled(addBtn), 'RSPAN + VLAN must block').toBe(true);
+		await expect(dialog(page).getByText(/RSPAN mirror must leave VLAN unset/)).toBeVisible();
 
-		// Gateway may reject RSPAN without VLAN plumbing; either way, no crash.
-		const status = (await req.response())?.status() ?? 0;
-		await expect(dialogTitle(page, status < 300 ? 'Success' : 'Error')).toBeVisible();
-		await dialogButton(page, 'OK').click();
+		// Clearing the VLAN unblocks.
+		await field(page, 'VLAN').fill('');
+		await expect(addBtn).toBeEnabled();
+		await dialogButton(page, 'Cancel').click();
 	});
 
-	test('C-erspan: ERSPAN type + tunnel + source/remote IPs land in the POST body', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/Failed to load resource/);
-		consoleGuard.allow(/status of 4\d\d/);
+	test('V-erspan-incomplete: ERSPAN blocks submit until tunnel + source/remote IPs are set', async ({page}) => {
+		await openAddDialog(page);
+		await field(page, 'Mirror Identifier').fill('e2e-mir-erspan-v');
+		await selectOption(page, 'Type', 'ERSPAN');
+		await setField(page, 'Port', destPort);
+		await attachSourcePort(page);
+		const addBtn = dialogButton(page, 'Add');
 
+		expect(await isEventuallyDisabled(addBtn), 'ERSPAN with no tunnel/IPs must block').toBe(true);
+		await expect(dialog(page).getByText(/ERSPAN mirror requires/)).toBeVisible();
+
+		await field(page, 'Tunnel ID').fill('100');
+		await field(page, 'Source IP').fill('203.0.113.1');
+		expect(await isEventuallyDisabled(addBtn), 'missing remote IP must still block').toBe(true);
+
+		await field(page, 'Remote IP').fill('203.0.113.2');
+		await expect(addBtn).toBeEnabled();
+		await dialogButton(page, 'Cancel').click();
+	});
+
+	test('C-erspan: ERSPAN with tunnel + source/remote IPs lands verbatim and is accepted', async ({page}) => {
 		await openAddDialog(page);
 		await field(page, 'Mirror Identifier').fill('e2e-mir-erspan');
 		await selectOption(page, 'Type', 'ERSPAN');
@@ -157,8 +171,10 @@ test.describe('Mirror page CRUD', () => {
 			remoteIP: '203.0.113.2',
 		});
 
-		const status = (await req.response())?.status() ?? 0;
-		await expect(dialogTitle(page, status < 300 ? 'Success' : 'Error')).toBeVisible();
-		await dialogButton(page, 'OK').click();
+		// A field-complete ERSPAN create is accepted by the gateway (verified
+		// live) — a rejection here is a regression, not tolerable plumbing noise.
+		expect((await req.response())?.status(), 'gateway accepted ERSPAN create').toBeLessThan(300);
+		await expectSuccessAndDismiss(page);
+		await refreshUntilRow(page, 'e2e-mir-erspan');
 	});
 });

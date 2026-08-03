@@ -75,8 +75,8 @@ export default function RoutePage() {
 				key={Date.now()}
 				onChange={data => {
 					instanceRef.current = data;
-					// F-CICD-4 sibling: the gateway (nexthop) was gated on presence
-					// only — a malformed nexthop must be rejected, not just a blank one.
+					// The gateway (nexthop) was once gated on presence only — a
+					// malformed nexthop must be rejected, not just a blank one.
 					enableYes(isValidIPAddressCidr(data.destinationIPNet ?? '')
 						&& isValidIPAddress(data.gateway ?? ''));
 				}}

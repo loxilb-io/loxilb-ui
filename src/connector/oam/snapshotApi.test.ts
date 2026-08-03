@@ -2,7 +2,7 @@
 // Connector error-path tests (docs/SNAPSHOT_UI_DESIGN.md §9.1).
 //
 // The invariants under test are the honesty rules: reads THROW on non-2xx
-// (so react-query shows the F-UX-3 banner, never a false "No rows"),
+// (so react-query shows the error banner, never a false "No rows"),
 // mutations surface the server error verbatim, and a restore whose gateway
 // leg failed still resolves as success with the failure captured in the
 // outcome (OAM answers 200 + gateway_status — the wizard renders the truth).
@@ -29,7 +29,7 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
-describe('snapshot reads (assertOk → F-UX-3 banner)', () => {
+describe('snapshot reads (assertOk → error banner)', () => {
 	it('query_get_snapshots throws ApiError on 500 instead of returning empty rows', async () => {
 		mockFetch('{"error":"db gone"}', 500);
 		await expect(query_get_snapshots(1, {page: 1, limit: 20})).rejects.toBeInstanceOf(ApiError);

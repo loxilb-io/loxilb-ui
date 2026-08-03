@@ -24,8 +24,8 @@ export async function request_health_check(): Promise<boolean> {
 
 // Invalidates the session server-side. Best-effort: the caller clears local
 // state and redirects regardless, so a network failure here still logs the
-// user out of the UI (server-side token revocation is tracked in
-// docs/SECURITY_RBAC_PLAN.md H-2).
+// user out of the UI (the server additionally revokes the token so it cannot
+// be replayed).
 export async function request_logout(): Promise<void> {
 	try {
 		await POST_OAM(`/logout`, {});

@@ -30,6 +30,12 @@ export default function IPFilterInputForm(props: IPFilterInputFormProps) {
 
 	const handleChange = (field: keyof IIPFilterEntry) => (value: any) => {
 		const newForm = {...form, [field]: value};
+		// The datapath only acts on whitelist+allow and blacklist+drop; the
+		// gateway rejects the other two pairings. Keep action in step with the
+		// filter type so the common flow can never build an invalid pairing.
+		if (field === 'filterType') {
+			newForm.action = value === 'whitelist' ? 'allow' : 'drop';
+		}
 		setForm(newForm);
 		onChange({...newForm, isValid: validateForm(newForm)});
 	};
@@ -48,6 +54,12 @@ export default function IPFilterInputForm(props: IPFilterInputFormProps) {
 
 		// Zone should be non-negative
 		if (data.zone !== undefined && data.zone < 0) return false;
+
+		// Whitelist must allow, blacklist must drop (gateway rejects otherwise).
+		const validPairing =
+			(data.filterType === 'whitelist' && data.action === 'allow') ||
+			(data.filterType === 'blacklist' && data.action === 'drop');
+		if (!validPairing) return false;
 
 		return true;
 	};

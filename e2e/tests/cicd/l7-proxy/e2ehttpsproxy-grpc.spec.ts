@@ -2,7 +2,7 @@
 // cicd source: cicd/e2ehttpsproxy-grpc — L7 fullproxy, gRPC backend.
 // Recipe POSTs {security:2, mode:4, host, backend_protocol:"http2"}.
 //
-// FINDING (CG-2 is NOT a real gap): the plan originally scoped a distinct
+// FINDING (this is NOT a real gap): the plan originally scoped a distinct
 // `grpc` backend-protocol value. But the cicd recipe expresses gRPC purely as
 // `backend_protocol: http2` (gRPC rides HTTP/2) — there is no `grpc` enum value
 // anywhere in the gateway (backend_protocols = http1|http2|both) or the UI. So

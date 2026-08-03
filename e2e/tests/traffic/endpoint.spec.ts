@@ -97,8 +97,8 @@ test.describe('Endpoint page CRUD', () => {
 		expect(body.name).toBe('e2e-ep-min');
 		// Probe Type dropdown defaults to ping.
 		expect(body.probeType).toBe('ping');
-		// F22-family regression: the form's onChange validation state
-		// (isValid/errors) must never leak into the POST payload.
+		// The form's onChange validation state (isValid/errors) must never
+		// leak into the POST payload.
 		expect(body.isValid, 'isValid must not leak into the endpoint payload').toBeUndefined();
 		expect(body.errors, 'errors must not leak into the endpoint payload').toBeUndefined();
 
@@ -210,7 +210,34 @@ test.describe('Endpoint page CRUD', () => {
 		await dialogButton(page, 'Cancel').click();
 	});
 
-	test('D-multi (F16 sibling): bulk delete fires one DELETE per selected endpoint', async ({page}) => {
+	test('V-probe-port: connect-type probes with no port block submit; PING does not', async ({page}) => {
+		await openAddDialog(page);
+		const addBtn = dialogButton(page, 'Add');
+
+		await field(page, 'Host Name').fill('203.0.113.24');
+		await field(page, 'Name').fill('e2e-ep-vport');
+		// PING needs no port — baseline stays submittable.
+		await expect(addBtn).toBeEnabled();
+
+		// A connect-type probe without a port would program a health check that
+		// can never succeed — the form must block and say why.
+		await selectOption(page, 'Probe Type', 'HTTP'); // exact — must not hit HTTPS
+		expect(await isEventuallyDisabled(addBtn), 'http probe with no port must block').toBe(true);
+		await expect(dialog(page).getByText(/Probe Port \(1-65535\) is required/)).toBeVisible();
+
+		// Providing a port unblocks.
+		await field(page, 'Probe Port').fill('8080');
+		await expect(addBtn).toBeEnabled();
+
+		// Port 0 is not a usable probe target either.
+		await selectOption(page, 'Probe Type', 'TCP');
+		await field(page, 'Probe Port').fill('0');
+		expect(await isEventuallyDisabled(addBtn), 'port 0 must block').toBe(true);
+
+		await dialogButton(page, 'Cancel').click();
+	});
+
+	test('D-multi: bulk delete fires one DELETE per selected endpoint', async ({page}) => {
 		await apiCreateEp({hostName: '203.0.113.31', name: 'e2e-ep-d1'});
 		await apiCreateEp({hostName: '203.0.113.32', name: 'e2e-ep-d2'});
 		await apiCreateEp({hostName: '203.0.113.33', name: 'e2e-ep-d3'});

@@ -22,7 +22,7 @@ export default function PolicyInfoInputForm(props: {value: IPolicyInfo; onChange
 	// Accumulate field updates in a ref so several onChange calls landing in the
 	// same React batch — e.g. the Type dropdown's mount-time auto-default (TrTCM)
 	// firing while the user fills the rate fields — merge instead of clobbering
-	// one another through a stale `value` snapshot (F19 sibling: without this the
+	// one another through a stale `value` snapshot (without this the
 	// displayed TrTCM default was dropped from the POST payload). The ref only
 	// accumulates emitted values; the schema-default reset can transiently blank
 	// a field's `value`, and folding that back in here would re-clobber the ref

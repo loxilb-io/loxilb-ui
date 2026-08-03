@@ -95,14 +95,16 @@ test.describe('SNI Certificates page CRUD', () => {
 		const req = await submitRegister(page);
 		const body = req.postDataJSON();
 		expect(body.hostname).toBe('e2e-sni.example.com');
-		// F22-family: the form's isValid must not leak into the POST payload,
+		// The form's isValid must not leak into the POST payload,
 		// and an unset optional certPath must be omitted (not sent as '').
 		expect(body.isValid).toBeUndefined();
 		expect(body.certPath).toBeUndefined();
 
-		// The gateway 200s (soft-fail on missing files included), so the UI shows
-		// its Success popup; the app must stay healthy regardless.
-		const ok = ((await req.response())?.status() ?? 0) < 300;
+		// The gateway reports cert-load failures inside a 200 body, so the UI
+		// verdict must track the result text — Success only when the body does
+		// not carry an Error result.
+		const respBody = await (await req.response())?.json();
+		const ok = !(typeof respBody?.result === 'string' && respBody.result.startsWith('Error'));
 		await dismissResult(page, ok);
 
 		if (canRegister) {
@@ -134,7 +136,30 @@ test.describe('SNI Certificates page CRUD', () => {
 		expect(body).toMatchObject({hostname: 'e2e-sni-full.example.com', certPath: '/opt/loxilb/cert/e2e-custom'});
 		expect(body.isValid).toBeUndefined();
 
-		await dismissResult(page, ((await req.response())?.status() ?? 0) < 300);
+		// Same verdict rule as C-min: the dialog must match the result body,
+		// not the HTTP status.
+		const respBody = await (await req.response())?.json();
+		const ok = !(typeof respBody?.result === 'string' && respBody.result.startsWith('Error'));
+		await dismissResult(page, ok);
+	});
+
+	test('V-soft-fail: a register the gateway could not load surfaces as Error, not Success', async ({page, consoleGuard}) => {
+		consoleGuard.allow(/Failed to load resource/);
+		consoleGuard.allow(/status of 4\d\d/);
+
+		// A certPath that cannot exist forces the loader to fail on any testbed;
+		// the gateway still answers HTTP 200 with {"result":"Error: …"} — the UI
+		// must key on the result text and report the failure.
+		await openAddDialog(page);
+		await field(page, 'Hostname').fill('e2e-sni-softfail.example.com');
+		await field(page, 'Certificate Path (Optional)').fill('/nonexistent/e2e-sni-path');
+
+		const req = await submitRegister(page);
+		expect((await req.response())?.status(), 'gateway soft-fails with HTTP 200').toBe(200);
+
+		await expect(dialogTitle(page, 'Error')).toBeVisible();
+		await expect(dialog(page).getByText(/Failed to load certificate/)).toBeVisible();
+		await dialogButton(page, 'OK').click();
 	});
 
 	test('V-host: empty hostname blocks the Register button', async ({page}) => {
@@ -148,7 +173,7 @@ test.describe('SNI Certificates page CRUD', () => {
 		await dialogButton(page, 'Cancel').click();
 	});
 
-	test('D-multi (F16 sibling): bulk delete unregisters every selected hostname', async ({page}) => {
+	test('D-multi: bulk delete unregisters every selected hostname', async ({page}) => {
 		test.skip(!canRegister, 'gateway does not accept hostname-only registration on this testbed');
 
 		for (const h of ['e2e-sni-d1.example.com', 'e2e-sni-d2.example.com', 'e2e-sni-d3.example.com']) {

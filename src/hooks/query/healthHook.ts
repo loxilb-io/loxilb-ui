@@ -14,7 +14,7 @@ export interface IInstanceHealth {
 	isHealthy: boolean;
 	error?: string;
 	// HTTP status of the probe. 402 = license-gated (reachable but unlicensed),
-	// which the card surfaces distinctly from an actual outage (E2E F7).
+	// which the card surfaces distinctly from an actual outage.
 	code?: number;
 	lastChecked: number;
 }

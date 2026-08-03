@@ -19,7 +19,7 @@ export async function query_get_qos_policy_all(instance: IInstance): Promise<IPo
 export async function request_create_qos_policy(instance: IInstance, data: IPolicyAttribute): Promise<ApiResult> {
 	// The input form's onChange emits its validation state (isValid/errors)
 	// alongside the policy fields; build an explicit IPolicyAttribute payload
-	// so those client-only keys can never leak into the gateway POST (F22 family).
+	// so those client-only keys can never leak into the gateway POST.
 	const payload: IPolicyAttribute = {
 		policyIdent: data.policyIdent,
 		policyInfo: data.policyInfo,
