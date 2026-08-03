@@ -63,12 +63,12 @@ export function createDetailedErrorMessage(resp: any, operation: string): string
 	return message;
 }
 
-// Gateway pass-through reads swallow non-2xx into empty data (F15 keeps the app
-// from redirecting to /500), so a plain `resp.data?.X ?? []` can't tell a real
+// Gateway pass-through reads swallow non-2xx into empty data (which keeps the
+// app from redirecting to /500), so a plain `resp.data?.X ?? []` can't tell a real
 // server error from a genuinely empty resource. Call this in a read connector to
 // turn a non-2xx code into a thrown ApiError, so react-query enters its error
 // state and the page can show a "Couldn't load …" banner instead of "No rows"
-// (F-UX-3). 2xx (incl. 204 no-content) passes through untouched.
+// 2xx (incl. 204 no-content) passes through untouched.
 export function assertOk(resp: SimpleResponse, operation: string): void {
 	if (resp.code >= 200 && resp.code < 300) return;
 	throw new ApiError(createDetailedErrorMessage(resp, operation), resp.code);
@@ -124,9 +124,9 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 		// redirect on 404/5xx. An optional or unimplemented gateway endpoint
 		// (e.g. 501 Not Implemented, or 404) would otherwise take down the whole
 		// UI instead of letting the feature page degrade to an empty / inline
-		// error state (F15). OAM control-plane failures still redirect as before.
+		// error state. OAM control-plane failures still redirect as before.
 		const isGatewayPassthrough = typeof url === 'string' && /\/loxilbs\/\d+\/netlox\//.test(url);
-		// OAM snapshot endpoints surface failures INLINE (F-UX-3 banner /
+		// OAM snapshot endpoints surface failures INLINE (error banner /
 		// verbatim error popup / wizard error panel) — snapshots are
 		// user-deletable rows, so a stale action (another session removed the
 		// row → 404) or an OAM-side 5xx is an expected per-row outcome, not an

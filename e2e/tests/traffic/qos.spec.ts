@@ -12,7 +12,7 @@
 import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {activeInstance, gw, sweepQosPolicies} from '../../helpers/api';
-import {confirmDelete, dialog, dialogButton, dialogTitle, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
+import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
 import {field} from '../../helpers/form';
 import {refreshUntilGone, refreshUntilRow, selectRowByClick, showAllRows, toolbarButton} from '../../helpers/table';
 
@@ -87,12 +87,12 @@ test.describe('QoS policy page CRUD', () => {
 
 		expect(body.policyIdent).toBe('e2e-qos-min');
 		// type:0 (TrTCM) is the displayed dropdown default — it must be POSTed,
-		// not dropped (F19-sibling regression in the QoS policyInfo subform).
+		// not dropped (stale-snapshot regression in the QoS policyInfo subform).
 		expect(body.policyInfo).toMatchObject({type: 0, committedInfoRate: 1000000000, peakInfoRate: 2000000000});
 		expect(body.targetObject.attachment).toBe(1);
 		expect(typeof body.targetObject.polObjName, 'a real port name is attached').toBe('string');
 		expect(body.targetObject.polObjName.length).toBeGreaterThan(0);
-		// F22-family: form validation state must not leak into the payload.
+		// Form validation state must not leak into the payload.
 		expect(body.isValid).toBeUndefined();
 		expect(body.errors).toBeUndefined();
 
@@ -144,25 +144,25 @@ test.describe('QoS policy page CRUD', () => {
 		await refreshUntilRow(page, 'e2e-qos-full');
 	});
 
-	test('V-rates: peak < committed — form submits but the app stays healthy either way', async ({page, consoleGuard}) => {
-		// The metadata-driven form validates required/type/enum only, not the
-		// peak≥committed relationship, so it submits; the gateway decides. Both
-		// outcomes are acceptable as long as the app degrades cleanly (F15).
-		consoleGuard.allow(/Failed to load resource/);
-		consoleGuard.allow(/status of 4\d\d/);
-
+	test('V-rates: peak < committed blocks submit; correcting the order re-enables it', async ({page}) => {
+		// A two-rate meter needs peak >= committed. The gateway validates each
+		// rate against a floor but not their ordering, so the form must block an
+		// inverted pair rather than ship an invalid meter.
 		await openAddDialog(page);
 		await field(page, 'Policy Identifier').fill('e2e-qos-inverted');
 		await field(page, 'Committed Info Rate(bps)').fill(PIR); // committed > peak
 		await field(page, 'Peak Info Rate(bps)').fill(CIR);
 		await attachToPort(page);
 
-		const req = await submitAdd(page);
-		const status = (await req.response())?.status() ?? 0;
+		const addBtn = dialogButton(page, 'Add');
+		await expect(dialog(page).getByText(/Peak Info Rate must be greater than or equal/i)).toBeVisible();
+		await expect(addBtn, 'peak<committed must block submit').toBeDisabled();
 
-		// Either a Success popup (gateway accepted → afterEach sweep removes it)
-		// or an Error popup (gateway rejected) — never an unhandled crash.
-		await expect(dialogTitle(page, status < 300 ? 'Success' : 'Error')).toBeVisible();
-		await dialogButton(page, 'OK').click();
+		// Correct the ordering → the block clears and submit is enabled.
+		await field(page, 'Peak Info Rate(bps)').fill(PIR);
+		await expect(dialog(page).getByText(/Peak Info Rate must be greater than or equal/i)).toHaveCount(0);
+		await expect(addBtn).toBeEnabled();
+
+		await dialogButton(page, 'Cancel').click();
 	});
 });

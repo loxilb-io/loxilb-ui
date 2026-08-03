@@ -266,7 +266,7 @@ export default function IPsecTunnelPage() {
 		<Fragment>
 			{/* Overview strip: aggregate stats + global settings entry point.
 			    The Global Settings control is anchored to the header's right edge
-			    (F-UX-1) so it no longer wraps onto its own floating band. */}
+			    so it no longer wraps onto its own floating band. */}
 			<SubTitlePannel
 				title={t('IPsec Overview')}
 				sub_title={''}

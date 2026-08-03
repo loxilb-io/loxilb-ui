@@ -16,7 +16,7 @@ import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useVxlanAttr} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {Fragment, useRef, useState} from 'react';
-import {getStableHash} from 'common';
+import {getStableHash, isValidIPAddress} from 'common';
 import {IVxlanAttribute, IVxlanData, IVxlanInput} from 'types/vxlan';
 
 //---------------------------------------------------------
@@ -48,7 +48,9 @@ function PeerPanel(props: {name: string; vxlanID: number; data: string[]; refetc
 				value={peerRef.current}
 				onChange={data => {
 					peerRef.current = data;
-					enableYes(!!data && data !== '');
+					// The gateway does not reject a malformed peer IP (it would be
+					// programmed as a zero-IP FDB entry), so gate it client-side.
+					enableYes(!!data && isValidIPAddress(data.trim()));
 				}}
 			/>
 		);
@@ -141,7 +143,9 @@ export default function VxLANPage() {
 				key={Date.now()}
 				onChange={data => {
 					instanceRef.current = data;
-					enableYes(data.vxlanID > 0);
+					// The gateway needs a real endpoint interface (an empty one just
+					// fails the create) and a VNI within its 24-bit range.
+					enableYes(!!data.epIntf?.trim() && data.vxlanID >= 1 && data.vxlanID <= 16777215);
 				}}
 			/>
 		);

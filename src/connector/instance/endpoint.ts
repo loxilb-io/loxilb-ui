@@ -19,7 +19,7 @@ export async function query_get_endpoint_all(instance: IInstance): Promise<IEndp
 export async function request_create_endpoint(instance: IInstance, data: IEndpointInput): Promise<ApiResult> {
 	// The input form's onChange emits its validation state (isValid/errors)
 	// alongside the field values; build an explicit IEndpointInput payload so
-	// those client-only keys can never leak into the gateway POST (F22 family).
+	// those client-only keys can never leak into the gateway POST.
 	const payload: IEndpointInput = {
 		hostName: data.hostName,
 		name: data.name,

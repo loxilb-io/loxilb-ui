@@ -7,9 +7,9 @@
 //
 // NOTE on the security value: the cicd config.sh sets security:2 for this
 // "e2ehttps" scenario — written against the OLD, buggy swagger enum description
-// ("2-e2ehttps"). The corrected mapping (F-CICD-3) is 2-tls, 3-e2ehttps, so this
+// ("2-e2ehttps"). The corrected mapping is 2-tls, 3-e2ehttps, so this
 // spec uses security=e2ehttps(3) — the scenario's actual intent — which also
-// exercises the F-CICD-3 enum fix together with mTLS.
+// exercises the corrected enum together with mTLS.
 //---------------------------------------------------------
 import {test} from '../../../fixtures';
 import {activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';

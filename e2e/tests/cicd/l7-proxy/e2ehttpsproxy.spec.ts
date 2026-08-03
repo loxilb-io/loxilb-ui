@@ -6,7 +6,8 @@
 //
 // WATCH (plan §16): the GET serviceArguments.security enum has historically
 // under-declared e2ehttps (3). If the gateway does not echo security=3 on
-// read-back, that is a documented schema gap (mirror F-CICD-2 readbackOmit) —
+// read-back, that is a documented schema gap (the same readbackOmit class as
+// fullnat's write-only snat/privateIP) —
 // the UI-send is still proven by the POST-body assertion in runLbScenario.
 //---------------------------------------------------------
 import {test} from '../../../fixtures';
