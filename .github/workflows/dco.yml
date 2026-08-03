@@ -1,0 +1,47 @@
+name: DCO
+
+# Verifies every non-merge commit in the pull request carries a Developer
+# Certificate of Origin sign-off — a `Signed-off-by:` trailer matching the
+# commit author (see CONTRIBUTING.md). Self-contained (no third-party action).
+# Advisory at launch; promote to a required status check once contributors are
+# consistently signing off.
+on:
+  pull_request:
+    branches: [main, 'feat/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dco:
+    name: dco
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Check DCO sign-off
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          fail=0
+          # --no-merges: GitHub-generated merge commits carry no sign-off.
+          while IFS= read -r sha; do
+            [ -z "$sha" ] && continue
+            author=$(git show -s --format='%an <%ae>' "$sha")
+            if ! git show -s --format='%B' "$sha" | grep -qiF "Signed-off-by: ${author}"; then
+              echo "::error::commit ${sha} (${author}) is missing a matching Signed-off-by line"
+              fail=1
+            fi
+          done < <(git rev-list --no-merges "${BASE_SHA}..${HEAD_SHA}")
+          if [ "$fail" = 1 ]; then
+            echo "DCO check failed. Sign your commits with 'git commit -s' (or"
+            echo "retro-sign a branch with 'git rebase --signoff ${BASE_SHA}'). See CONTRIBUTING.md."
+            exit 1
+          fi
+          echo "All commits are signed off (DCO)."
