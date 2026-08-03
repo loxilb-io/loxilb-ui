@@ -75,7 +75,7 @@ export default function UserEditForm(props: UserEditFormProps) {
 	const isCreateMode = mode === 'create';
 
 	// Initialize form data with user data (similar to LBInputForm pattern).
-	// New users default to the least-privilege viewer role (RBAC Phase 3).
+	// New users default to the least-privilege viewer role (RBAC).
 	const [formData, setFormData] = useState<IUserUpdateRequest>({
 		username: user?.username || '',
 		email: user?.email || '',

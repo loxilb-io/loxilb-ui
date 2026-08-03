@@ -70,7 +70,7 @@ export default function DataTable(props: {
 }) {
 	const {name, columns, rows, selected_rows, onChangeSelectedRows, hideMenuBar, hideCheckbox, hideIdColumn, disableSelect, onRefresh, error, defaultSort, deleteConfirm} = props;
 
-	// RBAC Phase 3: viewers are read-only everywhere, so hide the mutation
+	// RBAC: viewers are read-only everywhere, so hide the mutation
 	// buttons for them (UX only — the server rejects viewer writes with 403).
 	// While the role is still loading (is_viewer false) buttons stay visible.
 	const {is_viewer} = useRole();

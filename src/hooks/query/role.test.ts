@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// RBAC Phase 3 — role normalization (docs/SECURITY_RBAC_PLAN.md §5)
+// RBAC — role normalization (docs/SECURITY_RBAC_PLAN.md §5)
 //---------------------------------------------------------
 import {describe, expect, it} from 'vitest';
 import {normalize_role} from './oamHooks';

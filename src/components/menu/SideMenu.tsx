@@ -18,7 +18,7 @@ export default function SideMenu(props: {open: boolean}) {
 	const inst_name = useInstanceName();
 	const instance_url = `/instance/dashboard?name=${inst_name}`;
 
-	// RBAC Phase 3: hide menu entries restricted to other roles. Items
+	// RBAC: hide menu entries restricted to other roles. Items
 	// without a roles list are visible to everyone.
 	const {role} = useRole();
 	const visible = (item: IMenuItem) => !item.roles || (role !== null && item.roles.includes(role));
