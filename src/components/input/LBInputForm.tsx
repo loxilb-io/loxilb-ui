@@ -2,7 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import React from 'react';
-import {Stack, Typography} from '@mui/material';
+import {Alert, Stack, Typography} from '@mui/material';
 import {isValidIPAddress} from 'common';
 import useFormWithParams from 'hooks/inputFormHook';
 import {t} from 'i18next';
@@ -82,6 +82,14 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 			else if (isPort(sa?.port) && (sa.portMax as number) < (sa.port as number)) e.portMax = t('Port Max must be greater than or equal to Port Min');
 		}
 
+		// L7 proxy modes (fullproxy=4, aigw=6) terminate in the userspace
+		// sockproxy, which is TCP-only: a UDP/SCTP rule in these modes is
+		// programmed but dead-drops at the datapath, so the form blocks it.
+		const L7_MODES = [4, 6];
+		if (L7_MODES.includes(sa?.mode as number) && sa?.protocol && sa.protocol !== 'tcp') {
+			e.protocol = t('Full-proxy / AI-gateway modes require the TCP protocol');
+		}
+
 		// At least one endpoint, each with a valid IP, target port and weight.
 		const eps = formData.endpoints ?? [];
 		if (eps.length === 0) e.endpoints = t('At least one endpoint is required');
@@ -109,7 +117,7 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 	// (`handleChange('field')` re-invoked in JSX) gave every child sub-form a
 	// NEW onChange identity per render; child effects that depend on `onChange`
 	// (e.g. BasicSettingsForm) then re-fired every render → setState →
-	// "Maximum update depth exceeded" (F14). Memoizing keeps onChange identity
+	// "Maximum update depth exceeded". Memoizing keeps onChange identity
 	// stable so child effects only run on real value changes.
 	// serviceArguments updates are DELTAS merged over prev: at dialog mount
 	// several enum dropdowns auto-announce their defaults in the same effects
@@ -143,6 +151,9 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 			   	params={params?.serviceArguments}
 			   	isEdit={isEdit}
 			   />
+			   {errors.protocol && (
+				   <Alert severity="warning">{errors.protocol}</Alert>
+			   )}
 			   <AdvancedSettingsForm value={formData?.serviceArguments ?? {}} onChange={handleServiceArguments} params={params?.serviceArguments} />
 				   <AIGatewaySettingsForm value={formData?.serviceArguments ?? {}} onChange={handleServiceArguments} params={params?.serviceArguments} />
 			   <SecondaryIPListInputForm values={formData?.secondaryIPs ?? []} onChange={handleSecondaryIPs} description={params?.secondaryIPs?.description} />

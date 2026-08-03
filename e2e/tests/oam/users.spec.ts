@@ -1,8 +1,8 @@
 //---------------------------------------------------------
 // User management spec (docs/E2E_CRUD_TEST_PLAN.md §7).
 // Drives the /user → "User List" (admin) tab: create (min + role),
-// dup/weak validation, edit email (+F11 same-value regression),
-// password change, delete, and the self-delete guard (F-USER-1).
+// dup/weak validation, edit email (+ the same-value no-op regression),
+// password change, delete, and the self-delete guard.
 //
 // Throwaway accounts use the `e2euser` username prefix so the sweep
 // removes them without ever touching the RBAC fixtures or admin.
@@ -142,7 +142,7 @@ test.describe('User management (admin User List tab)', () => {
 		await dialogButton(page, 'Cancel').click();
 	});
 
-	test('E-edit: change email, then re-submit unchanged (F11 same-value)', async ({page}) => {
+	test('E-edit: change email, then re-submit unchanged (same-value no-op)', async ({page}) => {
 		const username = uniqUser();
 		await createUserApi({username, email: `${username}@e2e.test`, password: GOOD_PW, role: 'viewer'});
 		await refreshUntilRow(page, username);
@@ -170,7 +170,7 @@ test.describe('User management (admin User List tab)', () => {
 			expect(puts.at(-1)?.email).toBe(newEmail);
 			await refreshUntilRow(page, newEmail);
 
-			// Second edit — submit with the SAME value. F11: the server used to
+			// Second edit — submit with the SAME value. The server used to
 			// 500 on a no-op PUT; it must now succeed.
 			await selectRowByText(page, username);
 			await toolbarButton(page, 'Mode').click();
@@ -225,7 +225,7 @@ test.describe('User management (admin User List tab)', () => {
 		await refreshUntilGone(page, username);
 	});
 
-	test('D-self blocked: admin cannot delete their own account (F-USER-1)', async ({page}) => {
+	test('D-self blocked: admin cannot delete their own account', async ({page}) => {
 		// Match the admin row by its EXACT username cell — a substring match on
 		// "admin" would also hit any row whose role cell reads "🛡️ ADMIN".
 		const adminRow = grid(page).locator('.MuiDataGrid-row').filter({has: page.getByText(new RegExp('^' + esc(ADMIN_USER) + '$'))});
@@ -234,7 +234,7 @@ test.describe('User management (admin User List tab)', () => {
 		await adminRow.getByRole('checkbox').check();
 		await toolbarButton(page, 'Delete').click();
 		await confirmDelete(page); // pass the generic warning…
-		// …then the self-delete guard blocks it (F-USER-1).
+		// …then the self-delete guard blocks it.
 		await expect(dialogTitle(page, 'Cannot Delete')).toBeVisible();
 		await dialogButton(page, 'OK').click();
 		// Admin was NOT deleted.

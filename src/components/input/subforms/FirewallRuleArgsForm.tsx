@@ -13,8 +13,8 @@ import {IEnumItem} from 'types/global';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-// Exported so FirewallInputForm can gate submit on the same rule (F4 class:
-// a min>max range passes the gateway, so the form must block it).
+// Exported so FirewallInputForm can gate submit on the same rule (a min>max
+// range passes the gateway, so the form must block it).
 export function getPortRangeError(min: number | undefined | null, max: number | undefined | null): string | undefined {
 	if (min == null || max == null) return undefined;
 	return Number(min) > Number(max) ? 'Min port must not exceed max port' : undefined;

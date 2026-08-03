@@ -8,9 +8,9 @@
 //
 // NOTE on the e2ehttps value: the cicd mcp-e2ehttps config.sh sets
 // `security: 2` under the OLD (buggy) enum doc where "2" was mislabelled
-// e2ehttps; the corrected mapping (F-CICD-3) is tls=2, e2ehttps=3, so this
-// spec drives the corrected value (exercising the F-CICD-3 fix), matching the
-// P4 e2ehttpsproxy-mtls precedent.
+// e2ehttps; the corrected mapping is tls=2, e2ehttps=3, so this
+// spec drives the corrected value (exercising the enum fix), matching the
+// e2ehttpsproxy-mtls precedent.
 //---------------------------------------------------------
 import {test} from '../../../fixtures';
 import {activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';

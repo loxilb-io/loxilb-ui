@@ -8,15 +8,15 @@
 //  1. The egress LB rule — the `egress` flag was re-enabled on the LB form in
 //     P2. This spec drives it and (adversarially) asserts it ROUND-TRIPS via
 //     REST, not just that create is accepted — `egress` could be write-only
-//     like `privateIP`/`snat` on fullnat (F-CICD-2). The cicd wildcard VIP
+//     like `privateIP`/`snat` on fullnat. The cicd wildcard VIP
 //     0.0.0.0 is re-keyed to a documentation VIP so the rule stays sweepable.
 //  2. The egress SNAT FIREWALL rule — NOT expressible: the gateway REST
 //     firewall model (`api/models/firewall_option_entry.go`) has NO `egress`
 //     field (only the loxicmd path has `--egress`), and neither does the UI
-//     Firewall form. That is a genuine gateway-REST gap (CG-4, hand-off), so
-//     the firewall-egress half is documented here rather than driven — a UI
-//     control that POSTs an `egress` the gateway silently drops would be worse
-//     than none. See docs/E2E_CICD_SCENARIO_TEST_PLAN.md §16 / gap CG-4.
+//     Firewall form. That is a genuine gateway-REST gap (handed off to the
+//     gateway engineers), so the firewall-egress half is documented here
+//     rather than driven — a UI control that POSTs an `egress` the gateway
+//     silently drops would be worse than none.
 //---------------------------------------------------------
 import {test} from '../../../fixtures';
 import {activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';

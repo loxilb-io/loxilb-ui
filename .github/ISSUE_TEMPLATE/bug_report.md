@@ -17,14 +17,13 @@ A clear and concise description of the bug.
 What you expected to happen.
 
 ## Actual Behavior
-What actually happened. Include error messages and browser console/network logs (redact any secrets).
+What actually happened. Include error messages and logs (redact any secrets).
 
 ## Environment
-- loxilb-ui version / commit:
-- Deployment (Docker image / static bundle / dev server):
-- Browser and version:
-- Backend (loxilb-oam / gateway) version:
+- loxilb-oam version / commit:
+- Deployment (Docker Compose / Kubernetes / binary):
 - OS and architecture:
+- MySQL version:
 
 ## Additional Context
 Anything else that helps us diagnose the issue.

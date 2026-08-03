@@ -23,8 +23,8 @@ export default function BasicSettingsForm(props: {value: IServiceArguments; onCh
 
 	// Note: protocol defaults to 'tcp' upstream (LBInputForm formData init) and in
 	// the dropdown's display value, so no setState-in-effect is needed here — that
-	// pattern (with an onChange identity that changed every render) drove F14's
-	// "Maximum update depth exceeded" render loop.
+	// pattern (with an onChange identity that changed every render) drove the
+	// "Maximum update depth exceeded" render loop this form once had.
 
 	// Validate port range
 	const portRangeError = React.useMemo(() => {
