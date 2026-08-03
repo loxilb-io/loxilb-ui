@@ -93,9 +93,13 @@ else
 fi
 
 # 6. Private key material (belt-and-braces on top of gitleaks) ----------------
-if git grep -Iqn -E 'BEGIN (RSA |EC |OPENSSH |)PRIVATE KEY' HEAD 2>/dev/null; then
+# e2e/helpers/ipsec-pem.ts is allowlisted: it holds a disposable self-signed
+# key pair generated only for the IPsec e2e specs (throwaway testbed cert store,
+# swept after each run) — the same fixture is allowlisted in .gitleaks.toml.
+PRIVKEY_EXCLUDES=( ':(exclude)e2e/helpers/ipsec-pem.ts' )
+if git grep -Iqn -E 'BEGIN (RSA |EC |OPENSSH |)PRIVATE KEY' HEAD -- "${PRIVKEY_EXCLUDES[@]}" 2>/dev/null; then
   fail "private key material in tracked files:"
-  git grep -In -E 'BEGIN (RSA |EC |OPENSSH |)PRIVATE KEY' HEAD | head -10
+  git grep -In -E 'BEGIN (RSA |EC |OPENSSH |)PRIVATE KEY' HEAD -- "${PRIVKEY_EXCLUDES[@]}" | head -10
 else
   pass "no private key material"
 fi
