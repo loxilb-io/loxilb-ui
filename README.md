@@ -72,6 +72,13 @@ A modern React-based web dashboard for efficiently managing LoxiLB load balancer
 
 ## 🚀 Quick Start
 
+> **Deploying the full management plane?** The recommended production
+> deployment (this UI + the [loxilb-oam](https://github.com/loxilb-io/loxilb-oam)
+> API + MySQL behind a TLS-terminating edge) is the single-node Docker Compose
+> bundle that ships in the loxilb-oam repository — see its step-by-step
+> [operator guide](https://github.com/loxilb-io/loxilb-oam/blob/main/docs/deployment-compose.md).
+> The options below run the UI container standalone, mainly for UI development.
+
 ### Option 1: Docker (Recommended)
 ```bash
 # Clone the repository

@@ -168,7 +168,8 @@ export default function VLANPage() {
 				key={Date.now()}
 				onChange={data => {
 					instanceRef.current = data;
-					enableYes(!!data.vid && data.vid > 0);
+					// 802.1Q vid range; the gateway creates a bridge for any number.
+					enableYes(!!data.vid && data.vid >= 1 && data.vid <= 4094);
 				}}
 			/>
 		);

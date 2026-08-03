@@ -17,7 +17,7 @@ import type {GwGetResp} from 'api';
 export async function query_get_apikey_all(instance: IInstance, tenant_id?: string): Promise<IApiKeySummary[]> {
 	const resp = await GET_INST<GwGetResp<'/config/ai/apikey'>>(instance, `/config/ai/apikey`, tenant_id ? {tenant_id} : undefined);
 	// A non-2xx (e.g. gateway 501/502 or license-gate 402) must surface so the
-	// table shows a retry banner instead of a silent "No rows" (F-UX-3).
+	// table shows a retry banner instead of a silent "No rows".
 	assertOk(resp, 'Get API Keys');
 	// The gateway license-gates AI features with HTTP 402, whose body is a JSON
 	// error *object*, not an array. Never pass a non-array through: spreading /

@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// F-CICD-4 guard (loxilb-ui, FIXED) — the Firewall form let a malformed
+// IP-validation guard (loxilb-ui, FIXED) — the Firewall form let a malformed
 // Source IP / Destination IP / SNAT To IP through to the gateway.
 //
 // RCA: useFormWithParams' validateForm only checks required/integer/enum —
@@ -23,7 +23,7 @@ import {showAllRows, toolbarButton} from '../../../helpers/table';
 
 let instName: string;
 
-test.describe('cicd/ipmasquerade — Firewall form IP validation (F-CICD-4)', () => {
+test.describe('cicd/ipmasquerade — Firewall form IP validation', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepFirewallRules();

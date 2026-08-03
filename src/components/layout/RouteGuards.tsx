@@ -6,7 +6,7 @@ import {useRole} from 'hooks/query/oamHooks';
 import {Navigate, Outlet} from 'react-router-dom';
 
 //---------------------------------------------------------
-// Route Guards (RBAC Phase 3 — UX only, the OAM server is the
+// Route Guards (RBAC — UX only, the OAM server is the
 // security boundary)
 //---------------------------------------------------------
 

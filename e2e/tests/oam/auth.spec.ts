@@ -4,7 +4,7 @@
 //     the OAM applies an exponential per-user lockout, so we never hammer it)
 //   • login ok → /instance
 //   • logout confirm → back to /login, local token cleared
-//   • H-2: the token the logged-out session held is revoked server-side; a
+//   • the token the logged-out session held is revoked server-side; a
 //     replay of it against /users/me returns 401 (verified per-token, so the
 //     shared admin.json session is untouched — this test logs in fresh)
 //   • deep-link while authed → a protected route renders, not bounced to login
@@ -43,7 +43,7 @@ test.describe('OAM auth — login & logout (logged-out context)', () => {
 		await expect(page).not.toHaveURL(/\/instance/);
 	});
 
-	test('login ok, logout confirm clears the session, replayed token is revoked (H-2)', async ({page, consoleGuard}) => {
+	test('login ok, logout confirm clears the session, replayed token is revoked', async ({page, consoleGuard}) => {
 		// Logout clears the token then redirects; an in-flight /users/me poll can
 		// land a benign 401 as React Query settles.
 		consoleGuard.allow(/Failed to load resource/i);
@@ -68,8 +68,8 @@ test.describe('OAM auth — login & logout (logged-out context)', () => {
 		await expect(page).toHaveURL(/\/login/, {timeout: 20_000});
 		expect(await page.evaluate(() => localStorage.getItem('access_token')), 'local token cleared on logout').toBeNull();
 
-		// H-2: server-side revocation — the old token no longer authenticates.
-		expect(await meStatus(token!), 'logged-out token is revoked (H-2)').toBe(401);
+		// Server-side revocation — the old token no longer authenticates.
+		expect(await meStatus(token!), 'logged-out token is revoked').toBe(401);
 	});
 });
 

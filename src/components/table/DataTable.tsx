@@ -64,13 +64,13 @@ export default function DataTable(props: {
 	onRefresh?: () => void;
 	// When the data fetch fails, callers pass error=true so the table shows a
 	// "Couldn't load …" banner instead of a bare "No rows" that reads as an
-	// empty resource (F-UX-3). Retry reuses onRefresh.
+	// empty resource. Retry reuses onRefresh.
 	error?: boolean;
 	defaultSort?: {field: string; sort: 'asc' | 'desc'};
 }) {
 	const {name, columns, rows, selected_rows, onChangeSelectedRows, hideMenuBar, hideCheckbox, hideIdColumn, disableSelect, onRefresh, error, defaultSort, deleteConfirm} = props;
 
-	// RBAC Phase 3: viewers are read-only everywhere, so hide the mutation
+	// RBAC: viewers are read-only everywhere, so hide the mutation
 	// buttons for them (UX only — the server rejects viewer writes with 403).
 	// While the role is still loading (is_viewer false) buttons stay visible.
 	const {is_viewer} = useRole();
@@ -151,7 +151,7 @@ export default function DataTable(props: {
 
 	// Derive a human-readable label for each selected row from its leftmost data
 	// column, so the confirmation names what's being removed instead of the
-	// anonymous "this Item" (F-UX-2 — easy to confirm a wrong/bulk selection).
+	// anonymous "this Item" (which made it easy to confirm a wrong/bulk selection).
 	const labelKey = columns[0]?.data_key;
 	const rowLabel = (v: any): string => {
 		if (v == null) return '';

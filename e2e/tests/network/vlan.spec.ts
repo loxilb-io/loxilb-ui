@@ -88,7 +88,7 @@ test.describe('VLAN page CRUD', () => {
 		await refreshUntilGone(page, String(VID));
 	});
 
-	test('F-NET-1: a tagged member deletes via the base device name (not eth0.<vid>)', async ({page}) => {
+	test('V-member-delete: a tagged member deletes via the base device name (not eth0.<vid>)', async ({page}) => {
 		const memberDev = `eth0.${MEMBER_VID}`;
 		// Seed vlan + tagged member via API; the gateway lists the member as
 		// "eth0.<vid>", but its delete endpoint only accepts the base dev "eth0".
@@ -123,7 +123,7 @@ test.describe('VLAN page CRUD', () => {
 			.toBe(0);
 	});
 
-	test('V-vid: empty vid blocks submit', async ({page}) => {
+	test('V-vid: empty, zero and out-of-range vid all block submit', async ({page}) => {
 		await toolbarButton(page, 'Add').click();
 		await expect(dialog(page).getByText('New VLAN')).toBeVisible();
 		const addBtn = dialogButton(page, 'Add');
@@ -136,6 +136,15 @@ test.describe('VLAN page CRUD', () => {
 
 		await field(page, 'VLAN ID').fill('0');
 		expect(await isEventuallyDisabled(addBtn), 'vid 0 must block').toBe(true);
+
+		// 802.1Q reserves 4095; the gateway creates a bridge for any number, so
+		// the form must bound the id with a visible reason.
+		await field(page, 'VLAN ID').fill('4095');
+		expect(await isEventuallyDisabled(addBtn), 'vid 4095 must block').toBe(true);
+		await expect(dialog(page).getByText(/between 1 and 4094/)).toBeVisible();
+
+		await field(page, 'VLAN ID').fill('4094');
+		await expect(addBtn).toBeEnabled();
 
 		await dialogButton(page, 'Cancel').click();
 	});

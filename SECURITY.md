@@ -1,13 +1,19 @@
 # Security Policy
 
-## Supported versions
+## Supported Versions
 
-Security fixes are applied to the latest release on the `main` branch.
+We release patches for security vulnerabilities. Which versions are eligible receiving such patches depend on the CVSS v3.0
+Rating:
 
-## Reporting a vulnerability
+| CVSS v3.0 | Supported Versions                        |
+| --------- | ----------------------------------------- |
+| 9.0-10.0  | Releases within the previous three months |
+| 4.0-8.9   | Most recent release                       |
 
-Please report vulnerabilities privately — do **not** open a public GitHub issue.
+## Reporting a Vulnerability
 
-- Preferred: use [GitHub private vulnerability reporting](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability) on this repository ("Report a vulnerability" under the Security tab).
+Please report (suspected) security vulnerabilities to **[loxilb-devel@netlox.io](mailto:loxilb-devel@netlox.io)**. You will receive a response
+from us within 48 hours. If the issue is confirmed, we will release a patch as soon as possible depending on complexity but
+historically within a few days.
 
-Include a description of the issue, steps to reproduce, and the potential impact. We will acknowledge reports as quickly as possible and keep you informed of the fix status. Please allow us reasonable time to remediate before any public disclosure.
+Alternatively, you can use [GitHub private vulnerability reporting](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability) on this repository ("Report a vulnerability" under the Security tab). Please do **not** open a public GitHub issue for security problems.

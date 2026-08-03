@@ -263,7 +263,7 @@ export default function IPsecTunnelInputForm(props: IPsecTunnelInputFormProps) {
 
 				{showAdvanced && (
 					<Stack spacing={3}>
-						{/* IKE (Phase 1) */}
+						{/* IKE */}
 						<Divider />
 						<Typography variant="subtitle2">{t('IKE (Phase 1)')}</Typography>
 						<Grid2 container spacing={2}>
@@ -299,7 +299,7 @@ export default function IPsecTunnelInputForm(props: IPsecTunnelInputFormProps) {
 							/>
 						</Grid2>
 
-						{/* ESP (Phase 2) */}
+						{/* ESP */}
 						<Divider />
 						<Typography variant="subtitle2">{t('ESP (Phase 2)')}</Typography>
 						<Grid2 container spacing={2}>

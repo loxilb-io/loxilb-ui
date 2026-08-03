@@ -5,7 +5,7 @@
 // which the shared testbed is NOT (every AI endpoint 501s by design;
 // see UI_API_GAP_ANALYSIS §2.2). So this file splits in two:
 //   • always-run: the page renders, the 501 degrades to an empty table
-//     (no white-screen — F9), and ALL client-side form validation runs
+//     (no white-screen), and ALL client-side form validation runs
 //     (the Add dialog opens even though the eventual POST would 501).
 //   • CRUD (create/patch/delete): test.skip(noUserservice) — lights up
 //     unchanged on a userservice-enabled gateway.
@@ -50,7 +50,7 @@ test.describe('AI API Key page', () => {
 		await expect(toolbarButton(page, 'Add')).toBeVisible({timeout: 20_000});
 	});
 
-	test('render: a 501 (no userservice) degrades to an empty table, never a white-screen (F9)', async ({page}) => {
+	test('render: a 501 (no userservice) degrades to an empty table, never a white-screen', async ({page}) => {
 		await expect(grid(page)).toBeVisible();
 		await expect(grid(page).getByText('No rows')).toBeVisible();
 		// The page shell is intact and interactive.

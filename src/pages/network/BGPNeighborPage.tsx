@@ -53,8 +53,8 @@ export default function BGPNeighborPage() {
 				key={Date.now()}
 				onChange={data => {
 					instanceRef.current = data;
-					// F-CICD-4 sibling: gate on address VALIDITY, not just presence —
-					// a malformed peer IP ("999.1.1.1") must not reach the gateway.
+					// Gate on address VALIDITY, not just presence — a malformed
+					// peer IP ("999.1.1.1") must not reach the gateway.
 					enableYes(isValidIPAddress(data.ipAddress ?? ''));
 				}}
 			/>

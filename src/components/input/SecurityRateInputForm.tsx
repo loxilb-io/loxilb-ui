@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {Grid2, Stack, Switch, FormControlLabel, Divider} from '@mui/material';
+import {Alert, Grid2, Stack, Switch, FormControlLabel, Divider} from '@mui/material';
 import NewBox from 'components/layout/NewBox';
 import ParamBox from 'components/element/ParamBox';
 import {t} from 'i18next';
@@ -66,11 +66,25 @@ export default function SecurityRateInputForm(props: SecurityRateInputFormProps)
 	const PPS_MAX = 1 << 24; // secRateMaxPPSThreshold
 	const UDP_BW_MAX = 4095; // secRateMaxUDPBandwidthMB
 
+	// The gateway also rejects a zero threshold on any *enabled* protection and
+	// a config with every protection switched off (disable has its own
+	// endpoint). Mirror both rules so the bad combination is blocked here with
+	// an explanation instead of coming back as a 400.
+	const hasZeroThreshold = (data: ISecurityRateConfigMod): boolean =>
+		(data.synEnabled && data.synThreshold <= 0) ||
+		(data.connRateEnabled && data.ratePerSec <= 0) ||
+		(data.udpEnabled && (data.udpPktThreshold <= 0 || data.udpBandwidthMB <= 0));
+
+	const allProtectionsDisabled = (data: ISecurityRateConfigMod): boolean =>
+		!data.synEnabled && !data.connRateEnabled && !data.udpEnabled;
+
 	const validateForm = (data: ISecurityRateConfigMod): boolean => {
 		if (data.synEnabled && data.cookieThreshold >= data.synThreshold) return false;
 		if (data.synThreshold < 0 || data.cookieThreshold < 0 || data.ratePerSec < 0 || data.udpPktThreshold < 0 || data.udpBandwidthMB < 0) return false;
 		if (data.synThreshold > PPS_MAX || data.cookieThreshold > PPS_MAX || data.ratePerSec > PPS_MAX || data.udpPktThreshold > PPS_MAX) return false;
 		if (data.udpBandwidthMB > UDP_BW_MAX) return false;
+		if (hasZeroThreshold(data)) return false;
+		if (allProtectionsDisabled(data)) return false;
 		return true;
 	};
 
@@ -147,7 +161,7 @@ export default function SecurityRateInputForm(props: SecurityRateInputFormProps)
 				<Stack spacing={2}>
 					<FormControlLabel
 						control={<Switch checked={form.udpEnabled} onChange={e => handleChange('udpEnabled')(e.target.checked)} />}
-						label={t('Enable UDP Flood Protection (P0-7)')}
+						label={t('Enable UDP Flood Protection')}
 					/>
 					{form.udpEnabled && (
 						<Grid2 container spacing={2}>
@@ -168,6 +182,13 @@ export default function SecurityRateInputForm(props: SecurityRateInputFormProps)
 				</Stack>
 
 				<Divider />
+
+				{hasZeroThreshold(form) && (
+					<Alert severity="warning">{t('Every enabled protection needs a threshold greater than zero.')}</Alert>
+				)}
+				{allProtectionsDisabled(form) && (
+					<Alert severity="warning">{t('At least one protection (SYN Flood, Connection Rate, or UDP Flood) must be enabled. Use Disable to turn protection off entirely.')}</Alert>
+				)}
 
 				{/* Whitelist IPs */}
 				<ParamBox
