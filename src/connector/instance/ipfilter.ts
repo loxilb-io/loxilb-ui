@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {isValidIPAddress} from 'common';
 import {IIPFilterEntry, IIPFilterDeleteParams} from 'types/security';
 import {IInstance} from 'types/oam';
 import {ApiResult, assertOk, createDetailedErrorMessage} from '../fetcher/fetcher_base';
@@ -16,13 +17,22 @@ export async function query_get_ipfilter_all(instance: IInstance): Promise<IIPFi
 	return (resp.data?.ipFilterAttr ?? []) as IIPFilterEntry[];
 }
 
+// The gateway only parses CIDR notation, but a bare host IP is a valid filter
+// intent — normalize it to a single-host prefix instead of letting the
+// request fail.
+function toHostCidr(cidr: string): string {
+	const trimmed = cidr.trim();
+	if (!isValidIPAddress(trimmed)) return trimmed;
+	return trimmed.includes(':') ? `${trimmed}/128` : `${trimmed}/32`;
+}
+
 export async function request_create_ipfilter_rule(instance: IInstance, data: IIPFilterEntry): Promise<ApiResult> {
 	// Explicit payload: the page forwards the form ref verbatim, which also
 	// carries the client-side isValid flag — send only IIPFilterEntry schema
 	// fields (drop isValid + the read-only packets/bytes counters).
 	const payload: IIPFilterEntry = {
 		filterType: data.filterType,
-		cidr: data.cidr,
+		cidr: toHostCidr(data.cidr),
 		zone: data.zone,
 		priority: data.priority,
 		action: data.action,

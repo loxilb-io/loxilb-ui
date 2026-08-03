@@ -376,7 +376,54 @@ test.describe('Firewall page CRUD', () => {
 		await dialogButton(page, 'OK').click();
 	});
 
-	test('D-multi (F16 regression): bulk delete fires one DELETE per selected row', async ({page}) => {
+	// Negative regressions: each of these invalid inputs reached the gateway
+	// before the form gained a client-side gate. The form now blocks submit;
+	// these lock that behavior so CI catches any regression.
+
+	test('V-verdict-conflict: allow + drop both checked blocks submit', async ({page}) => {
+		await toolbarButton(page, 'Add').click();
+		await expect(dialog(page).getByText('Firewall Rule Arguments')).toBeVisible();
+		// Valid match criteria first, so ONLY the verdict conflict can block.
+		await fillRuleForm(page, {sourceIP: '203.0.113.201/32', preference: '241'}, {allow: true, drop: true});
+
+		await expect(dialog(page).getByText(/mutually exclusive/i)).toBeVisible();
+		expect(await isEventuallyDisabled(dialogButton(page, 'Add')), 'allow+drop must block submit').toBe(true);
+
+		// Positive: unchecking Drop clears the conflict and re-enables Add.
+		await field(page, 'Drop').uncheck();
+		await expect(dialogButton(page, 'Add')).toBeEnabled();
+		await dialogButton(page, 'Cancel').click();
+	});
+
+	test('V-snat-toip: Do SNAT without To IP blocks submit', async ({page}) => {
+		await toolbarButton(page, 'Add').click();
+		await expect(dialog(page).getByText('Firewall Rule Arguments')).toBeVisible();
+		await fillRuleForm(page, {sourceIP: '203.0.113.202/32', preference: '242'}, {doSnat: true});
+
+		await expect(dialog(page).getByText(/Do SNAT requires a valid To IP/i)).toBeVisible();
+		expect(await isEventuallyDisabled(dialogButton(page, 'Add')), 'snat without toIP must block').toBe(true);
+
+		// Positive: a valid To IP clears the block.
+		await field(page, 'To IP').fill('198.51.100.202');
+		await expect(dialogButton(page, 'Add')).toBeEnabled();
+		await dialogButton(page, 'Cancel').click();
+	});
+
+	test('V-empty-criteria: a rule with no source/dest blocks submit (no accidental catch-all)', async ({page}) => {
+		await toolbarButton(page, 'Add').click();
+		await expect(dialog(page).getByText('Firewall Rule Arguments')).toBeVisible();
+		await fillRuleForm(page, {preference: '243'}, {drop: true}); // verdict only, no match tuple
+
+		await expect(dialog(page).getByText(/at least a Source or Destination/i)).toBeVisible();
+		expect(await isEventuallyDisabled(dialogButton(page, 'Add')), 'empty criteria must block submit').toBe(true);
+
+		// Positive: an explicit source (even a typed catch-all) unblocks it.
+		await field(page, 'Source IP').fill('203.0.113.203/32');
+		await expect(dialogButton(page, 'Add')).toBeEnabled();
+		await dialogButton(page, 'Cancel').click();
+	});
+
+	test('D-multi: bulk delete fires one DELETE per selected row', async ({page}) => {
 		await apiCreate(seedRule({sourceIP: '203.0.113.21/32', destinationIP: '198.51.100.21/32', preference: 221}));
 		await apiCreate(seedRule({sourceIP: '203.0.113.22/32', destinationIP: '198.51.100.22/32', preference: 222}));
 		await apiCreate(seedRule({sourceIP: '203.0.113.23/32', destinationIP: '198.51.100.23/32', preference: 223}));
@@ -395,7 +442,7 @@ test.describe('Firewall page CRUD', () => {
 			await dialogButton(page, 'OK').click();
 		});
 
-		expect(deletes, 'one DELETE per selected row (F16)').toHaveLength(3);
+		expect(deletes, 'one DELETE per selected row').toHaveLength(3);
 		const sources = deletes.map(u => u.searchParams.get('sourceIP')).sort();
 		expect(sources[0]).toContain('203.0.113.21');
 		expect(sources[1]).toContain('203.0.113.22');

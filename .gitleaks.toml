@@ -14,6 +14,8 @@ paths = [
   '''\.claude/.*''',            # local AI-tooling data — gitignored, not shipped
   '''.*\.example$''',           # *.example templates hold placeholders, not secrets
   '''package-lock\.json$''',    # npm dependency integrity hashes are not secrets
+  '''e2e/helpers/ipsec-pem\.ts$''', # disposable self-signed PEM fixture for IPsec e2e specs (throwaway testbed only)
+  '''(^|/)test\.http$''',           # local REST-client scratch file (never shipped; gitignored); dev tokens only
 ]
 regexes = [
   '''<[A-Za-z0-9_-]+>''',       # angle-bracket placeholders like <jwt-token>, <OAM_...>

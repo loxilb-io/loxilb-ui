@@ -61,7 +61,7 @@ export function useMyInfo() {
 }
 
 //---------------------------------------------------------
-// Role / capabilities (RBAC Phase 3, docs/SECURITY_RBAC_PLAN.md §5)
+// Role / capabilities (RBAC, docs/SECURITY_RBAC_PLAN.md §5)
 //---------------------------------------------------------
 export type TUserRole = 'admin' | 'operator' | 'viewer';
 

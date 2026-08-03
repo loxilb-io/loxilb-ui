@@ -41,7 +41,7 @@ export default function MirrorInfoInputForm(props: {value: IMirrorInfo; onChange
 	// Route every mutation through a ref-merged emit so the several onChange
 	// calls that land in the same React batch — the Type auto-default, the port
 	// auto-init, and the disabled-field clears — merge instead of clobbering one
-	// another via a stale `value` snapshot (F19 sibling, same class fixed in the
+	// another via a stale `value` snapshot (same bug class fixed in the
 	// QoS policyInfo subform). The ParamBox re-announces its default if a reset
 	// transiently blanks a field, so the ref self-heals without folding `value`
 	// back in (which would re-clobber it with the transient undefined).

@@ -6,7 +6,7 @@
 // is disabled". CRUD (neighbor, defined-set, policy, apply, global config)
 // therefore cannot be exercised and is skipped. What we CAN and DO verify:
 // every BGP page renders and degrades gracefully on the 403 — it must not
-// crash the app or redirect to an error page (F15 guard). This is exactly the
+// crash the app or redirect to an error page (no-redirect guard). This is exactly the
 // routing-safety posture the plan asks for on global/apply (never mutate).
 //---------------------------------------------------------
 import {ConsoleGuard, expect, test} from '../../fixtures';

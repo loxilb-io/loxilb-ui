@@ -18,7 +18,7 @@ end-to-end run, so it needs a reachable testbed.
 |---|---|
 | Node.js 22.x | Match CI. `npm ci` to install exact locked deps. |
 | Playwright browsers | `npx playwright install chromium` (first time only). |
-| A reachable LoxiLB stack | An OAM instance whose registered gateway is **up**. Set the address of your OAM in `E2E_OAM_URL` (internal testbed addresses live in `docs/internal/TESTBED.md`, which is not part of the public repo). |
+| A reachable LoxiLB stack | An OAM instance whose registered gateway is **up**. Set the address of your OAM in `E2E_OAM_URL`. |
 | Admin credentials | A working OAM admin login for that stack. |
 
 ```bash

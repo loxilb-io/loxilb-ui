@@ -7,7 +7,7 @@
 //         CONFIG SLICE both HA scenarios rest on: the fullnat LB rule the
 //         cluster fronts, and the cluster-instance state (/config/cistate)
 //         the keepalived integration drives — read-modify-restore, no
-//         failover ever triggered. (plan §7 Group F, CG-6.)
+//         failover ever triggered.
 //
 // Replayed through the real loxilb-ui + validated via REST read-back. No
 // traffic; no VIP takeover (state kept NOT_DEFINED throughout).
