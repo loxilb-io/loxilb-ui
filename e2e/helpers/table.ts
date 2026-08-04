@@ -91,8 +91,11 @@ export async function selectRowByClick(page: Page, text: string | RegExp, field 
 	await row.locator(`[data-field="${field}"]`).first().click();
 }
 
-/** Refresh via the toolbar and wait for a row matching `text` to appear. */
-export async function refreshUntilRow(page: Page, text: string | RegExp, attempts = 5): Promise<void> {
+/** Refresh via the toolbar and wait for a row matching `text` to appear.
+ * 8 attempts ≈ 12s of refresh budget: the shared live testbed can render a
+ * just-created row late under load (persisted react-query cache + poll
+ * timing), and a tight budget turned those into false-negative failures. */
+export async function refreshUntilRow(page: Page, text: string | RegExp, attempts = 8): Promise<void> {
 	for (let i = 0; i < attempts; i++) {
 		if (await revealRow(page, text)) return; // long lists virtualize rows out
 		await toolbarButton(page, 'Refresh').click();

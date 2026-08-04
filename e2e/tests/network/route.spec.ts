@@ -1,19 +1,23 @@
 //---------------------------------------------------------
 // Route page CRUD spec (docs/E2E_CRUD_TEST_PLAN.md §5).
 // POST /config/route (create), DELETE /config/route/destinationIPNet/{ip}/{mask}.
-// Every route targets the RFC-5737 203.0.113.0/24 documentation range via the
-// on-link gateway 10.0.0.1 — inert (no real traffic is destined there), and the
-// afterEach sweep only ever removes doc-range routes.
+// Every route targets the RFC-5737 203.0.113.0/24 documentation range via an
+// on-link gateway derived from the testbed's own interfaces — inert (no real
+// traffic is destined there), and the afterEach sweep only ever removes
+// doc-range routes.
 //---------------------------------------------------------
 import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {activeInstance, gw, sweepRoutes} from '../../helpers/api';
+import {activeInstance, gw, gwJson, isDocAddr, sweepRoutes} from '../../helpers/api';
 import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../helpers/form';
 import {refreshUntilGone, refreshUntilRow, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 
 const ROUTE_PATH = '/config/route';
-const GW = '10.0.0.1'; // on-link nexthop on the testbed
+// On-link nexthop, DERIVED from the live interface table in beforeAll — a
+// hardcoded 10.0.0.1 turned into a gateway 500 "network is unreachable" the
+// moment the suite ran against a testbed without a 10.0.0.0/24 interface.
+let GW = '';
 
 async function apiCreateRoute(destinationIPNet: string): Promise<void> {
 	const resp = await gw('POST', ROUTE_PATH, {destinationIPNet, gateway: GW});
@@ -47,6 +51,22 @@ test.describe('Route page CRUD', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepRoutes();
+		// Derive an on-link nexthop: take the first non-lo interface's primary
+		// address and pick a sibling host in the same subnet (.1, or .2 when the
+		// interface itself sits on .1). The kernel only checks reachability, so
+		// any in-subnet address works — no traffic is ever sent to it.
+		const data = await gwJson<{ipAttr?: Array<{dev: string; ipAddress?: string[]}>}>('/config/ipv4address/all');
+		for (const attr of data.ipAttr ?? []) {
+			if (attr.dev === 'lo') continue;
+			const primary = (attr.ipAddress ?? []).find(cidr => !isDocAddr(cidr));
+			if (primary) {
+				const octets = primary.split('/')[0].split('.');
+				octets[3] = octets[3] === '1' ? '2' : '1';
+				GW = octets.join('.');
+				break;
+			}
+		}
+		expect(GW, 'testbed must expose a non-lo device with an IPv4 address').toBeTruthy();
 	});
 
 	test.afterEach(async () => {

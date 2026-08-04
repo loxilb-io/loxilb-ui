@@ -449,8 +449,11 @@ export async function runLbScenario(page: Page, instName: string, r: LbRecipe): 
 		expect(body.allowedSources).toEqual(r.allowedSources.map(prefix => ({prefix})));
 	}
 
-	await refreshUntilRow(page, r.name);
+	// REST read-back FIRST: it proves the gateway persisted the rule and makes
+	// a subsequent UI-row miss unambiguously a render/refresh problem (the
+	// 2026-08-04 P/D flake burned an hour separating exactly these two).
 	await assertLbReadback(r);
+	await refreshUntilRow(page, r.name);
 }
 
 export {refreshUntilGone}; // re-export for specs that verify UI delete

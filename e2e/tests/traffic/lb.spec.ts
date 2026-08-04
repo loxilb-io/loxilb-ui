@@ -457,13 +457,13 @@ test.describe('LB Rule page CRUD', () => {
 		await selectOption(page, 'Mode', 'fullproxy');
 		await addEndpoint(page, 0, '198.51.100.62', '8081');
 
-		await expect(dialog(page).getByText(/require the TCP protocol/i)).toBeVisible();
+		await expect(dialog(page).getByText(/requires? the TCP protocol/i)).toBeVisible();
 		expect(await isEventuallyDisabled(createBtn), 'udp+fullproxy must block submit').toBe(true);
 
 		// Positive: switching the protocol back to TCP clears the block.
 		await expandSection(page, BASIC);
 		await selectOption(page, 'Protocol', 'TCP');
-		await expect(dialog(page).getByText(/require the TCP protocol/i)).toHaveCount(0);
+		await expect(dialog(page).getByText(/requires? the TCP protocol/i)).toHaveCount(0);
 
 		await page.mouse.move(0, 0);
 		await dialogButton(page, 'Cancel').click();

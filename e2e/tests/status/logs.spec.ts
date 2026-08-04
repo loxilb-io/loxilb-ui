@@ -30,9 +30,25 @@ test.describe('Logs page (read-only)', () => {
 
 		const {archives} = await gwJson<{archives: string[]}>('/log-archives');
 		expect(archives.length, 'testbed should expose ≥1 log archive').toBeGreaterThan(0);
-		for (const name of archives) {
-			await expect(page.getByText(name, {exact: true})).toBeVisible();
+		// The archives card pages 5 rows at a time (SimpleTable pageSize=5), so
+		// walk the pages and collect what renders instead of expecting every
+		// archive on the first page (broke at >5 archives on the testbed).
+		// Everything is scoped to the card — the live-logs grid below has its
+		// own pager and its rows can embed archive names in log messages.
+		const card = page.locator('.MuiPaper-root').filter({hasText: 'Archived Logs'}).first();
+		const nextBtn = card.getByRole('button', {name: /go to next page/i});
+		const seen = new Set<string>();
+		for (;;) {
+			for (const name of archives) {
+				if (seen.has(name)) continue;
+				if (await card.getByText(name, {exact: true}).isVisible().catch(() => false)) seen.add(name);
+			}
+			if (seen.size === archives.length) break;
+			if (!(await nextBtn.isEnabled().catch(() => false))) break;
+			await nextBtn.click();
+			await page.waitForTimeout(200); // let the grid swap pages
 		}
+		expect([...seen].sort(), 'every /log-archives entry is listed in the card').toEqual([...archives].sort());
 	});
 
 	test('level filter relabels via a chip and keyword filter hits the /logs API', async ({page}) => {
