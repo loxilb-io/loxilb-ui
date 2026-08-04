@@ -8,10 +8,11 @@ yarn-error.log*
 build
 dist
 
-# Environment files (except the ones we need)
-.env.development
-.env.production
-.env.test
+# Environment files — keep .env.production/.development/.test (the build reads
+# them); exclude local overrides so a developer's .env.local never leaks into
+# the image (it would override REACT_APP_API_URL with a machine-specific value).
+.env.local
+.env.*.local
 
 # Logs
 /logs/
