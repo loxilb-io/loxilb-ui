@@ -18,6 +18,10 @@ const GLOBAL_ALLOW: RegExp[] = [
 	/WebSocket connection .* failed/i,
 	/manifest\.json/i,
 	/favicon/i,
+	// Transient TCP resets on the WAN path to the live testbed (observed
+	// killing otherwise-green specs across runs). App-level failures surface
+	// as 4xx/5xx or in-page error banners — both still guarded.
+	/net::ERR_CONNECTION_RESET/,
 ];
 
 export const test = base.extend<{consoleGuard: ConsoleGuard}>({

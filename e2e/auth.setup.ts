@@ -41,6 +41,23 @@ function adminTokenFrom(stateFile: string): string {
 	throw new Error(`No access_token in ${stateFile}`);
 }
 
+// Transient WAN resets to the testbed can kill a single Node fetch
+// (ECONNRESET killed a whole 257-test run at this exact spot). The
+// provisioning POST is idempotent, so retry briefly before failing the run —
+// a genuinely dead OAM still fails after the retries.
+async function fetchWithRetry(url: string, init: RequestInit, attempts = 3): Promise<Response> {
+	let lastErr: unknown;
+	for (let i = 0; i < attempts; i++) {
+		try {
+			return await fetch(url, init);
+		} catch (err) {
+			lastErr = err;
+			await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+		}
+	}
+	throw lastErr;
+}
+
 async function uiLogin(page: import('@playwright/test').Page, username: string, password: string, stateName: string) {
 	await page.goto('login'); // relative — see baseURL note in playwright.config.ts
 	await page.locator('#username').fill(username);
@@ -64,7 +81,7 @@ setup('authenticate as admin', async ({page}) => {
 	// "already exists" is fine — we just need to be able to log in as them).
 	const token = adminTokenFrom(path.join(AUTH_DIR, 'admin.json'));
 	for (const f of [FIXTURES.operator, FIXTURES.viewer]) {
-		const resp = await fetch(`${OAM_BASE}/users`, {
+		const resp = await fetchWithRetry(`${OAM_BASE}/users`, {
 			method: 'POST',
 			headers: {'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${token}`},
 			body: JSON.stringify({username: f.username, email: f.email, password: f.password, role: f.role}),
