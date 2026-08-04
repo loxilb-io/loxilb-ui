@@ -10,6 +10,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import {Box, capitalize, Chip, Typography} from '@mui/material';
 import {get_root_url, is_active_status} from 'common';
 import {t} from 'i18next';
+import {FONT_MONO} from 'theme';
 import SimpleButton from './SimpleButton';
 import TooltipMark from './TooltipMark';
 
@@ -129,13 +130,60 @@ export const MultiLineCell = (params: any) => (
 	</Box>
 );
 
-export const TextCell = (params: any) => (
-	<Box height="100%" display="flex" alignItems="center">
-		<Typography variant="body2" width="100%" textOverflow="ellipsis" overflow="hidden" whiteSpace="nowrap">
-			{params.value !== null && params.value !== undefined ? params.value.toString() : ''}
-		</Typography>
-	</Box>
-);
+export const TextCell = (params: any) => {
+	// Empty cells render an explicit dash: a blank cell reads as a rendering
+	// bug, a dash reads as "no value" (AWS-console convention).
+	const has_value = params.value !== null && params.value !== undefined && params.value.toString() !== '';
+	return (
+		<Box height="100%" display="flex" alignItems="center">
+			<Typography variant="body2" width="100%" textOverflow="ellipsis" overflow="hidden" whiteSpace="nowrap" color={has_value ? undefined : 'text.secondary'}>
+				{has_value ? params.value.toString() : '–'}
+			</Typography>
+		</Box>
+	);
+};
+
+// Identifiers (IPs, MACs, CIDRs, ports, IDs) and counters: monospace with
+// tabular digits so values align vertically and copy cleanly.
+export const MonoCell = (params: any) => {
+	const has_value = params.value !== null && params.value !== undefined && params.value.toString() !== '';
+	return (
+		<Box height="100%" display="flex" alignItems="center">
+			<Typography
+				variant="body2"
+				width="100%"
+				textAlign={params.colDef?.align ?? 'left'}
+				textOverflow="ellipsis"
+				overflow="hidden"
+				whiteSpace="nowrap"
+				color={has_value ? undefined : 'text.secondary'}
+				sx={{fontFamily: FONT_MONO, fontVariantNumeric: 'tabular-nums'}}
+			>
+				{has_value ? params.value.toString() : '–'}
+			</Typography>
+		</Box>
+	);
+};
+
+// Neutral type badge for enum-ish values (protocol, NAT mode, …): outlined
+// gray, never colored — color stays reserved for state columns so a row's
+// single status indicator remains the eye-catcher.
+export const TagCell = (params: any) => {
+	const label = params.value !== null && params.value !== undefined ? params.value.toString() : '';
+	if (!label)
+		return (
+			<Box height="100%" display="flex" alignItems="center">
+				<Typography variant="body2" color="text.secondary">
+					–
+				</Typography>
+			</Box>
+		);
+	return (
+		<Box height="100%" display="flex" alignItems="center">
+			<Chip size="small" variant="outlined" label={label} sx={{borderRadius: '4px', color: 'text.secondary', fontWeight: 500}} />
+		</Box>
+	);
+};
 
 // Generic labelled chip. value: {label, color?} | null — null renders nothing.
 // The label always carries the meaning in text (a11y: never color alone).

@@ -13,6 +13,7 @@ import {
 	ChipCell,
 	LinkCell,
 	LogLevelCell,
+	MonoCell,
 	MultiLineCell,
 	OnOffCell,
 	StateAndNameCell,
@@ -20,6 +21,7 @@ import {
 	StatusCell,
 	SublineHeader,
 	SyncCell,
+	TagCell,
 	TextCell,
 	ToolTipHeader,
 	UsageCell,
@@ -136,6 +138,10 @@ export default function DataTable(props: {
 					? UsageCell
 					: col.type === 'chip'
 					? ChipCell
+					: col.type === 'mono'
+					? MonoCell
+					: col.type === 'tag'
+					? TagCell
 					: TextCell,
 		};
 	});
