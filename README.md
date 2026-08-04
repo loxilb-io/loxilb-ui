@@ -7,6 +7,25 @@
 
 A modern React-based web dashboard for efficiently managing LoxiLB load balancers and network services with comprehensive SSL/HTTPS support and multiple deployment options.
 
+> ### ⚠️ Prerequisite: this UI does not run on its own
+>
+> LoxiLB UI is a **front-end for the [loxilb-oam](https://github.com/loxilb-io/loxilb-oam)
+> management API** — it holds no data and performs no logic itself. Every screen
+> (login, dashboards, all CRUD) is served by talking to a running **loxilb-oam**
+> backend, which in turn drives the LoxiLB core. **Deploying only this container
+> gets you a login page that cannot authenticate anyone** — there is nothing
+> behind it.
+>
+> Before you deploy, make sure you have a reachable OAM backend and point the UI
+> at it (`BACKEND_URL`, see [Environment Configuration](#-environment-configuration)).
+>
+> **The recommended way to run the whole management plane** (this UI + OAM + its
+> database behind one TLS edge, wired together for you) is the single-node
+> Compose bundle in the OAM repo — start there, not here:
+> **[loxilb-oam → deploy/compose (operator guide)](https://github.com/loxilb-io/loxilb-oam/blob/main/docs/deployment-compose.md)**.
+> Run this repo's container standalone only when you already operate an OAM
+> backend elsewhere (see [Standalone container](DEPLOYMENT.md#standalone-ui-container)).
+
 ## 📋 Table of Contents
 
 - [Features](#-features)
@@ -72,21 +91,24 @@ A modern React-based web dashboard for efficiently managing LoxiLB load balancer
 
 ## 🚀 Quick Start
 
-> **Deploying the full management plane?** The recommended production
+> **Just want a working system? Don't start here.** The recommended production
 > deployment (this UI + the [loxilb-oam](https://github.com/loxilb-io/loxilb-oam)
 > API + MySQL behind a TLS-terminating edge) is the single-node Docker Compose
 > bundle that ships in the loxilb-oam repository — see its step-by-step
 > [operator guide](https://github.com/loxilb-io/loxilb-oam/blob/main/docs/deployment-compose.md).
-> The options below run the UI container standalone, mainly for UI development.
+> The options below run **only the UI container** and require an OAM backend you
+> already operate — on their own they render a login page that cannot log in.
 
-### Option 1: Docker (Recommended)
+### Option 1: Standalone UI container (needs an existing OAM backend)
 ```bash
 # Clone the repository
 git clone <repository-url>
 cd loxilb-ui
 
-# Start with HTTPS (self-signed certificates)
-docker-compose up --build -d
+# Point the UI at your running OAM backend, then start it (HTTPS, self-signed).
+# Without a reachable BACKEND_URL the UI has nothing to talk to — see the
+# Prerequisite note above and DEPLOYMENT.md.
+BACKEND_URL=https://your-oam-host:8080 docker-compose up --build -d
 
 # Access the application
 # HTTP: http://localhost:3000 (redirects to HTTPS)
@@ -325,9 +347,13 @@ See [`.env.example`](.env.example) for the full, annotated list. The build-time
 (`REACT_APP_*`) variables the app actually reads:
 
 ```env
-# OAM API base URL.
-#  - Development (npm start): direct URL of your OAM backend, e.g. https://oam.example.com/oam
-#  - Production (Docker/nginx): keep the proxied path /api/oam (nginx forwards to BACKEND_URL)
+# OAM API base URL. OAM serves its routes under /oam — the two modes differ by
+# one path segment, so mixing them up 404s every request:
+#  - Development (npm start): NO proxy runs — use the DIRECT OAM base ending in
+#    /oam, e.g. http://<oam-host>:8080/oam   (NOT /api/oam)
+#  - Production (deployed edge): keep the same-origin proxied path /api/oam. The
+#    edge — Caddy in the recommended loxilb-oam bundle, or nginx in the
+#    standalone UI container — rewrites /api/oam/* → <backend>/oam/*
 REACT_APP_API_URL=/api/oam
 
 # Public URL prefix the app is served under
@@ -342,10 +368,18 @@ HTTPS=true                               # Enable HTTPS in development
 ```
 
 ### Docker Environment Variables
+
+These configure the **standalone UI container** (its built-in nginx edge). The
+recommended [loxilb-oam Compose bundle](https://github.com/loxilb-io/loxilb-oam/tree/main/deploy/compose)
+does not use these — its Caddy edge is configured with `SITE_ADDRESS` /
+`EDGE_TLS` / `OAM_UPSTREAM` instead (see that bundle's `.env.example`). Both
+edges expose the same browser path, `/api/oam/*`, and rewrite it to the OAM
+`/oam/*` routes.
+
 ```env
 SSL_MODE=enabled                         # SSL configuration mode
-BACKEND_URL=https://oam.example.com     # LoxiLB OAM API URL
-BACKEND_HOST=oam.example.com            # Backend host for proxy
+BACKEND_URL=https://oam.example.com      # OAM API base; nginx proxies /api/oam/* → $BACKEND_URL/oam/*
+BACKEND_HOST=oam.example.com             # Backend host for proxy
 FRONTEND_URL=http://localhost:3000       # Frontend URL
 PUBLIC_PATH=/netlox                      # Public path prefix
 ```
