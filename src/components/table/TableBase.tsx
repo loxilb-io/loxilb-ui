@@ -25,10 +25,12 @@ export function TableBase(props: {
 			rows={rows}
 			columns={displayColumns}
 			initialState={{
-				pagination: {paginationModel: {pageSize: 5}},
+				pagination: {paginationModel: {pageSize: 25}},
 				sorting: defaultSort ? {sortModel: [{field: defaultSort.field, sort: defaultSort.sort}]} : undefined,
 			}}
-			pageSizeOptions={[5, 10, 25]}
+			pageSizeOptions={[10, 25, 50]}
+			rowHeight={44}
+			columnHeaderHeight={44}
 			checkboxSelection={onSelectionChange !== undefined && hideCheckbox !== true && disableSelect !== true}
 			onRowSelectionModelChange={onSelectionChange}
 			rowSelectionModel={rowSelectionModel}
@@ -36,9 +38,11 @@ export function TableBase(props: {
 			sx={{
 				border: 0,
 				cursor: 'pointer',
-				userSelect: 'none',
+				// Header reads as a band, not a bare text row.
+				'--DataGrid-containerBackground': '#F6F8FA',
 				'& .MuiDataGrid-columnHeaders .MuiDataGrid-columnHeaderTitleContainer': {typography: 'subtitle2'},
 				'& .MuiDataGrid-cell': {typography: 'body2'},
+				'& .MuiDataGrid-row:hover': {backgroundColor: 'rgba(17, 51, 81, 0.045)'},
 				'.MuiDataGrid-cell:focus': {outline: 'none'},
 				'.MuiDataGrid-cell:focus-within': {outline: 'none'},
 			}}

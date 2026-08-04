@@ -2,6 +2,13 @@
 // Imports
 //---------------------------------------------------------
 import ReactDOM from 'react-dom/client';
+
+// Self-hosted UI fonts (variable weights). Pretendard's dynamic-subset build
+// only downloads the Hangul ranges a page actually uses.
+import '@fontsource-variable/inter';
+import '@fontsource/jetbrains-mono';
+import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
+
 import App from './App';
 
 import 'locales/i18n';

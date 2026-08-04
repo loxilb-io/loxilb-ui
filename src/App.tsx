@@ -95,10 +95,6 @@ export default function App() {
 			});
 			setIsReady(true);
 		});
-
-		const preventRightClick = (event: any) => event.preventDefault();
-		document.addEventListener('contextmenu', preventRightClick);
-		return () => document.removeEventListener('contextmenu', preventRightClick);
 	}, []);
 
 	if (!isReady) return null; // 또는 <LoadingScreen />

@@ -259,7 +259,9 @@ export default function DataTable(props: {
 				</Alert>
 			)}
 
-			<Box width="100%" height="400px">
+			{/* Tall enough for ~10 rows at 44px before internal scroll; the old
+			    400px box left a large blank void under 5-row pages. */}
+			<Box width="100%" height="560px">
 				<TableBase
 					columns={cols}
 					rows={rows}
