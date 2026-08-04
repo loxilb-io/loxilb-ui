@@ -1,5 +1,5 @@
 import {useInstanceFromURL} from 'hooks/instanceHook';
-import {useCallback, useEffect, useMemo, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {IPostParamFieldDesc} from 'types/global';
 import {INPUT_PARAM_LIST} from 'types/input_base';
 import {useMetadata} from './query/queryHooks';
@@ -226,6 +226,18 @@ export default function useFormWithParams<T>(paramType: string, onChange?: (data
 	   }
    }, [form, params]);
 
+   // Latest-write mirror of the form state. Two writes landing in the same
+   // React batch each see the RENDER-TIME `form` closure, so the second write
+   // silently clobbered the first (the F14 stale-snapshot class — seen live on
+   // the neighbor dialog: MAC fill → device select ~60ms later wiped the MAC
+   // from state while the input still displayed it, so validation never passed
+   // and Add stayed disabled). Merging over this ref makes rapid writes
+   // cumulative regardless of render timing.
+   const mergedRef = useRef<T | undefined>(undefined);
+   useEffect(() => {
+	   mergedRef.current = form; // re-sync after state-driven resets (defaults merge)
+   }, [form]);
+
    const handleChange = useCallback(
 	   (field: keyof T) => (value: any) => {
 		   // No empty-params guard here: dropdown auto-defaults (ParamBox/
@@ -233,7 +245,8 @@ export default function useFormWithParams<T>(paramType: string, onChange?: (data
 		   // resolves. Dropping those writes left fields (e.g. firewall
 		   // protocol) displayed in the UI but absent from the POST payload.
 		   const processedValue = params[field as string]?.type === 'integer' || typeof field === 'number' ? Number(value) : value;
-		   const newForm = {...(form || ({} as T)), [field]: processedValue} as T;
+		   const newForm = {...((mergedRef.current ?? form) || ({} as T)), [field]: processedValue} as T;
+		   mergedRef.current = newForm;
 		   setForm(newForm);
 		   if (onChange) onChange(newForm);
 	   },
@@ -242,7 +255,8 @@ export default function useFormWithParams<T>(paramType: string, onChange?: (data
 
    const handleObjectChange = useCallback(
 	   (partialData: Partial<T>) => {
-		   const newForm = {...(form || ({} as T)), ...partialData} as T;
+		   const newForm = {...((mergedRef.current ?? form) || ({} as T)), ...partialData} as T;
+		   mergedRef.current = newForm;
 		   setForm(newForm);
 		   if (onChange) onChange(newForm);
 	   },
