@@ -82,12 +82,11 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 			else if (isPort(sa?.port) && (sa.portMax as number) < (sa.port as number)) e.portMax = t('Port Max must be greater than or equal to Port Min');
 		}
 
-		// L7 proxy modes (fullproxy=4, aigw=6) terminate in the userspace
-		// sockproxy, which is TCP-only: a UDP/SCTP rule in these modes is
+		// The fullproxy (mode=4) L7 path terminates in the userspace
+		// sockproxy, which is TCP-only: a UDP/SCTP rule in this mode is
 		// programmed but dead-drops at the datapath, so the form blocks it.
-		const L7_MODES = [4, 6];
-		if (L7_MODES.includes(sa?.mode as number) && sa?.protocol && sa.protocol !== 'tcp') {
-			e.protocol = t('Full-proxy / AI-gateway modes require the TCP protocol');
+		if (sa?.mode === 4 && sa?.protocol && sa.protocol !== 'tcp') {
+			e.protocol = t('Full-proxy mode requires the TCP protocol');
 		}
 
 		// At least one endpoint, each with a valid IP, target port and weight.
