@@ -559,5 +559,7 @@
 	"not run yet": "未実行",
 	"⚠ Cross-instance restore: this snapshot was taken from a different instance.": "⚠ クロスインスタンスリストア: このスナップショットは別のインスタンスで作成されました。",
 	"Take a pinned pre-upgrade snapshot named after the running gateway version (e.g. \"{{name}}\")?": "実行中のゲートウェイバージョンにちなんだピン留め済みアップグレード前スナップショット（例: \"{{name}}\"）を作成しますか？",
-	"Automatic pre-upgrade safety snapshot": "アップグレード前の自動安全スナップショット"
+	"Automatic pre-upgrade safety snapshot": "アップグレード前の自動安全スナップショット",
+	"Can't reach the loxilb-oam management API": "loxilb-oam 管理 API に接続できません",
+	"This UI is a front-end for loxilb-oam and needs a running backend to sign in. Check that loxilb-oam is up and that BACKEND_URL points to it — see the deployment guide.": "この UI は loxilb-oam のフロントエンドであり、ログインするにはバックエンドが稼働している必要があります。loxilb-oam が起動しているか、BACKEND_URL がそれを指しているかを確認してください — デプロイガイドを参照してください。"
 }
