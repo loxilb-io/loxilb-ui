@@ -91,7 +91,7 @@ test.describe('Device Neighbor page CRUD', () => {
 		await refreshUntilGone(page, '203.0.113.40');
 	});
 
-	test('V-mac: empty IP, empty device and malformed MAC all block submit', async ({page}) => {
+	test('V-mac: empty IP and malformed MAC/IP block submit; device auto-selects', async ({page}) => {
 		await openAddDialog(page);
 		const addBtn = dialogButton(page, 'Add');
 
@@ -100,10 +100,13 @@ test.describe('Device Neighbor page CRUD', () => {
 
 		await field(page, 'IP Address').fill('203.0.113.41');
 		await field(page, 'MAC Address').fill(MAC);
-		// Valid IP + MAC but no device selected: the gateway resolves the
-		// neighbor's link by name, so an empty device must block here.
-		expect(await isEventuallyDisabled(addBtn), 'empty device must block').toBe(true);
-
+		// The Device dropdown auto-selects the first device on mount (ParamBox
+		// enum auto-default). Historically that selection was DISPLAYED but a
+		// stale-write race could drop it from form state — leaving Add blocked
+		// (or the MAC wiped) while the dialog looked complete. Since the
+		// inputFormHook mergedRef fix the display and the payload agree, so
+		// there is no reachable "empty device" UI state; pin the intended
+		// device explicitly and the form must be submittable.
 		await selectOption(page, 'Device Name', DEV);
 		await expect(addBtn).toBeEnabled();
 

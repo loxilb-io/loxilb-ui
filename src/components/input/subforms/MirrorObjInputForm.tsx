@@ -24,9 +24,16 @@ export default function TargetObjectInputForm(props: {value: ITargetObject; onCh
 	const inst = useInstanceFromURL();
 
 	const {data: lbData} = useLoadBalancerConfig(inst);
+	// Only NAMED LB rules can be mirror targets (the gateway keys the
+	// attachment by rule name). Unnamed rules rendered "undefined (2020)"
+	// entries AND made the mirrObjName auto-init below emit undefined forever
+	// (an infinite re-render loop — "Maximum update depth exceeded" — whenever
+	// the first rule in the gateway list had no name).
 	const rules = useMemo(
 		() =>
-			lbData?.map((lb, index) => ({id: index, name: `${lb.serviceArguments.name} (${lb.serviceArguments.port})`, send_value: index, param: lb.serviceArguments.name})) || [],
+			lbData
+				?.filter(lb => !!lb.serviceArguments.name)
+				.map((lb, index) => ({id: index, name: `${lb.serviceArguments.name} (${lb.serviceArguments.port})`, send_value: index, param: lb.serviceArguments.name})) || [],
 		[lbData],
 	);
 
@@ -69,25 +76,17 @@ export default function TargetObjectInputForm(props: {value: ITargetObject; onCh
 	const nameInitialized = useRef(false);
 	const attachmentInitialized = useRef(false);
 
-	// Initialize attachment to 0 (Rule) if undefined  
+	// Initialize attachment to 0 (Rule) if undefined
 	useEffect(() => {
-		console.log('🔧 TargetObjectInputForm init check:', {
-			'value.attachment': value.attachment,
-			attachmentInitialized: attachmentInitialized.current,
-			shouldInit: value.attachment === undefined && !attachmentInitialized.current,
-		});
-		
 		// Only initialize if attachment is undefined AND we haven't successfully set it yet
 		if (value.attachment === undefined && !attachmentInitialized.current) {
-			console.log('✅ Initializing attachment to 0');
 			onChange({...value, attachment: 0});
 			// DON'T set attachmentInitialized here - wait for value to actually change
 		}
-		
+
 		// Mark as initialized only when attachment actually has a value
 		if (value.attachment !== undefined && !attachmentInitialized.current) {
 			attachmentInitialized.current = true;
-			console.log('✅ Attachment initialized successfully:', value.attachment);
 		}
 	}, [value, onChange]);
 
@@ -98,37 +97,28 @@ export default function TargetObjectInputForm(props: {value: ITargetObject; onCh
 		}
 	}, [value.attachment, cur_type]);
 
-	// When attachment is set but mirrObjName is not, set the first available (only once)
+	// When attachment is set but mirrObjName is not, set the first available (only once).
+	// The emit is guarded on a TRUTHY candidate name: announcing a falsy one can
+	// never latch (value.mirrObjName stays empty), so the effect would re-fire on
+	// every parent render — the "Maximum update depth exceeded" loop the E2E
+	// console guard caught when the gateway listed an unnamed LB rule first.
 	useEffect(() => {
-		console.log('🔧 TargetObjectInputForm name init check:', {
-			'value.attachment': value.attachment,
-			'value.mirrObjName': value.mirrObjName,
-			'rules.length': rules.length,
-			'ports.length': ports.length,
-			nameInitialized: nameInitialized.current,
-			'rules[0]': rules[0],
-			'ports[0]': ports[0],
-		});
-		
 		const needsInitialization = !value.mirrObjName || value.mirrObjName.trim() === '';
-		
+
 		// For Rule attachment (0)
-		if (value.attachment === 0 && needsInitialization && rules.length > 0 && !nameInitialized.current) {
-			console.log('✅ Initializing mirrObjName with rule:', rules[0].param);
+		if (value.attachment === 0 && needsInitialization && !nameInitialized.current && rules[0]?.param) {
 			onChange({...value, mirrObjName: rules[0].param});
 			// DON'T set nameInitialized here - wait for value to actually change
 		}
 		// For Port attachment (1)
-		else if (value.attachment === 1 && needsInitialization && ports.length > 0 && !nameInitialized.current) {
-			console.log('✅ Initializing mirrObjName with port:', ports[0].param);
+		else if (value.attachment === 1 && needsInitialization && !nameInitialized.current && ports[0]?.param) {
 			onChange({...value, mirrObjName: ports[0].param});
 			// DON'T set nameInitialized here - wait for value to actually change
 		}
-		
+
 		// Mark as initialized only when mirrObjName actually has a value
 		if (value.mirrObjName && value.mirrObjName.trim() !== '' && !nameInitialized.current) {
 			nameInitialized.current = true;
-			console.log('✅ MirrObjName initialized successfully:', value.mirrObjName);
 		}
 	}, [value.attachment, value.mirrObjName, rules.length, ports.length, onChange, value, rules, ports]);
 

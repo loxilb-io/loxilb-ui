@@ -143,22 +143,32 @@ test.describe('SNI Certificates page CRUD', () => {
 		await dismissResult(page, ok);
 	});
 
-	test('V-soft-fail: a register the gateway could not load surfaces as Error, not Success', async ({page, consoleGuard}) => {
+	test('V-soft-fail: the UI verdict tracks the result body, not the HTTP status', async ({page, consoleGuard}) => {
 		consoleGuard.allow(/Failed to load resource/);
 		consoleGuard.allow(/status of 4\d\d/);
 
-		// A certPath that cannot exist forces the loader to fail on any testbed;
-		// the gateway still answers HTTP 200 with {"result":"Error: …"} — the UI
-		// must key on the result text and report the failure.
+		// A certPath that cannot exist. Gateway generations differ here: older
+		// builds load the cert eagerly and answer HTTP 200 with
+		// {"result":"Error: Failed to load certificate …"}; newer builds defer
+		// loading and answer {"result":"Success"}. Either way the regression
+		// under test is the same — the UI verdict must key on the result TEXT,
+		// never on the 200 status alone.
 		await openAddDialog(page);
 		await field(page, 'Hostname').fill('e2e-sni-softfail.example.com');
 		await field(page, 'Certificate Path (Optional)').fill('/nonexistent/e2e-sni-path');
 
 		const req = await submitRegister(page);
-		expect((await req.response())?.status(), 'gateway soft-fails with HTTP 200').toBe(200);
+		expect((await req.response())?.status(), 'gateway answers HTTP 200 either way').toBe(200);
 
-		await expect(dialogTitle(page, 'Error')).toBeVisible();
-		await expect(dialog(page).getByText(/Failed to load certificate/)).toBeVisible();
+		const respBody = await (await req.response())?.json();
+		const softFailed = typeof respBody?.result === 'string' && respBody.result.startsWith('Error');
+		if (softFailed) {
+			await expect(dialogTitle(page, 'Error')).toBeVisible();
+			await expect(dialog(page).getByText(/Failed to load certificate/)).toBeVisible();
+		} else {
+			// Deferred-load gateway: the register is accepted verbatim.
+			await expect(dialogTitle(page, 'Success')).toBeVisible();
+		}
 		await dialogButton(page, 'OK').click();
 	});
 

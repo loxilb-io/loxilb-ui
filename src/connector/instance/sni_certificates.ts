@@ -32,7 +32,15 @@ function sniSoftError(resp: SimpleResponse): boolean {
 export async function query_get_sni_certificates(instance: IInstance): Promise<ISNICertificatesResponse> {
 	const resp = await GET_INST<GwGetResp<'/sni/certificates'>>(instance, `/sni/certificates`);
 	assertOk(resp, 'Get SNI Certificates');
-	return (resp.data ?? {certificates: [], totalCertificates: 0}) as ISNICertificatesResponse;
+	// The gateway list key differs across builds: older ones return
+	// {certificates, totalCertificates}, newer ones {sniAttr} (observed live
+	// 2026-08-04; reading only `certificates` left the page permanently empty).
+	// Normalize both shapes here, and default the optional refCount — the
+	// sniAttr shape omits it and the table/detail render .toString() on it.
+	const data = (resp.data ?? {}) as any;
+	const items: any[] = data.certificates ?? data.sniAttr ?? [];
+	const certificates = items.map(c => ({...c, refCount: c.refCount ?? 0})) as ISNICertificateListItem[];
+	return {certificates, totalCertificates: data.totalCertificates ?? certificates.length};
 }
 
 /**
