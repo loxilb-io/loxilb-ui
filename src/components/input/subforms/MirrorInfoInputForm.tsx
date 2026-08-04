@@ -81,47 +81,29 @@ export default function MirrorInfoInputForm(props: {value: IMirrorInfo; onChange
 
 	// Initialize type to 0 (SPAN) if undefined
 	useEffect(() => {
-		console.log('🔧 MirrorInfoInputForm init check:', {
-			'value.type': value.type,
-			typeInitialized: typeInitialized.current,
-			shouldInit: value.type === undefined && !typeInitialized.current,
-		});
-		
 		// Only initialize if type is undefined AND we haven't successfully set it yet
 		if (value.type === undefined && !typeInitialized.current) {
-			console.log('✅ Initializing type to 0');
 			emit({type: 0});
 			// DON'T set typeInitialized here - wait for value to actually change
 		}
-		
+
 		// Mark as initialized only when type actually has a value
 		if (value.type !== undefined && !typeInitialized.current) {
 			typeInitialized.current = true;
-			console.log('✅ Type initialized successfully:', value.type);
 		}
 	}, [value, onChange]);
 
 	// When type is set but port is not, set the first port (only once)
 	useEffect(() => {
-		console.log('🔧 MirrorInfoInputForm port init check:', {
-			'value.type': value.type,
-			'value.port': value.port,
-			'portList.length': portList.length,
-			portInitialized: portInitialized.current,
-			'portList[0]': portList[0],
-		});
-		
 		// Only set port if type is defined, port is empty, and we have ports available
 		if (value.type !== undefined && !value.port && portList.length > 0 && !portInitialized.current) {
-			console.log('✅ Initializing port with:', portList[0].send_value);
 			emit({port: portList[0].send_value as string});
 			// DON'T set portInitialized here - wait for value to actually change
 		}
-		
+
 		// Mark as initialized only when port actually has a value
 		if (value.port && !portInitialized.current) {
 			portInitialized.current = true;
-			console.log('✅ Port initialized successfully:', value.port);
 		}
 	}, [value.type, value.port, portList.length, onChange, value, portList]);
 
