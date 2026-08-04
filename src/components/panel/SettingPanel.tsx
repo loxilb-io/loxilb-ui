@@ -40,8 +40,8 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 					<SingleTextBox label={t('Port Max')} value={serviceArguments.portMax} />
 					<SingleTextBox label={t('Protocol')} value={serviceArguments.protocol} />
 					<SingleTextBox label={t('BGP')} value={serviceArguments.bgp ?? false} tooltip='Flag to enable BGP'/>
-					<SingleTextBox label={t('SEL')} value={selValue} tooltip='Value for load balance algorithim(0-rr, 1-hash, 2-priority, 3-persist, 4-lc, 5-n2, 6-n3, 0-default)'/>
-					<SingleTextBox label={t('Mode')} value={modeValue} tooltip="Value for NAT mode (0-DNAT,1-onearm, 2-fullnat, 3-dsr, 4-fullproxy, 5-hostonearm, 0-default)"/>
+					<SingleTextBox label={t('SEL')} value={selValue} tooltip='Value for load balance algorithim(0-rr, 1-hash, 2-priority, 3-persist, 4-lc, 5-n2, 6-n3, 8-chwbl, 0-default)'/>
+					<SingleTextBox label={t('Mode')} value={modeValue} tooltip="Value for NAT mode (0-DNAT, 1-onearm, 2-fullnat, 3-dsr, 4-fullproxy, 5-hostonearm, 0-default)"/>
 					<SingleTextBox label={t('Block')} value={blockValue} tooltip='Value for Firewall block (0-disabled, Other-Firewall number)' />
 					<SingleTextBox label={t('SNAT')} value={serviceArguments.snat ?? false} tooltip='Flag to enable SNAT' />
 					<SingleTextBox label={t('Egress')} value={serviceArguments.egress} tooltip='Flag to indicate an egress rule'/>
@@ -66,7 +66,7 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 					<SingleTextBox label={t('Host')} value={serviceArguments.host} tooltip='Ingress specific host URL path'/>
 					<SingleTextBox label={t('Path Prefix')} value={serviceArguments.path_prefix} tooltip='URL path prefix for L7 routing (e.g., /v1/users)'/>
 					<SingleTextBox label={t('Path Match Mode')} value={serviceArguments.path_match_mode} tooltip="Path matching mode ('disabled', 'prefix', or 'exact')"/>
-					<SingleTextBox label={t('Security')} value={serviceArguments.security} tooltip='Value for Security mode (0-Plain, 1-https, 1-tls, 2-e2ehttps, 0-default) in fullproxy mode'/>
+					<SingleTextBox label={t('Security')} value={serviceArguments.security} tooltip='Value for Security mode (0-Plain, 1-https, 2-tls, 3-e2ehttps, 0-default) in fullproxy mode'/>
 					<SingleTextBox label={t('Backend Protocol')} value={serviceArguments.backend_protocol} tooltip="Backend protocol capability for ALPN negotiation ('http1', 'http2', or 'both')"/>
 					<SingleTextBox label={t('Proxy Protocol v2')} value={serviceArguments.proxyprotocolv2} tooltip='Flag to enable proxy protocol v2' />
 				</Grid2>

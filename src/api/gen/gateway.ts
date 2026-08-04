@@ -7761,16 +7761,16 @@ export interface components {
         managed?: boolean;
         /**
          * Format: int32
-         * @description value for NAT mode (0-DNAT,1-onearm, 2-fullnat, 3-dsr, 4-fullproxy, 5-hostonearm, 6-aigw, 0-default)
+         * @description value for NAT mode (0-DNAT,1-onearm, 2-fullnat, 3-dsr, 4-fullproxy, 5-hostonearm, 0-default)
          * @enum {integer}
          */
-        mode?: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+        mode?: 0 | 1 | 2 | 3 | 4 | 5;
         /**
          * Format: int32
-         * @description value for Security mode (0-Plain, 1-https, 1-tls, 2-e2ehttps, 0-default)
+         * @description value for Security mode (0-Plain, 1-https, 2-tls, 3-e2ehttps, 0-default)
          * @enum {integer}
          */
-        security?: 0 | 1 | 2;
+        security?: 0 | 1 | 2 | 3;
         /**
          * Format: uint32
          * @description block-number if any of this LB entry
