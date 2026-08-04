@@ -49,14 +49,9 @@ export async function scrollGridToBottom(page: Page): Promise<void> {
 	await page.waitForTimeout(150); // let virtualization render the newly-visible rows
 }
 
-/**
- * Scrolls the DataGrid top→bottom in overlapping steps until a row matching
- * `text` renders, returning whether it was found. MUI DataGrid virtualizes, so
- * a row can sit anywhere in a long, hash-sorted list (e.g. the VLAN table) —
- * scroll-to-bottom alone misses a middle row. A full scan renders every row at
- * some step. No-op-ish for short lists (one step, content already fits).
- */
-export async function revealRow(page: Page, text: string | RegExp): Promise<boolean> {
+/** Scrolls the CURRENT grid page top→bottom in overlapping steps until a row
+ * matching `text` renders (MUI DataGrid virtualizes rows out of the DOM). */
+async function scanCurrentPage(page: Page, text: string | RegExp): Promise<boolean> {
 	if ((await rowByText(page, text).count()) > 0) return true;
 	const scroller = grid(page).locator('.MuiDataGrid-virtualScroller');
 	if ((await scroller.count()) === 0) return false;
@@ -70,6 +65,34 @@ export async function revealRow(page: Page, text: string | RegExp): Promise<bool
 		if ((await rowByText(page, text).count()) > 0) return true;
 	}
 	return (await rowByText(page, text).count()) > 0;
+}
+
+/**
+ * Reveals a row matching `text`, returning whether it was found. Covers BOTH
+ * virtualization (scroll scan) and pagination: showAllRows caps at 25
+ * rows/page (the DataTable's largest page size), and on the live testbed a
+ * table can outgrow that mid-run — e.g. the route table gains gateway
+ * auto-created /32s from earlier LB specs, pushing a seeded row onto page 2
+ * where the old single-page scan could never see it. Walks the pager from the
+ * first page; the grid is left on the page where the row was found (or the
+ * last page), so follow-up row actions keep working.
+ */
+export async function revealRow(page: Page, text: string | RegExp): Promise<boolean> {
+	const prevBtn = grid(page).getByRole('button', {name: /go to previous page/i});
+	const nextBtn = grid(page).getByRole('button', {name: /go to next page/i});
+	// Rewind to page 1 (bounded) — a prior lookup may have parked the grid on
+	// a later page where a freshly-created row would never appear.
+	for (let i = 0; i < 40 && (await prevBtn.isEnabled().catch(() => false)); i++) {
+		await prevBtn.click();
+		await page.waitForTimeout(100);
+	}
+	for (let pageNo = 0; pageNo < 40; pageNo++) {
+		if (await scanCurrentPage(page, text)) return true;
+		if (!(await nextBtn.isEnabled().catch(() => false))) return false;
+		await nextBtn.click();
+		await page.waitForTimeout(150); // let the grid swap pages
+	}
+	return false;
 }
 
 export async function selectRowByText(page: Page, text: string | RegExp): Promise<void> {
@@ -91,8 +114,11 @@ export async function selectRowByClick(page: Page, text: string | RegExp, field 
 	await row.locator(`[data-field="${field}"]`).first().click();
 }
 
-/** Refresh via the toolbar and wait for a row matching `text` to appear. */
-export async function refreshUntilRow(page: Page, text: string | RegExp, attempts = 5): Promise<void> {
+/** Refresh via the toolbar and wait for a row matching `text` to appear.
+ * 8 attempts ≈ 12s of refresh budget: the shared live testbed can render a
+ * just-created row late under load (persisted react-query cache + poll
+ * timing), and a tight budget turned those into false-negative failures. */
+export async function refreshUntilRow(page: Page, text: string | RegExp, attempts = 8): Promise<void> {
 	for (let i = 0; i < attempts; i++) {
 		if (await revealRow(page, text)) return; // long lists virtualize rows out
 		await toolbarButton(page, 'Refresh').click();

@@ -4,19 +4,22 @@
 // POST /config/ipv4address with the row's (locked) device + a new IP, which
 // adds a secondary address. Delete: /config/ipv4address/{ip}/{mask}/dev/{dev}.
 //
-// Safety: a /32 documentation-range secondary on docker0 is non-disruptive
+// Safety: a /32 documentation-range secondary on the target device is non-disruptive
 // and inert; the afterEach sweep removes only doc-range addresses.
 //---------------------------------------------------------
 import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {activeInstance, sweepIpAddresses} from '../../helpers/api';
+import {activeInstance, gwJson, isDocAddr, sweepIpAddresses} from '../../helpers/api';
 import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss} from '../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../helpers/form';
 import {refreshUntilGone, refreshUntilRow, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 
 const V4_PATH = '/config/ipv4address';
-const BASE_DEV = 'docker0';
-const BASE_IP = '172.17.0.1'; // docker0's stable primary — the row we edit
+// The edit-target row (a stable primary address) is DERIVED from the live
+// testbed in beforeAll — hardcoding docker0/172.17.0.1 broke the suite the
+// moment it ran against a testbed without a docker bridge (elice: eth0 only).
+let BASE_DEV = '';
+let BASE_IP = '';
 const NEW_IP = '203.0.113.30/32';
 
 async function openEditFor(page: Page, rowText: string): Promise<void> {
@@ -46,6 +49,19 @@ test.describe('IPv4 address page (edit-is-create)', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepIpAddresses('ipv4');
+		// Pick the edit-target row from the live address table: the first
+		// non-loopback device with a real (non-doc-range) primary address.
+		const data = await gwJson<{ipAttr?: Array<{dev: string; ipAddress?: string[]}>}>(`${V4_PATH}/all`);
+		for (const attr of data.ipAttr ?? []) {
+			if (attr.dev === 'lo') continue;
+			const primary = (attr.ipAddress ?? []).find(cidr => !isDocAddr(cidr));
+			if (primary) {
+				BASE_DEV = attr.dev;
+				BASE_IP = primary.split('/')[0];
+				break;
+			}
+		}
+		expect(BASE_DEV, 'testbed must expose a non-lo device with an IPv4 address').toBeTruthy();
 	});
 
 	test.afterEach(async () => {
@@ -88,7 +104,7 @@ test.describe('IPv4 address page (edit-is-create)', () => {
 			await dialogButton(page, 'OK').click();
 		});
 		expect(deletes).toHaveLength(1);
-		expect(deletes[0].pathname).toContain('/ipv4address/203.0.113.30/32/dev/docker0');
+		expect(deletes[0].pathname).toContain(`/ipv4address/203.0.113.30/32/dev/${BASE_DEV}`);
 		await refreshUntilGone(page, NEW_IP);
 	});
 

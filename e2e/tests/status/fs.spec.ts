@@ -43,11 +43,21 @@ test.describe('File System page (read-only)', () => {
 
 	test('F-STATUS-2: Refresh actually refetches /status/filesystem', async ({page}) => {
 		// The old handler only did console.log(); the fix wires it to the query's
-		// refetch, so clicking Refresh must issue a real GET.
-		const [req] = await Promise.all([
-			page.waitForRequest(r => r.method() === 'GET' && /\/status\/filesystem/.test(r.url()), {timeout: 10_000}),
-			toolbarButton(page, 'Refresh').click(),
-		]);
-		expect(req.url()).toContain('/status/filesystem');
+		// refetch, so clicking Refresh must issue a real GET. react-query dedupes
+		// refetch() while the page's own poll fetch is still in flight (likely on
+		// a slow WAN testbed under load), so a single click can legitimately
+		// produce no NEW request — retry the click a few times before calling it
+		// a regression.
+		let seen = false;
+		for (let i = 0; i < 3 && !seen; i++) {
+			[seen] = await Promise.all([
+				page
+					.waitForRequest(r => r.method() === 'GET' && /\/status\/filesystem/.test(r.url()), {timeout: 7_000})
+					.then(() => true)
+					.catch(() => false),
+				toolbarButton(page, 'Refresh').click(),
+			]);
+		}
+		expect(seen, 'Refresh issues a GET /status/filesystem').toBe(true);
 	});
 });

@@ -28,11 +28,37 @@ test.describe('Logs page (read-only)', () => {
 		await expect(page.locator('.MuiChip-label', {hasText: /logs loaded/})).toBeVisible();
 		await expect(page.locator('.MuiDataGrid-row').first()).toBeVisible();
 
+		// Snapshot the archive list FIRST, then reload so the page's own
+		// /log-archives fetch is at least as fresh as the snapshot — the gateway
+		// rotates loxilbdp-*.log.gz continuously, and comparing an older page
+		// render against a newer API snapshot failed on freshly-rotated files.
 		const {archives} = await gwJson<{archives: string[]}>('/log-archives');
 		expect(archives.length, 'testbed should expose ≥1 log archive').toBeGreaterThan(0);
-		for (const name of archives) {
-			await expect(page.getByText(name, {exact: true})).toBeVisible();
+		await page.reload();
+		await expect(page.getByRole('heading', {name: 'Instance Logs'})).toBeVisible({timeout: 20_000});
+		// The archives card pages 5 rows at a time (SimpleTable pageSize=5), so
+		// walk the pages and read the filename cells directly instead of
+		// expecting every archive on the first page (broke at >5 archives on
+		// the testbed). Waiting for the rows before reading matters: a plain
+		// isVisible() probe raced the post-navigation render and missed rows.
+		// Everything is scoped to the card — the live-logs grid below has its
+		// own pager and its rows can embed archive names in log messages.
+		const card = page.locator('.MuiPaper-root').filter({hasText: 'Archived Logs'}).first();
+		const nextBtn = card.getByRole('button', {name: /go to next page/i});
+		const seen = new Set<string>();
+		for (let pageNo = 0; pageNo < 10; pageNo++) {
+			await expect(card.locator('.MuiDataGrid-row').first()).toBeVisible();
+			await page.waitForTimeout(150); // let the page's row set settle
+			for (const txt of await card.locator('[data-field="filename"]').allTextContents()) {
+				if (txt.trim()) seen.add(txt.trim());
+			}
+			if (!(await nextBtn.isEnabled().catch(() => false))) break;
+			await nextBtn.click();
 		}
+		// The card must list every archive from the pre-reload snapshot; extra
+		// entries (files rotated in since) are fine.
+		const missing = archives.filter(a => !seen.has(a));
+		expect(missing, 'every /log-archives entry is listed in the card').toEqual([]);
 	});
 
 	test('level filter relabels via a chip and keyword filter hits the /logs API', async ({page}) => {
