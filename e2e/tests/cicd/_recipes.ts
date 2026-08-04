@@ -22,7 +22,7 @@ export const LB_PATH = '/config/loadbalancer';
 
 // Enum → send_value maps (mirror src/assets/json/{sels,modes}.json).
 export const SEL_ID = {rr: 0, hash: 1, priority: 2, persist: 3, lc: 4, chwbl: 8} as const;
-export const MODE_ID = {dnat: 0, onearm: 1, fullnat: 2, dsr: 3, fullproxy: 4, hostonearm: 5, aigw: 6} as const;
+export const MODE_ID = {dnat: 0, onearm: 1, fullnat: 2, dsr: 3, fullproxy: 4, hostonearm: 5} as const;
 // mirror src/assets/json/securities.json (send_value)
 export const SECURITY_ID = {Plain: 0, https: 1, tls: 2, e2ehttps: 3} as const;
 
@@ -54,8 +54,8 @@ export interface RecipeEndpoint {
 
 /**
  * AI-gateway serviceArguments (cicd ai-*, vllm-*, sglang-*, mcp-*) driven from the
- * AIGatewaySettingsForm accordion. Reachable only when mode is an L7 proxy
- * (fullproxy=4 / aigw=6); driveLbCreate sets Mode before expanding this section.
+ * AIGatewaySettingsForm accordion. Reachable only in the fullproxy L7 mode
+ * (fullproxy=4); driveLbCreate sets Mode before expanding this section.
  * KV / SSE / P/D / model-routing fields all round-trip on the gateway GET
  * (verified live); the exceptions are noted per-spec via readbackOmit.
  */

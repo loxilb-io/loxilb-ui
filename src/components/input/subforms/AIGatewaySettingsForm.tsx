@@ -11,13 +11,13 @@ import {IServiceArguments} from 'types/load_balancer';
 //---------------------------------------------------------
 // AI Gateway settings — model routing, SSE streaming, prefill/decode
 // disaggregation and KV-cache routing (LoadbalanceEntry AI fields).
-// Relevant to the L7 proxy modes (fullproxy=4, aigw=6).
+// Relevant to the fullproxy (mode=4) L7 path.
 //---------------------------------------------------------
 export default function AIGatewaySettingsForm(props: {value: IServiceArguments; onChange: any; params?: any}) {
 	const {value, onChange, params} = props;
 
 	const kv_hash_algo_list: IEnumItem[] = kv_hash_algos;
-	const isL7 = value?.mode === 4 || value?.mode === 6;
+	const isL7 = value?.mode === 4;
 	const disabled = !isL7;
 
 	// Delta update — see LBInputForm.handleServiceArguments for why a full
@@ -32,12 +32,12 @@ export default function AIGatewaySettingsForm(props: {value: IServiceArguments; 
 	return (
 		<AccordionBox
 			title={t('AI Gateway (Streaming / Prefill-Decode / KV Routing)')}
-			tooltip={'AI-gateway load-balancing features. Applies to the L7 proxy modes (fullproxy, aigw).'}
+			tooltip={'AI-gateway load-balancing features. Applies to the fullproxy L7 mode.'}
 		>
 			<Stack spacing={2}>
 				{disabled && (
 					<Typography variant="caption" color="text.secondary">
-						{t('These options apply only to the fullproxy / aigw NAT modes.')}
+						{t('These options apply only to the fullproxy NAT mode.')}
 					</Typography>
 				)}
 
