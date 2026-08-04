@@ -29,12 +29,16 @@ interface IAuthFormProps {
 	onSubmit: (data: ILoginRequest) => Promise<void>;
 	loading: boolean;
 	error: string;
+	// Gates the form independently of `loading` (e.g. the OAM backend is
+	// unreachable, so signing in cannot possibly succeed). Unlike `loading`,
+	// this does not change the button label to "Loading…".
+	disabled?: boolean;
 }
 
 //---------------------------------------------------------
 // Component Implementation
 //---------------------------------------------------------
-export default function AuthForm({onSubmit, loading, error}: IAuthFormProps) {
+export default function AuthForm({onSubmit, loading, error, disabled = false}: IAuthFormProps) {
 	const [formData, setFormData] = useState<ILoginRequest>({username: '', password: ''});
 	const [errors, setErrors] = useState<{username?: string; password?: string}>({});
 	const [touched, setTouched] = useState<{username?: boolean; password?: boolean}>({});
@@ -109,7 +113,7 @@ export default function AuthForm({onSubmit, loading, error}: IAuthFormProps) {
 					}}
 					onChange={e => handleChange('username', e.target.value)}
 					onBlur={() => handleBlur('username')}
-					disabled={loading}
+					disabled={loading || disabled}
 				/>
 
 				<TextField
@@ -135,10 +139,10 @@ export default function AuthForm({onSubmit, loading, error}: IAuthFormProps) {
 					}}
 					onChange={e => handleChange('password', e.target.value)}
 					onBlur={() => handleBlur('password')}
-					disabled={loading}
+					disabled={loading || disabled}
 				/>
 
-				<Button type="submit" fullWidth variant="contained" sx={{mt: 3, mb: 2}} disabled={loading || !isFormValid()}>
+				<Button type="submit" fullWidth variant="contained" sx={{mt: 3, mb: 2}} disabled={loading || disabled || !isFormValid()}>
 					{loading ? t('Loading...') : t('Login')}
 				</Button>
 			</FormBox>

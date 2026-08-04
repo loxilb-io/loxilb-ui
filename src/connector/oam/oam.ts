@@ -22,6 +22,38 @@ export async function request_health_check(): Promise<boolean> {
 	return resp.code === 200;
 }
 
+export type OamReachability = 'ok' | 'unreachable';
+
+// Lightweight reachability probe for the login preflight.
+//
+// Deliberately uses a bare fetch instead of the shared OAM fetcher: the shared
+// fetcher has global side-effects (a 404/500/503 redirects the whole app to an
+// error page, a network failure throws), which is exactly the wrong behaviour
+// before login. Here we only want to answer "is a healthy OAM backend actually
+// serving BACKEND_URL?" and surface an inline banner if not — the single most
+// common misdeployment is running this UI with no OAM behind it.
+//
+// 'ok' requires a 200 from OAM's /oam/health. Anything else is 'unreachable':
+// a non-200 catches not just an absent backend (network error / 502/503/504)
+// but also a *misconfigured* one — e.g. REACT_APP_API_URL pointing at the wrong
+// path segment (/api/oam vs /oam) answers 404, and OAM with a dead DB answers
+// non-200 via its health middleware. All of those mean login cannot succeed.
+export async function preflight_oam(timeout_ms = 4000): Promise<OamReachability> {
+	const url = `${process.env.REACT_APP_API_URL}/health`;
+	const controller = new AbortController();
+	const timer = setTimeout(() => controller.abort(), timeout_ms);
+	try {
+		const resp = await fetch(url, {method: 'GET', headers: {Accept: 'application/json'}, signal: controller.signal});
+		return resp.status === 200 ? 'ok' : 'unreachable';
+	} catch {
+		// Connection refused, DNS failure, TLS error, CORS block, or timeout —
+		// from the UI's point of view there is no reachable backend.
+		return 'unreachable';
+	} finally {
+		clearTimeout(timer);
+	}
+}
+
 // Invalidates the session server-side. Best-effort: the caller clears local
 // state and redirects regardless, so a network failure here still logs the
 // user out of the UI (the server additionally revokes the token so it cannot
