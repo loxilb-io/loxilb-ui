@@ -35,16 +35,55 @@ export function adminToken(): string {
 	throw new Error(`No access_token in ${ADMIN_STATE} — did the setup project run?`);
 }
 
+// Methods that are safe to send again after a transport failure. A network
+// exception means no response was ever received, so the request may or may not
+// have been applied server-side — replaying a POST could create a second
+// entity, which is exactly what the leak detector exists to catch. GET/PUT/
+// DELETE are idempotent, so a replay converges either way.
+const REPLAYABLE = new Set(['GET', 'HEAD', 'PUT', 'DELETE']);
+
+// Node's fetch has NO default timeout, so a request that is accepted and then
+// never answered hangs for as long as the OS keeps the socket. A sweep of ~10
+// such calls in an afterEach hook blew straight past the 120s test timeout —
+// the failure then looked like "cleanup is broken" rather than "one request
+// was dropped". Bounding each attempt turns a hang into a fast retry.
+const ATTEMPT_TIMEOUT_MS = 15_000;
+
+/**
+ * Every helper in this file goes through here, and every spec's beforeAll /
+ * afterEach goes through those helpers. The link to the testbed drops
+ * requests *after* the TCP connect (a connection is accepted and then never
+ * answered), which surfaces in Node as a bare `TypeError: fetch failed` and
+ * kills the spec — the same hazard auth.setup.ts already guards with
+ * fetchWithRetry, and the reason a whole 257-test run died once.
+ *
+ * Only transport EXCEPTIONS are retried. An HTTP error status is a real
+ * answer from the server and is returned untouched, so no assertion about
+ * 4xx/5xx behaviour is ever masked.
+ */
 async function oamFetch(pathname: string, init: RequestInit = {}): Promise<Response> {
-	return fetch(`${OAM_BASE}${pathname}`, {
-		...init,
-		headers: {
-			Accept: 'application/json',
-			Authorization: `Bearer ${adminToken()}`,
-			'Content-Type': 'application/json',
-			...(init.headers ?? {}),
-		},
-	});
+	const method = (init.method ?? 'GET').toUpperCase();
+	const attempts = REPLAYABLE.has(method) ? 3 : 1;
+	let lastErr: unknown;
+
+	for (let attempt = 1; attempt <= attempts; attempt++) {
+		try {
+			return await fetch(`${OAM_BASE}${pathname}`, {
+				...init,
+				signal: init.signal ?? AbortSignal.timeout(ATTEMPT_TIMEOUT_MS),
+				headers: {
+					Accept: 'application/json',
+					Authorization: `Bearer ${adminToken()}`,
+					'Content-Type': 'application/json',
+					...(init.headers ?? {}),
+				},
+			});
+		} catch (err) {
+			lastErr = err;
+			if (attempt < attempts) await new Promise(r => setTimeout(r, 500 * attempt));
+		}
+	}
+	throw new Error(`${method} ${pathname} failed after ${attempts} attempt(s): ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`);
 }
 
 let cachedInstance: Instance | null = null;
@@ -453,6 +492,55 @@ export async function sweepTestUsers(): Promise<number> {
 	for (const u of await listUsers()) {
 		if (u.username?.startsWith(TEST_USER_PREFIX)) {
 			if (await deleteUserById(u.id)) removed++;
+		}
+	}
+	return removed;
+}
+
+//---------------------------------------------------------
+// Instance registrations (OAM /loxilbs)
+//---------------------------------------------------------
+
+/** Full instance rows, including the fields activeInstance() drops. */
+export interface InstanceRecord extends Instance {
+	protocol: string;
+	version: string;
+	cimage: string;
+	ctag: string;
+	description?: string;
+	api_endpoint: string;
+}
+
+export async function listInstances(): Promise<InstanceRecord[]> {
+	const resp = await oamFetch('/loxilbs');
+	if (!resp.ok) throw new Error(`GET /loxilbs failed: ${resp.status}`);
+	return (await resp.json()) as InstanceRecord[];
+}
+
+export async function findInstanceByName(name: string): Promise<InstanceRecord | undefined> {
+	return (await listInstances()).find(i => i.name === name);
+}
+
+/** Raw create, for seeding a conflict the UI is then expected to refuse. */
+export async function createInstanceApi(body: Record<string, unknown>): Promise<Response> {
+	return oamFetch('/loxilbs', {method: 'POST', body: JSON.stringify(body)});
+}
+
+export async function deleteInstanceApi(id: number): Promise<boolean> {
+	const resp = await oamFetch(`/loxilbs/${id}`, {method: 'DELETE'});
+	return resp.ok;
+}
+
+/**
+ * Deletes every throwaway instance registration. Marked entities only:
+ * an e2e- name or a documentation-range host — the real testbed instance
+ * (which every other spec depends on) is never touched.
+ */
+export async function sweepInstances(): Promise<number> {
+	let removed = 0;
+	for (const inst of await listInstances().catch(() => [])) {
+		if (isE2eMarked(inst.name) || isDocAddr(inst.host)) {
+			if (await deleteInstanceApi(inst.id)) removed++;
 		}
 	}
 	return removed;

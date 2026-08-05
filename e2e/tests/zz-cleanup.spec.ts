@@ -31,6 +31,7 @@ test.describe.serial('zz — cleanup & leak detector', () => {
 			api.sweepApiKeys(),
 			api.sweepLbRules(),
 			api.sweepTestUsers(),
+			api.sweepInstances(),
 		]);
 		const total = swept.reduce((a, b) => a + b, 0);
 		// Informational — a clean run sweeps 0 here because per-spec hooks already ran.
@@ -89,6 +90,12 @@ test.describe.serial('zz — cleanup & leak detector', () => {
 		// OAM users (throwaway prefix; fixtures/admin are never flagged).
 		for (const u of await listUsers()) {
 			if (u.username?.startsWith(TEST_USER_PREFIX)) leaks.push(`user → ${u.username}`);
+		}
+
+		// Instance registrations (marked only; the real testbed instance every
+		// other spec runs against is never flagged).
+		for (const inst of await api.listInstances().catch(() => [])) {
+			if (isE2eMarked(inst.name) || isDocAddr(inst.host)) leaks.push(`instance → ${inst.name} (${inst.host})`);
 		}
 		if (inert.length) console.warn(`zz-cleanup tolerated ${inert.length} known-undeletable artifact(s):\n${inert.join('\n')}`);
 		expect(leaks, `leaked removable e2e-/doc-range entities:\n${leaks.join('\n')}`).toEqual([]);
