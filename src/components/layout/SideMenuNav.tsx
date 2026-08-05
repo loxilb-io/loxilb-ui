@@ -42,7 +42,7 @@ export default function SideMenuNav(props: {children?: ReactNode}) {
 
 	const [is_open, _] = useLocalStorageState('is_open_side_menu', true);
 	const cur_location = useLocation();
-	const bgcolor = cur_location.pathname.includes('dashboard') ? 'grey.100' : 'white';
+	const bgcolor = cur_location.pathname.includes('dashboard') ? 'background.default' : 'white';
 
 	return (
 		<Box width="100%" height="100%" display="flex" flexDirection="column">

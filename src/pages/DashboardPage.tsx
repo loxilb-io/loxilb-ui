@@ -14,9 +14,13 @@ import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useInstanceHealth} from 'hooks/query/healthHook';
 import {t} from 'i18next';
 import {useEffect, useState, useMemo} from 'react';
-import RGL, {Layout} from 'react-grid-layout';
+import RGL, {Layout, WidthProvider} from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
+
+// Measured grid: fills the viewport instead of the old hard-coded 1200px
+// column that left dead space on wide NOC displays.
+const ResponsiveGrid = WidthProvider(RGL);
 import {Alert, AlertTitle, CircularProgress} from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 
@@ -156,12 +160,11 @@ export default function DashboardPage() {
 			</Box>
 
 			{layout && (
-				<RGL
+				<ResponsiveGrid
 					className="layout"
 					layout={layout}
 					cols={12}
 					rowHeight={300}
-					width={1200}
 					onLayoutChange={handleLayoutChange}
 					isDraggable={true}
 					isResizable={false}
@@ -174,9 +177,11 @@ export default function DashboardPage() {
 					draggableCancel=".no-drag"
 				>
 					{CARD_CONFIG.map(({key, component}) => (
-						<Paper key={key}>{component}</Paper>
+						<Paper key={key} elevation={0} sx={{border: '1px solid', borderColor: 'divider', overflow: 'hidden'}}>
+							{component}
+						</Paper>
 					))}
-				</RGL>
+				</ResponsiveGrid>
 			)}
 		</Box>
 	);
