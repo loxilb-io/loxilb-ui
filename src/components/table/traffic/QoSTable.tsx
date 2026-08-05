@@ -18,11 +18,11 @@ export default function QoSTable(props: {data: IPolicyConfiguration; selected_ro
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'policyIdent', header: 'Name'},
-		{data_key: 'type', header: 'Type', width: 'medium', tooltip: 'Qos Type (0-TrTCM, 1-SrTCM)'},
+		{data_key: 'type', header: 'Type', width: 'medium', type: 'tag', tooltip: 'Qos Type (0-TrTCM, 1-SrTCM)'},
 		{data_key: 'attachment', header: 'Attachment', width: 'wide', type: 'link', tooltip: 'Target Attachment(0-LB Rule Name, 1-Port Name)'},
 		{data_key: 'rate', header: `${t('Info Rate')}\n${t('(Committed / Peak)')}`, type: 'multi-line', align: 'right', width: 'super_wide'},
 		{data_key: 'blocksize', header: `${t('Block Size')}\n${t('(Committed / Excess)')}`, type: 'multi-line', align: 'right', width: 'super_wide'},
-		{data_key: 'colorAware', header: 'Color Aware', align: 'right'},
+		{data_key: 'colorAware', header: 'Color Aware', type: 'boolean'},
 	];
 
    // Hash function for QoS policy

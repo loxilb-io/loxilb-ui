@@ -13,13 +13,13 @@ export default function EndpointTable(props: {data: IEndpointAttr; selected_rows
 	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onUpdate, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
-		{data_key: 'hostName', header: 'Host Name'},
+		{data_key: 'hostName', header: 'Host Name', type: 'mono'},
 		{data_key: 'name', header: 'Name', width: 'wide'},
 		{data_key: 'currState', header: 'State', type: 'state', width: 'medium'},
-		{data_key: 'probeType', header: 'Probe Type', width: 'medium', tooltip: 'if probe type is none, endpoint will be active in every time'},
-		{data_key: 'probePort', header: 'Probe Port'},
-		{data_key: 'probeDuration', header: 'Probe Duration'},
-		{data_key: 'inactiveReTries', header: 'Retries'},
+		{data_key: 'probeType', header: 'Probe Type', width: 'medium', type: 'tag', tooltip: 'if probe type is none, endpoint will be active in every time'},
+		{data_key: 'probePort', header: 'Probe Port', align: 'right', type: 'mono'},
+		{data_key: 'probeDuration', header: 'Probe Duration', align: 'right', type: 'mono'},
+		{data_key: 'inactiveReTries', header: 'Retries', align: 'right', type: 'mono'},
 	];
 
    // Hash function for endpoint

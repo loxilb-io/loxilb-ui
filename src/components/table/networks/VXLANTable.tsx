@@ -13,10 +13,10 @@ export default function VXLANTable(props: {data: IVxlanData; selected_rows: numb
 	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
-		{data_key: 'vxlanID', header: 'VxLAN ID', width: 'wide'},
+		{data_key: 'vxlanID', header: 'VxLAN ID', width: 'wide', type: 'mono'},
 		{data_key: 'vxlanName', header: 'Name', width: 'wide'},
 		{data_key: 'epIntf', header: 'Endpoint', width: 'wide'},
-		{data_key: 'peerIP', header: 'Peer IPs', width: 'wide'},
+		{data_key: 'peerIP', header: 'Peer IPs', width: 'wide', type: 'mono'},
 	];
 
 	const rows = data.vxlanAttr.map(item => {

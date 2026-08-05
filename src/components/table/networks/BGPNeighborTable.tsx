@@ -13,15 +13,17 @@ export default function BGPNeighborTable(props: {data: IBgpNeighborState; select
 	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
-		{data_key: 'ipAddress', header: 'IP Address', width: 'wide', tooltip: 'Assigned IP address for routing or interface use.'},
+		{data_key: 'ipAddress', header: 'IP Address', width: 'wide', type: 'mono', tooltip: 'Assigned IP address for routing or interface use.'},
 		{
 			data_key: 'remoteAs',
 			header: 'Remote AS',
 			width: 'wide',
+			align: 'right',
+			type: 'mono',
 			tooltip: 'Autonomous System (AS) numbers used between BGP neighbors',
 		},
 		{data_key: 'state', header: 'State', type: 'state', width: 'wide', tooltip: 'Indicates whether the component or service is active or inactive.'},
-		{data_key: 'updowntime', header: 'Up(Down) Time', align: 'right', width: 'wide'},
+		{data_key: 'updowntime', header: 'Up(Down) Time', align: 'right', width: 'wide', type: 'mono'},
 	];
 
 	const rows = data.bgpNeiAttr.map(item => {

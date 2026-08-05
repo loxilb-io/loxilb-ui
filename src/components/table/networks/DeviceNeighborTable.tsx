@@ -13,8 +13,8 @@ export default function DeviceNeighborTable(props: {data: INeighborData; selecte
 	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
-		{data_key: 'ipAddress', header: 'IP Address', width: 'wide', tooltip: 'Assigned IP address for routing or interface use.'},
-		{data_key: 'macAddress', header: 'MAC Address', width: 'wide', tooltip: 'Assigned MAC address for routing or interface use.'},
+		{data_key: 'ipAddress', header: 'IP Address', width: 'wide', type: 'mono', tooltip: 'Assigned IP address for routing or interface use.'},
+		{data_key: 'macAddress', header: 'MAC Address', width: 'wide', type: 'mono', tooltip: 'Assigned MAC address for routing or interface use.'},
 		{data_key: 'dev', header: 'Interface', width: 'wide'},
 	];
 
