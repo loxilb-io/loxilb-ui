@@ -38,7 +38,7 @@ export function IPsecCertTable(props: {
 		{data_key: 'name', header: 'Name', width: 'medium'},
 		{data_key: 'subject', header: 'Subject', width: 'wide'},
 		{data_key: 'issuer', header: 'Issuer', width: 'wide'},
-		{data_key: 'status', header: 'Status', tooltip: `Warns ${EXPIRY_WARN_DAYS} days before expiry`},
+		{data_key: 'status', header: 'Status', type: 'state', tooltip: `Warns ${EXPIRY_WARN_DAYS} days before expiry`},
 		{data_key: 'notAfter', header: 'Expires', width: 'medium', type: 'mono'},
 		{data_key: 'description', header: 'Description', width: 'medium'},
 	];
@@ -83,7 +83,7 @@ export function IPsecCACertTable(props: {
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'name', header: 'Name', width: 'medium'},
 		{data_key: 'subject', header: 'Subject', width: 'wide'},
-		{data_key: 'status', header: 'Status', tooltip: `Warns ${EXPIRY_WARN_DAYS} days before expiry`},
+		{data_key: 'status', header: 'Status', type: 'state', tooltip: `Warns ${EXPIRY_WARN_DAYS} days before expiry`},
 		{data_key: 'notAfter', header: 'Expires', width: 'medium', type: 'mono'},
 		{data_key: 'description', header: 'Description', width: 'medium'},
 	];

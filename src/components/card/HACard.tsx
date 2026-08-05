@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {StateCellSmall} from 'components/element/CustomGridCell';
 import {SimpleTable} from 'components/table/SimpleTable';
 import {extractHaData} from 'connector/extracts';
 import {useHAState} from 'hooks/query/queryHooks';
@@ -29,7 +30,7 @@ export default function HACard(props: {instance: IInstance | null}) {
 				columns={[
 					{field: 'instance', headerName: 'Instance'},
 					{field: 'vip', headerName: 'VIP'},
-					{field: 'state', headerName: 'State'},
+					{field: 'state', headerName: 'State', renderCell: StateCellSmall},
 				]}
 				rows={ha_list}
 			/>

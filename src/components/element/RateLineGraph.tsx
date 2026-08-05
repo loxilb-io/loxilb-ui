@@ -22,20 +22,25 @@ export default function RateLineGraph(props: {
 
 	// Use all calculated delta rates directly without resampling
 	const recentRates = data.values; // Use all calculated rates
-	const data_count = recentRates.length;	
-		
-	// Create X-axis labels from actual timestamps relative to the latest data
+
+	// Real time scale, not a positional index. An index axis spaces every sample
+	// evenly, so a stalled or sparse poll drew a 9-minute gap the same width as a
+	// 2-second one and repeated the same tick label ("-9m") ten times over. A time
+	// scale renders gaps truthfully and lets the chart pick its own tick density,
+	// which also keeps wide charts from stacking a label every 2 seconds.
 	const latestTimestamp = recentRates.length > 0 ? recentRates[recentRates.length - 1].timestamp : Date.now();
-	const x_axis = Array.from({length: data_count}, (_, i) => i);
-	const x_axis_value_formatter = (value: number) => {
-		if (value >= data_count - 1) return 'Now';
-		const ratePoint = recentRates[value];
-		if (!ratePoint) return '';
-		
-		// Calculate time difference from the latest data point, not current time
-		const secondsAgo = Math.round((latestTimestamp - ratePoint.timestamp) / 1000);
-		if (secondsAgo >= 60) return `-${Math.round(secondsAgo / 60)}m`;
-		return `-${secondsAgo}s`;
+	const x_axis = recentRates.map(rate => new Date(rate.timestamp));
+	const x_axis_value_formatter = (value: Date) => {
+		// Labels stay relative ("-30s", "-5m", "Now") — on a live rate graph the
+		// distance from now is the useful reading, not the wall-clock time.
+		const secondsAgo = Math.round((latestTimestamp - value.getTime()) / 1000);
+		if (secondsAgo <= 0) return 'Now';
+		if (secondsAgo < 60) return `-${secondsAgo}s`;
+		// Keep the leftover seconds: rounding to whole minutes made two adjacent
+		// ticks (-66s and -61s) both read "-1m".
+		const minutes = Math.floor(secondsAgo / 60);
+		const seconds = secondsAgo % 60;
+		return seconds ? `-${minutes}m${seconds}s` : `-${minutes}m`;
 	};
 
 	// Use calculated delta rates directly as Y-values
@@ -80,7 +85,7 @@ export default function RateLineGraph(props: {
 			series={series}
 			slotProps={{legend: {hidden: true}}}
 			sx={{'& .MuiAreaElement-root': {fillOpacity: 0.12}}}
-			xAxis={[{data: x_axis, valueFormatter: x_axis_value_formatter, tickLabelStyle: axis_label_style}]}
+			xAxis={[{data: x_axis, scaleType: 'time', valueFormatter: x_axis_value_formatter, tickLabelStyle: axis_label_style}]}
 			yAxis={[
 				{
 					id: 'left',

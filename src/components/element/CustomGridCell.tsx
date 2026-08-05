@@ -61,13 +61,23 @@ export const StatusCell = (params: any) => {
 // healthy → green, in-transition → amber, deliberately off → gray, and only
 // genuine failure → red. Before this, CONNECTING rendered as red — a tunnel
 // coming up looked identical to a broken one.
-const TRANSITIONAL_STATES = ['connecting', 'pending', 'init', 'rekeying', 'negotiating', 'installing', 'routed', 'starting'];
-const NEUTRAL_STATES = ['disabled', 'off', 'none', 'unknown', 'n/a', 'inactive'];
+// Domain vocabularies the generic is_active_status list doesn't know:
+// HA MASTER holds the VIP (healthy-active); a cert reading VALID is fine.
+const ACTIVE_STATES = ['master', 'valid'];
+// 'expires in' catches the cert countdown ("EXPIRES IN 12d") — urgent, not broken.
+const TRANSITIONAL_STATES = ['connecting', 'pending', 'init', 'rekeying', 'negotiating', 'installing', 'routed', 'starting', 'expires in'];
+// HA BACKUP is a healthy standby and NOT_DEFINED means HA isn't configured —
+// neither is a failure, so both stay gray instead of red.
+const NEUTRAL_STATES = ['disabled', 'off', 'none', 'unknown', 'n/a', 'inactive', 'backup', 'not_defined'];
 
 export function state_color(value: any): 'success' | 'warning' | 'error' | 'disabled' {
 	if (is_active_status(value)) return 'success';
 	if (typeof value === 'string') {
-		const lower = value.toLowerCase();
+		const lower = value.trim().toLowerCase();
+		// A blank state is "not reported", not a failure — e.g. a cert whose
+		// notAfter is missing. Red here is a false alarm with no label to explain it.
+		if (lower === '') return 'disabled';
+		if (ACTIVE_STATES.includes(lower)) return 'success';
 		if (TRANSITIONAL_STATES.some(s => lower.includes(s))) return 'warning';
 		if (NEUTRAL_STATES.includes(lower)) return 'disabled';
 	}
@@ -116,14 +126,16 @@ export const BooleanCell = (params: any) => {
 	);
 };
 
+// Compact variant for dashboard-card inner tables; shares the semantic
+// mapping above so e.g. HA BACKUP/NOT_DEFINED never render red.
 export const StateCellSmall = (params: any) => {
-	const cur_color = is_active_status(params.value) ? 'success' : 'error';
-	const state_msg = typeof params.value === 'string' ? capitalize(t(params.value).toLowerCase()) : t(params.value ? 'OK' : 'Error');
+	const cur_color = state_color(params.value);
+	const state_msg = typeof params.value === 'string' ? params.value.toUpperCase() : t(params.value ? 'OK' : 'Error');
 
 	return (
 		<Box height="100%" display="flex" alignItems="center" gap="5px">
 			<CircleIcon color={cur_color} sx={{fontSize: '12px'}} />
-			<Typography variant="caption" color={cur_color} paddingTop="2px">
+			<Typography variant="caption" color={cur_color === 'disabled' ? 'text.secondary' : cur_color} paddingTop="2px">
 				{state_msg}
 			</Typography>
 		</Box>
