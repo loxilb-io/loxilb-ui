@@ -2,6 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {DataGrid} from '@mui/x-data-grid';
+import {FOCUS_RING} from 'theme';
 
 //---------------------------------------------------------
 // Functional Component
@@ -33,8 +34,11 @@ export function SimpleTable(props: {columns: any; rows: any; onRowClick?: (row: 
 				cursor: 'pointer',
 				'& .MuiDataGrid-columnHeaders .MuiDataGrid-columnHeaderTitleContainer': {typography: 'caption'},
 				'& .MuiDataGrid-cell': {typography: 'caption', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center'},
+				// Mouse clicks stay ring-free; keyboard navigation keeps the shared
+				// focus ring (inset so the 25px row box doesn't clip it).
 				'.MuiDataGrid-cell:focus': {outline: 'none'},
 				'.MuiDataGrid-cell:focus-within': {outline: 'none'},
+				'.MuiDataGrid-cell:focus-visible': {...FOCUS_RING, outlineOffset: '-2px'},
 				'& .MuiDataGrid-columnSeparator': {display: 'none'},
 			}}
 		/>

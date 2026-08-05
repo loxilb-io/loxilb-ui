@@ -33,7 +33,7 @@ export default function ProfileMenu(props: {user_name: string; user_id: string; 
 				<Stack>
 					<Typography variant="body1">{user_name}</Typography>
 					<Typography variant="body2">{user_email}</Typography>
-					<Typography variant="body2" color="secondary.text">
+					<Typography variant="body2" color="text.secondary">
 						{t('ID {{user_id}}', {user_id})}
 					</Typography>
 				</Stack>
