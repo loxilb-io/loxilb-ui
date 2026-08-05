@@ -3,6 +3,7 @@
 //---------------------------------------------------------
 import {Box, Skeleton, Typography} from '@mui/material';
 import {formatRate} from 'common';
+import AnimatedValue from 'components/element/AnimatedValue';
 import RateLineGraph from 'components/element/RateLineGraph';
 import RateTooltip from 'components/element/RateTooltip';
 import {useQuery} from '@tanstack/react-query';
@@ -109,9 +110,7 @@ export default function RealTimeRateCard(props: RealTimeRateCardProps) {
 						{t('Current Rate')}
 					</Typography>
 					<RateTooltip rate={currentRate} unit={unit} title={title}>
-						<Typography variant="h6" sx={{cursor: 'help', fontVariantNumeric: 'tabular-nums'}}>
-							{formatRate(currentRate, unit)}
-						</Typography>
+						<AnimatedValue variant="h6" sx={{cursor: 'help', fontVariantNumeric: 'tabular-nums'}} value={formatRate(currentRate, unit)} />
 					</RateTooltip>
 				</Box>
 

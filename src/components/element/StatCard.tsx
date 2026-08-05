@@ -2,6 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {Box, Stack, Typography} from '@mui/material';
+import AnimatedValue from './AnimatedValue';
 import TooltipMark from './TooltipMark';
 
 //---------------------------------------------------------
@@ -24,9 +25,7 @@ export default function StatCard(props: {label: string; value: string | number; 
 					{tooltip && <TooltipMark content={tooltip} />}
 				</Box>
 
-				<Typography variant="h5" color={color ? `${color}.main` : 'text.primary'} sx={{fontVariantNumeric: 'tabular-nums'}} noWrap>
-					{value}
-				</Typography>
+				<AnimatedValue variant="h5" color={color ? `${color}.main` : 'text.primary'} sx={{fontVariantNumeric: 'tabular-nums'}} noWrap value={String(value)} />
 			</Stack>
 		</Box>
 	);

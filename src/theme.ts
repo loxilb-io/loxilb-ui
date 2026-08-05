@@ -10,6 +10,15 @@ export const FONT_SANS = `'Inter Variable', 'Pretendard Variable', 'Roboto', 'He
 // For IPs, MACs, CIDRs, IDs and counters — anywhere digit alignment matters.
 export const FONT_MONO = `'JetBrains Mono', 'SFMono-Regular', 'Menlo', 'Consolas', monospace`;
 
+// Micro-interaction tokens: one duration/easing pair app-wide so hover and
+// focus feedback feels uniform. Interactive-state changes ease over ~180ms;
+// prefers-reduced-motion (below) collapses everything to instant.
+const EASE = 'cubic-bezier(0.4, 0, 0.2, 1)';
+const HOVER_TRANSITION = `background-color 180ms ${EASE}, color 180ms ${EASE}, border-color 180ms ${EASE}, box-shadow 180ms ${EASE}`;
+// Keyboard focus ring: primary.light with a 2px offset clears the 3:1
+// non-text contrast requirement on both white and the gray app background.
+const FOCUS_RING = {outline: '2px solid #164E77', outlineOffset: '2px'};
+
 //---------------------------------------------------------
 // Theme
 //---------------------------------------------------------
@@ -86,7 +95,27 @@ export const theme_config: ThemeOptions = {
 		MuiCssBaseline: {
 			styleOverrides: {
 				a: {textDecorationLine: 'none'},
+				'a:focus-visible': {...FOCUS_RING, borderRadius: '4px'},
 				'code, kbd, pre, samp': {fontFamily: FONT_MONO},
+				// Vestibular-safety kill switch: users who ask the OS for reduced
+				// motion get instant state changes instead of eased ones.
+				'@media (prefers-reduced-motion: reduce)': {
+					'*, *::before, *::after': {
+						animationDuration: '0.01ms !important',
+						animationIterationCount: '1 !important',
+						transitionDuration: '0.01ms !important',
+					},
+				},
+			},
+		},
+		// One focus treatment for every ButtonBase descendant (buttons, icon
+		// buttons, tabs, menu/list items, checkboxes) — keyboard users get the
+		// same ring everywhere instead of MUI's per-component defaults.
+		MuiButtonBase: {
+			styleOverrides: {
+				root: {
+					'&.Mui-focusVisible': FOCUS_RING,
+				},
 			},
 		},
 		MuiButton: {
@@ -96,10 +125,21 @@ export const theme_config: ThemeOptions = {
 					userSelect: 'none',
 					minWidth: 0,
 					borderRadius: 8,
+					transition: HOVER_TRANSITION,
 				},
 			},
 			defaultProps: {
 				disableElevation: true,
+			},
+		},
+		MuiIconButton: {
+			styleOverrides: {
+				root: {transition: HOVER_TRANSITION},
+			},
+		},
+		MuiListItemButton: {
+			styleOverrides: {
+				root: {transition: HOVER_TRANSITION},
 			},
 		},
 		MuiTab: {
