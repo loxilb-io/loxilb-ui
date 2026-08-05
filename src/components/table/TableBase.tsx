@@ -4,6 +4,7 @@
 import InboxOutlinedIcon from '@mui/icons-material/InboxOutlined';
 import {Box, Typography} from '@mui/material';
 import {DataGrid, GridRowSelectionModel} from '@mui/x-data-grid';
+import {FOCUS_RING} from 'theme';
 
 //---------------------------------------------------------
 // Functional Component
@@ -62,8 +63,13 @@ export function TableBase(props: {
 				'& .MuiDataGrid-cell': {typography: 'body2'},
 				'& .MuiDataGrid-row': {transition: 'background-color 150ms ease'},
 				'& .MuiDataGrid-row:hover': {backgroundColor: 'rgba(17, 51, 81, 0.045)'},
+				// Mouse clicks stay ring-free, but keyboard navigation gets the
+				// shared focus ring (inset so it isn't clipped by the row box).
 				'.MuiDataGrid-cell:focus': {outline: 'none'},
 				'.MuiDataGrid-cell:focus-within': {outline: 'none'},
+				'.MuiDataGrid-cell:focus-visible': {...FOCUS_RING, outlineOffset: '-2px'},
+				'.MuiDataGrid-columnHeader:focus': {outline: 'none'},
+				'.MuiDataGrid-columnHeader:focus-visible': {...FOCUS_RING, outlineOffset: '-2px'},
 			}}
 		/>
 	);

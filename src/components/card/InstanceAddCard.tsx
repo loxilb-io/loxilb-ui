@@ -68,7 +68,9 @@ export default function InstanceCardAdd() {
 				<Box width="100%" height="100%" display="flex" flexDirection="column" justifyContent="center" alignItems="center" gap="20px">
 					<Box component="img" src={ImageInstance} width="40px" />
 
-					<Typography variant="subtitle1" color="secondary.main">
+					{/* Navy, not orange: subtitle1 is below the large-text size where
+						the brand orange clears AA contrast (usage rule). */}
+					<Typography variant="subtitle1" color="primary.main">
 						{loading ? t('Creating...') : t('Add New Instance')}
 					</Typography>
 

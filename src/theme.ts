@@ -17,7 +17,8 @@ const EASE = 'cubic-bezier(0.4, 0, 0.2, 1)';
 const HOVER_TRANSITION = `background-color 180ms ${EASE}, color 180ms ${EASE}, border-color 180ms ${EASE}, box-shadow 180ms ${EASE}`;
 // Keyboard focus ring: primary.light with a 2px offset clears the 3:1
 // non-text contrast requirement on both white and the gray app background.
-const FOCUS_RING = {outline: '2px solid #164E77', outlineOffset: '2px'};
+// Exported for surfaces the theme can't reach (e.g. DataGrid cell overrides).
+export const FOCUS_RING = {outline: '2px solid #164E77', outlineOffset: '2px'};
 
 //---------------------------------------------------------
 // Theme

@@ -2,7 +2,6 @@
 // Imports
 //---------------------------------------------------------
 import {Box, Stack, Typography, Button, Tooltip, CircularProgress} from '@mui/material';
-import BG from 'assets/image/instance_bg.svg';
 import InstanceCardAdd from 'components/card/InstanceAddCard';
 import InstanceCard from 'components/card/InstanceCard';
 import {useInstanceWithHA} from 'hooks/query/oamHooks';
@@ -97,8 +96,6 @@ export default function InstancePage() {
 				))}
 				{/* <InstanceCardAdd /> */}
 			</Box>
-
-			<Box position="absolute" right="32px" bottom="16px" component="img" src={BG} zIndex={1} width="250px" />
 		</Stack>
 	);
 }
