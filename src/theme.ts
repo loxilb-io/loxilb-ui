@@ -20,8 +20,8 @@ export const theme_config: ThemeOptions = {
 
 	palette: {
 		mode: 'light',
-		// Brand hexes are fixed (see docs/UI_UX_ENHANCEMENT_PLAN.md §6): the
-		// light/dark entries are hover/active derivatives, not replacements.
+		// The two brand hexes (navy/orange main) are fixed by product decision —
+		// never tune them; the light/dark entries are hover/active derivatives.
 		primary: {
 			main: '#113351',
 			light: '#164E77',
