@@ -212,8 +212,11 @@ export default function DataTable(props: {
 		openPopUp(t('WARNING!! Delete Item'), contents, t('Delete'), t('Cancel'), onDelete);
 	};
 
+	// Full-width like the dashboard: operator tables are data-dense, so extra
+	// viewport turns into visible columns. Column widths stay fixed — on sparse
+	// tables the row striping/hover just extends (AWS idiom).
 	return (
-		<Stack width="100%" maxWidth="1200px">
+		<Stack width="100%">
 			{/* Labeled toolbar (AWS-console idiom): visible text + icon. Each
 			    button's aria-label stays resource-qualified ("Add Load Balancer")
 			    so E2E role queries for bare dialog buttons ("Add", exact) never

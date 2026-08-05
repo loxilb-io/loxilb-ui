@@ -265,7 +265,7 @@ export default function SnapshotPage() {
 	// Render
 	//---------------------------------------------------------
 	const scheduleStrip = schedule?.enabled ? (
-		<Alert severity="info" icon={<ScheduleIcon fontSize="inherit" />} sx={{width: '100%', maxWidth: '1200px'}}>
+		<Alert severity="info" icon={<ScheduleIcon fontSize="inherit" />} sx={{width: '100%'}}>
 			{t('Scheduled snapshots: every {{hours}}h · keep {{retain}}', {hours: schedule.interval_hours, retain: schedule.retain_count})}
 			{schedule.last_run_at
 				? ` · ${t('last run')} ${new Date(schedule.last_run_at).toLocaleString()} ${schedule.last_run_result === 'ok' ? t('OK') : schedule.last_run_result ?? ''}`
@@ -275,7 +275,9 @@ export default function SnapshotPage() {
 
 	return (
 		<Fragment>
-			<Stack spacing={1} sx={{mb: 1}} width="100%" maxWidth="1200px">
+			{/* Tracks the now-uncapped DataTable width so the action strip and
+			    schedule alert stay aligned with the table below. */}
+			<Stack spacing={1} sx={{mb: 1}} width="100%">
 				{can_manage_config && (
 					<Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
 						<Button variant="outlined" size="small" startIcon={<AddAPhotoIcon />} onClick={handleTake}>
