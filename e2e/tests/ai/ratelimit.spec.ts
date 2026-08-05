@@ -37,7 +37,7 @@ test.describe('AI Tenant Rate Limit page', () => {
 
 	test('render: empty table + NO delete affordance (gateway has no DELETE), no crash', async ({page}) => {
 		await expect(grid(page)).toBeVisible();
-		await expect(grid(page).getByText('No rows')).toBeVisible();
+		await expect(grid(page).getByText(/No .* entries yet|No rows/)).toBeVisible();
 		// The API exposes no delete — the toolbar must not offer one.
 		await expect(page.locator('#table-bar button:has([data-testid="DeleteIcon"])')).toHaveCount(0);
 		// Upsert (Add) + Edit are offered.

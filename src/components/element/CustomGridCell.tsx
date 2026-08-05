@@ -57,14 +57,31 @@ export const StatusCell = (params: any) => {
 	);
 };
 
+// Single semantic mapping for state values, shared by every state column:
+// healthy → green, in-transition → amber, deliberately off → gray, and only
+// genuine failure → red. Before this, CONNECTING rendered as red — a tunnel
+// coming up looked identical to a broken one.
+const TRANSITIONAL_STATES = ['connecting', 'pending', 'init', 'rekeying', 'negotiating', 'installing', 'routed', 'starting'];
+const NEUTRAL_STATES = ['disabled', 'off', 'none', 'unknown', 'n/a', 'inactive'];
+
+export function state_color(value: any): 'success' | 'warning' | 'error' | 'disabled' {
+	if (is_active_status(value)) return 'success';
+	if (typeof value === 'string') {
+		const lower = value.toLowerCase();
+		if (TRANSITIONAL_STATES.some(s => lower.includes(s))) return 'warning';
+		if (NEUTRAL_STATES.includes(lower)) return 'disabled';
+	}
+	return 'error';
+}
+
 export const StateCell = (params: any) => {
-	const cur_color = is_active_status(params.value) ? 'success' : 'error';
+	const cur_color = state_color(params.value);
 	const state_msg = typeof params.value === 'string' ? params.value.toUpperCase() : t(params.value ? 'OK' : 'Error');
 
 	return (
 		<Box height="100%" display="flex" alignItems="center" gap="5px">
 			<CircleIcon color={cur_color} sx={{fontSize: '16px'}} />
-			<Typography variant="body2" color={cur_color}>
+			<Typography variant="body2" color={cur_color === 'disabled' ? 'text.secondary' : cur_color}>
 				{state_msg}
 			</Typography>
 		</Box>

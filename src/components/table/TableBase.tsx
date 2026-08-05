@@ -1,11 +1,26 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import InboxOutlinedIcon from '@mui/icons-material/InboxOutlined';
+import {Box, Typography} from '@mui/material';
 import {DataGrid, GridRowSelectionModel} from '@mui/x-data-grid';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
+// Designed empty state: a blank rectangle reads as "broken"; a labeled one
+// reads as "empty on purpose". The caller supplies resource-aware copy.
+function EmptyOverlay(props: {label: string}) {
+	return (
+		<Box height="100%" display="flex" flexDirection="column" alignItems="center" justifyContent="center" gap="6px">
+			<InboxOutlinedIcon sx={{fontSize: '36px', color: 'grey.400'}} />
+			<Typography variant="body2" color="text.secondary">
+				{props.label}
+			</Typography>
+		</Box>
+	);
+}
+
 export function TableBase(props: {
 	columns: any;
 	rows: any;
@@ -15,8 +30,9 @@ export function TableBase(props: {
 	disableSelect?: boolean;
 	onSelectionChange?: any;
 	defaultSort?: {field: string; sort: 'asc' | 'desc'};
+	emptyLabel?: string;
 }) {
-	const {columns, rows, rowSelectionModel, onSelectionChange, hideIdColumn, hideCheckbox, disableSelect, defaultSort} = props;
+	const {columns, rows, rowSelectionModel, onSelectionChange, hideIdColumn, hideCheckbox, disableSelect, defaultSort, emptyLabel} = props;
 
 	const displayColumns = hideIdColumn ? columns.filter((column: any) => column.field !== 'id') : columns;
 
@@ -24,6 +40,7 @@ export function TableBase(props: {
 		<DataGrid
 			rows={rows}
 			columns={displayColumns}
+			slots={emptyLabel ? {noRowsOverlay: () => <EmptyOverlay label={emptyLabel} />} : undefined}
 			initialState={{
 				pagination: {paginationModel: {pageSize: 25}},
 				sorting: defaultSort ? {sortModel: [{field: defaultSort.field, sort: defaultSort.sort}]} : undefined,
