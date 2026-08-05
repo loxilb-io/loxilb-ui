@@ -16,7 +16,7 @@ export default function IPsecSATable(props: {data: IIPsecSA[]; onRefresh?: () =>
 		{data_key: 'spi', header: 'SPI', width: 'medium'},
 		{data_key: 'tunnelName', header: 'Tunnel', width: 'medium'},
 		{data_key: 'direction', header: 'Dir'},
-		{data_key: 'state', header: 'State', tooltip: 'SA state (active / rekeying / expired)'},
+		{data_key: 'state', header: 'State', type: 'state', tooltip: 'SA state (active / rekeying / expired)'},
 		{data_key: 'algo', header: 'Algorithms', width: 'wide'},
 		{data_key: 'bytesIn', header: 'Bytes In', align: 'right'},
 		{data_key: 'bytesOut', header: 'Bytes Out', align: 'right'},

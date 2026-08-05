@@ -34,7 +34,7 @@ export default function IPsecTunnelTable(props: {
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'name', header: 'Name', width: 'medium'},
-		{data_key: 'state', header: 'State', tooltip: 'Tunnel state (up / connecting / down)'},
+		{data_key: 'state', header: 'State', type: 'state', tooltip: 'Tunnel state (up / connecting / down)'},
 		{data_key: 'peers', header: 'Local ⇄ Remote', width: 'wide'},
 		{data_key: 'authMode', header: 'Auth'},
 		{data_key: 'ikeVersion', header: 'IKE'},
