@@ -2,7 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {Box, Menu, MenuItem, Typography} from '@mui/material';
-import {get_local_storage, getFlagUrl, save_local_storage} from 'common';
+import {get_local_storage, save_local_storage} from 'common';
 import {t} from 'i18next';
 import {support_lang} from 'locales/i18n';
 import {useEffect} from 'react';
@@ -60,8 +60,7 @@ export default function LangSelMenu(props: {anchorEl: HTMLElement | null; handle
 						}}
 					>
 						<Box display="flex" gap="12px" alignItems="center" marginLeft="10px">
-							<Box component="img" src={getFlagUrl(item.flag)} alt={item.name} width="25px" />
-							<Typography variant="caption">{item.name}</Typography>
+							<Typography variant="body2">{item.name}</Typography>
 						</Box>
 					</MenuItem>
 				))}

@@ -4,15 +4,18 @@
 import AddIcon from '@mui/icons-material/Add';
 import BlockIcon from '@mui/icons-material/Block';
 import DeleteIcon from '@mui/icons-material/Delete';
+import DensityMediumIcon from '@mui/icons-material/DensityMedium';
+import DensitySmallIcon from '@mui/icons-material/DensitySmall';
 import ModeIcon from '@mui/icons-material/Mode';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import {Alert, Box, Button, IconButton, Stack, Tooltip, Typography} from '@mui/material';
+import {Alert, Box, Button, Stack, Tooltip, Typography} from '@mui/material';
 import {GridColDef, GridRowSelectionModel} from '@mui/x-data-grid';
 import {
 	BooleanCell,
 	ChipCell,
 	LinkCell,
 	LogLevelCell,
+	MonoCell,
 	MultiLineCell,
 	OnOffCell,
 	StateAndNameCell,
@@ -20,10 +23,12 @@ import {
 	StatusCell,
 	SublineHeader,
 	SyncCell,
+	TagCell,
 	TextCell,
 	ToolTipHeader,
 	UsageCell,
 } from 'components/element/CustomGridCell';
+import useLocalStorageState from 'hooks/localStorageHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useRole} from 'hooks/query/oamHooks';
 import {t} from 'i18next';
@@ -69,6 +74,12 @@ export default function DataTable(props: {
 	defaultSort?: {field: string; sort: 'asc' | 'desc'};
 }) {
 	const {name, columns, rows, selected_rows, onChangeSelectedRows, hideMenuBar, hideCheckbox, hideIdColumn, disableSelect, onRefresh, error, defaultSort, deleteConfirm} = props;
+
+	// Global density preference, shared by every table via localStorage
+	// (comfortable 44px / compact 36px rows). useLocalStorageState's event bus
+	// keeps all mounted tables in sync when one toggles.
+	const [density, setDensity] = useLocalStorageState<'comfortable' | 'compact'>('table_density', 'comfortable');
+	const is_compact = density === 'compact';
 
 	// RBAC: viewers are read-only everywhere, so hide the mutation
 	// buttons for them (UX only — the server rejects viewer writes with 403).
@@ -136,6 +147,10 @@ export default function DataTable(props: {
 					? UsageCell
 					: col.type === 'chip'
 					? ChipCell
+					: col.type === 'mono'
+					? MonoCell
+					: col.type === 'tag'
+					? TagCell
 					: TextCell,
 		};
 	});
@@ -199,24 +214,34 @@ export default function DataTable(props: {
 
 	return (
 		<Stack width="100%" maxWidth="1200px">
+			{/* Labeled toolbar (AWS-console idiom): visible text + icon. Each
+			    button's aria-label stays resource-qualified ("Add Load Balancer")
+			    so E2E role queries for bare dialog buttons ("Add", exact) never
+			    collide with the toolbar; the icon data-testids remain the
+			    toolbarButton() locator hook. */}
 			{hideMenuBar === true ? null : (
-				<Box id="table-bar" width="100%" height="40px" display="flex" justifyContent="flex-end" alignItems="center" bgcolor="grey.100" borderRadius="4px">
+				<Box id="table-bar" width="100%" height="44px" display="flex" justifyContent="flex-end" alignItems="center" gap="4px" padding="0 8px" bgcolor="grey.100" borderRadius="8px 8px 0 0">
+					<Tooltip title={is_compact ? t('Switch to comfortable rows') : t('Switch to compact rows')} placement="top" arrow>
+						<span>
+							<Button
+								size="small"
+								color="inherit"
+								aria-label={is_compact ? t('Switch to comfortable rows') : t('Switch to compact rows')}
+								onClick={() => setDensity(is_compact ? 'comfortable' : 'compact')}
+								startIcon={is_compact ? <DensitySmallIcon /> : <DensityMediumIcon />}
+								sx={{color: 'text.secondary'}}
+							>
+								{t('Density')}
+							</Button>
+						</span>
+					</Tooltip>
+
 					{onRefresh && (
 						<Tooltip title={t('Refresh {{name}}', {name})} placement="top" arrow>
 							<span>
-								<IconButton onClick={onRefresh}>
-									<RefreshIcon sx={{color: 'primary.main'}} />
-								</IconButton>
-							</span>
-						</Tooltip>
-					)}
-
-					{onAdd && (
-						<Tooltip title={t('Add {{name}}', {name})} placement="top" arrow>
-							<span>
-								<IconButton onClick={onAdd}>
-									<AddIcon sx={{color: 'secondary.main'}} />
-								</IconButton>
+								<Button size="small" color="inherit" aria-label={t('Refresh {{name}}', {name})} onClick={onRefresh} startIcon={<RefreshIcon />} sx={{color: 'text.secondary'}}>
+									{t('Refresh')}
+								</Button>
 							</span>
 						</Tooltip>
 					)}
@@ -224,9 +249,9 @@ export default function DataTable(props: {
 					{onEdit && (
 						<Tooltip title={t('Edit {{name}}', {name})} placement="top" arrow>
 							<span>
-								<IconButton disabled={selected_rows.length !== 1} onClick={onEdit}>
-									<ModeIcon />
-								</IconButton>
+								<Button size="small" color="inherit" aria-label={t('Edit {{name}}', {name})} disabled={selected_rows.length !== 1} onClick={onEdit} startIcon={<ModeIcon />} sx={{color: 'text.secondary'}}>
+									{t('Edit')}
+								</Button>
 							</span>
 						</Tooltip>
 					)}
@@ -234,9 +259,26 @@ export default function DataTable(props: {
 					{onDelete && (
 						<Tooltip title={deleteConfirm?.tooltip ?? t('Delete {{name}}', {name})} placement="top" arrow>
 							<span>
-								<IconButton disabled={selected_rows.length === 0} onClick={handleDelete}>
-									{deleteConfirm?.icon === 'block' ? <BlockIcon /> : <DeleteIcon />}
-								</IconButton>
+								<Button
+									size="small"
+									color="error"
+									aria-label={deleteConfirm?.tooltip ?? t('Delete {{name}}', {name})}
+									disabled={selected_rows.length === 0}
+									onClick={handleDelete}
+									startIcon={deleteConfirm?.icon === 'block' ? <BlockIcon /> : <DeleteIcon />}
+								>
+									{deleteConfirm?.icon === 'block' ? t('Disable') : t('Delete')}
+								</Button>
+							</span>
+						</Tooltip>
+					)}
+
+					{onAdd && (
+						<Tooltip title={t('Add {{name}}', {name})} placement="top" arrow>
+							<span>
+								<Button size="small" variant="contained" color="primary" aria-label={t('Add {{name}}', {name})} onClick={onAdd} startIcon={<AddIcon />}>
+									{t('Add')}
+								</Button>
 							</span>
 						</Tooltip>
 					)}
@@ -259,16 +301,20 @@ export default function DataTable(props: {
 				</Alert>
 			)}
 
-			<Box width="100%" height="400px">
+			{/* Tall enough for ~10 rows at 44px before internal scroll; the old
+			    400px box left a large blank void under 5-row pages. */}
+			<Box width="100%" height="560px">
 				<TableBase
 					columns={cols}
 					rows={rows}
+					rowHeight={is_compact ? 36 : 44}
 					rowSelectionModel={selected_rows}
 					hideIdColumn={hideIdColumn}
 					hideCheckbox={hideCheckbox}
 					disableSelect={disableSelect}
 					onSelectionChange={onChangeSelectedRows !== undefined ? handleRowSelectionChange : undefined}
 					defaultSort={defaultSort}
+					emptyLabel={t('No {{name}} entries yet', {name})}
 				/>
 			</Box>
 		</Stack>

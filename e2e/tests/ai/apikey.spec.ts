@@ -52,7 +52,7 @@ test.describe('AI API Key page', () => {
 
 	test('render: a 501 (no userservice) degrades to an empty table, never a white-screen', async ({page}) => {
 		await expect(grid(page)).toBeVisible();
-		await expect(grid(page).getByText('No rows')).toBeVisible();
+		await expect(grid(page).getByText(/No .* entries yet|No rows/)).toBeVisible();
 		// The page shell is intact and interactive.
 		await expect(toolbarButton(page, 'Add')).toBeEnabled();
 	});

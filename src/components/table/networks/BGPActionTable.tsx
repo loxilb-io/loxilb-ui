@@ -13,14 +13,14 @@ export default function BGPActionTable(props: {action_list: IActionSet[]; select
 	const {action_list, selected_rows, onChangeSelectedRows, onAdd, onDelete, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
-		{data_key: 'routeDisposition', header: 'Route Disposition', tooltip: '“Handling” to specify how the policy should handle matching routes'},
+		{data_key: 'routeDisposition', header: 'Route Disposition', type: 'tag', tooltip: '“Handling” to specify how the policy should handle matching routes'},
 		{data_key: 'setMed', header: 'Set MED', tooltip: 'Multi Exit Discriminator'},
 		{data_key: 'setAsPathPrepend', header: 'Set AS Path Prepend', tooltip: 'AS Path Prepend'},
 		{data_key: 'setCommunity', header: 'Set Community', tooltip: 'Community'},
 		{data_key: 'setExtCommunity', header: 'Set Ext Community', tooltip: 'Extended Community'},
 		{data_key: 'setLargeCommunity', header: 'Set Large Community', tooltip: 'Large Community'},
 		{data_key: 'setLocalPref', header: 'Set Local Pref', tooltip: 'local preference (local-pref) prioritizes BGP route selection'},
-		{data_key: 'setNextHop', header: 'Set Next Hop', tooltip: 'Specify the next hop in that path'},
+		{data_key: 'setNextHop', header: 'Set Next Hop', type: 'mono', tooltip: 'Specify the next hop in that path'},
 	];
 
 	const rows = action_list.map((action, index) => {

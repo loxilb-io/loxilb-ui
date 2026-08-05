@@ -2,7 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {Box, styled} from '@mui/material';
-import SideMenu from 'components/menu/SideMenu';
+import SideMenu, {SIDE_MENU_RAIL_WIDTH, SIDE_MENU_WIDTH} from 'components/menu/SideMenu';
 import TopNavMenu from 'components/menu/TopNavMenu';
 import useLocalStorageState from 'hooks/localStorageHook';
 import {ReactNode} from 'react';
@@ -12,8 +12,9 @@ import ScrollableBox from './ScrollableBox';
 //---------------------------------------------------------
 // Styled Components
 //---------------------------------------------------------
+// Collapsed no longer means hidden: the drawer shrinks to a 64px icon rail
+// (SIDE_MENU_RAIL_WIDTH), so navigation is always one click away.
 const Main = styled(Box, {shouldForwardProp: prop => prop !== 'open'})<{open?: boolean}>(({theme, open}) => ({
-	width: '100%',
 	height: '100%',
 
 	transition: theme.transitions.create(['margin', 'width'], {
@@ -21,14 +22,15 @@ const Main = styled(Box, {shouldForwardProp: prop => prop !== 'open'})<{open?: b
 		duration: theme.transitions.duration.leavingScreen,
 	}),
 
-	marginLeft: 0,
+	marginLeft: `${SIDE_MENU_RAIL_WIDTH}px`,
+	width: `calc(100% - ${SIDE_MENU_RAIL_WIDTH}px)`,
 	...(open && {
 		transition: theme.transitions.create(['margin', 'width'], {
 			easing: theme.transitions.easing.easeOut,
 			duration: theme.transitions.duration.enteringScreen,
 		}),
-		marginLeft: '300px',
-		width: 'calc(100% - 300px)',
+		marginLeft: `${SIDE_MENU_WIDTH}px`,
+		width: `calc(100% - ${SIDE_MENU_WIDTH}px)`,
 	}),
 }));
 
@@ -40,7 +42,7 @@ export default function SideMenuNav(props: {children?: ReactNode}) {
 
 	const [is_open, _] = useLocalStorageState('is_open_side_menu', true);
 	const cur_location = useLocation();
-	const bgcolor = cur_location.pathname.includes('dashboard') ? 'grey.100' : 'white';
+	const bgcolor = cur_location.pathname.includes('dashboard') ? 'background.default' : 'white';
 
 	return (
 		<Box width="100%" height="100%" display="flex" flexDirection="column">

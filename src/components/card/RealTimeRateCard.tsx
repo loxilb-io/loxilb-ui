@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Real-Time Rate Card with Moving Graph
 //---------------------------------------------------------
-import {Box, Typography} from '@mui/material';
+import {Box, Skeleton, Typography} from '@mui/material';
 import {formatRate} from 'common';
 import RateLineGraph from 'components/element/RateLineGraph';
 import RateTooltip from 'components/element/RateTooltip';
@@ -89,6 +89,17 @@ export default function RealTimeRateCard(props: RealTimeRateCardProps) {
 	// Get current rate (last point)
 	const currentRate = rateHistory[rateHistory.length - 1]?.data ?? 0;
 
+	// Rates are deltas between samples — until the second poll lands there
+	// is nothing to plot, so show a skeleton instead of an empty chart.
+	if (rateHistory.length < 2) {
+		return (
+			<CardBase title={title}>
+				<Skeleton variant="rounded" width="40%" height={24} sx={{mb: 1}} />
+				<Skeleton variant="rounded" width="100%" height={170} />
+			</CardBase>
+		);
+	}
+
 	return (
 		<CardBase title={title}>
 			<Box display="flex" flexDirection="column" gap={1}>
@@ -98,7 +109,7 @@ export default function RealTimeRateCard(props: RealTimeRateCardProps) {
 						{t('Current Rate')}
 					</Typography>
 					<RateTooltip rate={currentRate} unit={unit} title={title}>
-						<Typography variant="body2" fontWeight="bold" color="primary" sx={{cursor: 'help'}}>
+						<Typography variant="h6" sx={{cursor: 'help', fontVariantNumeric: 'tabular-nums'}}>
 							{formatRate(currentRate, unit)}
 						</Typography>
 					</RateTooltip>

@@ -12,13 +12,13 @@ export default function PortTable(props: {data: IPortInfo; selected_rows: number
 	const {data, selected_rows, onChangeSelectedRows, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
-		{data_key: 'port', header: 'Port No.', width: 'medium'},
+		{data_key: 'port', header: 'Port No.', width: 'medium', type: 'mono'},
 		{data_key: 'name', header: 'Name', width: 'medium'},
-		{data_key: 'mac', header: 'MAC', width: 'wide'},
-		{data_key: 'link', header: 'Link/State', width: 'medium'},
-		{data_key: 'route', header: 'Route', width: 'medium'},
-		{data_key: 'ipv4', header: 'IP v4', width: 'wide'},
-		{data_key: 'ipv6', header: 'IP v6', width: 'wide'},
+		{data_key: 'mac', header: 'MAC', width: 'wide', type: 'mono'},
+		{data_key: 'link', header: 'Link/State', width: 'medium', type: 'tag'},
+		{data_key: 'route', header: 'Route', width: 'medium', type: 'tag'},
+		{data_key: 'ipv4', header: 'IP v4', width: 'wide', type: 'mono'},
+		{data_key: 'ipv6', header: 'IP v6', width: 'wide', type: 'mono'},
 		//{data_key: 'rx_tx_byte', header: 'RX/TX bytes', align: 'right', width: 'wide'},
 		//{data_key: 'rx_tx_packet', header: 'RX/TX packets', align: 'right', width: 'wide'},
 		//{data_key: 'rx_tx_error', header: 'RX/TX errors', align: 'right', width: 'wide'},

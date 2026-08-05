@@ -23,7 +23,7 @@ export default function TopNavMenu() {
 	const depth_2_name = get_menu_name_from_path(MENU_LIST, url, root_url, 2);
 
 	return (
-		<Box width="100%" display="flex" alignItems="center" justifyContent="flex-start" borderBottom={'1px solid #e0e0e0'} padding="5px 16px">
+		<Box width="100%" display="flex" alignItems="center" justifyContent="flex-start" bgcolor="background.paper" borderBottom="1px solid" borderColor="divider" padding="4px 16px">
 			<SimpleButton type="menu" onClick={() => set_is_open(prev => !prev)} />
 
 			<Box id="navigation" paddingLeft="16px">

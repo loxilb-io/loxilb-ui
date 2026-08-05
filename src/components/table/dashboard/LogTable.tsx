@@ -19,7 +19,7 @@ export default function LogTable(props: {data: ILog[]; selected_rows: number[]; 
 	const [endDatetimeStr, setEndDatetimeStr] = useState<string>('');
 
 	const cols: IDataTableColumnDef[] = [
-		{data_key: 'timestamp', header: 'Date Time', width: 'wide'},
+		{data_key: 'timestamp', header: 'Date Time', width: 'wide', type: 'mono'},
 		{data_key: 'level', header: 'Level', type: 'log-level', width: 'medium'},
 		// {data_key: 'programname', header: 'Program', width: 'medium'},
 		{data_key: 'message', header: 'Message', width: 'full'},

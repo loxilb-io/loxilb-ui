@@ -22,9 +22,9 @@ export default function BGPConditionTable(props: {condition_list: IConditionSet[
 
 		{data_key: 'asPathLength', header: 'AS Path Len.', tooltip: 'Autonomous System Path Length'},
 		{data_key: 'afiSafiIn', header: 'AFI SAFI In', tooltip: 'Address Family Identifier / Subsequent Address Family Identifier'},
-		{data_key: 'nextHopInList', header: 'Next Hop'},
-		{data_key: 'routeType', header: 'Route Type', tooltip: 'Determine what action to take on a route'},
-		{data_key: 'rpki', header: 'RPKI', tooltip: 'Resource Public Key Infrastructure'},
+		{data_key: 'nextHopInList', header: 'Next Hop', type: 'mono'},
+		{data_key: 'routeType', header: 'Route Type', type: 'tag', tooltip: 'Determine what action to take on a route'},
+		{data_key: 'rpki', header: 'RPKI', type: 'tag', tooltip: 'Resource Public Key Infrastructure'},
 	];
 
 	const rows = condition_list.map((condition, index) => {

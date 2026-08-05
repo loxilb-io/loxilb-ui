@@ -12,10 +12,13 @@ import {ITimelineDataSet} from 'types/global';
 export default function RateLineGraph(props: {
 	data: ITimelineDataSet;
 	unit: 'bps' | 'pps' | 'count' | 'eps' | 'fps';
+	// Omitted width → the chart observes and fills its parent, so cards
+	// resized by the dashboard grid (or wide viewports) get full-width
+	// graphs instead of a fixed 360px column.
 	width?: number;
 	height?: number;
 }) {
-	const {data, unit, width = 360, height = 220} = props;
+	const {data, unit, width, height = 220} = props;
 
 	// Use all calculated delta rates directly without resampling
 	const recentRates = data.values; // Use all calculated rates
@@ -44,6 +47,9 @@ export default function RateLineGraph(props: {
 			showMark: false,
 			color: chart_color[0],
 			yAxisKey: 'left',
+			// Soft area fill under the line (sparkline idiom) — opacity is
+			// kept low via sx below so the line stays the signal.
+			area: true,
 		},
 	];
 
@@ -61,16 +67,20 @@ export default function RateLineGraph(props: {
 		? Math.max(Math.ceil(max_y * 1.1), max_y + 1) // For counts/pps: just slightly above max
 		: Math.max(Math.ceil(max_y * 1.1), 100);      // For bps: keep 100 minimum	
 
+	// Axis chrome stays neutral gray — color belongs to the data line, not
+	// the scaffolding around it.
+	const axis_label_style = {fill: '#5A6B7D', fontSize: 10};
+
 	return (
 		<LineChart
 			skipAnimation
 			width={width}
 			height={height}
-			// margin={{top: 20, bottom: 40, left: 60, right: 20}}
 			margin={{top: 10, bottom: 50, left: 30, right: 20}}
 			series={series}
 			slotProps={{legend: {hidden: true}}}
-			xAxis={[{data: x_axis, valueFormatter: x_axis_value_formatter}]}
+			sx={{'& .MuiAreaElement-root': {fillOpacity: 0.12}}}
+			xAxis={[{data: x_axis, valueFormatter: x_axis_value_formatter, tickLabelStyle: axis_label_style}]}
 			yAxis={[
 				{
 					id: 'left',
@@ -78,10 +88,8 @@ export default function RateLineGraph(props: {
 					position: 'left',
 					min: 0,
 					max: rounded_max,
-					labelStyle: {
-						fill: chart_color[0],
-						fontSize: 10,
-					},
+					labelStyle: axis_label_style,
+					tickLabelStyle: axis_label_style,
 					valueFormatter: y_axis_value_formatter,
 				},
 			]}

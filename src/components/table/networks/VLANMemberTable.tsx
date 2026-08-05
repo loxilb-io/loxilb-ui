@@ -13,7 +13,7 @@ export default function VLANMemberTable(props: {data: IMember[]; selected_rows: 
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'dev', header: 'Device', width: 'wide'},
-		{data_key: 'tag', header: 'Tagged', width: 'medium'},
+		{data_key: 'tag', header: 'Tagged', width: 'medium', type: 'boolean'},
 	];
 
    // Hash function for VLAN member

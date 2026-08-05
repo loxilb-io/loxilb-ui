@@ -31,8 +31,8 @@ export default function UserManagementTable(props: UserManagementTableProps) {
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'username', header: t('Username'), width: 'wide'},
 		{data_key: 'email', header: t('Email'), width: 'super_wide'},
-		{data_key: 'role', header: t('Role'), width: 'medium'},
-		{data_key: 'created_at', header: t('Created At'), width: 'medium'},
+		{data_key: 'role', header: t('Role'), width: 'medium', type: 'tag'},
+		{data_key: 'created_at', header: t('Created At'), width: 'medium', type: 'mono'},
 	];
 
 	// Hash function for user
@@ -52,13 +52,14 @@ export default function UserManagementTable(props: UserManagementTableProps) {
 				};
 
 				const role = item.role || 'user';
-				const isAdminUser = role === 'admin';
 
 				return {
 					id: getHashKey(item),
 					username: item.username || `User ${index + 1}`,
 					email: item.email || '-',
-					role: isAdminUser ? `🛡️ ${role.toUpperCase()}` : `👤 ${role.toUpperCase()}`,
+					// Plain uppercase role in a neutral tag — no emoji icons in cells
+					// (color budget: rows keep at most the status indicator colored).
+					role: role.toUpperCase(),
 					created_at: formatDate(item.created_at),
 					_uniqueKey: getHashKey(item),
 				};

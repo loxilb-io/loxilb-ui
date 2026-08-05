@@ -47,34 +47,22 @@ export default function Header() {
 	const version = package_info.version;
 
 	const is_enabled = is_logged_in();
-	const VerticalDivider = () => <Box width="1px" height="20px" bgcolor="grey.700" />;
 
 	return (
-		<Box id="header" width="100%" display="flex" alignItems="center" justifyContent="space-between" bgcolor="primary.main" padding="6px 16px">
-			<Box id="logo" display="flex" alignItems="center" gap="16px">
-				<Box width="78px" component="img" src={Logo} alt="logo" onClick={() => move_home()} sx={{cursor: 'pointer'}} />
+		<Box id="header" width="100%" height="48px" display="flex" alignItems="center" justifyContent="space-between" bgcolor="primary.main" padding="0 16px">
+			<Box id="logo" display="flex" alignItems="center" gap="12px">
+				<Box width="64px" component="img" src={Logo} alt="logo" onClick={() => move_home()} sx={{cursor: 'pointer'}} />
 
-				<Box>
-					<Typography variant="caption" color="white">
-						{`v.${version}`}
-					</Typography>
-				</Box>
+				<Typography variant="caption" sx={{color: 'rgba(255, 255, 255, 0.65)'}}>
+					{`v.${version}`}
+				</Typography>
 			</Box>
 
 			{is_enabled && (
-				<Box id="header-menu" display="flex" gap="16px" alignItems="center">
+				<Box id="header-menu" display="flex" gap="20px" alignItems="center">
 					<InstanceIcon />
-					<VerticalDivider />
-
 					<UserIcon />
-					<VerticalDivider />
-
-					{/*<AlertsIcon />
-					<VerticalDivider /> */}
-
 					<LanguageIcon />
-					<VerticalDivider />
-
 					<Profile />
 				</Box>
 			)}

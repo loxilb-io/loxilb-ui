@@ -12,10 +12,10 @@ export default function FSTable(props: {data: IFilesystemInfo; selected_rows: nu
 	const {data, selected_rows, onChangeSelectedRows, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
-		{data_key: 'fileSystem', header: 'File System', width: 'wide'},
-		{data_key: 'type', header: 'Type', width: 'medium'},
-		{data_key: 'size', header: 'Total Size', align: 'left', width: 'medium'},
-		{data_key: 'avail', header: 'Free Size', align: 'left', width: 'medium'},
+		{data_key: 'fileSystem', header: 'File System', width: 'wide', type: 'mono'},
+		{data_key: 'type', header: 'Type', width: 'medium', type: 'tag'},
+		{data_key: 'size', header: 'Total Size', align: 'left', width: 'medium', type: 'mono'},
+		{data_key: 'avail', header: 'Free Size', align: 'left', width: 'medium', type: 'mono'},
 		{data_key: 'usage', header: 'Current Usage', align: 'left', width: 'super_wide', type: 'usage'},
 	];
 

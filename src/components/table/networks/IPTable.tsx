@@ -13,7 +13,7 @@ export default function IPTable(props: {data: IIpData; title?: string; selected_
 	const {data, title, selected_rows, onChangeSelectedRows, onDelete, onUpdate, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
-		{data_key: 'ipAddress', header: 'IP Addresses', width: 'super_wide', tooltip: 'Assigned IP Addresses'},
+		{data_key: 'ipAddress', header: 'IP Addresses', width: 'super_wide', type: 'mono', tooltip: 'Assigned IP Addresses'},
 		{data_key: 'dev', header: 'Device', width: 'wide', tooltip: 'Device (Interface Name)'},		
 		{data_key: 'sync', header: 'Synced', width: 'medium', tooltip: 'Synced with the IP address', type: 'sync'},
 	];

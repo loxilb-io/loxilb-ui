@@ -15,8 +15,8 @@ export default function BGPPrefixTable(props: {data: IPrefixListItem[]; selected
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
 
 	const cols: IDataTableColumnDef[] = [
-		{data_key: 'ipPrefix', header: 'IP Prefix', width: 'wide'},
-		{data_key: 'masklengthRange', header: 'Mask Length Range', width: 'wide'},
+		{data_key: 'ipPrefix', header: 'IP Prefix', width: 'wide', type: 'mono'},
+		{data_key: 'masklengthRange', header: 'Mask Length Range', width: 'wide', type: 'mono'},
 	];
 
 	const rows = data.map((item, index) => {

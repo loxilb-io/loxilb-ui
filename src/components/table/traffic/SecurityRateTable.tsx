@@ -24,15 +24,15 @@ export default function SecurityRateTable(props: SecurityRateTableProps) {
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'synEnabled', header: 'SYN Enabled', width: 'narrow'},
-		{data_key: 'synThreshold', header: 'SYN Threshold', width: 'medium'},
+		{data_key: 'synThreshold', header: 'SYN Threshold', width: 'medium', align: 'right', type: 'mono'},
 		{data_key: 'connRateEnabled', header: 'Conn Rate Enabled', width: 'medium'},
-		{data_key: 'ratePerSec', header: 'Rate/Sec', width: 'medium'},
+		{data_key: 'ratePerSec', header: 'Rate/Sec', width: 'medium', align: 'right', type: 'mono'},
 		{data_key: 'udpEnabled', header: 'UDP Enabled', width: 'narrow'},
-		{data_key: 'udpPktThreshold', header: 'UDP Pkt Threshold', width: 'medium'},
-		{data_key: 'synBlocked', header: 'SYN Blocked', width: 'medium'},
-		{data_key: 'connBlocked', header: 'Conn Blocked', width: 'medium'},
-		{data_key: 'udpBlocked', header: 'UDP Blocked', width: 'medium'},
-		{data_key: 'uniqueIps', header: 'Unique IPs', width: 'medium'},
+		{data_key: 'udpPktThreshold', header: 'UDP Pkt Threshold', width: 'medium', align: 'right', type: 'mono'},
+		{data_key: 'synBlocked', header: 'SYN Blocked', width: 'medium', align: 'right', type: 'mono'},
+		{data_key: 'connBlocked', header: 'Conn Blocked', width: 'medium', align: 'right', type: 'mono'},
+		{data_key: 'udpBlocked', header: 'UDP Blocked', width: 'medium', align: 'right', type: 'mono'},
+		{data_key: 'uniqueIps', header: 'Unique IPs', width: 'medium', align: 'right', type: 'mono'},
 	];
 
 	const getHashKey = (item: ISecurityRateEntry) => {

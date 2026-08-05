@@ -12,11 +12,11 @@ export default function LBEndpointTable(props: {data: IEndpoint[]; selected_rows
 	const {data, selected_rows, onChangeSelectedRows} = props;
 
 	const cols: IDataTableColumnDef[] = [
-		{data_key: 'endpointIP', header: 'Endpoint IP', width: 'wide'},
-		{data_key: 'targetPort', header: 'Target Port', width: 'medium'},
-		{data_key: 'weight', header: 'Weight', width: 'medium'},
+		{data_key: 'endpointIP', header: 'Endpoint IP', width: 'wide', type: 'mono'},
+		{data_key: 'targetPort', header: 'Target Port', width: 'medium', align: 'right', type: 'mono'},
+		{data_key: 'weight', header: 'Weight', width: 'medium', align: 'right', type: 'mono'},
 		{data_key: 'state', header: 'State', type: 'state', width: 'medium'},
-		{data_key: 'counter', header: 'Counter', width: 'wide'},
+		{data_key: 'counter', header: 'Counter', width: 'wide', type: 'mono'},
 	];
 
 	const getUniqueKey = (item: any) => {

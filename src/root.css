@@ -1,8 +1,6 @@
-* {
-	/*border: 1px solid red;*/
-	text-decoration-line: none;
-	user-select: none;
-}
+/* Text selection is deliberately allowed everywhere: operators copy IPs,
+   MACs and tokens constantly. Link underlines are reset via the theme's
+   MuiCssBaseline override, not a global `*` rule. */
 
 #file {
 	display: none;

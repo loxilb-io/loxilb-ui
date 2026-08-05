@@ -17,12 +17,12 @@ export default function ConntrackTable(props: {data: ICtData; selected_rows: num
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'servename', header: 'Service Name', type: 'link', width: 'wide'},
-		{data_key: 'source', header: 'Source', width: 'wide'},
-		{data_key: 'destination', header: 'Destination', width: 'wide'},
-		{data_key: 'protocol', header: 'Protocol', width: 'medium'},
-		{data_key: 'conntrackState', header: 'State', width: 'medium'},
-		{data_key: 'conntrackAct', header: 'Act', width: 'medium'},
-		{data_key: 'usage', header: 'Usages', align: 'right', width: 'wide', sortComparator: (v1: any, v2: any) => {
+		{data_key: 'source', header: 'Source', width: 'wide', type: 'mono'},
+		{data_key: 'destination', header: 'Destination', width: 'wide', type: 'mono'},
+		{data_key: 'protocol', header: 'Protocol', width: 'medium', type: 'tag'},
+		{data_key: 'conntrackState', header: 'State', width: 'medium', type: 'tag'},
+		{data_key: 'conntrackAct', header: 'Act', width: 'medium', type: 'tag'},
+		{data_key: 'usage', header: 'Usages', align: 'right', width: 'wide', type: 'mono', sortComparator: (v1: any, v2: any) => {
 			const bytes1 = typeof v1 === 'object' && v1.bytes !== undefined ? v1.bytes : 0;
 			const bytes2 = typeof v2 === 'object' && v2.bytes !== undefined ? v2.bytes : 0;
 			return bytes1 - bytes2;
