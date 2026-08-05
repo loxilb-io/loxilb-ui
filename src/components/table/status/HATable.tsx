@@ -13,8 +13,8 @@ export default function HATable(props: {data: IVipConfiguration; selected_rows: 
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'instance', header: 'Instance', width: 'wide', tooltip: 'Name of the instance LoxiLB is running on'},
-		{data_key: 'vip', header: 'Virtual IP', width: 'wide', tooltip: 'Virtual IP for HA (Active/Stanby)'},
-		{data_key: 'state', header: 'State', width: 'medium', tooltip: 'State for HA'},
+		{data_key: 'vip', header: 'Virtual IP', width: 'wide', type: 'mono', tooltip: 'Virtual IP for HA (Active/Stanby)'},
+		{data_key: 'state', header: 'State', width: 'medium', type: 'state', tooltip: 'State for HA'},
 	];
 
 	const rows = data.Attr.map((item, index) => {

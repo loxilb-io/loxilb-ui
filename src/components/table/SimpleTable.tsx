@@ -31,7 +31,6 @@ export function SimpleTable(props: {columns: any; rows: any; onRowClick?: (row: 
 			sx={{
 				border: 0,
 				cursor: 'pointer',
-				userSelect: 'none',
 				'& .MuiDataGrid-columnHeaders .MuiDataGrid-columnHeaderTitleContainer': {typography: 'caption'},
 				'& .MuiDataGrid-cell': {typography: 'caption', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center'},
 				'.MuiDataGrid-cell:focus': {outline: 'none'},

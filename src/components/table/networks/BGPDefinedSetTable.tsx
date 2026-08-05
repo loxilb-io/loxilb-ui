@@ -14,8 +14,8 @@ export default function BGPDefinedSetTable(props: {data: IDefinedSetsInfo; selec
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'name', header: 'Name', width: 'wide'},
-		{data_key: 'prefixList', header: 'Prefix List', width: 'wide', tooltip: 'Prefix List for Subnet'},
-		{data_key: 'neighbor', header: 'Neighbor'},
+		{data_key: 'prefixList', header: 'Prefix List', width: 'wide', type: 'mono', tooltip: 'Prefix List for Subnet'},
+		{data_key: 'neighbor', header: 'Neighbor', type: 'mono'},
 		{data_key: 'community', header: 'Community'},
 		{data_key: 'extcommunity', header: 'ExtCommunity'},
 		{data_key: 'aspath', header: 'AS Path'},

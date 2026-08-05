@@ -21,13 +21,13 @@ export default function ApiKeyTable(props: {
 	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
-		{data_key: 'key_id', header: 'Key ID', width: 'wide'},
+		{data_key: 'key_id', header: 'Key ID', width: 'wide', type: 'mono'},
 		{data_key: 'tenant_id', header: 'Tenant', width: 'medium'},
 		{data_key: 'name', header: 'Name', width: 'medium'},
-		{data_key: 'allowed_models', header: 'Allowed Models', width: 'wide', tooltip: 'Model identifiers this key may access (empty = all)'},
-		{data_key: 'rate_limit_rps', header: 'RPS', align: 'right', tooltip: 'Maximum requests per second (0 = unlimited)'},
-		{data_key: 'tokens_per_min', header: 'Tokens/min', align: 'right', tooltip: 'Maximum LLM tokens per minute (0 = unlimited)'},
-		{data_key: 'expires_at', header: 'Expires', width: 'medium', tooltip: 'Expiry timestamp (empty = never)'},
+		{data_key: 'allowed_models', header: 'Allowed Models', width: 'wide', type: 'mono', tooltip: 'Model identifiers this key may access (empty = all)'},
+		{data_key: 'rate_limit_rps', header: 'RPS', align: 'right', type: 'mono', tooltip: 'Maximum requests per second (0 = unlimited)'},
+		{data_key: 'tokens_per_min', header: 'Tokens/min', align: 'right', type: 'mono', tooltip: 'Maximum LLM tokens per minute (0 = unlimited)'},
+		{data_key: 'expires_at', header: 'Expires', width: 'medium', type: 'mono', tooltip: 'Expiry timestamp (empty = never)'},
 		{data_key: 'enabled', header: 'Enabled', type: 'on-off'},
 	];
 

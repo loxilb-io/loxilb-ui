@@ -11,8 +11,8 @@ export default function AFITable(props: {data: string[]; selected_rows: number[]
 	const {data, selected_rows, onChangeSelectedRows} = props;
 
 	const cols: IDataTableColumnDef[] = [
-		{data_key: 'afi', header: 'AFI', tooltip: 'Address Family Identifier', width: 'wide'},
-		{data_key: 'safi', header: 'SAFI', tooltip: 'Subsequent Address Family Identifier', width: 'wide'},
+		{data_key: 'afi', header: 'AFI', type: 'tag', tooltip: 'Address Family Identifier', width: 'wide'},
+		{data_key: 'safi', header: 'SAFI', type: 'tag', tooltip: 'Subsequent Address Family Identifier', width: 'wide'},
 	];
 
 	const rows = data.map((afiSafi: string, index: number) => {

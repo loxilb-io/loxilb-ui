@@ -9,6 +9,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import StopIcon from '@mui/icons-material/Stop';
 import {Button, Stack} from '@mui/material';
 import SingleTextField from 'components/element/SingleTextField';
+import StatCard from 'components/element/StatCard';
 import ValueBunch from 'components/element/ValueBunch';
 import IPsecConfigForm from 'components/input/IPsecConfigForm';
 import IPsecTunnelInputForm from 'components/input/IPsecTunnelInputForm';
@@ -276,14 +277,12 @@ export default function IPsecTunnelPage() {
 					</Button>
 				}
 			>
-				<Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-					<ValueBunch name={''}>
-						<SingleTextField label={t('Tunnels Up')} value={(stats?.tunnelsUp ?? 0).toString()} />
-						<SingleTextField label={t('Tunnels Down')} value={(stats?.tunnelsDown ?? 0).toString()} />
-						<SingleTextField label={t('Active SAs')} value={(stats?.totalSas ?? 0).toString()} />
-						<SingleTextField label={t('Bytes In / Out')} value={`${formatBytes(stats?.totalBytesIn)} / ${formatBytes(stats?.totalBytesOut)}`} />
-						<SingleTextField label={t('Errors')} value={totalErrors.toString()} tooltip={t('encrypt + decrypt + auth + replay errors') as string} />
-					</ValueBunch>
+				<Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
+					<StatCard label={t('Tunnels Up')} value={stats?.tunnelsUp ?? 0} color={(stats?.tunnelsUp ?? 0) > 0 ? 'success' : undefined} />
+					<StatCard label={t('Tunnels Down')} value={stats?.tunnelsDown ?? 0} color={(stats?.tunnelsDown ?? 0) > 0 ? 'error' : undefined} />
+					<StatCard label={t('Active SAs')} value={stats?.totalSas ?? 0} />
+					<StatCard label={t('Bytes In / Out')} value={`${formatBytes(stats?.totalBytesIn)} / ${formatBytes(stats?.totalBytesOut)}`} />
+					<StatCard label={t('Errors')} value={totalErrors} color={totalErrors > 0 ? 'error' : undefined} tooltip={t('encrypt + decrypt + auth + replay errors') as string} />
 				</Stack>
 			</SubTitlePannel>
 

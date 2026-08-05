@@ -34,14 +34,14 @@ export default function IPsecTunnelTable(props: {
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'name', header: 'Name', width: 'medium'},
-		{data_key: 'state', header: 'State', tooltip: 'Tunnel state (up / connecting / down)'},
-		{data_key: 'peers', header: 'Local ⇄ Remote', width: 'wide'},
-		{data_key: 'authMode', header: 'Auth'},
-		{data_key: 'ikeVersion', header: 'IKE'},
-		{data_key: 'sasInstalled', header: 'SAs', align: 'right', tooltip: 'Number of installed Security Associations'},
-		{data_key: 'bytesIn', header: 'Bytes In', align: 'right'},
-		{data_key: 'bytesOut', header: 'Bytes Out', align: 'right'},
-		{data_key: 'installedAt', header: 'Created', width: 'medium'},
+		{data_key: 'state', header: 'State', type: 'state', tooltip: 'Tunnel state (up / connecting / down)'},
+		{data_key: 'peers', header: 'Local ⇄ Remote', width: 'wide', type: 'mono'},
+		{data_key: 'authMode', header: 'Auth', type: 'tag'},
+		{data_key: 'ikeVersion', header: 'IKE', type: 'tag'},
+		{data_key: 'sasInstalled', header: 'SAs', align: 'right', type: 'mono', tooltip: 'Number of installed Security Associations'},
+		{data_key: 'bytesIn', header: 'Bytes In', align: 'right', type: 'mono'},
+		{data_key: 'bytesOut', header: 'Bytes Out', align: 'right', type: 'mono'},
+		{data_key: 'installedAt', header: 'Created', width: 'medium', type: 'mono'},
 	];
 
 	const rows = data.map(item => ({

@@ -34,13 +34,13 @@ export default function FirewallTable(props: {data: IFirewallRules; selected_row
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'portName', header: 'Port Name'},
-		{data_key: 'sourceIP', header: 'Source IP'},
-		{data_key: 'destinationIP', header: 'Dest. IP'},
-		{data_key: 'sourcePort', header: 'Source Port'},
-		{data_key: 'destinationPort', header: 'Dest. Port'},
-		{data_key: 'protocol', header: 'Protocol', width: 'medium'},
-		{data_key: 'preference', header: 'Preference', width: 'medium', tooltip: 'User preference for ordering. (Lower value indicates higher priority)	'},
-		{data_key: 'counter', header: 'Counter', width: 'medium', tooltip: 'Packet:Byte counter for the rule'},
+		{data_key: 'sourceIP', header: 'Source IP', type: 'mono'},
+		{data_key: 'destinationIP', header: 'Dest. IP', type: 'mono'},
+		{data_key: 'sourcePort', header: 'Source Port', type: 'mono'},
+		{data_key: 'destinationPort', header: 'Dest. Port', type: 'mono'},
+		{data_key: 'protocol', header: 'Protocol', width: 'medium', type: 'tag'},
+		{data_key: 'preference', header: 'Preference', width: 'medium', align: 'right', type: 'mono', tooltip: 'User preference for ordering. (Lower value indicates higher priority)	'},
+		{data_key: 'counter', header: 'Counter', width: 'medium', align: 'right', type: 'mono', tooltip: 'Packet:Byte counter for the rule'},
 	];
 
    // Hash function for firewall rule

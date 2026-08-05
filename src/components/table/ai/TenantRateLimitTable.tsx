@@ -22,9 +22,9 @@ export default function TenantRateLimitTable(props: {
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'tenant_id', header: 'Tenant', width: 'wide'},
-		{data_key: 'rps', header: 'RPS', align: 'right', tooltip: 'Maximum requests per second (0 = unlimited)'},
-		{data_key: 'tokens_per_min', header: 'Tokens/min', align: 'right', tooltip: 'Maximum LLM tokens per minute (0 = unlimited)'},
-		{data_key: 'updated_at', header: 'Updated', width: 'medium', tooltip: 'Timestamp of the last rate limit update'},
+		{data_key: 'rps', header: 'RPS', align: 'right', type: 'mono', tooltip: 'Maximum requests per second (0 = unlimited)'},
+		{data_key: 'tokens_per_min', header: 'Tokens/min', align: 'right', type: 'mono', tooltip: 'Maximum LLM tokens per minute (0 = unlimited)'},
+		{data_key: 'updated_at', header: 'Updated', width: 'medium', type: 'mono', tooltip: 'Timestamp of the last rate limit update'},
 	];
 
 	const rows = data.map(item => ({
