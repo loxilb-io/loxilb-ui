@@ -18,7 +18,7 @@ export default function LBTable(props: {data: ILBData; selected_rows: number[]; 
 	const sel_list: IEnumItem[] = sels;
 	const mode_list: IEnumItem[] = modes;
 
-	// Cell treatment follows the "color budget" rule (UI/UX plan Phase 3):
+	// Cell treatment follows the "color budget" rule (UI/UX plan):
 	// identifiers in mono, enum families as neutral tag badges, and at most
 	// one colored element per row (the Monitor state dot).
 	const cols: IDataTableColumnDef[] = [
