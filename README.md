@@ -1,9 +1,9 @@
 # LoxiLB UI Dashboard
 
 [![Version](https://img.shields.io/badge/version-0.9.0-blue.svg)](package.json)
-[![License](https://img.shields.io/badge/license-Apache_2.0-green.svg)](#license)
-[![Docker](https://img.shields.io/badge/docker-supported-blue.svg)](#docker-deployment)
-[![Kubernetes](https://img.shields.io/badge/kubernetes-ready-green.svg)](#kubernetes-deployment)
+[![License](https://img.shields.io/badge/license-Apache_2.0-green.svg)](#-license)
+[![Docker](https://img.shields.io/badge/docker-supported-blue.svg)](#-docker-deployment)
+[![Kubernetes](https://img.shields.io/badge/kubernetes-ready-green.svg)](#-kubernetes-deployment)
 
 A modern React-based web dashboard for efficiently managing LoxiLB load balancers and network services with comprehensive SSL/HTTPS support and multiple deployment options.
 
@@ -33,7 +33,7 @@ A modern React-based web dashboard for efficiently managing LoxiLB load balancer
 - [Quick Start](#-quick-start)
 - [Docker Deployment](#-docker-deployment)
 - [Kubernetes Deployment](#-kubernetes-deployment)
-- [SSL/HTTPS Configuration](#-ssl-https-configuration)
+- [SSL/HTTPS Configuration](#-sslhttps-configuration)
 - [Development Setup](#-development-setup)
 - [Environment Configuration](#-environment-configuration)
 - [API Integration](#-api-integration)
@@ -426,10 +426,9 @@ const api = {
 | `npm run api:check-mapping` | Verify every connector call exists in the backend specs |
 | `npm run sync:specs` | Re-vendor backend specs from sibling repos |
 
-API type-safety and backend-compatibility tooling is documented in
-[`docs/API_TOOLING.md`](docs/API_TOOLING.md); UI-vs-API gap analysis in
-[`docs/API_COVERAGE_REPORT.md`](docs/API_COVERAGE_REPORT.md); running the
-end-to-end browser suite in [`docs/E2E_RUNNING.md`](docs/E2E_RUNNING.md).
+The API type-safety and backend-compatibility checks above are described in
+[`CONTRIBUTING.md`](CONTRIBUTING.md); running the end-to-end browser suite is
+covered in [`docs/E2E_RUNNING.md`](docs/E2E_RUNNING.md).
 
 ### Build Optimization
 - **Code splitting** with React.lazy()
@@ -557,8 +556,7 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 - [Changelog](CHANGELOG.md) — notable changes per release
 - [Security Policy](SECURITY.md) — reporting vulnerabilities
 - [E2E Test Guide](docs/E2E_RUNNING.md) — running the Playwright browser suite
-- [API Tooling](docs/API_TOOLING.md) — spec vendoring, type generation, mapping guard
-- [SSL/HTTPS Configuration](#-ssl-https-configuration) — certificate modes (in this README)
+- [SSL/HTTPS Configuration](#-sslhttps-configuration) — certificate modes (in this README)
 - [Kubernetes Manifests](k8s/) — production-ready Kubernetes deployment
 
 ### External Resources
