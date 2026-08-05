@@ -177,7 +177,19 @@ export default function DashboardPage() {
 					draggableCancel=".no-drag"
 				>
 					{CARD_CONFIG.map(({key, component}) => (
-						<Paper key={key} elevation={0} sx={{border: '1px solid', borderColor: 'divider', overflow: 'hidden'}}>
+						<Paper
+						key={key}
+						elevation={0}
+						sx={{
+							border: '1px solid',
+							borderColor: 'divider',
+							overflow: 'hidden',
+							// Borders-by-default surface idiom: shadow appears only on
+							// hover, as a soft lift that doubles as a drag affordance.
+							transition: 'box-shadow 200ms ease',
+							'&:hover': {boxShadow: '0 2px 10px rgba(17, 51, 81, 0.10)'},
+						}}
+					>
 							{component}
 						</Paper>
 					))}

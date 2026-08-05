@@ -60,6 +60,7 @@ export function TableBase(props: {
 				'--DataGrid-containerBackground': '#F6F8FA',
 				'& .MuiDataGrid-columnHeaders .MuiDataGrid-columnHeaderTitleContainer': {typography: 'subtitle2'},
 				'& .MuiDataGrid-cell': {typography: 'body2'},
+				'& .MuiDataGrid-row': {transition: 'background-color 150ms ease'},
 				'& .MuiDataGrid-row:hover': {backgroundColor: 'rgba(17, 51, 81, 0.045)'},
 				'.MuiDataGrid-cell:focus': {outline: 'none'},
 				'.MuiDataGrid-cell:focus-within': {outline: 'none'},
