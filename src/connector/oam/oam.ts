@@ -7,6 +7,7 @@ import {IInstance, IInstanceInput, IUser} from 'types/oam';
 import {ISetupStatus, IUpdateAdminRequest, IUpdateAdminResponse} from 'types/setup';
 import {ApiResult, DOWNLOAD_FILE_STREAM, DownloadProgress} from '../fetcher/fetcher_base';
 import {DELETE_OAM, GET_OAM, POST_OAM, PUT_OAM} from '../fetcher/fetcher_oam';
+import {getApiBaseUrl} from 'utils/apiProxy';
 import type {OamGetResp, OamPostResp} from 'api';
 
 //---------------------------------------------------------
@@ -39,7 +40,7 @@ export type OamReachability = 'ok' | 'unreachable';
 // path segment (/api/oam vs /oam) answers 404, and OAM with a dead DB answers
 // non-200 via its health middleware. All of those mean login cannot succeed.
 export async function preflight_oam(timeout_ms = 4000): Promise<OamReachability> {
-	const url = `${process.env.REACT_APP_API_URL}/health`;
+	const url = `${getApiBaseUrl()}/health`;
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), timeout_ms);
 	try {
@@ -91,7 +92,7 @@ export async function request_delete_instance(id: number): Promise<ApiResult> {
 
 export async function download_oam_log_archive(filename: string, onProgress?: (p: DownloadProgress) => void): Promise<void> {
 	// https://oam.example.com/oam/oam/logs/archives/loxioam.log
-	const full_url = `${process.env.REACT_APP_API_URL}/logs/archives/${filename}`;
+	const full_url = `${getApiBaseUrl()}/logs/archives/${filename}`;
 	await DOWNLOAD_FILE_STREAM(full_url, filename, onProgress);
 }
 
