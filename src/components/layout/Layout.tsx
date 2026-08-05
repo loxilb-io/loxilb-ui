@@ -13,8 +13,6 @@ import InsetArea from './InsetArea';
 export default function Layout(props: {hide_header?: boolean}) {
 	const {hide_header} = props;
 
-	const footer_color = hide_header ? 'black' : 'primary.main';
-
 	return (
 		<InsetArea>
 			<Box id="layout" width="100%" height="100%" display="flex" flexDirection="column" alignItems="center">
@@ -24,7 +22,7 @@ export default function Layout(props: {hide_header?: boolean}) {
 					<Outlet />
 				</Box>
 
-				<Footer bgcolor={footer_color} />
+				<Footer variant={hide_header ? 'dark' : 'light'} />
 			</Box>
 		</InsetArea>
 	);
