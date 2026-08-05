@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Critical Metric Card with Real-time Updates
 //---------------------------------------------------------
-import {Box, Typography, Chip} from '@mui/material';
+import {Box, Typography, Chip, Skeleton} from '@mui/material';
 import {useQuery} from '@tanstack/react-query';
 import {query_get_live_metrics} from 'connector/instance/metrics';
 import {t} from 'i18next';
@@ -96,13 +96,27 @@ export default function CriticalMetricCard(props: CriticalMetricCardProps) {
 		values: metricHistory
 	}), [metricHistory, title]);
 
+	// First poll still in flight → skeleton, not a blank card.
+	if (metricHistory.length === 0) {
+		return (
+			<CardBase title={title}>
+				<Skeleton variant="rounded" width="60%" height={48} sx={{mb: 1}} />
+				<Skeleton variant="rounded" width="100%" height={60} />
+			</CardBase>
+		);
+	}
+
+	// The hero number carries the threshold state (normal stays neutral —
+	// color is reserved for something being wrong).
+	const value_color = status.level === 'critical' ? 'error.main' : status.level === 'warning' ? 'warning.main' : 'text.primary';
+
 	return (
 		<CardBase title={title}>
 			<Box display="flex" flexDirection="column" gap={1.5}>
 				{/* Current Value and Status */}
 				<Box display="flex" justifyContent="space-between" alignItems="center">
 					<Box>
-						<Typography variant="h3" fontWeight="bold" color="primary">
+						<Typography variant="h4" color={value_color}>
 							{currentValue.toLocaleString()}
 						</Typography>
 						{description && (
@@ -111,7 +125,7 @@ export default function CriticalMetricCard(props: CriticalMetricCardProps) {
 							</Typography>
 						)}
 					</Box>
-					<Chip 
+					<Chip
 						label={status.label}
 						color={status.color as any}
 						size="small"
