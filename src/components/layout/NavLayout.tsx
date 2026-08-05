@@ -2,7 +2,6 @@
 // Imports
 //---------------------------------------------------------
 import {Outlet, useLocation} from 'react-router-dom';
-import BGImage from './BGImage';
 import RouteErrorBoundary from './RouteErrorBoundary';
 import SideMenuNav from './SideMenuNav';
 
@@ -18,7 +17,6 @@ export default function NavLayout() {
 			<RouteErrorBoundary resetKey={location.pathname}>
 				<Outlet />
 			</RouteErrorBoundary>
-			<BGImage />
 		</SideMenuNav>
 	);
 }

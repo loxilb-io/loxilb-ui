@@ -70,7 +70,21 @@ const { t } = useTranslation();
 
 	return (
 		<Fragment>
-			<ListItemButton onClick={handleClick} sx={{pl: depth * 2 + 2, backgroundColor: is_selected(top_name) ? 'grey.200' : 'inherit'}}>
+			<ListItemButton
+				onClick={handleClick}
+				sx={{
+					pl: depth * 2 + 2,
+					// Active route: brand-orange indicator (inset shadow so the text
+					// doesn't shift) + a light tint of the same hue.
+					...(is_selected(top_name)
+						? {
+								backgroundColor: 'rgba(210, 123, 36, 0.08)',
+								boxShadow: theme => `inset 3px 0 0 ${theme.palette.secondary.main}`,
+								'& .MuiListItemText-primary': {fontWeight: 600, color: 'primary.main'},
+						  }
+						: {}),
+				}}
+			>
 				{item.icon && (
 					<ListItemIcon>
 						<item.icon />
