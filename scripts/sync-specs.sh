@@ -13,7 +13,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 GATEWAY_REPO="${GATEWAY_REPO:-../loxilb-inference-gateway}"
-OAM_REPO="${OAM_REPO:-../oam-loxilb}"
+# The OAM checkout is ../loxilb-oam since the repo moved to loxilb-io/loxilb-oam.
+# A stale ../oam-loxilb clone may still exist next to it — defaulting to that
+# one would silently vendor a spec from before the migration.
+OAM_REPO="${OAM_REPO:-../loxilb-oam}"
 
 [ -f "$GATEWAY_REPO/api/swagger.yml" ] || { echo "gateway repo not found at $GATEWAY_REPO (set GATEWAY_REPO=...)"; exit 1; }
 [ -d "$OAM_REPO" ] || { echo "oam repo not found at $OAM_REPO (set OAM_REPO=...)"; exit 1; }
