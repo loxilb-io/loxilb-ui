@@ -102,7 +102,7 @@ function ConntrackPanel(props: {instance: IInstance | null; data: ICtAttribute})
 
 	return (
 		<SubTitlePannel title={`${data.sourceIP}_${data.sourcePort} → ${data.destinationIP}_${data.destinationPort}`} sub_title={t('Details')}>
-			<SingleTextBox label={t('Conntrack Act')} value={data.conntrackAct} />
+			<SingleTextBox label={t('Conntrack Act')} value={data.conntrackAct} width="wide" />
 			<HorizontalStack align="flex-start">
 				<Stack spacing={2}>
 					<SingleTextBox label={t('Source')} value={`${data.sourceIP}:${data.sourcePort}`} />
@@ -111,8 +111,11 @@ function ConntrackPanel(props: {instance: IInstance | null; data: ICtAttribute})
 					<SingleTextBox label={t('Current Packets')} value={`${(data.packets ?? 0).toLocaleString()} packets`} />
 				</Stack>
 
+				{/* flex + minWidth:0 gives each chart a real measured width. RateLineGraph
+				    omits `width` so it fills its parent; in a content-sized Stack that
+				    collapsed both graphs to ~80px slivers next to a half-empty row. */}
 				{traffic_data && (
-					<Stack alignItems="center">
+					<Stack alignItems="center" flex={1} minWidth={0}>
 						{/* Current Rate Display - Same style as DeltaTrafficCard */}
 						<Box display="flex" justifyContent="space-between" alignItems="center" width="100%" mb={1}>
 							<Typography variant="caption" color="textSecondary">
@@ -132,7 +135,7 @@ function ConntrackPanel(props: {instance: IInstance | null; data: ICtAttribute})
 				)}
 
 				{packets_data && (
-					<Stack alignItems="center">
+					<Stack alignItems="center" flex={1} minWidth={0}>
 						{/* Current Rate Display - Same style as DeltaTrafficCard */}
 						<Box display="flex" justifyContent="space-between" alignItems="center" width="100%" mb={1}>
 							<Typography variant="caption" color="textSecondary">

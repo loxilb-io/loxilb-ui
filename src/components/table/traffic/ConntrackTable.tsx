@@ -21,7 +21,10 @@ export default function ConntrackTable(props: {data: ICtData; selected_rows: num
 		{data_key: 'destination', header: 'Destination', width: 'wide', type: 'mono'},
 		{data_key: 'protocol', header: 'Protocol', width: 'medium', type: 'tag'},
 		{data_key: 'conntrackState', header: 'State', width: 'medium', type: 'tag'},
-		{data_key: 'conntrackAct', header: 'Act', width: 'medium', type: 'tag'},
+		// Act carries a full NAT tuple (e.g. "fp|10.0.0.1:43390->10.0.0.2:8080|tcp"),
+		// far longer than any other column — let it absorb the leftover width
+		// instead of truncating to "fp|32.32.3…".
+		{data_key: 'conntrackAct', header: 'Act', width: 'full', type: 'tag'},
 		{data_key: 'usage', header: 'Usages', align: 'right', width: 'wide', type: 'mono', sortComparator: (v1: any, v2: any) => {
 			const bytes1 = typeof v1 === 'object' && v1.bytes !== undefined ? v1.bytes : 0;
 			const bytes2 = typeof v2 === 'object' && v2.bytes !== undefined ? v2.bytes : 0;
@@ -67,5 +70,8 @@ export default function ConntrackTable(props: {data: ICtData; selected_rows: num
 	   })()
 	   : undefined;
 
-	return <DataTable name={'Connection Track'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onRefresh={onRefresh} error={error} hideCheckbox={true} />;
+	// The row id is a synthetic hash of the 5-tuple (see getHashKey) — an internal
+	// key, not an operator-facing identifier. Showing it only rendered a truncated
+	// 10-digit number, so hide it and give the width to Act.
+	return <DataTable name={'Connection Track'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onRefresh={onRefresh} error={error} hideCheckbox={true} hideIdColumn={true} />;
 }
