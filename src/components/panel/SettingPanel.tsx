@@ -29,6 +29,9 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 	const timeoutValue = serviceArguments.probeTimeout ?? 1800;
 	const inactiveTimeOutValue = serviceArguments.inactiveTimeOut ?? 0;
 
+	// Absent on non-fullproxy rules; the fields then render as "None".
+	const mtls = serviceArguments.mtls_frontend ?? {};
+
 	return (
 		<Stack spacing={2}>
 			<ValueBunch name={t('Service Identity')}>
@@ -69,8 +72,18 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 					<SingleTextBox label={t('Security')} value={serviceArguments.security} tooltip='Value for Security mode (0-Plain, 1-https, 2-tls, 3-e2ehttps, 0-default) in fullproxy mode'/>
 					<SingleTextBox label={t('Backend Protocol')} value={serviceArguments.backend_protocol} tooltip="Backend protocol capability for ALPN negotiation ('http1', 'http2', or 'both')"/>
 					<SingleTextBox label={t('Proxy Protocol v2')} value={serviceArguments.proxyprotocolv2} tooltip='Flag to enable proxy protocol v2' />
+					{/* Frontend mTLS is TLS configuration, not AI routing, so it belongs
+					    with the L7 proxy settings rather than in the AI Gateway tab. */}
+					<SingleTextBox label={t('Client Cert Mode')} value={mtls.client_cert_mode} tooltip="Client-certificate verification ('disabled', 'optional', or 'required'); fullproxy + TLS only" />
+					{/* Filesystem paths and CN patterns run long — the wide column keeps
+					    them on one line. */}
+					<SingleTextBox label={t('Client CA Path')} value={mtls.client_ca_path} width="wide" tooltip='Path to the client CA bundle (PEM) on the gateway' />
+					<SingleTextBox label={t('Client CA Data')} value={mtls.client_ca_cert_data ? t('Provided') : undefined} tooltip='Inline base64 PEM client CA bundle (alternative to the path)' />
+					<SingleTextBox label={t('Require Client CN')} value={mtls.require_client_cn} tooltip='Additionally require the client certificate CN to match a pattern' />
+					<SingleTextBox label={t('Client CN Pattern')} value={mtls.client_cn_pattern} width="wide" tooltip='CN pattern to match, wildcard supported (used with Require Client CN)' />
+					<SingleTextBox label={t('Client CRL Path')} value={mtls.client_crl_path} width="wide" tooltip='Optional static CRL (PEM) for leaf-certificate revocation' />
 				</Grid2>
-			</ValueBunch>			
+			</ValueBunch>
 			<ValueBunch name={t('Kubernetes Information')}>
 				<Grid2 container spacing={2}>
 					<SingleTextBox label={t('Managed')} value={serviceArguments.managed ?? false} tooltip='Kubernetes Load Balancer externally managed rule or not' />					
