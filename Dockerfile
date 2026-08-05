@@ -16,6 +16,25 @@ RUN npm ci
 COPY . .
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV NODE_ENV=production
+# Build-time SPA config baked in by Create React App (it reads REACT_APP_* from
+# the environment). These MUST be set at build time; the app has no runtime
+# config, so an unset value ships a broken bundle. Historically they were only
+# provided by a developer's local .env.local — which is (correctly) excluded
+# from the image — so the defaults below are the source of truth for releases.
+#
+#   REACT_APP_API_URL    — OAM API base. Relative path the Caddy edge
+#                          (deploy/compose) proxies to OAM; works on any
+#                          host/scheme. Override to https://oam.host/oam only
+#                          for a non-edge topology where the browser calls OAM
+#                          directly.
+#   REACT_APP_PUBLIC_URL  — React Router basename. The app is served under this
+#                          prefix (Caddy/nginx both mount it at /netlox); an
+#                          empty value 404s every route. Override only if you
+#                          serve the SPA at a different prefix.
+ARG REACT_APP_API_URL=/api/oam
+ARG REACT_APP_PUBLIC_URL=/netlox
+ENV REACT_APP_API_URL=${REACT_APP_API_URL}
+ENV REACT_APP_PUBLIC_URL=${REACT_APP_PUBLIC_URL}
 RUN npm run build:prod
 
 # Stage 2: Serve with nginx
