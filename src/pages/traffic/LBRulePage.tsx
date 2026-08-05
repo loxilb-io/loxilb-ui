@@ -7,6 +7,7 @@ import SubTabs from 'components/element/SubTabs';
 import LBInputForm from 'components/input/LBInputForm';
 import LowerSection from 'components/layout/LowerSection';
 import ErrorPopUp from 'components/modal/ErrorPopUp';
+import AIGatewayPanel from 'components/panel/AIGatewayPanel';
 import AllowedSourcesPanel from 'components/panel/AllowedSourcePanel';
 import ConntrackTablePanel from 'components/panel/ConntrackTablePanel';
 import EndpointsPanel from 'components/panel/EndpointPanel';
@@ -47,7 +48,9 @@ export default function LBRulePage() {
 	const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds stable hash ids
 	const [cur_tab_idx, set_cur_tab_idx] = useState(0);
 
-	const tabs = ['Settings', 'Endpoints', 'Secondary IPs', 'Allowed Sources', 'Conntrack', 'QoS', 'Mirror'];
+	// Appended at the END: existing tab indices (and the E2E tab-name queries
+	// that depend on them) stay stable.
+	const tabs = ['Settings', 'Endpoints', 'Secondary IPs', 'Allowed Sources', 'Conntrack', 'QoS', 'Mirror', 'AI Gateway'];
 
 	// Hash function for LB rule — MUST match LBTable's getHashKey exactly
 	const getHashKey = (item: IServiceConfiguration) => {
@@ -289,6 +292,7 @@ export default function LBRulePage() {
 						{cur_tab_idx === 4 && rule_name && <ConntrackTablePanel lb_name={rule_name} />}
 						{cur_tab_idx === 5 && rule_name && <QoSPanel data={qos_info} lb_name={rule_name} />}
 						{cur_tab_idx === 6 && rule_name && <MirrorPanel data={mirror_info} lb_name={rule_name} />}
+						{cur_tab_idx === 7 && <AIGatewayPanel serviceArguments={selectedItem.serviceArguments} />}
 					</Stack>
 				</LowerSection>
 			)}
