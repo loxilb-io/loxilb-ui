@@ -13,7 +13,7 @@ export default function VLANTable(props: {data: IVlanData; selected_rows: number
 	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
-		{data_key: 'vid', header: 'VLAN ID', width: 'wide'},
+		{data_key: 'vid', header: 'VLAN ID', width: 'wide', type: 'mono'},
 		{data_key: 'dev', header: 'Device', width: 'wide'},
 		{data_key: 'member', header: 'Members', width: 'super_wide'},
 		{data_key: 'inbounds', header: 'Inbounds', type: 'multi-line', align: 'right', width: 'wide'},

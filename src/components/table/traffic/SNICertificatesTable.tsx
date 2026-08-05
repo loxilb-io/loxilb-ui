@@ -24,8 +24,8 @@ export default function SNICertificatesTable(props: SNICertificatesTableProps) {
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'hostname', header: 'Hostname', width: 'wide'},
-		{data_key: 'certPath', header: 'Certificate Path', width: 'super_wide'},
-		{data_key: 'refCount', header: 'Reference Count', width: 'medium'},
+		{data_key: 'certPath', header: 'Certificate Path', width: 'super_wide', type: 'mono'},
+		{data_key: 'refCount', header: 'Reference Count', width: 'medium', align: 'right', type: 'mono'},
 	];
 
 	const getHashKey = (item: ISNICertificateListItem) => getStableHash(`${item.hostname}_${item.certPath}`);

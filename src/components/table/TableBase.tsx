@@ -31,8 +31,9 @@ export function TableBase(props: {
 	onSelectionChange?: any;
 	defaultSort?: {field: string; sort: 'asc' | 'desc'};
 	emptyLabel?: string;
+	rowHeight?: number;
 }) {
-	const {columns, rows, rowSelectionModel, onSelectionChange, hideIdColumn, hideCheckbox, disableSelect, defaultSort, emptyLabel} = props;
+	const {columns, rows, rowSelectionModel, onSelectionChange, hideIdColumn, hideCheckbox, disableSelect, defaultSort, emptyLabel, rowHeight} = props;
 
 	const displayColumns = hideIdColumn ? columns.filter((column: any) => column.field !== 'id') : columns;
 
@@ -46,7 +47,7 @@ export function TableBase(props: {
 				sorting: defaultSort ? {sortModel: [{field: defaultSort.field, sort: defaultSort.sort}]} : undefined,
 			}}
 			pageSizeOptions={[10, 25, 50]}
-			rowHeight={44}
+			rowHeight={rowHeight ?? 44}
 			columnHeaderHeight={44}
 			checkboxSelection={onSelectionChange !== undefined && hideCheckbox !== true && disableSelect !== true}
 			onRowSelectionModelChange={onSelectionChange}

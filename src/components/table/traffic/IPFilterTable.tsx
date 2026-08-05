@@ -22,13 +22,13 @@ export default function IPFilterTable(props: {
 	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
-		{data_key: 'filterType', header: 'Filter Type', width: 'medium'},
-		{data_key: 'cidr', header: 'CIDR', width: 'wide'},
-		{data_key: 'action', header: 'Action', width: 'narrow'},
-		{data_key: 'priority', header: 'Priority', width: 'narrow', tooltip: 'Higher value = more important'},
-		{data_key: 'zone', header: 'Zone', width: 'narrow', tooltip: '0 = all zones'},
-		{data_key: 'packets', header: 'Packets', width: 'medium', tooltip: 'Packet counter'},
-		{data_key: 'bytes', header: 'Bytes', width: 'medium', tooltip: 'Byte counter'},
+		{data_key: 'filterType', header: 'Filter Type', width: 'medium', type: 'tag'},
+		{data_key: 'cidr', header: 'CIDR', width: 'wide', type: 'mono'},
+		{data_key: 'action', header: 'Action', width: 'narrow', type: 'tag'},
+		{data_key: 'priority', header: 'Priority', width: 'narrow', align: 'right', type: 'mono', tooltip: 'Higher value = more important'},
+		{data_key: 'zone', header: 'Zone', width: 'narrow', align: 'right', type: 'mono', tooltip: '0 = all zones'},
+		{data_key: 'packets', header: 'Packets', width: 'medium', align: 'right', type: 'mono', tooltip: 'Packet counter'},
+		{data_key: 'bytes', header: 'Bytes', width: 'medium', align: 'right', type: 'mono', tooltip: 'Byte counter'},
 	];
 
 	// Hash function for IP filter rule

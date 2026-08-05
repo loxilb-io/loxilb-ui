@@ -16,7 +16,7 @@ export default function MirrorTable(props: {data: IMirrorConfiguration; selected
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'mirrorIdent', header: 'Name', width: 'wide'},
-		{data_key: 'type', header: 'Type', tooltip: 'Mirr Type(0-SPAN, 1-RSPAN, 2-ERSPAN)'},
+		{data_key: 'type', header: 'Type', type: 'tag', tooltip: 'Mirr Type(0-SPAN, 1-RSPAN, 2-ERSPAN)'},
 		{data_key: 'attachment', header: 'Attachment', width: 'wide', type: 'link', tooltip: 'Target Attachment(0-LB Rule Name, 1-Port Name)'},
 		{data_key: 'sync', header: 'Sync', type: 'state'},
 	];

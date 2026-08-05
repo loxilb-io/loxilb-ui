@@ -4,6 +4,8 @@
 import AddIcon from '@mui/icons-material/Add';
 import BlockIcon from '@mui/icons-material/Block';
 import DeleteIcon from '@mui/icons-material/Delete';
+import DensityMediumIcon from '@mui/icons-material/DensityMedium';
+import DensitySmallIcon from '@mui/icons-material/DensitySmall';
 import ModeIcon from '@mui/icons-material/Mode';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import {Alert, Box, Button, Stack, Tooltip, Typography} from '@mui/material';
@@ -26,6 +28,7 @@ import {
 	ToolTipHeader,
 	UsageCell,
 } from 'components/element/CustomGridCell';
+import useLocalStorageState from 'hooks/localStorageHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useRole} from 'hooks/query/oamHooks';
 import {t} from 'i18next';
@@ -71,6 +74,12 @@ export default function DataTable(props: {
 	defaultSort?: {field: string; sort: 'asc' | 'desc'};
 }) {
 	const {name, columns, rows, selected_rows, onChangeSelectedRows, hideMenuBar, hideCheckbox, hideIdColumn, disableSelect, onRefresh, error, defaultSort, deleteConfirm} = props;
+
+	// Global density preference, shared by every table via localStorage
+	// (comfortable 44px / compact 36px rows). useLocalStorageState's event bus
+	// keeps all mounted tables in sync when one toggles.
+	const [density, setDensity] = useLocalStorageState<'comfortable' | 'compact'>('table_density', 'comfortable');
+	const is_compact = density === 'compact';
 
 	// RBAC: viewers are read-only everywhere, so hide the mutation
 	// buttons for them (UX only — the server rejects viewer writes with 403).
@@ -212,6 +221,21 @@ export default function DataTable(props: {
 			    toolbarButton() locator hook. */}
 			{hideMenuBar === true ? null : (
 				<Box id="table-bar" width="100%" height="44px" display="flex" justifyContent="flex-end" alignItems="center" gap="4px" padding="0 8px" bgcolor="grey.100" borderRadius="8px 8px 0 0">
+					<Tooltip title={is_compact ? t('Switch to comfortable rows') : t('Switch to compact rows')} placement="top" arrow>
+						<span>
+							<Button
+								size="small"
+								color="inherit"
+								aria-label={is_compact ? t('Switch to comfortable rows') : t('Switch to compact rows')}
+								onClick={() => setDensity(is_compact ? 'comfortable' : 'compact')}
+								startIcon={is_compact ? <DensitySmallIcon /> : <DensityMediumIcon />}
+								sx={{color: 'text.secondary'}}
+							>
+								{t('Density')}
+							</Button>
+						</span>
+					</Tooltip>
+
 					{onRefresh && (
 						<Tooltip title={t('Refresh {{name}}', {name})} placement="top" arrow>
 							<span>
@@ -283,6 +307,7 @@ export default function DataTable(props: {
 				<TableBase
 					columns={cols}
 					rows={rows}
+					rowHeight={is_compact ? 36 : 44}
 					rowSelectionModel={selected_rows}
 					hideIdColumn={hideIdColumn}
 					hideCheckbox={hideCheckbox}

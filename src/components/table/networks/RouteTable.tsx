@@ -13,10 +13,10 @@ export default function RouteTable(props: {data: IRouteData; selected_rows: numb
 	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
-		{data_key: 'destinationIPNet', header: 'CIDR', width: 'wide'},
-		{data_key: 'gateway', header: 'Gateway'},
-		{data_key: 'hardwareMark', header: 'Hardware Mark', tooltip: 'A tag for traffic classification/handling and a key player in hardware-level policies'},
-		{data_key: 'protocol', header: 'Protocol', tooltip: 'Routing Protocol'},
+		{data_key: 'destinationIPNet', header: 'CIDR', width: 'wide', type: 'mono'},
+		{data_key: 'gateway', header: 'Gateway', type: 'mono'},
+		{data_key: 'hardwareMark', header: 'Hardware Mark', align: 'right', type: 'mono', tooltip: 'A tag for traffic classification/handling and a key player in hardware-level policies'},
+		{data_key: 'protocol', header: 'Protocol', type: 'tag', tooltip: 'Routing Protocol'},
 		{data_key: 'flags', header: 'Flags', tooltip: 'Status information or hints of routing policies for specific routes.'},
 		{data_key: 'usages', header: 'Usages', type: 'multi-line', align: 'right', width: 'medium'},
 	];

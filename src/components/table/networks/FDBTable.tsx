@@ -14,7 +14,7 @@ export default function FDBTable(props: {data: IFdbData; selected_rows: number[]
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'dev', header: 'Device', width: 'wide'},
-		{data_key: 'macAddress', header: 'MAC Address', width: 'wide'},
+		{data_key: 'macAddress', header: 'MAC Address', width: 'wide', type: 'mono'},
 	];
 
    // Use global hash function for FDB entry

@@ -16,13 +16,13 @@ export default function ProcessTable(props: {data: IProcessInfo; selected_rows: 
 	const {data, selected_rows, onChangeSelectedRows, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
-		{data_key: 'pid', header: 'PID', tooltip: 'Process ID', width: 'medium'},
+		{data_key: 'pid', header: 'PID', type: 'mono', tooltip: 'Process ID', width: 'medium'},
 		{data_key: 'user', header: 'User', width: 'wide'},
-		{data_key: 'command', header: 'Command', width: 'wide', tooltip: 'Process name'},
+		{data_key: 'command', header: 'Command', width: 'wide', type: 'mono', tooltip: 'Process name'},
 		{data_key: 'status', header: 'Status', type: 'status'},
-		{data_key: 'CPUUsage', header: 'CPU (%)', align: 'right', width: 'medium', tooltip: 'CPU Utilization(%)'},
-		{data_key: 'MemoryUsage', header: 'Memory (%)', align: 'right', width: 'medium', tooltip: 'Memory Utilization(%)'},
-		{data_key: 'time', header: 'Runtime', align: 'right', width: 'wide'},
+		{data_key: 'CPUUsage', header: 'CPU (%)', align: 'right', width: 'medium', type: 'mono', tooltip: 'CPU Utilization(%)'},
+		{data_key: 'MemoryUsage', header: 'Memory (%)', align: 'right', width: 'medium', type: 'mono', tooltip: 'Memory Utilization(%)'},
+		{data_key: 'time', header: 'Runtime', align: 'right', width: 'wide', type: 'mono'},
 	];
 
 	const rows = data.processAttr.map(item => {
