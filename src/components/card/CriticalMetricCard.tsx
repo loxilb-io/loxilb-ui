@@ -9,6 +9,7 @@ import {useEffect, useMemo, useState} from 'react';
 import {IInstance} from 'types/oam';
 import {ITimeSeriesPoint} from 'types/global';
 import {ITypedLiveMetricsResponse} from 'types/metrics';
+import AnimatedValue from 'components/element/AnimatedValue';
 import RateLineGraph from 'components/element/RateLineGraph';
 import CardBase from './CardBase';
 
@@ -116,9 +117,7 @@ export default function CriticalMetricCard(props: CriticalMetricCardProps) {
 				{/* Current Value and Status */}
 				<Box display="flex" justifyContent="space-between" alignItems="center">
 					<Box>
-						<Typography variant="h4" color={value_color}>
-							{currentValue.toLocaleString()}
-						</Typography>
+						<AnimatedValue variant="h4" color={value_color} value={currentValue.toLocaleString()} />
 						{description && (
 							<Typography variant="caption" color="textSecondary">
 								{description}
