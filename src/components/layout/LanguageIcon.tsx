@@ -1,8 +1,9 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {Box} from '@mui/material';
-import {getFlagUrl} from 'common';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import LanguageIcon_ from '@mui/icons-material/Language';
+import {Box, Typography} from '@mui/material';
 import LangSelMenu from 'components/menu/LangSelMenu';
 import {support_lang} from 'locales/i18n';
 import {useEffect, useState} from 'react';
@@ -11,6 +12,8 @@ import {useTranslation} from 'react-i18next';
 //---------------------------------------------------------
 // Components
 //---------------------------------------------------------
+// Text trigger, not a flag: flags identify countries, not languages
+// (i18n antipattern), and the label doubles as the current-state readout.
 export default function LanguageIcon() {
 	const {i18n} = useTranslation();
 	const [anchor_element_lang, set_anchor_element_lang] = useState<null | HTMLElement>(null);
@@ -26,10 +29,16 @@ export default function LanguageIcon() {
 		setCurrentLang(i18n.language);
 	}, [i18n]);
 
+	const lang_name = support_lang.find(item => item.code === currentLang)?.name ?? 'English';
+
 	return (
-		<Box id="language" onClick={toggle_lang_sel} sx={{cursor: 'pointer'}} display="flex" alignItems="center">
+		<Box id="language" onClick={toggle_lang_sel} sx={{cursor: 'pointer'}} display="flex" alignItems="center" gap="4px">
 			<LangSelMenu anchorEl={anchor_element_lang} handleClose={() => set_anchor_element_lang(null)} />
-			<Box component="img" src={getFlagUrl(support_lang.find(item => item.code === currentLang)?.flag ?? 'en')} alt="flag" width="20px" height="20px" borderRadius="50%" />
+			<LanguageIcon_ sx={{color: 'white', fontSize: '18px'}} />
+			<Typography variant="caption" color="white">
+				{lang_name}
+			</Typography>
+			<ArrowDropDownIcon sx={{color: 'white'}} fontSize="small" />
 		</Box>
 	);
 }
