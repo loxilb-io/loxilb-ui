@@ -10,6 +10,7 @@ import type {OamGetResp, OamPostResp} from 'api';
 import {ISnapshot, ISnapshotList, ISnapshotSchedule, IRestoreOutcomeParsed} from 'types/snapshot';
 import {ApiResult, assertOk, createDetailedErrorMessage, DOWNLOAD_FILE_STREAM, DownloadProgress} from '../fetcher/fetcher_base';
 import {DELETE_OAM, GET_OAM, PATCH_OAM, POST_OAM, PUT_OAM, UPLOAD_FILE_OAM} from '../fetcher/fetcher_oam';
+import {getApiBaseUrl} from 'utils/apiProxy';
 
 //---------------------------------------------------------
 // Reads
@@ -149,6 +150,6 @@ export async function request_put_snapshot_schedule(
 // Content-Disposition filename wins when readable; fall back to the
 // snapshot name.
 export async function request_download_snapshot(sid: string, snapshotName: string, onProgress?: (p: DownloadProgress) => void): Promise<void> {
-	const full_url = `${process.env.REACT_APP_API_URL}/snapshots/${sid}/download`;
+	const full_url = `${getApiBaseUrl()}/snapshots/${sid}/download`;
 	await DOWNLOAD_FILE_STREAM(full_url, `${snapshotName || sid}.json`, onProgress);
 }
