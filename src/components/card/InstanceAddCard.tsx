@@ -5,11 +5,12 @@ import AddIcon from '@mui/icons-material/Add';
 import {Box, Card, CardContent, Typography} from '@mui/material';
 import ImageInstance from 'assets/image/instance.svg';
 import InstanceInputForm from 'components/input/InstanceInputForm';
+import {describe_instance_error, TInstanceFormData} from 'components/input/instanceFormLogic';
 import {request_create_instance} from 'connector/oam/oam';
 import {usePopUp} from 'hooks/popupHook';
 import {useInstances} from 'hooks/query/oamHooks';
 import {useTranslation} from 'react-i18next';
-import {useRef, useState, useEffect} from 'react';
+import {useRef, useState} from 'react';
 import {IInstanceInput} from 'types/oam';
 
 //---------------------------------------------------------
@@ -19,29 +20,54 @@ export default function InstanceCardAdd() {
 	const [is_hover, set_is_hover] = useState(false);
 	const [loading, setLoading] = useState(false);
 	const {openPopUp, enableYes} = usePopUp();
-	const {refetch} = useInstances();
-	const { t, i18n } = useTranslation();
-	const [languageKey, setLanguageKey] = useState(0);
+	const {instance_list, refetch} = useInstances();
+	const {t} = useTranslation();
 
-	const instanceRef = useRef<IInstanceInput | null>(null);
+	const instanceRef = useRef<TInstanceFormData | null>(null);
+	// The submit handler runs long after the dialog was built, so it must read
+	// the CURRENT list/loading state, not the ones captured at open time.
+	const instanceListRef = useRef(instance_list);
+	instanceListRef.current = instance_list;
 
 	const handleAdd = () => {
-		const input_form = <InstanceInputForm key={Date.now()} onChange={data => {
-			instanceRef.current = data;
-			enableYes(data.isValid && !loading);
-		}} />;
+		if (loading) return;
+		instanceRef.current = null;
 
-		openPopUp(t('Add New Instance'), input_form, t('Create'), t('Cancel'), async () => {
-			if (instanceRef.current) {
+		const input_form = (
+			<InstanceInputForm
+				key={Date.now()}
+				existing={instanceListRef.current}
+				onChange={data => {
+					instanceRef.current = data;
+					enableYes(data.isValid);
+				}}
+			/>
+		);
+
+		openPopUp(
+			t('Add New Instance'),
+			input_form,
+			t('Create'),
+			t('Cancel'),
+			async () => {
+				if (!instanceRef.current) return;
+				// Belt-and-braces: the dialog's Create button is gated on
+				// validity, but never POST an invalid body if that gate is
+				// ever bypassed (stale enableYes, keyboard submit).
+				if (!instanceRef.current.isValid) {
+					openPopUp(t('Error'), t('Please correct the highlighted fields.'), t('OK'));
+					return;
+				}
 				setLoading(true);
 				enableYes(false); // Disable during loading
 				try {
-					const res = await request_create_instance(instanceRef.current);
+					const {isValid, errors, ...payload} = instanceRef.current;
+					const res = await request_create_instance(payload);
 					if (res.status === 'success') {
 						openPopUp(t('Success'), t('Instance created successfully.'), t('OK'));
 						refetch();
 					} else {
-						openPopUp(t('Error'), t('Failed to create instance. {{error}}', {error: res.error}), t('OK'));
+						openPopUp(t('Error'), t('Failed to create instance. {{error}}', {error: describe_instance_error(res.error)}), t('OK'));
 					}
 				} catch (err) {
 					const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
@@ -49,13 +75,10 @@ export default function InstanceCardAdd() {
 				} finally {
 					setLoading(false);
 				}
-			}
-		}, true); // Start with button disabled
+			},
+			true,
+		); // Start with button disabled
 	};
-
-	useEffect(() => {
-		setLanguageKey(prev => prev + 1);
-	}, [i18n.language]);
 
 	return (
 		<Card
