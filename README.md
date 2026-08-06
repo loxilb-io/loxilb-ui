@@ -1,6 +1,6 @@
 # LoxiLB UI Dashboard
 
-[![Version](https://img.shields.io/badge/version-0.9.0-blue.svg)](package.json)
+[![Version](https://img.shields.io/github/package-json/v/loxilb-io/loxilb-ui?label=version&color=blue)](package.json)
 [![License](https://img.shields.io/badge/license-Apache_2.0-green.svg)](#-license)
 [![Docker](https://img.shields.io/badge/docker-supported-blue.svg)](#-docker-deployment)
 [![Kubernetes](https://img.shields.io/badge/kubernetes-ready-green.svg)](#-kubernetes-deployment)
@@ -101,18 +101,25 @@ A modern React-based web dashboard for efficiently managing LoxiLB load balancer
 
 ### Option 1: Standalone UI container (needs an existing OAM backend)
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd loxilb-ui
-
-# Point the UI at your running OAM backend, then start it (HTTPS, self-signed).
-# Without a reachable BACKEND_URL the UI has nothing to talk to — see the
-# Prerequisite note above and DEPLOYMENT.md.
-BACKEND_URL=https://your-oam-host:8080 docker-compose up --build -d
+# Runs the published image — no checkout or build required.
+# Point it at your running OAM backend; without a reachable BACKEND_URL the UI
+# has nothing to talk to (see the Prerequisite note above and DEPLOYMENT.md).
+docker run -d --name loxilb-ui -p 3000:8080 \
+  -e SSL_MODE=disabled \
+  -e BACKEND_URL=https://your-oam-host:8080 \
+  ghcr.io/loxilb-io/loxilb-ui:latest
 
 # Access the application
-# HTTP: http://localhost:3000 (redirects to HTTPS)
-# HTTPS: https://localhost:3443
+# http://localhost:3000/netlox/
+```
+
+With Compose, for HTTPS and `.env`-driven configuration:
+
+```bash
+git clone https://github.com/loxilb-io/loxilb-ui.git && cd loxilb-ui
+cp .env.example .env          # set BACKEND_URL
+docker compose up -d
+# https://localhost:3443/netlox/   (http://localhost:3000 redirects to it)
 ```
 
 ### Option 2: Local Development
@@ -132,56 +139,76 @@ npm start
 > **Full deployment guide: [DEPLOYMENT.md](DEPLOYMENT.md).** It covers the
 > recommended **unified management-plane bundle** (Caddy edge + OAM + database in
 > one stack) alongside the standalone Docker and Kubernetes options summarized
-> below.
+> below. For the image itself — contents, environment surface, signature
+> verification, building your own — see
+> [docs/container-image.md](docs/container-image.md).
+
+The published image is `ghcr.io/loxilb-io/loxilb-ui`, tagged with the release
+version (`v0.9.8.7`, in lockstep with `loxilb` and `loxilb-oam`). Pin a version
+tag in production; `:latest` is a lab convenience.
 
 ### Deployment Options
 
+`docker-compose.yml` runs the published image; each mode is an overlay on it.
+
 #### 1. HTTPS with Self-Signed Certificates (Default)
 ```bash
-docker-compose up --build -d
+cp .env.example .env       # set BACKEND_URL
+docker compose up -d
 ```
-- **Access**: https://localhost:3443
-- **Features**: Auto-generated SSL certificates, HTTP→HTTPS redirect
-- **Best for**: Development, testing
+- **Access**: https://localhost:3443/netlox/
+- **Features**: certificate generated at start, HTTP→HTTPS redirect
+- **Best for**: development, testing
 
 #### 2. HTTP Only
 ```bash
-docker-compose -f docker-compose.http.yml up --build -d
+docker compose -f docker-compose.yml -f docker-compose.http.yml up -d
 ```
-- **Access**: http://localhost:3000
-- **Features**: No SSL overhead
-- **Best for**: Local development, reverse proxy setups
+- **Access**: http://localhost:3000/netlox/
+- **Features**: no TLS in the container — terminate it at your own edge
+- **Best for**: behind an ingress or load balancer
 
 #### 3. HTTPS with Commercial Certificates
 ```bash
-# Create SSL directory and add certificates
 mkdir -p ssl
 cp your-certificate.pem ssl/cert.pem
 cp your-private-key.pem ssl/key.pem
+chmod 644 ssl/*.pem        # readable by uid 101 inside the container
 
-# Deploy with your certificates (SSL_MODE=commercial)
-docker-compose -f docker-compose.https.yml up --build -d
+docker compose -f docker-compose.yml -f docker-compose.commercial.yml up -d
 ```
-- **Access**: https://localhost:3443
-- **Features**: Production-grade SSL certificates
-- **Best for**: Production deployment
+- **Access**: https://localhost:3443/netlox/
+- **Features**: your own certificates; the container refuses to start if they
+  are missing or mismatched
+- **Best for**: production
+
+#### 4. Build from source
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+# or: make build-image
+```
 
 ### Docker Configuration
 
-The application supports multiple environment variables:
+Configuration is read from `.env` at container start — see
+[`.env.example`](.env.example) and the
+[configuration reference](DEPLOYMENT.md#configuration-reference):
 
-```yaml
-environment:
-  - SSL_MODE=enabled          # enabled|disabled|commercial
-  - BACKEND_URL=https://oam.example.com
-  - BACKEND_HOST=oam.example.com
-  - FRONTEND_URL=http://localhost:3000
-  - PUBLIC_PATH=/netlox
+```env
+SSL_MODE=enabled                        # disabled | enabled | commercial
+BACKEND_URL=https://oam.example.com:8080  # nginx proxies /api/oam/* → $BACKEND_URL/oam/*
+BACKEND_TLS_VERIFY=off                  # on, once the backend has a trusted cert
+FRONTEND_URL=http://localhost:3000
+PUBLIC_PATH=/netlox
+UI_TAG=v0.9.8.7                         # pin a release
 ```
 
 ### Port Configuration
-- **Port 3000**: HTTP access (redirects to HTTPS when SSL enabled)
-- **Port 3443**: HTTPS access (SSL enabled modes only)
+- **Port 3000** (host): HTTP access — redirects to HTTPS when TLS is enabled
+- **Port 3443** (host): HTTPS access
+- Inside the container nginx listens on **8080/8443**: it runs as an
+  unprivileged user (uid 101) and cannot bind privileged ports. Publish them
+  wherever you like — `-p 80:8080` works fine.
 
 ## ☸️ Kubernetes Deployment
 
@@ -199,7 +226,6 @@ kubectl apply -f k8s/
 # Or deploy step by step
 kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/configmap.yaml
-kubectl apply -f k8s/secret.yaml
 kubectl apply -f k8s/deployment.yaml
 kubectl apply -f k8s/service.yaml
 kubectl apply -f k8s/ingress.yaml
@@ -243,40 +269,44 @@ kubectl apply -k k8s/
 
 ## 🔒 SSL/HTTPS Configuration
 
-### Self-Signed Certificates (Development)
-- **Auto-generated** on container startup
-- **Browser warnings** are normal - click "Proceed to unsafe"
-- **Regenerate**: `docker exec <container> /usr/local/bin/ssl-setup.sh self-signed`
+Set by `SSL_MODE`; full details in
+[docs/container-image.md → TLS modes](docs/container-image.md#tls-modes).
 
-### Commercial Certificates (Production)
+### Self-Signed Certificates (`SSL_MODE=enabled`, development)
+- **Auto-generated** on container startup (365 days, `CN=localhost`)
+- **Browser warnings** are normal — proceed, or trust the certificate locally
+- **Regenerate**: `docker exec <container> /usr/local/bin/ssl-setup.sh self-signed`,
+  then restart the container
+
+### Commercial Certificates (`SSL_MODE=commercial`, production)
 1. **Prepare certificates**:
    ```bash
    mkdir -p ssl
    cp your-certificate.pem ssl/cert.pem
    cp your-private-key.pem ssl/key.pem
-   chmod 644 ssl/cert.pem
-   chmod 600 ssl/key.pem
+   chmod 644 ssl/*.pem      # readable by uid 101 inside the container
    ```
 
-2. **Deploy with your certs** (`SSL_MODE=commercial`):
+2. **Deploy with your certs**:
    ```bash
-   docker-compose -f docker-compose.https.yml up --build -d
+   docker compose -f docker-compose.yml -f docker-compose.commercial.yml up -d
    ```
+
+   The container refuses to start if the pair is missing or mismatched, rather
+   than silently falling back to a self-signed certificate.
 
 ### Security Features
-- **TLS 1.2/1.3** support
-- **Modern cipher suites**
-- **HSTS headers** (HTTP Strict Transport Security)
-- **Security headers**: X-Frame-Options, CSP, X-XSS-Protection
-- **HTTP→HTTPS redirects**
+- **TLS 1.2/1.3** only, forward-secret AEAD cipher suites
+- **HSTS** on the TLS listener (never advertised over plain HTTP)
+- **Security headers**: X-Frame-Options, X-Content-Type-Options, Referrer-Policy, CSP
+- **HTTP→HTTPS redirects** that honour the request's `Host`
+- **No wildcard CORS**: the API is proxied same-origin, so CORS never applies
 
 ### SSL Management Script
 ```bash
-# Available commands
-docker exec <container> /usr/local/bin/ssl-setup.sh auto        # Auto-detect setup
-docker exec <container> /usr/local/bin/ssl-setup.sh self-signed # Generate self-signed
-docker exec <container> /usr/local/bin/ssl-setup.sh commercial  # Use commercial certs
-docker exec <container> /usr/local/bin/ssl-setup.sh validate    # Validate certificates
+# Available commands (run against a live container)
+docker exec <container> /usr/local/bin/ssl-setup.sh validate    # Check the pair, print details
+docker exec <container> /usr/local/bin/ssl-setup.sh self-signed # Regenerate a dev certificate
 ```
 
 ## 💻 Development Setup
@@ -377,12 +407,22 @@ edges expose the same browser path, `/api/oam/*`, and rewrite it to the OAM
 `/oam/*` routes.
 
 ```env
-SSL_MODE=enabled                         # SSL configuration mode
-BACKEND_URL=https://oam.example.com      # OAM API base; nginx proxies /api/oam/* → $BACKEND_URL/oam/*
-BACKEND_HOST=oam.example.com             # Backend host for proxy
-FRONTEND_URL=http://localhost:3000       # Frontend URL
-PUBLIC_PATH=/netlox                      # Public path prefix
+SSL_MODE=enabled                         # disabled | enabled | commercial
+BACKEND_URL=https://oam.example.com:8080 # OAM API base; nginx proxies /api/oam/* → $BACKEND_URL/oam/*
+BACKEND_HOST=                            # Host header / SNI; derived from BACKEND_URL when empty
+BACKEND_TLS_VERIFY=off                   # on = verify the backend's certificate chain
+FRONTEND_URL=http://localhost:3000       # Browser-facing origin, forwarded to OAM as Origin
+PUBLIC_PATH=/netlox                      # Path prefix the SPA is served under
+HTTP_PORT=8080                           # Container listen ports (not the published ones)
+HTTPS_PORT=8443
+HTTPS_REDIRECT_PORT=                     # Port to keep in the HTTP→HTTPS redirect (Compose sets 3443)
 ```
+
+Every value is read at container start. The two build-time exceptions —
+`REACT_APP_API_URL` and `REACT_APP_PUBLIC_URL` — are inlined into the JS bundle
+by Create React App, so they are properties of the image; changing the path
+prefix means rebuilding. Full table:
+[docs/container-image.md → Environment surface](docs/container-image.md#environment-surface).
 
 ## 🔌 API Integration
 
@@ -436,10 +476,14 @@ covered in [`docs/E2E_RUNNING.md`](docs/E2E_RUNNING.md).
 - **Tree shaking** for minimal bundle size
 - **Asset optimization** and compression
 
-### Deployment Scripts
-- `deploy.sh` - Shell deployment script
-- `deploy.ps1` - PowerShell deployment script  
-- `make-package.ps1` - Create release package
+### Build & Deployment Entry Points
+| Command | Purpose |
+|---------|---------|
+| `make docker-build` | Build the container image, stamped with `package.json`'s version |
+| `make build-image` | Same, tagged `loxilb-ui:latest` for local Compose/Kubernetes use |
+| `make version` | Print the release this tree builds as |
+| `./deploy.sh [http\|https\|commercial] [up\|down\|restart\|logs\|status]` | Drive the standalone Compose stack |
+| `k8s/deploy.sh` | Apply the Kubernetes manifests |
 
 ## 🔍 Troubleshooting
 
@@ -452,16 +496,18 @@ docker exec <container> /usr/local/bin/ssl-setup.sh validate
 
 # Regenerate self-signed certificates
 docker exec <container> /usr/local/bin/ssl-setup.sh self-signed
-docker-compose restart
+docker compose restart
 ```
 
 #### API Connection Issues
 ```bash
-# Check container logs
-docker-compose logs loxilb-ui
+# Check container logs — the startup banner prints the resolved BACKEND_URL,
+# and warns loudly when it is unset.
+docker compose logs loxilb-ui
 
-# Verify backend connectivity
-docker exec <container> curl -k https://oam.example.com/health
+# API calls returning 502 means the container is up but cannot reach OAM.
+# Verify backend connectivity from inside the container:
+docker exec <container> curl -fsS "$BACKEND_URL/oam/health"
 ```
 
 #### Build Issues
