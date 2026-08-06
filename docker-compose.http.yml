@@ -1,17 +1,14 @@
-# Docker Compose for HTTP-only deployment (no SSL)
+# HTTP-only overlay — for deployments that terminate TLS elsewhere (a cloud
+# load balancer, an ingress controller, or the Caddy edge of the loxilb-oam
+# bundle).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.http.yml up -d
+#   → http://localhost:3000
 services:
   loxilb-ui:
-    build: .
-    ports:
-      - "3000:80"    # HTTP only
-    restart: unless-stopped
     environment:
-      - SSL_MODE=disabled
-    volumes:
-      - ./logs:/var/log/nginx
-    networks:
-      - loxilb-network
-
-networks:
-  loxilb-network:
-    driver: bridge
+      SSL_MODE: disabled
+    # !override replaces the base file's port list instead of appending to it,
+    # so no TLS port is published in this mode.
+    ports: !override
+      - "${UI_HTTP_PORT:-3000}:8080"

@@ -24,6 +24,10 @@ Both use the same image; only who terminates TLS and routes traffic differs.
   - [Kubernetes](#kubernetes)
 - [Health checks](#health-checks)
 
+> **Image reference:** what the image contains, its full environment surface,
+> how to verify its signature, and how to build your own —
+> [docs/container-image.md](docs/container-image.md).
+
 ## Configuration reference
 
 The SPA reaches the backend through a reverse proxy on the same origin
@@ -32,17 +36,29 @@ configured by environment variables at container start:
 
 | Variable | Meaning | Default |
 |----------|---------|---------|
-| `SSL_MODE` | Edge TLS mode: `enabled` (self-signed), `disabled` (HTTP), `commercial` (operator-provided certs) | `enabled` |
-| `BACKEND_URL` | OAM API base the edge proxies `/api/oam` to | — |
-| `BACKEND_HOST` | Backend host used in the proxy config | — |
-| `FRONTEND_URL` | Public URL of the UI (used for redirects/CORS) | `http://localhost:3000` |
+| `SSL_MODE` | Edge TLS mode: `disabled` (HTTP), `enabled` (self-signed), `commercial` (operator-provided certs) | `disabled` |
+| `BACKEND_URL` | OAM API base the edge proxies `/api/oam` to | *(empty — warns, API calls 502)* |
+| `BACKEND_HOST` | `Host` header and TLS SNI presented to the backend | derived from `BACKEND_URL` |
+| `BACKEND_TLS_VERIFY` | Verify the backend's certificate chain (`on`/`off`) | `off` |
+| `FRONTEND_URL` | Browser-facing origin, forwarded to OAM as `Origin` | `http://localhost:3000` |
 | `PUBLIC_PATH` | Path prefix the app is served under (React Router basename) | `/netlox` |
+| `HTTP_PORT` / `HTTPS_PORT` | Container listen ports | `8080` / `8443` |
+| `HTTPS_REDIRECT_PORT` | Port included in the HTTP→HTTPS redirect when TLS is published on a non-443 port | *(empty)* |
+
+The Compose files supply these; `docker-compose.yml` defaults `SSL_MODE` to
+`enabled` so a bare `docker compose up` gives you HTTPS.
+
+An unset or unreachable `BACKEND_URL` does **not** stop the container: it starts,
+serves the SPA, and returns `502` for API calls until the backend appears.
 
 For the **unified bundle**, the equivalent knobs are the single Caddy edge pair
 `SITE_ADDRESS` / `EDGE_TLS` plus `OAM_UPSTREAM` — see the bundle's `.env.example`.
 
 Build-time / development variables (`.env.development`, `.env.local`) such as
 `REACT_APP_API_URL`, `PORT`, and `HTTPS` are documented in the [README](README.md).
+Note that `REACT_APP_API_URL` and `REACT_APP_PUBLIC_URL` are inlined into the
+bundle by Create React App: they are properties of the image, so changing the
+path prefix means rebuilding, not just setting `PUBLIC_PATH`.
 
 ## Unified management-plane bundle
 
@@ -79,52 +95,72 @@ serves the built SPA with nginx and reverse-proxies `/api/oam` to `BACKEND_URL`.
 
 ### Docker Compose
 
-Three compose files cover the common edge modes:
+`docker-compose.yml` runs the published image; each TLS mode is a small overlay
+layered on top of it.
 
 ```bash
-# HTTPS with an auto-generated self-signed certificate (default)
-docker compose up --build -d
-#   → https://localhost:3443  (HTTP on :3000 redirects to HTTPS)
+cp .env.example .env         # set BACKEND_URL to your OAM backend
+
+# HTTPS with an auto-generated self-signed certificate (the default)
+docker compose up -d
+#   → https://localhost:3443/netlox/   (http://localhost:3000 redirects to it)
 
 # HTTP only (e.g. behind your own TLS-terminating reverse proxy)
-docker compose -f docker-compose.http.yml up --build -d
-#   → http://localhost:3000
+docker compose -f docker-compose.yml -f docker-compose.http.yml up -d
+#   → http://localhost:3000/netlox/
 
 # HTTPS with operator-provided certificates
-docker compose -f docker-compose.https.yml up --build -d
+docker compose -f docker-compose.yml -f docker-compose.commercial.yml up -d
+
+# Build from this checkout instead of pulling a release
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 ```
 
-Set the backend and TLS mode via environment (in the compose file or an `.env`):
+`./deploy.sh [http|https|commercial] [up|down|restart|logs|status]` wraps the
+same overlays.
 
-```yaml
-environment:
-  - SSL_MODE=enabled                    # enabled | disabled | commercial
-  - BACKEND_URL=https://oam.example.com
-  - BACKEND_HOST=oam.example.com
-  - PUBLIC_PATH=/netlox
+Configuration comes from `.env` (see [Configuration reference](#configuration-reference)
+and `.env.example`); the compose files pass it through:
+
+```env
+SSL_MODE=enabled                      # disabled | enabled | commercial
+BACKEND_URL=https://oam.example.com:8080
+BACKEND_TLS_VERIFY=off
+FRONTEND_URL=https://ui.example.com
+UI_TAG=v0.9.8.7                       # pin a release; never :latest in production
 ```
 
-Ports: **3000** (HTTP, redirects to HTTPS when TLS is enabled) and **3443**
-(HTTPS).
+Published host ports: **3000** (HTTP) and **3443** (HTTPS). Inside the
+container nginx listens on **8080/8443** — it runs as an unprivileged user
+(uid 101) and cannot bind privileged ports. Change the published side freely
+(`UI_HTTP_PORT` / `UI_HTTPS_PORT`).
 
 ### TLS modes
 
-- **Self-signed (development)** — generated on container start. Browsers warn;
-  proceed, or trust the certificate locally. Regenerate with
-  `docker exec <container> /usr/local/bin/ssl-setup.sh self-signed`.
-- **Operator-provided (production)** — drop your certificate and key in `ssl/`
-  and set `SSL_MODE=commercial`:
+- **HTTP (`SSL_MODE=disabled`)** — no TLS in the container; terminate it at your
+  ingress or load balancer.
+- **Self-signed (`SSL_MODE=enabled`, development)** — generated on container
+  start. Browsers warn; proceed, or trust the certificate locally. Regenerate
+  with `docker exec <container> /usr/local/bin/ssl-setup.sh self-signed` and
+  restart.
+- **Operator-provided (`SSL_MODE=commercial`, production)** — drop your
+  certificate and key in `ssl/`:
 
   ```bash
   mkdir -p ssl
-  cp your-cert.pem ssl/cert.pem   && chmod 644 ssl/cert.pem
-  cp your-key.pem  ssl/key.pem    && chmod 600 ssl/key.pem
-  docker compose -f docker-compose.https.yml up --build -d
+  cp your-cert.pem ssl/cert.pem && cp your-key.pem ssl/key.pem
+  chmod 644 ssl/*.pem     # readable by uid 101 inside the container
+  docker compose -f docker-compose.yml -f docker-compose.commercial.yml up -d
   ```
 
-The bundled `ssl-setup.sh` also exposes `auto`, `commercial`, and `validate`
-subcommands. TLS 1.2/1.3, HSTS, and security headers (X-Frame-Options, CSP) are
-configured in the nginx templates.
+  The container refuses to start if the pair is missing or mismatched rather
+  than silently falling back to a self-signed certificate — inspect one with
+  `docker exec <container> /usr/local/bin/ssl-setup.sh validate`.
+
+TLS 1.2/1.3 with forward-secret AEAD suites, HSTS on the TLS listener, and
+security headers (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, CSP)
+are configured in the nginx templates. Both TLS modes include the same shared
+`nginx-app.conf.template`, so their routing cannot drift apart.
 
 ### Kubernetes
 
@@ -139,11 +175,31 @@ kubectl apply -k k8s/
 # Or step by step
 kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/configmap.yaml
-kubectl apply -f k8s/secret.yaml
 kubectl apply -f k8s/deployment.yaml
 kubectl apply -f k8s/service.yaml
 kubectl apply -f k8s/ingress.yaml
 ```
+
+Configuration lives entirely in `k8s/configmap.yaml` and is handed to the
+container through `envFrom` — the same variables the Compose stack uses. The
+pod renders its own nginx configuration at startup, so no nginx config is
+embedded in the ConfigMap and there is no init container.
+
+Point `BACKEND_URL` at your OAM Service before applying:
+
+```yaml
+BACKEND_URL: "http://loxilb-oam.loxilb-system.svc.cluster.local:8080"
+FRONTEND_URL: "https://loxilb-ui.example.com"   # your ingress hostname
+```
+
+The pods run as uid 101 with `runAsNonRoot`, all capabilities dropped, and
+`allowPrivilegeEscalation: false`; the container ports are 8080/8443 and the
+Service maps its own 80/443 onto them by name. The usual choice is
+`SSL_MODE=disabled` with TLS terminated at the ingress.
+
+The ingress forwards `/netlox`, `/api/oam` and `/` **without** rewriting the
+path — the SPA's assets are root-absolute and its routes are prefixed, so a
+`rewrite-target` that strips prefixes yields a blank page.
 
 Provide the ingress TLS certificate with the helper or manually:
 
@@ -159,7 +215,12 @@ manifests.
 
 ## Health checks
 
-- **Standalone image:** nginx serves `/health` (used by the container and k8s
-  probes).
+- **Standalone image:** nginx serves `/health` in every TLS mode, never
+  redirected — used by the image's own `HEALTHCHECK`, the Compose stack, and the
+  Kubernetes liveness/readiness probes.
 - **Unified bundle:** the Caddy edge exposes `/healthz`; the OAM API exposes
   `/oam/health`.
+
+`/health` reports only that nginx is serving. It says nothing about the backend
+— the login page runs its own OAM preflight and reports an unreachable backend
+there.

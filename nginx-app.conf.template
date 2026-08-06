@@ -1,0 +1,134 @@
+# Shared application surface for the standalone UI container.
+#
+# This file is `include`d from INSIDE a server block by both nginx-http.conf
+# and nginx-https.conf, so the HTTP-only and TLS modes serve byte-identical
+# routing. They used to be two hand-maintained copies, which drifted until
+# SSL_MODE=disabled shipped an HTTPS server block referencing a certificate
+# nothing generated — every HTTP-only container died on `nginx -t`.
+#
+# Templated by docker-entrypoint.sh (envsubst). Only ${BACKEND_URL},
+# ${BACKEND_HOST}, ${FRONTEND_URL}, ${PUBLIC_PATH} and ${BACKEND_TLS_VERIFY}
+# are substituted; runtime nginx variables ($host, $uri, …) survive verbatim.
+
+root /usr/share/nginx/html;
+index index.html;
+
+# Security headers. HSTS is deliberately NOT here — it belongs only to the TLS
+# server block (nginx-https.conf), since advertising it over plain HTTP either
+# does nothing or locks out a deployment that fronts this container with its
+# own edge.
+add_header X-Frame-Options "SAMEORIGIN" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https: wss: http: ws:;" always;
+# The SPA shell must never be cached, or a browser keeps booting the previous
+# bundle after an upgrade. Content-hashed assets opt back into caching below.
+add_header Cache-Control "no-store" always;
+
+# Liveness endpoint — the image HEALTHCHECK and the k8s probes both use it.
+# Served in every mode, and never redirected to HTTPS.
+location = /health {
+    access_log off;
+    add_header Content-Type text/plain;
+    return 200 "healthy\n";
+}
+
+# ── OAM API proxy ────────────────────────────────────────────────────────────
+# The browser only ever makes same-origin requests: the SPA calls /api/oam/*
+# and this block rewrites it to <BACKEND_URL>/oam/*.
+#
+# The upstream goes through a *variable* on purpose. With a literal hostname
+# nginx resolves it while parsing the config, so an unreachable or not-yet-
+# existing backend made `nginx -t` fail and the container exit — the UI could
+# not start before its backend's DNS existed, and the shipped default
+# (oam.example.com) meant a plain `docker compose up` never booted at all.
+# A variable defers resolution to request time, so the container starts, serves
+# the SPA, and returns 502 for API calls until the backend appears.
+#
+# Because proxy_pass carries a variable, nginx does not substitute the matched
+# location prefix automatically — the target URI is spelled out from the
+# regex capture, including the query string.
+location ~ ^/api/oam/(?<oam_path>.*)$ {
+    set $oam_upstream "${BACKEND_URL}";
+    proxy_pass $oam_upstream/oam/$oam_path$is_args$args;
+
+    # TLS to the backend. Verification is opt-in (BACKEND_TLS_VERIFY=on)
+    # because the common standalone topology puts OAM behind a self-signed
+    # certificate; turn it on whenever the backend has a trusted chain.
+    proxy_ssl_verify ${BACKEND_TLS_VERIFY};
+    proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
+    proxy_ssl_verify_depth 3;
+    proxy_ssl_server_name on;
+    proxy_ssl_name ${BACKEND_HOST};
+    proxy_ssl_protocols TLSv1.2 TLSv1.3;
+
+    proxy_set_header Host ${BACKEND_HOST};
+    # OAM matches Origin against its CORS allowlist (OAM_ALLOWED_ORIGINS), so
+    # the proxy presents the browser-facing origin rather than its own.
+    proxy_set_header Origin ${FRONTEND_URL};
+    proxy_set_header Referer ${FRONTEND_URL}/;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_http_version 1.1;
+
+    proxy_connect_timeout 30s;
+    proxy_send_timeout 30s;
+    proxy_read_timeout 30s;
+
+    # No Access-Control-* response headers are added here. Every request the
+    # browser makes to this path is same-origin, so CORS does not apply; the
+    # previous wildcard headers were also self-defeating (`Allow-Origin: *`
+    # together with `Allow-Credentials: true` is rejected by every browser).
+    # Preflights, if any client sends one, are answered by OAM itself.
+}
+
+# ── SPA ──────────────────────────────────────────────────────────────────────
+# Create React App emits root-absolute asset URLs (/static/js/main.<hash>.js,
+# /favicon.ico, /manifest.json) regardless of the router basename —
+# REACT_APP_PUBLIC_URL sets React Router's basename, not CRA's asset prefix. So
+# the served tree has two shapes at once: real files at the root, and
+# client-side routes under ${PUBLIC_PATH}. This mirrors what the Caddy edge of
+# the loxilb-oam bundle does, so both edges serve the same bundle identically.
+
+# Content-hashed build assets. Immutable by construction, so cache hard — and
+# 404 honestly when one is missing: a hashed asset is never a client-side
+# route, and answering it with the SPA shell turns a broken deploy into a blank
+# page with no clue why.
+location /static/ {
+    expires 1y;
+    # An add_header in a nested block replaces the inherited set, so the header
+    # that still matters for assets is restated.
+    add_header Cache-Control "public, immutable" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    try_files $uri =404;
+}
+
+# Client-side routes. The trailing slash matters: a bare `location /netlox`
+# would also match /netlox../ , and combined with `alias` that resolves outside
+# the document root — the classic nginx alias traversal.
+location ${PUBLIC_PATH}/ {
+    alias /usr/share/nginx/html/;
+    # Unknown paths fall back to the SPA shell. The fallback resolves against
+    # `root` rather than the alias — the same directory — so it lands on
+    # /usr/share/nginx/html/index.html.
+    try_files $uri $uri/ /index.html;
+}
+
+# Entry points: send the bare host and the un-slashed prefix to the app.
+location = / {
+    return 301 ${PUBLIC_PATH}/;
+}
+
+location = ${PUBLIC_PATH} {
+    return 301 ${PUBLIC_PATH}/;
+}
+
+# Everything else: real files at the root (favicon, manifest, robots.txt),
+# otherwise the SPA shell.
+location / {
+    try_files $uri /index.html;
+}
+
+# No error_page for 5xx: a CRA build ships no 50x.html, so mapping upstream
+# failures onto one turned every backend 502 into a 404 and hid the real cause.

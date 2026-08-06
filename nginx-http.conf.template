@@ -1,0 +1,13 @@
+# HTTP-only server (SSL_MODE=disabled).
+#
+# For deployments that terminate TLS somewhere else — the Caddy edge of the
+# loxilb-oam Compose bundle, a cloud load balancer, an ingress controller. All
+# routing lives in the shared include, so this mode and the TLS mode cannot
+# drift apart.
+server {
+    listen ${HTTP_PORT};
+    listen [::]:${HTTP_PORT};
+    server_name _;
+
+    include /etc/nginx/snippets/app.conf;
+}

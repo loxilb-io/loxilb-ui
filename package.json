@@ -1,6 +1,6 @@
 {
 	"name": "loxilb-ui",
-	"version": "0.9.0",
+	"version": "0.9.8.7",
 	"private": true,
 	"description": "Web dashboard for managing LoxiLB load balancers and network services",
 	"license": "Apache-2.0",
@@ -64,10 +64,10 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"typecheck": "tsc --noEmit",
-		"start": "HTTPS=false WDS_SOCKET_PORT=0 HOST=0.0.0.0 dotenv -e .env.development react-scripts start",
-		"build": "dotenv -e .env.local react-scripts build",
-		"build:dev": "dotenv -e .env.development react-scripts build",
-		"build:prod": "dotenv -e .env.production react-scripts build",
+		"start": "REACT_APP_VERSION=${REACT_APP_VERSION:-$npm_package_version} HTTPS=false WDS_SOCKET_PORT=0 HOST=0.0.0.0 dotenv -e .env.development react-scripts start",
+		"build": "REACT_APP_VERSION=${REACT_APP_VERSION:-$npm_package_version} dotenv -e .env.local react-scripts build",
+		"build:dev": "REACT_APP_VERSION=${REACT_APP_VERSION:-$npm_package_version} dotenv -e .env.development react-scripts build",
+		"build:prod": "REACT_APP_VERSION=${REACT_APP_VERSION:-$npm_package_version} dotenv -e .env.production react-scripts build",
 		"e2e": "playwright test",
 		"e2e:headed": "playwright test --headed",
 		"e2e:cicd": "playwright test tests/cicd"

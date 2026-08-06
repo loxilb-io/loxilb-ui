@@ -1,39 +1,61 @@
+# loxilb-ui — standalone UI container.
+#
+# Runs ONLY the web console, against a loxilb-oam backend you already operate.
+# For a full management plane (UI + OAM API + MySQL behind a TLS edge) use the
+# bundle in loxilb-io/loxilb-oam → deploy/compose/, not this file.
+#
+#   1. cp .env.example .env   and set BACKEND_URL to your OAM backend
+#   2. docker compose up -d
+#      → http://localhost:3000  (redirects to https://localhost:3443)
+#
+# Mode overlays, each layered on top of this file:
+#
+#   HTTP only (TLS terminated by your own edge):
+#     docker compose -f docker-compose.yml -f docker-compose.http.yml up -d
+#   HTTPS with certificates you provide:
+#     docker compose -f docker-compose.yml -f docker-compose.commercial.yml up -d
+#   Build the image from this checkout instead of pulling a release:
+#     docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+
 services:
   loxilb-ui:
-    build: .
+    # Pin UI_TAG to an immutable release in .env for anything but a lab.
+    image: ${UI_IMAGE:-ghcr.io/loxilb-io/loxilb-ui}:${UI_TAG:-latest}
+    container_name: loxilb-ui
     ports:
-      - "3000:80"    # HTTP port
-      - "3443:443"   # HTTPS port
-    restart: unless-stopped
+      # host:container — the container listens on unprivileged 8080/8443
+      # because it runs as a non-root user.
+      - "${UI_HTTP_PORT:-3000}:8080"
+      - "${UI_HTTPS_PORT:-3443}:8443"
     environment:
-      # SSL_MODE options: 
-      # - "enabled" (default): HTTPS with HTTP redirect + self-signed certs (auto-generated)
-      # - "disabled": HTTP only
-      # - "commercial": HTTPS with commercial certificates (must be provided)
-      - SSL_MODE=enabled
-      
-      # Backend Configuration - Change these for your backend
-      - BACKEND_URL=https://oam.example.com
-      - BACKEND_HOST=oam.example.com
-      - FRONTEND_URL=http://localhost:3000
-      - PUBLIC_PATH=/netlox
-    volumes:
-      # Optional: Mount logs for debugging
-      - ./logs:/var/log/nginx
-      # Optional: Mount SSL certificates directory for commercial certs
-      # Uncomment the line below and place your cert.pem and key.pem in ./ssl/
-      # - ./ssl:/etc/nginx/ssl
-    networks:
-      - loxilb-network
+      # disabled | enabled | commercial  (see docs/container-image.md)
+      SSL_MODE: ${SSL_MODE:-enabled}
 
-  # Optional: Add your backend service here
-  # loxilb-backend:
-  #   image: your-backend-image:latest
-  #   ports:
-  #     - "8080:8080"
-  #   networks:
-  #     - loxilb-network
+      # OAM API base. nginx proxies /api/oam/* → ${BACKEND_URL}/oam/*, so the
+      # browser only ever makes same-origin requests. Left unset the container
+      # still starts and serves the SPA, warns in its log, and returns 502 for
+      # API calls — set it in .env.
+      BACKEND_URL: ${BACKEND_URL:-}
+      # Host header presented to the backend. Derived from BACKEND_URL when
+      # empty; override only when the backend expects a different vhost.
+      BACKEND_HOST: ${BACKEND_HOST:-}
+      # Verify the backend's TLS chain. Off by default because a standalone
+      # OAM commonly runs with a self-signed certificate; turn it on whenever
+      # the backend presents a chain a public CA signed.
+      BACKEND_TLS_VERIFY: ${BACKEND_TLS_VERIFY:-off}
+      # Browser-facing origin, sent to OAM as the Origin header so it matches
+      # against OAM_ALLOWED_ORIGINS.
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      # Path prefix the SPA is served under. Must match the REACT_APP_PUBLIC_URL
+      # the image was built with (/netlox for published releases).
+      PUBLIC_PATH: ${PUBLIC_PATH:-/netlox}
+      # The HTTPS port as the *browser* sees it, so the HTTP→HTTPS redirect
+      # keeps the published port. Set empty when TLS is reached on 443.
+      HTTPS_REDIRECT_PORT: ${UI_HTTPS_PORT:-3443}
+    restart: unless-stopped
+    networks:
+      - loxilb-ui
 
 networks:
-  loxilb-network:
+  loxilb-ui:
     driver: bridge

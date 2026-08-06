@@ -77,6 +77,19 @@ else
   pass "no personal paths"
 fi
 
+# 4b. Personal container registry namespaces ----------------------------------
+# Deployment manifests must reference the org's published image, never a
+# maintainer's personal Docker Hub namespace — a k8s manifest shipped with one
+# for a long time, pointing every reader at an image the project does not
+# control or scan.
+REGISTRY_RE='(^|[^a-z0-9_.-])kongseokhwan/'
+if git grep -Iqn -E "$REGISTRY_RE" HEAD -- ':(exclude)scripts/release-hygiene.sh' 2>/dev/null; then
+  fail "personal container registry namespace in tracked files:"
+  git grep -In -E "$REGISTRY_RE" HEAD -- ':(exclude)scripts/release-hygiene.sh' | head -20
+else
+  pass "no personal registry namespaces"
+fi
+
 # 5. Links into docs/internal/ from tracked files -----------------------------
 # .gitignore, .dockerignore, .gitleaks.toml and this script legitimately *name*
 # the docs/internal/ path (to exclude it); they are allowlisted so only real
@@ -131,6 +144,24 @@ if command -v python3 >/dev/null 2>&1; then
   fi
 else
   echo "skip: internal-ID check (python3 unavailable)"
+fi
+
+# 9. Release version is single-sourced ----------------------------------------
+# package.json's `version` is what the login page shows, what the image's OCI
+# label carries, and what release.yml checks the git tag against. The lockfile
+# carries its own copy, which npm rewrites on install — if the two disagree, a
+# release ships a UI reporting one number and a package claiming another.
+if command -v node >/dev/null 2>&1; then
+  pkg_v=$(node -p "require('./package.json').version")
+  lock_v=$(node -p "require('./package-lock.json').version")
+  lock_pkg_v=$(node -p "require('./package-lock.json').packages[''].version")
+  if [ "$pkg_v" = "$lock_v" ] && [ "$pkg_v" = "$lock_pkg_v" ]; then
+    pass "version single-sourced (${pkg_v})"
+  else
+    fail "version drift: package.json=${pkg_v} package-lock.json=${lock_v}/${lock_pkg_v}"
+  fi
+else
+  echo "skip: version check (node unavailable)"
 fi
 
 exit $FAIL
