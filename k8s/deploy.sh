@@ -54,12 +54,6 @@ kubectl apply -f namespace.yaml
 echo -e "${YELLOW}⚙️  Applying ConfigMap...${NC}"
 kubectl apply -f configmap.yaml
 
-# Apply Secret (if exists and has data)
-if [ -f "secret.yaml" ]; then
-    echo -e "${YELLOW}🔐 Applying Secrets...${NC}"
-    kubectl apply -f secret.yaml
-fi
-
 # Apply Deployment
 echo -e "${YELLOW}🚀 Deploying application...${NC}"
 kubectl apply -f deployment.yaml

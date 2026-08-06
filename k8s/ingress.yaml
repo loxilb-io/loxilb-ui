@@ -7,63 +7,56 @@ metadata:
     app: loxilb-ui
     component: frontend
   annotations:
-    # Nginx Ingress Controller annotations
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
-    nginx.ingress.kubernetes.io/proxy-body-size: "1m"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
-    
-    # CORS headers (if needed)
-    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
-    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
-    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
-    
-    # SSL/TLS configuration
     nginx.ingress.kubernetes.io/ssl-protocols: "TLSv1.2 TLSv1.3"
-    nginx.ingress.kubernetes.io/ssl-ciphers: "ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384"
-    
-    # Rate limiting (optional)
-    nginx.ingress.kubernetes.io/rate-limit-connections: "10"
-    nginx.ingress.kubernetes.io/rate-limit-rps: "10"
-    
-    # Let's Encrypt SSL (if using cert-manager)
+    # Let's Encrypt (if using cert-manager)
     # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    #
+    # Deliberately absent:
+    #   rewrite-target — the pod serves the SPA at /netlox and the API proxy at
+    #     /api/oam, exactly the paths the browser requests. The previous
+    #     `rewrite-target: /$2` stripped those prefixes before the pod saw them,
+    #     which made the SPA redirect to /netlox/ and get rewritten again.
+    #   cors-* — every request here is same-origin (the pod proxies the API
+    #     under the SPA's own hostname), so CORS does not apply.
 spec:
   ingressClassName: nginx  # or your ingress class
-  
-  # TLS configuration
+
   tls:
   - hosts:
     - loxilb-ui.example.com  # Replace with your domain
     secretName: loxilb-ui-tls
-  
+
   rules:
   - host: loxilb-ui.example.com  # Replace with your domain
     http:
       paths:
-      # Main application path
-      - path: /netlox(/|$)(.*)
+      # The SPA.
+      - path: /netlox
         pathType: Prefix
         backend:
           service:
             name: loxilb-ui-service
             port:
               number: 80
-      
-      # API proxy path
-      - path: /api(/|$)(.*)
+
+      # The OAM API, reverse-proxied by the UI pod's own nginx to BACKEND_URL
+      # (see the ConfigMap). Keeping it on the same host is what makes every
+      # browser request same-origin.
+      - path: /api/oam
         pathType: Prefix
         backend:
           service:
-            name: loxilb-backend-service  # Your backend service
+            name: loxilb-ui-service
             port:
-              number: 8080
-      
-      # Health check endpoint
-      - path: /health
+              number: 80
+
+      # Bare host → the pod redirects to /netlox/.
+      - path: /
         pathType: Exact
         backend:
           service:

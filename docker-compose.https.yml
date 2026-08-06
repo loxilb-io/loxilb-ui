@@ -1,18 +1,13 @@
-# Docker Compose for HTTPS-only deployment with self-signed certificates
+# HTTPS overlay with a self-signed certificate generated at container start.
+# This is also the base file's default — the overlay exists so the mode can be
+# named explicitly in scripts and documentation.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.https.yml up -d
+#   → https://localhost:3443  (http://localhost:3000 redirects to it)
+#
+# Browsers will warn about the certificate. For certificates a CA signed, use
+# docker-compose.commercial.yml instead.
 services:
   loxilb-ui:
-    build: .
-    ports:
-      - "3000:80"    # HTTP (redirects to HTTPS)
-      - "3443:443"   # HTTPS
-    restart: unless-stopped
     environment:
-      - SSL_MODE=enabled
-    volumes:
-      - ./logs:/var/log/nginx
-    networks:
-      - loxilb-network
-
-networks:
-  loxilb-network:
-    driver: bridge
+      SSL_MODE: enabled

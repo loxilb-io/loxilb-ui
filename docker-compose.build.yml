@@ -1,0 +1,16 @@
+# Build overlay — build the image from this checkout instead of pulling a
+# published release.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+#
+# Set UI_VERSION to the release this tree corresponds to (e.g. v0.9.8.7) when you
+# intend to keep the image; an unset build honestly reports "dev" on the login
+# page and in the OCI version label.
+services:
+  loxilb-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: ${UI_VERSION:-dev}
+    image: loxilb-ui:${UI_VERSION:-dev}
