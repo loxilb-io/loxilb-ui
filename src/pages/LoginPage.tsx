@@ -13,7 +13,7 @@ import {login_user} from 'connector/user';
 import {t} from 'i18next';
 import {useCallback, useEffect, useState} from 'react';
 import {ILoginRequest} from 'types/user';
-import package_info from '../../package.json';
+import {APP_VERSION} from 'version';
 
 //---------------------------------------------------------
 // Functional Component
@@ -36,7 +36,6 @@ export default function LoginPage() {
 	// clear, actionable message. Starts optimistic ('checking') so a healthy
 	// deployment shows no flash of warning.
 	const [oamStatus, setOamStatus] = useState<'checking' | 'ok' | 'unreachable'>('checking');
-	const version = package_info.version;
 
 	const runPreflight = useCallback(async () => {
 		setOamStatus('checking');
@@ -91,7 +90,7 @@ export default function LoginPage() {
 					<Box component="img" src={Logo} alt="LoxiLB Logo" width="100px" height="100px" />
 
 					<Typography variant="subtitle2" color="textSecondary" marginTop="8px">
-						{`v.${version}`}
+						{`v.${APP_VERSION}`}
 					</Typography>
 
 					{/* Preflight banner: the OAM backend is unreachable, so login
