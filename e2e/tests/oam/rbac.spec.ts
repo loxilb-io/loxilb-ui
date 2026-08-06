@@ -86,6 +86,15 @@ test.describe('RBAC — viewer (read-only everywhere)', () => {
 		await expect(page.getByRole('tab', {name: 'User List'})).toHaveCount(0);
 	});
 
+	// Instance CRUD is admin-only (OAM ActInstanceWrite): a viewer sees the
+	// instance cards but none of the controls that would 403.
+	test('viewer: instances page offers no add/modify/delete', async ({page}) => {
+		await page.goto('instance');
+		await expect(page.locator('.MuiCard-root').filter({hasText: instName})).toBeVisible({timeout: 20_000});
+		await expect(page.locator('.MuiCard-root').filter({hasText: 'Add New Instance'})).toHaveCount(0);
+		await expect(page.locator('button:has([data-testid="SettingsIcon"])')).toHaveCount(0);
+		await expect(page.locator('button:has([data-testid="DeleteForeverIcon"])')).toHaveCount(0);
+	});
 });
 
 test.describe('RBAC — operator', () => {
@@ -94,6 +103,15 @@ test.describe('RBAC — operator', () => {
 	test('operator: gateway writes allowed (LB Add control visible)', async ({page}) => {
 		await page.goto(`instance/traffic/lb?name=${instName}`);
 		await expect(page.locator('button:has([data-testid="AddIcon"])').first()).toBeVisible({timeout: 20_000});
+	});
+
+	// Instance writes are admin-only, so an operator gets the same read-only
+	// instances page a viewer does — despite holding gateway write rights.
+	test('operator: instances page offers no add/modify/delete', async ({page}) => {
+		await page.goto('instance');
+		await expect(page.locator('.MuiCard-root').filter({hasText: instName})).toBeVisible({timeout: 20_000});
+		await expect(page.locator('.MuiCard-root').filter({hasText: 'Add New Instance'})).toHaveCount(0);
+		await expect(page.locator('button:has([data-testid="SettingsIcon"])')).toHaveCount(0);
 	});
 
 	test('operator: not a user admin (no User List tab)', async ({page}) => {
@@ -121,5 +139,12 @@ test.describe('RBAC — admin', () => {
 		await page.goto('user');
 		await page.getByRole('tab', {name: 'User List'}).click();
 		await expect(page.locator('button:has([data-testid="AddIcon"])').first()).toBeVisible({timeout: 20_000});
+	});
+
+	test('admin: instances page exposes add/modify/delete', async ({page}) => {
+		await page.goto('instance');
+		await expect(page.locator('.MuiCard-root').filter({hasText: 'Add New Instance'})).toBeVisible({timeout: 20_000});
+		await expect(page.locator('button:has([data-testid="SettingsIcon"])').first()).toBeVisible();
+		await expect(page.locator('button:has([data-testid="DeleteForeverIcon"])').first()).toBeVisible();
 	});
 });

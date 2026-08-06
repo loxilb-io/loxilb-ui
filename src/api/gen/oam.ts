@@ -711,6 +711,12 @@ export interface paths {
             "application/json": components["schemas"]["models.ErrorResponse"];
           };
         };
+        /** @description Conflict */
+        409: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
         /** @description Internal Server Error */
         500: {
           content: {
@@ -787,6 +793,18 @@ export interface paths {
         };
         /** @description Bad Request */
         400: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description Conflict */
+        409: {
           content: {
             "application/json": components["schemas"]["models.ErrorResponse"];
           };
@@ -1989,8 +2007,8 @@ export interface components {
       instance_id?: number;
       /**
        * @description LastRestoreResponse is the full gateway response JSON of the most
-       * recent restore attempt (the audit record, design §5). Only populated
-       * on the single-snapshot GET, not in lists.
+       * recent restore attempt (the audit record). Only populated on the
+       * single-snapshot GET, not in lists.
        */
       last_restore_response?: string;
       last_restore_result?: string;

@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Setup Detection and Routing Handler
 //---------------------------------------------------------
+import {Box, CircularProgress} from '@mui/material';
 import {useEffect, useState} from 'react';
 import {useLocation, useNavigate} from 'react-router-dom';
 import {shouldRedirectToSetup} from 'utils/simpleSetup';
@@ -47,9 +48,17 @@ export default function SetupHandler({children}: SetupHandlerProps) {
 		checkSetup();
 	}, [navigate, location.pathname]);
 
-	// Show loading or nothing while checking setup
+	// While the check is in flight the app renders nothing. That window is
+	// bounded by SETUP_CHECK_TIMEOUT_MS (utils/simpleSetup) — without that
+	// bound a hung OAM left a permanently blank page here, with no login form
+	// and no error. Show a spinner rather than a white screen so the state is
+	// legible as "loading" instead of "broken".
 	if (!setupChecked) {
-		return null; // or <LoadingSpinner /> if you have one
+		return (
+			<Box display="flex" alignItems="center" justifyContent="center" height="100vh" width="100%">
+				<CircularProgress />
+			</Box>
+		);
 	}
 
 	return <>{children}</>;

@@ -42,7 +42,13 @@ export default defineConfig({
 		// Logs in once per run and saves storageState — OAM rate-limits
 		// logins (burst 10/IP + per-user lockout), so specs never log in
 		// themselves.
-		{name: 'setup', testMatch: /auth\.setup\.ts/},
+		// Retries here only: every other project depends on this one, so a
+		// single transient (a dropped response on the WAN path to the testbed)
+		// otherwise aborts the entire run — 264 tests reported as "did not
+		// run". Safe to repeat: setup logs in and provisions the two RBAC
+		// fixtures idempotently, it mutates no gateway state. The global
+		// retries:0 still stands for the mutating specs.
+		{name: 'setup', testMatch: /auth\.setup\.ts/, retries: 2},
 		{
 			name: 'admin',
 			testMatch: /tests\/.*\.spec\.ts/,
