@@ -1,209 +1,103 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# Convenience wrapper around the standalone Compose stack.
+#
+#   ./deploy.sh [http|https|commercial] [up|down|restart|logs|status]
+#
+# Every mode is an overlay on docker-compose.yml; this script only picks the
+# overlay pair and prints the resulting URLs. Running the compose commands
+# directly is equally supported — see the header of docker-compose.yml.
 
-# Deployment script for loxilb-ui with SSL support
-# Usage: ./deploy.sh [http|https|commercial] [up|down|restart|logs]
+set -euo pipefail
 
-set -e
-
-# Default values
 MODE="${1:-https}"
 ACTION="${2:-up}"
 
-# Color codes for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
+info()    { echo -e "${BLUE}[INFO]${NC} $1"; }
+success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+warn()    { echo -e "${YELLOW}[WARNING]${NC} $1"; }
+error()   { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 
-# Function to print colored output
-print_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+HTTP_PORT="${UI_HTTP_PORT:-3000}"
+HTTPS_PORT="${UI_HTTPS_PORT:-3443}"
+
+usage() {
+    cat <<EOF
+Usage: $0 [mode] [action]
+
+Modes:
+  http        HTTP only — terminate TLS at your own edge
+  https       HTTPS with a self-signed certificate (default)
+  commercial  HTTPS with certificates you place in ./ssl/
+
+Actions:
+  up | down | restart | logs | status
+
+Examples:
+  $0                      # HTTPS, self-signed
+  $0 http up              # HTTP only
+  $0 commercial up        # HTTPS with your certificates
+  $0 https logs           # follow logs
+EOF
 }
 
-print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
+case "${1:-}" in -h|--help|help) usage; exit 0 ;; esac
 
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
+case "$MODE" in
+    http)       OVERLAY=docker-compose.http.yml ;;
+    https)      OVERLAY=docker-compose.https.yml ;;
+    commercial) OVERLAY=docker-compose.commercial.yml ;;
+    *) error "Invalid mode: $MODE"; usage; exit 1 ;;
+esac
 
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
+# Compose v2 is a docker subcommand; the standalone docker-compose binary is
+# end-of-life and is not used here.
+if ! docker compose version >/dev/null 2>&1; then
+    error "Docker Compose v2 is required ('docker compose version' failed)"
+    exit 1
+fi
 
-# Function to show usage
-show_usage() {
-    echo "Usage: $0 [mode] [action]"
-    echo ""
-    echo "Modes:"
-    echo "  http        - HTTP only (no SSL)"
-    echo "  https       - HTTPS with self-signed certificates (default)"
-    echo "  commercial  - HTTPS with commercial certificates"
-    echo ""
-    echo "Actions:"
-    echo "  up          - Start services (default)"
-    echo "  down        - Stop services"
-    echo "  restart     - Restart services"
-    echo "  logs        - Show logs"
-    echo "  status      - Show status"
-    echo ""
-    echo "Examples:"
-    echo "  $0                    # Start with HTTPS (self-signed)"
-    echo "  $0 http               # Start with HTTP only"
-    echo "  $0 commercial up      # Start with commercial certificates"
-    echo "  $0 https restart      # Restart HTTPS service"
-    echo "  $0 https logs         # Show logs"
-}
+compose() { docker compose -f docker-compose.yml -f "$OVERLAY" "$@"; }
 
-# Function to validate commercial certificates
-validate_commercial_certs() {
-    if [[ ! -d "ssl" ]]; then
-        print_error "SSL directory not found. Creating it..."
-        mkdir -p ssl
-        return 1
-    fi
-    
-    if [[ ! -f "ssl/cert.pem" ]] || [[ ! -f "ssl/key.pem" ]]; then
-        print_error "Commercial certificates not found in ssl/ directory"
-        print_info "Please place your certificates:"
-        print_info "  ssl/cert.pem - Your SSL certificate"
-        print_info "  ssl/key.pem  - Your private key"
-        return 1
-    fi
-    
-    print_success "Commercial certificates found"
-    return 0
-}
-
-# Function to determine compose file
-get_compose_file() {
-    case "$MODE" in
-        "http")
-            echo "docker-compose.http.yml"
-            ;;
-        "https")
-            echo "docker-compose.https.yml"
-            ;;
-        "commercial")
-            echo "docker-compose.commercial.yml"
-            ;;
-        *)
-            print_error "Invalid mode: $MODE"
-            show_usage
-            exit 1
-            ;;
-    esac
-}
-
-# Function to show service URLs
 show_urls() {
-    case "$MODE" in
-        "http")
-            print_success "Application is running in HTTP mode:"
-            print_info "  HTTP: http://localhost:3000"
-            ;;
-        "https"|"commercial")
-            print_success "Application is running in HTTPS mode:"
-            print_info "  HTTP:  http://localhost:3000  (redirects to HTTPS)"
-            print_info "  HTTPS: https://localhost:3443"
-            if [[ "$MODE" == "https" ]]; then
-                print_warning "Using self-signed certificates - browser will show security warning"
-            fi
-            ;;
-    esac
+    if [[ "$MODE" == "http" ]]; then
+        success "loxilb-ui is running (HTTP)"
+        info "  http://localhost:${HTTP_PORT}/netlox/"
+    else
+        success "loxilb-ui is running (HTTPS)"
+        info "  https://localhost:${HTTPS_PORT}/netlox/"
+        info "  http://localhost:${HTTP_PORT}/  redirects to HTTPS"
+        [[ "$MODE" == "https" ]] && warn "Self-signed certificate — browsers will warn"
+    fi
+    info "Backend: ${BACKEND_URL:-unset — set BACKEND_URL in .env or the UI has nothing to talk to}"
 }
 
-# Function to perform actions
-perform_action() {
-    local compose_file=$(get_compose_file)
-    
-    case "$ACTION" in
-        "up")
-            print_info "Starting loxilb-ui in $MODE mode..."
-            
-            # Validate commercial certificates if needed
-            if [[ "$MODE" == "commercial" ]]; then
-                if ! validate_commercial_certs; then
-                    print_error "Cannot start in commercial mode without valid certificates"
-                    exit 1
-                fi
-            fi
-            
-            # Stop any existing containers
-            docker-compose down 2>/dev/null || true
-            
-            # Start services
-            docker-compose -f "$compose_file" up --build -d
-            
-            # Wait a bit for services to start
-            sleep 5
-            
-            # Check if services are running
-            if docker-compose -f "$compose_file" ps | grep -q "Up"; then
-                show_urls
-                print_info "Use '$0 $MODE logs' to view logs"
-                print_info "Use '$0 $MODE down' to stop services"
-            else
-                print_error "Failed to start services. Check logs:"
-                docker-compose -f "$compose_file" logs
+case "$ACTION" in
+    up)
+        if [[ "$MODE" == "commercial" ]]; then
+            [[ -f ssl/cert.pem && -f ssl/key.pem ]] || {
+                error "commercial mode needs ssl/cert.pem and ssl/key.pem"
+                info "  mkdir -p ssl && cp your-cert.pem ssl/cert.pem && cp your-key.pem ssl/key.pem"
                 exit 1
-            fi
-            ;;
-        "down")
-            print_info "Stopping loxilb-ui services..."
-            docker-compose down
-            print_success "Services stopped"
-            ;;
-        "restart")
-            print_info "Restarting loxilb-ui in $MODE mode..."
-            docker-compose down
-            sleep 2
-            perform_action "up"
-            ;;
-        "logs")
-            print_info "Showing logs for $MODE mode..."
-            docker-compose -f "$(get_compose_file)" logs -f
-            ;;
-        "status")
-            print_info "Service status:"
-            docker-compose ps
-            ;;
-        *)
-            print_error "Invalid action: $ACTION"
-            show_usage
+            }
+        fi
+        info "Starting loxilb-ui (${MODE})..."
+        compose up -d
+        # The image carries a HEALTHCHECK; give it a moment before reporting.
+        sleep 5
+        if [[ "$(docker inspect -f '{{.State.Running}}' loxilb-ui 2>/dev/null)" == "true" ]]; then
+            show_urls
+            info "Logs: $0 $MODE logs    Stop: $0 $MODE down"
+        else
+            error "Container is not running. Recent logs:"
+            compose logs --tail 50
             exit 1
-            ;;
-    esac
-}
-
-# Main execution
-main() {
-    print_info "loxilb-ui Deployment Script"
-    print_info "Mode: $MODE, Action: $ACTION"
-    echo ""
-    
-    # Check if help is requested
-    if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
-        show_usage
-        exit 0
-    fi
-    
-    # Check if Docker and Docker Compose are available
-    if ! command -v docker &> /dev/null; then
-        print_error "Docker is not installed or not in PATH"
-        exit 1
-    fi
-    
-    if ! command -v docker-compose &> /dev/null; then
-        print_error "Docker Compose is not installed or not in PATH"
-        exit 1
-    fi
-    
-    # Perform the requested action
-    perform_action
-}
-
-# Run main function
-main "$@"
+        fi
+        ;;
+    down)    info "Stopping loxilb-ui..."; compose down; success "Stopped" ;;
+    restart) compose restart; show_urls ;;
+    logs)    compose logs -f ;;
+    status)  compose ps ;;
+    *) error "Invalid action: $ACTION"; usage; exit 1 ;;
+esac

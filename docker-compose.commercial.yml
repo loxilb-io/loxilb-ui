@@ -1,0 +1,21 @@
+# HTTPS overlay with operator-provided certificates.
+#
+#   mkdir -p ssl
+#   cp your-cert.pem ssl/cert.pem   && chmod 644 ssl/cert.pem
+#   cp your-key.pem  ssl/key.pem    && chmod 644 ssl/key.pem
+#   docker compose -f docker-compose.yml -f docker-compose.commercial.yml up -d
+#
+# The container refuses to start if the pair is missing or mismatched, rather
+# than quietly falling back to a self-signed certificate — a cert-mounting
+# mistake in production should be loud, not invisible.
+#
+# The mount is read-only and the files must be readable by uid 101 (the
+# container's nginx user), which `chmod 644` on the key satisfies. Keep the key
+# 600 on the host and mount it through a secret store if your policy requires
+# it — the container only ever reads.
+services:
+  loxilb-ui:
+    environment:
+      SSL_MODE: commercial
+    volumes:
+      - ./ssl:/etc/nginx/ssl:ro
