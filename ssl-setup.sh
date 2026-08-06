@@ -1,115 +1,60 @@
-#!/bin/bash
+#!/bin/sh
+#
+# Certificate helper for the standalone loxilb-ui container.
+#
+#   ssl-setup.sh self-signed   regenerate the development certificate
+#   ssl-setup.sh validate      check that cert.pem and key.pem match, print details
+#
+# The entrypoint generates a self-signed pair on its own when SSL_MODE=enabled
+# finds none, so this script is for operating a running container:
+#
+#   docker exec <container> /usr/local/bin/ssl-setup.sh validate
+#
+# Operator-provided certificates are mounted at ${SSL_DIR}, not installed by
+# this script — see docs/container-image.md.
 
-# SSL Certificate Management Script for loxilb-ui
-# This script generates self-signed certificates or prepares for commercial certificates
+set -eu
 
-SSL_DIR="/etc/nginx/ssl"
+SSL_DIR="${SSL_DIR:-/etc/nginx/ssl}"
 CERT_FILE="$SSL_DIR/cert.pem"
 KEY_FILE="$SSL_DIR/key.pem"
 
-# Create SSL directory if it doesn't exist
-mkdir -p "$SSL_DIR"
-
-# Function to generate self-signed certificate
 generate_self_signed() {
-    echo "Generating self-signed SSL certificate..."
-    
-    # Generate private key
-    openssl genrsa -out "$KEY_FILE" 2048
-    
-    # Generate certificate
-    openssl req -new -x509 -key "$KEY_FILE" -out "$CERT_FILE" -days 365 \
-        -subj "/C=US/ST=State/L=City/O=Organization/CN=localhost" \
+    mkdir -p "$SSL_DIR"
+    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+        -keyout "$KEY_FILE" -out "$CERT_FILE" \
+        -subj "/C=US/ST=State/L=City/O=LoxiLB/CN=localhost" \
         -addext "subjectAltName=DNS:localhost,DNS:*.localhost,IP:127.0.0.1"
-    
-    echo "Self-signed certificate generated successfully!"
-    echo "Certificate: $CERT_FILE"
-    echo "Private Key: $KEY_FILE"
+    chmod 600 "$KEY_FILE"
+    chmod 644 "$CERT_FILE"
+    echo "Self-signed certificate written to ${CERT_FILE}"
+    echo "Restart the container for nginx to pick it up."
 }
 
-# Function to check if commercial certificates exist
-check_commercial_certs() {
-    if [[ -f "$CERT_FILE" && -f "$KEY_FILE" ]]; then
-        # Verify it's not a self-signed certificate
-        if openssl x509 -in "$CERT_FILE" -text -noout | grep -q "Issuer.*Subject.*CN=localhost"; then
-            return 1  # Self-signed
-        else
-            return 0  # Commercial
-        fi
-    else
-        return 1  # Not found
-    fi
-}
-
-# Function to validate certificate
-validate_certificate() {
-    if [[ -f "$CERT_FILE" && -f "$KEY_FILE" ]]; then
-        # Check if certificate and key match
-        cert_modulus=$(openssl x509 -noout -modulus -in "$CERT_FILE" | openssl md5)
-        key_modulus=$(openssl rsa -noout -modulus -in "$KEY_FILE" | openssl md5)
-        
-        if [[ "$cert_modulus" == "$key_modulus" ]]; then
-            echo "Certificate and private key match ✓"
-            
-            # Show certificate details
-            echo "Certificate details:"
-            openssl x509 -in "$CERT_FILE" -text -noout | grep -E "(Subject|Issuer|Not Before|Not After|DNS:|IP:)"
-            return 0
-        else
-            echo "Error: Certificate and private key do not match!"
-            return 1
-        fi
-    else
-        echo "Error: Certificate or private key not found!"
+validate() {
+    if [ ! -f "$CERT_FILE" ] || [ ! -f "$KEY_FILE" ]; then
+        echo "Certificate or private key not found in ${SSL_DIR}" >&2
         return 1
     fi
+
+    # A cert and key belong together iff their public moduli agree.
+    cert_modulus=$(openssl x509 -noout -modulus -in "$CERT_FILE" | openssl md5)
+    key_modulus=$(openssl rsa -noout -modulus -in "$KEY_FILE" | openssl md5)
+    if [ "$cert_modulus" != "$key_modulus" ]; then
+        echo "Certificate and private key do not match" >&2
+        return 1
+    fi
+
+    echo "Certificate and private key match"
+    openssl x509 -in "$CERT_FILE" -text -noout |
+        grep -E "(Subject:|Issuer:|Not Before|Not After|DNS:|IP Address:)"
 }
 
-# Main logic
-case "${1:-auto}" in
-    "self-signed"|"self")
-        generate_self_signed
-        validate_certificate
-        ;;
-    "commercial"|"comm")
-        if check_commercial_certs; then
-            echo "Commercial certificates found!"
-            validate_certificate
-        else
-            echo "Commercial certificates not found."
-            echo "Please place your commercial certificate and private key in:"
-            echo "  Certificate: $CERT_FILE"
-            echo "  Private Key: $KEY_FILE"
-            echo ""
-            echo "Generating self-signed certificate as fallback..."
-            generate_self_signed
-            validate_certificate
-        fi
-        ;;
-    "validate"|"check")
-        validate_certificate
-        ;;
-    "auto"|*)
-        echo "SSL Certificate Auto-Setup"
-        echo "=========================="
-        
-        if check_commercial_certs; then
-            echo "Commercial certificates found and will be used."
-            validate_certificate
-        else
-            echo "No commercial certificates found."
-            echo "Generating self-signed certificate..."
-            generate_self_signed
-            validate_certificate
-        fi
+case "${1:-validate}" in
+    self-signed|self) generate_self_signed ;;
+    validate|check)   validate ;;
+    *)
+        echo "usage: ssl-setup.sh [self-signed|validate]" >&2
+        exit 2
         ;;
 esac
-
-# Set proper permissions
-chmod 600 "$KEY_FILE" 2>/dev/null || true
-chmod 644 "$CERT_FILE" 2>/dev/null || true
-
-echo ""
-echo "SSL setup complete! The nginx server will use certificates from:"
-echo "  Certificate: $CERT_FILE"
-echo "  Private Key: $KEY_FILE"
