@@ -4,7 +4,7 @@
 import {Box, Stack, Typography, Button, Tooltip, CircularProgress} from '@mui/material';
 import InstanceCardAdd from 'components/card/InstanceAddCard';
 import InstanceCard from 'components/card/InstanceCard';
-import {useInstanceWithHA} from 'hooks/query/oamHooks';
+import {useInstanceWithHA, useRole} from 'hooks/query/oamHooks';
 import {useInstancesHealthRefresh, useInstanceHealth} from 'hooks/query/healthHook';
 import {t} from 'i18next';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -13,9 +13,12 @@ import {useMemo, memo, useState, useEffect} from 'react';
 //---------------------------------------------------------
 // Individual Instance Card Wrapper with Health Hook
 //---------------------------------------------------------
-const InstanceCardWithHealth = memo(({ item, onHealthRefresh }: { item: any; onHealthRefresh?: () => void }) => {
-	// Add delay to stagger health checks and prevent thundering herd
-	const delay = item.instance.id * 100; // 100ms delay per instance
+const InstanceCardWithHealth = memo(({ item, index, onHealthRefresh }: { item: any; index: number; onHealthRefresh?: () => void }) => {
+	// Add delay to stagger health checks and prevent thundering herd.
+	// Keyed on the card's POSITION, not the instance id: ids only ever grow,
+	// so id*100 made a long-lived deployment wait seconds before its first
+	// probe (id 60 → 6s) while adding nothing to the staggering.
+	const delay = index * 100; // 100ms delay per instance
 	const [enableHealthCheck, setEnableHealthCheck] = useState(false);
 
 	useEffect(() => {
@@ -46,6 +49,10 @@ InstanceCardWithHealth.displayName = 'InstanceCardWithHealth';
 //---------------------------------------------------------
 export default function InstancePage() {
 	const {instance_set} = useInstanceWithHA();
+	// Registering an instance is admin-only (OAM ActInstanceWrite) — the card
+	// is hidden for other roles rather than letting them build a form the
+	// server will 403. Server-side enforcement is independent.
+	const {can_manage_instances} = useRole();
 
 	// Extract instances for health refresh functionality
 	const instances = useMemo(() => {
@@ -91,10 +98,10 @@ export default function InstancePage() {
 				gap="24px"
 				alignItems="space-between"
 			>
-				{Array.isArray(instance_set) && instance_set.map((item: any) => (
-					<InstanceCardWithHealth key={item.instance.id} item={item} onHealthRefresh={refreshAllHealth} />
+				{Array.isArray(instance_set) && instance_set.map((item: any, index: number) => (
+					<InstanceCardWithHealth key={item.instance.id} item={item} index={index} onHealthRefresh={refreshAllHealth} />
 				))}
-				{/* <InstanceCardAdd /> */}
+				{can_manage_instances && <InstanceCardAdd />}
 			</Box>
 		</Stack>
 	);

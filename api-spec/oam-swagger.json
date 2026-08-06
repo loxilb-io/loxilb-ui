@@ -1005,6 +1005,12 @@
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1117,6 +1123,18 @@
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -2827,7 +2845,7 @@
                     "type": "integer"
                 },
                 "last_restore_response": {
-                    "description": "LastRestoreResponse is the full gateway response JSON of the most\nrecent restore attempt (the audit record, design §5). Only populated\non the single-snapshot GET, not in lists.",
+                    "description": "LastRestoreResponse is the full gateway response JSON of the most\nrecent restore attempt (the audit record). Only populated on the\nsingle-snapshot GET, not in lists.",
                     "type": "string"
                 },
                 "last_restore_result": {

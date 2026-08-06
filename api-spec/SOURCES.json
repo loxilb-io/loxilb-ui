@@ -1,16 +1,17 @@
 {
-  "vendoredAt": "2026-07-20T05:01:57Z",
+  "vendoredAt": "2026-08-05T11:57:51Z",
   "gateway": {
     "repo": "loxilb-inference-gateway",
     "path": "api/swagger.yml + api/swagger-extras.yml",
     "commit": "1e38a275",
     "dirty": true,
-    "note": "gateway spec intentionally NOT re-vendored on 2026-07-20 (branch moved 16+ commits incl. synflood removal; UI compat sweep pending) — only the OAM spec was refreshed for the snapshot API"
+    "note": "gateway spec intentionally NOT re-vendored on 2026-07-20 (branch moved 16+ commits incl. synflood removal; UI compat sweep pending) — still not re-vendored on 2026-08-05, when only the OAM spec was refreshed"
   },
   "oam": {
-    "repo": "oam-loxilb",
+    "repo": "loxilb-oam",
     "path": "docs/swagger.json (swag init)",
-    "commit": "26c6e9f",
-    "dirty": true
+    "commit": "535d6cc",
+    "dirty": true,
+    "note": "refreshed 2026-08-05 for the instance-registration hardening (409 conflict + 404 on the loxilbs routes); dirty=true because that change is not committed yet"
   }
 }

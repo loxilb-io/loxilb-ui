@@ -58,8 +58,70 @@ async function fetchWithRetry(url: string, init: RequestInit, attempts = 3): Pro
 	throw lastErr;
 }
 
+// A dead backend used to cost ~18 minutes before the run gave up: each of the
+// three logins below burns the 120s test timeout inside the reload loop, and
+// the setup project retries twice. None of that waiting produces information —
+// if nothing on the OAM answers, no login is going to succeed.
+//
+// So probe once, cheaply, before spending any of it. Only a transport
+// exception counts as unreachable: any HTTP status, 500 included, proves
+// something is listening and answering, and the real failure is then far more
+// informative than "unreachable" would be.
+//
+// The attempt count is set by the link, not by paranoia: the WAN path to the
+// testbed blackholes a fraction of *connections* (measured ~25% to one host),
+// so a single dropped probe says nothing. Four independent attempts put a
+// false "unreachable" verdict under 1%, and a genuinely dead OAM still fails
+// in ~15s instead of ~18min.
+const PROBE_TIMEOUT_MS = 4_000;
+const PROBE_ATTEMPTS = 4;
+let oamReachable = false;
+
+async function assertOamReachable(): Promise<void> {
+	if (oamReachable) return; // once per worker — the three logins share the verdict
+	let lastErr: unknown;
+	for (let attempt = 1; attempt <= PROBE_ATTEMPTS; attempt++) {
+		try {
+			// /setup/status is unauthenticated (it is what the app itself calls
+			// before login), so the probe costs no rate-limit budget.
+			await fetch(`${OAM_BASE}/setup/status`, {
+				headers: {Accept: 'application/json'},
+				signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+			});
+			oamReachable = true;
+			return;
+		} catch (err) {
+			lastErr = err;
+			if (attempt < PROBE_ATTEMPTS) await new Promise(r => setTimeout(r, 500 * attempt));
+		}
+	}
+	throw new Error(
+		`OAM unreachable at ${OAM_BASE} — ${PROBE_ATTEMPTS} probes of /setup/status all failed at the transport level ` +
+			`(last: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}). ` +
+			'Check that the stack is up and that E2E_OAM_URL is reachable from this host; ' +
+			'over a lossy WAN link, run the suite from the testbed-side runner or through an SSH tunnel.',
+	);
+}
+
 async function uiLogin(page: import('@playwright/test').Page, username: string, password: string, stateName: string) {
+	await assertOamReachable();
+
+	// The app gates first paint on OAM's /setup/status (SetupHandler), so a
+	// slow or dropped response renders nothing for up to the gate's timeout.
+	// Reloading is free — it fires no /login request, so it costs none of the
+	// rate-limit budget — whereas failing here aborts the whole run, since
+	// every project depends on this setup.
 	await page.goto('login'); // relative — see baseURL note in playwright.config.ts
+	const username_box = page.locator('#username');
+	for (let attempt = 1; ; attempt++) {
+		try {
+			await username_box.waitFor({state: 'visible', timeout: 15_000});
+			break;
+		} catch (err) {
+			if (attempt >= 3) throw new Error(`login form never rendered for ${username} after ${attempt} attempts — is the OAM reachable from the browser?`);
+			await page.reload();
+		}
+	}
 	await page.locator('#username').fill(username);
 	await page.locator('#password').fill(password);
 	await page.getByRole('button', {name: 'Login'}).click();
