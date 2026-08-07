@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// IP Filter (XDP) page CRUD spec (docs/E2E_CRUD_TEST_PLAN.md §4.1).
+// IP Filter (XDP) page CRUD spec.
 // POST /config/ipfilter (create), DELETE /config/ipfilter?filterType&cidr&zone.
 // Safety: every rule targets the RFC-5737 documentation range
 // 203.0.113.0/24 — the DOC_IP sweep can only ever match those, so a

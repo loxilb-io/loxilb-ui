@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// High Availability page spec (docs/E2E_CRUD_TEST_PLAN.md §6).
+// High Availability page spec.
 // Table + VIP edit dialog. Covers:
 //  - render matches /config/cistate/all
 //  - F-STATUS-3: VIP edit form now validates the IP (a garbage VIP disables

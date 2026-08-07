@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// BGP pages spec (docs/E2E_CRUD_TEST_PLAN.md §5).
+// BGP pages spec.
 //
 // loxilb runs with BGP mode DISABLED on this testbed — every BGP data call
 // (neigh / definedsets / policy / apply / global) returns 403 "loxilb BGP mode

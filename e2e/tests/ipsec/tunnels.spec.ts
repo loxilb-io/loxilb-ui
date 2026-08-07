@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// IPsec Tunnel page CRUD spec (docs/E2E_CRUD_TEST_PLAN.md §3.1).
+// IPsec Tunnel page CRUD spec.
 // POST/PUT/DELETE /config/ipsec/tunnels* + /action + peerconfig.
 //
 // Adversarial focus (see e2e-testing-philosophy): this is not a

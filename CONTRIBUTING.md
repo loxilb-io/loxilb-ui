@@ -32,6 +32,7 @@ set up a development environment and the conventions we follow.
   npm run gen:api:check     # generated API types are in sync with the vendored specs
   npm run api:check-mapping # every connector call maps to a declared backend route
   npm test                  # unit + backend-contract tests
+  cp .env.example .env.local  # once — `build` reads .env.local (CI does the same)
   npm run build             # production build
   ```
 

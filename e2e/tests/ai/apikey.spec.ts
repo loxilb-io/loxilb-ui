@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// AI Gateway — API Keys page spec (docs/E2E_CRUD_TEST_PLAN.md §2.1).
+// AI Gateway — API Keys page spec.
 //
 // The gateway serves /config/ai/* only when built with --userservice,
 // which the shared testbed is NOT (every AI endpoint 501s by design;

@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// RBAC spec (docs/E2E_CRUD_TEST_PLAN.md §7). Three storageState
+// RBAC spec. Three storageState
 // sessions provisioned by auth.setup.ts:
 //   • viewer   — read-only everywhere: no add/edit/delete controls and
 //                zero mutation requests across every mutable Group-1..6 route

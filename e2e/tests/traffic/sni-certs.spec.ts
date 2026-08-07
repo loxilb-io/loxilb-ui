@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// SNI Certificates page CRUD spec (docs/E2E_CRUD_TEST_PLAN.md §1.7).
+// SNI Certificates page CRUD spec.
 //
 // NB: this page is NOT a multipart cert upload (the plan predated the
 // implementation). It registers a hostname → cert-directory mapping in the

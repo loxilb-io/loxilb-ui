@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// Logs page spec (docs/E2E_CRUD_TEST_PLAN.md §6).
+// Logs page spec.
 // Read-only: live log stream + client-side level filter + server-side keyword
 // filter + downloadable archives. Level filtering is client-side over the
 // currently-loaded page by design (the connector never sends `level` to the

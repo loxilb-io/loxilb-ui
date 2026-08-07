@@ -1,6 +1,6 @@
 //---------------------------------------------------------
 // Shared scaffolding for the cicd-scenario specs
-// (docs/E2E_CICD_SCENARIO_TEST_PLAN.md).
+//.
 //
 // Each cicd/* scenario is replayed as a UI LB-rule recipe and
 // validated against the gateway's REST read-back — NO traffic.

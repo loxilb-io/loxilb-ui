@@ -90,4 +90,4 @@ fi
 echo -e "${GREEN}🎉 LoxiLB UI deployment completed successfully!${NC}"
 echo -e "${BLUE}ℹ️  To check status: kubectl get pods -n ${NAMESPACE}${NC}"
 echo -e "${BLUE}ℹ️  To view logs: kubectl logs -n ${NAMESPACE} -l app=${APP_NAME}${NC}"
-echo -e "${BLUE}ℹ️  To port-forward (for testing): kubectl port-forward -n ${NAMESPACE} service/${APP_NAME}-service 0.0.0.0 8080:80${NC}"
+echo -e "${BLUE}ℹ️  To port-forward (for testing): kubectl port-forward -n ${NAMESPACE} service/${APP_NAME}-service --address 0.0.0.0 8080:80${NC}"

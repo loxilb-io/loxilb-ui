@@ -220,8 +220,8 @@ UI_TAG=v0.9.8.7                         # pin a release
 ### Deploy to Kubernetes
 
 ```bash
-# Apply all manifests
-kubectl apply -f k8s/
+# Apply all manifests (kustomize — k8s/ contains a kustomization.yaml)
+kubectl apply -k k8s/
 
 # Or deploy step by step
 kubectl apply -f k8s/namespace.yaml
@@ -242,7 +242,6 @@ kubectl apply -f k8s/ingress.yaml
 - **Security contexts** with non-root user
 - **Read-only root filesystem** where possible
 - **Capability dropping** for minimal privileges
-- **Network policies** (optional)
 
 #### SSL Certificate Management
 ```bash
@@ -257,7 +256,6 @@ kubectl create secret tls loxilb-ui-tls \
 ```
 
 #### Monitoring Integration
-- **Prometheus annotations** for metrics scraping
 - **Health endpoints** at `/health`
 - **Resource limits and requests** configured
 
@@ -334,7 +332,7 @@ vim .env.local
 
 ### Development Scripts
 ```bash
-npm start          # Start development server (HTTPS) against .env.development
+npm start          # Start development server (HTTP) against .env.development
 npm run build      # Build for local environment
 npm test           # Run unit + backend-contract tests (Vitest)
 npm run typecheck  # TypeScript check (tsc --noEmit)
@@ -394,7 +392,7 @@ REACT_APP_ENV=local
 
 # Dev server
 PORT=3000                                # Development server port
-HTTPS=true                               # Enable HTTPS in development
+HTTPS=false                              # npm start pins HTTPS=false; run react-scripts directly to serve HTTPS
 ```
 
 ### Docker Environment Variables
@@ -454,7 +452,7 @@ const api = {
 ### Available Scripts
 | Command | Description |
 |---------|-------------|
-| `npm start` | Start development server with HTTPS |
+| `npm start` | Start development server (HTTP) |
 | `npm run build` | Build for local environment |
 | `npm run build:dev` | Build for development environment |
 | `npm run build:prod` | Build for production environment |
@@ -472,7 +470,6 @@ covered in [`docs/E2E_RUNNING.md`](docs/E2E_RUNNING.md).
 
 ### Build Optimization
 - **Code splitting** with React.lazy()
-- **Bundle analysis** with webpack-bundle-analyzer
 - **Tree shaking** for minimal bundle size
 - **Asset optimization** and compression
 
@@ -506,8 +503,9 @@ docker compose restart
 docker compose logs loxilb-ui
 
 # API calls returning 502 means the container is up but cannot reach OAM.
-# Verify backend connectivity from inside the container:
-docker exec <container> curl -fsS "$BACKEND_URL/oam/health"
+# Verify backend connectivity from inside the container ($BACKEND_URL must
+# expand inside the container, hence the sh -c):
+docker exec <container> sh -c 'curl -fsS "$BACKEND_URL/oam/health"'
 ```
 
 #### Build Issues

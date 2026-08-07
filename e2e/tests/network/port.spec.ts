@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// Port page spec (docs/E2E_CRUD_TEST_PLAN.md §5).
+// Port page spec.
 // Read-only page: no add/edit/delete. Selecting a port row reveals a detail
 // TabView (Software / Hardware / Layer 2 / Layer 3). We assert the list
 // renders real ports and the per-port detail tabs populate.

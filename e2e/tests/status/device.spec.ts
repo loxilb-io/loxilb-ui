@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// Device Details page spec (docs/E2E_CRUD_TEST_PLAN.md §6).
+// Device Details page spec.
 // Read-only dashboard. Beyond the render/API-match checks this pins the
 // F-STATUS-1 regression: "Boot Up" must be derived from the RAW uptime
 // seconds. The page used to re-parse the already-formatted uptime string

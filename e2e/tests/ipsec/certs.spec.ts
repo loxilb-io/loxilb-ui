@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// IPsec Certificate page CRUD spec (docs/E2E_CRUD_TEST_PLAN.md §3.2).
+// IPsec Certificate page CRUD spec.
 // POST/DELETE /config/ipsec/{certificates,ca-certificates} +
 // /certificates/validate. The page stacks two hideCheckbox tables:
 // grid 0 = endpoint certificates, grid 1 = CA certificates.

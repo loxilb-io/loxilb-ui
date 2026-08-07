@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// VLAN page spec (docs/E2E_CRUD_TEST_PLAN.md §5).
+// VLAN page spec.
 // POST /config/vlan (create), DELETE /config/vlan/{vid}. Members live in a
 // sub-panel: POST /config/vlan/{vid}/member, DELETE .../member/{dev}/tagged/{t}.
 // Uses reserved vid 3999 (real testbed VLANs are 380x) and a tagged member on

@@ -2,8 +2,7 @@
 #
 # Runs on a SELF-HOSTED runner registered INSIDE the testbed network
 # (label `loxilb-testbed`), so testbed credentials never leave the network and
-# no firewall is opened to GitHub-hosted infra. See docs/CICD_PLAN.md §2.2 and
-# docs/E2E_RUNNING.md.
+# no firewall is opened to GitHub-hosted infra. See docs/E2E_RUNNING.md.
 #
 # Triggers: manual dispatch (with an optional grep/subset input) + a nightly
 # schedule. Never triggered by pull_request (fork PRs must not reach testbed

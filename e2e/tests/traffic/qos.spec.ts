@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// QoS policy page CRUD spec (docs/E2E_CRUD_TEST_PLAN.md §1.5).
+// QoS policy page CRUD spec.
 // POST /config/policy, DELETE /config/policy/ident/{ident}; payload
 // IPolicyAttribute {policyIdent, policyInfo, targetObject}.
 //

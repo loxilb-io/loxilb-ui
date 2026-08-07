@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// Process page spec (docs/E2E_CRUD_TEST_PLAN.md §6).
+// Process page spec.
 // Read-only table + per-process detail panel. Pins the F-STATUS-4 regression:
 // selecting ANY row used to crash the page with "Too many re-renders" (a
 // useMemo that called setState during render, re-triggered every render because

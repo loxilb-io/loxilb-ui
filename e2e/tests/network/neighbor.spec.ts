@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// Device Neighbor page CRUD spec (docs/E2E_CRUD_TEST_PLAN.md §5).
+// Device Neighbor page CRUD spec.
 // POST /config/neighbor (create), DELETE /config/neighbor/{ip}/dev/{dev}.
 // Neighbors point a doc-range IP at a local MAC on eth0 — a static ARP/ND
 // entry for an inert address, never affecting real reachability. The

@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// Log Settings page spec (docs/E2E_CRUD_TEST_PLAN.md §6 — route instance/settings).
+// Log Settings page spec.
 // The Log Level radio group is the one mutation here. Read-modify-restore:
 // capture the current level, drive every level through the confirm dialog
 // asserting the POST /config/params payload, then restore the original.

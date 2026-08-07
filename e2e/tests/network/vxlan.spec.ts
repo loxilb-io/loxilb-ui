@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// VXLAN page spec (docs/E2E_CRUD_TEST_PLAN.md §5).
+// VXLAN page spec.
 // POST /config/tunnel/vxlan (create), DELETE /config/tunnel/vxlan/{id}. Peers
 // live in a sub-panel: POST .../{id}/peer, DELETE .../{id}/peer/{ip}. Uses
 // reserved id 3999 on eth0 and a doc-range peer (203.0.113.60) — an inert

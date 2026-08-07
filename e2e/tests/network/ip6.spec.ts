@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// IPv6 address page spec (docs/E2E_CRUD_TEST_PLAN.md §5).
+// IPv6 address page spec.
 // Same IPPage component with family=ipv6.
 //
 // GW-5 (gateway bug, OPEN): POST /config/ipv6address returns 200 but

@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// Route page CRUD spec (docs/E2E_CRUD_TEST_PLAN.md §5).
+// Route page CRUD spec.
 // POST /config/route (create), DELETE /config/route/destinationIPNet/{ip}/{mask}.
 // Every route targets the RFC-5737 203.0.113.0/24 documentation range via an
 // on-link gateway derived from the testbed's own interfaces — inert (no real

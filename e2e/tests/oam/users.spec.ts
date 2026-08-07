@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// User management spec (docs/E2E_CRUD_TEST_PLAN.md §7).
+// User management spec.
 // Drives the /user → "User List" (admin) tab: create (min + role),
 // dup/weak validation, edit email (+ the same-value no-op regression),
 // password change, delete, and the self-delete guard.

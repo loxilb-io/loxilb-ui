@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// Firewall page CRUD spec (docs/E2E_CRUD_TEST_PLAN.md §1.2).
+// Firewall page CRUD spec.
 // POST/DELETE /config/firewall, payload {ruleArguments, opts}.
 // Every entity uses reserved-documentation IPs so strays are
 // identifiable and inert; the afterAll sweep removes leftovers.

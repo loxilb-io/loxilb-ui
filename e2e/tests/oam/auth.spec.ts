@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// OAM auth spec (docs/E2E_CRUD_TEST_PLAN.md §7).
+// OAM auth spec.
 //   • wrong-password → in-page error, never leaves /login (single attempt —
 //     the OAM applies an exponential per-user lockout, so we never hammer it)
 //   • login ok → /instance
