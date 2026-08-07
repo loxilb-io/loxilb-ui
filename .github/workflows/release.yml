@@ -22,14 +22,22 @@ name: Release
 on:
   push:
     tags: ['v*']
+  # Rebuild the image for an EXISTING tag. Run it with the tag as the ref
+  # ("gh workflow run release.yml --ref v0.9.8.7"), not from a branch: the
+  # version comes from the ref, so there is no free-text input that could name
+  # one tag while the job builds another. This path republishes the image only —
+  # the GitHub Release is created on tag push alone (see the step's `if`).
   workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Version tag to release (e.g. v0.9.8.7 or v0.9.8.7-rc.1)'
-        required: true
 
 permissions:
   contents: read
+
+# Never let two runs publish concurrently — they would race on `:latest` and on
+# the release page. Queue instead of cancelling: a half-published release is
+# worse than a slow one.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   REGISTRY: ghcr.io
@@ -54,11 +62,15 @@ jobs:
       - name: Resolve version
         id: ver
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ inputs.tag }}"
-          else
-            VERSION="${GITHUB_REF_NAME}"
+          # The ref IS the version, for both triggers. checkout above therefore
+          # built exactly the tagged tree — a dispatch cannot build one commit
+          # while labelling it as another, and cannot mint a tag that never
+          # existed (which is how v0.9.9 came to be).
+          if [ "${GITHUB_REF}" != "refs/tags/${GITHUB_REF_NAME}" ]; then
+            echo "::error::Release must run on a tag ref, got '${GITHUB_REF}'. Re-run with: gh workflow run release.yml --ref <tag>"
+            exit 1
           fi
+          VERSION="${GITHUB_REF_NAME}"
           # loxilb-ui follows loxilb-io/loxilb's scheme: vMAJOR.MINOR.PATCH with
           # an optional fourth build component (e.g. v0.9.8.7), plus an optional
           # -rc/-alpha/-beta prerelease suffix. Reject anything else so a stray
@@ -212,6 +224,9 @@ jobs:
           push-to-registry: true
 
       - name: Create GitHub Release
+        # Tag push only. A dispatch republishes the image for an existing tag;
+        # it must never create or mutate the release page.
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           tag_name: ${{ steps.ver.outputs.version }}
