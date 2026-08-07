@@ -1,6 +1,6 @@
 //---------------------------------------------------------
 // Shared scaffolding for the cicd IPsec scenarios
-// (docs/E2E_CICD_SCENARIO_TEST_PLAN.md — Group D ipsec1/2/3/-e2e).
+//.
 //
 // The cicd ipsec dirs bring a site-to-site tunnel up out-of-band (raw
 // `ip xfrm`/strongswan with static SPI + keys) and then place an LB rule

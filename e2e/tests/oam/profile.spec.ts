@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// Profile spec (docs/E2E_CRUD_TEST_PLAN.md §7). A self email edit must
+// Profile spec. A self email edit must
 // persist everywhere — the Profile tab AND the header profile menu —
 // immediately (no reload) and across a reload. This is the stale-menu-cache
 // regression: the app renders identity from the `my_info` query, which a

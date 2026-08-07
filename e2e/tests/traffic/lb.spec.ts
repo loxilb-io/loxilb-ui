@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// LB Rule page CRUD spec (docs/E2E_CRUD_TEST_PLAN.md §1.1).
+// LB Rule page CRUD spec.
 // POST/PATCH/DELETE /config/loadbalancer*, payload
 // IServiceConfiguration. Entities use e2e- names + reserved
 // documentation IPs. dnat creates spawn gateway FW allow-rules

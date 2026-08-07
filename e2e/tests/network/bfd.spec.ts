@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// BFD page spec (docs/E2E_CRUD_TEST_PLAN.md §5).
+// BFD page spec.
 //
 // On this single-node testbed POST /config/bfd returns 404 "cluster instance
 // not found" — BFD sessions require a cluster instance that is not configured

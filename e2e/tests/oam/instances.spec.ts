@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// Instances page spec (docs/E2E_CRUD_TEST_PLAN.md §7).
+// Instances page spec.
 //   • dashboard widgets render on the instance card
 //   • "Check Health" round-trips (a /version probe fires; card resolves)
 //   • the Modify dialog rejects a bad port / empty host WITHOUT mutating —

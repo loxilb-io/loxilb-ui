@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// Conntrack page spec (docs/E2E_CRUD_TEST_PLAN.md §1.4).
+// Conntrack page spec.
 //
 // Conntrack is READ-ONLY in the UI: ConntrackTable renders the shared
 // DataTable with hideCheckbox and only an onRefresh handler — there is no

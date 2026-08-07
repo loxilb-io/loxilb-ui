@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// Endpoint page CRUD spec (docs/E2E_CRUD_TEST_PLAN.md §1.3).
+// Endpoint page CRUD spec.
 // POST /config/endpoint (create AND update reuse the same POST),
 // DELETE /config/endpoint/epipaddress/{host}?name&probe_type&probe_port.
 // Entities use e2e- names + reserved-documentation host IPs; the

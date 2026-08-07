@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// IPv4 address page spec (docs/E2E_CRUD_TEST_PLAN.md §5).
+// IPv4 address page spec.
 // The page has NO Add button — Edit (Mode) IS the create path: it re-uses
 // POST /config/ipv4address with the row's (locked) device + a new IP, which
 // adds a secondary address. Delete: /config/ipv4address/{ip}/{mask}/dev/{dev}.
@@ -17,7 +17,7 @@ import {refreshUntilGone, refreshUntilRow, selectRowByText, showAllRows, toolbar
 const V4_PATH = '/config/ipv4address';
 // The edit-target row (a stable primary address) is DERIVED from the live
 // testbed in beforeAll — hardcoding docker0/172.17.0.1 broke the suite the
-// moment it ran against a testbed without a docker bridge (cloud-testbed: eth0 only).
+// moment it ran against a testbed without a docker bridge (single-NIC, eth0 only).
 let BASE_DEV = '';
 let BASE_IP = '';
 const NEW_IP = '203.0.113.30/32';

@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// Mirror page CRUD spec (docs/E2E_CRUD_TEST_PLAN.md §1.6).
+// Mirror page CRUD spec.
 // POST /config/mirror, DELETE /config/mirror/ident/{ident}; payload
 // IMirrorAttribute {mirrorIdent, mirrorInfo, targetObject}.
 //

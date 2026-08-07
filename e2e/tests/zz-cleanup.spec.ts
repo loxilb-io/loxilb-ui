@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// Final safety-net sweep + leak detector (docs/E2E_CRUD_TEST_PLAN.md §8).
+// Final safety-net sweep + leak detector.
 // Runs LAST (path sorts after every tests/<group>/ directory): it removes any
 // e2e-/documentation-range entity the per-spec afterEach hooks missed, then
 // re-lists everything and FAILS the run if any marked entity survives. The

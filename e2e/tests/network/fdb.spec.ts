@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// FDB (forwarding database) page spec (docs/E2E_CRUD_TEST_PLAN.md §5).
+// FDB (forwarding database) page spec.
 //
 // GW-6 (gateway bug, OPEN): POST /config/fdb returns 200 but
 // GET /config/fdb/all always returns an empty fdbAttr[] on this testbed

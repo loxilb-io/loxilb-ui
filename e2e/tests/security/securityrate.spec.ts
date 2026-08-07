@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// Security Rate Limiting (XDP) page spec (docs/E2E_CRUD_TEST_PLAN.md §4.3).
+// Security Rate Limiting (XDP) page spec.
 // Edit-only page: POST /config/securityrate configures one unified policy
 // (SYN flood + connection rate + UDP flood). Read-modify-restore: the real
 // pre-test config is captured in beforeAll and restored in afterAll.

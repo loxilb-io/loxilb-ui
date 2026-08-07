@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// File System page spec (docs/E2E_CRUD_TEST_PLAN.md §6).
+// File System page spec.
 // Read-only table. Pins the F-STATUS-2 regression: the page used to render
 // a hardcoded dummy mount list (/dev/sda1, /dev/sda2 on /var, 50G/100G) with
 // the real /status/filesystem query commented out, and its Refresh button was

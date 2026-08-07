@@ -1,6 +1,6 @@
 //---------------------------------------------------------
-// AI Gateway — Tenant Rate Limits page spec (docs/E2E_CRUD_TEST_PLAN.md
-// §2.2). Menu-hidden route instance/ai/ratelimit.
+// AI Gateway — Tenant Rate Limits page spec. Menu-hidden route
+// instance/ai/ratelimit.
 //
 // Same userservice split as apikey.spec: the gateway 501s /config/ai/*
 // on the shared testbed, so upsert is skipped; render, the no-DELETE

@@ -1,8 +1,8 @@
 //---------------------------------------------------------
 // Playwright config for the per-page CRUD E2E suite
-// (docs/E2E_CRUD_TEST_PLAN.md). Runs against the local dev
-// server + the live testbed-client testbed gateway, so mutations
-// are serialized: workers=1, no parallelism, no retries that
+// (see docs/E2E_RUNNING.md). Runs against the local dev
+// server + a live testbed gateway, so mutations are
+// serialized: workers=1, no parallelism, no retries that
 // could double-fire a create.
 //---------------------------------------------------------
 import {defineConfig, devices} from '@playwright/test';

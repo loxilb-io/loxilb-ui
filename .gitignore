@@ -147,3 +147,16 @@ make-package.ps1
 # Local REST-client scratch files (hold dev tokens; never commit)
 test.http
 *.http
+
+# Local-only working directories that exist in some checkouts (assistant
+# memory, sibling-repo clones, scratch space) — never part of this repo
+/memory/
+/scratchpad/
+/claude-agents/
+/loxilb-oam/
+/loxilb-ebpf/
+/loxilb-ui/
+/database/
+/deploy/
+/internal/
+/pkg/

@@ -1,6 +1,6 @@
 //---------------------------------------------------------
 // Shared scaffolding for the cicd firewall-rule scenarios
-// (docs/E2E_CICD_SCENARIO_TEST_PLAN.md — Group C ipmasquerade*).
+//.
 //
 // The `ipmasquerade`/`ipmasquerade6` cicd scenarios create a
 // source-NAT (masquerade) firewall rule via

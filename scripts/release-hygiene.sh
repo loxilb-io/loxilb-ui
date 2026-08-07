@@ -59,7 +59,7 @@ fi
 # (.gitignore and this script are allowlisted: they name the patterns
 # themselves. The instance-id regex requires a non-word char before "i-" so
 # public AMI ids such as ami-0cca... do not match.)
-HOSTS_RE='testbed-gw|cloud-testbed-loxilb|(^|[^a-z])i-0[0-9a-f]{8,}'
+HOSTS_RE='kv-loxilb|kv-client|elice|(^|[^a-z])i-0[0-9a-f]{8,}'
 if git grep -Iqn -E "$HOSTS_RE" HEAD -- \
      ':(exclude).gitignore' ':(exclude)scripts/release-hygiene.sh' 2>/dev/null; then
   fail "internal host/infrastructure identifiers in tracked files:"

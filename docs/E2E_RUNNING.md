@@ -1,9 +1,8 @@
 # Running the E2E test suite
 
 This is the practical "how do I run the browser E2E tests myself" guide. For
-what the suite covers and how the specs are designed, see
-[`E2E_CRUD_TEST_PLAN.md`](./E2E_CRUD_TEST_PLAN.md) and
-[`E2E_TEST_PLAN.md`](./E2E_TEST_PLAN.md).
+what the suite covers, browse the spec groups under `e2e/tests/` — each folder
+maps to one UI area and the spec titles describe the behaviour they pin down.
 
 The suite uses [`@playwright/test`](https://playwright.dev). It drives a **real
 browser** against a **locally-served build of this UI** that talks to a **live
@@ -58,9 +57,9 @@ WDS_SOCKET_PORT=0
 ```
 
 > **Why HTTP, not HTTPS?** The testbed OAM is plain `http://`. An HTTPS dev
-> server would trip the browser's mixed-content block. This is why you must
-> **not** use `npm start` for E2E (it forces HTTPS) — let Playwright boot the
-> dev server, or use the exact command in §3.
+> server would trip the browser's mixed-content block. `npm start` and the
+> Playwright-managed dev server both run plain HTTP (`HTTPS=false`), so either
+> is fine — just don't force `HTTPS=true` when testing against an HTTP OAM.
 
 ## 3. Run the suite
 
@@ -95,9 +94,9 @@ HTTPS=false BROWSER=none WDS_SOCKET_PORT=0 npx dotenv -e .env.development react-
 ```
 
 Test groups (folders under `e2e/tests/`): `traffic`, `security`, `network`,
-`ipsec`, `ai`, `status`, `oam`, and **`cicd`** — the scenario suite that
-replays each `loxilb-inference-gateway/cicd/*` recipe as a UI config +
-REST read-back (see [`E2E_CICD_SCENARIO_TEST_PLAN.md`](./E2E_CICD_SCENARIO_TEST_PLAN.md)).
+`ipsec`, `ai`, `status`, `oam`, `snapshot`, and **`cicd`** — the scenario
+suite that replays each `loxilb-inference-gateway/cicd/*` recipe as a UI
+config + REST read-back.
 `zz-cleanup.spec.ts` sorts **last** and is a leak detector that fails if a spec
 left any `e2e-`/doc entity behind.
 
@@ -117,8 +116,7 @@ an optional `grep` subset input) plus a nightly schedule. It writes
 (`E2E_OAM_URL`, `E2E_ADMIN_USER`, `E2E_ADMIN_PASSWORD`, `E2E_FIXTURE_PASSWORD`),
 pre-flights the OAM (skips cleanly if the testbed is down), and always uploads
 the Playwright report. Registering the runner + populating those secrets is a
-one-time ops task (see [`CICD_PLAN.md`](./CICD_PLAN.md) §2.2, §5); until then
-the scheduled run has no runner to pick it up.
+one-time ops task; until then the scheduled run has no runner to pick it up.
 
 ## 4. Read the results
 
@@ -150,7 +148,7 @@ sweeps them (underscore usernames, not the `e2e-` marker).
 | Every gateway call fails / `502` | The gateway VM is down or the container is wedged. Confirm the registered instance's gateway is reachable before blaming the UI. |
 | `testbed uptime should be > 1h` fails | The gateway VM was **just rebooted**. `status/device.spec.ts` intentionally asserts the box has been up over an hour; it self-resolves once it has. Not a UI bug. |
 | A `status/fs` or `network/vlan` test flakes right after a reboot | Cold-boot transient — re-run that spec; it should pass once the stack settles. |
-| Mixed-content / CORS errors in the browser | You're serving HTTPS against an HTTP OAM. Use the §3 HTTP dev-server command; don't use `npm start`. |
+| Mixed-content / CORS errors in the browser | You're serving HTTPS against an HTTP OAM. Make sure the dev server runs with `HTTPS=false` (the default for `npm start` and the §3 command). |
 | `login as admin did not reach /instance` | Wrong creds in `.env.e2e.local`, or the account is locked out from prior failed logins. |
 | Nav lands outside `/netlox` | Specs must use **relative** `page.goto()` paths (`'login'`, not `'/login'`) — the `baseURL` ends in `/netlox/`. |
 | Dev server didn't come up | First boot of `react-scripts start` can take ~2 min; the `webServer` timeout is 180 s. Start it manually (§3) and re-run. |
