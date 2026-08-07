@@ -196,6 +196,12 @@ jobs:
           registry-password: ${{ secrets.GITHUB_TOKEN }}
           format: spdx-json
           output-file: sbom.spdx.json
+          # "Create GitHub Release" below attaches sbom.spdx.json itself. Letting
+          # the action also attach it would need `actions: read` (it re-downloads
+          # its own workflow artifact) — a permission this job deliberately does
+          # not hold. Without this the step fails whenever the tag's Release
+          # already exists, i.e. on any re-run of an already-published tag.
+          upload-release-assets: false
 
       - name: Attest SBOM
         uses: actions/attest-sbom@bd218ad0dbcb3e146bd073d1d9c6d78e08aa8a0b # v2
