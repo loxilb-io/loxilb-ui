@@ -4,10 +4,11 @@
 # (label `loxilb-testbed`), so testbed credentials never leave the network and
 # no firewall is opened to GitHub-hosted infra. See docs/E2E_RUNNING.md.
 #
-# Triggers: manual dispatch (with an optional grep/subset input) + a nightly
-# schedule. Never triggered by pull_request (fork PRs must not reach testbed
-# secrets). Until the runner + `testbed` environment secrets are provisioned
-# (a one-time ops task), the scheduled run simply has no runner to pick it up.
+# Triggers: manual dispatch only (with an optional grep/subset input). The
+# nightly schedule is parked until the runner exists — see the `on:` block.
+# Never triggered by pull_request (fork PRs must not reach testbed secrets).
+# Registering the runner + provisioning the `testbed` environment secrets is a
+# one-time ops task; until then this workflow only runs when dispatched.
 #
 # Required environment (`testbed`) secrets:
 #   E2E_OAM_URL           — OAM base the API helpers + dev server target
@@ -25,9 +26,14 @@ on:
         description: 'Optional -g title substring / path to run a subset (e.g. "cicd" or "F-NET-1"). Blank = full suite.'
         required: false
         default: ''
-  schedule:
-    # Nightly at 17:00 UTC (~02:00 KST) — low testbed traffic.
-    - cron: '0 17 * * *'
+  # The nightly schedule is PARKED until the `loxilb-testbed` self-hosted runner
+  # is registered. With no runner, every scheduled run queued until GitHub
+  # cancelled it ~24h later, and each one left a permanently "queued" entry on
+  # the Deployments page — noise that grew by one a day and looked like a
+  # failing pipeline. Restore this block as part of registering the runner:
+  #   schedule:
+  #     # Nightly at 17:00 UTC (~02:00 KST) — low testbed traffic.
+  #     - cron: '0 17 * * *'
 
 # One E2E run at a time: the suite is serial and mutating, and the shared OAM
 # rate-limits logins — a second concurrent run would interleave mutations.
