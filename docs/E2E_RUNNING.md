@@ -112,7 +112,7 @@ npx playwright test e2e/tests/cicd/ai-gateway    # one cicd group
 `.github/workflows/e2e.yml` runs the full suite on a **self-hosted runner
 inside the testbed network** (label `loxilb-testbed`) — manual dispatch (with
 an optional `grep` subset input). It writes
-`.env.e2e.local` / `.env.development` from the `testbed` environment secrets
+`.env.e2e.local` / `.env.development` from repository secrets
 (`E2E_OAM_URL`, `E2E_ADMIN_USER`, `E2E_ADMIN_PASSWORD`, `E2E_FIXTURE_PASSWORD`),
 pre-flights the OAM (skips cleanly if the testbed is down), and always uploads
 the Playwright report. Registering the runner + populating those secrets is a
