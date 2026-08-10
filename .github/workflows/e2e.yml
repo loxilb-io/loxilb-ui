@@ -7,10 +7,10 @@
 # Triggers: manual dispatch only (with an optional grep/subset input). The
 # nightly schedule is parked until the runner exists — see the `on:` block.
 # Never triggered by pull_request (fork PRs must not reach testbed secrets).
-# Registering the runner + provisioning the `testbed` environment secrets is a
-# one-time ops task; until then this workflow only runs when dispatched.
+# Registering the runner + provisioning the secrets below is a one-time ops
+# task; until then this workflow only runs when dispatched.
 #
-# Required environment (`testbed`) secrets:
+# Required repository secrets:
 #   E2E_OAM_URL           — OAM base the API helpers + dev server target
 #                           (e.g. http://<oam-host>:8080/oam)
 #   E2E_ADMIN_USER        — testbed OAM admin username
@@ -47,8 +47,10 @@ permissions:
 jobs:
   e2e:
     runs-on: [self-hosted, loxilb-testbed]
-    # Holds the testbed secrets; can require maintainer approval before running.
-    environment: testbed
+    # No `environment:` on purpose — an internal test run is not a deployment,
+    # and binding one here put a `testbed` entry on the public Deployments
+    # page next to the real release. Secrets are plain repository secrets;
+    # fork PRs can't reach them (dispatch-only triggers).
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
