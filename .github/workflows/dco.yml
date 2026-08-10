@@ -34,6 +34,11 @@ jobs:
           while IFS= read -r sha; do
             [ -z "$sha" ] && continue
             author=$(git show -s --format='%an <%ae>' "$sha")
+            # Bot accounts (dependabot, github-actions, …) cannot certify the
+            # DCO — their commits are machine-generated, so skip them.
+            case "$author" in
+              *"[bot]"*) echo "skipping bot commit ${sha} (${author})"; continue ;;
+            esac
             if ! git show -s --format='%B' "$sha" | grep -qiF "Signed-off-by: ${author}"; then
               echo "::error::commit ${sha} (${author}) is missing a matching Signed-off-by line"
               fail=1
