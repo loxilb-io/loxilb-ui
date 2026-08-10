@@ -19,7 +19,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import YAML from 'yaml';
 import converter from 'swagger2openapi';
-import openapiTS from 'openapi-typescript';
+import openapiTS, {astToString} from 'openapi-typescript';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -33,13 +33,16 @@ for (const {src, out} of SPECS) {
 	const raw = fs.readFileSync(path.join(root, src), 'utf8');
 	const doc = src.endsWith('.json') ? JSON.parse(raw) : YAML.parse(raw);
 	const {openapi} = await converter.convertObj(doc, {patch: true, warnOnly: true, nocert: true});
-	const types = await openapiTS(openapi, {
-		commentHeader:
-			`/**\n` +
-			` * Generated from ${src} by scripts/gen-api-types.mjs — DO NOT EDIT.\n` +
-			` * Regenerate with: npm run gen:api\n` +
-			` */\n\n`,
-	});
+	// openapi-typescript v7 returns a TypeScript AST and dropped the
+	// commentHeader option — render it ourselves and prepend the banner.
+	// defaultNonNullable flipped to true in v7; keep the v6 semantics — a
+	// property with a server-side default is still omittable in a request.
+	const header =
+		`/**\n` +
+		` * Generated from ${src} by scripts/gen-api-types.mjs — DO NOT EDIT.\n` +
+		` * Regenerate with: npm run gen:api\n` +
+		` */\n\n`;
+	const types = header + astToString(await openapiTS(openapi, {defaultNonNullable: false}));
 	const outPath = path.join(root, out);
 	fs.mkdirSync(path.dirname(outPath), {recursive: true});
 	fs.writeFileSync(outPath, types);
