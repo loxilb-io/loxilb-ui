@@ -1,6 +1,6 @@
 # LoxiLB UI Dashboard
 
-[![Version](https://img.shields.io/github/package-json/v/loxilb-io/loxilb-ui?label=version&color=blue)](package.json)
+[![Release](https://img.shields.io/github/v/release/loxilb-io/loxilb-ui?label=release&color=blue)](https://github.com/loxilb-io/loxilb-ui/releases/latest)
 [![License](https://img.shields.io/badge/license-Apache_2.0-green.svg)](#-license)
 [![Docker](https://img.shields.io/badge/docker-supported-blue.svg)](#-docker-deployment)
 [![Kubernetes](https://img.shields.io/badge/kubernetes-ready-green.svg)](#-kubernetes-deployment)
