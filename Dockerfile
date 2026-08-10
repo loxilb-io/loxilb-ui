@@ -47,7 +47,7 @@ RUN npm run build:prod
 
 # ---- Runtime stage: serve the built SPA with nginx ----
 # Pinned to a minor tag so a rebuild cannot silently jump nginx versions.
-FROM nginx:1.29-alpine
+FROM nginx:1.31-alpine
 
 # openssl   — self-signed certificate generation (SSL_MODE=enabled)
 # gettext   — envsubst, which renders the config templates
