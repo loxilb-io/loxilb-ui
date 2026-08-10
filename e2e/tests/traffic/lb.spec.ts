@@ -341,7 +341,9 @@ test.describe('LB Rule page CRUD', () => {
 		await expandSection(page, AIGW);
 		await setField(page, 'CHWBL Prefix Hash Level', '2');
 		await setField(page, 'CHWBL Prefix Hash Flags', '1');
-		await setField(page, 'KV Exact Mode', '1');
+		// Mode 3 (zmq single-role) is the only kv-exact mode valid on a role-less
+		// pool: the gateway rejects mode 1 without pd_disagg_mode=true.
+		await setField(page, 'KV Exact Mode', '3'); // boundary (max)
 		await setField(page, 'KV Block Size', '1'); // boundary
 		await selectOption(page, 'KV Hash Algo', 'xxhash_cbor');
 		await setField(page, 'KV ZMQ Port', '65535'); // boundary
@@ -352,7 +354,7 @@ test.describe('LB Rule page CRUD', () => {
 			sel: 8,
 			chwbl_prefix_hash_level: 2,
 			chwbl_prefix_hash_flags: 1,
-			kvExactMode: 1,
+			kvExactMode: 3,
 			kvBlockSize: 1,
 			kvHashAlgo: 'xxhash_cbor',
 			kvZmqPort: 65535,
