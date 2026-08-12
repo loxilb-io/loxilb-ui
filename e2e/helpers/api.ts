@@ -88,13 +88,17 @@ async function oamFetch(pathname: string, init: RequestInit = {}): Promise<Respo
 
 let cachedInstance: Instance | null = null;
 
-/** The single active testbed instance every page operates on (?name=…). */
+/** The single active testbed instance every page operates on (?name=…).
+ * E2E_INSTANCE picks one by name — needed when the OAM's is_active instance
+ * is a dead registration (its gateway down) while another one is healthy. */
 export async function activeInstance(): Promise<Instance> {
 	if (cachedInstance) return cachedInstance;
 	const resp = await oamFetch('/loxilbs');
 	if (!resp.ok) throw new Error(`GET /loxilbs failed: ${resp.status}`);
 	const list = (await resp.json()) as Instance[];
-	const active = list.find(i => i.is_active) ?? list[0];
+	const wanted = process.env.E2E_INSTANCE;
+	if (wanted && !list.some(i => i.name === wanted)) throw new Error(`E2E_INSTANCE "${wanted}" is not registered on the OAM (${list.map(i => i.name).join(', ') || 'none'})`);
+	const active = (wanted ? list.find(i => i.name === wanted) : undefined) ?? list.find(i => i.is_active) ?? list[0];
 	if (!active) throw new Error('No loxilb instance registered on the OAM');
 	cachedInstance = active;
 	return active;
