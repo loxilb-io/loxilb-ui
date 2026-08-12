@@ -1,11 +1,11 @@
 {
-  "vendoredAt": "2026-08-05T11:57:51Z",
+  "vendoredAt": "2026-08-13T00:00:00Z",
   "gateway": {
     "repo": "loxilb-inference-gateway",
     "path": "api/swagger.yml + api/swagger-extras.yml",
     "commit": "1e38a275",
     "dirty": true,
-    "note": "gateway spec intentionally NOT re-vendored on 2026-07-20 (branch moved 16+ commits incl. synflood removal; UI compat sweep pending) — still not re-vendored on 2026-08-05, when only the OAM spec was refreshed"
+    "note": "gateway spec intentionally NOT re-vendored on 2026-07-20 (branch moved 16+ commits incl. synflood removal; UI compat sweep pending) \u2014 still not re-vendored on 2026-08-05, when only the OAM spec was refreshed"
   },
   "oam": {
     "repo": "loxilb-oam",
@@ -13,5 +13,12 @@
     "commit": "535d6cc",
     "dirty": true,
     "note": "refreshed 2026-08-05 for the instance-registration hardening (409 conflict + 404 on the loxilbs routes); dirty=true because that change is not committed yet"
+  },
+  "loxilb": {
+    "repo": "loxilb",
+    "path": "api/swagger.yml",
+    "commit": "2d747448",
+    "dirty": true,
+    "note": "added 2026-08-13 (backward-compat Phase 1) from the v0.9.8.5 tag checkout; dirty=true is tree-wide (.gitignore/loxilb-ebpf) \u2014 api/swagger.yml itself matched HEAD. gateway/oam entries deliberately untouched this round (gateway checkout mid-feature on feat/pii-presidio-integration)"
   }
 }

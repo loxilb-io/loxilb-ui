@@ -56,7 +56,7 @@
 		"web-vitals": "^2.1.4"
 	},
 	"scripts": {
-		"gen:api": "node scripts/gen-api-types.mjs",
+		"gen:api": "node scripts/gen-api-types.mjs && node scripts/gen-capability-map.mjs",
 		"gen:api:check": "npm run gen:api && git diff --exit-code -- src/api/gen",
 		"api:check-mapping": "node scripts/check-api-mapping.mjs",
 		"api:coverage": "node scripts/check-api-mapping.mjs --coverage",
