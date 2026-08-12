@@ -5,11 +5,11 @@
 //   the UI (Mode=fullproxy → Security=e2ehttps → mTLS sub-form) and validates the
 //   gateway's REST read-back. No traffic.
 //
-// NOTE on the security value: the cicd config.sh sets security:2 for this
-// "e2ehttps" scenario — written against the OLD, buggy swagger enum description
-// ("2-e2ehttps"). The corrected mapping is 2-tls, 3-e2ehttps, so this
-// spec uses security=e2ehttps(3) — the scenario's actual intent — which also
-// exercises the corrected enum together with mTLS.
+// NOTE on the security value: the cicd config.sh sets security:2, and 2 IS
+// e2ehttps — both backends' common.LBSec is Plain=0/HTTPS=1/E2EHTTPS=2. The
+// swagger description claiming "2-tls, 3-e2ehttps" was the bug; value 3 hits
+// no datapath branch (silently plain — which also left mTLS dead). This spec
+// sends 2, matching the cicd original and real TLS+mTLS behavior.
 //---------------------------------------------------------
 import {test} from '../../../fixtures';
 import {activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';

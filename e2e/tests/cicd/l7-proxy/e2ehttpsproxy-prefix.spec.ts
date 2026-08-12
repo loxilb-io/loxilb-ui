@@ -1,9 +1,10 @@
 //---------------------------------------------------------
 // cicd source: cicd/e2ehttpsproxy-prefix — L7 fullproxy, e2ehttps + path-prefix.
-// Recipe POSTs {mode:4, security:3, host, path_prefix:/v1/users, path_match_mode:
+// Recipe POSTs {mode:4, security:2, host, path_prefix:/v1/users, path_match_mode:
 //   prefix}. Replays it through the UI (Mode=fullproxy → Security=e2ehttps →
 //   Path Match Mode + Path Prefix) and validates the gateway's REST read-back.
-// Same e2ehttps read-back caveat as cicd/e2ehttpsproxy (plan §16).
+// Same security-value note as cicd/e2ehttpsproxy (e2ehttps=2; "3" was a
+// swagger-description bug with no datapath branch).
 //---------------------------------------------------------
 import {test} from '../../../fixtures';
 import {activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';

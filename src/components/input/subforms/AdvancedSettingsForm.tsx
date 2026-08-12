@@ -68,7 +68,7 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 					   </HorizontalStack>
 
 						<HorizontalStack>
-							<ParamBox label={t('Security')} value={value?.security ?? ''} onChange={handleChange('security')} param_desc={{...params?.security, enum: security_list, description: t('TLS termination mode — only applies to fullproxy (Plain, https, tls, e2ehttps).')}} disabled={value?.mode !== 4} />
+							<ParamBox label={t('Security')} value={value?.security ?? ''} onChange={handleChange('security')} param_desc={{...params?.security, enum: security_list, description: t('TLS termination mode — only applies to fullproxy (Plain, https, e2ehttps).')}} disabled={value?.mode !== 4} />
 							<ParamBox label={t('Block')} value={value?.block ?? ''} onChange={handleChange('block')} param_desc={{...params?.block, type: 'integer', description: t('Firewall mark (fwmark) stamped on matched traffic; 0 = none.')}} />
 						</HorizontalStack>
 						<HorizontalStack>
