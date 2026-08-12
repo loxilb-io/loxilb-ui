@@ -7,6 +7,10 @@
 
 A modern React-based web dashboard for efficiently managing LoxiLB load balancers and network services with comprehensive SSL/HTTPS support and multiple deployment options.
 
+![LoxiLB UI live monitoring demo](static/loxilb-ui-monitoring-demo.gif)
+
+*Live monitoring on the public demo instance — dashboard health cards, real-time traffic/packet rate charts, streaming gateway logs, load-balancer rules, and endpoint health probes.*
+
 > ### ⚠️ Prerequisite: this UI does not run on its own
 >
 > LoxiLB UI is a **front-end for the [loxilb-oam](https://github.com/loxilb-io/loxilb-oam)
