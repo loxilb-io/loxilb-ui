@@ -34,7 +34,7 @@ const recipe: LbRecipe = {
 
 let instName: string;
 
-test.describe('cicd/e2ehttpsproxy-grpc — L7 fullproxy (gRPC = e2ehttps + http2 backend)', () => {
+test.describe('@gw cicd/e2ehttpsproxy-grpc — L7 fullproxy (gRPC = e2ehttps + http2 backend)', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepLbRules();

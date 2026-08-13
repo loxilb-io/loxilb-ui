@@ -56,7 +56,7 @@ async function captureDeletes(page: Page, action: () => Promise<void>): Promise<
 	return reqs;
 }
 
-test.describe('SNI Certificates page CRUD', () => {
+test.describe('@gw SNI Certificates page CRUD', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepSniCerts();

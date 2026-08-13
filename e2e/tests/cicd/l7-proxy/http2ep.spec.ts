@@ -34,7 +34,7 @@ const recipe: LbRecipe = {
 
 let instName: string;
 
-test.describe('cicd/http2ep — HTTP/2 backend protocol (fullproxy)', () => {
+test.describe('@gw cicd/http2ep — HTTP/2 backend protocol (fullproxy)', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepLbRules();

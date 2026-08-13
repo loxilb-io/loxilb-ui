@@ -33,7 +33,7 @@ const recipe: LbRecipe = {
 
 let instName: string;
 
-test.describe('cicd/vllm-pd-disagg — prefill/decode disaggregation config round-trips', () => {
+test.describe('@gw cicd/vllm-pd-disagg — prefill/decode disaggregation config round-trips', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepLbRules();

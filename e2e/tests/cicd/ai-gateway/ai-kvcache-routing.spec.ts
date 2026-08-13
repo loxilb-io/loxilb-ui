@@ -36,7 +36,7 @@ const recipe: LbRecipe = {
 
 let instName: string;
 
-test.describe('cicd/vllm-kvcache-routing-cpu — KV-cache routing config round-trips', () => {
+test.describe('@gw cicd/vllm-kvcache-routing-cpu — KV-cache routing config round-trips', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepLbRules();

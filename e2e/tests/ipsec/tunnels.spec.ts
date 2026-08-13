@@ -66,7 +66,7 @@ async function deleteTunnel(page: Page, name: string): Promise<void> {
 	await expectSuccessAndDismiss(page);
 }
 
-test.describe('IPsec Tunnel page CRUD', () => {
+test.describe('@gw IPsec Tunnel page CRUD', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepIpsecTunnels();

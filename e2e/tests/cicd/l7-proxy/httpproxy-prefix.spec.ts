@@ -26,7 +26,7 @@ const recipe: LbRecipe = {
 
 let instName: string;
 
-test.describe('cicd/httpproxy-prefix — L7 fullproxy (path-prefix routing)', () => {
+test.describe('@gw cicd/httpproxy-prefix — L7 fullproxy (path-prefix routing)', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepLbRules();

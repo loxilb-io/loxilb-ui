@@ -43,7 +43,7 @@ const rules: LbRecipe[] = [
 
 let instName: string;
 
-test.describe('cicd/ai-model-routing — model_name routing config round-trips', () => {
+test.describe('@gw cicd/ai-model-routing — model_name routing config round-trips', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepLbRules();

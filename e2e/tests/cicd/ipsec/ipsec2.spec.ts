@@ -33,7 +33,7 @@ const lb: LbRecipe = {
 
 let instName: string;
 
-test.describe('cicd/ipsec2 — IPsec tunnel + dnat LB across it', () => {
+test.describe('@gw cicd/ipsec2 — IPsec tunnel + dnat LB across it', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepIpsecTunnels();

@@ -107,6 +107,30 @@ npm run e2e:cicd                 # all tests/cicd/** groups, in order
 npx playwright test e2e/tests/cicd/ai-gateway    # one cicd group
 ```
 
+### Backend flavors: gateway vs plain loxilb
+
+The suite runs against **two backend flavors**. Spec titles carry tags:
+`@gw` marks gateway-only specs (the API family does not exist on upstream
+loxilb), `@loxilb` marks the flavor-gating assertions in
+`tests/flavor/loxilb-gating.spec.ts` that only make sense against plain
+loxilb. `playwright.config.ts` inverts the selection with `E2E_FLAVOR`:
+
+```bash
+# Default (gateway): runs everything except @loxilb.
+npm run e2e
+
+# loxilb leg: skips @gw, runs the flavor-gating specs. ALWAYS pin the
+# instance name when the OAM registers more than one backend — a flavor
+# run landing on the wrong flavor mutates the wrong instance.
+E2E_FLAVOR=loxilb E2E_INSTANCE_NAME=<oam-registration-name> npm run e2e
+```
+
+`E2E_INSTANCE_NAME` pins `activeInstance()` to a named OAM registration
+(default: first `is_active`). Registering a plain loxilb next to the gateway
+on the same OAM is the intended topology — the CI matrix (§3a) runs one leg
+per flavor with `E2E_INSTANCE_GATEWAY` / `E2E_INSTANCE_LOXILB` repository
+variables.
+
 ## 3a. Nightly / on-demand CI run
 
 `.github/workflows/e2e.yml` runs the full suite on a **self-hosted runner

@@ -79,7 +79,7 @@ async function takeSnapshotViaUI(page: any, name: string) {
 	await expect(dialog(page)).toBeHidden();
 }
 
-test.describe('Snapshots page (admin)', () => {
+test.describe('@gw Snapshots page (admin)', () => {
 	test('1. take → row with chips/metadata → download matches X-Snapshot-Checksum', async ({page, consoleGuard}) => {
 		await openPage(page);
 		await takeSnapshotViaUI(page, 'e2e-spec-take');
@@ -324,7 +324,7 @@ test.describe('Snapshots page (admin)', () => {
 	});
 });
 
-test.describe('Snapshots page (viewer)', () => {
+test.describe('@gw Snapshots page (viewer)', () => {
 	test.use({storageState: '.auth/viewer.json'});
 
 	test('6. viewer: list loads, zero mutating controls, no mutation requests', async ({page, consoleGuard}) => {

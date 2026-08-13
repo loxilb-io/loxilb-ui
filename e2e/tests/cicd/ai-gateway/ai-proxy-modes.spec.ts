@@ -45,7 +45,7 @@ function recipe(m: ProxyMode): LbRecipe {
 
 let instName: string;
 
-test.describe('cicd/vllm|mcp proxy — AI proxy security modes round-trip', () => {
+test.describe('@gw cicd/vllm|mcp proxy — AI proxy security modes round-trip', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepLbRules();

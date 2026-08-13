@@ -30,7 +30,7 @@ const recipe: LbRecipe = {
 
 let instName: string;
 
-test.describe('cicd/vllm-fullproxy-wrr — weighted CHWBL (8:2) config round-trips', () => {
+test.describe('@gw cicd/vllm-fullproxy-wrr — weighted CHWBL (8:2) config round-trips', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepLbRules();

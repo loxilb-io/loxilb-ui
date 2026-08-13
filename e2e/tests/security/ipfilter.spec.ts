@@ -64,7 +64,7 @@ async function captureDeletes(page: Page, action: () => Promise<void>): Promise<
 //---------------------------------------------------------
 let instName: string;
 
-test.describe('IP Filter page CRUD', () => {
+test.describe('@gw IP Filter page CRUD', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepIpFilterRules();

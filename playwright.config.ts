@@ -16,6 +16,13 @@ dotenv.config({path: '.env.e2e.local'});
 // there and reuseExistingServer happily runs the suite against it.
 const UI_PORT = process.env.E2E_UI_PORT ?? '3000';
 
+// Flavor-aware selection (backward-compat plan Phase 4). Titles carry tags:
+// '@gw' marks gateway-only specs (the API family does not exist on upstream
+// loxilb), '@loxilb' marks the flavor-gating assertions that only make sense
+// against a plain loxilb instance. E2E_FLAVOR=loxilb (paired with
+// E2E_INSTANCE_NAME pinning the loxilb registration) inverts the selection.
+const isLoxilbRun = process.env.E2E_FLAVOR === 'loxilb';
+
 export default defineConfig({
 	testDir: 'e2e',
 	outputDir: 'test-results',
@@ -25,6 +32,7 @@ export default defineConfig({
 	workers: 1,
 	retries: 0,
 	forbidOnly: !!process.env.CI,
+	grepInvert: isLoxilbRun ? /@gw/ : /@loxilb/,
 	timeout: 120_000,
 	expect: {timeout: 10_000},
 	reporter: [['list'], ['html', {open: 'never'}]],

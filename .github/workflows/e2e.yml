@@ -26,6 +26,11 @@ on:
         description: 'Optional -g title substring / path to run a subset (e.g. "cicd" or "F-NET-1"). Blank = full suite.'
         required: false
         default: ''
+      flavor:
+        description: 'Backend flavor leg(s) to run. gateway = @loxilb specs skipped; loxilb = @gw specs skipped, pinned to the loxilb registration.'
+        type: choice
+        options: [gateway, loxilb, both]
+        default: gateway
   # The nightly schedule is PARKED until the `loxilb-testbed` self-hosted runner
   # is registered. With no runner, every scheduled run queued until GitHub
   # cancelled it ~24h later, and each one left a permanently "queued" entry on
@@ -46,6 +51,21 @@ permissions:
 
 jobs:
   e2e:
+    # Flavor legs (backward-compat plan Phase 4): the same suite runs against
+    # the gateway registration (default) and the plain upstream loxilb one.
+    # Selection is title-tag based (playwright.config.ts grepInvert): the
+    # gateway leg skips '@loxilb' specs, the loxilb leg skips '@gw' specs.
+    # Instance pinning comes from repository VARIABLES (not secrets):
+    #   E2E_INSTANCE_GATEWAY / E2E_INSTANCE_LOXILB — the OAM registration
+    # names; blank falls back to "first active instance" (single-flavor OAM).
+    strategy:
+      max-parallel: 1  # shared serial testbed — never interleave the legs
+      fail-fast: false
+      # On dispatch, the input picks the leg(s); a future nightly runs both.
+      # (matrix is built via fromJSON because the `matrix` context is not
+      # available in a job-level `if`.)
+      matrix:
+        flavor: ${{ github.event_name == 'workflow_dispatch' && inputs.flavor != 'both' && fromJSON(format('["{0}"]', inputs.flavor)) || fromJSON('["gateway","loxilb"]') }}
     runs-on: [self-hosted, loxilb-testbed]
     # No `environment:` on purpose — an internal test run is not a deployment,
     # and binding one here put a `testbed` entry on the public Deployments
@@ -105,6 +125,8 @@ jobs:
         if: steps.preflight.outputs.up == 'true'
         env:
           CI: 'true'
+          E2E_FLAVOR: ${{ matrix.flavor == 'loxilb' && 'loxilb' || '' }}
+          E2E_INSTANCE_NAME: ${{ matrix.flavor == 'loxilb' && vars.E2E_INSTANCE_LOXILB || vars.E2E_INSTANCE_GATEWAY }}
         run: |
           if [ -n "${{ github.event.inputs.grep }}" ]; then
             npx playwright test -g "${{ github.event.inputs.grep }}"
@@ -117,7 +139,7 @@ jobs:
         if: always() && steps.preflight.outputs.up == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.flavor }}
           path: |
             playwright-report/
             test-results/

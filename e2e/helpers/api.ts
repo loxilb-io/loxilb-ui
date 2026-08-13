@@ -88,18 +88,32 @@ async function oamFetch(pathname: string, init: RequestInit = {}): Promise<Respo
 
 let cachedInstance: Instance | null = null;
 
-/** The single active testbed instance every page operates on (?name=…).
- * E2E_INSTANCE picks one by name — needed when the OAM's is_active instance
- * is a dead registration (its gateway down) while another one is healthy. */
+/**
+ * The single testbed instance every page operates on (?name=…).
+ * Pinned by name via E2E_INSTANCE_NAME or E2E_INSTANCE — needed for two
+ * reasons: the OAM's is_active instance can be a dead registration (its
+ * gateway down) while another one is healthy, and the OAM may host more than
+ * one flavor (a gateway and a plain loxilb) so a flavor-tagged run must not
+ * land on the wrong backend. Without a pin, first active wins.
+ */
 export async function activeInstance(): Promise<Instance> {
 	if (cachedInstance) return cachedInstance;
 	const resp = await oamFetch('/loxilbs');
 	if (!resp.ok) throw new Error(`GET /loxilbs failed: ${resp.status}`);
 	const list = (await resp.json()) as Instance[];
-	const wanted = process.env.E2E_INSTANCE;
-	if (wanted && !list.some(i => i.name === wanted)) throw new Error(`E2E_INSTANCE "${wanted}" is not registered on the OAM (${list.map(i => i.name).join(', ') || 'none'})`);
-	const active = (wanted ? list.find(i => i.name === wanted) : undefined) ?? list.find(i => i.is_active) ?? list[0];
-	if (!active) throw new Error('No loxilb instance registered on the OAM');
+	// E2E_INSTANCE_NAME is the flavor-matrix pin, E2E_INSTANCE the
+	// single-instance override. Either one, once set, is authoritative: fall
+	// back to is_active only when the run named nothing.
+	const pinnedVar = process.env.E2E_INSTANCE_NAME ? 'E2E_INSTANCE_NAME' : 'E2E_INSTANCE';
+	const pinned = process.env.E2E_INSTANCE_NAME ?? process.env.E2E_INSTANCE;
+	const active = pinned ? list.find(i => i.name === pinned) : (list.find(i => i.is_active) ?? list[0]);
+	if (!active) {
+		throw new Error(
+			pinned
+				? `Instance "${pinned}" (${pinnedVar}) is not registered on the OAM — registered: ${list.map(i => i.name).join(', ') || '(none)'}`
+				: 'No loxilb instance registered on the OAM',
+		);
+	}
 	cachedInstance = active;
 	return active;
 }

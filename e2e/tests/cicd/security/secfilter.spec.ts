@@ -80,7 +80,7 @@ async function assertFilterReadback(r: FilterRule): Promise<void> {
 
 let instName: string;
 
-test.describe('cicd/secfilter — LB VIP + XDP ipfilter config round-trip', () => {
+test.describe('@gw cicd/secfilter — LB VIP + XDP ipfilter config round-trip', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepLbRules();

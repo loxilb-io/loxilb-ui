@@ -8,6 +8,13 @@
 // Not exercisable via the UI (documented gaps, not regressions):
 // - privateIP (fullnat helper) — field commented out of the form
 // - security / proxyprotocolv2 / block — fields commented out
+//
+// @gw-tagged cases (gateway-only semantics, loxilb counterparts live in
+// tests/flavor/loxilb-gating.spec.ts):
+// - C-probe uses http probes — upstream loxilb's LB-level probe accepts
+//   connect probes only (rules.go "malformed-service-ptype")
+// - E-patch uses the per-VIP PATCH, a gateway-only method (loxilb: 405;
+//   the UI re-POSTs the full body there)
 //---------------------------------------------------------
 import {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
@@ -248,7 +255,7 @@ test.describe('LB Rule page CRUD', () => {
 		expect(body.serviceArguments).toMatchObject({mode: 1, inactiveTimeOut: 120});
 	});
 
-	test('C-adv-l7: fullproxy + host/path/backend-protocol/llm-type', async ({page}) => {
+	test('@gw C-adv-l7: fullproxy + host/path/backend-protocol/llm-type', async ({page}) => {
 		await openAddDialog(page);
 		await fillBasics(page, 'e2e-lb-l7', '203.0.113.50', '8443');
 		await expandSection(page, ADVANCED);
@@ -270,7 +277,7 @@ test.describe('LB Rule page CRUD', () => {
 		await refreshUntilRow(page, 'e2e-lb-l7');
 	});
 
-	test('C-aigw-stream: SSE streaming fields land verbatim', async ({page}) => {
+	test('@gw C-aigw-stream: SSE streaming fields land verbatim', async ({page}) => {
 		await openAddDialog(page);
 		await fillBasics(page, 'e2e-lb-sse', '203.0.113.51', '8444');
 		await expandSection(page, ADVANCED);
@@ -295,7 +302,7 @@ test.describe('LB Rule page CRUD', () => {
 		});
 	});
 
-	test('C-aigw-pd: prefill/decode disaggregation incl. per-endpoint roles', async ({page}) => {
+	test('@gw C-aigw-pd: prefill/decode disaggregation incl. per-endpoint roles', async ({page}) => {
 		await openAddDialog(page);
 		await fillBasics(page, 'e2e-lb-pd', '203.0.113.52', '8445');
 		await expandSection(page, ADVANCED);
@@ -332,7 +339,7 @@ test.describe('LB Rule page CRUD', () => {
 		expect(body.endpoints[1]).toMatchObject({endpointIP: '198.51.100.62', ep_role: 2, nixl_port: 5602});
 	});
 
-	test('C-aigw-kv: CHWBL sel + KV-cache routing fields (boundary values)', async ({page}) => {
+	test('@gw C-aigw-kv: CHWBL sel + KV-cache routing fields (boundary values)', async ({page}) => {
 		await openAddDialog(page);
 		await fillBasics(page, 'e2e-lb-kv', '203.0.113.53', '8446');
 		await expandSection(page, ADVANCED);
@@ -361,7 +368,7 @@ test.describe('LB Rule page CRUD', () => {
 		});
 	});
 
-	test('C-probe: monitor + http probe fields land; stripped when monitor off (C-min)', async ({page}) => {
+	test('@gw C-probe: monitor + http probe fields land; stripped when monitor off (C-min)', async ({page}) => {
 		await openAddDialog(page);
 		await fillBasics(page, 'e2e-lb-probe', '203.0.113.55', '8086');
 		await expandSection(page, ADVANCED);
@@ -489,7 +496,7 @@ test.describe('LB Rule page CRUD', () => {
 		await expect(rowByText(page, '203.0.113.61'), 'upsert must not duplicate the row').toHaveCount(1);
 	});
 
-	test('E-patch + E-immutable: edit sends a merge-patch of changed keys only', async ({page}) => {
+	test('@gw E-patch + E-immutable: edit sends a merge-patch of changed keys only', async ({page}) => {
 		await apiCreateLb({name: 'e2e-lb-edit', externalIP: '203.0.113.40', port: 8085, endpointIP: '198.51.100.5'});
 		await refreshUntilRow(page, 'e2e-lb-edit');
 

@@ -38,7 +38,7 @@ const recipe: LbRecipe = {
 
 let instName: string;
 
-test.describe('cicd/e2ehttpsproxy-mtls — L7 fullproxy (e2ehttps + frontend mTLS)', () => {
+test.describe('@gw cicd/e2ehttpsproxy-mtls — L7 fullproxy (e2ehttps + frontend mTLS)', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepLbRules();
