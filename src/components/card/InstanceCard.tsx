@@ -3,6 +3,7 @@
 //---------------------------------------------------------
 import {Box, Card, CardContent, Divider, Stack, Typography} from '@mui/material';
 import {get_date} from 'common';
+import FlavorBadge from 'components/element/FlavorBadge';
 import IDBadge from 'components/element/IDBadge';
 import SimpleButton from 'components/element/SimpleButton';
 import InstanceInputForm from 'components/input/InstanceInputForm';
@@ -186,6 +187,13 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 						<Typography variant="caption" color="text.disabled">
 							{instance_info.version}
 						</Typography>
+					</Box>
+
+					<Box display="flex" justifyContent="space-between" alignItems="center">
+						<Typography variant="caption" color="text.secondary">
+							{t('Type')}
+						</Typography>
+						<FlavorBadge instance={instance_info} />
 					</Box>
 
 					<Box display="flex" justifyContent="space-between">

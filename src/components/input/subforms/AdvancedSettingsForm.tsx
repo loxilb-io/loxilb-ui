@@ -7,6 +7,7 @@ import path_match_modes from 'assets/json/path_match_modes.json';
 import backend_protocols from 'assets/json/backend_protocols.json';
 import AccordionBox from 'components/element/AccordionBox';
 import ParamBox from 'components/element/ParamBox';
+import {useInstanceCapabilities} from 'hooks/query/flavorHook';
 import HorizontalStack from 'components/layout/HorizontalStack';
 import {t} from 'i18next';
 import {useCallback} from 'react';
@@ -19,10 +20,19 @@ import {IServiceArguments} from 'types/load_balancer';
 export default function AdvancedSettingsForm(props: {value: IServiceArguments; onChange: any; params?: any}) {
 	const {value, onChange, params} = props;
 
-	const sel_list: IEnumItem[] = sels;
+	// Flavor gating: enum options loxilb hard-rejects (422) disappear, and
+	// write-field groups it silently drops (L7 routing, frontend mTLS) hide
+	// entirely — an operator must not configure what the backend won't honor.
+	const caps = useInstanceCapabilities();
+	const SA = 'LoadbalanceEntry.serviceArguments';
+	const allowedSel = caps.allowedEnum(`${SA}.sel`, sels.map(s => s.send_value));
+	const sel_list: IEnumItem[] = sels.filter(s => allowedSel.includes(s.send_value));
+	const allowedSecurity = caps.allowedEnum(`${SA}.security`, securities.map(s => s.send_value));
+	const security_list: IEnumItem[] = securities.filter(s => allowedSecurity.includes(s.send_value));
+	const hasL7 = caps.hasField(SA, 'path_prefix');
+	const hasMtls = caps.hasField(SA, 'mtls_frontend');
 	const oper_list: IEnumItem[] = opers;
 	const mode_list: IEnumItem[] = modes;
-	const security_list: IEnumItem[] = securities;
 	const path_match_mode_list: IEnumItem[] = path_match_modes;
 	const backend_protocol_list: IEnumItem[] = backend_protocols;
 
@@ -58,7 +68,7 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 	   <AccordionBox title={t('Advanced Settings (LB Algo, NAT modes, etc)')} tooltip={"Configure advanced settings for the load balancer, including algorithms and NAT modes."}>
 			   <Stack spacing={2}>
 					   <HorizontalStack>
-							   <ParamBox label={t('SEL')} value={value?.sel ?? ''} onChange={handleChange('sel')} param_desc={{...params?.sel, enum: sel_list, description: t('Select an SEL algorithm.(0-rr, 1-hash, 2-priority, 3-persist, 4-lc, 8-chwbl)')}} />
+							   <ParamBox label={t('SEL')} value={value?.sel ?? ''} onChange={handleChange('sel')} param_desc={{...params?.sel, enum: sel_list, description: t('Select a load-balancing algorithm (options reflect what this instance supports).')}} />
 							   <ParamBox label={t('Oper')} value={value?.oper ?? ''} onChange={handleChange('oper')} param_desc={{...params?.oper, enum: oper_list}} />
 					   </HorizontalStack>
 
@@ -84,18 +94,18 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 							<ParamBox label={t('Private IP')} value={value?.privateIP ?? ''} onChange={handleChange('privateIP')} param_desc={{...params?.privateIP, type: 'ipaddress', description: t('Private (NAT-translated) address the VIP maps to.')}} />
 						</HorizontalStack>
 
-					   {/* L7 Routing Configuration */}
+					   {/* L7 Routing Configuration (Host is shared; the rest is gateway-only) */}
 					   <HorizontalStack>
 							<ParamBox label={t('Host')} value={value?.host ?? ''} onChange={handleChange('host')} param_desc={params?.host} disabled={value?.mode !== 4} />
-							<ParamBox
+							{hasL7 && <ParamBox
 								label={t('Path Match Mode')}
 								value={value?.path_match_mode ?? ''}
 								onChange={handleChange('path_match_mode')}
 								param_desc={{...params?.path_match_mode, enum: path_match_mode_list, description: t('Path matching mode (disabled: hostname-only, prefix: longest prefix match, exact: exact path match)')}}
 								disabled={value?.mode !== 4}
-							/>
+							/>}
 					   </HorizontalStack>
-					   <HorizontalStack>
+					   {hasL7 && <HorizontalStack>
 							<ParamBox
 								label={t('Path Prefix')}
 								value={value?.path_prefix ?? ''}
@@ -103,10 +113,10 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 								param_desc={{...params?.path_prefix, description: t('URL path prefix for L7 routing (e.g., /v1/users)')}}
 								disabled={value?.mode !== 4}
 							/>
-					   </HorizontalStack>
+					   </HorizontalStack>}
 
 					   {/* Backend Protocol & LLM Configuration */}
-					   <HorizontalStack>
+					   {hasL7 && <HorizontalStack>
 							   <ParamBox
 								   label={t('Backend Protocol')}
 								   value={value?.backend_protocol ?? ''}
@@ -114,10 +124,10 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 								   param_desc={{...params?.backend_protocol, enum: backend_protocol_list, description: t('Backend protocol for ALPN negotiation (http1: HTTP/1.1 only, http2: HTTP/2 only, both: supports both)')}}
 								   disabled={value?.mode !== 4}
 							   />
-					   </HorizontalStack>
+					   </HorizontalStack>}
 
 					   {/* Frontend mTLS — client-certificate verification (fullproxy + TLS only) */}
-					   <HorizontalStack>
+					   {hasMtls && <><HorizontalStack>
 							<ParamBox
 								label={t('Client Cert Mode')}
 								value={value?.mtls_frontend?.client_cert_mode ?? ''}
@@ -148,7 +158,7 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 								param_desc={{type: 'string', description: t('Required client CN pattern, wildcards supported (e.g. *.internal.corp.com). Used only when Require Client CN is on.')}}
 								disabled={!mtlsEnabled || !value?.mtls_frontend?.require_client_cn}
 							/>
-					   </HorizontalStack>
+					   </HorizontalStack></>}
 			   </Stack>
 	   </AccordionBox>
 	);

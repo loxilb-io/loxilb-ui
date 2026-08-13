@@ -8,6 +8,7 @@ import DropDownSelectBox from 'components/element/DropDownSelectBox';
 import HorizontalStack from 'components/layout/HorizontalStack';
 import NewBox from 'components/layout/NewBox';
 import useFormWithParams from 'hooks/inputFormHook';
+import {useInstanceCapabilities} from 'hooks/query/flavorHook';
 import {t} from 'i18next';
 import React from 'react';
 import {IEndpointInput} from 'types/endpoint';
@@ -38,6 +39,20 @@ export default function EndpointInputForm({ initialData, isEdit = false, onChang
 
 	// Get params for validation only (don't use form state from this hook)
 	const {params} = useFormWithParams<IEndpointInput>('IEndpointInput');
+
+	// Flavor gating: tls-hello is a gateway-only probe type — upstream loxilb
+	// 422s on it, so the option disappears there (capability-map derived).
+	const caps = useInstanceCapabilities();
+	const probe_type_list = [
+		{id: 1, name: 'PING', send_value: 'ping'},
+		{id: 2, name: 'TCP', send_value: 'tcp'},
+		{id: 3, name: 'UDP', send_value: 'udp'},
+		{id: 4, name: 'SCTP', send_value: 'sctp'},
+		{id: 5, name: 'HTTP', send_value: 'http'},
+		{id: 6, name: 'HTTPS', send_value: 'https'},
+		{id: 7, name: 'TLS-HELLO', send_value: 'tls-hello'},
+		{id: 8, name: 'NONE', send_value: 'none'},
+	].filter(item => caps.allowedEnum('EndPoint.probeType', [item.send_value]).length > 0);
 
 	// A connect-type probe targets a specific port; without one the gateway
 	// either rejects the request (tcp/udp/sctp) or programs a health check
@@ -131,16 +146,7 @@ export default function EndpointInputForm({ initialData, isEdit = false, onChang
 				label={t('Probe Type')} 
 				value={formData.probeType} 
 				onChange={(value) => handleChange('probeType', value)} 
-				item_list={[
-					{id: 1, name: 'PING', send_value: 'ping'},
-					{id: 2, name: 'TCP', send_value: 'tcp'},
-					{id: 3, name: 'UDP', send_value: 'udp'},
-					{id: 4, name: 'SCTP', send_value: 'sctp'},
-					{id: 5, name: 'HTTP', send_value: 'http'},
-					{id: 6, name: 'HTTPS', send_value: 'https'},
-					{id: 7, name: 'TLS-HELLO', send_value: 'tls-hello'},
-					{id: 8, name: 'NONE', send_value: 'none'},
-				]}
+				item_list={probe_type_list}
 				/>
 			   <ParamBox
 			   	label={t('Probe Duration')}

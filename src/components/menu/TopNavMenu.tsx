@@ -3,8 +3,10 @@
 //---------------------------------------------------------
 import {Box, Breadcrumbs, Typography} from '@mui/material';
 import {get_menu_name_from_path, get_menu_root, get_root_url} from 'common';
+import FlavorBadge from 'components/element/FlavorBadge';
 import SimpleButton from 'components/element/SimpleButton';
 import useLocalStorageState from 'hooks/localStorageHook';
+import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useInstanceName} from 'hooks/query/instanceHook';
 import {Link} from 'react-router-dom';
 import {MENU_LIST} from 'types/menu';
@@ -15,6 +17,7 @@ import {MENU_LIST} from 'types/menu';
 export default function TopNavMenu() {
 	const [_, set_is_open] = useLocalStorageState('is_open_side_menu', true);
 	const instance_name = useInstanceName();
+	const instance = useInstanceFromURL();
 
 	const url = window.location.pathname;
 	const root_url = get_root_url() + '/instance/';
@@ -29,9 +32,12 @@ export default function TopNavMenu() {
 			<Box id="navigation" paddingLeft="16px">
 				<Breadcrumbs>
 					{instance_name && (
-						<Typography variant="body2" color="primary">
-							{instance_name}
-						</Typography>
+						<Box display="flex" alignItems="center" gap="6px">
+							<Typography variant="body2" color="primary">
+								{instance_name}
+							</Typography>
+							<FlavorBadge instance={instance} />
+						</Box>
 					)}
 
 					{depth_1_name && (

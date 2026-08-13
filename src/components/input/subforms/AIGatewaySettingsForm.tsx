@@ -3,6 +3,7 @@ import kv_hash_algos from 'assets/json/kv_hash_algos.json';
 import AccordionBox from 'components/element/AccordionBox';
 import ParamBox from 'components/element/ParamBox';
 import HorizontalStack from 'components/layout/HorizontalStack';
+import {useInstanceCapabilities} from 'hooks/query/flavorHook';
 import {t} from 'i18next';
 import {useCallback} from 'react';
 import {IEnumItem} from 'types/global';
@@ -16,6 +17,12 @@ import {IServiceArguments} from 'types/load_balancer';
 export default function AIGatewaySettingsForm(props: {value: IServiceArguments; onChange: any; params?: any}) {
 	const {value, onChange, params} = props;
 
+	// Flavor gating: every field in this accordion is gateway-only — upstream
+	// loxilb silently drops them all, so the whole group disappears there
+	// (hiding it also removes the endpoint P/D fields it transitively gates).
+	const caps = useInstanceCapabilities();
+	const hasAiFields = caps.hasField('LoadbalanceEntry.serviceArguments', 'model_name');
+
 	const kv_hash_algo_list: IEnumItem[] = kv_hash_algos;
 	const isL7 = value?.mode === 4;
 	const disabled = !isL7;
@@ -28,6 +35,8 @@ export default function AIGatewaySettingsForm(props: {value: IServiceArguments; 
 		},
 		[onChange],
 	);
+
+	if (!hasAiFields) return null;
 
 	return (
 		<AccordionBox

@@ -11,6 +11,7 @@ import WysiwygIcon from '@mui/icons-material/Wysiwyg';
 import SecurityIcon from '@mui/icons-material/Security';
 import {SvgIconTypeMap} from '@mui/material';
 import {OverridableComponent} from '@mui/material/OverridableComponent';
+import type {InstanceFeature, InstanceFlavor} from 'api/capabilities';
 
 //---------------------------------------------------------
 // Menu Structure
@@ -23,6 +24,13 @@ export interface IMenuItem {
 	// RBAC: when set, the item is shown only to these roles
 	// ('admin' | 'operator' | 'viewer'); unset = visible to every role.
 	roles?: readonly string[];
+	// Flavor gating: shown only when the current instance has the feature
+	// family (answered from the generated capability map — upstream loxilb
+	// lacks these API families entirely). Unset = every flavor.
+	requiresFeature?: InstanceFeature;
+	// Direct flavor gate for pages whose endpoints are undeclared in the
+	// backend specs and therefore invisible to the capability map (Snapshots).
+	requiresFlavor?: InstanceFlavor;
 }
 
 export const MENU_LIST: IMenuItem[] = [
@@ -58,6 +66,7 @@ export const MENU_LIST: IMenuItem[] = [
 			{
 				name: 'SNI Certificates',
 				path: 'sni-certs',
+				requiresFeature: 'sniCerts',
 			},
 		],
 	},
@@ -65,6 +74,7 @@ export const MENU_LIST: IMenuItem[] = [
 		name: 'AI Gateway',
 		icon: SmartToyIcon,
 		path: 'ai',
+		requiresFeature: 'ai',
 		items: [
 			{
 				name: 'API Keys',
@@ -83,6 +93,7 @@ export const MENU_LIST: IMenuItem[] = [
 		name: 'IPsec VPN',
 		icon: VpnLockIcon,
 		path: 'ipsec',
+		requiresFeature: 'ipsec',
 		items: [
 			{
 				name: 'Tunnels',
@@ -102,10 +113,12 @@ export const MENU_LIST: IMenuItem[] = [
 			{
 				name: 'IP Filter(XDP)',
 				path: 'ipfilter',
+				requiresFeature: 'ipfilter',
 			},
 			{
 				name: 'Security Rate Limiting(XDP)',
 				path: 'securityrate',
+				requiresFeature: 'securityrate',
 			},
 		],
 	},
@@ -135,8 +148,11 @@ export const MENU_LIST: IMenuItem[] = [
 				path: 'ip',
 			},
 			{
+				// /config/ipv6address is gateway-only — upstream loxilb has no
+				// IPv6 address API family at all.
 				name: 'IPv6 Address',
 				path: 'ip6',
+				requiresFeature: 'ipv6',
 			},
 			{
 				name: 'IP Neighbor(ARP/NDP)',
@@ -209,8 +225,11 @@ export const MENU_LIST: IMenuItem[] = [
 		path: 'maintenance',
 		items: [
 			{
+				// OAM snapshot flow needs the gateway's persist/restore side;
+				// undeclared in the specs, so gated on flavor directly.
 				name: 'Snapshots',
 				path: 'snapshots',
+				requiresFlavor: 'inference-gateway',
 			},
 		],
 	},
