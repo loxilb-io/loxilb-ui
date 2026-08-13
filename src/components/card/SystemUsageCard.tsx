@@ -10,6 +10,7 @@ import {t} from 'i18next';
 import {useMemo} from 'react';
 import {IInstance} from 'types/oam';
 import {IPieChartData} from 'types/global';
+import {derive_cpu_usage, derive_disk_usage, derive_memory_usage, IDerivedUsage} from 'utils/systemUsage';
 import CardBase from './CardBase';
 
 //---------------------------------------------------------
@@ -21,9 +22,11 @@ export default function SystemUsageCard(props: {instance: IInstance | null}) {
 	// Get live metrics with polling (same as ConnectionFlowCard)
 	const {metrics: liveMetrics, isLoading} = useLiveMetrics(instance, {keyPrefix: 'system-usage-realtime', refetchInterval: 10000});
 
+	// Get system info separately using useStatus hook
+	const {processAttr, systemInfo, filesystemAttr} = useStatus(instance);
+
 	// Helper function to convert single percentage to pie chart data.
-	// Returns null — not a zeroed pie — when the backend does not report the
-	// metric at all. Upstream loxilb exports no system utilization series, and
+	// Returns null — not a zeroed pie — when nothing reports the figure at all.
 	// `usage || 0` used to turn that absence into a confident "0% used / 100%
 	// available" pie: a claim about the system we have no evidence for.
 	const createUsagePieData = (usage: number | undefined, label: string): IPieChartData[] | null => {
@@ -46,29 +49,48 @@ export default function SystemUsageCard(props: {instance: IInstance | null}) {
 		].filter(item => item.value > 0);
 	};
 
-	// Convert system metrics to pie chart data
-	const chartData = useMemo(() => {
-		if (!liveMetrics?.critical) {
-			return {
-				cpu_usage: null,
-				mem_usage: null,
-				disk_usage: null
-			};
-		}
+	// Two possible sources per figure, in preference order:
+	//   1. the `loxilb_system_*_utilization_percent` Prometheus gauge, which
+	//      measures the whole system directly — but which upstream loxilb does
+	//      not publish at all;
+	//   2. the /status/* endpoints (top, df) that both backends serve and this
+	//      card already fetches for the System Information block.
+	// Falling back to (2) is what puts real numbers on a loxilb dashboard. The
+	// pie is captioned with whichever source produced it, because a `top`-derived
+	// figure is a sum over the processes that got listed, not a system-wide
+	// measurement — see utils/systemUsage.ts.
+	const usage = useMemo(() => {
+		const fromMetric = (value: number | undefined): IDerivedUsage | undefined =>
+			value === undefined || !Number.isFinite(value) ? undefined : {percent: value, source: 'metrics'};
 
+		const metrics = liveMetrics?.critical;
 		return {
-			cpu_usage: createUsagePieData(liveMetrics.critical.loxilb_system_cpu_utilization_percent, 'CPU'),
-			mem_usage: createUsagePieData(liveMetrics.critical.loxilb_system_memory_utilization_percent, 'Memory'),
-			disk_usage: createUsagePieData(liveMetrics.critical.loxilb_system_disk_utilization_percent, 'Disk')
+			cpu: fromMetric(metrics?.loxilb_system_cpu_utilization_percent) ?? derive_cpu_usage(processAttr),
+			memory: fromMetric(metrics?.loxilb_system_memory_utilization_percent) ?? derive_memory_usage(processAttr),
+			disk: fromMetric(metrics?.loxilb_system_disk_utilization_percent) ?? derive_disk_usage(filesystemAttr),
 		};
-	}, [liveMetrics]);
+	}, [liveMetrics, processAttr, filesystemAttr]);
 
-	const {cpu_usage, mem_usage, disk_usage} = chartData;
+	// A pie when something reports the figure, an explicit "not reported"
+	// placeholder when nothing does. Same footprint either way so the card
+	// layout doesn't shift.
+	const renderUsage = (title: string, derived: IDerivedUsage | undefined) => {
+		const data = createUsagePieData(derived?.percent, title);
 
-	// A pie when the metric is reported, an explicit "not reported" placeholder
-	// when it isn't. Same footprint either way so the card layout doesn't shift.
-	const renderUsage = (title: string, data: IPieChartData[] | null) => {
-		if (data) return <PieChartWithTitle title={title} data={data} />;
+		if (data) {
+			return (
+				<Box flexGrow={1} display="flex" flexDirection="column" alignItems="center">
+					<PieChartWithTitle title={title} data={data} />
+					{derived && derived.source !== 'metrics' && (
+						<Typography variant="caption" color="text.secondary" textAlign="center">
+							{derived.source === 'df'
+								? t('From df ({{mount}})', {mount: derived.detail ?? '/'})
+								: t('From top ({{processes}} processes)', {processes: derived.detail ?? '0'})}
+						</Typography>
+					)}
+				</Box>
+			);
+		}
 
 		return (
 			<Box flexGrow={1} gap={2} display="flex" flexDirection="column" alignItems="center">
@@ -86,9 +108,6 @@ export default function SystemUsageCard(props: {instance: IInstance | null}) {
 			</Box>
 		);
 	};
-
-	// Get system info separately using useStatus hook
-	const {processAttr, systemInfo, filesystemAttr} = useStatus(instance);
 
 	// Loading state
 	if (isLoading) {
@@ -119,9 +138,9 @@ export default function SystemUsageCard(props: {instance: IInstance | null}) {
 		<CardBase title={t('System Usage')}>
 			<Stack height="100%" justifyContent="space-between">
 				<Box display="flex" marginTop="20px">
-					{renderUsage(t('CPU Usage'), cpu_usage)}
-					{renderUsage(t('Memory Usage'), mem_usage)}
-					{renderUsage(t('Disk Usage'), disk_usage)}
+					{renderUsage(t('CPU Usage'), usage.cpu)}
+					{renderUsage(t('Memory Usage'), usage.memory)}
+					{renderUsage(t('Disk Usage'), usage.disk)}
 				</Box>
 
 				<Stack justifyContent="space-between" gap="40px">

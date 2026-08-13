@@ -333,6 +333,8 @@
 	"Errors (eps)": "エラー (eps)",
 	"Flows (fps)": "フロー (fps)",
 	"Not reported by this instance": "このインスタンスでは提供されません",
+	"From df ({{mount}})": "df より ({{mount}})",
+	"From top ({{processes}} processes)": "top より (プロセス {{processes}}件)",
 	"Page not found": "ページが見つかりません",
 	"Password": "パスワード",
 	"Peer IPs": "ピアIP一覧",

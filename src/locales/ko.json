@@ -332,6 +332,8 @@
 	"Errors (eps)": "오류 (eps)",
 	"Flows (fps)": "플로우 (fps)",
 	"Not reported by this instance": "이 인스턴스에서 제공하지 않음",
+	"From df ({{mount}})": "df 기준 ({{mount}})",
+	"From top ({{processes}} processes)": "top 기준 (프로세스 {{processes}}개)",
 	"Page not found": "페이지를 찾을 수 없음",
 	"Password": "비밀번호",
 	"Peer IPs": "피어 IP들",

@@ -333,6 +333,8 @@
 	"Errors (eps)": "Errors (eps)",
 	"Flows (fps)": "Flows (fps)",
 	"Not reported by this instance": "Not reported by this instance",
+	"From df ({{mount}})": "From df ({{mount}})",
+	"From top ({{processes}} processes)": "From top ({{processes}} processes)",
 	"Page not found": "Page not found",
 	"Password": "Password",
 	"Peer IPs": "Peer IPs",
