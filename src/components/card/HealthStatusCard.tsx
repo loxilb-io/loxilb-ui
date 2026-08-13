@@ -2,12 +2,10 @@
 // Health Status Card for Endpoint Monitoring
 //---------------------------------------------------------
 import {Box, Typography, LinearProgress, Chip} from '@mui/material';
-import {useQuery} from '@tanstack/react-query';
-import {query_get_live_metrics} from 'connector/instance/metrics';
+import {useLiveMetrics} from 'hooks/query/metricsHook';
 import {t} from 'i18next';
 import {useMemo} from 'react';
 import {IInstance} from 'types/oam';
-import {ITypedLiveMetricsResponse} from 'types/metrics';
 import CardBase from './CardBase';
 
 //---------------------------------------------------------
@@ -25,18 +23,7 @@ export default function HealthStatusCard(props: HealthStatusCardProps) {
 	const {title, instance} = props;
 
 	// Get live metrics with polling
-	const {data: rawLiveMetrics, isLoading} = useQuery({
-		queryKey: ['health-status-realtime', instance?.id],
-		queryFn: async () => {
-			if (!instance) throw new Error('Instance is not defined');
-			return await query_get_live_metrics(instance, 2);
-		},
-		enabled: !!instance,
-		refetchInterval: 10000, // 10-second polling
-		refetchIntervalInBackground: false,
-		staleTime: 5000,
-	});
-	const liveMetrics = rawLiveMetrics as ITypedLiveMetricsResponse | undefined;
+	const {metrics: liveMetrics, isLoading} = useLiveMetrics(instance, {keyPrefix: 'health-status-realtime', refetchInterval: 10000});
 
 	// Calculate health metrics
 	const healthData = useMemo(() => {

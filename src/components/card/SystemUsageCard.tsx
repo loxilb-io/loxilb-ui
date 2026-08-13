@@ -4,13 +4,11 @@
 import {Box, Stack, Typography} from '@mui/material';
 import PieChartWithTitle from 'components/element/PieChartWithTitle';
 import HorizontalStack from 'components/layout/HorizontalStack';
-import {useQuery} from '@tanstack/react-query';
-import {query_get_live_metrics} from 'connector/instance/metrics';
+import {useLiveMetrics} from 'hooks/query/metricsHook';
 import {useStatus} from 'hooks/query/statusHook';
 import {t} from 'i18next';
 import {useMemo} from 'react';
 import {IInstance} from 'types/oam';
-import {ITypedLiveMetricsResponse} from 'types/metrics';
 import {IPieChartData} from 'types/global';
 import CardBase from './CardBase';
 
@@ -21,24 +19,19 @@ export default function SystemUsageCard(props: {instance: IInstance | null}) {
 	const {instance} = props;
 
 	// Get live metrics with polling (same as ConnectionFlowCard)
-	const {data: rawLiveMetrics, isLoading} = useQuery({
-		queryKey: ['system-usage-realtime', instance?.id],
-		queryFn: async () => {
-			if (!instance) throw new Error('Instance is not defined');
-			return await query_get_live_metrics(instance, 2);
-		},
-		enabled: !!instance,
-		refetchInterval: 10000, // 10-second polling
-		refetchIntervalInBackground: false,
-		staleTime: 5000,
-	});
-	const liveMetrics = rawLiveMetrics as ITypedLiveMetricsResponse | undefined;
+	const {metrics: liveMetrics, isLoading} = useLiveMetrics(instance, {keyPrefix: 'system-usage-realtime', refetchInterval: 10000});
 
-	// Helper function to convert single percentage to pie chart data
-	const createUsagePieData = (usage: number | undefined, label: string): IPieChartData[] => {
-		const usedValue = Math.min(Math.max(usage || 0, 0), 100);
+	// Helper function to convert single percentage to pie chart data.
+	// Returns null — not a zeroed pie — when the backend does not report the
+	// metric at all. Upstream loxilb exports no system utilization series, and
+	// `usage || 0` used to turn that absence into a confident "0% used / 100%
+	// available" pie: a claim about the system we have no evidence for.
+	const createUsagePieData = (usage: number | undefined, label: string): IPieChartData[] | null => {
+		if (usage === undefined || !Number.isFinite(usage)) return null;
+
+		const usedValue = Math.min(Math.max(usage, 0), 100);
 		const availableValue = 100 - usedValue;
-		
+
 		return [
 			{
 				id: `${label.toLowerCase()}-used`,
@@ -46,7 +39,7 @@ export default function SystemUsageCard(props: {instance: IInstance | null}) {
 				label: t('Used')
 			},
 			{
-				id: `${label.toLowerCase()}-available`, 
+				id: `${label.toLowerCase()}-available`,
 				value: availableValue,
 				label: t('Available')
 			}
@@ -57,9 +50,9 @@ export default function SystemUsageCard(props: {instance: IInstance | null}) {
 	const chartData = useMemo(() => {
 		if (!liveMetrics?.critical) {
 			return {
-				cpu_usage: [],
-				mem_usage: [],
-				disk_usage: []
+				cpu_usage: null,
+				mem_usage: null,
+				disk_usage: null
 			};
 		}
 
@@ -71,6 +64,28 @@ export default function SystemUsageCard(props: {instance: IInstance | null}) {
 	}, [liveMetrics]);
 
 	const {cpu_usage, mem_usage, disk_usage} = chartData;
+
+	// A pie when the metric is reported, an explicit "not reported" placeholder
+	// when it isn't. Same footprint either way so the card layout doesn't shift.
+	const renderUsage = (title: string, data: IPieChartData[] | null) => {
+		if (data) return <PieChartWithTitle title={title} data={data} />;
+
+		return (
+			<Box flexGrow={1} gap={2} display="flex" flexDirection="column" alignItems="center">
+				<Typography variant="subtitle2" color="text.secondary">
+					{title}
+				</Typography>
+				<Box width={230} height={200} display="flex" flexDirection="column" alignItems="center" justifyContent="center" gap={1}>
+					<Typography variant="h6" color="text.disabled">
+						{t('N/A')}
+					</Typography>
+					<Typography variant="caption" color="text.secondary" textAlign="center">
+						{t('Not reported by this instance')}
+					</Typography>
+				</Box>
+			</Box>
+		);
+	};
 
 	// Get system info separately using useStatus hook
 	const {processAttr, systemInfo, filesystemAttr} = useStatus(instance);
@@ -104,9 +119,9 @@ export default function SystemUsageCard(props: {instance: IInstance | null}) {
 		<CardBase title={t('System Usage')}>
 			<Stack height="100%" justifyContent="space-between">
 				<Box display="flex" marginTop="20px">
-					<PieChartWithTitle title={t('CPU Usage')} data={cpu_usage} />
-					<PieChartWithTitle title={t('Memory Usage')} data={mem_usage} />
-					<PieChartWithTitle title={t('Disk Usage')} data={disk_usage} />
+					{renderUsage(t('CPU Usage'), cpu_usage)}
+					{renderUsage(t('Memory Usage'), mem_usage)}
+					{renderUsage(t('Disk Usage'), disk_usage)}
 				</Box>
 
 				<Stack justifyContent="space-between" gap="40px">

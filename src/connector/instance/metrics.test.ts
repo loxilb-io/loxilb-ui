@@ -45,44 +45,110 @@ describe('parse_prometheus_text', () => {
 	});
 });
 
-// The gateway renamed its whole Prometheus surface to the `loxilb_` namespace
-// ahead of public release. normalize_metric_names lets the dashboard cards read
-// the canonical new names against both a pre-rename gateway (legacy names, e.g.
-// the current testbed) and a post-rename one.
+// The Prometheus surface is not covered by the swagger spec, so neither the
+// generated capability map nor the subset contract test can police it. These
+// fixtures are the only guard: each is the real name set scraped from that
+// backend, so a future rename on either side fails here instead of silently
+// blanking a dashboard card.
 describe('normalize_metric_names', () => {
-	it('back-fills canonical loxilb_ names from legacy names (pre-rename gateway)', () => {
-		const legacy = {
-			lb_rule_count: 4,
-			active_conntrack_count: 12,
-			healthy_endpoints_count: 3,
-			system_cpu_utilization: 55,
-			processed_bytes_total: 1000,
-			total_errors: 2,
-		};
-		const out = normalize_metric_names(legacy);
-		expect(out.loxilb_lb_rules).toBe(4);
-		expect(out.loxilb_active_conntrack_entries).toBe(12);
-		expect(out.loxilb_healthy_endpoints).toBe(3);
-		expect(out.loxilb_system_cpu_utilization_percent).toBe(55);
-		expect(out.loxilb_processed_bytes_total).toBe(1000);
-		expect(out.loxilb_errors_total).toBe(2);
+	// ---- loxilb-inference-gateway ----
+	describe('inference-gateway flavor', () => {
+		it('back-fills canonical loxilb_ names from legacy names (pre-rename gateway)', () => {
+			const legacy = {
+				lb_rule_count: 4,
+				active_conntrack_count: 12,
+				healthy_endpoints_count: 3,
+				system_cpu_utilization: 55,
+				processed_bytes_total: 1000,
+				total_errors: 2,
+			};
+			const out = normalize_metric_names(legacy, 'inference-gateway');
+			expect(out.loxilb_lb_rules).toBe(4);
+			expect(out.loxilb_active_conntrack_entries).toBe(12);
+			expect(out.loxilb_healthy_endpoints).toBe(3);
+			expect(out.loxilb_system_cpu_utilization_percent).toBe(55);
+			expect(out.loxilb_processed_bytes_total).toBe(1000);
+			expect(out.loxilb_errors_total).toBe(2);
+		});
+
+		it('prefers the canonical name when both are present and never overwrites it', () => {
+			const mixed = {loxilb_lb_rules: 9, lb_rule_count: 4};
+			expect(normalize_metric_names(mixed, 'inference-gateway').loxilb_lb_rules).toBe(9);
+		});
+
+		it('leaves canonical-only input (post-rename gateway) untouched', () => {
+			const modern = {loxilb_active_conntrack_entries: 7, loxilb_conntrack_max_entries: 524288};
+			const out = normalize_metric_names(modern, 'inference-gateway');
+			expect(out.loxilb_active_conntrack_entries).toBe(7);
+			expect(out.loxilb_conntrack_max_entries).toBe(524288);
+			// No legacy source → no phantom zero for a metric that simply isn't present.
+			expect(out.loxilb_new_flows).toBeUndefined();
+		});
+
+		it('does not fabricate a value when neither name is present', () => {
+			expect(normalize_metric_names({}, 'inference-gateway').loxilb_lb_rules).toBeUndefined();
+		});
 	});
 
-	it('prefers the canonical name when both are present and never overwrites it', () => {
-		const mixed = {loxilb_lb_rules: 9, lb_rule_count: 4};
-		expect(normalize_metric_names(mixed).loxilb_lb_rules).toBe(9);
+	// ---- upstream loxilb ----
+	// Names below are the live v0.9.8-dev scrape: endpoint health is counted per
+	// host, the cumulative counters carry no `_total`, and no system utilization
+	// series exists at all.
+	const LOXILB_SCRAPE = {
+		active_conntrack_count: 92,
+		active_flow_count_tcp: 92,
+		new_flow_count: 36,
+		lb_rule_count: 4,
+		healthy_host_count: 3,
+		unhealthy_host_count: 0,
+		processed_bytes: 2_604_644,
+		processed_packets: 43_412,
+		total_errors: 0,
+		total_requests: 86_690,
+	};
+
+	describe('loxilb flavor', () => {
+		it('reads upstream host-count endpoint health', () => {
+			const out = normalize_metric_names({...LOXILB_SCRAPE}, 'loxilb');
+			expect(out.loxilb_healthy_endpoints).toBe(3);
+			expect(out.loxilb_unhealthy_endpoints).toBe(0);
+		});
+
+		it('reads the suffix-less cumulative counters that drive the rate cards', () => {
+			const out = normalize_metric_names({...LOXILB_SCRAPE}, 'loxilb');
+			expect(out.loxilb_processed_bytes_total).toBe(2_604_644);
+			expect(out.loxilb_processed_packets_total).toBe(43_412);
+			expect(out.loxilb_errors_total).toBe(0);
+		});
+
+		it('reads the conntrack/flow/lb names it shares with the pre-rename gateway', () => {
+			const out = normalize_metric_names({...LOXILB_SCRAPE}, 'loxilb');
+			expect(out.loxilb_active_conntrack_entries).toBe(92);
+			expect(out.loxilb_active_flow_count_tcp).toBe(92);
+			expect(out.loxilb_new_flows).toBe(36);
+			expect(out.loxilb_lb_rules).toBe(4);
+		});
+
+		it('leaves system utilization absent rather than zero (upstream exports none)', () => {
+			const out = normalize_metric_names({...LOXILB_SCRAPE}, 'loxilb');
+			// Absence is what makes SystemUsageCard render N/A instead of "0% used".
+			expect(out.loxilb_system_cpu_utilization_percent).toBeUndefined();
+			expect(out.loxilb_system_memory_utilization_percent).toBeUndefined();
+			expect(out.loxilb_system_disk_utilization_percent).toBeUndefined();
+			expect(out.loxilb_conntrack_max_entries).toBeUndefined();
+		});
 	});
 
-	it('leaves canonical-only input (post-rename gateway) untouched', () => {
-		const modern = {loxilb_active_conntrack_entries: 7, loxilb_conntrack_max_entries: 524288};
-		const out = normalize_metric_names(modern);
-		expect(out.loxilb_active_conntrack_entries).toBe(7);
-		expect(out.loxilb_conntrack_max_entries).toBe(524288);
-		// No legacy source → no phantom zero for a metric that simply isn't present.
-		expect(out.loxilb_new_flows).toBeUndefined();
-	});
+	// ---- the point of keeping the tables separate ----
+	it('does not read loxilb names under the gateway table, or vice versa', () => {
+		const asGateway = normalize_metric_names({...LOXILB_SCRAPE}, 'inference-gateway');
+		expect(asGateway.loxilb_healthy_endpoints).toBeUndefined();
+		expect(asGateway.loxilb_processed_bytes_total).toBeUndefined();
 
-	it('does not fabricate a value when neither name is present', () => {
-		expect(normalize_metric_names({}).loxilb_lb_rules).toBeUndefined();
+		const gatewayScrape = {healthy_endpoints_count: 5, processed_bytes_total: 77, system_cpu_utilization: 12};
+		const asLoxilb = normalize_metric_names({...gatewayScrape}, 'loxilb');
+		expect(asLoxilb.loxilb_healthy_endpoints).toBeUndefined();
+		expect(asLoxilb.loxilb_processed_bytes_total).toBeUndefined();
+		expect(asLoxilb.loxilb_system_cpu_utilization_percent).toBeUndefined();
 	});
 });

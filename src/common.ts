@@ -299,14 +299,18 @@ function get_speed_rate_str(value: number): string {
 	else return `${value.toFixed(0)} bps`;
 }
 
-function get_packet_rate_str(value: number): string {
-	if (value >= 1000000) return `${(value / 1000000).toFixed(2)} Mpps`;
-	else if (value >= 1000) return `${(value / 1000).toFixed(2)} Kpps`;
-	else return `${value.toFixed(0)} pps`;
+// Decimal-scaled count rate, carrying whatever per-second unit it was given
+// (pps / eps / fps). Bit rates keep their own helper above.
+function get_count_rate_str(value: number, unit: string): string {
+	if (value >= 1000000) return `${(value / 1000000).toFixed(2)} M${unit}`;
+	else if (value >= 1000) return `${(value / 1000).toFixed(2)} K${unit}`;
+	else return `${value.toFixed(0)} ${unit}`;
 }
 
 export function formatRate(rate: number, unit: 'bps' | 'pps' | 'eps' | 'fps'): string {
-	return unit === 'bps' ? get_speed_rate_str(rate) : get_packet_rate_str(rate);
+	// Previously everything that wasn't bps was formatted as packets, so the
+	// error-rate card reported errors in "pps".
+	return unit === 'bps' ? get_speed_rate_str(rate) : get_count_rate_str(rate, unit);
 }
 
 export function formatRateForAxis(value: number, unit: 'bps' | 'pps' | 'eps' | 'fps'): string {

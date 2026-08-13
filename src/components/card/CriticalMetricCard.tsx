@@ -2,8 +2,7 @@
 // Critical Metric Card with Real-time Updates
 //---------------------------------------------------------
 import {Box, Typography, Chip, Skeleton} from '@mui/material';
-import {useQuery} from '@tanstack/react-query';
-import {query_get_live_metrics} from 'connector/instance/metrics';
+import {useLiveMetrics} from 'hooks/query/metricsHook';
 import {t} from 'i18next';
 import {useEffect, useMemo, useState} from 'react';
 import {IInstance} from 'types/oam';
@@ -43,19 +42,12 @@ export default function CriticalMetricCard(props: CriticalMetricCardProps) {
 	} = props;
 
 	// Get live metrics with polling
-	const {data: rawLiveMetrics} = useQuery({
-		queryKey: ['critical-metrics-realtime', instance?.id, metricField],
-		queryFn: async () => {
-			if (!instance) throw new Error('Instance is not defined');
-			return await query_get_live_metrics(instance, 2);
-		},
-		enabled: !!instance,
-		refetchInterval: 10000, // 10-second polling
-		refetchIntervalInBackground: false,
-		staleTime: 5000,
+	const {metrics: liveMetrics} = useLiveMetrics(instance, {
+		keyPrefix: 'critical-metrics-realtime',
+		refetchInterval: 10000,
+		extraKey: metricField as string,
 	});
-	const liveMetrics = rawLiveMetrics as ITypedLiveMetricsResponse | undefined;
-	
+
 	// State to accumulate time series data
 	const [metricHistory, setMetricHistory] = useState<ITimeSeriesPoint<number>[]>([]);
 
