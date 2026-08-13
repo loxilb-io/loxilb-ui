@@ -9,6 +9,7 @@ import DropDownSelectBox from 'components/element/DropDownSelectBox';
 import SimpleButton from 'components/element/SimpleButton';
 import HorizontalStack from 'components/layout/HorizontalStack';
 import ep_roles from 'assets/json/ep_roles.json';
+import {useInstanceCapabilities} from 'hooks/query/flavorHook';
 import {t} from 'i18next';
 import {useCallback, useState, useEffect} from 'react';
 import {IEnumItem} from 'types/global';
@@ -81,6 +82,21 @@ export default function EndpointListForm(props: {
 	const isProbeTimeoutRetriesEnabled: boolean = serviceArguments?.probetype !== '' && serviceArguments?.probetype !== 'ping';
 	const isProbeReqRespEnabled = () => ['udp', 'http', 'https'].includes(serviceArguments?.probetype || '');
 
+	// Flavor gating, hardcoded on purpose: upstream loxilb's LB-level probe
+	// accepts only connect probes — rules.go rejects http/https with
+	// "malformed-service-ptype" — while its swagger over-declares them, so
+	// neither the capability map nor /meta can derive this. (Endpoint-object
+	// probes DO support http/https upstream; this gate is LB-form only.)
+	const caps = useInstanceCapabilities();
+	const probe_type_list: IEnumItem[] = [
+		{id: 1, name: 'None', send_value: ''},
+		{id: 2, name: 'PING', send_value: 'ping'},
+		{id: 3, name: 'TCP', send_value: 'tcp'},
+		{id: 4, name: 'UDP', send_value: 'udp'},
+		{id: 5, name: 'HTTP', send_value: 'http'},
+		{id: 6, name: 'HTTPS', send_value: 'https'},
+	].filter(item => caps.flavor !== 'loxilb' || !['http', 'https'].includes(String(item.send_value)));
+
 	const ep_role_list: IEnumItem[] = ep_roles;
 
 	return (
@@ -90,18 +106,11 @@ export default function EndpointListForm(props: {
 				{serviceArguments && onServiceArgumentsChange && (
 					<Stack spacing={2}>
 						<HorizontalStack>
-							<DropDownSelectBox 
-								label={t('Probe Type')} 
-								value={serviceArguments.probetype} 
-								onChange={handleServiceArgChange('probetype')} 
-								item_list={[
-									{id: 1, name: 'None', send_value: ''},
-									{id: 2, name: 'PING', send_value: 'ping'},
-									{id: 3, name: 'TCP', send_value: 'tcp'},
-									{id: 4, name: 'UDP', send_value: 'udp'},
-									{id: 5, name: 'HTTP', send_value: 'http'},
-									{id: 6, name: 'HTTPS', send_value: 'https'}
-								]}
+							<DropDownSelectBox
+								label={t('Probe Type')}
+								value={serviceArguments.probetype}
+								onChange={handleServiceArgChange('probetype')}
+								item_list={probe_type_list}
 							/>
 							<ParamBox
 								label={t('Probe Port')}

@@ -2,7 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {useQuery} from '@tanstack/react-query';
-import {allowedEnumValues, detectFlavor, hasFeature, hasField, InstanceFeature, InstanceFlavor} from 'api/capabilities';
+import {allowedEnumValues, detectFlavor, hasFeature, hasField, hasMethod, InstanceFeature, InstanceFlavor} from 'api/capabilities';
 import {query_get_version} from 'connector/instance/status';
 import {useMemo} from 'react';
 import {IInstance} from 'types/oam';
@@ -38,6 +38,7 @@ export interface IInstanceCapabilities {
 	resolved: boolean;
 	hasFeature: (feature: InstanceFeature) => boolean;
 	hasField: (context: string, field: string) => boolean;
+	hasMethod: (method: string, pathTemplate: string) => boolean;
 	allowedEnum: <T extends string | number>(context: string, values: T[]) => T[];
 }
 
@@ -57,6 +58,7 @@ export function useInstanceCapabilities(): IInstanceCapabilities {
 			resolved,
 			hasFeature: (feature: InstanceFeature) => hasFeature(effective, feature),
 			hasField: (context: string, field: string) => hasField(effective, context, field),
+			hasMethod: (method: string, pathTemplate: string) => hasMethod(effective, method, pathTemplate),
 			allowedEnum: <T extends string | number>(context: string, values: T[]) => allowedEnumValues(effective, context, values),
 		};
 	}, [flavor, resolved]);

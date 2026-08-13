@@ -49,12 +49,23 @@ const FEATURE_PATHS: Record<string, string[]> = {
 export type InstanceFeature = keyof typeof FEATURE_PATHS;
 
 const gatewayOnlyPaths: string[] = capabilityMap.gatewayOnlyPaths;
+const gatewayOnlyMethods: Record<string, string[]> = capabilityMap.gatewayOnlyMethods;
 const gatewayOnlyFields: Record<string, string[]> = capabilityMap.gatewayOnlyFields;
 const gatewayOnlyEnumValues: Record<string, (string | number)[]> = capabilityMap.gatewayOnlyEnumValues;
 
 export function hasFeature(flavor: InstanceFlavor, feature: InstanceFeature): boolean {
 	if (flavor === 'inference-gateway') return true;
 	return !FEATURE_PATHS[feature].some(prefix => gatewayOnlyPaths.some(p => p === prefix || p.startsWith(`${prefix}/`)));
+}
+
+// Whether a method exists on a shared path for the flavor. `pathTemplate` is
+// the swagger path template as it appears in the capability map, e.g.
+// '/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}'
+// (whose GET/PATCH are gateway-only — loxilb answers 405, so callers fall
+// back, e.g. LB edit re-POSTs the full body as an upsert).
+export function hasMethod(flavor: InstanceFlavor, method: string, pathTemplate: string): boolean {
+	if (flavor === 'inference-gateway') return true;
+	return !(gatewayOnlyMethods[pathTemplate] ?? []).includes(method.toLowerCase());
 }
 
 // Whether a write field exists on the flavor. `context` is the dotted schema
