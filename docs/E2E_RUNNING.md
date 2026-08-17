@@ -107,29 +107,43 @@ npm run e2e:cicd                 # all tests/cicd/** groups, in order
 npx playwright test e2e/tests/cicd/ai-gateway    # one cicd group
 ```
 
-### Backend flavors: gateway vs plain loxilb
+### Two backends, two suites
 
-The suite runs against **two backend flavors**. Spec titles carry tags:
-`@gw` marks gateway-only specs (the API family does not exist on upstream
-loxilb), `@loxilb` marks the flavor-gating assertions in
-`tests/flavor/loxilb-gating.spec.ts` that only make sense against plain
-loxilb. `playwright.config.ts` inverts the selection with `E2E_FLAVOR`:
+This UI manages **two products**, and each has its own spec tree and its own
+command:
 
 ```bash
-# Default (gateway): runs everything except @loxilb.
-npm run e2e
-
-# loxilb leg: skips @gw, runs the flavor-gating specs. ALWAYS pin the
-# instance name when the OAM registers more than one backend — a flavor
-# run landing on the wrong flavor mutates the wrong instance.
-E2E_FLAVOR=loxilb E2E_INSTANCE_NAME=<oam-registration-name> npm run e2e
+npm run e2e        # loxilb-inference-gateway — project 'gw',  e2e/tests/**
+npm run e2e-oss    # plain upstream loxilb    — project 'oss', e2e/oss/tests/**
 ```
 
-`E2E_INSTANCE_NAME` pins `activeInstance()` to a named OAM registration
-(default: first `is_active`). Registering a plain loxilb next to the gateway
-on the same OAM is the intended topology — the CI matrix (§3a) runs one leg
-per flavor with `E2E_INSTANCE_GATEWAY` / `E2E_INSTANCE_LOXILB` repository
-variables.
+They are separate suites rather than one tagged run because the backends
+diverge behaviourally on the shared `/netlox/v1` base — upstream has no LB
+`PATCH`, refuses a duplicate `POST` with 409, accepts connect probes only,
+carries narrower `sel`/`security` enums, and serves no `/logs` cursor. The
+full table, and what the two trees share (helpers, fixtures, login, and the
+OAM-side specs, which are never duplicated), is in
+[`e2e/oss/README.md`](../e2e/oss/README.md).
+
+Registering a plain loxilb next to the gateway on the same OAM is the
+intended topology. Name each registration so the suites can find them:
+
+```dotenv
+E2E_INSTANCE_GATEWAY=<oam registration name of the gateway>
+E2E_INSTANCE_LOXILB=<oam registration name of the plain loxilb>
+```
+
+`E2E_INSTANCE_NAME` still overrides both for a one-off run; with neither set,
+"first active instance" wins (fine on a single-flavor OAM). The oss suite
+also **fails fast** if the instance it resolves turns out to be a gateway, so
+a mis-set variable can never mutate the wrong box.
+
+The oss tree's headline spec is `contract-guard.spec.ts`: it watches every
+request the browser sends and fails on anything upstream loxilb's swagger
+does not declare, with the generated capability map
+(`src/api/gen/loxilb-capability-map.json`) as the oracle. That is what
+catches the dangerous class — gateway-only body fields, which upstream
+accepts with 200 and silently drops.
 
 ## 3a. Nightly / on-demand CI run
 
