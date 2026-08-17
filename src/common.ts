@@ -398,6 +398,30 @@ function parse_log_line(line: string): ILog | null {
 		};
 	}
 
+	// Datapath format (loxilbdp*.log and its rotations): the timestamp comes
+	// FIRST and uses dashes, then the level, then a source location:
+	//   2026-08-17 11:43:12 INFO  sockproxy_http.c:8097: [EOF_READ] fd=2259 …
+	// Neither regex above can match this, so every line of the largest log on
+	// the box was dropped silently and the table rendered empty while the
+	// endpoint kept reporting has_more — an infinite "Load older lines" that
+	// could never produce a row. The location prefix is matched as its own
+	// optional group for the same reason the legacy branch does: a line without
+	// one must still parse rather than disappear.
+	const datapathRegex = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s+(ERR|ERROR|INFO|WARN|WARNING|DBG|DEBUG|CRITICAL|FATAL|TRACE)\s+(?:([^\s:]+:\d+):\s*)?(.+)$/;
+	const datapathMatch = line.match(datapathRegex);
+	if (datapathMatch) {
+		const [, timestamp, level, programLoc, message] = datapathMatch;
+		return {
+			id: 0,
+			created_at: timestamp,
+			timestamp,
+			level: normalizeLogLevel(level),
+			message: message.trim(),
+			programname: (programLoc ?? '').trim(),
+			host: '',
+		};
+	}
+
 	// If no pattern matches, return null
 	return null;
 }

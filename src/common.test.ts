@@ -19,6 +19,35 @@ describe('parse_log_lines', () => {
 		expect(logs[0].message).toContain('Reconnection failed');
 	});
 
+	// The datapath log puts the timestamp first and the level second, so neither
+	// of the level-first formats above matches it. Every line used to be dropped,
+	// which rendered the whole file — the largest on the box — as an empty table.
+	it('parses the datapath format (DATE TIME LEVEL file:line: message)', () => {
+		const logs = parse_log_lines([
+			'2026-08-17 11:43:12 INFO  sockproxy_http.c:8097: [EOF_READ] fd=2259 (odir=1): Connection closed by peer',
+			'2026-08-17 11:43:13 ERROR loxilb_dp.c:112: map update failed',
+			'2026-08-17 11:43:14 DEBUG llb_kern.c:9: flow hit',
+		]);
+		expect(logs).toHaveLength(3);
+		expect(logs[0]).toMatchObject({
+			timestamp: '2026-08-17 11:43:12',
+			level: 'INFO',
+			programname: 'sockproxy_http.c:8097',
+		});
+		expect(logs[0].message).toBe('[EOF_READ] fd=2259 (odir=1): Connection closed by peer');
+		expect(logs[1].level).toBe('ERROR');
+		expect(logs[2].level).toBe('DEBUG');
+	});
+
+	// A colon inside the message must not be mistaken for the source-location
+	// prefix, and a line without a location must still parse rather than vanish.
+	it('parses a datapath line with no file:line prefix', () => {
+		const logs = parse_log_lines(['2026-08-17 11:43:12 INFO starting up: phase 2']);
+		expect(logs).toHaveLength(1);
+		expect(logs[0].message).toBe('starting up: phase 2');
+		expect(logs[0].programname).toBe('');
+	});
+
 	it('drops lines that match no known format but keeps stable ids for the rest', () => {
 		const logs = parse_log_lines(['garbage line', 'INFO: 2025/08/17 09:00:00 ok']);
 		expect(logs).toHaveLength(1);
