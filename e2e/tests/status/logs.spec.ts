@@ -12,8 +12,8 @@
 //     deliberate: the endpoint pages by byte offset and `has_more` counts bytes
 //     rather than matches, so a server-side level filter would report counts
 //     for one page as if they were the whole file;
-//   - gzipped archives are listed but disabled — the endpoint serves them raw,
-//     so they would parse to nothing.
+//   - gzipped archives are selectable — the gateway inflates them before
+//     paging. They were disabled back when the endpoint served them raw.
 // D-archive is not implementable (the archive card has no delete affordance)
 // and is documented, not tested.
 //---------------------------------------------------------
@@ -180,7 +180,7 @@ test.describe('Logs page (read-only)', () => {
 		expect(requests.length, 'polling must stop once live tail is off').toBeLessThanOrEqual(settled + 1);
 	});
 
-	test('gzipped archives are listed but not selectable for viewing', async ({page}) => {
+	test('gzipped archives are selectable and page into the grid', async ({page}) => {
 		const {archives} = await gwJson<{archives: string[]}>('/log-archives');
 		const gz = archives.filter(a => a.endsWith('.gz'));
 		test.skip(gz.length === 0, 'no compressed archives on the testbed');
@@ -188,11 +188,18 @@ test.describe('Logs page (read-only)', () => {
 		await awaitFirstPage(page);
 		await page.getByRole('combobox', {name: 'Log file'}).click();
 
-		// The endpoint serves .gz raw, so those entries stay disabled rather than
-		// silently loading an empty table.
+		// The gateway inflates .gz before paging, so these entries load like any
+		// other file. They used to be disabled here because the endpoint served
+		// the compressed bytes raw and the table came back silently empty —
+		// selecting one and getting rows is the whole point of this test.
 		const gzOption = page.getByRole('option', {name: new RegExp(`^${gz[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)});
-		await expect(gzOption).toHaveAttribute('aria-disabled', 'true');
-		await expect(gzOption).toContainText('compressed, download to view');
+		await expect(gzOption).not.toHaveAttribute('aria-disabled', 'true');
+		await gzOption.click();
+
+		// Rows, not just an absence of errors: inflating correctly but failing to
+		// parse the inflated lines would also leave the grid empty.
+		await expect(page.locator('.MuiDataGrid-row').first()).toBeVisible({timeout: 20_000});
+		await expect(page.getByText(/^(CRITICAL|ERROR|WARNING|INFO|DEBUG) \d+$/).first()).toBeVisible();
 	});
 
 	test('archives are downloadable (endpoint returns a non-empty body)', async ({page}) => {
