@@ -51,20 +51,32 @@ export default function CriticalMetricCard(props: CriticalMetricCardProps) {
 	// State to accumulate time series data
 	const [metricHistory, setMetricHistory] = useState<ITimeSeriesPoint<number>[]>([]);
 
+	// Whether the last poll told us anything about THIS metric. Distinct from
+	// "no poll has landed yet", which is the skeleton case below.
+	const [polled, setPolled] = useState(false);
+	const reported = liveMetrics?.critical?.[metricField] !== undefined;
+
 	// Update metric history when new metrics arrive
 	useEffect(() => {
 		if (!liveMetrics?.critical) return;
-		
-		const currentValue = liveMetrics.critical[metricField] || 0;
+		setPolled(true);
+
+		// An absent metric contributes NO data point. Recording it as 0 would
+		// both state a number the instance never gave us and drag the trend line
+		// down to a floor that never happened — the graph is the more damaging
+		// half, because a fabricated 0 there looks exactly like a real outage.
+		const currentValue = liveMetrics.critical[metricField];
+		if (currentValue === undefined) return;
+
 		const timestamp = Date.now();
-		
+
 		setMetricHistory(prev => {
 			// Add new data point
 			const newHistory = [...prev, {
 				timestamp,
 				data: currentValue
 			}];
-			
+
 			// Keep only the last N points for performance
 			return newHistory.slice(-maxPoints);
 		});
@@ -72,7 +84,7 @@ export default function CriticalMetricCard(props: CriticalMetricCardProps) {
 
 	// Get current value and determine status
 	const currentValue = metricHistory[metricHistory.length - 1]?.data ?? 0;
-	
+
 	const status = useMemo(() => {
 		if (criticalThreshold !== undefined && currentValue >= criticalThreshold) {
 			return { level: 'critical', color: 'error', label: 'Critical' };
@@ -90,11 +102,29 @@ export default function CriticalMetricCard(props: CriticalMetricCardProps) {
 	}), [metricHistory, title]);
 
 	// First poll still in flight → skeleton, not a blank card.
-	if (metricHistory.length === 0) {
+	if (!polled && metricHistory.length === 0) {
 		return (
 			<CardBase title={title}>
 				<Skeleton variant="rounded" width="60%" height={48} sx={{mb: 1}} />
 				<Skeleton variant="rounded" width="100%" height={60} />
+			</CardBase>
+		);
+	}
+
+	// Polled, but this instance does not publish this metric (or collection is
+	// off). Say so — the old code left the skeleton up forever, which reads as
+	// "still loading" for something that is never going to arrive.
+	if (!reported) {
+		return (
+			<CardBase title={title}>
+				<Box display="flex" flexDirection="column" gap={0.5}>
+					<Typography variant="h4" fontWeight="bold" color="text.disabled">
+						{t('N/A')}
+					</Typography>
+					<Typography variant="caption" color="textSecondary">
+						{t('Not reported by this instance')}
+					</Typography>
+				</Box>
 			</CardBase>
 		);
 	}

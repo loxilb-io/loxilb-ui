@@ -333,6 +333,7 @@
 	"Errors (eps)": "エラー (eps)",
 	"Flows (fps)": "フロー (fps)",
 	"Not reported by this instance": "このインスタンスでは提供されません",
+	"Metrics collection is not enabled on this instance": "このインスタンスではメトリクス収集が有効になっていません",
 	"From df ({{mount}})": "df より ({{mount}})",
 	"From top ({{processes}} processes)": "top より (プロセス {{processes}}件)",
 	"Page not found": "ページが見つかりません",
