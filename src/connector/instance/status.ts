@@ -124,6 +124,7 @@ export async function query_get_inst_logs(instance: IInstance, options?: {
 	level?: string;
 	keyword?: string;
 	cursor?: string;
+	file?: string;
 	enableAutoRefresh?: boolean;
 }): Promise<{logs: ILog[], next_cursor?: string, has_more: boolean, count?: number}> {
 	// Build query parameters for single request
@@ -134,7 +135,10 @@ export async function query_get_inst_logs(instance: IInstance, options?: {
 	if (options?.level) params.append('level', mapLevelToApiCode(options.level));
 	if (options?.keyword) params.append('keyword', options.keyword);
 	if (options?.cursor) params.append('cursor', options.cursor);
-	
+	// Read a rotated file instead of the current one. The endpoint has always
+	// accepted this; the UI only ever offered archives as a download.
+	if (options?.file) params.append('file', options.file);
+
 	const queryString = params.toString();
 	const endpoint = `/logs${queryString ? `?${queryString}` : ''}`;
 	
