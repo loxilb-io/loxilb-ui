@@ -30,12 +30,13 @@ import {useEffect, useMemo, useState} from 'react';
 import {formatBytes} from 'common';
 import {IDataTableColumnDef} from 'types/global';
 import {ILog, ILogArchiveInfo} from 'types/log';
-import {TIME_RANGE_PRESETS, TimeRangePreset, sortLogsNewestFirst, toConsoleRow} from 'components/table/dashboard/logTableLogic';
-
-// Ordered worst-first so the eye lands on the levels that matter. Levels the
-// gateway emits but that are absent here still appear — see extraLevels below —
-// so a new severity can never become invisible.
-const LEVEL_ORDER = ['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'];
+import {
+	TIME_RANGE_PRESETS,
+	TimeRangePreset,
+	sortLogsNewestFirst,
+	toConsoleRow,
+	visibleLogLevels,
+} from 'components/table/dashboard/logTableLogic';
 
 const LEVEL_COLOR: Record<string, 'error' | 'warning' | 'info' | 'default'> = {
 	CRITICAL: 'error',
@@ -138,10 +139,10 @@ export default function LogConsole(props: LogConsoleProps) {
 
 	const rows = useMemo(() => sortLogsNewestFirst(logs).map(toConsoleRow), [logs]);
 
-	// Any level present in the data but missing from LEVEL_ORDER still gets a
-	// chip, so an unexpected severity is never silently hidden.
-	const extraLevels = Object.keys(levelCounts).filter(l => !LEVEL_ORDER.includes(l)).sort();
-	const levelsToShow = [...LEVEL_ORDER, ...extraLevels].filter(l => levelCounts[l]);
+	// countLogsByLevel keys on the upper-cased level, so the selection has to be
+	// compared in the same case to line up with it.
+	const selectedUpper = selectedLevel.toUpperCase();
+	const levelsToShow = visibleLogLevels(levelCounts, selectedLevel);
 
 	const filtersActive = !!(keyword || selectedLevel || preset !== 'all');
 
@@ -240,10 +241,10 @@ export default function LogConsole(props: LogConsoleProps) {
 					<Chip
 						key={level}
 						size="small"
-						label={`${level} ${levelCounts[level]}`}
+						label={`${level} ${levelCounts[level] ?? 0}`}
 						color={LEVEL_COLOR[level] ?? 'default'}
-						variant={selectedLevel.toUpperCase() === level ? 'filled' : 'outlined'}
-						onClick={() => setSelectedLevel(selectedLevel.toUpperCase() === level ? '' : level)}
+						variant={selectedUpper === level ? 'filled' : 'outlined'}
+						onClick={() => setSelectedLevel(selectedUpper === level ? '' : level)}
 					/>
 				))}
 				{levelsToShow.length === 0 && (

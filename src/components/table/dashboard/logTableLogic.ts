@@ -163,6 +163,26 @@ export function countLogsByLevel(logs: ILog[]): Record<string, number> {
 	}, {});
 }
 
+// Ordered worst-first so the eye lands on the levels that matter.
+export const LEVEL_ORDER = ['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'];
+
+// Which severity chips the strip renders, worst-first.
+//
+// Two rules, both learned the hard way:
+//   - a level present in the data but absent from LEVEL_ORDER still gets a
+//     chip, so an unexpected severity is never silently hidden;
+//   - the selected level keeps its chip at a count of zero. Dropping it made
+//     an active filter invisible — selecting ERROR on one file and then
+//     switching to a file (or a time window) holding no errors left an empty
+//     table, the reason off screen, and no chip left to click to undo it.
+export function visibleLogLevels(levelCounts: Record<string, number>, selectedLevel: string): string[] {
+	const selected = selectedLevel.toUpperCase();
+	const extra = [...new Set([...Object.keys(levelCounts), ...(selected ? [selected] : [])])]
+		.filter(l => !LEVEL_ORDER.includes(l))
+		.sort();
+	return [...LEVEL_ORDER, ...extra].filter(l => levelCounts[l] || l === selected);
+}
+
 //---------------------------------------------------------
 // Compact timestamp
 //---------------------------------------------------------

@@ -202,6 +202,48 @@ test.describe('Logs page (read-only)', () => {
 		await expect(page.getByText(/^(CRITICAL|ERROR|WARNING|INFO|DEBUG) \d+$/).first()).toBeVisible();
 	});
 
+	// Regression: the strip only rendered a chip for levels with a NON-ZERO
+	// count, so the moment the loaded set held none of the selected level its
+	// chip disappeared — while the filter stayed on. That left an empty grid,
+	// nothing on screen saying why, and no chip left to click to undo it.
+	//
+	// Driven here with a keyword that matches nothing, because that empties every
+	// count deterministically. Switching to a log file that happens to lack the
+	// level does the same thing to the same code path, but whether any two files
+	// on the testbed differ in severities is luck — a version of this test that
+	// went that way passed against the unfixed build.
+	test('a selected level keeps its chip when nothing in view has that level', async ({page}) => {
+		await awaitFirstPage(page);
+
+		const chip = page.locator('.MuiChip-root').filter({hasText: /^(INFO|DEBUG) \d+$/}).first();
+		const level = (await chip.innerText()).trim().split(/\s+/)[0];
+		await chip.click();
+		await expect(chip).toHaveClass(/MuiChip-filled/);
+
+		// Server-side, whole-file, and guaranteed to match no line.
+		const landed = page.waitForResponse(
+			r => /\/logs\?/.test(r.url()) && r.url().includes('keyword=') && r.ok(),
+			{timeout: 30_000},
+		);
+		await page.getByRole('textbox', {name: 'Search'}).fill('zzz-no-such-line-zzz');
+		await landed;
+
+		await expect(page.getByText('No lines match the current filters')).toBeVisible({timeout: 20_000});
+
+		// The chip survives at a count of zero, so the empty grid has a visible
+		// cause instead of being a dead end.
+		const persisted = page.locator('.MuiChip-root').filter({hasText: new RegExp(`^${level} 0$`)});
+		await expect(persisted).toBeVisible({timeout: 20_000});
+		await expect(persisted).toHaveClass(/MuiChip-filled/);
+
+		// And it is still the control that turns the filter off.
+		await persisted.click();
+		await expect(persisted).toHaveCount(0);
+
+		await page.getByRole('button', {name: 'Reset filters'}).click();
+		await expect(page.locator('.MuiDataGrid-row').first()).toBeVisible({timeout: 20_000});
+	});
+
 	test('archives are downloadable (endpoint returns a non-empty body)', async ({page}) => {
 		const {archives} = await gwJson<{archives: string[]}>('/log-archives');
 		test.skip(archives.length === 0, 'no archives on the testbed');

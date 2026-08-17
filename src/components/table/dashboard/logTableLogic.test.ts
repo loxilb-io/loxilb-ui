@@ -12,6 +12,7 @@ import {
 	splitLogComponent,
 	toConsoleRow,
 	toLogRow,
+	visibleLogLevels,
 } from './logTableLogic';
 
 function log(timestamp: string, level = 'info', message = 'msg'): ILog {
@@ -255,5 +256,39 @@ describe('toConsoleRow', () => {
 		expect(row.tenant).toBe('acme');
 		expect(row.message).toBe('llb_ai_stream_end: tenant=acme model=sse-test');
 		expect(row.id).toBe(3);
+	});
+});
+
+describe('visibleLogLevels', () => {
+	it('orders chips worst-first and omits levels with no lines', () => {
+		expect(visibleLogLevels({DEBUG: 5, ERROR: 2, INFO: 9}, '')).toEqual(['ERROR', 'INFO', 'DEBUG']);
+	});
+
+	// The dead end this guards: filter on ERROR in one file, switch to a file
+	// that holds none, and the chip used to disappear along with every row —
+	// leaving "No lines match the current filters" and no way to see why, or
+	// to click the filter off again.
+	it('keeps the selected level visible when the current view holds none of it', () => {
+		expect(visibleLogLevels({DEBUG: 1000}, 'ERROR')).toEqual(['ERROR', 'DEBUG']);
+	});
+
+	it('keeps a selected level that is not one of the known severities', () => {
+		expect(visibleLogLevels({INFO: 3}, 'TRACE')).toEqual(['INFO', 'TRACE']);
+	});
+
+	it('matches the selection case-insensitively, as countLogsByLevel uppercases', () => {
+		expect(visibleLogLevels({INFO: 3}, 'error')).toEqual(['ERROR', 'INFO']);
+	});
+
+	it('shows an unknown severity that appears in the data', () => {
+		expect(visibleLogLevels({INFO: 1, NOTICE: 2}, '')).toEqual(['INFO', 'NOTICE']);
+	});
+
+	it('does not duplicate the selected level when it is also present', () => {
+		expect(visibleLogLevels({ERROR: 4}, 'ERROR')).toEqual(['ERROR']);
+	});
+
+	it('renders nothing when there is neither data nor a selection', () => {
+		expect(visibleLogLevels({}, '')).toEqual([]);
 	});
 });
