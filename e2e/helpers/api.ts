@@ -89,28 +89,50 @@ async function oamFetch(pathname: string, init: RequestInit = {}): Promise<Respo
 let cachedInstance: Instance | null = null;
 
 /**
+ * Which OAM registration this run is pinned to, if any, and which variable
+ * named it (so a miss can point at the one the operator actually set).
+ *
+ * E2E_INSTANCE_NAME is the explicit override. Otherwise the leg's flavor
+ * picks the variable: `npm run e2e:oss` sets E2E_FLAVOR=loxilb and reads
+ * E2E_INSTANCE_LOXILB, the default gateway leg reads E2E_INSTANCE_GATEWAY.
+ * Keeping one variable per flavor is what lets both legs run from the same
+ * .env.e2e.local (and the same CI repo variables) without editing anything
+ * between runs — and a flavor leg that lands on the wrong backend mutates
+ * the wrong instance, so this is a safety mechanism, not a convenience.
+ *
+ * E2E_INSTANCE is the older single-instance override and ranks BELOW the
+ * per-flavor pair on purpose: it lives in .env.e2e.local, so letting it win
+ * would mean one stale line there silently sends the loxilb leg at the
+ * gateway — defeating the pinning above without failing.
+ */
+function pinnedInstance(): {name: string; from: string} | undefined {
+	const flavorVar = process.env.E2E_FLAVOR === 'loxilb' ? 'E2E_INSTANCE_LOXILB' : 'E2E_INSTANCE_GATEWAY';
+	for (const key of ['E2E_INSTANCE_NAME', flavorVar, 'E2E_INSTANCE']) {
+		const name = process.env[key];
+		if (name) return {name, from: key};
+	}
+	return undefined;
+}
+
+/**
  * The single testbed instance every page operates on (?name=…).
- * Pinned by name via E2E_INSTANCE_NAME or E2E_INSTANCE — needed for two
- * reasons: the OAM's is_active instance can be a dead registration (its
- * gateway down) while another one is healthy, and the OAM may host more than
- * one flavor (a gateway and a plain loxilb) so a flavor-tagged run must not
- * land on the wrong backend. Without a pin, first active wins.
+ * Pinned by name when the environment names one (see pinnedInstance) — needed
+ * for two reasons: the OAM's is_active instance can be a dead registration
+ * (its gateway down) while another one is healthy, and the OAM may host more
+ * than one flavor (a gateway and a plain loxilb) so a flavor-tagged run must
+ * not land on the wrong backend. Without a pin, first active wins.
  */
 export async function activeInstance(): Promise<Instance> {
 	if (cachedInstance) return cachedInstance;
 	const resp = await oamFetch('/loxilbs');
 	if (!resp.ok) throw new Error(`GET /loxilbs failed: ${resp.status}`);
 	const list = (await resp.json()) as Instance[];
-	// E2E_INSTANCE_NAME is the flavor-matrix pin, E2E_INSTANCE the
-	// single-instance override. Either one, once set, is authoritative: fall
-	// back to is_active only when the run named nothing.
-	const pinnedVar = process.env.E2E_INSTANCE_NAME ? 'E2E_INSTANCE_NAME' : 'E2E_INSTANCE';
-	const pinned = process.env.E2E_INSTANCE_NAME ?? process.env.E2E_INSTANCE;
-	const active = pinned ? list.find(i => i.name === pinned) : (list.find(i => i.is_active) ?? list[0]);
+	const pinned = pinnedInstance();
+	const active = pinned ? list.find(i => i.name === pinned.name) : (list.find(i => i.is_active) ?? list[0]);
 	if (!active) {
 		throw new Error(
 			pinned
-				? `Instance "${pinned}" (${pinnedVar}) is not registered on the OAM — registered: ${list.map(i => i.name).join(', ') || '(none)'}`
+				? `Instance "${pinned.name}" (${pinned.from}) is not registered on the OAM — registered: ${list.map(i => i.name).join(', ') || '(none)'}`
 				: 'No loxilb instance registered on the OAM',
 		);
 	}
@@ -316,9 +338,17 @@ export async function sweepIpAddresses(family: 'ipv4' | 'ipv6'): Promise<number>
 	return removed;
 }
 
-/** Reserved high VLAN/VXLAN IDs the network specs use — never real config.
- * (3999 is intentionally avoided — it got wedged during bring-up.) */
-export const TEST_VLAN_IDS = [3990, 3991, 3992];
+/**
+ * Reserved high VLAN/VXLAN IDs the network specs use — never real config.
+ *
+ * A POOL rather than two fixed ids, because upstream loxilb can leave a vid
+ * permanently wedged: still listed by GET /config/vlan/all, but every DELETE
+ * answers 404 "Link not found" (its kernel link is gone while loxilb's table
+ * still holds the row). 3999 was burned that way during bring-up and 3991 on
+ * the loxilb instance on 2026-08-18. The VLAN specs pick free ids from here at
+ * runtime, so one wedge costs a pool slot instead of every future run.
+ */
+export const TEST_VLAN_IDS = [3990, 3991, 3992, 3993, 3994, 3995, 3996, 3997];
 export const TEST_VXLAN_IDS = [3999, 3998];
 
 /**
