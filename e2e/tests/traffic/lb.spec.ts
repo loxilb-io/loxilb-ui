@@ -19,7 +19,7 @@
 import {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {activeInstance, gw, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
-import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
+import {confirmDelete, dialog, dialogButton, expectErrorAndDismiss, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
 import {refreshUntilGone, refreshUntilRow, rowByText, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 
 const LB_PATH = '/config/loadbalancer';
@@ -476,6 +476,43 @@ test.describe('LB Rule page CRUD', () => {
 
 		await page.mouse.move(0, 0);
 		await dialogButton(page, 'Cancel').click();
+	});
+
+	test('V-n3-proto: sel=n3 is UDP-only in the datapath — a TCP rule is refused and the refusal is surfaced', async ({page, consoleGuard}) => {
+		// The 400 is the subject of the test, not a defect.
+		consoleGuard.allow(/Failed to load resource.*400/);
+		// n3 is the 5G N3 (GTP-U) selector. sel=6 passes swagger validation and
+		// is then rejected by the datapath unless the rule is UDP:
+		//   400 {"result":"non-udp-n3-args error"}
+		// Verified live on the gateway AND on loxilb 0.9.8-dev — this is shared
+		// behaviour, not a flavor difference, so the same case exists in
+		// oss/tests/lb.spec.ts. The form offers n3 for any protocol, so there is
+		// no client-side block to assert; what must hold is that the refusal
+		// reaches the operator rather than showing as Success.
+		await openAddDialog(page);
+		await fillBasics(page, 'e2e-lb-n3tcp', '203.0.113.68', '9701');
+		await expandSection(page, ADVANCED);
+		await selectOption(page, 'SEL', 'n3');
+		await addEndpoint(page, 0, '198.51.100.68', '9701');
+		await page.mouse.move(0, 0);
+		const [bad] = await Promise.all([
+			page.waitForRequest(r => r.method() === 'POST' && r.url().includes(LB_PATH)),
+			dialogButton(page, 'Create').click(),
+		]);
+		expect(bad.postDataJSON().serviceArguments.sel, 'the form sent n3').toBe(6);
+		expect((await bad.response())?.status(), 'n3 on a TCP rule is refused by the datapath').toBe(400);
+		await expectErrorAndDismiss(page);
+
+		// The same selector on UDP is accepted — the refusal is about the
+		// protocol pairing, not about n3 being unsupported.
+		await openAddDialog(page);
+		await fillBasics(page, 'e2e-lb-n3udp', '203.0.113.69', '2152', {protocolOption: 'UDP'});
+		await expandSection(page, ADVANCED);
+		await selectOption(page, 'SEL', 'n3');
+		await addEndpoint(page, 0, '198.51.100.69', '2152');
+		const body = await submitCreate(page);
+		expect(body.serviceArguments).toMatchObject({sel: 6, protocol: 'udp'});
+		await refreshUntilRow(page, 'e2e-lb-n3udp');
 	});
 
 	test('V-dup: re-POST of an existing VIP:port/proto upserts — no duplicate row, no crash', async ({page}) => {
