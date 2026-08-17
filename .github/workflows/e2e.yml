@@ -51,13 +51,14 @@ permissions:
 
 jobs:
   e2e:
-    # Flavor legs (backward-compat plan Phase 4): the same suite runs against
-    # the gateway registration (default) and the plain upstream loxilb one.
-    # Selection is title-tag based (playwright.config.ts grepInvert): the
-    # gateway leg skips '@loxilb' specs, the loxilb leg skips '@gw' specs.
+    # Two products, two suites (see e2e/oss/README.md):
+    #   gateway leg -> `npm run e2e`     -> project 'gw'  -> e2e/tests/**
+    #   loxilb  leg -> `npm run e2e-oss` -> project 'oss' -> e2e/oss/tests/**
     # Instance pinning comes from repository VARIABLES (not secrets):
     #   E2E_INSTANCE_GATEWAY / E2E_INSTANCE_LOXILB — the OAM registration
     # names; blank falls back to "first active instance" (single-flavor OAM).
+    # The oss suite additionally fails fast if the instance it lands on turns
+    # out to be a gateway, so a mis-set variable can never mutate the wrong box.
     strategy:
       max-parallel: 1  # shared serial testbed — never interleave the legs
       fail-fast: false
@@ -125,13 +126,20 @@ jobs:
         if: steps.preflight.outputs.up == 'true'
         env:
           CI: 'true'
-          E2E_FLAVOR: ${{ matrix.flavor == 'loxilb' && 'loxilb' || '' }}
-          E2E_INSTANCE_NAME: ${{ matrix.flavor == 'loxilb' && vars.E2E_INSTANCE_LOXILB || vars.E2E_INSTANCE_GATEWAY }}
+          E2E_INSTANCE_GATEWAY: ${{ vars.E2E_INSTANCE_GATEWAY }}
+          E2E_INSTANCE_LOXILB: ${{ vars.E2E_INSTANCE_LOXILB }}
         run: |
-          if [ -n "${{ github.event.inputs.grep }}" ]; then
-            npx playwright test -g "${{ github.event.inputs.grep }}"
+          if [ "${{ matrix.flavor }}" = "loxilb" ]; then
+            project=oss
+            script=e2e-oss
           else
-            npm run e2e
+            project=gw
+            script=e2e
+          fi
+          if [ -n "${{ github.event.inputs.grep }}" ]; then
+            npx playwright test --project=$project -g "${{ github.event.inputs.grep }}"
+          else
+            npm run $script
           fi
 
       # Report + traces/screenshots for every run (pass or fail).
