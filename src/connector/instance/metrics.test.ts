@@ -1,5 +1,9 @@
-import {describe, expect, it} from 'vitest';
-import {normalize_metric_names, parse_prometheus_text} from './metrics';
+import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {IInstance} from 'types/oam';
+import {GET_INST_TEXT} from '../fetcher/fetcher_inst';
+import {normalize_metric_names, parse_prometheus_text, query_get_live_metrics} from './metrics';
+
+vi.mock('../fetcher/fetcher_inst', () => ({GET_INST_TEXT: vi.fn()}));
 
 // The dashboard's live cards depend on this parser reading the gateway's
 // /netlox/v1/metrics Prometheus exposition correctly.
@@ -234,5 +238,92 @@ describe('normalize_metric_names', () => {
 		expect(asLoxilb.loxilb_healthy_endpoints).toBeUndefined();
 		expect(asLoxilb.loxilb_processed_bytes_total).toBeUndefined();
 		expect(asLoxilb.loxilb_system_cpu_utilization_percent).toBeUndefined();
+	});
+});
+
+//---------------------------------------------------------
+// query_get_live_metrics — "we don't know" vs "it is zero"
+//---------------------------------------------------------
+// The Prometheus surface sits OUTSIDE the swagger contract, so neither the
+// generated capability map nor the subset test can police these response
+// shapes. Fixtures are the only guard, which is why all three shapes a real
+// deployment can produce are pinned here.
+describe('query_get_live_metrics availability', () => {
+	const instance = {id: 14, name: 'loxilb-oss'} as IInstance;
+	const mocked = vi.mocked(GET_INST_TEXT);
+
+	const respond = (code: number, data: string | null) => {
+		mocked.mockResolvedValue({code, data, message: ''});
+	};
+
+	beforeEach(() => {
+		mocked.mockReset();
+	});
+
+	it('reports unavailable on a 503 (collection disabled — both flavors)', async () => {
+		respond(503, 'Prometheus option is disabled.');
+		const snap = await query_get_live_metrics(instance, 'loxilb');
+		expect(snap.available).toBe(false);
+		expect(snap.total_metrics).toBe(0);
+		expect(snap.critical).toEqual({});
+	});
+
+	it('reports unavailable on a pre-parity loxilb 200 carrying a JSON string', async () => {
+		// The shape a *released* loxilb-oss still answers with. It is a 200, so
+		// nothing but the body content can give it away.
+		respond(200, '"Prometheus option is disabled."');
+		const snap = await query_get_live_metrics(instance, 'loxilb');
+		expect(snap.available).toBe(false);
+		expect(snap.total_metrics).toBe(0);
+	});
+
+	it('does not depend on the wording of the disabled message', async () => {
+		// Detection is by content — no parseable sample — not by matching the
+		// sentence. A reworded release must not read as a live instance.
+		respond(200, '"Metrics collection is turned off, see --prometheus."');
+		expect((await query_get_live_metrics(instance, 'loxilb')).available).toBe(false);
+	});
+
+	it('reports unavailable when the scrape is refused (401 under --userservice)', async () => {
+		respond(401, null);
+		expect((await query_get_live_metrics(instance, 'loxilb')).available).toBe(false);
+	});
+
+	it('reports AVAILABLE for a live instance whose counters are genuinely all zero', async () => {
+		// The case `available` exists for. This snapshot is byte-identical to a
+		// disabled one under any total_metrics-based test, so if this ever
+		// regresses to false, an idle instance starts rendering N/A everywhere.
+		respond(200, ['# HELP lb_rule_count Number of LB rules', '# TYPE lb_rule_count gauge', 'lb_rule_count 0', 'active_conntrack_count 0', 'processed_bytes 0'].join('\n'));
+		const snap = await query_get_live_metrics(instance, 'loxilb');
+		expect(snap.available).toBe(true);
+		expect(snap.critical.loxilb_lb_rules).toBe(0);
+		expect(snap.critical.loxilb_processed_bytes_total).toBe(0);
+	});
+
+	it('reports available and normalizes under the flavor table on a parity build', async () => {
+		respond(
+			200,
+			[
+				'# HELP loxilb_lb_rules Number of LB rules',
+				'loxilb_lb_rules 4',
+				'# HELP active_conntrack_count DEPRECATED: use loxilb_active_conntrack_entries.',
+				'active_conntrack_count 15',
+				'loxilb_active_conntrack_entries 15',
+				'loxilb_system_disk_utilization_percent 73.9',
+			].join('\n'),
+		);
+		const snap = await query_get_live_metrics(instance, 'loxilb');
+		expect(snap.available).toBe(true);
+		expect(snap.critical.loxilb_lb_rules).toBe(4);
+		expect(snap.critical.loxilb_active_conntrack_entries).toBe(15);
+		expect(snap.critical.loxilb_system_disk_utilization_percent).toBe(73.9);
+	});
+
+	it('reads a gateway scrape under the gateway table', async () => {
+		respond(200, ['healthy_endpoints_count 3', 'system_cpu_utilization 12.5'].join('\n'));
+		const snap = await query_get_live_metrics(instance, 'inference-gateway');
+		expect(snap.available).toBe(true);
+		expect(snap.critical.loxilb_healthy_endpoints).toBe(3);
+		expect(snap.critical.loxilb_system_cpu_utilization_percent).toBe(12.5);
 	});
 });

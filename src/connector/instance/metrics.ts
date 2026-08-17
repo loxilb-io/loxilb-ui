@@ -161,24 +161,39 @@ export function normalize_metric_names(metrics: Record<string, number>, flavor: 
  * (enable via `POST /netlox/v1/config/metrics`). Pre-parity loxilb-oss instead
  * answered 200 with the JSON string `"Prometheus option is disabled."`, which
  * is not a valid exposition — Prometheus itself rejects it with
- * `expected a valid start token, got "\""`. That body parses to `{}` here,
- * which is why it has been indistinguishable from a live all-zero instance.
+ * `expected a valid start token, got "\""`.
  *
- * KNOWN GAP: this function still collapses "collection is off", "auth failed"
- * and "everything really is 0" into the same empty snapshot, because
- * ILiveMetricsResponse has no way to say "unknown". The 503 makes the
- * distinction *available*; representing it is the next change. See
- * docs/internal/METRICS_LOXILB_PARITY.md.
+ * The returned snapshot carries `available`, which separates "we do not know
+ * these numbers" from "these numbers are zero". Both shapes above set it
+ * false, as does a refused scrape; a live instance whose counters genuinely
+ * read zero still sets it true, because it served samples. Consumers must
+ * branch on it rather than on `total_metrics` — see METRICS_LOXILB_PARITY.md.
+ *
+ * REMAINING GAP: "collection is off" (503) and "scrape refused" (401 under
+ * --userservice) are still collapsed into the same unavailable snapshot. They
+ * warrant different UI — a placeholder vs. an actual error — but telling the
+ * operator which one it is needs a channel this return type does not have yet.
  */
 export async function query_get_live_metrics(instance: IInstance, flavor: InstanceFlavor): Promise<ILiveMetricsResponse> {
 	const resp = await GET_INST_TEXT(instance, `/metrics`);
-	// 503 = collection disabled; any non-200 (401 on --userservice, etc.) is not
-	// a valid exposition — treat as an empty snapshot.
-	const metrics = resp.code === 200 && typeof resp.data === 'string' ? normalize_metric_names(parse_prometheus_text(resp.data), flavor) : {};
+	// Any non-200 (503 collection disabled, 401 under --userservice, 5xx) is not
+	// an exposition at all.
+	const body = resp.code === 200 && typeof resp.data === 'string' ? resp.data : '';
+	const metrics = body ? normalize_metric_names(parse_prometheus_text(body), flavor) : {};
+
+	// Availability is decided by CONTENT: did the body yield at least one
+	// parseable sample? A pre-parity loxilb answers 200 with a bare JSON string,
+	// which parses to nothing. Deliberately not matched against the literal
+	// sentence "Prometheus option is disabled." — that text is unversioned prose
+	// with no contract behind it, and a reworded release would silently start
+	// reading as a live instance reporting nothing.
+	const available = Object.keys(metrics).length > 0;
+
 	return {
 		timestamp: Date.now(),
 		critical: metrics,
 		important: metrics,
 		total_metrics: Object.keys(metrics).length,
+		available,
 	};
 }
