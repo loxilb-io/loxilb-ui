@@ -73,6 +73,160 @@ export interface paths {
       };
     };
   };
+  "/config/snapshot": {
+    /**
+     * Download a complete instance snapshot
+     * @description Returns the versioned, checksummed snapshot document (schema 1.0) covering all v1 configuration domains. Replaces the deprecated /config/export. Response carries Content-Disposition and X-Snapshot-Checksum headers.
+     */
+    get: {
+      parameters: {
+        query?: {
+          /** @description Comma-separated list of v1 domains to capture (endpoint, loadbalancer, firewall, policy, mirror, session, sessionulcl, ipfilter, securityrate, bfd, bgp, ipsec). If not specified, all domains are captured. */
+          components?: string;
+        };
+      };
+      responses: {
+        /** @description Snapshot document download */
+        200: {
+          headers: {
+            "Content-Disposition"?: string;
+            "X-Snapshot-Checksum"?: string;
+          };
+          content: {
+            "application/json": string;
+          };
+        };
+        /** @description Invalid parameters */
+        400: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Invalid authentication credentials */
+        401: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Another snapshot or restore operation is in progress */
+        409: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Internal service error */
+        500: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Maintenance mode */
+        503: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+      };
+    };
+  };
+  "/config/restore": {
+    /**
+     * Restore an instance snapshot
+     * @description Runs the staged restore pipeline (parse, validate, plan, preserve, apply, verify, commit-or-rollback) on the posted snapshot document. Default mode is dry-run, which validates and plans without mutating anything; commit must be explicit. Replaces the deprecated /config/import.
+     */
+    post: {
+      parameters: {
+        query?: {
+          /** @description dry-run (default) validates and returns the plan without mutating anything; commit applies the snapshot with automatic rollback on failure. */
+          mode?: "dry-run" | "commit";
+        };
+      };
+      /** @description The snapshot document, as produced by GET /config/snapshot. */
+      requestBody: {
+        content: {
+          "application/json": Record<string, never>;
+        };
+      };
+      responses: {
+        /** @description Restore result (both modes; inspect result and errors fields) */
+        200: {
+          content: {
+            "application/json": components["schemas"]["RestoreResult"];
+          };
+        };
+        /** @description Malformed or incompatible snapshot document */
+        400: {
+          content: {
+            "application/json": components["schemas"]["RestoreResult"];
+          };
+        };
+        /** @description Invalid authentication credentials */
+        401: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Another snapshot or restore operation is in progress */
+        409: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Restore failed (rolled-back or ROLLBACK-FAILED; see result field) */
+        500: {
+          content: {
+            "application/json": components["schemas"]["RestoreResult"];
+          };
+        };
+        /** @description Maintenance mode */
+        503: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+      };
+    };
+  };
+  "/config/persist": {
+    /**
+     * Persist the running configuration to disk
+     * @description Dumps the gateway's live configuration to {config-path}/snapshot.json (atomic temp-file + rename, 0600) so it survives a daemon restart. This is "save" as an API (single-writer rule) - the same write the gateway performs automatically after a committed restore and, when auto-persist is enabled, after every successful mutating config call. loxicmd save --api calls this instead of writing legacy *.txt files client-side.
+     */
+    post: {
+      responses: {
+        /** @description Configuration persisted */
+        200: {
+          content: {
+            "application/json": components["schemas"]["PersistResult"];
+          };
+        };
+        /** @description Invalid authentication credentials */
+        401: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Another snapshot or restore operation is in progress */
+        409: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Internal service error */
+        500: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Maintenance mode */
+        503: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+      };
+    };
+  };
   "/meta": {
     /**
      * Get metadata for all POST APIs
@@ -3828,110 +3982,6 @@ export interface paths {
       };
     };
   };
-  "/config/synflood": {
-    /**
-     * Enable or configure SYN flood protection
-     * @description Enable SYN flood protection with specified thresholds and configuration.
-     */
-    post: {
-      /** @description SYN flood protection configuration */
-      requestBody: {
-        content: {
-          "application/json": components["schemas"]["SYNFloodConfigMod"];
-        };
-      };
-      responses: {
-        /** @description OK */
-        204: {
-          content: never;
-        };
-        /** @description Malformed arguments for API call */
-        400: {
-          content: {
-            "application/json": components["schemas"]["Error"];
-          };
-        };
-        /** @description Invalid authentication credentials */
-        401: {
-          content: {
-            "application/json": components["schemas"]["Error"];
-          };
-        };
-        /** @description Internal service error */
-        500: {
-          content: {
-            "application/json": components["schemas"]["Error"];
-          };
-        };
-      };
-    };
-    /**
-     * Disable SYN flood protection
-     * @description Disable SYN flood protection and clear all tracking state.
-     */
-    delete: {
-      responses: {
-        /** @description OK */
-        204: {
-          content: never;
-        };
-        /** @description Malformed arguments for API call */
-        400: {
-          content: {
-            "application/json": components["schemas"]["Error"];
-          };
-        };
-        /** @description Invalid authentication credentials */
-        401: {
-          content: {
-            "application/json": components["schemas"]["Error"];
-          };
-        };
-        /** @description Resource not found */
-        404: {
-          content: {
-            "application/json": components["schemas"]["Error"];
-          };
-        };
-        /** @description Internal service error */
-        500: {
-          content: {
-            "application/json": components["schemas"]["Error"];
-          };
-        };
-      };
-    };
-  };
-  "/config/synflood/all": {
-    /**
-     * Get SYN flood protection configuration and statistics
-     * @description Get current SYN flood protection configuration and statistics.
-     */
-    get: {
-      responses: {
-        /** @description OK */
-        200: {
-          content: {
-            "application/json": {
-              synfloodAttr?: components["schemas"]["SYNFloodEntry"][];
-            };
-          };
-        };
-        /** @description Invalid authentication credentials */
-        401: {
-          content: {
-            "application/json": components["schemas"]["Error"];
-          };
-        };
-        /** @description Internal service error */
-        500: {
-          content: {
-            "application/json": components["schemas"]["Error"];
-          };
-        };
-      };
-    };
-  };
   "/config/securityrate": {
     /**
      * Configure unified security rate limiting
@@ -7078,20 +7128,20 @@ export interface paths {
   "/logs": {
     /**
      * Fetch logs with optional filtering
-     * @description Fetch the latest logs from the system with optional filtering by number of lines, log level, or keyword.
+     * @description Fetch log lines newest-first, paging backwards towards the start of the file. When level or keyword is set the server keeps reading backwards until the requested number of *matching* lines has been collected, the start of the file is reached, or the per-request scan cap (32 MiB) is hit — so has_more means "more matches may exist", not merely "more bytes exist". Offsets in next_cursor are byte offsets into the file the page was read from; for a .log.gz archive they address the uncompressed stream.
      */
     get: {
       parameters: {
         query?: {
-          /** @description Number of log lines to fetch (default is 100). */
+          /** @description Number of log lines to fetch (default is 100). With level or keyword set this is the number of matching lines. */
           lines?: string;
-          /** @description Filter logs by level (e.g., INFO, ERROR, DEBUG). */
+          /** @description Filter logs by level (e.g., INFO, ERROR, DEBUG). Matched as a substring, searched backwards across the whole file rather than within one page. */
           level?: string;
-          /** @description Filter logs containing a specific keyword or phrase. */
+          /** @description Filter logs containing a specific keyword or phrase. Matched as a substring, searched backwards across the whole file rather than within one page. */
           keyword?: string;
           /** @description Opaque pagination cursor from a previous response's next_cursor; fetches the next page. */
           cursor?: string;
-          /** @description Specific log file to read (default is the current log file). */
+          /** @description Specific log file to read (default is the current log file). Rotated .log.gz archives are accepted and decompressed transparently. */
           file?: string;
         };
       };
@@ -7561,6 +7611,36 @@ export type webhooks = Record<string, never>;
 
 export interface components {
   schemas: {
+    /** @description Per-domain apply/delete counts computed by the restore PLAN stage. */
+    RestorePlanItem: {
+      domain?: string;
+      to_delete?: number;
+      to_apply?: number;
+    };
+    /** @description Result of POST /config/restore (both dry-run and commit modes). */
+    RestoreResult: {
+      /** @enum {string} */
+      mode?: "dry-run" | "commit" | "boot";
+      compatible?: boolean;
+      schema_version?: string;
+      snapshot_gateway_version?: string;
+      current_gateway_version?: string;
+      plan?: components["schemas"]["RestorePlanItem"][];
+      errors?: string[];
+      /** @description ok, rolled-back, or ROLLBACK-FAILED; empty when the pipeline stopped before APPLY. */
+      result?: string;
+      /** @description On-disk path of the pre-restore snapshot captured before APPLY (commit mode only). */
+      pre_restore_snapshot_persisted?: string;
+    };
+    /** @description Result of POST /config/persist. */
+    PersistResult: {
+      /** @description Always "ok" on 200. */
+      result?: string;
+      /** @description On-disk path of the persisted snapshot (config-path/snapshot.json). */
+      path?: string;
+      /** @description SHA-256 checksum of the persisted snapshot document. */
+      checksum?: string;
+    };
     Error: {
       /** Format: int32 */
       code?: number;
@@ -7767,7 +7847,7 @@ export interface components {
         mode?: 0 | 1 | 2 | 3 | 4 | 5;
         /**
          * Format: int32
-         * @description value for Security mode (0-Plain, 1-https, 2-tls, 3-e2ehttps, 0-default)
+         * @description 0 - plain HTTP, 1 - TLS terminated at the gateway (https), 2 - end-to-end HTTPS (re-encrypt to backend). 3 is reserved/unused.
          * @enum {integer}
          */
         security?: 0 | 1 | 2 | 3;
@@ -7858,6 +7938,11 @@ export interface components {
          */
         backend_keepalive_interval_sec?: number;
         /**
+         * @description Enable the per-endpoint circuit breaker for full-proxy rules. After 5 consecutive backend connect failures an endpoint is skipped by all selection paths until a 30s open-timeout expires and a half-open probe succeeds. Complements the liveness probe (probetype) - the breaker reacts within one failed request, the probe within one probe interval.
+         * @default false
+         */
+        cb_enable?: boolean;
+        /**
          * @description Enable vLLM prefill/decode disaggregation mode. When true, the proxy orchestrates a two-phase flow - prefill request to a prefill endpoint, then decode request to a decode endpoint using KV transfer parameters from the prefill response.
          * @default false
          */
@@ -7887,25 +7972,24 @@ export interface components {
         pd_balance_abs_threshold?: number;
         /**
          * Format: int64
-         * @description KV-cache exact routing mode: 0=off, 1=zmq (P/D role-partitioned), 2=nats(reserved), 3=zmq single-role (— all EPs subscribed, no P/D role split). Enables Tier 1.5 block-hash routing between Tier 1 (trie) and Tier 2 (min-load).
+         * @description KV-cache exact (Tier 1.5) routing mode. Selects the ENDPOINT TOPOLOGY only — the serving framework is chosen independently by kvEngineType, and every mode below works with either engine. 0 = off. 1 = zmq over a P/D role-partitioned pool: requires pd_disagg_mode=true (rejected otherwise) and endpoints tagged ep_role 1/2; only ep_role=1 (prefill) endpoints are subscribed and scored, and Tier 1.5 sits between Tier 1 (trie) and Tier 2 (min-load) in the P/D ladder. 2 = nats (reserved, not implemented). 3 = zmq single-role over a role-less pool: requires mode=4 (fullproxy) and pd_disagg_mode=false (both rejected otherwise); ALL endpoints are subscribed and scored. Mode 3 does NOT reproduce the P/D ladder — there is no Tier-0 session stickiness, no Tier-1 trie and no admission gate on this path; a Tier-1.5 miss falls back to the rule's own sel selector (CHWBL/RR/persist).
          * @default 0
          */
         kvExactMode?: number;
         /**
          * Format: int64
-         * @description Token block size for KV hash computation. Must match vLLM's block_size configuration.
+         * @description Token block size for KV hash computation. Must match the engine's block granularity - vLLM --block-size, SGLang --page-size. A mismatch makes every hash miss.
          * @default 16
          */
         kvBlockSize?: number;
         /**
-         * @description Hash algorithm for KV block matching. Must match vLLM's configured hash algorithm.
-         * @default sha256_cbor
+         * @description Block-hash contract used to match the prompt against the engine-published KV inventory. PREFER OMITTING THIS FIELD — when absent, the contract is derived from kvEngineType (vllm => sha256_cbor, sglang => sha256_sglang), which is always the coherent choice. An explicit value overrides that default and MUST match the engine, or every computed hash misses and Tier 1.5 is silently dead; incoherent pairs are therefore rejected at config time. vLLM engines: "sha256_cbor" (must equal --prefix-caching-hash-algo) or "xxhash_cbor". SGLang engines: "sha256_sglang" only — SGLang hashes parent||tokens raw (no CBOR, no NONE seed) and truncates to the FIRST 8 digest bytes, where vLLM CBOR-encodes and truncates to the LAST 8.
          * @enum {string}
          */
-        kvHashAlgo?: "sha256_cbor" | "xxhash_cbor";
+        kvHashAlgo?: "sha256_cbor" | "xxhash_cbor" | "sha256_sglang";
         /**
          * Format: int64
-         * @description ZMQ PUB socket port on vLLM prefill endpoints for KV cache events.
+         * @description Base ZMQ PUB socket port on the endpoints publishing KV-cache events. Which endpoints are subscribed depends on kvExactMode - mode 1 subscribes ep_role=1 (prefill) endpoints only, mode 3 subscribes every endpoint. With kvDpRankCount > 1, data-parallel rank N is subscribed at kvZmqPort+N.
          * @default 5557
          */
         kvZmqPort?: number;
@@ -8719,65 +8803,6 @@ export interface components {
        */
       bytes?: number;
     };
-    SYNFloodConfigMod: {
-      /** @description Enable/disable SYN flood protection */
-      enabled: boolean;
-      /**
-       * Format: int64
-       * @description Maximum SYNs per second per IP (hard drop threshold)
-       * @default 100
-       */
-      synThreshold: number;
-      /**
-       * Format: int64
-       * @description Enable SYN cookies above this rate (must be < synThreshold)
-       * @default 50
-       */
-      cookieThreshold: number;
-      /** @description IP addresses to bypass SYN flood protection */
-      whitelistIps?: string[];
-    };
-    SYNFloodEntry: {
-      /** @description Whether SYN flood protection is enabled */
-      enabled?: boolean;
-      /**
-       * Format: int64
-       * @description Maximum SYNs per second per IP
-       */
-      synThreshold?: number;
-      /**
-       * Format: int64
-       * @description SYN cookie activation threshold
-       */
-      cookieThreshold?: number;
-      /** @description Whitelisted IPs */
-      whitelistIps?: string[];
-      /**
-       * Format: int64
-       * @description Total SYN packets processed (read-only)
-       */
-      totalSyns?: number;
-      /**
-       * Format: int64
-       * @description SYN packets blocked (read-only)
-       */
-      blockedSyns?: number;
-      /**
-       * Format: int64
-       * @description SYN packets passed (read-only)
-       */
-      passedSyns?: number;
-      /**
-       * Format: int64
-       * @description Times SYN cookies were enabled (read-only)
-       */
-      cookieActivations?: number;
-      /**
-       * Format: int64
-       * @description Number of unique source IPs tracked (read-only)
-       */
-      uniqueIps?: number;
-    };
     SecurityRateConfigMod: {
       /** @description Enable/disable SYN flood protection (P0-5) */
       synEnabled: boolean;
@@ -8801,12 +8826,6 @@ export interface components {
        * @default 50
        */
       ratePerSec: number;
-      /**
-       * Format: int64
-       * @description Maximum concurrent connections per IP
-       * @default 200
-       */
-      concurrentLimit: number;
       /** @description Enable/disable UDP flood protection (P0-7) */
       udpEnabled: boolean;
       /**
@@ -8844,11 +8863,6 @@ export interface components {
        * @description Maximum new connections per second per IP
        */
       ratePerSec?: number;
-      /**
-       * Format: int64
-       * @description Maximum concurrent connections per IP
-       */
-      concurrentLimit?: number;
       /** @description Whether UDP flood protection is enabled */
       udpEnabled?: boolean;
       /**
@@ -8888,11 +8902,6 @@ export interface components {
        * @description Connections passed (read-only)
        */
       connPassed?: number;
-      /**
-       * Format: int64
-       * @description Connections blocked by concurrent limit (read-only)
-       */
-      concurrentBlocked?: number;
       /**
        * Format: int64
        * @description UDP packets blocked (read-only)
@@ -9531,6 +9540,8 @@ export interface components {
       version?: string;
       /** @description build info */
       buildInfo?: string;
+      /** @description Product identifier for API flavor detection. This gateway reports "loxilb-inference-gateway"; upstream loxilb (and gateway builds predating the field) omit it, which clients treat as plain loxilb. */
+      product?: string;
     };
     BfdEntry: {
       /** @description Instance name running BFD session */
@@ -9664,25 +9675,46 @@ export interface components {
       [key: string]: number;
     };
     Logs: {
-      /** @description List of filtered logs. */
+      /** @description Log lines for this page, newest first. Empty rather than null when nothing matched. */
       logs?: string[];
       /** @description Name of the log file the lines were read from. */
       log_file?: string;
-      /** @description Number of log lines returned in this page. */
-      log_count?: number;
+      /** @description Number of lines in this page — that is, the length of logs after filtering. Not a count of matches in the file. */
+      log_count: number;
       /**
        * Format: int64
-       * @description Total size of the log file in bytes.
+       * @description Size in bytes of the whole log file, independent of this page and of any filter. For a .log.gz archive this is the uncompressed size, since offsets address the decompressed stream.
        */
-      total_size?: number;
-      /** @description Whether more log lines are available (pass next_cursor to fetch them). */
-      has_more?: boolean;
-      /** @description Opaque cursor for the next page; present only when has_more is true. */
+      total_size: number;
+      /** @description Whether the backwards scan stopped before the start of the file, i.e. older lines remain to be searched. True implies next_cursor is set. Unfiltered this means more lines exist; filtered it means more matches may exist — the final page of a filtered search can legitimately come back empty. */
+      has_more: boolean;
+      /** @description Opaque cursor for the next (older) page; present only when has_more is true. */
       next_cursor?: string;
+      /**
+       * Format: int64
+       * @description Bytes examined to build this page. Equal to the page's own span when unfiltered; larger for a filtered query that had to search backwards past non-matching lines. Compare against total_size to show progress through a long search.
+       */
+      scanned_bytes: number;
     };
     LogArchives: {
       /** @description List of log archive filenames. */
       archives?: string[];
+      /** @description Per-archive metadata, in the same order as archives. Additive — archives stays populated for existing clients. */
+      archive_info?: components["schemas"]["LogArchiveInfo"][];
+    };
+    LogArchiveInfo: {
+      /** @description Archive filename, matching an entry in archives. */
+      name?: string;
+      /**
+       * Format: int64
+       * @description Size of the archive on disk in bytes (compressed size for .gz).
+       */
+      size_bytes?: number;
+      /**
+       * Format: date-time
+       * @description Last modification time of the archive (RFC3339). The only reliable age signal for names that carry no timestamp.
+       */
+      modified?: string;
     };
     NodeGraphShcmea: {
       schemaVersion?: number;
@@ -10642,7 +10674,7 @@ export interface components {
        */
       expires_at?: string;
       /** @description Whether this key is currently active */
-      enabled?: boolean;
+      enabled: boolean;
     };
     TenantRateLimitMod: {
       /** @description Tenant identifier */

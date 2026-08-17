@@ -27,8 +27,9 @@ import DataTable from 'components/table/DataTable';
 import DateTimeRangeSelector from 'components/element/DateTimeRangeSelector';
 import {t} from 'i18next';
 import {useEffect, useMemo, useState} from 'react';
+import {formatBytes} from 'common';
 import {IDataTableColumnDef} from 'types/global';
-import {ILog} from 'types/log';
+import {ILog, ILogArchiveInfo} from 'types/log';
 import {TIME_RANGE_PRESETS, TimeRangePreset, sortLogsNewestFirst, toConsoleRow} from 'components/table/dashboard/logTableLogic';
 
 // Ordered worst-first so the eye lands on the levels that matter. Levels the
@@ -61,6 +62,10 @@ export interface LogConsoleProps {
 	selectedFile: string;
 	selectFile: (file: string) => void;
 	archives: string[];
+	archiveInfo?: ILogArchiveInfo[];
+	keywordSearchedWholeFile: boolean;
+	totalSize: number;
+	scannedBytes: number;
 	hasMore: boolean;
 	isLoadingMore: boolean;
 	handleLoadMore: () => void;
@@ -73,9 +78,28 @@ export default function LogConsole(props: LogConsoleProps) {
 	const {
 		logs, loadedCount, levelCounts, keyword, applyKeyword,
 		selectedLevel, setSelectedLevel, preset, setPreset, customRange, setCustomRange,
-		liveTail, toggleLiveTail, selectedFile, selectFile, archives,
+		liveTail, toggleLiveTail, selectedFile, selectFile, archives, archiveInfo,
+		keywordSearchedWholeFile, totalSize, scannedBytes,
 		hasMore, isLoadingMore, handleLoadMore, handleRefresh, resetFilters, dense,
 	} = props;
+
+	// Archive metadata, keyed by name. size_bytes is absent both on gateways that
+	// predate archive_info and — currently — for zero-byte files, so a missing
+	// value is rendered as unknown rather than as 0.
+	const infoByName = useMemo(() => {
+		const map = new Map<string, ILogArchiveInfo>();
+		for (const entry of archiveInfo ?? []) if (entry.name) map.set(entry.name, entry);
+		return map;
+	}, [archiveInfo]);
+
+	const describeArchive = (name: string) => {
+		const info = infoByName.get(name);
+		if (!info) return name;
+		const parts: string[] = [];
+		if (typeof info.size_bytes === 'number') parts.push(formatBytes(info.size_bytes));
+		if (info.modified) parts.push(new Date(info.modified).toLocaleString());
+		return parts.length ? `${name} · ${parts.join(' · ')}` : name;
+	};
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
 	const [draftKeyword, setDraftKeyword] = useState(keyword);
@@ -186,19 +210,13 @@ export default function LogConsole(props: LogConsoleProps) {
 							onChange={e => selectFile(e.target.value)}
 						>
 							<MenuItem value="">{t('Current log')}</MenuItem>
-							{archives.map(name => {
-								// The endpoint reads the file raw, so a gzipped archive comes
-								// back as compressed bytes and parses to nothing. Offering it
-								// as a selectable option would be a control that silently does
-								// nothing; it stays listed, but disabled and labelled, and
-								// remains downloadable from the archive card below.
-								const compressed = name.endsWith('.gz');
-								return (
-									<MenuItem key={name} value={name} disabled={compressed}>
-										{compressed ? `${name} — ${t('compressed, download to view')}` : name}
-									</MenuItem>
-								);
-							})}
+							{/* .gz archives are selectable: the gateway inflates them before
+							    paging. They used to be disabled here because the endpoint
+							    served the compressed bytes raw and the table silently came
+							    back empty. */}
+							{archives.map(name => (
+								<MenuItem key={name} value={name}>{describeArchive(name)}</MenuItem>
+							))}
 						</Select>
 					</FormControl>
 				)}
@@ -234,12 +252,22 @@ export default function LogConsole(props: LogConsoleProps) {
 
 				<Box flexGrow={1} />
 
-				{/* The honesty line. Level and time filter only what has been paged
-				    in, so saying so is the difference between "there are 3 errors"
-				    and "there are 3 errors in the part I have read". */}
+				{/* The honesty line, and it has to distinguish two different scopes.
+				    A keyword is executed by the gateway across the whole file, so
+				    those results are complete and `has_more` means more matches
+				    remain. Level and time range are applied here over the lines
+				    already paged in — that is the case where "there are 3 errors"
+				    would really mean "3 in the part I have read". */}
 				<Typography variant="caption" color="text.secondary">
-					{t('Filtering {{count}} loaded lines', {count: loadedCount})}
-					{hasMore ? ` — ${t('load more to search further back')}` : ''}
+					{keywordSearchedWholeFile
+						? hasMore
+							? t('Searched {{scanned}} of {{total}} — more matches remain', {
+									scanned: formatBytes(scannedBytes),
+									total: formatBytes(totalSize),
+								})
+							: t('Searched the whole log ({{total}})', {total: formatBytes(totalSize)})
+						: t('Filtering {{count}} loaded lines', {count: loadedCount}) +
+							(hasMore ? ` — ${t('load more to search further back')}` : '')}
 				</Typography>
 			</Box>
 

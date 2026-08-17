@@ -596,5 +596,6 @@
 	"Model": "モデル",
 	"Tenant": "テナント",
 	"Time": "時刻",
-	"compressed, download to view": "圧縮済み、ダウンロードして表示"
+	"Searched the whole log ({{total}})": "ログ全体を検索しました ({{total}})",
+	"Searched {{scanned}} of {{total}} — more matches remain": "{{total}} のうち {{scanned}} を検索 — 一致がさらにあります"
 }

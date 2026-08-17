@@ -23,7 +23,12 @@ export default function SystemLogCard() {
 	return (
 		<ScrollableBox>
 			<Stack position="relative" id="fixed-container" width="100%" height="100%" padding="16px" className="no-drag">
-				<LogConsole {...paging} archives={log_archives?.archives ?? []} dense />
+				<LogConsole
+					{...paging}
+					archives={log_archives?.archives ?? []}
+					archiveInfo={log_archives?.archive_info}
+					dense
+				/>
 			</Stack>
 		</ScrollableBox>
 	);

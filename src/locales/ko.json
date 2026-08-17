@@ -652,5 +652,6 @@
 	"Model": "모델",
 	"Tenant": "테넌트",
 	"Time": "시간",
-	"compressed, download to view": "압축됨, 다운로드하여 확인"
+	"Searched the whole log ({{total}})": "전체 로그 검색 완료 ({{total}})",
+	"Searched {{scanned}} of {{total}} — more matches remain": "{{total}} 중 {{scanned}} 검색 — 일치 항목이 더 있습니다"
 }

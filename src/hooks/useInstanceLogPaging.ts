@@ -33,6 +33,11 @@ export function useInstanceLogPaging(inst: IInstance | null) {
 	const [hasMore, setHasMore] = useState(false);
 	const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+	// How much of the file the last response covered. A keyword search is now
+	// executed across the whole file by the gateway, so these are what let the UI
+	// say "searched all 880 KB" instead of hedging with "the lines I have loaded".
+	const [coverage, setCoverage] = useState({totalSize: 0, scannedBytes: 0});
+
 	// `reload_token` is part of the react-query key purely so an explicit
 	// Refresh re-hits the gateway: the query is held at staleTime Infinity, so
 	// without a key change a refresh is served from cache and appears to do
@@ -68,6 +73,14 @@ export function useInstanceLogPaging(inst: IInstance | null) {
 		setNextCursor(next_cursor);
 		setHasMore(has_more || false);
 		setIsLoadingMore(false);
+		setCoverage(prev => ({
+			totalSize: log_response.total_size ?? prev.totalSize,
+			// Following a cursor continues the same backwards scan, so the bytes
+			// examined accumulate across pages rather than replacing each other.
+			scannedBytes: queryOptions.cursor
+				? prev.scannedBytes + (log_response.scanned_bytes ?? 0)
+				: log_response.scanned_bytes ?? 0,
+		}));
 	}, [log_response, queryOptions.cursor]);
 
 	// A failed "load more" produces no response, so the button would otherwise
@@ -166,6 +179,13 @@ export function useInstanceLogPaging(inst: IInstance | null) {
 		logs,
 		loadedCount: rawLogs.length,
 		levelCounts,
+		// A keyword is executed server-side across the whole file; level and time
+		// range are applied here over what has been paged in. The console reports
+		// those two scopes differently, because conflating them is what let the old
+		// UI imply it had searched everything.
+		keywordSearchedWholeFile: !!queryOptions.keyword,
+		totalSize: coverage.totalSize,
+		scannedBytes: coverage.scannedBytes,
 		keyword,
 		applyKeyword,
 		selectedLevel,

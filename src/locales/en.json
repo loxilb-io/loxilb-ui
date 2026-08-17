@@ -639,5 +639,6 @@
 	"Model": "Model",
 	"Tenant": "Tenant",
 	"Time": "Time",
-	"compressed, download to view": "compressed, download to view"
+	"Searched the whole log ({{total}})": "Searched the whole log ({{total}})",
+	"Searched {{scanned}} of {{total}} — more matches remain": "Searched {{scanned}} of {{total}} — more matches remain"
 }

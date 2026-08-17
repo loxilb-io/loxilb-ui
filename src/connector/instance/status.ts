@@ -126,7 +126,7 @@ export async function query_get_inst_logs(instance: IInstance, options?: {
 	cursor?: string;
 	file?: string;
 	enableAutoRefresh?: boolean;
-}): Promise<{logs: ILog[], next_cursor?: string, has_more: boolean, count?: number}> {
+}): Promise<{logs: ILog[], next_cursor?: string, has_more: boolean, count?: number, total_size?: number, scanned_bytes?: number}> {
 	// Build query parameters for single request
 	const params = new URLSearchParams();
 	// Default to 1000 logs per request
@@ -149,16 +149,21 @@ export async function query_get_inst_logs(instance: IInstance, options?: {
 	
 	const logs: ILog[] = parse_log_lines(log_strings);
 	
-	// Get pagination info from response body
+	// Get pagination info from response body. total_size and scanned_bytes let
+	// the UI say how much of the file a filtered search actually covered —
+	// `has_more` on a filtered query now means "more matches may exist", so the
+	// two together are what make the scope statement honest.
 	const next_cursor = resp.data?.next_cursor || undefined;
 	const has_more = resp.data?.has_more || false;
 	const count = resp.data?.log_count || undefined;
-	
+
 	return {
 		logs,
 		next_cursor,
 		has_more,
-		count
+		count,
+		total_size: resp.data?.total_size,
+		scanned_bytes: resp.data?.scanned_bytes,
 	};
 }
 
