@@ -56,9 +56,22 @@ test.describe('Route page CRUD', () => {
 		// interface itself sits on .1). The kernel only checks reachability, so
 		// any in-subnet address works — no traffic is ever sent to it.
 		const data = await gwJson<{ipAttr?: Array<{dev: string; ipAddress?: string[]}>}>('/config/ipv4address/all');
-		for (const attr of data.ipAttr ?? []) {
-			if (attr.dev === 'lo') continue;
-			const primary = (attr.ipAddress ?? []).find(cidr => !isDocAddr(cidr));
+		// Sorted by device name, because the backend returns this list in Go map
+		// order — i.e. a DIFFERENT order on every call. "First non-lo device"
+		// therefore picked a different nexthop run to run, and one of the
+		// candidates is fatal: the per-rule pseudo-devices (llb-rule-<vip>) carry
+		// a /32, whose sibling host is not on-link, so the route create fails
+		// with 500 "network is unreachable". Skip anything narrower than a /30
+		// and sort for determinism.
+		const candidates = (data.ipAttr ?? [])
+			.filter(attr => attr.dev !== 'lo' && !attr.dev.startsWith('llb-rule-'))
+			.sort((a, b) => a.dev.localeCompare(b.dev));
+		for (const attr of candidates) {
+			const primary = (attr.ipAddress ?? []).find(cidr => {
+				if (isDocAddr(cidr)) return false;
+				const prefix = Number(cidr.split('/')[1]);
+				return Number.isFinite(prefix) && prefix <= 30; // a /31 or /32 has no usable sibling
+			});
 			if (primary) {
 				const octets = primary.split('/')[0].split('.');
 				octets[3] = octets[3] === '1' ? '2' : '1';
@@ -66,7 +79,7 @@ test.describe('Route page CRUD', () => {
 				break;
 			}
 		}
-		expect(GW, 'testbed must expose a non-lo device with an IPv4 address').toBeTruthy();
+		expect(GW, 'testbed must expose a non-lo, non-rule device on a /30-or-wider IPv4 subnet to use as an on-link nexthop').toBeTruthy();
 	});
 
 	test.afterEach(async () => {
