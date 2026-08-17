@@ -7,14 +7,28 @@
 //---------------------------------------------------------
 import {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {activeInstance, gw, gwJson, sweepVlans} from '../../helpers/api';
+import {activeInstance, gw, gwJson, sweepVlans, TEST_VLAN_IDS} from '../../helpers/api';
 import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss} from '../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../helpers/form';
 import {refreshUntilGone, refreshUntilRow, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 
 const VLAN_PATH = '/config/vlan';
-const VID = 3990; // clean reserved test vid (3999 wedged during bring-up)
-const MEMBER_VID = 3991;
+
+// The two reserved vids this spec uses are CHOSEN AT RUNTIME from the free
+// entries in TEST_VLAN_IDS, never hardcoded. Mirrors e2e/oss/tests/vlan.spec.ts.
+//
+// Why: a vid can end up permanently wedged — still listed by
+// GET /config/vlan/all, but every DELETE (member and vlan alike) answers
+// 404 "Link not found", because its kernel link is gone while the backend's own
+// table still has the row. Once that happens the vid is unusable forever and a
+// hardcoded one makes the whole spec un-rerunnable on that testbed: it fails on
+// every future run, for a reason nothing in the failure message explains.
+// (3999 was burned that way during bring-up, and 3991 on the loxilb box on
+// 2026-08-18 — this tree kept its hardcoded 3990/3991 and would have been the
+// next casualty.) Picking a free vid turns a mystifying permanent flake into
+// either a green run or a named, actionable failure when the pool runs out.
+let VID = 0;
+let MEMBER_VID = 0;
 
 // The member sub-panel renders a second DataTable — target its (2nd) toolbar
 // and grid explicitly since #table-bar / .MuiDataGrid-root ids repeat.
@@ -45,6 +59,15 @@ test.describe('VLAN page CRUD', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepVlans();
+
+		// Whatever the sweep could not remove is wedged — skip those.
+		const existing = new Set(((await gwJson<{vlanAttr?: Array<{vid: number}>}>(`${VLAN_PATH}/all`)).vlanAttr ?? []).map(v => v.vid));
+		const free = TEST_VLAN_IDS.filter(vid => !existing.has(vid));
+		expect(
+			free.length,
+			`the reserved test-VLAN pool is exhausted on this instance — ${TEST_VLAN_IDS.filter(v => existing.has(v)).join(', ')} are still present and could not be swept (wedged upstream: listed by GET, 404 on DELETE). Widen TEST_VLAN_IDS in helpers/api.ts or rebuild the instance.`,
+		).toBeGreaterThanOrEqual(2);
+		[VID, MEMBER_VID] = free;
 	});
 
 	test.afterEach(async () => {
