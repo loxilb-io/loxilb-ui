@@ -63,21 +63,39 @@ test.describe('@loxilb Dashboard (loxilb-oss)', () => {
 		await expect(page.locator('.MuiAlert-standardError'), 'no error banner on a loxilb dashboard').toHaveCount(0);
 	});
 
-	test('DASH-2: System Usage is /status-derived and labels its source (upstream exports no system_* gauge)', async ({page}) => {
+	test('DASH-2: System Usage names its source, and shows no figure nothing reported', async ({page}) => {
 		const card = page.locator('.MuiPaper-root').filter({hasText: 'System Usage'}).first();
 		await expect(card).toBeVisible({timeout: 20_000});
 
-		// Disk is the deterministic one: /status/filesystem is always served, so
-		// the pie must exist AND be captioned as df-derived — never presented as
-		// a direct measurement it is not.
-		await expect(card.getByText(/From df \(/), 'disk usage is captioned as df-derived').toBeVisible({timeout: 20_000});
+		// WHICH source the card may legitimately use depends on the build in
+		// front of it, so ask the instance rather than hardcoding one. A
+		// pre-parity loxilb publishes no `loxilb_system_*_utilization_percent`
+		// gauge at all and the card MUST fall back to /status/{filesystem,process},
+		// captioning each pie with that provenance. A metrics-parity build
+		// publishes the gauges natively, and the card is then right to prefer
+		// them — and right to drop the caption with them, because a direct
+		// measurement is not a df/top estimate. Asserting the caption
+		// unconditionally would turn a backend upgrade into a red test.
+		const metrics = await scrape();
+		const gauges = ['cpu', 'memory', 'disk'].filter(f => metrics?.[`loxilb_system_${f}_utilization_percent`] !== undefined);
 
-		// A metric nothing reports must read N/A rather than 0%. Whichever of
-		// CPU/memory `top` could not account for shows the placeholder; neither
-		// may silently render as a zero-used pie.
-		const naCount = await card.getByText('Not reported by this instance').count();
-		const topCount = await card.getByText(/From top \(/).count();
-		expect(naCount + topCount, 'CPU and memory are each either top-derived or an explicit N/A').toBeGreaterThanOrEqual(2);
+		if (!gauges.includes('disk')) {
+			// Disk is the deterministic fallback: /status/filesystem is always
+			// served, so with no gauge the pie must exist AND be captioned as
+			// df-derived — never presented as a direct measurement it is not.
+			await expect(card.getByText(/From df \(/), 'disk usage is captioned as df-derived').toBeVisible({timeout: 20_000});
+		}
+
+		// Whatever the build, each of the three figures must be accounted for by
+		// exactly one honest outcome: gauge-sourced (uncaptioned pie),
+		// fallback-derived (captioned pie), or an explicit N/A. What none of
+		// them may be is a silent 0%-used pie.
+		const captioned = (await card.getByText(/From df \(/).count()) + (await card.getByText(/From top \(/).count());
+		const na = await card.getByText('Not reported by this instance').count();
+		expect(
+			gauges.length + captioned + na,
+			'CPU, memory and disk are each gauge-sourced, captioned with their fallback, or an explicit N/A',
+		).toBeGreaterThanOrEqual(3);
 	});
 
 	test('DASH-3: the loxilb alias table maps the live scrape onto the cards (or the cards stay honest without one)', async ({page}) => {
@@ -101,10 +119,15 @@ test.describe('@loxilb Dashboard (loxilb-oss)', () => {
 		// Upstream drops the `_total` suffix the gateway uses.
 		expect(metrics['processed_bytes'] ?? metrics['processed_bytes_total'], 'upstream cumulative byte counter').toBeDefined();
 		expect(metrics['processed_bytes_total'], 'upstream does NOT use the gateway _total suffix').toBeUndefined();
-		// …and exports no system utilization at all (why SystemUsageCard falls
-		// back to /status — DASH-2).
+		// …and publishes no system utilization under a LEGACY name, in any
+		// build. Pre-parity it exports none at all (why SystemUsageCard falls
+		// back to /status — DASH-2); a metrics-parity build exports the figure
+		// only under the canonical `loxilb_system_*_utilization_percent`
+		// spelling. So these three names stay absent either way — do not
+		// "update" them to the canonical names, which would make this assertion
+		// fail against exactly the build it is meant to tolerate.
 		for (const name of ['system_cpu_utilization', 'system_memory_utilization', 'system_disk_utilization']) {
-			expect(metrics[name], `upstream exports no ${name}`).toBeUndefined();
+			expect(metrics[name], `upstream publishes no legacy ${name}`).toBeUndefined();
 		}
 
 		// The LB-rule card reads the aliased value, so it must agree with the
