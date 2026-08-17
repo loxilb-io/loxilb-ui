@@ -18,6 +18,7 @@ import SettingsPanel from 'components/panel/SettingPanel';
 import LBTable from 'components/table/traffic/LBTable';
 import {query_get_load_balancer_config_all, request_create_load_balancer_config, request_delete_lb_by_ip_port_proto, request_delete_lb_by_ip_portrange_proto, request_delete_lb_by_name, request_patch_load_balancer_config} from 'connector/instance/load_balancer';
 import {useInstanceFromURL} from 'hooks/instanceHook';
+import {InstanceFlavor} from 'api/capabilities';
 import {useInstanceCapabilities} from 'hooks/query/flavorHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useErrorPopup} from 'hooks/useErrorPopup';
@@ -35,6 +36,10 @@ import {IPolicyConfiguration} from 'types/qos';
 export default function LBRulePage() {
 	const inst = useInstanceFromURL();
 	const caps = useInstanceCapabilities();
+	// Same fallback the capability helpers use while the /version probe is in
+	// flight: assume the gateway, i.e. strip nothing. Guessing "loxilb" instead
+	// would silently drop fields a gateway legitimately accepts.
+	const effectiveFlavor: InstanceFlavor = caps.flavor ?? 'inference-gateway';
 
 	const [searchParams] = useSearchParams();
 	const servName = searchParams.get('servName');
@@ -151,7 +156,7 @@ export default function LBRulePage() {
 			async () => {
 				if (!instanceRef.current) return;
 
-				const res = await request_create_load_balancer_config(inst, instanceRef.current);
+				const res = await request_create_load_balancer_config(inst, instanceRef.current, effectiveFlavor);
 				if (res.status === 'success') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
 					setTimeout(() => {
@@ -223,7 +228,7 @@ export default function LBRulePage() {
 				if (keyChanged || !osa.externalIP || osa.port == null || !osa.protocol) {
 					// The VIP/port/proto composite key is immutable under PATCH —
 					// changing it means a different rule, so fall back to re-POST.
-					res = await request_create_load_balancer_config(inst, serviceConfig);
+					res = await request_create_load_balancer_config(inst, serviceConfig, effectiveFlavor);
 				} else {
 					// Change detection shared by both update strategies. Immutable
 					// fields are rejected by the gateway's PATCH with 400.
@@ -297,7 +302,7 @@ export default function LBRulePage() {
 								return;
 							}
 						}
-						res = await request_create_load_balancer_config(inst, upsert);
+						res = await request_create_load_balancer_config(inst, upsert, effectiveFlavor);
 					}
 				}
 				if (res.status === 'success') {

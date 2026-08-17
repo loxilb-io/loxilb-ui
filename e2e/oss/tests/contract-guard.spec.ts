@@ -119,24 +119,13 @@ test.describe('@loxilb LX-CONTRACT — no gateway-only API surface reaches a lox
 		await gotoLoxilbPage(page, 'traffic/lb', instName);
 		guard.reset();
 
-		// KNOWN GAP — LX-EP-DEFAULTS (found by this test on 2026-08-18).
-		// EndpointListForm.handleAdd seeds every new endpoint row with
-		// `ep_role: 0, nixl_port: 0` (subforms/EndpointListForm.tsx:57) because
-		// the P/D dropdown's announce path would otherwise delete the row the
-		// user just added. The *controls* are correctly gated behind
-		// pd_disagg_mode, but those two defaults ride along in the POST body on
-		// every LB create — including on loxilb, which has neither field.
-		//
-		// Upstream silently drops them, so nothing visibly breaks today; it is
-		// still the exact failure class this guard exists to catch (hidden
-		// control, field still shipped) and would become a hard 422 the day
-		// loxilb validates unknown properties. The fix belongs in shared code —
-		// project the outgoing endpoints through hasField() — and affects the
-		// gateway build too, so it is deliberately NOT patched from a test.
-		//
-		// The waiver is scoped to these two field names only: any other
-		// gateway-only field, path, method or enum still fails this test.
-		guard.allow(/LoadbalanceEntry\.endpoints\[\]\.(ep_role|nixl_port)\b/);
+		// LX-EP-DEFAULTS was waived here until 2026-08-18. EndpointListForm.handleAdd
+		// still seeds `ep_role: 0, nixl_port: 0` on every new row — it has to, or
+		// the P/D dropdown's announce path deletes the row the user just added —
+		// but the connector now projects outgoing bodies onto the fields the
+		// target flavor declares (`projectOntoFlavor` in
+		// connector/instance/load_balancer.ts), so the seeds no longer reach the
+		// wire. The waiver is gone; this test asserts the payload unaided again.
 		await expect(toolbarButton(page, 'Add')).toBeVisible({timeout: 20_000});
 		await showAllRows(page);
 

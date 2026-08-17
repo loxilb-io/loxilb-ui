@@ -1,6 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {InstanceFlavor, stripGatewayOnlyFields} from 'api/capabilities';
 import {IServiceConfiguration} from 'types/load_balancer';
 import {IInstance} from 'types/oam';
 import {ApiResult, assertOk, createDetailedErrorMessage} from '../fetcher/fetcher_base';
@@ -32,6 +33,34 @@ function cleanNegativeNumbers(obj: any): any {
 	return obj;
 }
 
+/**
+ * Project an outgoing LB body onto the fields the target flavor actually
+ * declares — LX-EP-DEFAULTS.
+ *
+ * Done here, at the last boundary before the wire, rather than in the form: the
+ * form gates CONTROLS, and a gated control still carries state. Every create
+ * path (create, the edit upsert, the restore replay) shares this one funnel, so
+ * a new caller cannot forget it.
+ *
+ * A no-op for the gateway, and — apart from the endpoint defaults — a no-op for
+ * loxilb too, since the form gating already keeps the rest clean. It is the net
+ * under that gating, not a replacement for it.
+ */
+function projectOntoFlavor(body: any, flavor: InstanceFlavor): any {
+	if (flavor === 'inference-gateway') return body;
+
+	const projected = stripGatewayOnlyFields(flavor, 'LoadbalanceEntry', body);
+	return {
+		...projected,
+		...(projected.serviceArguments
+			? {serviceArguments: stripGatewayOnlyFields(flavor, 'LoadbalanceEntry.serviceArguments', projected.serviceArguments)}
+			: {}),
+		...(Array.isArray(projected.endpoints)
+			? {endpoints: projected.endpoints.map((ep: any) => stripGatewayOnlyFields(flavor, 'LoadbalanceEntry.endpoints[]', ep))}
+			: {}),
+	};
+}
+
 //---------------------------------------------------------
 // API Caller Functions
 //---------------------------------------------------------
@@ -41,7 +70,7 @@ export async function query_get_load_balancer_config_all(instance: IInstance): P
 	return (resp.data?.lbAttr ?? []) as IServiceConfiguration[];
 }
 
-export async function request_create_load_balancer_config(instance: IInstance, data: IServiceConfiguration): Promise<ApiResult> {
+export async function request_create_load_balancer_config(instance: IInstance, data: IServiceConfiguration, flavor: InstanceFlavor): Promise<ApiResult> {
 	// Remove keys with negative number values to avoid backend type errors
 	let cleanedData = cleanNegativeNumbers(data);
 	
@@ -70,7 +99,7 @@ export async function request_create_load_balancer_config(instance: IInstance, d
 		};
 	}
 
-	const resp = await POST_INST(instance, `/config/loadbalancer`, cleanedData);
+	const resp = await POST_INST(instance, `/config/loadbalancer`, projectOntoFlavor(cleanedData, flavor));
 	if (resp.code !== 200 && resp.code !== 204) {
 		const errorMessage = createDetailedErrorMessage(resp, 'Create Load Balancer');
 		return {status: 'error', error: errorMessage};

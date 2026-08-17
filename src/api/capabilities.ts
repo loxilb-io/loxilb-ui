@@ -76,6 +76,36 @@ export function hasField(flavor: InstanceFlavor, context: string, field: string)
 	return !(gatewayOnlyFields[context] ?? []).includes(field);
 }
 
+// Drops every gateway-only key from an outgoing object, for one schema
+// `context`. The last line of defence before a payload hits the wire.
+//
+// Gating a CONTROL is not the same as not sending its field. A hidden control
+// still has state, and defaults seeded for the form's own benefit — see
+// EndpointListForm.handleAdd, which must seed `ep_role`/`nixl_port` or the
+// dropdown's announce path deletes the row the user just added — ride along in
+// the body regardless of what is on screen. Upstream loxilb currently drops
+// unknown properties silently (go-swagger default), so the leak is invisible
+// today and becomes a hard 422 the day it starts validating them.
+//
+// Applied per-object rather than by deep-walking the payload: the map is keyed
+// by schema context, and two different contexts can legitimately use the same
+// field name.
+export function stripGatewayOnlyFields<T extends Record<string, any>>(flavor: InstanceFlavor, context: string, obj: T): T {
+	if (flavor === 'inference-gateway') return obj;
+	const gatewayOnly = gatewayOnlyFields[context] ?? [];
+	if (gatewayOnly.length === 0) return obj;
+
+	let stripped: T | undefined;
+	for (const field of gatewayOnly) {
+		if (field in obj) {
+			// Copy lazily — the overwhelmingly common case is nothing to strip.
+			stripped = stripped ?? {...obj};
+			delete stripped[field];
+		}
+	}
+	return stripped ?? obj;
+}
+
 // Filters an enum's send values down to what the flavor accepts, e.g.
 // allowedEnumValues('loxilb', 'LoadbalanceEntry.serviceArguments.sel',
 // sels.map(s => s.send_value)). Values the gateway added over loxilb are
