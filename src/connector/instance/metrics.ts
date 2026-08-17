@@ -13,11 +13,18 @@ import {GET_INST_TEXT} from '../fetcher/fetcher_inst';
 // Parses Prometheus text format into a flat {metric_name: value} map.
 // Labeled samples of the same metric are summed, which matches how the
 // dashboard cards consume a flat metric snapshot.
+//
+// The value pattern spells out the full Prometheus number grammar, including a
+// SIGNED exponent. The previous `-?[0-9.eE+]+` had no `-` inside the exponent,
+// so `7.9598e-05` captured as `7.9598e`, became NaN, and was dropped by the
+// isFinite guard below — a sample silently vanishing rather than erroring.
+// Observed live on a real scrape (`go_gc_duration_seconds`); no `loxilb_*`
+// series uses a negative exponent today, but any small ratio would.
 export function parse_prometheus_text(text: string): Record<string, number> {
 	const values: Record<string, number> = {};
 	for (const line of text.split('\n')) {
 		if (!line || line.startsWith('#')) continue;
-		const match = line.match(/^([a-zA-Z_:][a-zA-Z0-9_:]*)(\{[^}]*\})?\s+(-?[0-9.eE+]+)/);
+		const match = line.match(/^([a-zA-Z_:][a-zA-Z0-9_:]*)(\{[^}]*\})?\s+([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?|[+-]?Inf|NaN)/);
 		if (!match) continue;
 		const value = Number(match[3]);
 		if (!Number.isFinite(value)) continue;
@@ -77,6 +84,22 @@ const GATEWAY_ALIASES: Record<string, string> = {
 // lb-rule names with the pre-rename gateway but diverges on three fronts:
 // endpoint health is counted per *host*, the cumulative counters carry no
 // `_total` suffix, and system utilization is not exported at all.
+//
+// SINCE THE METRICS-PARITY BUILD, loxilb publishes every canonical name in this
+// file natively, alongside its legacy names (dual-emit; the legacy families are
+// tagged `DEPRECATED: use <canonical>` in their HELP text). Against such an
+// instance this table is dead weight — resolution finds the canonical name
+// first and never consults it.
+//
+// It stays anyway, and MUST stay until the fleet has upgraded. The UI connects
+// to whatever instances an operator has registered, and a released loxilb-oss
+// build publishes legacy names only. Deleting the table would blank every card
+// on every un-upgraded instance the moment this UI ships — the same
+// no-flag-day-coupling argument that keeps GATEWAY_ALIASES above.
+//
+// Sunset condition: drop an entry only once no supported loxilb-oss release
+// publishes that legacy name. That is a fleet fact, not a code fact — check
+// before deleting.
 const LOXILB_ALIASES: Record<string, string> = {
 	// Connection tracking — identical to the pre-rename gateway
 	loxilb_active_conntrack_entries: 'active_conntrack_count',
@@ -93,11 +116,16 @@ const LOXILB_ALIASES: Record<string, string> = {
 	loxilb_processed_bytes_total: 'processed_bytes',
 	loxilb_processed_packets_total: 'processed_packets',
 	loxilb_errors_total: 'total_errors',
-	// NOTE: deliberately no `loxilb_system_*_utilization_percent` entry — upstream
-	// loxilb exports no system utilization series at all. Leaving these absent is
-	// what makes SystemUsageCard render an honest N/A instead of a 0%-used pie.
-	// Likewise `loxilb_conntrack_max_entries` (conntrack utilization view stays
-	// hidden). Do NOT paper over either with a zero.
+	// NOTE: `loxilb_system_*_utilization_percent` and `loxilb_conntrack_max_entries`
+	// have no entry here, and never will — there is no legacy name to alias them
+	// TO. A pre-parity loxilb does not export them in any spelling; a
+	// parity-build loxilb exports them under the canonical name, which needs no
+	// alias.
+	//
+	// So absence still carries meaning, and consumers must keep honouring it:
+	// missing => the instance does not report this, render N/A. Never
+	// substitute a zero — a 0%-used pie and a 0-capacity conntrack ratio are
+	// both indistinguishable from a real reading, and the second divides by zero.
 };
 
 const ALIASES_BY_FLAVOR: Record<InstanceFlavor, Record<string, string>> = {
@@ -129,9 +157,18 @@ export function normalize_metric_names(metrics: Record<string, number>, flavor: 
  * table yields silently wrong numbers, so the decision belongs to the caller
  * (see `useLiveMetrics`, which sources it from the /version probe).
  *
- * When Prometheus collection is disabled the gateway returns HTTP 503 (enable
- * via `POST /netlox/v1/config/metrics`); we surface that as an empty snapshot so
- * the cards render placeholders rather than erroring.
+ * When Prometheus collection is disabled, BOTH flavors now return HTTP 503
+ * (enable via `POST /netlox/v1/config/metrics`). Pre-parity loxilb-oss instead
+ * answered 200 with the JSON string `"Prometheus option is disabled."`, which
+ * is not a valid exposition — Prometheus itself rejects it with
+ * `expected a valid start token, got "\""`. That body parses to `{}` here,
+ * which is why it has been indistinguishable from a live all-zero instance.
+ *
+ * KNOWN GAP: this function still collapses "collection is off", "auth failed"
+ * and "everything really is 0" into the same empty snapshot, because
+ * ILiveMetricsResponse has no way to say "unknown". The 503 makes the
+ * distinction *available*; representing it is the next change. See
+ * docs/internal/METRICS_LOXILB_PARITY.md.
  */
 export async function query_get_live_metrics(instance: IInstance, flavor: InstanceFlavor): Promise<ILiveMetricsResponse> {
 	const resp = await GET_INST_TEXT(instance, `/metrics`);

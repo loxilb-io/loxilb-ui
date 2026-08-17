@@ -33,6 +33,18 @@ describe('parse_prometheus_text', () => {
 		expect(parse_prometheus_text(text)).toEqual({total_bytes: 1_500_000, drift: -2.5});
 	});
 
+	it('handles NEGATIVE exponents', () => {
+		// Regression: the old value pattern had no `-` inside the exponent, so
+		// `7.9598e-05` captured as `7.9598e` -> NaN -> silently dropped. Seen live
+		// in go_gc_duration_seconds; any small ratio metric would hit it too.
+		const text = ['go_gc_duration_seconds{quantile="0"} 7.9598e-05', 'ratio 1.25E-3', 'tiny .5e-2'].join('\n');
+		expect(parse_prometheus_text(text)).toEqual({
+			go_gc_duration_seconds: 7.9598e-5,
+			ratio: 1.25e-3,
+			tiny: 0.005,
+		});
+	});
+
 	it('skips non-finite values instead of poisoning the snapshot', () => {
 		// NaN/Inf appear in real exporters; the regex should reject them and,
 		// even if matched, non-finite numbers must not land in the map.
@@ -129,13 +141,85 @@ describe('normalize_metric_names', () => {
 			expect(out.loxilb_lb_rules).toBe(4);
 		});
 
-		it('leaves system utilization absent rather than zero (upstream exports none)', () => {
+		it('leaves system utilization absent rather than zero (pre-parity build exports none)', () => {
 			const out = normalize_metric_names({...LOXILB_SCRAPE}, 'loxilb');
 			// Absence is what makes SystemUsageCard render N/A instead of "0% used".
 			expect(out.loxilb_system_cpu_utilization_percent).toBeUndefined();
 			expect(out.loxilb_system_memory_utilization_percent).toBeUndefined();
 			expect(out.loxilb_system_disk_utilization_percent).toBeUndefined();
 			expect(out.loxilb_conntrack_max_entries).toBeUndefined();
+		});
+	});
+
+	// A loxilb-oss build with the metrics-parity change publishes every canonical
+	// name natively, dual-emitted alongside the legacy ones. The alias table must
+	// be inert against it: canonical-first resolution means nothing is rewritten,
+	// and the legacy twins carry identical values so a mistaken overwrite would
+	// be invisible here — hence the distinct values in the fixture below.
+	describe('loxilb flavor, metrics-parity build', () => {
+		// Legacy twins deliberately given DIFFERENT values than their canonical
+		// counterparts. A real instance emits them equal; making them differ is
+		// what proves the canonical value is the one that survives.
+		const PARITY_SCRAPE = {
+			// canonical (what the parity build publishes)
+			loxilb_active_conntrack_entries: 92,
+			loxilb_active_flow_count_tcp: 92,
+			loxilb_new_flows: 36,
+			loxilb_lb_rules: 4,
+			loxilb_healthy_endpoints: 3,
+			loxilb_unhealthy_endpoints: 0,
+			loxilb_processed_bytes_total: 2_604_644,
+			loxilb_processed_packets_total: 43_412,
+			loxilb_errors_total: 0,
+			// canonical-only families, impossible before the parity build
+			loxilb_conntrack_max_entries: 65_536,
+			loxilb_system_cpu_utilization_percent: 12.5,
+			loxilb_system_memory_utilization_percent: 40,
+			loxilb_system_disk_utilization_percent: 73.9,
+			// legacy twins, still emitted and tagged DEPRECATED in HELP
+			active_conntrack_count: -1,
+			healthy_host_count: -1,
+			processed_bytes: -1,
+			lb_rule_count: -1,
+		};
+
+		it('passes canonical names through untouched when legacy twins disagree', () => {
+			const out = normalize_metric_names({...PARITY_SCRAPE}, 'loxilb');
+			expect(out.loxilb_active_conntrack_entries).toBe(92);
+			expect(out.loxilb_healthy_endpoints).toBe(3);
+			expect(out.loxilb_processed_bytes_total).toBe(2_604_644);
+			expect(out.loxilb_lb_rules).toBe(4);
+		});
+
+		it('surfaces the families that only the parity build can report', () => {
+			const out = normalize_metric_names({...PARITY_SCRAPE}, 'loxilb');
+			expect(out.loxilb_conntrack_max_entries).toBe(65_536);
+			expect(out.loxilb_system_cpu_utilization_percent).toBe(12.5);
+			expect(out.loxilb_system_memory_utilization_percent).toBe(40);
+			expect(out.loxilb_system_disk_utilization_percent).toBe(73.9);
+		});
+
+		it('covers every canonical key the dashboard reads', () => {
+			const out = normalize_metric_names({...PARITY_SCRAPE}, 'loxilb');
+			// Keep in step with the keys consumed by the dashboard cards. A key
+			// added to a card without a source here is a card that renders N/A.
+			for (const key of [
+				'loxilb_lb_rules',
+				'loxilb_processed_bytes_total',
+				'loxilb_processed_packets_total',
+				'loxilb_healthy_endpoints',
+				'loxilb_unhealthy_endpoints',
+				'loxilb_active_conntrack_entries',
+				'loxilb_conntrack_max_entries',
+				'loxilb_active_flow_count_tcp',
+				'loxilb_new_flows',
+				'loxilb_errors_total',
+				'loxilb_system_cpu_utilization_percent',
+				'loxilb_system_memory_utilization_percent',
+				'loxilb_system_disk_utilization_percent',
+			]) {
+				expect(out[key], `${key} must resolve on a parity build`).toBeDefined();
+			}
 		});
 	});
 
