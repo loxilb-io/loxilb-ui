@@ -1,16 +1,51 @@
 //---------------------------------------------------------
 // Logs page spec.
-// Read-only: live log stream + client-side level filter + server-side keyword
-// filter + downloadable archives. Level filtering is client-side over the
-// currently-loaded page by design (the connector never sends `level` to the
-// API), so selecting a level narrows/relabels but may show 0 until more pages
-// load — asserted here as behaviour, not a bug. D-archive is not implementable
-// (the archive card has no delete affordance) and is documented, not tested.
+//
+// The page renders the shared LogConsole (also used by the dashboard card):
+// one toolbar, a severity strip that doubles as the level filter, and a table.
+//
+// Scope rules worth knowing before reading the assertions:
+//   - keyword goes to the gateway (server-side) and is debounced, so typing
+//     must produce exactly ONE request, not one per keystroke;
+//   - level and time range are applied client-side over the lines already
+//     paged in, so they must narrow the grid WITHOUT any network call. That is
+//     deliberate: the endpoint pages by byte offset and `has_more` counts bytes
+//     rather than matches, so a server-side level filter would report counts
+//     for one page as if they were the whole file;
+//   - gzipped archives are listed but disabled — the endpoint serves them raw,
+//     so they would parse to nothing.
+// D-archive is not implementable (the archive card has no delete affordance)
+// and is documented, not tested.
 //---------------------------------------------------------
 import {expect, test} from '../../fixtures';
 import {activeInstance, gw, gwJson} from '../../helpers/api';
 
 let instName: string;
+
+/** Records every /logs request the page issues, for scope assertions. */
+function trackLogRequests(page: import('@playwright/test').Page): string[] {
+	const urls: string[] = [];
+	page.on('request', r => {
+		if (/\/logs\?/.test(r.url()) && r.method() === 'GET') urls.push(r.url());
+	});
+	return urls;
+}
+
+/**
+ * Waits until the first page of lines has actually landed.
+ *
+ * The "Filtering N loaded lines" caption is NOT a readiness signal — it renders
+ * at N=0 before any response arrives, so gating on it let the initial fetch land
+ * *after* a test started counting requests and broke the client-side-only
+ * assertions. A severity chip only exists once lines have been counted, and a
+ * grid row only once they are rendered.
+ */
+async function awaitFirstPage(page: import('@playwright/test').Page) {
+	await expect(
+		page.locator('.MuiChip-root').filter({hasText: /^(CRITICAL|ERROR|WARNING|INFO|DEBUG) \d+$/}).first(),
+	).toBeVisible({timeout: 30_000});
+	await expect(page.locator('.MuiDataGrid-row').first()).toBeVisible({timeout: 30_000});
+}
 
 test.describe('Logs page (read-only)', () => {
 	test.beforeAll(async () => {
@@ -23,10 +58,11 @@ test.describe('Logs page (read-only)', () => {
 	});
 
 	test('streams live log lines and lists the archives from /log-archives', async ({page}) => {
-		// Live lines loaded (chip reports a non-zero count once the initial page
-		// arrives).
-		await expect(page.locator('.MuiChip-label', {hasText: /logs loaded/})).toBeVisible();
-		await expect(page.locator('.MuiDataGrid-row').first()).toBeVisible();
+		await awaitFirstPage(page);
+
+		// The console states the scope it filters over, so a level/time filter is
+		// never mistaken for a search of the whole file.
+		await expect(page.getByText(/Filtering \d+ loaded lines/)).toBeVisible();
 
 		// Snapshot the archive list FIRST, then reload so the page's own
 		// /log-archives fetch is at least as fresh as the snapshot — the gateway
@@ -61,21 +97,102 @@ test.describe('Logs page (read-only)', () => {
 		expect(missing, 'every /log-archives entry is listed in the card').toEqual([]);
 	});
 
-	test('level filter relabels via a chip and keyword filter hits the /logs API', async ({page}) => {
-		// Level filter (client-side) — the first combobox on the page is Level.
-		await page.getByRole('combobox').first().click();
-		await page.getByRole('option', {name: 'ERROR'}).click();
-		await expect(page.locator('.MuiChip-label', {hasText: 'Level: ERROR'})).toBeVisible();
+	test('severity chip filters client-side and toggles off without a round trip', async ({page}) => {
+		await awaitFirstPage(page);
 
-		// Keyword filter is server-side: applying it must issue a /logs request
-		// carrying the keyword param.
-		await page.getByRole('textbox', {name: 'Search Keyword'}).fill('metrics');
-		const [req] = await Promise.all([
-			page.waitForRequest(r => /\/logs\?/.test(r.url()) && /keyword=metrics/.test(r.url()), {timeout: 10_000}),
-			page.getByRole('button', {name: 'Apply Keyword Filters'}).click(),
-		]);
-		expect(req.url()).toContain('keyword=metrics');
-		await expect(page.locator('.MuiChip-label', {hasText: 'Keyword: metrics'})).toBeVisible();
+		const chip = page.locator('.MuiChip-root').filter({hasText: /^(INFO|DEBUG) \d+$/}).first();
+		const label = (await chip.innerText()).trim();
+		const count = Number(label.split(/\s+/)[1]);
+		expect(count, 'severity chip should carry a non-zero count').toBeGreaterThan(0);
+
+		const requests = trackLogRequests(page);
+		const grid = page.locator('.MuiDataGrid-row');
+		const before = await grid.count();
+
+		await chip.click();
+		// Narrowing to one level must reduce (or at most equal) the rendered set,
+		// and the chip becomes filled to show it is active.
+		await expect(chip).toHaveClass(/MuiChip-filled/);
+		await expect(page.getByRole('button', {name: 'Reset filters'})).toBeVisible();
+
+		// Clicking the same chip clears the filter again.
+		await chip.click();
+		await expect(chip).toHaveClass(/MuiChip-outlined/);
+		await expect.poll(() => grid.count()).toBe(before);
+
+		expect(requests, 'level filtering is client-side and must not hit the gateway').toEqual([]);
+	});
+
+	test('time range preset narrows client-side without a round trip', async ({page}) => {
+		await awaitFirstPage(page);
+
+		const requests = trackLogRequests(page);
+
+		await page.getByRole('combobox', {name: 'Time range'}).click();
+		await page.getByRole('option', {name: 'Last 5 min'}).click();
+		await expect(page.getByRole('button', {name: 'Reset filters'})).toBeVisible();
+
+		// Reset returns every filter to its default in one action.
+		await page.getByRole('button', {name: 'Reset filters'}).click();
+		await expect(page.getByRole('button', {name: 'Reset filters'})).toBeHidden();
+
+		expect(requests, 'the time range is applied client-side').toEqual([]);
+	});
+
+	test('keyword search is debounced into a single server-side request', async ({page}) => {
+		await awaitFirstPage(page);
+
+		const requests = trackLogRequests(page);
+		const search = page.getByRole('textbox', {name: 'Search'});
+
+		// Type character by character. The old UI required an Apply click; the
+		// console debounces instead, so seven keystrokes must collapse to one
+		// request carrying only the final keyword.
+		await search.pressSequentially('metrics', {delay: 60});
+		await expect.poll(() => requests.length, {timeout: 10_000}).toBe(1);
+		expect(requests[0]).toContain('keyword=metrics');
+
+		// Give any stray trailing debounce a chance to fire before asserting.
+		await page.waitForTimeout(1500);
+		expect(requests, 'debounce must not issue one request per keystroke').toHaveLength(1);
+	});
+
+	// Guards a bug that shipped once already: the toggle flipped to "pressed"
+	// while the polling flag never reached the query, so Live looked enabled and
+	// nothing ever refreshed. Asserting the button state alone would not have
+	// caught it — only the requests do.
+	test('live tail polls the gateway and stops when switched off', async ({page}) => {
+		await awaitFirstPage(page);
+
+		const requests = trackLogRequests(page);
+		const live = page.getByRole('button', {name: 'Live'});
+
+		await live.click();
+		await expect(live).toHaveAttribute('aria-pressed', 'true');
+		// One request for the key change, then at least one interval poll.
+		await expect.poll(() => requests.length, {timeout: 30_000}).toBeGreaterThanOrEqual(2);
+
+		await live.click();
+		await expect(live).toHaveAttribute('aria-pressed', 'false');
+		const settled = requests.length;
+		await page.waitForTimeout(12_000);
+		// Allow a single in-flight response to land after the toggle.
+		expect(requests.length, 'polling must stop once live tail is off').toBeLessThanOrEqual(settled + 1);
+	});
+
+	test('gzipped archives are listed but not selectable for viewing', async ({page}) => {
+		const {archives} = await gwJson<{archives: string[]}>('/log-archives');
+		const gz = archives.filter(a => a.endsWith('.gz'));
+		test.skip(gz.length === 0, 'no compressed archives on the testbed');
+
+		await awaitFirstPage(page);
+		await page.getByRole('combobox', {name: 'Log file'}).click();
+
+		// The endpoint serves .gz raw, so those entries stay disabled rather than
+		// silently loading an empty table.
+		const gzOption = page.getByRole('option', {name: new RegExp(`^${gz[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)});
+		await expect(gzOption).toHaveAttribute('aria-disabled', 'true');
+		await expect(gzOption).toContainText('compressed, download to view');
 	});
 
 	test('archives are downloadable (endpoint returns a non-empty body)', async ({page}) => {

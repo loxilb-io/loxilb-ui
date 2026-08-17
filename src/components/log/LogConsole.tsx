@@ -126,7 +126,15 @@ export default function LogConsole(props: LogConsoleProps) {
 
 			{/* Toolbar: everything applies on touch */}
 			<Box display="flex" alignItems="center" gap="10px" flexWrap="wrap">
-				<Tooltip title={liveTail ? t('Stop following the log') : t('Follow the log as it is written')}>
+				{/* describeChild keeps the button's accessible name as its visible text
+				    ("Live") and demotes the hint to a description. Without it MUI
+				    puts the tooltip sentence into aria-label, which overrides the
+				    label a screen reader — or a test — would expect, and changes
+				    every time the state flips. */}
+				<Tooltip
+					describeChild
+					title={liveTail ? t('Stop following the log') : t('Follow the log as it is written')}
+				>
 					<ToggleButton
 						value="live"
 						selected={liveTail}
@@ -140,9 +148,14 @@ export default function LogConsole(props: LogConsoleProps) {
 					</ToggleButton>
 				</Tooltip>
 
+				{/* labelId/id are required for MUI to associate the InputLabel with
+				    the select: without them the control renders with no accessible
+				    name at all. */}
 				<FormControl size="small" sx={{minWidth: 140}}>
-					<InputLabel>{t('Time range')}</InputLabel>
+					<InputLabel id="log-time-range-label">{t('Time range')}</InputLabel>
 					<Select
+						labelId="log-time-range-label"
+						id="log-time-range"
 						value={preset}
 						label={t('Time range')}
 						onChange={e => setPreset(e.target.value as TimeRangePreset)}
@@ -164,8 +177,14 @@ export default function LogConsole(props: LogConsoleProps) {
 
 				{archives.length > 0 && (
 					<FormControl size="small" sx={{minWidth: 180}}>
-						<InputLabel>{t('Log file')}</InputLabel>
-						<Select value={selectedFile} label={t('Log file')} onChange={e => selectFile(e.target.value)}>
+						<InputLabel id="log-file-label">{t('Log file')}</InputLabel>
+						<Select
+							labelId="log-file-label"
+							id="log-file"
+							value={selectedFile}
+							label={t('Log file')}
+							onChange={e => selectFile(e.target.value)}
+						>
 							<MenuItem value="">{t('Current log')}</MenuItem>
 							{archives.map(name => {
 								// The endpoint reads the file raw, so a gzipped archive comes
