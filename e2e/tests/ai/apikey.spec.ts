@@ -22,7 +22,7 @@
 //---------------------------------------------------------
 import {expect, test} from '../../fixtures';
 import {activeInstance, gatewayLacksUserservice, gw, sweepApiKeys} from '../../helpers/api';
-import {dialog, dialogButton, dialogTitle} from '../../helpers/dialogs';
+import {dialog, dialogButton, dialogTitle, openToolbarDialog} from '../../helpers/dialogs';
 import {field} from '../../helpers/form';
 import {grid, rowByText, showAllRows, toolbarButton} from '../../helpers/table';
 
@@ -58,8 +58,7 @@ test.describe('@gw AI API Key page', () => {
 	});
 
 	test('client validation: required tenant + a past-proof expiry picker (F-AI-1/2)', async ({page}) => {
-		await toolbarButton(page, 'Add').click();
-		await expect(dialog(page).getByRole('heading', {name: 'New AI API Key'})).toBeVisible();
+		await openToolbarDialog(page, 'Add', dialog(page).getByRole('heading', {name: 'New AI API Key'}));
 
 		const add = dialogButton(page, 'Add');
 
@@ -113,7 +112,7 @@ test.describe('@gw AI API Key page', () => {
 		expect(created?.key_id).toBeTruthy();
 		await showAllRows(page);
 		await rowByText(page, 'e2e-key').first().getByRole('checkbox').check();
-		await toolbarButton(page, 'Delete').click();
+		await openToolbarDialog(page, 'Delete', dialogTitle(page, 'WARNING!! Delete Item'));
 		await dialogButton(page, 'Delete').click();
 		await expect(dialogTitle(page, 'Success')).toBeVisible();
 		await dialogButton(page, 'OK').click();

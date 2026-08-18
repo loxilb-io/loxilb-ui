@@ -12,7 +12,7 @@ import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {gw, gwJson} from '../../helpers/api';
 import {requireLoxilbInstance} from '../_loxilb';
-import {dialog, dialogButton, expectSuccessAndDismiss} from '../../helpers/dialogs';
+import {dialog, dialogButton, expectSuccessAndDismiss, openDialog} from '../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../helpers/form';
 import {grid, toolbarButton} from '../../helpers/table';
 
@@ -35,8 +35,7 @@ function editButton(page: Page) {
 
 async function openEdit(page: Page): Promise<void> {
 	await grid(page).locator('.MuiDataGrid-row').first().getByRole('checkbox').check();
-	await editButton(page).click();
-	await expect(dialog(page).getByRole('heading', {name: 'New HA VIP'})).toBeVisible();
+	await openDialog(page, dialog(page).getByRole('heading', {name: 'New HA VIP'}), () => editButton(page).click());
 }
 
 let instName: string;

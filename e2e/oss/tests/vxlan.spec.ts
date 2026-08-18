@@ -9,7 +9,7 @@ import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {gw, sweepVxlans} from '../../helpers/api';
 import {requireLoxilbInstance} from '../_loxilb';
-import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss} from '../../helpers/dialogs';
+import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, openDialog, openToolbarDialog} from '../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../helpers/form';
 import {reloadUntilGone, reloadUntilRow, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 
@@ -50,8 +50,7 @@ test.describe('@loxilb VXLAN page CRUD', () => {
 	});
 
 	test('C-min: epIntf + vxlanID POST clean, then D-single', async ({page}) => {
-		await toolbarButton(page, 'Add').click();
-		await expect(dialog(page).getByText('New VxLAN')).toBeVisible();
+		await openToolbarDialog(page, 'Add', 'New VxLAN');
 		await field(page, 'Endpoint Interface').fill('eth0');
 		await field(page, 'VXLAN ID').fill(String(VXID));
 
@@ -88,8 +87,7 @@ test.describe('@loxilb VXLAN page CRUD', () => {
 		await selectRowByText(page, String(VXID)); // opens the peer sub-panel
 
 		// Add peer — the panel's text "Add" button (toolbar Add is icon-only).
-		await page.getByRole('button', {name: 'Add', exact: true}).click();
-		await expect(dialog(page).getByText('New VxLAN Peer')).toBeVisible();
+		await openDialog(page, 'New VxLAN Peer', () => page.getByRole('button', {name: 'Add', exact: true}).click());
 		await field(page, 'Peer IP').fill(PEER);
 		const [addReq] = await Promise.all([
 			page.waitForRequest(r => r.method() === 'POST' && r.url().includes(`${VX_PATH}/${VXID}/peer`)),
@@ -119,8 +117,7 @@ test.describe('@loxilb VXLAN page CRUD', () => {
 		await reloadUntilRow(page, String(VXID));
 		await selectRowByText(page, String(VXID)); // opens the peer sub-panel
 
-		await page.getByRole('button', {name: 'Add', exact: true}).click();
-		await expect(dialog(page).getByText('New VxLAN Peer')).toBeVisible();
+		await openDialog(page, 'New VxLAN Peer', () => page.getByRole('button', {name: 'Add', exact: true}).click());
 		const addBtn = dialogButton(page, 'Add');
 
 		expect(await isEventuallyDisabled(addBtn), 'empty peer IP must block').toBe(true);
@@ -138,8 +135,7 @@ test.describe('@loxilb VXLAN page CRUD', () => {
 	});
 
 	test('V-id: empty/zero/out-of-range vxlanID and empty epIntf all block submit', async ({page}) => {
-		await toolbarButton(page, 'Add').click();
-		await expect(dialog(page).getByText('New VxLAN')).toBeVisible();
+		await openToolbarDialog(page, 'Add', 'New VxLAN');
 		const addBtn = dialogButton(page, 'Add');
 
 		await field(page, 'Endpoint Interface').fill('eth0');

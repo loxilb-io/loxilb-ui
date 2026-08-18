@@ -16,7 +16,7 @@
 import {Locator, Page, expect as base} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {activeInstance, sweepIpsecCerts} from '../../helpers/api';
-import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss} from '../../helpers/dialogs';
+import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, openDialog} from '../../helpers/dialogs';
 import {field} from '../../helpers/form';
 import {CA_CERT_PEM, EP_CERT_PEM, EP_KEY_PEM} from '../../helpers/ipsec-pem';
 
@@ -65,8 +65,7 @@ test.describe('@gw IPsec Certificate page CRUD', () => {
 	});
 
 	test('C-cert: endpoint cert PEM upload POSTs clean payload, lists, then D-single', async ({page}) => {
-		await nthToolbarBtn(page, 0, 'Add').click();
-		await expect(dialog(page).getByRole('heading', {name: 'Upload IPsec Certificate'})).toBeVisible();
+		await openDialog(page, dialog(page).getByRole('heading', {name: 'Upload IPsec Certificate'}), () => nthToolbarBtn(page, 0, 'Add').click());
 
 		await field(page, 'Name').fill('e2e-cert');
 		await field(page, 'Description').fill('e2e disposable');
@@ -99,8 +98,7 @@ test.describe('@gw IPsec Certificate page CRUD', () => {
 	});
 
 	test('V-garbage: non-PEM cert / key keeps Upload disabled (never hits the wire)', async ({page}) => {
-		await nthToolbarBtn(page, 0, 'Add').click();
-		await expect(dialog(page).getByRole('heading', {name: 'Upload IPsec Certificate'})).toBeVisible();
+		await openDialog(page, dialog(page).getByRole('heading', {name: 'Upload IPsec Certificate'}), () => nthToolbarBtn(page, 0, 'Add').click());
 
 		await field(page, 'Name').fill('e2e-garbage');
 		await field(page, 'Certificate (PEM)').fill('this is not a certificate');
@@ -135,8 +133,7 @@ test.describe('@gw IPsec Certificate page CRUD', () => {
 	});
 
 	test('C-ca: CA cert upload POSTs clean payload, lists, then D-single', async ({page}) => {
-		await nthToolbarBtn(page, 1, 'Add').click();
-		await expect(dialog(page).getByRole('heading', {name: 'Upload CA Certificate'})).toBeVisible();
+		await openDialog(page, dialog(page).getByRole('heading', {name: 'Upload CA Certificate'}), () => nthToolbarBtn(page, 1, 'Add').click());
 
 		await field(page, 'Name').fill('e2e-ca');
 		await field(page, 'CA Certificate (PEM)').fill(CA_CERT_PEM);

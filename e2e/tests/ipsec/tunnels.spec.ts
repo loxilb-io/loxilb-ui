@@ -27,7 +27,7 @@
 import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {activeInstance, gw, sweepIpsecTunnels} from '../../helpers/api';
-import {confirmDelete, dialog, dialogButton, dialogTitle, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
+import {confirmDelete, dialog, dialogButton, dialogTitle, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 import {field} from '../../helpers/form';
 import {refreshUntilGone, refreshUntilRow, selectRowByClick, showAllRows, toolbarButton} from '../../helpers/table';
 
@@ -37,8 +37,7 @@ const LOCAL_IP = '10.0.0.12'; // the real gateway address (localIp must be an on
 let instName: string;
 
 async function openAddDialog(page: Page): Promise<void> {
-	await toolbarButton(page, 'Add').click();
-	await expect(dialog(page).getByRole('heading', {name: 'New IPsec Tunnel'})).toBeVisible();
+	await openToolbarDialog(page, 'Add', dialog(page).getByRole('heading', {name: 'New IPsec Tunnel'}));
 	await expect(field(page, 'Name')).toBeVisible();
 }
 
@@ -180,8 +179,7 @@ test.describe('@gw IPsec Tunnel page CRUD', () => {
 
 		// Open the edit dialog (Mode toolbar button); the PSK field comes back blank.
 		await selectRowByClick(page, 'e2e-tun-edit', 'name');
-		await toolbarButton(page, 'Mode').click();
-		await expect(dialog(page).getByRole('heading', {name: 'Edit IPsec Tunnel'})).toBeVisible();
+		await openToolbarDialog(page, 'Mode', dialog(page).getByRole('heading', {name: 'Edit IPsec Tunnel'}));
 		await expect(field(page, 'Pre-Shared Key')).toHaveValue('');
 
 		// Change only the remote subnet, leave the PSK blank, Apply.

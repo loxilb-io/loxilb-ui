@@ -21,7 +21,7 @@
 import {Page} from '@playwright/test';
 import {ConsoleGuard, expect, test} from '../../../fixtures';
 import {activeInstance, sweepFirewallRules, sweepLbRules, sweepNeighbors} from '../../../helpers/api';
-import {dialog, dialogButton, expectErrorAndDismiss} from '../../../helpers/dialogs';
+import {dialog, dialogButton, expectErrorAndDismiss, openToolbarDialog} from '../../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../../helpers/form';
 import {grid, toolbarButton} from '../../../helpers/table';
 import {cleanupLbByName, LbRecipe, runLbScenario} from '../_recipes';
@@ -94,8 +94,7 @@ test.describe('cicd/cluster1 — BGP config slice (--bgp LB + neighbor recipe; B
 		await gotoBgp(page, 'neighbor');
 		await expect(toolbarButton(page, 'Add')).toBeVisible({timeout: 20_000});
 
-		await toolbarButton(page, 'Add').click();
-		await expect(dialog(page).getByText('BGP Neighbor')).toBeVisible();
+		await openToolbarDialog(page, 'Add', 'BGP Neighbor');
 
 		const add = dialogButton(page, 'Add');
 		// Gated on a valid peer IP — empty form can't submit.
@@ -126,8 +125,7 @@ test.describe('cicd/cluster1 — BGP config slice (--bgp LB + neighbor recipe; B
 		await gotoBgp(page, 'neighbor');
 		await expect(toolbarButton(page, 'Add')).toBeVisible({timeout: 20_000});
 
-		await toolbarButton(page, 'Add').click();
-		await expect(dialog(page).getByText('BGP Neighbor')).toBeVisible();
+		await openToolbarDialog(page, 'Add', 'BGP Neighbor');
 		const add = dialogButton(page, 'Add');
 
 		await field(page, 'IP Address').fill('999.1.1.1');

@@ -9,7 +9,7 @@ import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {gw, sweepNeighbors} from '../../helpers/api';
 import {requireLoxilbInstance} from '../_loxilb';
-import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
+import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../helpers/form';
 import {refreshUntilGone, refreshUntilRow, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 
@@ -23,8 +23,7 @@ async function apiCreateNeighbor(ipAddress: string, mac = MAC): Promise<void> {
 }
 
 async function openAddDialog(page: Page): Promise<void> {
-	await toolbarButton(page, 'Add').click();
-	await expect(dialog(page).getByText('New Device Neighbor')).toBeVisible();
+	await openToolbarDialog(page, 'Add', 'New Device Neighbor');
 	await expect(field(page, 'IP Address')).toBeVisible();
 }
 

@@ -15,7 +15,7 @@
 //---------------------------------------------------------
 import {expect, test} from '../../../fixtures';
 import {activeInstance, gatewayLacksUserservice, gw, sweepApiKeys} from '../../../helpers/api';
-import {dialog, dialogButton, dialogTitle} from '../../../helpers/dialogs';
+import {dialog, dialogButton, dialogTitle, openToolbarDialog} from '../../../helpers/dialogs';
 import {field} from '../../../helpers/form';
 import {rowByText, showAllRows, toolbarButton} from '../../../helpers/table';
 
@@ -76,7 +76,7 @@ test.describe('@gw cicd/ai-apikey — AI API-key CRUD (needs --userservice)', ()
 		expect(created?.key_id).toBeTruthy();
 		await showAllRows(page);
 		await rowByText(page, 'e2e-cicd-key').first().getByRole('checkbox').check();
-		await toolbarButton(page, 'Delete').click();
+		await openToolbarDialog(page, 'Delete', dialogTitle(page, 'WARNING!! Delete Item'));
 		await dialogButton(page, 'Delete').click();
 		await expect(dialogTitle(page, 'Success')).toBeVisible();
 		await dialogButton(page, 'OK').click();

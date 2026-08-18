@@ -15,8 +15,7 @@
 import {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {activeInstance, gw, gwJson, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
-import {dialog, dialogButton, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
-import {toolbarButton} from '../../helpers/table';
+import {dialog, dialogButton, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 
 const LB_PATH = '/config/loadbalancer';
 
@@ -106,8 +105,7 @@ test.describe('@loxilb flavor gating — plain upstream loxilb instance', () => 
 	test('LB form: chwbl/L7/mTLS/AI gone, n2+n3 and e2ehttps offered', async ({page}) => {
 		await page.goto(`instance/traffic/lb?name=${instName}`);
 		await waitForLoxilbChip(page);
-		await toolbarButton(page, 'Add').click();
-		await expect(dialog(page).getByText('Add Load Balancer Rule')).toBeVisible();
+		await openToolbarDialog(page, 'Add', 'Add Load Balancer Rule');
 		await expandSection(page, /^Advanced Settings/);
 
 		// SEL options: shared set incl. the newly exposed n2/n3, no chwbl.
@@ -138,8 +136,7 @@ test.describe('@loxilb flavor gating — plain upstream loxilb instance', () => 
 	test('LB round-trip: n2 + fullproxy + e2ehttps(2) accepted and echoed by loxilb', async ({page}) => {
 		await page.goto(`instance/traffic/lb?name=${instName}`);
 		await waitForLoxilbChip(page);
-		await toolbarButton(page, 'Add').click();
-		await expect(dialog(page).getByText('Add Load Balancer Rule')).toBeVisible();
+		await openToolbarDialog(page, 'Add', 'Add Load Balancer Rule');
 
 		await field(page, 'Rule Name').fill('e2e-lb-flavor');
 		await expandSection(page, /^Basic Settings/);
@@ -185,8 +182,7 @@ test.describe('@loxilb flavor gating — plain upstream loxilb instance', () => 
 	test('LB probe on loxilb: connect probes only, tcp probe round-trips', async ({page}) => {
 		await page.goto(`instance/traffic/lb?name=${instName}`);
 		await waitForLoxilbChip(page);
-		await toolbarButton(page, 'Add').click();
-		await expect(dialog(page).getByText('Add Load Balancer Rule')).toBeVisible();
+		await openToolbarDialog(page, 'Add', 'Add Load Balancer Rule');
 
 		await field(page, 'Rule Name').fill('e2e-lb-probe-lx');
 		await expandSection(page, /^Basic Settings/);
@@ -241,8 +237,7 @@ test.describe('@loxilb flavor gating — plain upstream loxilb instance', () => 
 			await expect(row).toBeVisible({timeout: 20_000});
 			const box = row.getByRole('checkbox');
 			if (!(await box.isChecked())) await box.check();
-			await toolbarButton(page, 'Mode').click();
-			await expect(dialog(page).getByText('Edit Load Balancer Rule')).toBeVisible();
+			await openToolbarDialog(page, 'Mode', 'Edit Load Balancer Rule');
 		};
 		const captureMutations = () => {
 			const calls: string[] = [];
@@ -301,8 +296,7 @@ test.describe('@loxilb flavor gating — plain upstream loxilb instance', () => 
 	test('endpoint form: tls-hello probe option is absent', async ({page}) => {
 		await page.goto(`instance/traffic/endpoint?name=${instName}`);
 		await waitForLoxilbChip(page);
-		await toolbarButton(page, 'Add').click();
-		await expect(dialog(page)).toBeVisible();
+		await openToolbarDialog(page, 'Add', dialog(page));
 
 		await field(page, 'Probe Type').click();
 		const probeOptions = await page.getByRole('option').allTextContents();

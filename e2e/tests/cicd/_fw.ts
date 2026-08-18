@@ -16,7 +16,7 @@
 //---------------------------------------------------------
 import {expect, Page} from '@playwright/test';
 import {gw, gwJson} from '../../helpers/api';
-import {dialog, dialogButton, expectSuccessAndDismiss} from '../../helpers/dialogs';
+import {dialogButton, expectSuccessAndDismiss, openToolbarDialog} from '../../helpers/dialogs';
 import {field} from '../../helpers/form';
 import {refreshUntilRow, showAllRows, toolbarButton} from '../../helpers/table';
 
@@ -43,9 +43,8 @@ export interface FwRecipe {
  * Firewall form is flat (no accordions), so every field is directly present.
  */
 export async function driveFirewallCreate(page: Page, r: FwRecipe): Promise<any> {
-	await toolbarButton(page, 'Add').click();
 	// The firewall Add dialog has no heading — detect it by the form section.
-	await expect(dialog(page).getByText('Firewall Rule Arguments')).toBeVisible();
+	await openToolbarDialog(page, 'Add', 'Firewall Rule Arguments');
 
 	await field(page, 'Source IP').fill(r.sourceIP);
 	if (r.doSnat) await field(page, 'Do SNAT').check();

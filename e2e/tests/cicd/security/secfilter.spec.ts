@@ -15,7 +15,7 @@
 import {Page} from '@playwright/test';
 import {expect, test} from '../../../fixtures';
 import {activeInstance, gwJson, sweepFirewallRules, sweepIpFilterRules, sweepLbRules} from '../../../helpers/api';
-import {dialog, dialogButton, expectSuccessAndDismiss, selectOption} from '../../../helpers/dialogs';
+import {dialogButton, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../../helpers/dialogs';
 import {field} from '../../../helpers/form';
 import {refreshUntilRow, showAllRows, toolbarButton} from '../../../helpers/table';
 import {cleanupLbByName, LbRecipe, runLbScenario} from '../_recipes';
@@ -49,8 +49,7 @@ async function driveIpFilterCreate(page: Page, instName: string, r: FilterRule):
 	await expect(toolbarButton(page, 'Add')).toBeVisible({timeout: 20_000});
 	await showAllRows(page);
 
-	await toolbarButton(page, 'Add').click();
-	await expect(dialog(page).getByText('New IP Filter Rule Configuration')).toBeVisible();
+	await openToolbarDialog(page, 'Add', 'New IP Filter Rule Configuration');
 	if (r.filterType !== 'whitelist') await selectOption(page, 'Filter Type', r.filterType);
 	if (r.action !== 'allow') await selectOption(page, 'Action', r.action);
 	await field(page, 'CIDR').fill(r.cidr);

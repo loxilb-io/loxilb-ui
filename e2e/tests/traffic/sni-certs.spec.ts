@@ -13,7 +13,7 @@
 import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {activeInstance, gw, sweepSniCerts} from '../../helpers/api';
-import {confirmDelete, dialog, dialogButton, dialogTitle} from '../../helpers/dialogs';
+import {confirmDelete, dialog, dialogButton, dialogTitle, openToolbarDialog} from '../../helpers/dialogs';
 import {field} from '../../helpers/form';
 import {refreshUntilGone, refreshUntilRow, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 
@@ -23,8 +23,7 @@ let instName: string;
 let canRegister = false; // gateway accepts a hostname-only registration?
 
 async function openAddDialog(page: Page): Promise<void> {
-	await toolbarButton(page, 'Add').click();
-	await expect(dialog(page).getByText('New SNI Certificate Registration')).toBeVisible();
+	await openToolbarDialog(page, 'Add', 'New SNI Certificate Registration');
 	await expect(field(page, 'Hostname')).toBeVisible();
 }
 

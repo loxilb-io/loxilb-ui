@@ -9,7 +9,7 @@ import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {gw, sweepEndpoints} from '../../helpers/api';
 import {requireLoxilbInstance} from '../_loxilb';
-import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
+import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../helpers/form';
 import {refreshUntilGone, refreshUntilRow, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 
@@ -43,8 +43,7 @@ async function apiCreateEp(ep: SeedEp): Promise<void> {
 // UI helpers
 //---------------------------------------------------------
 async function openAddDialog(page: Page): Promise<void> {
-	await toolbarButton(page, 'Add').click();
-	await expect(dialog(page).getByText('New Endpoint')).toBeVisible();
+	await openToolbarDialog(page, 'Add', 'New Endpoint');
 }
 
 /** Records DELETE /config/endpoint request URLs fired while `action` runs. */
@@ -163,8 +162,7 @@ test.describe('@loxilb Endpoint page CRUD', () => {
 		await refreshUntilRow(page, 'e2e-ep-edit');
 
 		await selectRowByText(page, 'e2e-ep-edit');
-		await toolbarButton(page, 'Mode').click(); // edit (pencil)
-		await expect(dialog(page).getByText('New Edit Endpoint')).toBeVisible();
+		await openToolbarDialog(page, 'Mode', 'New Edit Endpoint'); // edit (pencil)
 
 		// Host name is the identity in edit mode → disabled.
 		await expect(field(page, 'Host Name')).toBeDisabled();

@@ -14,7 +14,7 @@
 //---------------------------------------------------------
 import {expect, Page} from '@playwright/test';
 import {gw, gwJson} from '../../helpers/api';
-import {dialog, dialogButton, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
+import {dialogButton, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 import {expandSection, field, setField} from '../../helpers/form';
 import {refreshUntilGone, refreshUntilRow, showAllRows, toolbarButton} from '../../helpers/table';
 
@@ -251,8 +251,7 @@ const PROTO_OPTION: Record<Proto, string | undefined> = {tcp: undefined, udp: 'U
  * fields a recipe sets are touched; defaults (rr/dnat/tcp) are left alone.
  */
 export async function driveLbCreate(page: Page, r: LbRecipe): Promise<any> {
-	await toolbarButton(page, 'Add').click();
-	await expect(dialog(page).getByText('Add Load Balancer Rule')).toBeVisible();
+	await openToolbarDialog(page, 'Add', 'Add Load Balancer Rule');
 
 	// Rule Name + Basic Settings.
 	await field(page, 'Rule Name').fill(r.name);

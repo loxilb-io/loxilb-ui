@@ -8,7 +8,7 @@
 import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {activeInstance, gw, sweepIpFilterRules} from '../../helpers/api';
-import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
+import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../helpers/form';
 import {refreshUntilGone, refreshUntilRow, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 
@@ -40,8 +40,7 @@ async function apiCreateRule(rule: SeedRule): Promise<void> {
 // UI helpers
 //---------------------------------------------------------
 async function openAddDialog(page: Page): Promise<void> {
-	await toolbarButton(page, 'Add').click();
-	await expect(dialog(page).getByText('New IP Filter Rule Configuration')).toBeVisible();
+	await openToolbarDialog(page, 'Add', 'New IP Filter Rule Configuration');
 }
 
 /** Records DELETE /config/ipfilter request URLs fired while `action` runs. */

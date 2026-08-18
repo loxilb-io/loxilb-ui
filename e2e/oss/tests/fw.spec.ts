@@ -8,7 +8,7 @@ import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {firewallDeleteQuery, gw, sweepFirewallRules} from '../../helpers/api';
 import {requireLoxilbInstance} from '../_loxilb';
-import {confirmDelete, dialog, dialogButton, dialogTitle, expectErrorAndDismiss, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
+import {confirmDelete, dialog, dialogButton, dialogTitle, expectErrorAndDismiss, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 import {refreshUntilGone, refreshUntilRow, rowByText, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 
 const FW_PATH = '/config/firewall';
@@ -111,8 +111,7 @@ async function fillRuleForm(page: Page, args: UiRuleArgs, opts: UiOpts = {}): Pr
 
 /** Opens Add, fills the form, submits, asserts 2xx + Success popup; returns the POST body. */
 async function createViaUI(page: Page, args: UiRuleArgs, opts: UiOpts = {}): Promise<any> {
-	await toolbarButton(page, 'Add').click();
-	await expect(dialog(page).getByText('Firewall Rule Arguments')).toBeVisible();
+	await openToolbarDialog(page, 'Add', 'Firewall Rule Arguments');
 	await fillRuleForm(page, args, opts);
 
 	const [req] = await Promise.all([
@@ -215,8 +214,7 @@ test.describe('@loxilb Firewall page CRUD', () => {
 		// healthy either way.
 		consoleGuard.allow(/status of 409/);
 
-		await toolbarButton(page, 'Add').click();
-		await expect(dialog(page).getByText('Firewall Rule Arguments')).toBeVisible();
+		await openToolbarDialog(page, 'Add', 'Firewall Rule Arguments');
 		await fillRuleForm(
 			page,
 			{
@@ -313,8 +311,7 @@ test.describe('@loxilb Firewall page CRUD', () => {
 	});
 
 	test('V-cidr: /33 prefix must not create a rule', async ({page, consoleGuard}) => {
-		await toolbarButton(page, 'Add').click();
-		await expect(dialog(page).getByText('Firewall Rule Arguments')).toBeVisible();
+		await openToolbarDialog(page, 'Add', 'Firewall Rule Arguments');
 		await fillRuleForm(page, {sourceIP: '10.0.0.0/33', destinationIP: '198.51.100.9/32', preference: '209'}, {drop: true});
 
 		const addBtn = dialogButton(page, 'Add');
@@ -345,8 +342,7 @@ test.describe('@loxilb Firewall page CRUD', () => {
 	});
 
 	test('V-ports: source min > max must not create a rule', async ({page, consoleGuard}) => {
-		await toolbarButton(page, 'Add').click();
-		await expect(dialog(page).getByText('Firewall Rule Arguments')).toBeVisible();
+		await openToolbarDialog(page, 'Add', 'Firewall Rule Arguments');
 		await fillRuleForm(
 			page,
 			{sourceIP: '203.0.113.10/32', destinationIP: '198.51.100.10/32', srcPortMin: '2000', srcPortMax: '1000', protocolOption: 'TCP(6)', preference: '210'},
@@ -382,8 +378,7 @@ test.describe('@loxilb Firewall page CRUD', () => {
 	// these lock that behavior so CI catches any regression.
 
 	test('V-verdict-conflict: allow + drop both checked blocks submit', async ({page}) => {
-		await toolbarButton(page, 'Add').click();
-		await expect(dialog(page).getByText('Firewall Rule Arguments')).toBeVisible();
+		await openToolbarDialog(page, 'Add', 'Firewall Rule Arguments');
 		// Valid match criteria first, so ONLY the verdict conflict can block.
 		await fillRuleForm(page, {sourceIP: '203.0.113.201/32', preference: '241'}, {allow: true, drop: true});
 
@@ -397,8 +392,7 @@ test.describe('@loxilb Firewall page CRUD', () => {
 	});
 
 	test('V-snat-toip: Do SNAT without To IP blocks submit', async ({page}) => {
-		await toolbarButton(page, 'Add').click();
-		await expect(dialog(page).getByText('Firewall Rule Arguments')).toBeVisible();
+		await openToolbarDialog(page, 'Add', 'Firewall Rule Arguments');
 		await fillRuleForm(page, {sourceIP: '203.0.113.202/32', preference: '242'}, {doSnat: true});
 
 		await expect(dialog(page).getByText(/Do SNAT requires a valid To IP/i)).toBeVisible();
@@ -411,8 +405,7 @@ test.describe('@loxilb Firewall page CRUD', () => {
 	});
 
 	test('V-empty-criteria: a rule with no source/dest blocks submit (no accidental catch-all)', async ({page}) => {
-		await toolbarButton(page, 'Add').click();
-		await expect(dialog(page).getByText('Firewall Rule Arguments')).toBeVisible();
+		await openToolbarDialog(page, 'Add', 'Firewall Rule Arguments');
 		await fillRuleForm(page, {preference: '243'}, {drop: true}); // verdict only, no match tuple
 
 		await expect(dialog(page).getByText(/at least a Source or Destination/i)).toBeVisible();

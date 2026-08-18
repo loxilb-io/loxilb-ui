@@ -72,7 +72,8 @@
 		"e2e:headed": "playwright test --project=gw --headed",
 		"e2e:cicd": "playwright test --project=gw tests/cicd",
 		"e2e-oss": "E2E_FLAVOR=loxilb playwright test --project=oss",
-		"e2e-oss:headed": "E2E_FLAVOR=loxilb playwright test --project=oss --headed"
+		"e2e-oss:headed": "E2E_FLAVOR=loxilb playwright test --project=oss --headed",
+		"e2e:selftest": "E2E_NO_WEBSERVER=1 playwright test --project=selftest"
 	},
 	"browserslist": {
 		"production": [

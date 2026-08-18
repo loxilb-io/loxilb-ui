@@ -8,7 +8,7 @@
 import {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {activeInstance, gw, gwJson, sweepVlans, TEST_VLAN_IDS} from '../../helpers/api';
-import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss} from '../../helpers/dialogs';
+import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, openToolbarDialog} from '../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../helpers/form';
 import {refreshUntilGone, refreshUntilRow, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 
@@ -81,8 +81,7 @@ test.describe('VLAN page CRUD', () => {
 	});
 
 	test('C-min: vid POST clean, then D-single', async ({page}) => {
-		await toolbarButton(page, 'Add').click();
-		await expect(dialog(page).getByText('New VLAN')).toBeVisible();
+		await openToolbarDialog(page, 'Add', 'New VLAN');
 		await field(page, 'VLAN ID').fill(String(VID));
 
 		const [req] = await Promise.all([
@@ -147,8 +146,7 @@ test.describe('VLAN page CRUD', () => {
 	});
 
 	test('V-vid: empty, zero and out-of-range vid all block submit', async ({page}) => {
-		await toolbarButton(page, 'Add').click();
-		await expect(dialog(page).getByText('New VLAN')).toBeVisible();
+		await openToolbarDialog(page, 'Add', 'New VLAN');
 		const addBtn = dialogButton(page, 'Add');
 
 		// Empty vid (initial) → blocked.
