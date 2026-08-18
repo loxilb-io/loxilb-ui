@@ -56,7 +56,7 @@
 		"web-vitals": "^2.1.4"
 	},
 	"scripts": {
-		"gen:api": "node scripts/gen-api-types.mjs",
+		"gen:api": "node scripts/gen-api-types.mjs && node scripts/gen-capability-map.mjs",
 		"gen:api:check": "npm run gen:api && git diff --exit-code -- src/api/gen",
 		"api:check-mapping": "node scripts/check-api-mapping.mjs",
 		"api:coverage": "node scripts/check-api-mapping.mjs --coverage",
@@ -68,9 +68,11 @@
 		"build": "REACT_APP_VERSION=${REACT_APP_VERSION:-$npm_package_version} dotenv -e .env.local react-scripts build",
 		"build:dev": "REACT_APP_VERSION=${REACT_APP_VERSION:-$npm_package_version} dotenv -e .env.development react-scripts build",
 		"build:prod": "REACT_APP_VERSION=${REACT_APP_VERSION:-$npm_package_version} dotenv -e .env.production react-scripts build",
-		"e2e": "playwright test",
-		"e2e:headed": "playwright test --headed",
-		"e2e:cicd": "playwright test tests/cicd"
+		"e2e": "playwright test --project=gw",
+		"e2e:headed": "playwright test --project=gw --headed",
+		"e2e:cicd": "playwright test --project=gw tests/cicd",
+		"e2e-oss": "E2E_FLAVOR=loxilb playwright test --project=oss",
+		"e2e-oss:headed": "E2E_FLAVOR=loxilb playwright test --project=oss --headed"
 	},
 	"browserslist": {
 		"production": [

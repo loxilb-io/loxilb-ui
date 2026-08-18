@@ -8,6 +8,15 @@ import {ReactNode} from 'react';
 //---------------------------------------------------------
 // Rate Tooltip Component
 //---------------------------------------------------------
+// One description per unit — the old bps-or-else split described the error
+// rate as "Packets per second".
+const UNIT_DESCRIPTION: Record<'bps' | 'pps' | 'eps' | 'fps', string> = {
+	bps: 'Bits per second',
+	pps: 'Packets per second',
+	eps: 'Errors per second',
+	fps: 'Flows per second',
+};
+
 export default function RateTooltip(props: {
 	rate: number;
 	unit: 'bps' | 'pps' | 'eps' | 'fps';
@@ -27,7 +36,7 @@ export default function RateTooltip(props: {
 				{formatRate(rate, unit)}
 			</Typography>
 			<Typography variant="caption" color="textSecondary">
-				{unit === 'bps' ? 'Bits per second' : 'Packets per second'}
+				{UNIT_DESCRIPTION[unit]}
 			</Typography>
 		</Box>
 	);

@@ -22,7 +22,7 @@ const RL_PATH = '/config/ai/tenant/ratelimit';
 let instName: string;
 let noUserservice: boolean;
 
-test.describe('AI Tenant Rate Limit page', () => {
+test.describe('@gw AI Tenant Rate Limit page', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		noUserservice = await gatewayLacksUserservice();

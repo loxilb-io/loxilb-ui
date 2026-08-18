@@ -3,7 +3,7 @@
 //---------------------------------------------------------
 // Frontend mTLS (client-certificate verification). Mirrors the gateway's
 // serviceArguments.mtls_frontend schema. Only valid with mode=fullproxy and a
-// TLS security (https/tls/e2ehttps).
+// TLS security (https/e2ehttps).
 export interface IMtlsFrontend {
 	// disabled: no verification (default) · optional: accept with/without cert ·
 	// required: reject without a valid client cert.

@@ -24,7 +24,7 @@ const APIKEY_PATH = '/config/ai/apikey';
 let instName: string;
 let noUserservice: boolean;
 
-test.describe('cicd/ai-apikey — AI API-key CRUD (needs --userservice)', () => {
+test.describe('@gw cicd/ai-apikey — AI API-key CRUD (needs --userservice)', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		noUserservice = await gatewayLacksUserservice();

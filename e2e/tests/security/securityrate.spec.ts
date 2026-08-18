@@ -82,7 +82,7 @@ async function refreshUntilAnyRow(page: Page): Promise<void> {
 let instName: string;
 let original: RateConfig | null;
 
-test.describe('Security Rate Limiting page (edit-only)', () => {
+test.describe('@gw Security Rate Limiting page (edit-only)', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		original = await readConfig();

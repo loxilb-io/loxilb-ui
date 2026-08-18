@@ -17,12 +17,17 @@ GATEWAY_REPO="${GATEWAY_REPO:-../loxilb-inference-gateway}"
 # A stale ../oam-loxilb clone may still exist next to it — defaulting to that
 # one would silently vendor a spec from before the migration.
 OAM_REPO="${OAM_REPO:-../loxilb-oam}"
+# Upstream loxilb — vendored so the loxilb ⊆ gateway subset contract test and
+# the flavor capability map are generated from the real community spec.
+LOXILB_REPO="${LOXILB_REPO:-../loxilb}"
 
 [ -f "$GATEWAY_REPO/api/swagger.yml" ] || { echo "gateway repo not found at $GATEWAY_REPO (set GATEWAY_REPO=...)"; exit 1; }
 [ -d "$OAM_REPO" ] || { echo "oam repo not found at $OAM_REPO (set OAM_REPO=...)"; exit 1; }
+[ -f "$LOXILB_REPO/api/swagger.yml" ] || { echo "loxilb repo not found at $LOXILB_REPO (set LOXILB_REPO=...)"; exit 1; }
 
 cp "$GATEWAY_REPO/api/swagger.yml" api-spec/gateway-swagger.yml
 cp "$GATEWAY_REPO/api/swagger-extras.yml" api-spec/gateway-swagger-extras.yml
+cp "$LOXILB_REPO/api/swagger.yml" api-spec/loxilb-swagger.yml
 
 echo "regenerating OAM swagger (swag init) ..."
 if command -v swag >/dev/null 2>&1; then
@@ -49,6 +54,12 @@ cat > api-spec/SOURCES.json <<EOF
     "path": "docs/swagger.json (swag init)",
     "commit": "$(rev "$OAM_REPO")",
     "dirty": $(dirty "$OAM_REPO")
+  },
+  "loxilb": {
+    "repo": "loxilb",
+    "path": "api/swagger.yml",
+    "commit": "$(rev "$LOXILB_REPO")",
+    "dirty": $(dirty "$LOXILB_REPO")
   }
 }
 EOF

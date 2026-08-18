@@ -6,8 +6,7 @@ import {formatRate} from 'common';
 import AnimatedValue from 'components/element/AnimatedValue';
 import RateLineGraph from 'components/element/RateLineGraph';
 import RateTooltip from 'components/element/RateTooltip';
-import {useQuery} from '@tanstack/react-query';
-import {query_get_live_metrics} from 'connector/instance/metrics';
+import {useLiveMetrics} from 'hooks/query/metricsHook';
 import {t} from 'i18next';
 import {useEffect, useMemo, useState} from 'react';
 import {IInstance} from 'types/oam';
@@ -31,6 +30,15 @@ interface RealTimeRateCardProps {
 	maxPoints?: number;
 }
 
+// Lazily evaluated (t() must run at render time, not module load, or the label
+// freezes at whatever language was active when the module was first imported).
+const RATE_SERIES_LABEL: Record<RealTimeRateCardProps['unit'], () => string> = {
+	bps: () => t('Traffic (bps)'),
+	pps: () => t('Packets (pps)'),
+	eps: () => t('Errors (eps)'),
+	fps: () => t('Flows (fps)'),
+};
+
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
@@ -38,18 +46,7 @@ export default function RealTimeRateCard(props: RealTimeRateCardProps) {
 	const {title, instance, counterField, unit, maxPoints = 300} = props;
 
 	// Get live metrics with polling (shared query key → one poll for all rate cards)
-	const {data: rawLiveMetrics} = useQuery({
-		queryKey: ['live-metrics-realtime', instance?.id],
-		queryFn: async () => {
-			if (!instance) throw new Error('Instance is not defined');
-			return await query_get_live_metrics(instance, 2);
-		},
-		enabled: !!instance,
-		refetchInterval: 1000, // 1-second polling
-		refetchIntervalInBackground: false,
-		staleTime: 5000,
-	});
-	const liveMetrics = rawLiveMetrics as ITypedLiveMetricsResponse | undefined;
+	const {metrics: liveMetrics} = useLiveMetrics(instance, {keyPrefix: 'live-metrics-realtime', refetchInterval: 1000});
 
 	// Accumulate raw cumulative-counter samples; the rate is the delta between
 	// consecutive samples divided by the elapsed time.
@@ -81,9 +78,10 @@ export default function RealTimeRateCard(props: RealTimeRateCardProps) {
 		});
 	}, [counterHistory, unit]);
 
-	// Prepare data for the graph component
+	// Prepare data for the graph component. Every unit gets its own label: the
+	// old bps-or-else split labelled the error-rate series "Packets (pps)".
 	const graphData = useMemo(() => ({
-		label: unit === 'bps' ? t('Traffic (bps)') : t('Packets (pps)'),
+		label: RATE_SERIES_LABEL[unit](),
 		values: rateHistory
 	}), [rateHistory, unit]);
 

@@ -2,13 +2,13 @@
 // Connection Flow Card for Connection Tracking
 //---------------------------------------------------------
 import {Box, Typography, Grid, Divider} from '@mui/material';
-import {useQuery} from '@tanstack/react-query';
-import {query_get_live_metrics} from 'connector/instance/metrics';
+import {useLiveMetrics} from 'hooks/query/metricsHook';
 import {t} from 'i18next';
 import {useMemo} from 'react';
 import {IInstance} from 'types/oam';
-import {ITypedLiveMetricsResponse} from 'types/metrics';
 import CardBase from './CardBase';
+import {derive_connection_flows, is_reporting} from './cardMetricsLogic';
+import MetricFigure from './MetricFigure';
 
 //---------------------------------------------------------
 // Component Props
@@ -26,54 +26,15 @@ export default function ConnectionFlowCard(props: ConnectionFlowCardProps) {
 	const {title, instance, showBreakdown = true} = props;
 
 	// Get live metrics with polling
-	const {data: rawLiveMetrics, isLoading} = useQuery({
-		queryKey: ['connection-flow-realtime', instance?.id],
-		queryFn: async () => {
-			if (!instance) throw new Error('Instance is not defined');
-			return await query_get_live_metrics(instance, 2);
-		},
-		enabled: !!instance,
-		refetchInterval: 10000, // 10-second polling
-		refetchIntervalInBackground: false,
-		staleTime: 5000,
-	});
-	const liveMetrics = rawLiveMetrics as ITypedLiveMetricsResponse | undefined;
+	const {metrics: liveMetrics, isLoading} = useLiveMetrics(instance, {keyPrefix: 'connection-flow-realtime', refetchInterval: 10000});
 
-	// Calculate connection data
-	const connectionData = useMemo(() => {
-		if (!liveMetrics?.critical) {
-			return {
-				totalActive: 0,
-				totalTracked: 0,
-				tcp: 0,
-				udp: 0,
-				sctp: 0,
-				newFlows: 0,
-				utilizationPct: undefined as number | undefined
-			};
-		}
-
-		const tcp = liveMetrics.critical.loxilb_active_flow_count_tcp || 0;
-		const udp = liveMetrics.critical.loxilb_active_flow_count_udp || 0;
-		const sctp = liveMetrics.critical.loxilb_active_flow_count_sctp || 0;
-		const totalActive = tcp + udp + sctp;
-		const totalTracked = liveMetrics.critical.loxilb_active_conntrack_entries || 0;
-		const newFlows = liveMetrics.critical.loxilb_new_flows || 0;
-		// Conntrack-table utilization (active / capacity). loxilb_conntrack_max_entries
-		// is only exported by post-rename gateways — treat its absence as N/A.
-		const maxTracked = liveMetrics.critical.loxilb_conntrack_max_entries || 0;
-		const utilizationPct = maxTracked > 0 ? Math.round((totalTracked / maxTracked) * 100) : undefined;
-
-		return {
-			totalActive,
-			totalTracked,
-			tcp,
-			udp,
-			sctp,
-			newFlows,
-			utilizationPct
-		};
-	}, [liveMetrics]);
+	// `available === false` means the instance served no exposition at all
+	// (collection disabled, or the scrape was refused). Every figure below is
+	// then unknown — a different statement from "there is no traffic", and the
+	// card must not make the second one. Derivation lives in cardMetricsLogic
+	// so that rule is unit-testable.
+	const reporting = is_reporting(liveMetrics);
+	const connectionData = useMemo(() => derive_connection_flows(liveMetrics), [liveMetrics]);
 
 	if (isLoading) {
 		return (
@@ -88,27 +49,21 @@ export default function ConnectionFlowCard(props: ConnectionFlowCardProps) {
 	return (
 		<CardBase title={title}>
 			<Box display="flex" flexDirection="column" gap={2}>
+				{/* One explanation for the whole card beats repeating it under six
+				    N/A figures — see MetricFigure. */}
+				{!reporting && (
+					<Typography variant="body2" color="textSecondary" textAlign="center">
+						{t('Metrics collection is not enabled on this instance')}
+					</Typography>
+				)}
+
 				{/* Main Metrics */}
 				<Grid container spacing={2}>
 					<Grid item xs={6}>
-						<Box textAlign="center">
-							<Typography variant="h3" fontWeight="bold" color="primary">
-								{connectionData.totalTracked.toLocaleString()}
-							</Typography>
-							<Typography variant="caption" color="textSecondary">
-								{t('Total Tracked')}
-							</Typography>
-						</Box>
+						<MetricFigure variant="h3" color="primary" value={connectionData.totalTracked} label={t('Total Tracked')} />
 					</Grid>
 					<Grid item xs={6}>
-						<Box textAlign="center">
-							<Typography variant="h3" fontWeight="bold" color="success.main">
-								{connectionData.totalActive.toLocaleString()}
-							</Typography>
-							<Typography variant="caption" color="textSecondary">
-								{t('Active Flows')}
-							</Typography>
-						</Box>
+						<MetricFigure variant="h3" color="success.main" value={connectionData.totalActive} label={t('Active Flows')} />
 					</Grid>
 				</Grid>
 
@@ -123,34 +78,13 @@ export default function ConnectionFlowCard(props: ConnectionFlowCardProps) {
 						
 						<Grid container spacing={1}>
 							<Grid item xs={4}>
-								<Box textAlign="center">
-									<Typography variant="h4" fontWeight="bold" color="info.main">
-										{connectionData.tcp.toLocaleString()}
-									</Typography>
-									<Typography variant="caption" color="textSecondary">
-										TCP
-									</Typography>
-								</Box>
+								<MetricFigure color="info.main" value={connectionData.tcp} label="TCP" />
 							</Grid>
 							<Grid item xs={4}>
-								<Box textAlign="center">
-									<Typography variant="h4" fontWeight="bold" color="warning.main">
-										{connectionData.udp.toLocaleString()}
-									</Typography>
-									<Typography variant="caption" color="textSecondary">
-										UDP
-									</Typography>
-								</Box>
+								<MetricFigure color="warning.main" value={connectionData.udp} label="UDP" />
 							</Grid>
 							<Grid item xs={4}>
-								<Box textAlign="center">
-									<Typography variant="h4" fontWeight="bold" color="secondary.main">
-										{connectionData.sctp.toLocaleString()}
-									</Typography>
-									<Typography variant="caption" color="textSecondary">
-										SCTP
-									</Typography>
-								</Box>
+								<MetricFigure color="secondary.main" value={connectionData.sctp} label="SCTP" />
 							</Grid>
 						</Grid>
 
@@ -159,29 +93,20 @@ export default function ConnectionFlowCard(props: ConnectionFlowCardProps) {
 						{/* Additional Metrics */}
 						<Grid container spacing={1}>
 							<Grid item xs={6}>
-								<Box textAlign="center">
-									<Typography variant="body1" fontWeight="bold" color="primary.main">
-										{connectionData.newFlows.toLocaleString()}
-									</Typography>
-									<Typography variant="caption" color="textSecondary">
-										{t('New Flows')}
-									</Typography>
-								</Box>
+								<MetricFigure variant="body1" color="primary.main" value={connectionData.newFlows} label={t('New Flows')} />
 							</Grid>
+							{/* Capacity is unknown on a pre-parity loxilb, so the ratio is
+							    genuinely underivable — hide the view rather than show N/A
+							    for a figure that is not a measurement in the first place. */}
 							{connectionData.utilizationPct !== undefined && (
 								<Grid item xs={6}>
-									<Box textAlign="center">
-										<Typography
-											variant="body1"
-											fontWeight="bold"
-											color={connectionData.utilizationPct >= 80 ? 'error.main' : 'success.main'}
-										>
-											{connectionData.utilizationPct}%
-										</Typography>
-										<Typography variant="caption" color="textSecondary">
-											{t('Conntrack Usage')}
-										</Typography>
-									</Box>
+									<MetricFigure
+										variant="body1"
+										color={connectionData.utilizationPct >= 80 ? 'error.main' : 'success.main'}
+										value={connectionData.utilizationPct}
+										suffix="%"
+										label={t('Conntrack Usage')}
+									/>
 								</Grid>
 							)}
 						</Grid>

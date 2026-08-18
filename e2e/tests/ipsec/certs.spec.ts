@@ -49,7 +49,7 @@ async function refreshUntil(page: Page, idx: number, text: string, present: bool
 	base(present ? finalCount > 0 : finalCount === 0, `row "${text}" ${present ? 'present' : 'gone'} in grid ${idx}`).toBeTruthy();
 }
 
-test.describe('IPsec Certificate page CRUD', () => {
+test.describe('@gw IPsec Certificate page CRUD', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepIpsecCerts();

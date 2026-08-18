@@ -7,10 +7,11 @@
 //   • mcp-e2ehttps     → e2ehttps (end-to-end TLS)
 //
 // NOTE on the e2ehttps value: the cicd mcp-e2ehttps config.sh sets
-// `security: 2` under the OLD (buggy) enum doc where "2" was mislabelled
-// e2ehttps; the corrected mapping is tls=2, e2ehttps=3, so this
-// spec drives the corrected value (exercising the enum fix), matching the
-// e2ehttpsproxy-mtls precedent.
+// `security: 2`, and 2 IS e2ehttps — both backends' common.LBSec is
+// Plain=0/HTTPS=1/E2EHTTPS=2 and the datapath has no branch for 3 (it
+// silently degrades to plain). The swagger description claiming
+// "2-tls, 3-e2ehttps" was the bug. This spec sends 2, matching the cicd
+// original and the real datapath semantics.
 //---------------------------------------------------------
 import {test} from '../../../fixtures';
 import {activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
@@ -44,7 +45,7 @@ function recipe(m: ProxyMode): LbRecipe {
 
 let instName: string;
 
-test.describe('cicd/vllm|mcp proxy — AI proxy security modes round-trip', () => {
+test.describe('@gw cicd/vllm|mcp proxy — AI proxy security modes round-trip', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepLbRules();

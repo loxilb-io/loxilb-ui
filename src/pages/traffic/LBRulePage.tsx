@@ -16,8 +16,10 @@ import QoSPanel from 'components/panel/QOSPanel';
 import SecondaryIPsPanel from 'components/panel/SecondaryIPPanel';
 import SettingsPanel from 'components/panel/SettingPanel';
 import LBTable from 'components/table/traffic/LBTable';
-import {request_create_load_balancer_config, request_delete_lb_by_ip_port_proto, request_delete_lb_by_ip_portrange_proto, request_delete_lb_by_name, request_patch_load_balancer_config} from 'connector/instance/load_balancer';
+import {query_get_load_balancer_config_all, request_create_load_balancer_config, request_delete_lb_by_ip_port_proto, request_delete_lb_by_ip_portrange_proto, request_delete_lb_by_name, request_patch_load_balancer_config} from 'connector/instance/load_balancer';
 import {useInstanceFromURL} from 'hooks/instanceHook';
+import {InstanceFlavor} from 'api/capabilities';
+import {useInstanceCapabilities} from 'hooks/query/flavorHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useLoadBalancerConfig, useMirrors, useQOSPolicies} from 'hooks/query/queryHooks';
@@ -33,6 +35,11 @@ import {IPolicyConfiguration} from 'types/qos';
 //---------------------------------------------------------
 export default function LBRulePage() {
 	const inst = useInstanceFromURL();
+	const caps = useInstanceCapabilities();
+	// Same fallback the capability helpers use while the /version probe is in
+	// flight: assume the gateway, i.e. strip nothing. Guessing "loxilb" instead
+	// would silently drop fields a gateway legitimately accepts.
+	const effectiveFlavor: InstanceFlavor = caps.flavor ?? 'inference-gateway';
 
 	const [searchParams] = useSearchParams();
 	const servName = searchParams.get('servName');
@@ -149,7 +156,7 @@ export default function LBRulePage() {
 			async () => {
 				if (!instanceRef.current) return;
 
-				const res = await request_create_load_balancer_config(inst, instanceRef.current);
+				const res = await request_create_load_balancer_config(inst, instanceRef.current, effectiveFlavor);
 				if (res.status === 'success') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
 					setTimeout(() => {
@@ -213,31 +220,90 @@ export default function LBRulePage() {
 				const sa = serviceConfig.serviceArguments ?? ({} as any);
 				const keyChanged = sa.externalIP !== osa.externalIP || sa.port !== osa.port || sa.protocol !== osa.protocol;
 
+				// PATCH on the per-VIP path is gateway-only; upstream loxilb
+				// answers 405 (capability map, gatewayOnlyMethods).
+				const canMergePatch = caps.hasMethod('patch', '/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}');
+
 				let res;
 				if (keyChanged || !osa.externalIP || osa.port == null || !osa.protocol) {
 					// The VIP/port/proto composite key is immutable under PATCH —
 					// changing it means a different rule, so fall back to re-POST.
-					res = await request_create_load_balancer_config(inst, serviceConfig);
+					res = await request_create_load_balancer_config(inst, serviceConfig, effectiveFlavor);
 				} else {
-					// RFC 7386 merge-patch: send only changed, mutable fields.
-					// Immutable fields are rejected by the gateway with 400.
+					// Change detection shared by both update strategies. Immutable
+					// fields are rejected by the gateway's PATCH with 400.
 					const IMMUTABLE = new Set(['externalIP', 'port', 'protocol', 'mode', 'security', 'egress', 'oper', 'managed']);
+					// Backends omit zero-value fields on read-back while the form
+					// emits them as 0/''/false — a form default over an absent
+					// field is NOT a change (it would spuriously widen the gateway
+					// patch and, on loxilb, escalate endpoint-only edits into a
+					// delete + re-create).
+					const isZero = (v: any) => v === undefined || v === null || v === 0 || v === '' || v === false;
+					// LBInputForm's one non-zero injected default: over an absent
+					// read-back field it is form scaffolding, not an operator edit.
+					const FORM_DEFAULTS: Record<string, unknown> = {probeTimeout: 1800};
 					const saPatch: Record<string, any> = {};
 					Object.entries(sa).forEach(([k, v]) => {
 						if (IMMUTABLE.has(k)) return;
-						if (JSON.stringify(v) !== JSON.stringify((osa as any)[k])) saPatch[k] = v;
+						const prev = (osa as any)[k];
+						if (prev === undefined && (isZero(v) || v === FORM_DEFAULTS[k])) return;
+						if (JSON.stringify(v) !== JSON.stringify(prev)) saPatch[k] = v;
 					});
-					const patch: Partial<IServiceConfiguration> = {};
-					if (Object.keys(saPatch).length > 0) patch.serviceArguments = saPatch as any;
-					if (JSON.stringify(serviceConfig.endpoints) !== JSON.stringify(editableEndpoints)) patch.endpoints = serviceConfig.endpoints;
-					if (JSON.stringify(serviceConfig.secondaryIPs) !== JSON.stringify(selectedLB.secondaryIPs)) patch.secondaryIPs = serviceConfig.secondaryIPs;
-					if (JSON.stringify(serviceConfig.allowedSources) !== JSON.stringify(selectedLB.allowedSources)) patch.allowedSources = serviceConfig.allowedSources;
+					const endpointsChanged = JSON.stringify(serviceConfig.endpoints) !== JSON.stringify(editableEndpoints);
+					// Read-back reports empty lists as null; the form emits [] —
+					// normalize both sides so that difference is not a "change".
+					const listChanged = (a: unknown, b: unknown) => JSON.stringify(a ?? []) !== JSON.stringify(b ?? []);
+					const secondaryChanged = listChanged(serviceConfig.secondaryIPs, selectedLB.secondaryIPs);
+					const allowedChanged = listChanged(serviceConfig.allowedSources, selectedLB.allowedSources);
 
-					if (Object.keys(patch).length === 0) {
+					if (Object.keys(saPatch).length === 0 && !endpointsChanged && !secondaryChanged && !allowedChanged) {
 						openPopUp(t('Success'), t('No changes to apply.'), t('OK'));
 						return;
 					}
-					res = await request_patch_load_balancer_config(inst, osa.externalIP, osa.port, osa.protocol, patch);
+
+					if (canMergePatch) {
+						// RFC 7386 merge-patch: send only changed, mutable fields.
+						const patch: Partial<IServiceConfiguration> = {};
+						if (Object.keys(saPatch).length > 0) patch.serviceArguments = saPatch as any;
+						if (endpointsChanged) patch.endpoints = serviceConfig.endpoints;
+						if (secondaryChanged) patch.secondaryIPs = serviceConfig.secondaryIPs;
+						if (allowedChanged) patch.allowedSources = serviceConfig.allowedSources;
+						res = await request_patch_load_balancer_config(inst, osa.externalIP, osa.port, osa.protocol, patch);
+					} else {
+						// Upstream loxilb has no in-place update for serviceArguments:
+						// a re-POST reconciles ONLY the endpoint set and 409s
+						// ("lbrule-exists") on any other change — verified live
+						// 2026-08-13. Endpoint-only edits use that native reconcile;
+						// anything else must delete + re-create the rule.
+						//
+						// The re-POST carries the WHOLE rule, and the dialog may have
+						// been built from a cached table row (the query cache survives
+						// reloads) — so re-read the rule's current state and lay only
+						// the operator's changes on top. Found live: submitting the
+						// form body as-is reverted a freshly-set inactiveTimeOut.
+						const freshAll = await query_get_load_balancer_config_all(inst);
+						const fresh = freshAll.find(
+							lb => lb.serviceArguments?.externalIP === osa.externalIP && lb.serviceArguments?.port === osa.port && lb.serviceArguments?.protocol === osa.protocol,
+						);
+						const base = fresh ?? selectedLB;
+						const stripReadFields = (eps: any[]) => (eps ?? []).map(({state, counter, ...ep}: any) => ep);
+						const upsert: IServiceConfiguration = {
+							serviceArguments: {...base.serviceArguments, ...saPatch} as any,
+							endpoints: (endpointsChanged ? serviceConfig.endpoints : stripReadFields(base.endpoints as any[])) as IEndpoint[],
+							secondaryIPs: (secondaryChanged ? serviceConfig.secondaryIPs : base.secondaryIPs) ?? [],
+							allowedSources: (allowedChanged ? serviceConfig.allowedSources : base.allowedSources) ?? [],
+						};
+						if (Object.keys(saPatch).length > 0 || secondaryChanged || allowedChanged) {
+							const del = osa.name
+								? await request_delete_lb_by_name(inst, osa.name)
+								: await request_delete_lb_by_ip_port_proto(inst, osa.externalIP, osa.port, osa.protocol);
+							if (del.status !== 'success') {
+								showUpdateError('load balancer rule', del.error);
+								return;
+							}
+						}
+						res = await request_create_load_balancer_config(inst, upsert, effectiveFlavor);
+					}
 				}
 				if (res.status === 'success') {
 					openPopUp(t('Success'), t('Load balancer rule updated successfully.'), t('OK'));
@@ -251,7 +317,7 @@ export default function LBRulePage() {
 			},
 			true,
 		);
-	}, [inst, selectedItem, showUpdateError, refetch, enableYes]);
+	}, [inst, caps, selectedItem, showUpdateError, refetch, enableYes]);
 
 	const handleRefresh = () => {
 		set_selected_rows([]);

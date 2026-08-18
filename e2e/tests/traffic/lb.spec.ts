@@ -8,11 +8,18 @@
 // Not exercisable via the UI (documented gaps, not regressions):
 // - privateIP (fullnat helper) — field commented out of the form
 // - security / proxyprotocolv2 / block — fields commented out
+//
+// @gw-tagged cases (gateway-only semantics, loxilb counterparts live in
+// tests/flavor/loxilb-gating.spec.ts):
+// - C-probe uses http probes — upstream loxilb's LB-level probe accepts
+//   connect probes only (rules.go "malformed-service-ptype")
+// - E-patch uses the per-VIP PATCH, a gateway-only method (loxilb: 405;
+//   the UI re-POSTs the full body there)
 //---------------------------------------------------------
 import {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {activeInstance, gw, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
-import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
+import {confirmDelete, dialog, dialogButton, expectErrorAndDismiss, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
 import {refreshUntilGone, refreshUntilRow, rowByText, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 
 const LB_PATH = '/config/loadbalancer';
@@ -248,7 +255,7 @@ test.describe('LB Rule page CRUD', () => {
 		expect(body.serviceArguments).toMatchObject({mode: 1, inactiveTimeOut: 120});
 	});
 
-	test('C-adv-l7: fullproxy + host/path/backend-protocol/llm-type', async ({page}) => {
+	test('@gw C-adv-l7: fullproxy + host/path/backend-protocol/llm-type', async ({page}) => {
 		await openAddDialog(page);
 		await fillBasics(page, 'e2e-lb-l7', '203.0.113.50', '8443');
 		await expandSection(page, ADVANCED);
@@ -270,7 +277,7 @@ test.describe('LB Rule page CRUD', () => {
 		await refreshUntilRow(page, 'e2e-lb-l7');
 	});
 
-	test('C-aigw-stream: SSE streaming fields land verbatim', async ({page}) => {
+	test('@gw C-aigw-stream: SSE streaming fields land verbatim', async ({page}) => {
 		await openAddDialog(page);
 		await fillBasics(page, 'e2e-lb-sse', '203.0.113.51', '8444');
 		await expandSection(page, ADVANCED);
@@ -295,7 +302,7 @@ test.describe('LB Rule page CRUD', () => {
 		});
 	});
 
-	test('C-aigw-pd: prefill/decode disaggregation incl. per-endpoint roles', async ({page}) => {
+	test('@gw C-aigw-pd: prefill/decode disaggregation incl. per-endpoint roles', async ({page}) => {
 		await openAddDialog(page);
 		await fillBasics(page, 'e2e-lb-pd', '203.0.113.52', '8445');
 		await expandSection(page, ADVANCED);
@@ -332,7 +339,7 @@ test.describe('LB Rule page CRUD', () => {
 		expect(body.endpoints[1]).toMatchObject({endpointIP: '198.51.100.62', ep_role: 2, nixl_port: 5602});
 	});
 
-	test('C-aigw-kv: CHWBL sel + KV-cache routing fields (boundary values)', async ({page}) => {
+	test('@gw C-aigw-kv: CHWBL sel + KV-cache routing fields (boundary values)', async ({page}) => {
 		await openAddDialog(page);
 		await fillBasics(page, 'e2e-lb-kv', '203.0.113.53', '8446');
 		await expandSection(page, ADVANCED);
@@ -361,7 +368,7 @@ test.describe('LB Rule page CRUD', () => {
 		});
 	});
 
-	test('C-probe: monitor + http probe fields land; stripped when monitor off (C-min)', async ({page}) => {
+	test('@gw C-probe: monitor + http probe fields land; stripped when monitor off (C-min)', async ({page}) => {
 		await openAddDialog(page);
 		await fillBasics(page, 'e2e-lb-probe', '203.0.113.55', '8086');
 		await expandSection(page, ADVANCED);
@@ -471,6 +478,43 @@ test.describe('LB Rule page CRUD', () => {
 		await dialogButton(page, 'Cancel').click();
 	});
 
+	test('V-n3-proto: sel=n3 is UDP-only in the datapath — a TCP rule is refused and the refusal is surfaced', async ({page, consoleGuard}) => {
+		// The 400 is the subject of the test, not a defect.
+		consoleGuard.allow(/Failed to load resource.*400/);
+		// n3 is the 5G N3 (GTP-U) selector. sel=6 passes swagger validation and
+		// is then rejected by the datapath unless the rule is UDP:
+		//   400 {"result":"non-udp-n3-args error"}
+		// Verified live on the gateway AND on loxilb 0.9.8-dev — this is shared
+		// behaviour, not a flavor difference, so the same case exists in
+		// oss/tests/lb.spec.ts. The form offers n3 for any protocol, so there is
+		// no client-side block to assert; what must hold is that the refusal
+		// reaches the operator rather than showing as Success.
+		await openAddDialog(page);
+		await fillBasics(page, 'e2e-lb-n3tcp', '203.0.113.68', '9701');
+		await expandSection(page, ADVANCED);
+		await selectOption(page, 'SEL', 'n3');
+		await addEndpoint(page, 0, '198.51.100.68', '9701');
+		await page.mouse.move(0, 0);
+		const [bad] = await Promise.all([
+			page.waitForRequest(r => r.method() === 'POST' && r.url().includes(LB_PATH)),
+			dialogButton(page, 'Create').click(),
+		]);
+		expect(bad.postDataJSON().serviceArguments.sel, 'the form sent n3').toBe(6);
+		expect((await bad.response())?.status(), 'n3 on a TCP rule is refused by the datapath').toBe(400);
+		await expectErrorAndDismiss(page);
+
+		// The same selector on UDP is accepted — the refusal is about the
+		// protocol pairing, not about n3 being unsupported.
+		await openAddDialog(page);
+		await fillBasics(page, 'e2e-lb-n3udp', '203.0.113.69', '2152', {protocolOption: 'UDP'});
+		await expandSection(page, ADVANCED);
+		await selectOption(page, 'SEL', 'n3');
+		await addEndpoint(page, 0, '198.51.100.69', '2152');
+		const body = await submitCreate(page);
+		expect(body.serviceArguments).toMatchObject({sel: 6, protocol: 'udp'});
+		await refreshUntilRow(page, 'e2e-lb-n3udp');
+	});
+
 	test('V-dup: re-POST of an existing VIP:port/proto upserts — no duplicate row, no crash', async ({page}) => {
 		// Observed gateway semantics (2026-07-19): POST /config/loadbalancer with
 		// an existing externalIP:port/protocol key returns 200 and REPLACES the
@@ -489,7 +533,7 @@ test.describe('LB Rule page CRUD', () => {
 		await expect(rowByText(page, '203.0.113.61'), 'upsert must not duplicate the row').toHaveCount(1);
 	});
 
-	test('E-patch + E-immutable: edit sends a merge-patch of changed keys only', async ({page}) => {
+	test('@gw E-patch + E-immutable: edit sends a merge-patch of changed keys only', async ({page}) => {
 		await apiCreateLb({name: 'e2e-lb-edit', externalIP: '203.0.113.40', port: 8085, endpointIP: '198.51.100.5'});
 		await refreshUntilRow(page, 'e2e-lb-edit');
 

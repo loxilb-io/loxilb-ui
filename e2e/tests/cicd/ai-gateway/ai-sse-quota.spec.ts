@@ -42,7 +42,7 @@ const nosse: LbRecipe = {
 
 let instName: string;
 
-test.describe('cicd/ai-sse-quota — SSE stream tuning config round-trips', () => {
+test.describe('@gw cicd/ai-sse-quota — SSE stream tuning config round-trips', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepLbRules();

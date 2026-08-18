@@ -142,6 +142,20 @@ export interface ILiveMetricsResponse {
 	critical: Record<string, number>;
 	important?: Record<string, number>;
 	total_metrics: number;
+	/**
+	 * Whether the instance actually served an exposition for this snapshot.
+	 *
+	 * `false` means "we do not know any of these numbers" — collection is
+	 * disabled, or the scrape was refused. It does NOT mean "the numbers are
+	 * zero", and consumers must not render it as such. Distinguishing the two
+	 * is the whole point of the field: without it, a disabled instance and a
+	 * genuinely idle one produce byte-identical empty snapshots.
+	 *
+	 * Do not re-derive this as `total_metrics === 0`. The two happen to agree
+	 * today, but they answer different questions, and a build that publishes an
+	 * exposition with no samples yet would make them diverge.
+	 */
+	available: boolean;
 }
 
 /**
@@ -186,4 +200,6 @@ export interface ITypedLiveMetricsResponse {
 		loxilb_errors_total?: number;
 	};
 	total_metrics: number;
+	/** See `ILiveMetricsResponse.available`. */
+	available: boolean;
 }

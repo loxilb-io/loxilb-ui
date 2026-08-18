@@ -32,7 +32,7 @@ const recipe: LbRecipe = {
 
 let instName: string;
 
-test.describe('cicd/http2-prefix-lb — L7 fullproxy (http2 backend + path-prefix)', () => {
+test.describe('@gw cicd/http2-prefix-lb — L7 fullproxy (http2 backend + path-prefix)', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepLbRules();

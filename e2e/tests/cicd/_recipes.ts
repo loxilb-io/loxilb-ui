@@ -24,7 +24,10 @@ export const LB_PATH = '/config/loadbalancer';
 export const SEL_ID = {rr: 0, hash: 1, priority: 2, persist: 3, lc: 4, chwbl: 8} as const;
 export const MODE_ID = {dnat: 0, onearm: 1, fullnat: 2, dsr: 3, fullproxy: 4, hostonearm: 5} as const;
 // mirror src/assets/json/securities.json (send_value)
-export const SECURITY_ID = {Plain: 0, https: 1, tls: 2, e2ehttps: 3} as const;
+// Mirrors both backends' common.LBSec (Plain/HTTPS/E2EHTTPS) — the swagger
+// description that once claimed 2-tls/3-e2ehttps is a documented spec bug; the
+// datapath has no value 3 (it silently degrades to plain).
+export const SECURITY_ID = {Plain: 0, https: 1, e2ehttps: 2} as const;
 
 export type Proto = 'tcp' | 'udp' | 'sctp';
 export type SelName = keyof typeof SEL_ID;

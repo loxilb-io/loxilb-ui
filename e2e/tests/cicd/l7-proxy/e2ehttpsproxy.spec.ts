@@ -4,11 +4,10 @@
 //   --host=10.10.10.254. Replays it through the UI (Mode=fullproxy →
 //   Security=e2ehttps → Host) and validates the gateway's REST read-back.
 //
-// WATCH (plan §16): the GET serviceArguments.security enum has historically
-// under-declared e2ehttps (3). If the gateway does not echo security=3 on
-// read-back, that is a documented schema gap (the same readbackOmit class as
-// fullnat's write-only snat/privateIP) —
-// the UI-send is still proven by the POST-body assertion in runLbScenario.
+// NOTE on the security value: e2ehttps is 2 per both backends' common.LBSec
+// (Plain=0/HTTPS=1/E2EHTTPS=2); the swagger description that claimed
+// "2-tls, 3-e2ehttps" was a spec bug — the datapath has no branch for 3 and
+// silently degrades it to plain. This matches the cicd config.sh original.
 //---------------------------------------------------------
 import {test} from '../../../fixtures';
 import {activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';

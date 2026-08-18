@@ -6,6 +6,7 @@ import {Box, Divider, Drawer, IconButton, List, ListSubheader, Tooltip, Typograp
 import {get_url_from_2_depth_name, get_url_from_3_depth_name} from 'common';
 import SlideMenuItem from 'components/menu/SlideMenuItem';
 import {useInstanceName} from 'hooks/query/instanceHook';
+import {useInstanceCapabilities} from 'hooks/query/flavorHook';
 import {useRole} from 'hooks/query/oamHooks';
 import {useTranslation} from 'react-i18next';
 import {Link, useNavigate} from 'react-router-dom';
@@ -28,8 +29,19 @@ export default function SideMenu(props: {open: boolean}) {
 	// RBAC: hide menu entries restricted to other roles. Items
 	// without a roles list are visible to everyone.
 	const {role} = useRole();
-	const visible = (item: IMenuItem) => !item.roles || (role !== null && item.roles.includes(role));
-	const menu_items = MENU_LIST.filter(visible).map(item => (item.items ? {...item, items: item.items.filter(visible)} : item));
+	// Flavor gating: hide entries whose API family the current instance
+	// (plain loxilb vs inference gateway) doesn't serve. Until the flavor
+	// probe resolves the helpers answer as the gateway, so nothing flickers.
+	const caps = useInstanceCapabilities();
+	const visible = (item: IMenuItem) =>
+		(!item.roles || (role !== null && item.roles.includes(role))) &&
+		(!item.requiresFeature || caps.hasFeature(item.requiresFeature)) &&
+		(!item.requiresFlavor || (caps.flavor ?? 'inference-gateway') === item.requiresFlavor);
+	const menu_items = MENU_LIST.filter(visible)
+		.map(item => (item.items ? {...item, items: item.items.filter(visible)} : item))
+		// A group whose children are all gated away (e.g. Maintenance on
+		// loxilb) disappears rather than rendering an empty header.
+		.filter(item => !item.items || item.items.length > 0);
 
 	// Rail icons deep-link to the group's first visible page (one click from
 	// the Traffic icon to LB Rule), mirroring what expanding + clicking the

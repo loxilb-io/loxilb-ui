@@ -44,7 +44,7 @@ function recipe(m: McpMode): LbRecipe {
 
 let instName: string;
 
-test.describe('cicd/mcp-fullproxy — MCP session-header routing config round-trips', () => {
+test.describe('@gw cicd/mcp-fullproxy — MCP session-header routing config round-trips', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepLbRules();

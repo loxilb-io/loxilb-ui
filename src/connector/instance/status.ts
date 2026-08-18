@@ -93,6 +93,18 @@ export async function query_get_metadata(instance: IInstance): Promise<any> {
 	return resp.data ?? {};
 }
 
+// /version payload used for flavor detection. `product` is the additive field
+// both backends are growing; the vendored
+// gateway spec predates it, hence the local type extension. Absence of the
+// field means plain upstream loxilb (see api/capabilities.ts detectFlavor).
+export type IVersionEntry = GwSchema<'VersionGetEntry'> & {product?: string};
+
+export async function query_get_version(instance: IInstance): Promise<IVersionEntry> {
+	const resp = await GET_INST<GwGetResp<'/version'>>(instance, `/version`);
+	assertOk(resp, 'Get Version');
+	return (resp.data ?? {}) as IVersionEntry;
+}
+
 export async function request_post_log_level(instance: IInstance, level: LevelType): Promise<ApiResult> {
 	const resp = await POST_INST(instance, `/config/params`, {logLevel: level});
 	if (resp.code !== 200 && resp.code !== 204) {

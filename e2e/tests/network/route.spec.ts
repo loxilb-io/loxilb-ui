@@ -25,8 +25,26 @@ async function apiCreateRoute(destinationIPNet: string): Promise<void> {
 }
 
 async function openAddDialog(page: Page): Promise<void> {
-	await toolbarButton(page, 'Add').click();
-	await expect(dialog(page).getByText('New Route')).toBeVisible();
+	// The Add click can be swallowed while the grid is still re-rendering a long
+	// route table: the button is present and enabled, the click reports success,
+	// and the dialog never opens. Seen intermittently on V-dest, which runs after
+	// the seeding tests have grown the table; it passes in isolation and in most
+	// full runs, which is exactly the profile of a lost click rather than a
+	// product defect.
+	//
+	// Retry the click instead of letting the assertion burn its full timeout — a
+	// bare failure here reads as "the Add dialog never opened" and sends the next
+	// person looking for a UI bug that is not there.
+	const title = dialog(page).getByText('New Route');
+	for (let attempt = 1; ; attempt++) {
+		await toolbarButton(page, 'Add').click();
+		try {
+			await expect(title).toBeVisible({timeout: 5_000});
+			break;
+		} catch (err) {
+			if (attempt === 3) throw err;
+		}
+	}
 	await expect(field(page, 'Gateway')).toBeVisible(); // metadata form finished loading
 }
 
@@ -56,9 +74,22 @@ test.describe('Route page CRUD', () => {
 		// interface itself sits on .1). The kernel only checks reachability, so
 		// any in-subnet address works — no traffic is ever sent to it.
 		const data = await gwJson<{ipAttr?: Array<{dev: string; ipAddress?: string[]}>}>('/config/ipv4address/all');
-		for (const attr of data.ipAttr ?? []) {
-			if (attr.dev === 'lo') continue;
-			const primary = (attr.ipAddress ?? []).find(cidr => !isDocAddr(cidr));
+		// Sorted by device name, because the backend returns this list in Go map
+		// order — i.e. a DIFFERENT order on every call. "First non-lo device"
+		// therefore picked a different nexthop run to run, and one of the
+		// candidates is fatal: the per-rule pseudo-devices (llb-rule-<vip>) carry
+		// a /32, whose sibling host is not on-link, so the route create fails
+		// with 500 "network is unreachable". Skip anything narrower than a /30
+		// and sort for determinism.
+		const candidates = (data.ipAttr ?? [])
+			.filter(attr => attr.dev !== 'lo' && !attr.dev.startsWith('llb-rule-'))
+			.sort((a, b) => a.dev.localeCompare(b.dev));
+		for (const attr of candidates) {
+			const primary = (attr.ipAddress ?? []).find(cidr => {
+				if (isDocAddr(cidr)) return false;
+				const prefix = Number(cidr.split('/')[1]);
+				return Number.isFinite(prefix) && prefix <= 30; // a /31 or /32 has no usable sibling
+			});
 			if (primary) {
 				const octets = primary.split('/')[0].split('.');
 				octets[3] = octets[3] === '1' ? '2' : '1';
@@ -66,7 +97,7 @@ test.describe('Route page CRUD', () => {
 				break;
 			}
 		}
-		expect(GW, 'testbed must expose a non-lo device with an IPv4 address').toBeTruthy();
+		expect(GW, 'testbed must expose a non-lo, non-rule device on a /30-or-wider IPv4 subnet to use as an on-link nexthop').toBeTruthy();
 	});
 
 	test.afterEach(async () => {

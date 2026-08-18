@@ -16,6 +16,25 @@ dotenv.config({path: '.env.e2e.local'});
 // there and reuseExistingServer happily runs the suite against it.
 const UI_PORT = process.env.E2E_UI_PORT ?? '3000';
 
+// Two backend products, two suites (see e2e/oss/CLAUDE.md):
+//
+//   project 'gw'  — e2e/tests/**    → loxilb-inference-gateway   (npm run e2e)
+//   project 'oss' — e2e/oss/tests/** → plain upstream loxilb      (npm run e2e-oss)
+//
+// They are separate spec trees rather than one tagged suite because the two
+// backends have genuinely different semantics on the shared /netlox/v1 base
+// (no PATCH upstream, 409 on a duplicate POST, connect-only probes, narrower
+// sel/security enums, no /logs cursor, different Prometheus names). Branching
+// on flavor inside one spec made those assertions unreadable and let a spec
+// edited for a gateway feature silently change what ran against loxilb.
+//
+// What they DO share: the harness (e2e/fixtures.ts, e2e/helpers/**) and the
+// login/setup project — and the OAM-side specs (tests/oam/**), which exercise
+// the OAM rather than either backend and so are never duplicated.
+//
+// '@gw' tags survive inside the gateway tree as documentation of which cases
+// are gateway-only; selection no longer depends on them.
+
 export default defineConfig({
 	testDir: 'e2e',
 	outputDir: 'test-results',
@@ -55,8 +74,24 @@ export default defineConfig({
 		// retries:0 still stands for the mutating specs.
 		{name: 'setup', testMatch: /auth\.setup\.ts/, retries: 2},
 		{
-			name: 'admin',
-			testMatch: /tests\/.*\.spec\.ts/,
+			// loxilb-inference-gateway suite. Also owns the OAM-side specs.
+			name: 'gw',
+			testDir: 'e2e/tests',
+			testMatch: /.*\.spec\.ts/,
+			dependencies: ['setup'],
+			use: {
+				...devices['Desktop Chrome'],
+				viewport: {width: 1280, height: 900},
+				storageState: '.auth/admin.json',
+			},
+		},
+		{
+			// loxilb-oss (plain upstream loxilb) suite. Every spec here asserts
+			// upstream semantics and fails fast if the pinned instance turns out
+			// to be a gateway (e2e/oss/_loxilb.ts requireLoxilbInstance).
+			name: 'oss',
+			testDir: 'e2e/oss/tests',
+			testMatch: /.*\.spec\.ts/,
 			dependencies: ['setup'],
 			use: {
 				...devices['Desktop Chrome'],

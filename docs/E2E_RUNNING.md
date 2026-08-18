@@ -107,6 +107,44 @@ npm run e2e:cicd                 # all tests/cicd/** groups, in order
 npx playwright test e2e/tests/cicd/ai-gateway    # one cicd group
 ```
 
+### Two backends, two suites
+
+This UI manages **two products**, and each has its own spec tree and its own
+command:
+
+```bash
+npm run e2e        # loxilb-inference-gateway — project 'gw',  e2e/tests/**
+npm run e2e-oss    # plain upstream loxilb    — project 'oss', e2e/oss/tests/**
+```
+
+They are separate suites rather than one tagged run because the backends
+diverge behaviourally on the shared `/netlox/v1` base — upstream has no LB
+`PATCH`, refuses a duplicate `POST` with 409, accepts connect probes only,
+carries narrower `sel`/`security` enums, and serves no `/logs` cursor. The
+full table, and what the two trees share (helpers, fixtures, login, and the
+OAM-side specs, which are never duplicated), is in
+[`e2e/oss/README.md`](../e2e/oss/README.md).
+
+Registering a plain loxilb next to the gateway on the same OAM is the
+intended topology. Name each registration so the suites can find them:
+
+```dotenv
+E2E_INSTANCE_GATEWAY=<oam registration name of the gateway>
+E2E_INSTANCE_LOXILB=<oam registration name of the plain loxilb>
+```
+
+`E2E_INSTANCE_NAME` still overrides both for a one-off run; with neither set,
+"first active instance" wins (fine on a single-flavor OAM). The oss suite
+also **fails fast** if the instance it resolves turns out to be a gateway, so
+a mis-set variable can never mutate the wrong box.
+
+The oss tree's headline spec is `contract-guard.spec.ts`: it watches every
+request the browser sends and fails on anything upstream loxilb's swagger
+does not declare, with the generated capability map
+(`src/api/gen/loxilb-capability-map.json`) as the oracle. That is what
+catches the dangerous class — gateway-only body fields, which upstream
+accepts with 200 and silently drops.
+
 ## 3a. Nightly / on-demand CI run
 
 `.github/workflows/e2e.yml` runs the full suite on a **self-hosted runner

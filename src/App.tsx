@@ -15,7 +15,7 @@ import {theme_config} from 'theme';
 
 import Layout from 'components/layout/Layout';
 import NavLayout from 'components/layout/NavLayout';
-import {RequireAuth} from 'components/layout/RouteGuards';
+import {RequireAuth, RequireFeature} from 'components/layout/RouteGuards';
 import ScrollToTop from 'components/layout/ScrollToTop';
 import PopUp from 'components/modal/PopUp';
 import SetupHandler from 'components/setup/SetupHandler';
@@ -140,7 +140,7 @@ export default function App() {
 										</Route>
 										<Route path="fdb" element={<FDBPage />} />
 										<Route path="ip" element={<IPPage />} />
-										<Route path="ip6" element={<IPPage family="ipv6" />} />
+										<Route path="ip6" element={<RequireFeature feature="ipv6"><IPPage family="ipv6" /></RequireFeature>} />
 										<Route path="port" element={<PortPage />} />
 										<Route path="neighbor" element={<NeighborPage />} />
 										<Route path="route" element={<RoutePage />} />
@@ -155,19 +155,19 @@ export default function App() {
 										<Route path="lb" element={<LoadBalancerPage />} />
 										<Route path="mirror" element={<MirrorPage />} />
 										<Route path="qos" element={<QoSPage />} />										
-										<Route path="sni-certs" element={<SNICertificatesPage />} />
+										<Route path="sni-certs" element={<RequireFeature feature="sniCerts"><SNICertificatesPage /></RequireFeature>} />
 									</Route>
-									<Route path="ai" element={<Outlet />}>
+									<Route path="ai" element={<RequireFeature feature="ai" />}>
 										<Route path="apikey" element={<AIApiKeyPage />} />
 										<Route path="ratelimit" element={<AITenantRateLimitPage />} />
 									</Route>
-									<Route path="ipsec" element={<Outlet />}>
+									<Route path="ipsec" element={<RequireFeature feature="ipsec" />}>
 										<Route path="tunnels" element={<IPsecTunnelPage />} />
 										<Route path="certs" element={<IPsecCertificatePage />} />
 									</Route>
 									<Route path="security" element={<Outlet />}>
-										<Route path="ipfilter" element={<IPFilterPage />} />
-										<Route path="securityrate" element={<SecurityRatePage />} />
+										<Route path="ipfilter" element={<RequireFeature feature="ipfilter"><IPFilterPage /></RequireFeature>} />
+										<Route path="securityrate" element={<RequireFeature feature="securityrate"><SecurityRatePage /></RequireFeature>} />
 									</Route>								
 									<Route path="status" element={<Outlet />}>
 										<Route path="device" element={<DevicePage />} />
@@ -177,7 +177,7 @@ export default function App() {
 										<Route path="logs" element={<LogPage />} />
 									</Route>
 									<Route path="maintenance" element={<Outlet />}>
-										<Route path="snapshots" element={<SnapshotPage />} />
+										<Route path="snapshots" element={<RequireFeature flavor="inference-gateway"><SnapshotPage /></RequireFeature>} />
 									</Route>
 									<Route path="settings" element={<InstanceSettingPage />} />
 									<Route path="dashboard" element={<DashboardPage />} />

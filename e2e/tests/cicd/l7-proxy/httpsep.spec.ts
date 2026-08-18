@@ -1,5 +1,9 @@
 //---------------------------------------------------------
 // cicd source: cicd/httpsep — HTTPS endpoint health probe (NOT LB TLS).
+// @gw: upstream loxilb's LB-level probe accepts connect probes only
+// (rules.go "malformed-service-ptype" — http/https 400), so this is a
+// gateway scenario; the loxilb counterpart (tcp probe) lives in
+// tests/flavor/loxilb-gating.spec.ts.
 // Recipe: `loxicmd create lb 20.20.20.1 --tcp=2020:8080 --endpoints=… --monitor`
 //   plus `loxicmd create endpoint … --probetype=https --probeport=8080
 //   --probereq=health --proberesp=OK --retries=2`. This is an ENDPOINT PROBE
@@ -28,7 +32,7 @@ const recipe: LbRecipe = {
 
 let instName: string;
 
-test.describe('cicd/httpsep — HTTPS endpoint health probe (dnat + monitor)', () => {
+test.describe('@gw cicd/httpsep — HTTPS endpoint health probe (dnat + monitor)', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepLbRules();

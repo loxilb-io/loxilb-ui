@@ -16,7 +16,7 @@ import {toolbarButton} from '../../helpers/table';
 
 let instName: string;
 
-test.describe('IPv6 address page', () => {
+test.describe('@gw IPv6 address page', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 	});

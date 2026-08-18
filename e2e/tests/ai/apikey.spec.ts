@@ -31,7 +31,7 @@ const APIKEY_PATH = '/config/ai/apikey';
 let instName: string;
 let noUserservice: boolean;
 
-test.describe('AI API Key page', () => {
+test.describe('@gw AI API Key page', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		noUserservice = await gatewayLacksUserservice();
