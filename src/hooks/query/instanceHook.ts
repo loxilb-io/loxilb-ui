@@ -30,6 +30,7 @@ export function useInstanceLogs(instance: IInstance | null, options?: {
 	level?: string;
 	keyword?: string;
 	cursor?: string;
+	file?: string;
 	enableAutoRefresh?: boolean;
 }) {
 	return useQuery({

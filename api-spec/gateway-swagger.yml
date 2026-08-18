@@ -70,7 +70,120 @@ paths:
         '503':
           description: Maintenance mode
           schema:
-            $ref: '#/definitions/Error' 
+            $ref: '#/definitions/Error'
+
+  '/config/snapshot':
+    get:
+      summary: Download a complete instance snapshot
+      description: Returns the versioned, checksummed snapshot document (schema 1.0) covering all v1 configuration domains. Replaces the deprecated /config/export. Response carries Content-Disposition and X-Snapshot-Checksum headers.
+      parameters:
+        - name: components
+          in: query
+          description: Comma-separated list of v1 domains to capture (endpoint, loadbalancer, firewall, policy, mirror, session, sessionulcl, ipfilter, securityrate, bfd, bgp, ipsec). If not specified, all domains are captured.
+          type: string
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: Snapshot document download
+          schema:
+            type: file
+          headers:
+            Content-Disposition:
+              type: string
+            X-Snapshot-Checksum:
+              type: string
+        '400':
+          description: Invalid parameters
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Another snapshot or restore operation is in progress
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/config/restore':
+    post:
+      summary: Restore an instance snapshot
+      description: Runs the staged restore pipeline (parse, validate, plan, preserve, apply, verify, commit-or-rollback) on the posted snapshot document. Default mode is dry-run, which validates and plans without mutating anything; commit must be explicit. Replaces the deprecated /config/import.
+      parameters:
+        - name: mode
+          in: query
+          description: dry-run (default) validates and returns the plan without mutating anything; commit applies the snapshot with automatic rollback on failure.
+          type: string
+          enum: [dry-run, commit]
+          default: dry-run
+        - name: snapshot
+          in: body
+          required: true
+          description: The snapshot document, as produced by GET /config/snapshot.
+          schema:
+            type: object
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: Restore result (both modes; inspect result and errors fields)
+          schema:
+            $ref: '#/definitions/RestoreResult'
+        '400':
+          description: Malformed or incompatible snapshot document
+          schema:
+            $ref: '#/definitions/RestoreResult'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Another snapshot or restore operation is in progress
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Restore failed (rolled-back or ROLLBACK-FAILED; see result field)
+          schema:
+            $ref: '#/definitions/RestoreResult'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/config/persist':
+    post:
+      summary: Persist the running configuration to disk
+      description: Dumps the gateway's live configuration to {config-path}/snapshot.json (atomic temp-file + rename, 0600) so it survives a daemon restart. This is "save" as an API (single-writer rule) - the same write the gateway performs automatically after a committed restore and, when auto-persist is enabled, after every successful mutating config call. loxicmd save --api calls this instead of writing legacy *.txt files client-side.
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: Configuration persisted
+          schema:
+            $ref: '#/definitions/PersistResult'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Another snapshot or restore operation is in progress
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
 
   '/meta':
     get:
@@ -3868,79 +3981,6 @@ paths:
 #----------------------------------------------
 # SYN Flood Protection
 #----------------------------------------------
-  '/config/synflood':
-    post:
-      summary: Enable or configure SYN flood protection
-      description: Enable SYN flood protection with specified thresholds and configuration.
-      parameters:
-        - name: attr
-          in: body
-          required: true
-          description: SYN flood protection configuration
-          schema:
-            $ref: '#/definitions/SYNFloodConfigMod'
-      responses:
-        '204':
-          description: OK
-        '400':
-          description: Malformed arguments for API call
-          schema:
-            $ref: '#/definitions/Error'
-        '401':
-          description: Invalid authentication credentials
-          schema:
-            $ref: '#/definitions/Error'
-        '500':
-          description: Internal service error
-          schema:
-            $ref: '#/definitions/Error'
-    
-    delete:
-      summary: Disable SYN flood protection
-      description: Disable SYN flood protection and clear all tracking state.
-      responses:
-        '204':
-          description: OK
-        '400':
-          description: Malformed arguments for API call
-          schema:
-            $ref: '#/definitions/Error'
-        '401':
-          description: Invalid authentication credentials
-          schema:
-            $ref: '#/definitions/Error'
-        '404':
-          description: Resource not found
-          schema:
-            $ref: '#/definitions/Error'
-        '500':
-          description: Internal service error
-          schema:
-            $ref: '#/definitions/Error'
-
-  '/config/synflood/all':
-    get:
-      summary: Get SYN flood protection configuration and statistics
-      description: Get current SYN flood protection configuration and statistics.
-      responses:
-        '200':
-          description: OK
-          schema:
-            type: object
-            properties:
-              synfloodAttr:
-                type: array
-                items:
-                  $ref: '#/definitions/SYNFloodEntry'
-        '401':
-          description: Invalid authentication credentials
-          schema:
-            $ref: '#/definitions/Error'
-        '500':
-          description: Internal service error
-          schema:
-            $ref: '#/definitions/Error'
-
 #----------------------------------------------
 # Unified Security Rate Limiting (P0-5 + P0-6)
 #----------------------------------------------
@@ -6168,23 +6208,31 @@ paths:
   '/logs':
     get:
       summary: Fetch logs with optional filtering
-      description: Fetch the latest logs from the system with optional filtering by number of lines, log level, or keyword.
+      description: >
+        Fetch log lines newest-first, paging backwards towards the start of the
+        file. When level or keyword is set the server keeps reading backwards
+        until the requested number of *matching* lines has been collected, the
+        start of the file is reached, or the per-request scan cap (32 MiB) is
+        hit — so has_more means "more matches may exist", not merely "more bytes
+        exist". Offsets in next_cursor are byte offsets into the file the page
+        was read from; for a .log.gz archive they address the uncompressed
+        stream.
       parameters:
         - name: lines
           in: query
           required: false
           type: string
-          description: Number of log lines to fetch (default is 100).
+          description: Number of log lines to fetch (default is 100). With level or keyword set this is the number of matching lines.
         - name: level
           in: query
           required: false
           type: string
-          description: Filter logs by level (e.g., INFO, ERROR, DEBUG).
+          description: Filter logs by level (e.g., INFO, ERROR, DEBUG). Matched as a substring, searched backwards across the whole file rather than within one page.
         - name: keyword
           in: query
           required: false
           type: string
-          description: Filter logs containing a specific keyword or phrase.
+          description: Filter logs containing a specific keyword or phrase. Matched as a substring, searched backwards across the whole file rather than within one page.
         - name: cursor
           in: query
           required: false
@@ -6194,7 +6242,7 @@ paths:
           in: query
           required: false
           type: string
-          description: Specific log file to read (default is the current log file).
+          description: Specific log file to read (default is the current log file). Rotated .log.gz archives are accepted and decompressed transparently.
       responses:
         '200':
           description: Logs fetched successfully
@@ -6755,6 +6803,58 @@ paths:
 # Schema definitions
 #----------------------------------------------
 definitions:
+  RestorePlanItem:
+    type: object
+    description: Per-domain apply/delete counts computed by the restore PLAN stage.
+    properties:
+      domain:
+        type: string
+      to_delete:
+        type: integer
+      to_apply:
+        type: integer
+  RestoreResult:
+    type: object
+    description: Result of POST /config/restore (both dry-run and commit modes).
+    properties:
+      mode:
+        type: string
+        enum: [dry-run, commit, boot]
+      compatible:
+        type: boolean
+      schema_version:
+        type: string
+      snapshot_gateway_version:
+        type: string
+      current_gateway_version:
+        type: string
+      plan:
+        type: array
+        items:
+          $ref: '#/definitions/RestorePlanItem'
+      errors:
+        type: array
+        items:
+          type: string
+      result:
+        type: string
+        description: ok, rolled-back, or ROLLBACK-FAILED; empty when the pipeline stopped before APPLY.
+      pre_restore_snapshot_persisted:
+        type: string
+        description: On-disk path of the pre-restore snapshot captured before APPLY (commit mode only).
+  PersistResult:
+    type: object
+    description: Result of POST /config/persist.
+    properties:
+      result:
+        type: string
+        description: Always "ok" on 200.
+      path:
+        type: string
+        description: On-disk path of the persisted snapshot (config-path/snapshot.json).
+      checksum:
+        type: string
+        description: SHA-256 checksum of the persisted snapshot document.
   Error:
     type: object
     properties:
@@ -7069,7 +7169,7 @@ definitions:
             type: integer
             format: int32
             enum: [0,1,2,3]
-            description: value for Security mode (0-Plain, 1-https, 2-tls, 3-e2ehttps, 0-default)
+            description: 0 - plain HTTP, 1 - TLS terminated at the gateway (https), 2 - end-to-end HTTPS (re-encrypt to backend). 3 is reserved/unused.
           block:
             type: integer
             format: uint32
@@ -7156,6 +7256,11 @@ definitions:
             minimum: 0
             default: 0
             description: Sets SO_KEEPALIVE + TCP_KEEPIDLE on backend socket in seconds. Keeps TCP CT entries alive through cloud NAT during long SSE streams. 0 = disabled. Recommended value 60 for most cloud environments.
+          cb_enable:
+            type: boolean
+            x-nullable: false
+            default: false
+            description: Enable the per-endpoint circuit breaker for full-proxy rules. After 5 consecutive backend connect failures an endpoint is skipped by all selection paths until a 30s open-timeout expires and a half-open probe succeeds. Complements the liveness probe (probetype) - the breaker reacts within one failed request, the probe within one probe interval.
           pd_disagg_mode:
             type: boolean
             x-nullable: false
@@ -7195,20 +7300,43 @@ definitions:
             minimum: 0
             maximum: 3
             default: 0
-            description: "KV-cache exact routing mode: 0=off, 1=zmq (P/D role-partitioned), 2=nats(reserved), 3=zmq single-role (— all EPs subscribed, no P/D role split). Enables Tier 1.5 block-hash routing between Tier 1 (trie) and Tier 2 (min-load)."
+            description: >-
+              KV-cache exact (Tier 1.5) routing mode. Selects the ENDPOINT TOPOLOGY only —
+              the serving framework is chosen independently by kvEngineType, and every mode
+              below works with either engine.
+              0 = off.
+              1 = zmq over a P/D role-partitioned pool: requires pd_disagg_mode=true (rejected
+              otherwise) and endpoints tagged ep_role 1/2; only ep_role=1 (prefill) endpoints
+              are subscribed and scored, and Tier 1.5 sits between Tier 1 (trie) and Tier 2
+              (min-load) in the P/D ladder.
+              2 = nats (reserved, not implemented).
+              3 = zmq single-role over a role-less pool: requires mode=4 (fullproxy) and
+              pd_disagg_mode=false (both rejected otherwise); ALL endpoints are subscribed and
+              scored. Mode 3 does NOT reproduce the P/D ladder — there is no Tier-0 session
+              stickiness, no Tier-1 trie and no admission gate on this path; a Tier-1.5 miss
+              falls back to the rule's own sel selector (CHWBL/RR/persist).
           kvBlockSize:
             type: integer
             format: int64
             x-nullable: false
             minimum: 1
             default: 16
-            description: Token block size for KV hash computation. Must match vLLM's block_size configuration.
+            description: Token block size for KV hash computation. Must match the engine's block granularity - vLLM --block-size, SGLang --page-size. A mismatch makes every hash miss.
           kvHashAlgo:
             type: string
             x-nullable: false
-            enum: ["sha256_cbor", "xxhash_cbor"]
-            default: "sha256_cbor"
-            description: "Hash algorithm for KV block matching. Must match vLLM's configured hash algorithm."
+            enum: ["sha256_cbor", "xxhash_cbor", "sha256_sglang"]
+            description: >-
+              Block-hash contract used to match the prompt against the engine-published KV
+              inventory. PREFER OMITTING THIS FIELD — when absent, the contract is derived from
+              kvEngineType (vllm => sha256_cbor, sglang => sha256_sglang), which is always the
+              coherent choice. An explicit value overrides that default and MUST match the
+              engine, or every computed hash misses and Tier 1.5 is silently dead; incoherent
+              pairs are therefore rejected at config time.
+              vLLM engines: "sha256_cbor" (must equal --prefix-caching-hash-algo) or
+              "xxhash_cbor". SGLang engines: "sha256_sglang" only — SGLang hashes
+              parent||tokens raw (no CBOR, no NONE seed) and truncates to the FIRST 8 digest
+              bytes, where vLLM CBOR-encodes and truncates to the LAST 8.
           kvZmqPort:
             type: integer
             format: int64
@@ -7216,7 +7344,7 @@ definitions:
             minimum: 1
             maximum: 65535
             default: 5557
-            description: ZMQ PUB socket port on vLLM prefill endpoints for KV cache events.
+            description: Base ZMQ PUB socket port on the endpoints publishing KV-cache events. Which endpoints are subscribed depends on kvExactMode - mode 1 subscribes ep_role=1 (prefill) endpoints only, mode 3 subscribes every endpoint. With kvDpRankCount > 1, data-parallel rank N is subscribed at kvZmqPort+N.
           kvWarmupSec:
             type: integer
             format: int64
@@ -8490,72 +8618,6 @@ definitions:
         format: int64
         description: Byte counter (read-only)
 
-  SYNFloodConfigMod:
-    type: object
-    required:
-      - enabled
-      - synThreshold
-      - cookieThreshold
-    properties:
-      enabled:
-        type: boolean
-        description: Enable/disable SYN flood protection
-      synThreshold:
-        type: integer
-        format: int64
-        default: 100
-        description: Maximum SYNs per second per IP (hard drop threshold)
-      cookieThreshold:
-        type: integer
-        format: int64
-        default: 50
-        description: Enable SYN cookies above this rate (must be < synThreshold)
-      whitelistIps:
-        type: array
-        items:
-          type: string
-        description: IP addresses to bypass SYN flood protection
-
-  SYNFloodEntry:
-    type: object
-    properties:
-      enabled:
-        type: boolean
-        description: Whether SYN flood protection is enabled
-      synThreshold:
-        type: integer
-        format: int64
-        description: Maximum SYNs per second per IP
-      cookieThreshold:
-        type: integer
-        format: int64
-        description: SYN cookie activation threshold
-      whitelistIps:
-        type: array
-        items:
-          type: string
-        description: Whitelisted IPs
-      totalSyns:
-        type: integer
-        format: int64
-        description: Total SYN packets processed (read-only)
-      blockedSyns:
-        type: integer
-        format: int64
-        description: SYN packets blocked (read-only)
-      passedSyns:
-        type: integer
-        format: int64
-        description: SYN packets passed (read-only)
-      cookieActivations:
-        type: integer
-        format: int64
-        description: Times SYN cookies were enabled (read-only)
-      uniqueIps:
-        type: integer
-        format: int64
-        description: Number of unique source IPs tracked (read-only)
-
   SecurityRateConfigMod:
     type: object
     required:
@@ -8564,7 +8626,6 @@ definitions:
       - cookieThreshold
       - connRateEnabled
       - ratePerSec
-      - concurrentLimit
       - udpEnabled
       - udpPktThreshold
       - udpBandwidthMB
@@ -8590,11 +8651,6 @@ definitions:
         format: int64
         default: 50
         description: Maximum new connections per second per IP
-      concurrentLimit:
-        type: integer
-        format: int64
-        default: 200
-        description: Maximum concurrent connections per IP
       udpEnabled:
         type: boolean
         description: Enable/disable UDP flood protection (P0-7)
@@ -8635,10 +8691,6 @@ definitions:
         type: integer
         format: int64
         description: Maximum new connections per second per IP
-      concurrentLimit:
-        type: integer
-        format: int64
-        description: Maximum concurrent connections per IP
       udpEnabled:
         type: boolean
         description: Whether UDP flood protection is enabled
@@ -8675,10 +8727,6 @@ definitions:
         type: integer
         format: int64
         description: Connections passed (read-only)
-      concurrentBlocked:
-        type: integer
-        format: int64
-        description: Connections blocked by concurrent limit (read-only)
       udpBlocked:
         type: integer
         format: int64
@@ -9580,6 +9628,9 @@ definitions:
       buildInfo:
         type: string
         description: build info
+      product:
+        type: string
+        description: Product identifier for API flavor detection. This gateway reports "loxilb-inference-gateway"; upstream loxilb (and gateway builds predating the field) omit it, which clients treat as plain loxilb.
 
   BfdEntry:
     type: object
@@ -9819,29 +9870,41 @@ definitions:
 
   Logs:
     type: object
+    # Emitted on every response, including the zero values: a client that pages
+    # must be able to read has_more/log_count without treating "absent" as a
+    # distinct case.
+    required:
+      - log_count
+      - total_size
+      - has_more
+      - scanned_bytes
     properties:
       logs:
         type: array
         items:
           type: string
-        description: List of filtered logs.
+        description: Log lines for this page, newest first. Empty rather than null when nothing matched.
       log_file:
         type: string
         description: Name of the log file the lines were read from.
       log_count:
         type: integer
-        description: Number of log lines returned in this page.
+        description: Number of lines in this page — that is, the length of logs after filtering. Not a count of matches in the file.
       total_size:
         type: integer
         format: int64
-        description: Total size of the log file in bytes.
+        description: Size in bytes of the whole log file, independent of this page and of any filter. For a .log.gz archive this is the uncompressed size, since offsets address the decompressed stream.
       has_more:
         type: boolean
-        description: Whether more log lines are available (pass next_cursor to fetch them).
+        description: Whether the backwards scan stopped before the start of the file, i.e. older lines remain to be searched. True implies next_cursor is set. Unfiltered this means more lines exist; filtered it means more matches may exist — the final page of a filtered search can legitimately come back empty.
       next_cursor:
         type: string
-        description: Opaque cursor for the next page; present only when has_more is true.
-  
+        description: Opaque cursor for the next (older) page; present only when has_more is true.
+      scanned_bytes:
+        type: integer
+        format: int64
+        description: Bytes examined to build this page. Equal to the page's own span when unfiltered; larger for a filtered query that had to search backwards past non-matching lines. Compare against total_size to show progress through a long search.
+
   LogArchives:
     type: object
     properties:
@@ -9850,7 +9913,28 @@ definitions:
         items:
           type: string
         description: List of log archive filenames.
-  
+      archive_info:
+        type: array
+        items:
+          $ref: '#/definitions/LogArchiveInfo'
+        description: Per-archive metadata, in the same order as archives. Additive — archives stays populated for existing clients.
+
+  LogArchiveInfo:
+    type: object
+    properties:
+      name:
+        type: string
+        description: Archive filename, matching an entry in archives.
+      size_bytes:
+        type: integer
+        format: int64
+        description: Size of the archive on disk in bytes (compressed size for .gz).
+      modified:
+        type: string
+        format: date-time
+        description: Last modification time of the archive (RFC3339). The only reliable age signal for names that carry no timestamp.
+
+
   NodeGraphShcmea:
     type: object
     properties:
@@ -10952,6 +11036,12 @@ definitions:
 
   ApiKeySummary:
     type: object
+    required:
+      # enabled must always serialize: a disabled key (enabled=false) is still
+      # listed/returned by the management endpoints, and the operator relies on
+      # this flag to tell it apart. Without 'required', go-swagger emits
+      # omitempty and false would be dropped from the JSON.
+      - enabled
     properties:
       key_id:
         type: string

@@ -32,39 +32,28 @@ export default function DateTimeRangeSelector(props: {
 }) {
 	const {startLabel, endLabel, start_datetime, end_datetime, set_start_datetime_str, set_end_datetime_str} = props;
 
-	// 초기값 계산 함수
-	const getInitialDateTime = (isoString: string, fallback: dayjs.Dayjs) => {
-		if (isoString) {
-			const parsed = dayjs(isoString);
-			return parsed.isValid() ? parsed : fallback;
-		}
-		return fallback;
+	// An empty prop means "no bound", and the picker must render empty to say so.
+	// This used to fall back to now-1day/now, which showed a range the caller was
+	// not applying — the defaults lived only in this component's local state and
+	// were never handed back through set_*_datetime_str (those fire on change
+	// only), so the table filtered on an empty range while the UI advertised a
+	// one-day window.
+	const parseDateTime = (isoString: string) => {
+		if (!isoString) return null;
+		const parsed = dayjs(isoString);
+		return parsed.isValid() ? parsed : null;
 	};
 
-	const currentTime = dayjs();
-	const defaultStart = currentTime.subtract(1, 'day');
-	const defaultEnd = currentTime;
+	const [start_datetime_js, set_start_datetime_js] = useState<dayjs.Dayjs | null>(parseDateTime(start_datetime));
+	const [end_datetime_js, set_end_datetime_js] = useState<dayjs.Dayjs | null>(parseDateTime(end_datetime));
 
-	const [start_datetime_js, set_start_datetime_js] = useState<dayjs.Dayjs | null>(getInitialDateTime(start_datetime, defaultStart));
-	const [end_datetime_js, set_end_datetime_js] = useState<dayjs.Dayjs | null>(getInitialDateTime(end_datetime, defaultEnd));
-
-	// props가 변경될 때 상태 업데이트
+	// props가 변경될 때 상태 업데이트 (빈 값으로 되돌리는 경우 포함)
 	useEffect(() => {
-		if (start_datetime) {
-			const parsed = dayjs(start_datetime);
-			if (parsed.isValid()) {
-				set_start_datetime_js(parsed);
-			}
-		}
+		set_start_datetime_js(parseDateTime(start_datetime));
 	}, [start_datetime]);
 
 	useEffect(() => {
-		if (end_datetime) {
-			const parsed = dayjs(end_datetime);
-			if (parsed.isValid()) {
-				set_end_datetime_js(parsed);
-			}
-		}
+		set_end_datetime_js(parseDateTime(end_datetime));
 	}, [end_datetime]);
 
 	return (
@@ -74,10 +63,18 @@ export default function DateTimeRangeSelector(props: {
 					name="start_datetime"
 					label={startLabel}
 					value={start_datetime_js}
+					slotProps={{field: {clearable: true}}}
 					onChange={newValue => {
-						if (newValue && newValue.isValid()) {
-							const new_datetime = newValue.toDate();
-							set_start_datetime_str(new_datetime.toISOString());
+						// A cleared picker reports null. Propagating it as an empty string is
+						// what makes a bound removable: the old guard swallowed null, so once
+						// a range was set there was no way back to "no bound" short of a reload.
+						if (!newValue) {
+							set_start_datetime_str('');
+							set_start_datetime_js(null);
+							return;
+						}
+						if (newValue.isValid()) {
+							set_start_datetime_str(newValue.toDate().toISOString());
 							set_start_datetime_js(newValue);
 						}
 					}}
@@ -88,10 +85,15 @@ export default function DateTimeRangeSelector(props: {
 					name="end_datetime"
 					label={endLabel}
 					value={end_datetime_js}
+					slotProps={{field: {clearable: true}}}
 					onChange={newValue => {
-						if (newValue && newValue.isValid()) {
-							const new_datetime = newValue.toDate();
-							set_end_datetime_str(new_datetime.toISOString());
+						if (!newValue) {
+							set_end_datetime_str('');
+							set_end_datetime_js(null);
+							return;
+						}
+						if (newValue.isValid()) {
+							set_end_datetime_str(newValue.toDate().toISOString());
 							set_end_datetime_js(newValue);
 						}
 					}}
