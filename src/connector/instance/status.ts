@@ -94,7 +94,7 @@ export async function query_get_metadata(instance: IInstance): Promise<any> {
 }
 
 // /version payload used for flavor detection. `product` is the additive field
-// both backends are growing (loxilb-ui backward-compat Phase 2a); the vendored
+// both backends are growing; the vendored
 // gateway spec predates it, hence the local type extension. Absence of the
 // field means plain upstream loxilb (see api/capabilities.ts detectFlavor).
 export type IVersionEntry = GwSchema<'VersionGetEntry'> & {product?: string};

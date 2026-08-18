@@ -1,9 +1,9 @@
 //---------------------------------------------------------
 // Flavor-gating assertions against a PLAIN UPSTREAM LOXILB instance
-// (backward-compat plan Phase 4). Runs only with E2E_FLAVOR=loxilb —
-// on gateway runs the '@loxilb' tag is grepInverted away. Pin the
-// loxilb registration with E2E_INSTANCE_NAME so a mixed OAM cannot
-// hand these tests a gateway.
+// Lives in the 'oss' Playwright project, so it is selected by testDir and
+// never collected by a gateway run. Pin the loxilb registration with
+// E2E_INSTANCE_LOXILB (or E2E_INSTANCE_NAME) so a mixed OAM cannot hand
+// these tests a gateway.
 //
 // What must hold on loxilb (all live-verified against 0.9.8-dev):
 // - gateway-only nav entries and routes are gated (friendly state, no /404)

@@ -4,8 +4,7 @@
 // Every card used to read its metrics as `metrics.critical.<key> || 0`, which
 // collapses the two. That is not a cosmetic difference on this product: the
 // backends deliberately OMIT a family they cannot sample rather than export a
-// literal 0, precisely so a consumer can tell them apart (see
-// docs/internal/METRICS_LOXILB_PARITY.md §2.4). Rendering the omission as `0`
+// literal 0, precisely so a consumer can tell them apart. Rendering it as `0`
 // throws away the one signal they went to the trouble of sending, and states
 // something false — "no healthy endpoints" reads identically to "endpoint
 // health is not being collected".

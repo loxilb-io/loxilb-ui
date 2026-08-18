@@ -6,8 +6,8 @@
 //
 // The backends omit a family they cannot sample rather than exporting a literal
 // 0, specifically so a consumer can tell "not collected" from "nothing is
-// happening" (docs/internal/METRICS_LOXILB_PARITY.md §2.4). Every `?? 0` on the
-// way to the screen throws that away and replaces it with a confident false
+// happening". Every `?? 0` on the way to the screen throws that away and
+// replaces it with a confident false
 // statement. These functions preserve `undefined`; the cards render it as N/A.
 import {ITypedLiveMetricsResponse} from 'types/metrics';
 

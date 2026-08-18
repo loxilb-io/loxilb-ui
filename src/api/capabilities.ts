@@ -44,7 +44,7 @@ const FEATURE_PATHS: Record<string, string[]> = {
 	// verified live 2026-08-13 — persist/restore are gateway-only) and
 	// /logs/archives. Neither backend declares those endpoints in its swagger,
 	// so the generated map cannot see them; their pages get gated directly on
-	// flavor in Phase 3 until the specs declare the paths.
+	// flavor until the specs declare the paths.
 };
 export type InstanceFeature = keyof typeof FEATURE_PATHS;
 
