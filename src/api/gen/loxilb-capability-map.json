@@ -52,16 +52,17 @@
 		"/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}/status",
 		"/config/loadbalancer/id/{id}",
 		"/config/opa/watcher",
+		"/config/persist",
 		"/config/pii/configure",
 		"/config/pii/enable",
 		"/config/pii/stats",
 		"/config/pii/status",
 		"/config/pii/url-patterns",
+		"/config/restore",
 		"/config/securityrate",
 		"/config/securityrate/all",
 		"/config/securityrate/reset",
-		"/config/synflood",
-		"/config/synflood/all",
+		"/config/snapshot",
 		"/config/trace/catalog/{catalog_id}/parser",
 		"/config/trace/catalogs",
 		"/config/trace/disable",
@@ -129,6 +130,7 @@
 			"backend_client_cert_id",
 			"backend_keepalive_interval_sec",
 			"backend_protocol",
+			"cb_enable",
 			"chwbl_enable_cache_salt",
 			"chwbl_mean_load_factor",
 			"chwbl_prefix_hash_flags",
@@ -180,12 +182,19 @@
 			"subnetId",
 			"urlPath"
 		],
+		"LogArchives": [
+			"archive_info"
+		],
 		"Logs": [
 			"has_more",
 			"log_count",
 			"log_file",
 			"next_cursor",
+			"scanned_bytes",
 			"total_size"
+		],
+		"VersionGetEntry": [
+			"product"
 		]
 	},
 	"gatewayOnlyEnumValues": {
@@ -248,6 +257,7 @@
 		"LlamaFirewallStatusResponse",
 		"LoadbalanceStats",
 		"LoadbalanceStatus",
+		"LogArchiveInfo",
 		"OPAWatcherConfig",
 		"OPAWatcherStatus",
 		"PIICircuitBreaker",
@@ -257,9 +267,10 @@
 		"PIIStatusResponse",
 		"PIIURLPattern",
 		"PIIURLPatternsEntry",
+		"PersistResult",
+		"RestorePlanItem",
+		"RestoreResult",
 		"SNICertificateEntry",
-		"SYNFloodConfigMod",
-		"SYNFloodEntry",
 		"SecurityRateConfigMod",
 		"SecurityRateEntry",
 		"TenantRateLimitEntry",
