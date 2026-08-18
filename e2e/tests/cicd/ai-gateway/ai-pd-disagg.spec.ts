@@ -9,8 +9,9 @@
 // endpoint ep_role + nixl_port round-trip via REST (both echoed by the gateway
 // — verified live). No mock vLLM, no live prefill/decode traffic.
 //---------------------------------------------------------
-import {test} from '../../../fixtures';
+import {expect, test} from '../../../fixtures';
 import {activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
+import {selectRowByText} from '../../../helpers/table';
 import {cleanupLbByName, LbRecipe, runLbScenario} from '../_recipes';
 
 const recipe: LbRecipe = {
@@ -47,5 +48,20 @@ test.describe('cicd/vllm-pd-disagg — prefill/decode disaggregation config roun
 
 	test('P/D disaggregation + per-endpoint roles/NIXL ports round-trip', async ({page}) => {
 		await runLbScenario(page, instName, recipe);
+
+		// UI display: the Endpoints tab must surface the per-endpoint P/D
+		// fields the gateway echoes (ep_role as prefill/decode, nixl_port) —
+		// without them an operator cannot tell prefill from decode endpoints.
+		await selectRowByText(page, recipe.name);
+		await page.getByRole('tab', {name: 'Endpoints'}).click();
+		const epGrid = page.locator('.MuiDataGrid-root').nth(1);
+		await expect(epGrid.getByRole('columnheader', {name: 'Role'})).toBeVisible({timeout: 10_000});
+		await expect(epGrid.getByRole('columnheader', {name: 'NIXL Port'})).toBeVisible();
+		for (const ep of recipe.endpoints) {
+			const row = epGrid.locator('.MuiDataGrid-row').filter({hasText: ep.ip});
+			await expect(row).toHaveCount(1);
+			await expect(row).toContainText(ep.epRole!);
+			await expect(row).toContainText(ep.nixlPort!);
+		}
 	});
 });

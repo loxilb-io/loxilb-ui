@@ -11,6 +11,11 @@ import * as dotenv from 'dotenv';
 // Testbed admin credentials (E2E_ADMIN_USER / E2E_ADMIN_PASSWORD)
 dotenv.config({path: '.env.e2e.local'});
 
+// Dev-server port. Overridable (E2E_UI_PORT) because 3000 is a popular
+// default — e.g. an active Grafana SSH forward silently serves a foreign app
+// there and reuseExistingServer happily runs the suite against it.
+const UI_PORT = process.env.E2E_UI_PORT ?? '3000';
+
 export default defineConfig({
 	testDir: 'e2e',
 	outputDir: 'test-results',
@@ -28,7 +33,7 @@ export default defineConfig({
 		// Trailing slash matters: page.goto() joins with `new URL(path, baseURL)`,
 		// so navigations must use RELATIVE paths ('login', 'instance/…') — a
 		// leading '/' would resolve outside the /netlox base.
-		baseURL: 'http://localhost:3000/netlox/',
+		baseURL: `http://localhost:${UI_PORT}/netlox/`,
 		// IPsec/LB dialogs clip their action buttons below ~741px viewport
 		// height (plan §11.1) — keep the test viewport tall enough.
 		viewport: {width: 1280, height: 900},
@@ -64,8 +69,8 @@ export default defineConfig({
 	webServer: {
 		// HTTP on purpose: the OAM endpoint is plain http, and an https dev
 		// server would hit the browser's mixed-content block.
-		command: 'HTTPS=false BROWSER=none WDS_SOCKET_PORT=0 dotenv -e .env.development react-scripts start',
-		url: 'http://localhost:3000/netlox/',
+		command: `PORT=${UI_PORT} HTTPS=false BROWSER=none WDS_SOCKET_PORT=0 dotenv -e .env.development react-scripts start`,
+		url: `http://localhost:${UI_PORT}/netlox/`,
 		reuseExistingServer: true,
 		timeout: 180_000,
 	},
