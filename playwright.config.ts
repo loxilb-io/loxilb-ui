@@ -24,9 +24,10 @@ const UI_PORT = process.env.E2E_UI_PORT ?? '3000';
 // They are separate spec trees rather than one tagged suite because the two
 // backends have genuinely different semantics on the shared /netlox/v1 base
 // (no PATCH upstream, 409 on a duplicate POST, connect-only probes, narrower
-// sel/security enums, no /logs cursor, different Prometheus names). Branching
-// on flavor inside one spec made those assertions unreadable and let a spec
-// edited for a gateway feature silently change what ran against loxilb.
+// sel/security enums, version-dependent /logs cursor, different Prometheus
+// names). Branching on flavor inside one spec made those assertions
+// unreadable and let a spec edited for a gateway feature silently change
+// what ran against loxilb.
 //
 // What they DO share: the harness (e2e/fixtures.ts, e2e/helpers/**) and the
 // login/setup project — and the OAM-side specs (tests/oam/**), which exercise
