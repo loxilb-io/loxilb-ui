@@ -5,6 +5,7 @@
 // popup, so .first() always resolves to the PopUp itself.
 //---------------------------------------------------------
 import {expect, Locator, Page} from '@playwright/test';
+import {toolbarButton, ToolbarIcon} from './table';
 
 export function dialog(page: Page): Locator {
 	return page.locator('.MuiModal-root').first();
@@ -29,6 +30,69 @@ export async function selectOption(page: Page, label: string, optionName: string
 	// The option listbox portals into its own (later) modal root. Exact match
 	// for strings — 'onearm' must not hit 'hostonearm', 'HTTP' not 'HTTPS'.
 	await page.getByRole('option', {name: optionName, exact: typeof optionName === 'string'}).click();
+}
+
+/**
+ * Opens a modal and waits for it, retrying a click the app silently dropped.
+ *
+ * A click on a toolbar button can be swallowed while the DataGrid behind it is
+ * still re-rendering: the button is present and enabled, the click reports
+ * success, and no dialog ever appears. It surfaces on a different random
+ * subset of specs every full run and passes on re-run in isolation, which is
+ * the profile of a lost click and not of a product defect. Left bare, it reads
+ * as "the New X dialog never opened" and sends the next person hunting a UI bug
+ * that does not exist.
+ *
+ * Retrying is only safe when NOTHING opened. If a modal did open but carries
+ * the wrong title, clicking again would stack a second one on top and bury the
+ * evidence, so that case fails immediately and reports the heading it actually
+ * found — the click worked there, and the app opening the wrong thing is a real
+ * defect that must not be retried into a timeout.
+ */
+export async function openDialog(
+	page: Page,
+	title: string | RegExp | Locator,
+	open: () => Promise<unknown>,
+	{attempts = 3, timeout = 5_000}: {attempts?: number; timeout?: number} = {},
+): Promise<void> {
+	const heading = typeof title === 'string' || title instanceof RegExp ? dialog(page).getByText(title) : title;
+	for (let attempt = 1; ; attempt++) {
+		await open();
+		try {
+			await expect(heading).toBeVisible({timeout});
+			return;
+		} catch (err) {
+			if (!(await dialog(page).isVisible().catch(() => false))) {
+				if (attempt === attempts) throw err;
+				continue; // nothing opened at all — the click was lost, so click again
+			}
+			// A modal IS up. Give the title one more window before blaming the app:
+			// a form section can render a beat after the modal it lives in, and
+			// calling that "the wrong dialog" would be a false accusation.
+			// (isVisible() would not wait — it answers about right now.)
+			try {
+				await expect(heading).toBeVisible({timeout});
+				return;
+			} catch {
+				/* still absent — genuinely the wrong dialog, reported below */
+			}
+			const actual = (await dialog(page).getByRole('heading').first().textContent().catch(() => null))?.trim();
+			throw new Error(
+				`A dialog opened, but not the expected one${actual ? ` — its heading reads ${JSON.stringify(actual)}` : ''}. ` +
+					'This is NOT the lost-click flake: the click landed and the app opened the wrong dialog.',
+			);
+		}
+	}
+}
+
+/** `openDialog` for the common case: a DataTable toolbar button opens the modal. */
+export async function openToolbarDialog(
+	page: Page,
+	icon: ToolbarIcon,
+	title: string | RegExp | Locator,
+	opts?: {attempts?: number; timeout?: number},
+): Promise<void> {
+	await openDialog(page, title, () => toolbarButton(page, icon).click(), opts);
 }
 
 /** The "Success" popup every mutation ends on; dismisses it. */

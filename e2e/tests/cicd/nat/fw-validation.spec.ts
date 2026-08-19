@@ -17,7 +17,7 @@
 //---------------------------------------------------------
 import {expect, test} from '../../../fixtures';
 import {activeInstance, sweepFirewallRules} from '../../../helpers/api';
-import {dialog, dialogButton} from '../../../helpers/dialogs';
+import {dialogButton, openToolbarDialog} from '../../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../../helpers/form';
 import {showAllRows, toolbarButton} from '../../../helpers/table';
 
@@ -38,8 +38,7 @@ test.describe('cicd/ipmasquerade — Firewall form IP validation', () => {
 		await expect(toolbarButton(page, 'Add')).toBeVisible({timeout: 20_000});
 		await showAllRows(page);
 
-		await toolbarButton(page, 'Add').click();
-		await expect(dialog(page).getByText('Firewall Rule Arguments')).toBeVisible();
+		await openToolbarDialog(page, 'Add', 'Firewall Rule Arguments');
 		const addBtn = dialogButton(page, 'Add');
 
 		// A well-formed masquerade rule (doc-range source + doc SNAT target) submits.

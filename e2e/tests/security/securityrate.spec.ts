@@ -10,7 +10,7 @@
 import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {activeInstance, gw, gwJson} from '../../helpers/api';
-import {dialog, dialogButton, dialogTitle, expectSuccessAndDismiss} from '../../helpers/dialogs';
+import {dialog, dialogButton, dialogTitle, expectSuccessAndDismiss, openToolbarDialog} from '../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../helpers/form';
 import {grid, toolbarButton} from '../../helpers/table';
 
@@ -105,8 +105,7 @@ test.describe('@gw Security Rate Limiting page (edit-only)', () => {
 
 	async function openEditDialog(page: Page): Promise<void> {
 		await selectOnlyRow(page);
-		await toolbarButton(page, 'Mode').click();
-		await expect(dialog(page).getByText('New Security Rate Limiting Configuration')).toBeVisible();
+		await openToolbarDialog(page, 'Mode', 'New Security Rate Limiting Configuration');
 	}
 
 	test('E-edit: changing the SYN threshold POSTs the full config clean and persists', async ({page}) => {

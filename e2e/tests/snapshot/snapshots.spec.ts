@@ -25,7 +25,7 @@ import {
 	sweepLbRules,
 	sweepSnapshots,
 } from '../../helpers/api';
-import {dialog, dialogButton, dialogTitle} from '../../helpers/dialogs';
+import {dialog, dialogButton, dialogTitle, openDialog} from '../../helpers/dialogs';
 import {grid, refreshUntilGone, refreshUntilRow} from '../../helpers/table';
 
 let instName: string;
@@ -71,7 +71,7 @@ function popupInput(page: any) {
 }
 
 async function takeSnapshotViaUI(page: any, name: string) {
-	await page.getByRole('button', {name: 'Take Snapshot'}).click();
+	await openDialog(page, dialog(page).getByLabel(/Name/), () => page.getByRole('button', {name: 'Take Snapshot'}).click());
 	await dialog(page).getByLabel(/Name/).fill(name);
 	await dialog(page).getByRole('button', {name: 'Take Snapshot'}).click();
 	await expect(dialogTitle(page, 'Success')).toBeVisible({timeout: 20_000});
@@ -305,7 +305,7 @@ test.describe('@gw Snapshots page (admin)', () => {
 
 	test('8. Pre-Upgrade button: one click yields a pinned pre_upgrade row with the version-stamped name', async ({page}) => {
 		await openPage(page);
-		await page.getByRole('button', {name: 'Pre-Upgrade Snapshot'}).click();
+		await openDialog(page, dialogButton(page, 'Take & Pin'), () => page.getByRole('button', {name: 'Pre-Upgrade Snapshot'}).click());
 		await dialogButton(page, 'Take & Pin').click();
 		await expect(dialogTitle(page, 'Success')).toBeVisible({timeout: 20_000});
 		await dialogButton(page, 'OK').click();

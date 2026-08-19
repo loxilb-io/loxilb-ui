@@ -11,7 +11,7 @@ import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {gwJson, isDocAddr, sweepIpAddresses} from '../../helpers/api';
 import {requireLoxilbInstance} from '../_loxilb';
-import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss} from '../../helpers/dialogs';
+import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, openToolbarDialog} from '../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../helpers/form';
 import {refreshUntilGone, refreshUntilRow, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 
@@ -25,8 +25,7 @@ const NEW_IP = '203.0.113.30/32';
 
 async function openEditFor(page: Page, rowText: string): Promise<void> {
 	await selectRowByText(page, rowText);
-	await toolbarButton(page, 'Mode').click();
-	await expect(dialog(page).getByText('New IP Address')).toBeVisible();
+	await openToolbarDialog(page, 'Mode', 'New IP Address');
 	await expect(field(page, 'IP Address')).toBeVisible();
 }
 

@@ -13,7 +13,7 @@
 import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {activeInstance, gw, portNames, sweepMirrors} from '../../helpers/api';
-import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
+import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 import {field, isEventuallyDisabled, setField} from '../../helpers/form';
 import {refreshUntilGone, refreshUntilRow, selectRowByClick, showAllRows, toolbarButton} from '../../helpers/table';
 
@@ -24,8 +24,7 @@ let destPort: string; // mirror destination (loopback when available)
 let srcPort: string; // mirrored source port (distinct from destination)
 
 async function openAddDialog(page: Page): Promise<void> {
-	await toolbarButton(page, 'Add').click();
-	await expect(dialog(page).getByText('New Mirror')).toBeVisible();
+	await openToolbarDialog(page, 'Add', 'New Mirror');
 	await expect(field(page, 'Mirror Identifier')).toBeVisible();
 }
 

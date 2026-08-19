@@ -13,7 +13,7 @@ import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {gw, sweepQosPolicies} from '../../helpers/api';
 import {requireLoxilbInstance} from '../_loxilb';
-import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
+import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 import {field} from '../../helpers/form';
 import {refreshUntilGone, refreshUntilRow, selectRowByClick, showAllRows, toolbarButton} from '../../helpers/table';
 
@@ -23,8 +23,7 @@ const CIR = '1000000000'; // 1 Gbps committed — inert vs real traffic
 const PIR = '2000000000'; // 2 Gbps peak
 
 async function openAddDialog(page: Page): Promise<void> {
-	await toolbarButton(page, 'Add').click();
-	await expect(dialog(page).getByText('New Policy')).toBeVisible();
+	await openToolbarDialog(page, 'Add', 'New Policy');
 	await expect(field(page, 'Policy Identifier')).toBeVisible();
 }
 

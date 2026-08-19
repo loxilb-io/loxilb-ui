@@ -27,7 +27,7 @@ and the differences are the whole point of this suite:
 | `security` | 0–3 | **0–2** |
 | `EndPoint.probeType` | + `tls-hello` | rejects it (`422`) |
 | gateway-only bodies fields | applied | **accepted and silently dropped** |
-| `GET /logs` | cursor pagination | no cursor — single page |
+| `GET /logs` | cursor pagination | **version-dependent** — absent through v0.9.8.6, same envelope on newer builds (see LX-READ-5) |
 | Prometheus names | `loxilb_*_total`, `system_*` | third naming generation, no `system_*` |
 | endpoint families | ai, ipsec, sni, ipfilter, securityrate, ipv6, trace, l7policy, snapshots | **404** |
 

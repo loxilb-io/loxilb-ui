@@ -13,9 +13,12 @@
 //    (gateway-only) and about neither swagger declaring the snapshot family,
 //    NOT about export being missing. Someone re-reading the gate without this
 //    test would reasonably conclude loxilb has no export at all.
-//  - /logs upstream returns {logs} ONLY — no next_cursor/has_more/total_size.
-//    The log console must degrade to a single page rather than render a
-//    pagination control that can never advance.
+//  - /logs pagination is VERSION-DEPENDENT upstream, not absent. Released
+//    loxilb (through v0.9.8.6) returns {logs} only and the console degrades to
+//    a single page; newer builds serve the same next_cursor/has_more/total_size
+//    envelope as the gateway and the console pages like it does. LX-READ-5
+//    below asserts whichever one the pinned build actually implements, because
+//    pinning either as the invariant makes the suite red on the other.
 //  - /metrics answers 200 with a plain string when Prometheus is disabled
 //    (NOT 503 like the gateway), so "200" alone is not proof of an exposition.
 //---------------------------------------------------------
@@ -66,23 +69,68 @@ test.describe('@loxilb LX-READ — upstream read surface the UI depends on', () 
 		expect(persist.status, 'persist is gateway-only').toBe(404);
 	});
 
-	test('LX-READ-5: /logs has no cursor pagination upstream, and the console degrades to one page', async ({page, consoleGuard}) => {
+	test('LX-READ-5: /logs pages by cursor when the build supports it, and the console control matches', async ({page, consoleGuard}) => {
 		consoleGuard.allow(/Failed to load resource.*50\d/i);
 
-		const logs = await gwJson<Record<string, unknown>>('/logs?limit=5');
-		expect(logs, '/logs returns a log list').toHaveProperty('logs');
-		// The gateway-only pagination envelope. If upstream ever adds these,
-		// this test failing is the signal to drop the degradation path — not a
-		// regression.
-		for (const field of ['next_cursor', 'has_more', 'total_size']) {
-			expect(logs[field], `/logs upstream does not carry ${field}`).toBeUndefined();
+		// A 5-line window is smaller than any log this testbed keeps, so `has_more`
+		// here reports the BUILD's capability rather than how big today's file
+		// happens to be. Asking for the page's default 1000 would conflate the two.
+		const first = await gwJson<Record<string, any>>('/logs?lines=5');
+		expect(first, '/logs returns a log list').toHaveProperty('logs');
+
+		const paginates = ['next_cursor', 'has_more', 'total_size'].some(f => first[f] !== undefined);
+
+		if (!paginates) {
+			// Released loxilb: {logs} and nothing else. Assert all three together so
+			// a build that grows only half an envelope is a failure, not a silent
+			// half-working pager.
+			for (const field of ['next_cursor', 'has_more', 'total_size']) {
+				expect(first[field], `/logs on this build does not carry ${field}`).toBeUndefined();
+			}
+		} else {
+			// Newer upstream build: the envelope must be COMPLETE, not merely
+			// present. `has_more` without a cursor to follow is precisely the dead
+			// control the degradation path existed to avoid.
+			expect(first.has_more, '5 lines cannot be the whole log').toBe(true);
+			expect(typeof first.next_cursor, 'has_more:true must come with a cursor to follow').toBe('string');
+			expect(String(first.next_cursor).length, 'the cursor is not empty').toBeGreaterThan(0);
+			expect(typeof first.total_size, 'total_size sizes the scan the console reports').toBe('number');
+
+			// …and the cursor has to advance. One that re-serves its own page turns
+			// "Load older lines" into a button that runs forever without progressing,
+			// which reads as working right up until someone counts the lines.
+			const second = await gwJson<Record<string, any>>(`/logs?lines=5&cursor=${encodeURIComponent(first.next_cursor)}`);
+			expect(second.logs, 'following the cursor returns lines').not.toHaveLength(0);
+			expect(second.logs, 'following the cursor moves off the first page').not.toEqual(first.logs);
 		}
 
-		// Consequence in the UI: no "load older lines" button, because a cursor
-		// it cannot send would produce a control that never advances.
+		// The UI consequence. The console asks for 1000 lines, so whether it can
+		// page further is a property of THIS log file, not of the backend — read
+		// the page's own response instead of re-deriving it from the probe above,
+		// which used a deliberately different window.
+		// Scoped to the OAM proxy path on purpose: the SPA route for this page is
+		// itself `.../status/logs?name=…`, so a bare /logs\? matches the document
+		// navigation and hands back HTML instead of the API response.
+		const firstPage = page.waitForResponse(r => /\/netlox\/v1\/logs\?/.test(r.url()) && r.ok(), {timeout: 30_000});
 		await gotoLoxilbPage(page, 'status/logs', instName);
-		await expect(page.getByRole('button', {name: /Load older lines/i}), 'no dead pagination control on loxilb').toHaveCount(0);
-		await expect(page.getByText(/load more to search further back/i), 'no "load more" hint on loxilb').toHaveCount(0);
+		const body = await (await firstPage).json();
+		const loadedCount = async () => Number(/\d+/.exec(await page.getByText(/Filtering \d+ loaded lines/).innerText())![0]);
+		await expect(page.getByText(/Filtering \d+ loaded lines/)).toBeVisible({timeout: 30_000});
+
+		const loadMore = page.getByRole('button', {name: /Load older lines/i});
+		if (body.has_more) {
+			await expect(loadMore, 'has_more:true must offer a way to reach the rest').toBeVisible();
+			const before = await loadedCount();
+			await loadMore.click();
+			// Rows must actually accumulate. The button rendering is not the
+			// contract; more lines on screen is.
+			await expect.poll(loadedCount, {timeout: 30_000}).toBeGreaterThan(before);
+		} else {
+			// Either the build has no cursor at all, or this file fits in one page.
+			// Both must present the same thing: no control that cannot advance.
+			await expect(loadMore, 'nothing further to load — no dead pagination control').toHaveCount(0);
+			await expect(page.getByText(/load more to search further back/i), 'no "load more" hint either').toHaveCount(0);
+		}
 	});
 
 	test('LX-READ-6: /metrics answers 200 even when Prometheus is off, so the parser must not trust the status alone', async () => {

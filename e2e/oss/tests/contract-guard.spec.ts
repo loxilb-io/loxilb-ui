@@ -25,7 +25,7 @@
 //---------------------------------------------------------
 import {expect, test} from '../../fixtures';
 import {activeInstance, gw, OAM_BASE, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
-import {dialog, dialogButton, expectSuccessAndDismiss} from '../../helpers/dialogs';
+import {dialog, dialogButton, expectSuccessAndDismiss, openToolbarDialog} from '../../helpers/dialogs';
 import {expandSection, field} from '../../helpers/form';
 import {refreshUntilRow, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 import {attachContractGuard, capabilityMap, formatViolations} from '../../helpers/loxilb-contract';
@@ -131,8 +131,7 @@ test.describe('@loxilb LX-CONTRACT — no gateway-only API surface reaches a lox
 
 		// Create — the full form, every accordion opened, so any gateway-only
 		// control that survived the flavor gate would be filled and sent.
-		await toolbarButton(page, 'Add').click();
-		await expect(dialog(page).getByText('Add Load Balancer Rule')).toBeVisible();
+		await openToolbarDialog(page, 'Add', 'Add Load Balancer Rule');
 		await field(page, 'Rule Name').fill(LB_NAME);
 		await expandSection(page, /^Basic Settings/);
 		await field(page, 'External IP').fill(VIP);
@@ -155,8 +154,7 @@ test.describe('@loxilb LX-CONTRACT — no gateway-only API surface reaches a lox
 		// dialog reloads a persisted rule and (on loxilb, which has no PATCH)
 		// re-sends the WHOLE body as an upsert.
 		await selectRowByText(page, LB_NAME);
-		await toolbarButton(page, 'Mode').click(); // edit (pencil)
-		await expect(dialog(page).getByText('Edit Load Balancer Rule')).toBeVisible();
+		await openToolbarDialog(page, 'Mode', 'Edit Load Balancer Rule'); // edit (pencil)
 		await expandSection(page, /^Advanced Settings/);
 		await field(page, 'Inactive Timeout').fill('120');
 		await page.mouse.move(0, 0);

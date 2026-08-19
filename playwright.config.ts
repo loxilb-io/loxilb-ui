@@ -24,9 +24,10 @@ const UI_PORT = process.env.E2E_UI_PORT ?? '3000';
 // They are separate spec trees rather than one tagged suite because the two
 // backends have genuinely different semantics on the shared /netlox/v1 base
 // (no PATCH upstream, 409 on a duplicate POST, connect-only probes, narrower
-// sel/security enums, no /logs cursor, different Prometheus names). Branching
-// on flavor inside one spec made those assertions unreadable and let a spec
-// edited for a gateway feature silently change what ran against loxilb.
+// sel/security enums, version-dependent /logs cursor, different Prometheus
+// names). Branching on flavor inside one spec made those assertions
+// unreadable and let a spec edited for a gateway feature silently change
+// what ran against loxilb.
 //
 // What they DO share: the harness (e2e/fixtures.ts, e2e/helpers/**) and the
 // login/setup project — and the OAM-side specs (tests/oam/**), which exercise
@@ -74,6 +75,15 @@ export default defineConfig({
 		// retries:0 still stands for the mutating specs.
 		{name: 'setup', testMatch: /auth\.setup\.ts/, retries: 2},
 		{
+			// Self-tests for the shared e2e helpers. No app, no testbed, no auth: they
+			// drive hand-built pages via setContent, so they carry no 'setup'
+			// dependency and are excluded from both product legs on purpose.
+			name: 'selftest',
+			testDir: 'e2e/selftest',
+			testMatch: /.*\.spec\.ts/,
+			use: {...devices['Desktop Chrome']},
+		},
+		{
 			// loxilb-inference-gateway suite. Also owns the OAM-side specs.
 			name: 'gw',
 			testDir: 'e2e/tests',
@@ -101,12 +111,16 @@ export default defineConfig({
 		},
 	],
 
-	webServer: {
-		// HTTP on purpose: the OAM endpoint is plain http, and an https dev
-		// server would hit the browser's mixed-content block.
-		command: `PORT=${UI_PORT} HTTPS=false BROWSER=none WDS_SOCKET_PORT=0 dotenv -e .env.development react-scripts start`,
-		url: `http://localhost:${UI_PORT}/netlox/`,
-		reuseExistingServer: true,
-		timeout: 180_000,
-	},
+	// The helper self-tests drive hand-built pages and never load the app, so
+	// booting a dev server for them would cost ~a minute and buy nothing.
+	webServer: process.env.E2E_NO_WEBSERVER
+		? undefined
+		: {
+				// HTTP on purpose: the OAM endpoint is plain http, and an https dev
+				// server would hit the browser's mixed-content block.
+				command: `PORT=${UI_PORT} HTTPS=false BROWSER=none WDS_SOCKET_PORT=0 dotenv -e .env.development react-scripts start`,
+				url: `http://localhost:${UI_PORT}/netlox/`,
+				reuseExistingServer: true,
+				timeout: 180_000,
+			},
 });

@@ -117,6 +117,20 @@ npm run e2e        # loxilb-inference-gateway — project 'gw',  e2e/tests/**
 npm run e2e-oss    # plain upstream loxilb    — project 'oss', e2e/oss/tests/**
 ```
 
+A third project holds **self-tests for the shared helpers**:
+
+```bash
+npm run e2e:selftest   # project 'selftest', e2e/selftest/**
+```
+
+These need no app, no dev server and no testbed — they drive hand-built pages
+via `page.setContent()`, so they run anywhere in seconds and are excluded from
+both product legs. They exist because some helpers guard against faults that
+are invisible when the helper works: `openDialog` retries a click the DataGrid
+silently swallowed, and if that retry ever regressed, no product spec would go
+red — the only symptom would be the flake returning as a different random
+handful of specs each run.
+
 They are separate suites rather than one tagged run because the backends
 diverge behaviourally on the shared `/netlox/v1` base — upstream has no LB
 `PATCH`, refuses a duplicate `POST` with 409, accepts connect probes only,

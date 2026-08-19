@@ -8,7 +8,7 @@ import {expect, Locator, Page} from '@playwright/test';
 
 // 'Block' is the disable action some singleton-config tables (e.g. Security
 // Rate Limiting) render in place of Delete — reversible disable, not removal.
-type ToolbarIcon = 'Add' | 'Delete' | 'Refresh' | 'Mode' | 'Block';
+export type ToolbarIcon = 'Add' | 'Delete' | 'Refresh' | 'Mode' | 'Block';
 
 export function toolbarButton(page: Page, icon: ToolbarIcon): Locator {
 	return page.locator(`#table-bar button:has([data-testid="${icon}Icon"])`).first();

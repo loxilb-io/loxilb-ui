@@ -18,7 +18,7 @@
 //---------------------------------------------------------
 import {expect, Page} from '@playwright/test';
 import {gw, gwJson} from '../../helpers/api';
-import {dialog, dialogButton, expectSuccessAndDismiss} from '../../helpers/dialogs';
+import {dialog, dialogButton, expectSuccessAndDismiss, openToolbarDialog} from '../../helpers/dialogs';
 import {field} from '../../helpers/form';
 import {refreshUntilRow, showAllRows, toolbarButton} from '../../helpers/table';
 
@@ -46,8 +46,7 @@ export async function driveTunnelCreate(page: Page, instName: string, r: TunnelR
 	await expect(toolbarButton(page, 'Add')).toBeVisible({timeout: 20_000});
 	await showAllRows(page);
 
-	await toolbarButton(page, 'Add').click();
-	await expect(dialog(page).getByRole('heading', {name: 'New IPsec Tunnel'})).toBeVisible();
+	await openToolbarDialog(page, 'Add', dialog(page).getByRole('heading', {name: 'New IPsec Tunnel'}));
 	await field(page, 'Name').fill(r.name);
 	await field(page, 'Local IP').fill(TUN_LOCAL_IP);
 	await field(page, 'Remote IP').fill(r.remoteIp);

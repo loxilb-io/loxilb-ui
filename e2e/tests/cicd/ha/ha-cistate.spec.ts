@@ -15,7 +15,7 @@
 import {Page} from '@playwright/test';
 import {expect, test} from '../../../fixtures';
 import {activeInstance, gw, gwJson, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
-import {dialog, dialogButton, expectSuccessAndDismiss} from '../../../helpers/dialogs';
+import {dialog, dialogButton, expectSuccessAndDismiss, openDialog} from '../../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../../helpers/form';
 import {grid, toolbarButton} from '../../../helpers/table';
 import {cleanupLbByName, LbRecipe, runLbScenario} from '../_recipes';
@@ -57,8 +57,7 @@ function haEditButton(page: Page) {
 
 async function openHaEdit(page: Page): Promise<void> {
 	await grid(page).locator('.MuiDataGrid-row').first().getByRole('checkbox').check();
-	await haEditButton(page).click();
-	await expect(dialog(page).getByRole('heading', {name: 'New HA VIP'})).toBeVisible();
+	await openDialog(page, dialog(page).getByRole('heading', {name: 'New HA VIP'}), () => haEditButton(page).click());
 }
 
 let instName: string;

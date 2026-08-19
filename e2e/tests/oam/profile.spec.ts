@@ -10,7 +10,7 @@
 import {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {getMe, updateUserApi} from '../../helpers/api';
-import {dialog, dialogButton, expectSuccessAndDismiss} from '../../helpers/dialogs';
+import {dialog, dialogButton, expectSuccessAndDismiss, openDialog} from '../../helpers/dialogs';
 
 // The UserEditForm's required asterisk renders with a thin space; anchor at the
 // start and tolerate trailing whitespace/asterisk (see users.spec.ts).
@@ -30,8 +30,7 @@ test('self email edit persists in the Profile tab and header menu (F-PROFILE-1)'
 		// email has rendered on the panel.
 		await expect(page.getByText(me.email, {exact: true})).toBeVisible({timeout: 20_000});
 
-		await page.getByRole('button', {name: 'Edit Profile'}).click();
-		await expect(dialog(page).getByText(/Edit User/)).toBeVisible();
+		await openDialog(page, dialog(page).getByText(/Edit User/), () => page.getByRole('button', {name: 'Edit Profile'}).click());
 		await emailField(page).fill(newEmail);
 		await dialogButton(page, 'Update User').click();
 		await expectSuccessAndDismiss(page);

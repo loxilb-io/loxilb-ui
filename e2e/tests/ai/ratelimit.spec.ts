@@ -13,7 +13,7 @@
 //---------------------------------------------------------
 import {expect, test} from '../../fixtures';
 import {activeInstance, gatewayLacksUserservice, gw} from '../../helpers/api';
-import {dialog, dialogButton, dialogTitle, expectSuccessAndDismiss} from '../../helpers/dialogs';
+import {dialog, dialogButton, dialogTitle, expectSuccessAndDismiss, openToolbarDialog} from '../../helpers/dialogs';
 import {field} from '../../helpers/form';
 import {grid, rowByText, toolbarButton} from '../../helpers/table';
 
@@ -53,8 +53,7 @@ test.describe('@gw AI Tenant Rate Limit page', () => {
 	});
 
 	test('client validation: Apply requires a tenant; numeric limits clamp at 0 (never negative)', async ({page}) => {
-		await toolbarButton(page, 'Add').click();
-		await expect(dialog(page).getByRole('heading', {name: 'New AI Tenant Rate Limit'})).toBeVisible();
+		await openToolbarDialog(page, 'Add', dialog(page).getByRole('heading', {name: 'New AI Tenant Rate Limit'}));
 
 		const apply = dialogButton(page, 'Apply');
 		await expect(apply).toBeDisabled();

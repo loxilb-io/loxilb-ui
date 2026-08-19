@@ -10,7 +10,7 @@ import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {gw, gwJson, isDocAddr, sweepRoutes} from '../../helpers/api';
 import {requireLoxilbInstance} from '../_loxilb';
-import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
+import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../helpers/form';
 import {refreshUntilGone, refreshUntilRow, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 
@@ -26,26 +26,7 @@ async function apiCreateRoute(destinationIPNet: string): Promise<void> {
 }
 
 async function openAddDialog(page: Page): Promise<void> {
-	// The Add click can be swallowed while the grid is still re-rendering a long
-	// route table: the button is present and enabled, the click reports success,
-	// and the dialog never opens. Seen intermittently on V-dest, which runs after
-	// the seeding tests have grown the table; it passes in isolation and in most
-	// full runs, which is exactly the profile of a lost click rather than a
-	// product defect.
-	//
-	// Retry the click instead of letting the assertion burn its full timeout — a
-	// bare failure here reads as "the Add dialog never opened" and sends the next
-	// person looking for a UI bug that is not there.
-	const title = dialog(page).getByText('New Route');
-	for (let attempt = 1; ; attempt++) {
-		await toolbarButton(page, 'Add').click();
-		try {
-			await expect(title).toBeVisible({timeout: 5_000});
-			break;
-		} catch (err) {
-			if (attempt === 3) throw err;
-		}
-	}
+	await openToolbarDialog(page, 'Add', 'New Route');
 	await expect(field(page, 'Gateway')).toBeVisible(); // metadata form finished loading
 }
 

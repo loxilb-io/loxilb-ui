@@ -11,7 +11,7 @@ import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {createUserApi, sweepTestUsers, TEST_USER_PREFIX} from '../../helpers/api';
 import {Locator} from '@playwright/test';
-import {confirmDelete, dialog, dialogButton, dialogTitle, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
+import {confirmDelete, dialog, dialogButton, dialogTitle, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 import {isEventuallyDisabled} from '../../helpers/form';
 import {grid, refreshUntilGone, refreshUntilRow, rowByText, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 
@@ -68,8 +68,7 @@ async function createUserViaUi(page: Page, u: NewUser): Promise<any> {
 	};
 	page.on('request', cap);
 	try {
-		await toolbarButton(page, 'Add').click();
-		await expect(dialog(page).getByText('Create New User')).toBeVisible();
+		await openToolbarDialog(page, 'Add', 'Create New User');
 		await f(page, 'Username').fill(u.username);
 		await f(page, 'Email').fill(u.email);
 		await f(page, 'Password').fill(u.password);
@@ -116,8 +115,7 @@ test.describe('User management (admin User List tab)', () => {
 		consoleGuard.allow(/status of 4\d\d/i);
 		consoleGuard.allow(/User update failed/i);
 
-		await toolbarButton(page, 'Add').click();
-		await expect(dialog(page).getByText('Create New User')).toBeVisible();
+		await openToolbarDialog(page, 'Add', 'Create New User');
 		await f(page, 'Username').fill(ADMIN_USER); // already exists
 		await f(page, 'Email').fill('dup@e2e.test');
 		await f(page, 'Password').fill(GOOD_PW);
@@ -132,8 +130,7 @@ test.describe('User management (admin User List tab)', () => {
 
 	test('V-weak: weak password keeps the Create button disabled', async ({page}) => {
 		const username = uniqUser();
-		await toolbarButton(page, 'Add').click();
-		await expect(dialog(page).getByText('Create New User')).toBeVisible();
+		await openToolbarDialog(page, 'Add', 'Create New User');
 		await f(page, 'Username').fill(username);
 		await f(page, 'Email').fill(`${username}@e2e.test`);
 		await f(page, 'Password').fill('weak'); // < 9 chars, no upper/digit/special
@@ -162,8 +159,7 @@ test.describe('User management (admin User List tab)', () => {
 			// First edit — actually change the email.
 			const newEmail = `${username}.edited@e2e.test`;
 			await selectRowByText(page, username);
-			await toolbarButton(page, 'Mode').click();
-			await expect(dialog(page).getByText(/Edit User/)).toBeVisible();
+			await openToolbarDialog(page, 'Mode', dialog(page).getByText(/Edit User/));
 			await f(page, 'Email').fill(newEmail);
 			await dialogButton(page, 'Update User').click();
 			await expectSuccessAndDismiss(page);
@@ -173,8 +169,7 @@ test.describe('User management (admin User List tab)', () => {
 			// Second edit — submit with the SAME value. The server used to
 			// 500 on a no-op PUT; it must now succeed.
 			await selectRowByText(page, username);
-			await toolbarButton(page, 'Mode').click();
-			await expect(dialog(page).getByText(/Edit User/)).toBeVisible();
+			await openToolbarDialog(page, 'Mode', dialog(page).getByText(/Edit User/));
 			await dialogButton(page, 'Update User').click();
 			await expectSuccessAndDismiss(page);
 			expect(puts.at(-1)?.email, 'no-op PUT carries the unchanged email').toBe(newEmail);
@@ -201,8 +196,7 @@ test.describe('User management (admin User List tab)', () => {
 		page.on('request', cap);
 		try {
 			await selectRowByText(page, username);
-			await toolbarButton(page, 'Mode').click();
-			await expect(dialog(page).getByText(/Edit User/)).toBeVisible();
+			await openToolbarDialog(page, 'Mode', dialog(page).getByText(/Edit User/));
 			await dialogButton(page, 'Change Password').click();
 			await f(page, 'New Password').fill('Wm9$kZt4p');
 			await f(page, 'Confirm New Password').fill('Wm9$kZt4p');

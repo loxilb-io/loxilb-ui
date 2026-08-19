@@ -32,7 +32,7 @@ import {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {gw, gwJson, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
 import {requireLoxilbInstance} from '../_loxilb';
-import {confirmDelete, dialog, dialogButton, expectErrorAndDismiss, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
+import {confirmDelete, dialog, dialogButton, expectErrorAndDismiss, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 import {refreshUntilGone, refreshUntilRow, rowByText, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 
 const LB_PATH = '/config/loadbalancer';
@@ -84,8 +84,7 @@ const SECONDARY = /^Secondary IPs$/;
 const ALLOWED = /^Allowed Sources$/;
 
 async function openAddDialog(page: Page): Promise<void> {
-	await toolbarButton(page, 'Add').click();
-	await expect(dialog(page).getByText('Add Load Balancer Rule')).toBeVisible();
+	await openToolbarDialog(page, 'Add', 'Add Load Balancer Rule');
 }
 
 /** Rule Name + Basic Settings (protocol stays tcp unless given). */
