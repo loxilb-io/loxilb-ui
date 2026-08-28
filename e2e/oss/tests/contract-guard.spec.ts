@@ -35,6 +35,9 @@ const LB_PATH = '/config/loadbalancer';
 const VIP = '203.0.113.60';
 const EP_IP = '203.0.113.61';
 const LB_NAME = 'e2e-lx-contract';
+// Keep the listener away from common host/OAM ports. The live OSS deployment
+// correctly rejects a VIP on any OAM_RESERVED_ENDPOINTS listener.
+const LB_PORT = '18060';
 
 let instName: string;
 
@@ -135,12 +138,12 @@ test.describe('@loxilb LX-CONTRACT — no gateway-only API surface reaches a lox
 		await field(page, 'Rule Name').fill(LB_NAME);
 		await expandSection(page, /^Basic Settings/);
 		await field(page, 'External IP').fill(VIP);
-		await field(page, 'Port Min').fill('8080');
+		await field(page, 'Port Min').fill(LB_PORT);
 		await expandSection(page, /^Advanced Settings/);
 		const eps = await expandSection(page, /^Endpoints$/);
 		await eps.getByRole('button', {name: 'Add', exact: true}).click();
 		await field(page, 'IP', eps).nth(0).fill(EP_IP);
-		await field(page, 'Target Port', eps).nth(0).fill('8080');
+		await field(page, 'Target Port', eps).nth(0).fill(LB_PORT);
 		await page.mouse.move(0, 0); // drop any sticky accordion tooltip
 		const [createReq] = await Promise.all([
 			page.waitForRequest(r => r.method() === 'POST' && r.url().includes(LB_PATH)),

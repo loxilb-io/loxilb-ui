@@ -7,7 +7,7 @@
 //---------------------------------------------------------
 import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {activeInstance, gw, sweepVxlans} from '../../helpers/api';
+import {activeInstance, gw, primaryNetworkDevice, sweepVxlans} from '../../helpers/api';
 import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, openDialog, openToolbarDialog} from '../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../helpers/form';
 import {reloadUntilGone, reloadUntilRow, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
@@ -31,10 +31,12 @@ async function captureDeletes(page: Page, needle: string, action: () => Promise<
 }
 
 let instName: string;
+let endpointInterface: string;
 
 test.describe('VXLAN page CRUD', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
+		endpointInterface = await primaryNetworkDevice();
 		await sweepVxlans();
 	});
 
@@ -50,7 +52,7 @@ test.describe('VXLAN page CRUD', () => {
 
 	test('C-min: epIntf + vxlanID POST clean, then D-single', async ({page}) => {
 		await openToolbarDialog(page, 'Add', 'New VxLAN');
-		await field(page, 'Endpoint Interface').fill('eth0');
+		await field(page, 'Endpoint Interface').fill(endpointInterface);
 		await field(page, 'VXLAN ID').fill(String(VXID));
 
 		const [req] = await Promise.all([
@@ -58,7 +60,7 @@ test.describe('VXLAN page CRUD', () => {
 			dialogButton(page, 'Add').click(),
 		]);
 		const body = req.postDataJSON();
-		expect(body).toMatchObject({epIntf: 'eth0', vxlanID: VXID});
+		expect(body).toMatchObject({epIntf: endpointInterface, vxlanID: VXID});
 		expect(body.isValid).toBeUndefined();
 
 		const resp = await req.response();
@@ -80,7 +82,7 @@ test.describe('VXLAN page CRUD', () => {
 	});
 
 	test('peer add + delete via the sub-panel', async ({page}) => {
-		expect((await gw('POST', VX_PATH, {epIntf: 'eth0', vxlanID: VXID})).status).toBeLessThan(300);
+		expect((await gw('POST', VX_PATH, {epIntf: endpointInterface, vxlanID: VXID})).status).toBeLessThan(300);
 
 		await reloadUntilRow(page, String(VXID));
 		await selectRowByText(page, String(VXID)); // opens the peer sub-panel
@@ -111,7 +113,7 @@ test.describe('VXLAN page CRUD', () => {
 	});
 
 	test('V-peer-ip: malformed peer IP blocks submit in the peer sub-panel', async ({page}) => {
-		expect((await gw('POST', VX_PATH, {epIntf: 'eth0', vxlanID: VXID})).status).toBeLessThan(300);
+		expect((await gw('POST', VX_PATH, {epIntf: endpointInterface, vxlanID: VXID})).status).toBeLessThan(300);
 
 		await reloadUntilRow(page, String(VXID));
 		await selectRowByText(page, String(VXID)); // opens the peer sub-panel
@@ -137,7 +139,7 @@ test.describe('VXLAN page CRUD', () => {
 		await openToolbarDialog(page, 'Add', 'New VxLAN');
 		const addBtn = dialogButton(page, 'Add');
 
-		await field(page, 'Endpoint Interface').fill('eth0');
+		await field(page, 'Endpoint Interface').fill(endpointInterface);
 		expect(await isEventuallyDisabled(addBtn), 'empty vxlanID must block').toBe(true);
 
 		await field(page, 'VXLAN ID').fill(String(VXID));

@@ -1,12 +1,12 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {get_size_str, formatRate, getStableHash} from 'common';
+import {get_size_str, getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {useInstanceName} from 'hooks/query/instanceHook';
 import {t} from 'i18next';
 import {IDataTableColumnDef} from 'types/global';
-import {IPolicyConfiguration} from 'types/qos';
+import {IPolicyConfiguration, qosAttachmentLabel, qosTargetUrl} from 'types/qos';
 
 //---------------------------------------------------------
 // Functional Component
@@ -19,9 +19,9 @@ export default function QoSTable(props: {data: IPolicyConfiguration; selected_ro
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'policyIdent', header: 'Name'},
 		{data_key: 'type', header: 'Type', width: 'medium', type: 'tag', tooltip: 'Qos Type (0-TrTCM, 1-SrTCM)'},
-		{data_key: 'attachment', header: 'Attachment', width: 'wide', type: 'link', tooltip: 'Target Attachment(0-LB Rule Name, 1-Port Name)'},
-		{data_key: 'rate', header: `${t('Info Rate')}\n${t('(Committed / Peak)')}`, type: 'multi-line', align: 'right', width: 'super_wide'},
-		{data_key: 'blocksize', header: `${t('Block Size')}\n${t('(Committed / Excess)')}`, type: 'multi-line', align: 'right', width: 'super_wide'},
+		{data_key: 'attachment', header: 'Attachment', width: 'wide', type: 'link', tooltip: 'Load-balancer rule, port ingress, or host-originated port egress'},
+		{data_key: 'rate', header: `${t('Info Rate (Mbps)')}\n${t('(Committed / Peak)')}`, type: 'multi-line', align: 'right', width: 'super_wide'},
+		{data_key: 'blocksize', header: `${t('Block Size (bytes)')}\n${t('(Committed / Excess)')}`, type: 'multi-line', align: 'right', width: 'super_wide'},
 		{data_key: 'colorAware', header: 'Color Aware', type: 'boolean'},
 	];
 
@@ -39,14 +39,11 @@ export default function QoSTable(props: {data: IPolicyConfiguration; selected_ro
 				   id: getHashKey(item),
 				   policyIdent: item.policyIdent,
 				   type: item.policyInfo.type,
-				   rate: `${formatRate(item.policyInfo.committedInfoRate, 'bps')} / ${formatRate(item.policyInfo.peakInfoRate, 'bps')}`,
+					   rate: `${item.policyInfo.committedInfoRate} Mbps / ${item.policyInfo.peakInfoRate} Mbps`,
 				   blocksize: `${get_size_str(item.policyInfo.committedBlkSize)} / ${get_size_str(item.policyInfo.excessBlkSize)}`,
 				   attachment: {
-					   data: `${item.targetObject.attachment}(${item.targetObject.polObjName})`,
-					   url:
-						   item.targetObject.attachment === 1
-							   ? `/instance/network/port?name=${inst_name}&port=${item.targetObject.polObjName}`
-							   : `/instance/traffic/lb?name=${inst_name}&rule=${item.targetObject.polObjName}`,
+						   data: `${qosAttachmentLabel(item.targetObject.attachment)} (${item.targetObject.polObjName})`,
+						   url: qosTargetUrl(inst_name, item.targetObject),
 				   },
 				   colorAware: item.policyInfo.colorAware ? 'True' : 'False',
 				   _uniqueKey: getHashKey(item),

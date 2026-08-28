@@ -29,14 +29,14 @@ export default function SideMenu(props: {open: boolean}) {
 	// RBAC: hide menu entries restricted to other roles. Items
 	// without a roles list are visible to everyone.
 	const {role} = useRole();
-	// Flavor gating: hide entries whose API family the current instance
-	// (plain loxilb vs inference gateway) doesn't serve. Until the flavor
-	// probe resolves the helpers answer as the gateway, so nothing flickers.
+	// Flavor gating: gated entries stay hidden until /version proves the target
+	// flavor. This prevents a transient Gateway menu on plain loxilb and keeps
+	// operators from entering a write surface before its contract is known.
 	const caps = useInstanceCapabilities();
 	const visible = (item: IMenuItem) =>
 		(!item.roles || (role !== null && item.roles.includes(role))) &&
-		(!item.requiresFeature || caps.hasFeature(item.requiresFeature)) &&
-		(!item.requiresFlavor || (caps.flavor ?? 'inference-gateway') === item.requiresFlavor);
+		(!item.requiresFeature || (caps.resolved && caps.hasFeature(item.requiresFeature))) &&
+		(!item.requiresFlavor || (caps.resolved && caps.flavor === item.requiresFlavor));
 	const menu_items = MENU_LIST.filter(visible)
 		.map(item => (item.items ? {...item, items: item.items.filter(visible)} : item))
 		// A group whose children are all gated away (e.g. Maintenance on

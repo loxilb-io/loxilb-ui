@@ -2,7 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import { IInstance } from 'types/oam';
-import { IPolicyAttribute } from 'types/qos';
+import {IPolicyAttribute, parseQoSRuleTarget} from 'types/qos';
 import {ApiResult, assertOk, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
 import type {GwGetResp} from 'api';
@@ -17,6 +17,13 @@ export async function query_get_qos_policy_all(instance: IInstance): Promise<IPo
 }
 
 export async function request_create_qos_policy(instance: IInstance, data: IPolicyAttribute): Promise<ApiResult> {
+	if (!data.targetObject.polObjName?.trim()) {
+		return {status: 'error', error: 'QoS target is required.'};
+	}
+	if (data.targetObject.attachment === 0 && !parseQoSRuleTarget(data.targetObject.polObjName)) {
+		return {status: 'error', error: 'A rule-attached QoS policy requires VIP:PORT:PROTO for IPv4 or [VIP]:PORT:PROTO for IPv6.'};
+	}
+
 	// The input form's onChange emits its validation state (isValid/errors)
 	// alongside the policy fields; build an explicit IPolicyAttribute payload
 	// so those client-only keys can never leak into the gateway POST.

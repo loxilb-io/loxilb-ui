@@ -31,6 +31,10 @@ interface ParamBoxProps {
    onValidation?: (isValid: boolean) => void;
 }
 
+export function shouldAutoSelectEnumDefault(enumOptions: IEnumItem[], value: unknown, disabled?: boolean): boolean {
+   return !disabled && enumOptions.length > 0 && (value === undefined || value === '' || value === null);
+}
+
 export default function ParamBox(props: ParamBoxProps) {
    const {label, value, param_desc, onChange, width, multiline, minRows, disabled, error, helperText, onValidation} = props;
    const type = param_desc?.type ?? (typeof value === 'number' ? 'integer' : typeof value === 'boolean' ? 'boolean' : 'string');
@@ -93,10 +97,10 @@ export default function ParamBox(props: ParamBoxProps) {
    // back to empty must re-announce it (converges: once the parent applies
    // the default, value is non-empty and the effect stops firing).
    useEffect(() => {
-	   if (enumOptions.length > 0 && (value === undefined || value === '' || value === null)) {
-		   onChange(enumOptions[0].send_value);
-	   }
-   }, [enumOptions.length, value]);
+      if (shouldAutoSelectEnumDefault(enumOptions, value, disabled)) {
+         onChange(enumOptions[0].send_value);
+      }
+   }, [disabled, enumOptions.length, value]);
 
    const renderInput = () => {
 	if (enumOptions.length > 0) 

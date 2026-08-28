@@ -5,14 +5,16 @@
 // renders real ports and the per-port detail tabs populate.
 //---------------------------------------------------------
 import {expect, test} from '../../fixtures';
-import {activeInstance} from '../../helpers/api';
+import {activeInstance, primaryNetworkDevice} from '../../helpers/api';
 import {grid, rowByText, revealRow, showAllRows, toolbarButton} from '../../helpers/table';
 
 let instName: string;
+let deviceName: string;
 
 test.describe('Port page (read-only)', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
+		deviceName = await primaryNetworkDevice();
 	});
 
 	test.beforeEach(async ({page}) => {
@@ -22,16 +24,15 @@ test.describe('Port page (read-only)', () => {
 	});
 
 	test('lists ports and shows per-port detail tabs on selection', async ({page}) => {
-		// eth0 is always present on the testbed.
-		await expect(rowByText(page, 'eth0').first()).toBeVisible();
+		await expect(rowByText(page, deviceName).first()).toBeVisible();
 
 		// Selecting a port opens the detail TabView. Match the row whose port-name
-		// cell is exactly "eth0" — plain hasText also hits rows that merely
-		// reference eth0 (e.g. a master column).
-		await revealRow(page, 'eth0');
-		const ethRow = grid(page).locator('.MuiDataGrid-row').filter({has: page.locator('.MuiDataGrid-cell', {hasText: /^eth0$/})});
-		await expect(ethRow).toHaveCount(1);
-		await ethRow.getByRole('checkbox').check();
+		// Match the exact port-name cell; a substring can also hit master/reference
+		// columns on another row.
+		await revealRow(page, deviceName);
+		const deviceRow = grid(page).locator('.MuiDataGrid-row').filter({has: page.locator('.MuiDataGrid-cell', {hasText: new RegExp(`^${deviceName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)})});
+		await expect(deviceRow).toHaveCount(1);
+		await deviceRow.getByRole('checkbox').check();
 		for (const tab of ['Software', 'Hardware', 'Layer 2', 'Layer 3']) {
 			await expect(page.getByRole('tab', {name: tab})).toBeVisible();
 		}

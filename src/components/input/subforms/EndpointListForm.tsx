@@ -12,6 +12,7 @@ import ep_roles from 'assets/json/ep_roles.json';
 import {useInstanceCapabilities} from 'hooks/query/flavorHook';
 import {t} from 'i18next';
 import {useCallback, useState, useEffect} from 'react';
+import {resolveAIEngine} from 'types/ai_gateway';
 import {IEnumItem} from 'types/global';
 import {IEndpoint, IServiceArguments} from 'types/load_balancer';
 
@@ -98,6 +99,7 @@ export default function EndpointListForm(props: {
 	].filter(item => caps.flavor !== 'loxilb' || !['http', 'https'].includes(String(item.send_value)));
 
 	const ep_role_list: IEnumItem[] = ep_roles;
+	const aiEngine = resolveAIEngine(serviceArguments?.kvEngineType);
 
 	return (
 		<AccordionBox title={t('Endpoints')} tooltip={"Define the list of endpoints (IP addresses) for this Load Balancer"}>
@@ -180,8 +182,9 @@ export default function EndpointListForm(props: {
 										/>
 										<ParamBox label={t('Weight')} value={item.weight} onChange={val => handleChange(index, 'weight', val)} param_desc={params?.weight} />
 									</HorizontalStack>
-									{/* P/D disaggregation endpoint fields — only when pd_disagg_mode is on */}
-									{serviceArguments?.pd_disagg_mode && (
+									{/* Keep stale role/NIXL values visible after a topology switch so the
+									    operator can clear them; hidden stale values must never leak. */}
+									{(serviceArguments?.pd_disagg_mode || !!item.ep_role || !!item.nixl_port) && (
 										<HorizontalStack>
 											<ParamBox
 												label={t('EP Role')}
@@ -189,12 +192,14 @@ export default function EndpointListForm(props: {
 												onChange={val => handleChange(index, 'ep_role', val)}
 												param_desc={{type: 'integer', enum: ep_role_list, description: t('Prefill/decode role: 0 normal, 1 prefill, 2 decode.')}}
 											/>
-											<ParamBox
-												label={t('NIXL Port')}
-												value={item.nixl_port ?? ''}
-												onChange={val => handleChange(index, 'nixl_port', val)}
-												param_desc={{type: 'port', description: t('NIXL side-channel port for KV transfer. 0 = use target port.')}}
-											/>
+											{((serviceArguments?.pd_disagg_mode && aiEngine === 'vllm') || !!item.nixl_port) && (
+												<ParamBox
+													label={t('NIXL Port')}
+													value={item.nixl_port ?? 0}
+													onChange={val => handleChange(index, 'nixl_port', val)}
+													param_desc={{type: 'integer', format: 'int32', description: t('vLLM NIXL side-channel port for KV transfer. 0 uses the endpoint target port.')}}
+												/>
+											)}
 										</HorizontalStack>
 									)}
 								</Stack>

@@ -18,8 +18,8 @@ import {refreshUntilGone, refreshUntilRow, selectRowByClick, showAllRows, toolba
 
 const QOS_PATH = '/config/policy';
 
-const CIR = '1000000000'; // 1 Gbps committed — inert vs real traffic
-const PIR = '2000000000'; // 2 Gbps peak
+const CIR = '1000'; // 1 Gbps committed, expressed in Gateway API Mbps
+const PIR = '2000'; // 2 Gbps peak, expressed in Gateway API Mbps
 
 async function openAddDialog(page: Page): Promise<void> {
 	await openToolbarDialog(page, 'Add', 'New Policy');
@@ -28,7 +28,7 @@ async function openAddDialog(page: Page): Promise<void> {
 
 /** Selects Port attachment (always available) so no live LB rule is touched. */
 async function attachToPort(page: Page): Promise<void> {
-	await selectOption(page, 'Attachment Type', 'Port');
+	await selectOption(page, 'Attachment Type', 'Port ingress');
 	// The Attached Port dropdown auto-selects the first port on switch.
 	await expect(field(page, 'Attached Port')).toBeVisible();
 }
@@ -77,8 +77,8 @@ test.describe('QoS policy page CRUD', () => {
 	test('C-min: required ident + rates, TrTCM default, Port attachment; no client keys; D-single', async ({page}) => {
 		await openAddDialog(page);
 		await field(page, 'Policy Identifier').fill('e2e-qos-min');
-		await field(page, 'Committed Info Rate(bps)').fill(CIR);
-		await field(page, 'Peak Info Rate(bps)').fill(PIR);
+		await field(page, 'Committed Info Rate (Mbps)').fill(CIR);
+		await field(page, 'Peak Info Rate (Mbps)').fill(PIR);
 		await attachToPort(page);
 
 		const req = await submitAdd(page);
@@ -87,7 +87,7 @@ test.describe('QoS policy page CRUD', () => {
 		expect(body.policyIdent).toBe('e2e-qos-min');
 		// type:0 (TrTCM) is the displayed dropdown default — it must be POSTed,
 		// not dropped (stale-snapshot regression in the QoS policyInfo subform).
-		expect(body.policyInfo).toMatchObject({type: 0, committedInfoRate: 1000000000, peakInfoRate: 2000000000});
+		expect(body.policyInfo).toMatchObject({type: 0, committedInfoRate: 1000, peakInfoRate: 2000});
 		expect(body.targetObject.attachment).toBe(1);
 		expect(typeof body.targetObject.polObjName, 'a real port name is attached').toBe('string');
 		expect(body.targetObject.polObjName.length).toBeGreaterThan(0);
@@ -117,10 +117,10 @@ test.describe('QoS policy page CRUD', () => {
 		await field(page, 'Policy Identifier').fill('e2e-qos-full');
 		await selectOption(page, 'Type', 'SrTCM');
 		await field(page, 'Color Aware').check();
-		await field(page, 'Committed Info Rate(bps)').fill(CIR);
-		await field(page, 'Peak Info Rate(bps)').fill(PIR);
-		await field(page, 'Committed Block Size').fill('6000');
-		await field(page, 'Excess Block Size').fill('12000');
+		await field(page, 'Committed Info Rate (Mbps)').fill(CIR);
+		await field(page, 'Peak Info Rate (Mbps)').fill(PIR);
+		await field(page, 'Committed Block Size (bytes)').fill('6000');
+		await field(page, 'Excess Block Size (bytes)').fill('12000');
 		await attachToPort(page);
 
 		const req = await submitAdd(page);
@@ -130,8 +130,8 @@ test.describe('QoS policy page CRUD', () => {
 		expect(body.policyInfo).toMatchObject({
 			type: 1,
 			colorAware: true,
-			committedInfoRate: 1000000000,
-			peakInfoRate: 2000000000,
+			committedInfoRate: 1000,
+			peakInfoRate: 2000,
 			committedBlkSize: 6000,
 			excessBlkSize: 12000,
 		});
@@ -149,8 +149,8 @@ test.describe('QoS policy page CRUD', () => {
 		// inverted pair rather than ship an invalid meter.
 		await openAddDialog(page);
 		await field(page, 'Policy Identifier').fill('e2e-qos-inverted');
-		await field(page, 'Committed Info Rate(bps)').fill(PIR); // committed > peak
-		await field(page, 'Peak Info Rate(bps)').fill(CIR);
+		await field(page, 'Committed Info Rate (Mbps)').fill(PIR); // committed > peak
+		await field(page, 'Peak Info Rate (Mbps)').fill(CIR);
 		await attachToPort(page);
 
 		const addBtn = dialogButton(page, 'Add');
@@ -158,10 +158,19 @@ test.describe('QoS policy page CRUD', () => {
 		await expect(addBtn, 'peak<committed must block submit').toBeDisabled();
 
 		// Correct the ordering → the block clears and submit is enabled.
-		await field(page, 'Peak Info Rate(bps)').fill(PIR);
+		await field(page, 'Peak Info Rate (Mbps)').fill(PIR);
 		await expect(dialog(page).getByText(/Peak Info Rate must be greater than or equal/i)).toHaveCount(0);
 		await expect(addBtn).toBeEnabled();
 
+		await dialogButton(page, 'Cancel').click();
+	});
+
+	test('V-port-egress: exposes the host-egress limitation before submission', async ({page}) => {
+		await openAddDialog(page);
+		await selectOption(page, 'Attachment Type', 'Port egress (host-originated)');
+		await expect(field(page, 'Attached Port')).toBeVisible();
+		await expect(dialog(page).getByText(/requires Gateway --egr-hooks/i)).toBeVisible();
+		await expect(dialog(page).getByText(/does not police VIP transit egress/i)).toBeVisible();
 		await dialogButton(page, 'Cancel').click();
 	});
 });

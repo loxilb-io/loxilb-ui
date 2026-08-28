@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {IApiKeyCreateRequest, IApiKeyCreateResponse, IApiKeySummary, ITenantRateLimitEntry, ITenantRateLimitMod} from 'types/ai';
+import {IApiKeyCreateRequest, IApiKeyCreateResponse, IApiKeySummary, ITenantRateLimitEntry, ITenantRateLimitMod, normalizeTenantRateLimit, validateTenantRateLimit} from 'types/ai';
 import {IInstance} from 'types/oam';
 import {ApiResult, assertOk, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
@@ -29,8 +29,8 @@ export type ApiKeyCreateResult = ApiResult & {created?: IApiKeyCreateResponse};
 
 /**
  * Create a new API key for a tenant.
- * The plaintext key is returned ONLY in this response — the caller must
- * surface it to the user immediately; it can never be retrieved again.
+ * Generated mode returns plaintext only in this response. Imported mode sends
+ * caller-supplied material once and the response deliberately omits raw_key.
  */
 export async function request_create_apikey(instance: IInstance, data: IApiKeyCreateRequest): Promise<ApiKeyCreateResult> {
 	const resp = await POST_INST<IApiKeyCreateResponse>(instance, `/config/ai/apikey`, data);
@@ -94,7 +94,11 @@ export async function query_get_tenant_ratelimits_for(instance: IInstance, tenan
  * Create or update (upsert) the rate limit configuration for a tenant.
  */
 export async function request_set_tenant_ratelimit(instance: IInstance, data: ITenantRateLimitMod): Promise<ApiResult> {
-	const resp = await POST_INST(instance, `/config/ai/tenant/ratelimit`, data);
+	const payload = normalizeTenantRateLimit(data);
+	const errors = validateTenantRateLimit(payload);
+	if (errors.length > 0) return {status: 'error', error: `Invalid tenant rate limit: ${errors.join(' ')}`};
+
+	const resp = await POST_INST(instance, `/config/ai/tenant/ratelimit`, payload);
 	if (resp.code !== 200 && resp.code !== 204) {
 		const errorMessage = createDetailedErrorMessage(resp, 'AI Tenant Rate Limit');
 		return {status: 'error', error: errorMessage};

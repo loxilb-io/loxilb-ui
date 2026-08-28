@@ -6,6 +6,7 @@ import {Alert, Stack, Typography} from '@mui/material';
 import {isValidIPAddress} from 'common';
 import useFormWithParams from 'hooks/inputFormHook';
 import {t} from 'i18next';
+import {isAIEngineChange, validateAIConfiguration} from 'types/ai_gateway';
 import {IServiceConfiguration} from 'types/load_balancer';
 import {AllowedSourcesListInputForm, SecondaryIPListInputForm} from './IPListInputForm';
 import AdvancedSettingsForm from './subforms/AdvancedSettingsForm';
@@ -55,6 +56,7 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 		allowedSources: initialData?.allowedSources || [],
 		endpoints: initialData?.endpoints || [],
 	});
+	const [blockSizeConfirmed, setBlockSizeConfirmed] = React.useState(false);
 
 	// Get params for validation (still use useFormWithParams for param definitions)
 	const {params} = useFormWithParams<IServiceConfiguration>('IServiceConfiguration');
@@ -97,8 +99,22 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 			if (bad) e.endpoints = t('Each endpoint needs a valid IP, target port (1-65535) and weight (>= 1)');
 		}
 
+		const aiIssues = validateAIConfiguration(formData);
+		if (isEdit && isAIEngineChange(initialData?.serviceArguments?.kvEngineType, sa.kvEngineType)) {
+			aiIssues.unshift({field: 'kvEngineType', message: 'The AI engine is immutable; delete and recreate the rule to change it.'});
+		}
+		if (aiIssues.length > 0) {
+			e.aiGateway = aiIssues.map(issue => t(issue.message)).join(' ');
+		}
+		if ([1, 3].includes(sa.kvExactMode ?? 0) && !blockSizeConfirmed) {
+			e.aiGateway = [
+				e.aiGateway,
+				t('Confirm that the KV block/page size matches the live engine before submitting.'),
+			].filter(Boolean).join(' ');
+		}
+
 		return {errors: e, isValid: Object.keys(e).length === 0};
-	}, [formData]);
+	}, [blockSizeConfirmed, formData, initialData?.serviceArguments?.kvEngineType, isEdit]);
 
 	// Notify the parent via refs so callback identity does not drive the effect
 	// (another loop source). Runs only when the derived state actually changes.
@@ -144,29 +160,35 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 			</Typography>
 
 			<Stack width="100%" height="100%" padding="15px 5px" spacing={2} sx={{overflowY: 'auto'}}>
-			   <BasicSettingsForm
-			   	value={formData?.serviceArguments ?? {}}
-			   	onChange={handleServiceArguments}
-			   	params={params?.serviceArguments}
-			   	isEdit={isEdit}
-			   />
-			   {errors.protocol && (
-				   <Alert severity="warning">{errors.protocol}</Alert>
-			   )}
-			   <AdvancedSettingsForm value={formData?.serviceArguments ?? {}} onChange={handleServiceArguments} params={params?.serviceArguments} />
-				   <AIGatewaySettingsForm value={formData?.serviceArguments ?? {}} onChange={handleServiceArguments} params={params?.serviceArguments} />
-			   <SecondaryIPListInputForm values={formData?.secondaryIPs ?? []} onChange={handleSecondaryIPs} description={params?.secondaryIPs?.description} />
-			   <AllowedSourcesListInputForm values={formData?.allowedSources ?? []} onChange={handleAllowedSources} description={params?.allowedSources?.description} />
-			   <EndpointListForm
+				<BasicSettingsForm
+					value={formData?.serviceArguments ?? {}}
+					onChange={handleServiceArguments}
+					params={params?.serviceArguments}
+					isEdit={isEdit}
+				/>
+				{errors.protocol && <Alert severity="warning">{errors.protocol}</Alert>}
+				<AdvancedSettingsForm value={formData?.serviceArguments ?? {}} onChange={handleServiceArguments} params={params?.serviceArguments} />
+				<AIGatewaySettingsForm
+					value={formData?.serviceArguments ?? {}}
+					onChange={handleServiceArguments}
+					params={params?.serviceArguments}
+					isEdit={isEdit}
+					blockSizeConfirmed={blockSizeConfirmed}
+					onBlockSizeConfirmed={setBlockSizeConfirmed}
+				/>
+				{errors.aiGateway && <Alert severity="error">{errors.aiGateway}</Alert>}
+				<SecondaryIPListInputForm values={formData?.secondaryIPs ?? []} onChange={handleSecondaryIPs} description={params?.secondaryIPs?.description} />
+				<AllowedSourcesListInputForm values={formData?.allowedSources ?? []} onChange={handleAllowedSources} description={params?.allowedSources?.description} />
+				<EndpointListForm
 					values={formData?.endpoints ?? []}
 					onChange={handleEndpoints}
 					params={params?.endpoints}
 					serviceArguments={formData?.serviceArguments}
 					onServiceArgumentsChange={handleServiceArguments}
 					serviceArgumentsParams={params?.serviceArguments}
-			   />
-			   {/* <HealthCheckForm value={formData?.serviceArguments ?? {}} onChange={handleChange('serviceArguments')} params={params?.serviceArguments} /> */}
-			   {/* Health check fields moved to EndpointListForm */}
+				/>
+				{/* <HealthCheckForm value={formData?.serviceArguments ?? {}} onChange={handleChange('serviceArguments')} params={params?.serviceArguments} /> */}
+				{/* Health check fields moved to EndpointListForm */}
 			</Stack>
 		</Stack>
 	);

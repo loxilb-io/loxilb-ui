@@ -24,6 +24,9 @@ export interface paths {
         204: {
           content: never;
         };
+        401: components["responses"]["ManagementUnauthorized"];
+        403: components["responses"]["ManagementForbidden"];
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -58,6 +61,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -108,6 +112,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Another snapshot or restore operation is in progress */
         409: {
           content: {
@@ -166,6 +171,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Another snapshot or restore operation is in progress */
         409: {
           content: {
@@ -206,6 +212,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Another snapshot or restore operation is in progress */
         409: {
           content: {
@@ -293,12 +300,15 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        401: components["responses"]["ManagementUnauthorized"];
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal Server Error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -312,11 +322,29 @@ export interface paths {
         /** @description OK */
         200: {
           content: {
-            "application/json": components["schemas"]["User"][];
+            "application/json": components["schemas"]["UserSummary"][];
+          };
+        };
+        /** @description Invalid authentication credentials */
+        401: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Authenticated principal is not authorized to list users */
+        403: {
+          content: {
+            "application/json": components["schemas"]["Error"];
           };
         };
         /** @description Internal Server Error */
         500: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Management credential store unavailable */
+        503: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
@@ -325,7 +353,17 @@ export interface paths {
     };
     /**
      * Create a new user
-     * @description Creates a new user in the system
+     * @description Creates a new user in the system.
+     *
+     * Requires an authenticated administrator, with one exception: while no
+     * user exists at all, a request from a loopback peer may create the first
+     * one, so that the management API can be brought up before any credential
+     * exists. That bootstrap closes as soon as the first account is created.
+     *
+     * The authentication is performed by the handler rather than by the
+     * generated security chain, because the chain cannot express a condition
+     * that depends on the state of the user table. The security block below is
+     * empty for that reason and does not mean the operation is open.
      */
     post: {
       requestBody: components["requestBodies"]["User"];
@@ -333,7 +371,7 @@ export interface paths {
         /** @description Created */
         201: {
           content: {
-            "application/json": components["schemas"]["User"];
+            "application/json": components["schemas"]["UserSummary"];
           };
         };
         /** @description Bad Request */
@@ -342,8 +380,26 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        /** @description Unauthorized - not an administrator, and the bootstrap conditions (loopback peer, no user yet) are not met */
+        401: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Forbidden - authenticated, but the role carries no authority to create users */
+        403: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
         /** @description Internal Server Error */
         500: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Management credential store unavailable */
+        503: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
@@ -377,12 +433,15 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        401: components["responses"]["ManagementUnauthorized"];
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal Server Error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
     /**
@@ -403,12 +462,15 @@ export interface paths {
             "application/json": components["schemas"]["MessageResponse"];
           };
         };
+        401: components["responses"]["ManagementUnauthorized"];
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal Server Error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -443,12 +505,14 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal Server Error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -543,6 +607,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -677,7 +742,7 @@ export interface paths {
   "/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}": {
     /**
      * Get a Load balancer service by composite key
-     * @description Returns a single load balancer rule identified by its VIP/port/protocol composite key (Octavia).
+     * @description Returns a single load balancer rule identified by its legacy VIP/port/protocol composite key (Octavia). If more than one rule shares that tuple, the lookup returns 409 instead of selecting an arbitrary rule; use the stable opaque serviceArguments.id with /config/loadbalancer/id/{id}.
      */
     get: operations["getConfigLoadbalancerExternalipaddressIPAddressPortPortProtocolProto"];
     /**
@@ -691,6 +756,8 @@ export interface paths {
           bgp?: boolean;
           /** @description block value if any */
           block?: number;
+          /** @description Model name carried by the rule (the `model_name` given at creation). It is part of the rule key, so a rule that names a model can only be deleted by naming the same model here. Omitting it matches only a rule with no model name: with two rules on one VIP:port, one naming a model and one not, a delete without `model_name` removes the model-less rule and leaves the other serving. */
+          model_name?: string;
         };
         path: {
           /** @description Attributes for load balance service */
@@ -752,7 +819,7 @@ export interface paths {
     };
     /**
      * Patch an existing Load balancer service (RFC 7386 JSON merge-patch)
-     * @description Apply an RFC 7386 JSON merge-patch to an existing load balancer rule identified by its VIP/port/protocol composite key (Octavia). Fields present in the body are overwritten, absent fields are left untouched, and an explicit null clears a clearable field. Immutable fields (security, egress, mode, protocol, VIP composite key) are rejected with 400. Returns 200 if the target rule exists, 404 if it is absent. The rule is mutated in place; established connections are not dropped.
+     * @description Apply an RFC 7386 JSON merge-patch to an existing load balancer rule identified by its VIP/port/protocol composite key (Octavia). Fields present in the body are overwritten, absent fields are left untouched, and an explicit null clears a clearable field. Immutable fields (security, egress, mode, protocol, VIP composite key) are rejected with 400. Returns 200 if the target rule exists, 404 if it is absent. If multiple rules share the legacy tuple, the operation returns 409 rather than selecting one arbitrarily. Use the opaque rule ID for selection and an exact operation for mutation. The rule is mutated in place; established connections are not dropped.
      */
     patch: operations["patchConfigLoadbalancerExternalipaddressIPAddressPortPortProtocolProto"];
   };
@@ -808,14 +875,14 @@ export interface paths {
   "/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}/status": {
     /**
      * Get the lifecycle status of a Load balancer service
-     * @description Returns the per-LB lifecycle status (adminStateUp, operatingStatus, lastUpdated) for the rule identified by its composite key (Octavia).
+     * @description Returns lifecycle status for an unambiguous legacy tuple; returns 409 when colliding rules require opaque-ID/full-key selection.
      */
     get: operations["getConfigLoadbalancerStatus"];
   };
   "/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}/stats": {
     /**
      * Get per-service statistics of a Load balancer service
-     * @description Returns the per-LB statistics quad (activeConnections, bytesIn, bytesOut, totalConnections) for the rule identified by its composite key (Octavia). activeConnections is the same selector-agnostic live concurrent-connection count the connectionLimit gate enforces; bytesIn/bytesOut are the real per-direction CT byte totals; totalConnections is a monotonic cumulative counter reset to zero on restart.
+     * @description Returns the per-LB statistics quad (activeConnections, bytesIn, bytesOut, totalConnections) for an unambiguous legacy tuple (Octavia), or 409 when colliding rules require opaque-ID/full-key selection. activeConnections is the same selector-agnostic live concurrent-connection count the connectionLimit gate enforces; bytesIn/bytesOut are the real per-direction CT byte totals; totalConnections is a monotonic cumulative counter reset to zero on restart.
      */
     get: operations["getConfigLoadbalancerStats"];
   };
@@ -831,6 +898,8 @@ export interface paths {
           bgp?: boolean;
           /** @description block value if any */
           block?: number;
+          /** @description Model name carried by the rule (the `model_name` given at creation). It is part of the rule key, so a rule that names a model can only be deleted by naming the same model here. Omitting it matches only a rule with no model name: with two rules on one VIP:port, one naming a model and one not, a delete without `model_name` removes the model-less rule and leaves the other serving. */
+          model_name?: string;
         };
         path: {
           /** @description Attributes for load balance service */
@@ -896,7 +965,7 @@ export interface paths {
   "/config/loadbalancer/hosturl/{hosturl}/externalipaddress/{ip_address}/port/{port}/portmax/{portmax}/protocol/{proto}": {
     /**
      * Delete an existing Load balancer service
-     * @description Delete an existing load balancer service with .
+     * @description Delete an existing load balancer service by its full rule key. The key is the VIP, port, protocol and host URL, plus `path_prefix`, `path_match_mode` and `model_name` when the rule was created with them; a delete that omits a key component the rule carries does not match it and returns 404 (no-rule error).
      */
     delete: {
       parameters: {
@@ -909,6 +978,8 @@ export interface paths {
           path_prefix?: string;
           /** @description Path matching mode (disabled, prefix, exact) for selective deletion */
           path_match_mode?: string;
+          /** @description Model name carried by the rule (the `model_name` given at creation). It is part of the rule key, so a rule that names a model can only be deleted by naming the same model here. Omitting it matches only a rule with no model name: with two rules on one VIP:port, one naming a model and one not, a delete without `model_name` removes the model-less rule and leaves the other serving. */
+          model_name?: string;
         };
         path: {
           /** @description Attributes for load balance service */
@@ -976,7 +1047,7 @@ export interface paths {
   "/config/loadbalancer/hosturl/{hosturl}/externalipaddress/{ip_address}/port/{port}/protocol/{proto}": {
     /**
      * Delete an existing Load balancer service
-     * @description Delete an existing load balancer service with .
+     * @description Delete an existing load balancer service by its full rule key. The key is the VIP, port, protocol and host URL, plus `path_prefix`, `path_match_mode` and `model_name` when the rule was created with them; a delete that omits a key component the rule carries does not match it and returns 404 (no-rule error).
      */
     delete: {
       parameters: {
@@ -989,6 +1060,8 @@ export interface paths {
           path_prefix?: string;
           /** @description Path matching mode (disabled, prefix, exact) for selective deletion */
           path_match_mode?: string;
+          /** @description Model name carried by the rule (the `model_name` given at creation). It is part of the rule key, so a rule that names a model can only be deleted by naming the same model here. Omitting it matches only a rule with no model name: with two rules on one VIP:port, one naming a model and one not, a delete without `model_name` removes the model-less rule and leaves the other serving. */
+          model_name?: string;
         };
         path: {
           /** @description Attributes for load balance service */
@@ -1075,12 +1148,15 @@ export interface paths {
             };
           };
         };
+        401: components["responses"]["ManagementUnauthorized"];
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal server error */
         500: {
           content: {
             "application/json": components["schemas"]["ErrorResponse"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
     /**
@@ -1107,6 +1183,8 @@ export interface paths {
             "application/json": components["schemas"]["ErrorResponse"];
           };
         };
+        401: components["responses"]["ManagementUnauthorized"];
+        403: components["responses"]["ManagementForbidden"];
         /** @description Conflict - Certificate already registered for this hostname */
         409: {
           content: {
@@ -1119,6 +1197,7 @@ export interface paths {
             "application/json": components["schemas"]["ErrorResponse"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
     /**
@@ -1142,6 +1221,8 @@ export interface paths {
             "application/json": components["schemas"]["SuccessResponse"];
           };
         };
+        401: components["responses"]["ManagementUnauthorized"];
+        403: components["responses"]["ManagementForbidden"];
         /** @description Certificate not found */
         404: {
           content: {
@@ -1154,6 +1235,7 @@ export interface paths {
             "application/json": components["schemas"]["ErrorResponse"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -1347,6 +1429,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -1383,6 +1466,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -1605,6 +1689,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -1765,6 +1850,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -1927,6 +2013,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -2087,6 +2174,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -2247,6 +2335,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -2411,6 +2500,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -2575,6 +2665,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -2737,6 +2828,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -2899,6 +2991,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -3139,6 +3232,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Vlan interface is not defined/Vlan member is not found on this Vlan interface */
         404: {
           content: {
@@ -3181,6 +3275,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -3219,6 +3314,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Resource Conflict. VxLAN already exists OR dependency VRF/VNET not found */
         409: {
           content: {
@@ -3263,6 +3359,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -3309,6 +3406,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -3351,6 +3449,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -3387,6 +3486,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -3485,6 +3585,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -3715,6 +3816,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -3889,12 +3991,14 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -3927,12 +4031,14 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
     /**
@@ -3967,6 +4073,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Resource not found */
         404: {
           content: {
@@ -3979,6 +4086,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -4011,12 +4119,14 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
     /**
@@ -4041,6 +4151,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Resource not found */
         404: {
           content: {
@@ -4053,6 +4164,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -4077,12 +4189,14 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -4103,12 +4217,14 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -4133,6 +4249,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -4167,6 +4284,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -4203,6 +4321,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -4359,12 +4478,14 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
     /**
@@ -4395,12 +4516,14 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -4425,12 +4548,14 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -4463,6 +4588,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Tunnel already exists */
         409: {
           content: {
@@ -4475,6 +4601,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -4503,6 +4630,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Tunnel not found */
         404: {
           content: {
@@ -4515,6 +4643,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
     /**
@@ -4551,6 +4680,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Tunnel not found */
         404: {
           content: {
@@ -4563,6 +4693,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
     /**
@@ -4587,6 +4718,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Tunnel not found */
         404: {
           content: {
@@ -4599,6 +4731,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -4637,6 +4770,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Tunnel not found */
         404: {
           content: {
@@ -4649,6 +4783,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -4677,6 +4812,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Tunnel not found */
         404: {
           content: {
@@ -4689,6 +4825,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -4713,12 +4850,14 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -4741,12 +4880,14 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
     /**
@@ -4765,12 +4906,14 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -4795,12 +4938,14 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -4835,6 +4980,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Certificate already exists */
         409: {
           content: {
@@ -4847,6 +4993,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -4875,6 +5022,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Certificate not found */
         404: {
           content: {
@@ -4887,6 +5035,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
     /**
@@ -4911,6 +5060,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Certificate not found */
         404: {
           content: {
@@ -4929,6 +5079,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -4963,12 +5114,14 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -4993,12 +5146,14 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -5033,6 +5188,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description CA certificate already exists */
         409: {
           content: {
@@ -5045,6 +5201,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -5073,6 +5230,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description CA certificate not found */
         404: {
           content: {
@@ -5085,6 +5243,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
     /**
@@ -5109,6 +5268,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description CA certificate not found */
         404: {
           content: {
@@ -5127,6 +5287,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -5545,6 +5706,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -5893,6 +6055,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -5926,6 +6089,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -5959,6 +6123,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -5999,6 +6164,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Failed to enable GPU monitoring */
         500: {
           content: {
@@ -6039,6 +6205,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Failed to disable GPU monitoring */
         500: {
           content: {
@@ -6073,6 +6240,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -6119,6 +6287,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Cleanup operation failed */
         500: {
           content: {
@@ -6153,6 +6322,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -6196,6 +6366,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Failed to update metrics */
         500: {
           content: {
@@ -6245,6 +6416,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -6291,6 +6463,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -6337,6 +6510,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -6371,6 +6545,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -6405,6 +6580,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -6454,6 +6630,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -6500,6 +6677,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -6546,6 +6724,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -6580,6 +6759,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -6614,6 +6794,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -6648,6 +6829,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error (health check failed) */
         500: {
           content: {
@@ -6718,6 +6900,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -6874,12 +7057,15 @@ export interface paths {
             "application/json": components["schemas"]["FlowCountMetrics"];
           };
         };
+        401: components["responses"]["ManagementUnauthorized"];
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -6896,12 +7082,15 @@ export interface paths {
             "application/json": components["schemas"]["HostCountMetrics"];
           };
         };
+        401: components["responses"]["ManagementUnauthorized"];
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -6918,12 +7107,15 @@ export interface paths {
             "application/json": components["schemas"]["LbRuleCountMetrics"];
           };
         };
+        401: components["responses"]["ManagementUnauthorized"];
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -6940,12 +7132,15 @@ export interface paths {
             "application/json": components["schemas"]["NewFlowCountMetrics"];
           };
         };
+        401: components["responses"]["ManagementUnauthorized"];
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -6962,12 +7157,15 @@ export interface paths {
             "application/json": components["schemas"]["RequestCountMetrics"];
           };
         };
+        401: components["responses"]["ManagementUnauthorized"];
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -6984,12 +7182,15 @@ export interface paths {
             "application/json": components["schemas"]["ErrorCountMetrics"];
           };
         };
+        401: components["responses"]["ManagementUnauthorized"];
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -7006,12 +7207,15 @@ export interface paths {
             "application/json": components["schemas"]["ProcessedTrafficMetrics"];
           };
         };
+        401: components["responses"]["ManagementUnauthorized"];
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -7028,12 +7232,15 @@ export interface paths {
             "application/json": components["schemas"]["LbProcessedTrafficMetrics"];
           };
         };
+        401: components["responses"]["ManagementUnauthorized"];
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -7050,12 +7257,15 @@ export interface paths {
             "application/json": components["schemas"]["EpDistTrafficMetrics"];
           };
         };
+        401: components["responses"]["ManagementUnauthorized"];
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -7072,12 +7282,15 @@ export interface paths {
             "application/json": components["schemas"]["ServiceDistTrafficMetrics"];
           };
         };
+        401: components["responses"]["ManagementUnauthorized"];
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -7094,12 +7307,15 @@ export interface paths {
             "application/json": components["schemas"]["FwDropsMetrics"];
           };
         };
+        401: components["responses"]["ManagementUnauthorized"];
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -7116,12 +7332,15 @@ export interface paths {
             "application/json": components["schemas"]["ReqCountPerClientMetrics"];
           };
         };
+        401: components["responses"]["ManagementUnauthorized"];
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -7158,12 +7377,15 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        401: components["responses"]["ManagementUnauthorized"];
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal server error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -7180,12 +7402,15 @@ export interface paths {
             "application/json": components["schemas"]["LogArchives"];
           };
         };
+        401: components["responses"]["ManagementUnauthorized"];
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal server error */
         500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -7214,6 +7439,8 @@ export interface paths {
             "application/octet-stream": components["schemas"]["Error"];
           };
         };
+        401: components["responses"]["ManagementUnauthorized"];
+        403: components["responses"]["ManagementForbidden"];
         /** @description File not found */
         404: {
           content: {
@@ -7226,6 +7453,7 @@ export interface paths {
             "application/octet-stream": components["schemas"]["Error"];
           };
         };
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -7248,6 +7476,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -7288,6 +7517,7 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        403: components["responses"]["ManagementForbidden"];
         /** @description Internal service error */
         500: {
           content: {
@@ -7423,6 +7653,9 @@ export interface paths {
             };
           };
         };
+        401: components["responses"]["ManagementUnauthorized"];
+        403: components["responses"]["ManagementForbidden"];
+        503: components["responses"]["ManagementStoreUnavailable"];
       };
     };
   };
@@ -7847,10 +8080,10 @@ export interface components {
         mode?: 0 | 1 | 2 | 3 | 4 | 5;
         /**
          * Format: int32
-         * @description 0 - plain HTTP, 1 - TLS terminated at the gateway (https), 2 - end-to-end HTTPS (re-encrypt to backend). 3 is reserved/unused.
+         * @description 0 - plain HTTP, 1 - TLS terminated at the gateway (https), 2 - end-to-end HTTPS (re-encrypt to backend). Matches common.LBSec; the datapath has no mode beyond 2, so any other value must be rejected here rather than silently serving plaintext.
          * @enum {integer}
          */
-        security?: 0 | 1 | 2 | 3;
+        security?: 0 | 1 | 2;
         /**
          * Format: uint32
          * @description block-number if any of this LB entry
@@ -7926,6 +8159,11 @@ export interface components {
          */
         sse_mode?: boolean;
         /**
+         * @description Declaration of the data-plane X-Api-Key policy for this service. Omission is a first-class state: authentication is not enforced and the Gateway preserves an application-owned X-Api-Key header. Explicit "disabled" also admits keyless requests, but declares the header namespace to the Gateway and strips X-Api-Key before forwarding. "required" validates the header against the API-key store, fails closed when the policy cannot be evaluated, and strips it before forwarding. Read-back and export preserve the declaration exactly; an omitted declaration remains omitted. Independent of sse_mode, pd_disagg_mode, and management auth.
+         * @enum {string}
+         */
+        api_key_auth?: "disabled" | "required";
+        /**
          * Format: int32
          * @description Absolute wall-clock cap for SSE streams in seconds. 0 = use system hard cap (86400s / 24h). Set to a lower value (e.g. 300) to bound runaway streams.
          * @default 0
@@ -7978,15 +8216,15 @@ export interface components {
         kvExactMode?: number;
         /**
          * Format: int64
-         * @description Token block size for KV hash computation. Must match the engine's block granularity - vLLM --block-size, SGLang --page-size. A mismatch makes every hash miss.
+         * @description Token block size for KV hash computation. Must match the engine's block granularity - vLLM --block-size, SGLang --page-size, TRT-LLM tokens_per_block (whose engine default is 32, NOT this field's 16). A mismatch makes every hash miss.
          * @default 16
          */
         kvBlockSize?: number;
         /**
-         * @description Block-hash contract used to match the prompt against the engine-published KV inventory. PREFER OMITTING THIS FIELD — when absent, the contract is derived from kvEngineType (vllm => sha256_cbor, sglang => sha256_sglang), which is always the coherent choice. An explicit value overrides that default and MUST match the engine, or every computed hash misses and Tier 1.5 is silently dead; incoherent pairs are therefore rejected at config time. vLLM engines: "sha256_cbor" (must equal --prefix-caching-hash-algo) or "xxhash_cbor". SGLang engines: "sha256_sglang" only — SGLang hashes parent||tokens raw (no CBOR, no NONE seed) and truncates to the FIRST 8 digest bytes, where vLLM CBOR-encodes and truncates to the LAST 8.
+         * @description Block-hash contract used to match the prompt against the engine-published KV inventory. PREFER OMITTING THIS FIELD — when absent, the contract is derived from kvEngineType (vllm => sha256_cbor, sglang => sha256_sglang, trtllm => blockhash_trtllm), which is always the coherent choice. An explicit value overrides that default and MUST match the engine, or every computed hash misses and Tier 1.5 is silently dead; incoherent pairs are therefore rejected at config time. vLLM engines: "sha256_cbor" (must equal --prefix-caching-hash-algo) or "xxhash_cbor". SGLang engines: "sha256_sglang" only — SGLang hashes parent||tokens raw (no CBOR, no NONE seed) and truncates to the FIRST 8 digest bytes, where vLLM CBOR-encodes and truncates to the LAST 8. TRT-LLM engines: "blockhash_trtllm" only — the same raw chained-SHA256 contract applied on both sides by the gateway itself (requests and the token lists carried in stored KV events); the engine's own unversioned uint64 mixing hash is never used as a routing key.
          * @enum {string}
          */
-        kvHashAlgo?: "sha256_cbor" | "xxhash_cbor" | "sha256_sglang";
+        kvHashAlgo?: "sha256_cbor" | "xxhash_cbor" | "sha256_sglang" | "blockhash_trtllm";
         /**
          * Format: int64
          * @description Base ZMQ PUB socket port on the endpoints publishing KV-cache events. Which endpoints are subscribed depends on kvExactMode - mode 1 subscribes ep_role=1 (prefill) endpoints only, mode 3 subscribes every endpoint. With kvDpRankCount > 1, data-parallel rank N is subscribed at kvZmqPort+N.
@@ -8000,17 +8238,23 @@ export interface components {
          */
         kvWarmupSec?: number;
         /**
-         * @description KV-event engine behind this rule. One framework per VIP; immutable after create (delete+recreate to change). Drives hash-algo default: sglang => sha256_sglang. NOTE: LOXILB_KV_* env knobs (unified mode, eps/lambda, cap-sum, max-blocks) are process-global and shared across all KV VIPs (accepted limitation).
+         * @description KV-event engine behind this rule. One framework per VIP; immutable after create (delete+recreate to change). Drives hash-algo default: sglang => sha256_sglang, trtllm => blockhash_trtllm. trtllm supports plain LB, kvExactMode=3 (single-role Tier 1.5 over HTTP-polled KV events on each endpoint's own serving port — the gateway must be the SOLE consumer of /kv_cache_events per endpoint) and pd_disagg_mode with kvExactMode=1 (sequential P/D dialect); kvZmqPort/kvDpRankCount are meaningless for it (rejected when set — no ZMQ, no client-visible DP ranks). llamacpp supports plain LB with CHWBL/session affinity ONLY — the engine has no KV event plane and no P/D disaggregation, so kvExactMode, pd_disagg_mode, kvHashAlgo and non-default kvZmqPort/kvDpRankCount/kvBlockSize are all rejected. NOTE: LOXILB_KV_* env knobs (unified mode, eps/lambda, cap-sum, max-blocks) are process-global and shared across all KV VIPs (accepted limitation).
          * @default vllm
          * @enum {string}
          */
-        kvEngineType?: "vllm" | "sglang";
+        kvEngineType?: "vllm" | "sglang" | "trtllm" | "llamacpp";
         /**
          * Format: int32
          * @description SGLang data-parallel rank count. Rank N publishes KV events at kvZmqPort+N; all ranks union into one per-EP inventory.
          * @default 1
          */
         kvDpRankCount?: number;
+        /**
+         * Format: int32
+         * @description SGLang disaggregation bootstrap port on every prefill endpoint (the port passed to --disaggregation-bootstrap-port). 0 = SGLang's default 8998. Only meaningful with pd_disagg_mode=true and kvEngineType=sglang; rejected on any other rule shape so dead config fails loudly at create time.
+         * @default 0
+         */
+        pdBootstrapPort?: number;
         /**
          * @description Session affinity configuration for persist mode (sel=3). Supports multiple methods:
          *
@@ -8428,11 +8672,11 @@ export interface components {
       };
       targetObject: {
         /**
-         * @description Target Attachment(0-RuleName, 1-PortName)
+         * @description Target Attachment(0-RuleName, 1-PortName, 2-PortNameEgress)
          * @enum {integer}
          */
-        attachment: 0 | 1;
-        /** @description Target Names */
+        attachment: 0 | 1 | 2;
+        /** @description Target name. Rule attachments use VIP:PORT:PROTO for IPv4 and [VIP]:PORT:PROTO for IPv6. */
         polObjName: string;
       };
     };
@@ -9599,6 +9843,13 @@ export interface components {
       /** @enum {string} */
       role?: "admin" | "viewer";
     };
+    UserSummary: {
+      created_at?: string;
+      id?: number;
+      username?: string;
+      /** @enum {string} */
+      role?: "admin" | "viewer";
+    };
     FlowCountMetrics: {
       active_conntrack_count?: number;
       active_flow_count_tcp?: number;
@@ -10608,6 +10859,8 @@ export interface components {
       tenant_id: string;
       /** @description Human-readable label for the API key */
       name?: string;
+      /** @description Optional caller-supplied key material to register instead of generating one, for importing keys minted elsewhere. Write-only: it is never returned by GET or by the list, and the create response omits raw_key when it is set, because the caller already holds the value. It must contain 16 to 512 printable non-space US-ASCII characters. */
+      api_key?: string;
       /** @description List of model identifiers this key may access */
       allowed_models?: string[];
       /**
@@ -10634,10 +10887,10 @@ export interface components {
       enabled?: boolean | null;
     };
     ApiKeyCreateResponse: {
-      /** @description The plaintext API key — returned ONLY at creation time */
-      raw_key: string;
+      /** @description The plaintext API key — returned only when the Gateway generated it */
+      raw_key?: string;
       /** @description Unique identifier of the created API key */
-      key_id?: string;
+      key_id: string;
     };
     ApiKeySummary: {
       /** @description Unique identifier of the API key */
@@ -10689,6 +10942,22 @@ export interface components {
        * @description Maximum LLM tokens per minute for the tenant
        */
       tokens_per_min?: number;
+      /**
+       * Format: int64
+       * @description Token bucket capacity as a percent of tokens_per_min; 0 uses the deployment-specific process default configured by LLB_AI_QUOTA_BURST_PCT (100 when unset)
+       */
+      burst_pct?: number;
+      /** @description Per-model token quotas for the tenant */
+      model_limits?: components["schemas"]["TenantModelRateLimit"][];
+    };
+    TenantModelRateLimit: {
+      /** @description Model name the quota applies to */
+      model?: string;
+      /**
+       * Format: int64
+       * @description Maximum LLM tokens per minute for this tenant and model; 0 removes the model quota
+       */
+      tokens_per_min?: number;
     };
     TenantRateLimitEntry: {
       /** @description Tenant identifier */
@@ -10703,6 +10972,13 @@ export interface components {
        * @description Maximum LLM tokens per minute for the tenant
        */
       tokens_per_min?: number;
+      /**
+       * Format: int64
+       * @description Stored token bucket capacity override as a percent of tokens_per_min; 0 means the deployment-specific process default configured by LLB_AI_QUOTA_BURST_PCT (100 when unset)
+       */
+      burst_pct?: number;
+      /** @description Per-model token quotas for the tenant */
+      model_limits?: components["schemas"]["TenantModelRateLimit"][];
       /**
        * Format: date-time
        * @description Timestamp of the last rate limit update
@@ -10752,7 +11028,26 @@ export interface components {
       last_error?: string;
     };
   };
-  responses: never;
+  responses: {
+    /** @description Missing or invalid management credential */
+    ManagementUnauthorized: {
+      content: {
+        "application/json": components["schemas"]["Error"];
+      };
+    };
+    /** @description Authenticated principal is not authorized for this operation */
+    ManagementForbidden: {
+      content: {
+        "application/json": components["schemas"]["Error"];
+      };
+    };
+    /** @description Management credential store unavailable; the credential could not be evaluated */
+    ManagementStoreUnavailable: {
+      content: {
+        "application/json": components["schemas"]["Error"];
+      };
+    };
+  };
   parameters: never;
   requestBodies: {
     /** @description User data */
@@ -10800,7 +11095,7 @@ export interface operations {
   };
   /**
    * Get a Load balancer service by composite key
-   * @description Returns a single load balancer rule identified by its VIP/port/protocol composite key (Octavia).
+   * @description Returns a single load balancer rule identified by its legacy VIP/port/protocol composite key (Octavia). If more than one rule shares that tuple, the lookup returns 409 instead of selecting an arbitrary rule; use the stable opaque serviceArguments.id with /config/loadbalancer/id/{id}.
    */
   getConfigLoadbalancerExternalipaddressIPAddressPortPortProtocolProto: {
     parameters: {
@@ -10826,8 +11121,15 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Resource not found */
       404: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Ambiguous legacy tuple; use the stable opaque rule ID or an exact full-key operation */
+      409: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
@@ -10838,11 +11140,12 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
    * Patch an existing Load balancer service (RFC 7386 JSON merge-patch)
-   * @description Apply an RFC 7386 JSON merge-patch to an existing load balancer rule identified by its VIP/port/protocol composite key (Octavia). Fields present in the body are overwritten, absent fields are left untouched, and an explicit null clears a clearable field. Immutable fields (security, egress, mode, protocol, VIP composite key) are rejected with 400. Returns 200 if the target rule exists, 404 if it is absent. The rule is mutated in place; established connections are not dropped.
+   * @description Apply an RFC 7386 JSON merge-patch to an existing load balancer rule identified by its VIP/port/protocol composite key (Octavia). Fields present in the body are overwritten, absent fields are left untouched, and an explicit null clears a clearable field. Immutable fields (security, egress, mode, protocol, VIP composite key) are rejected with 400. Returns 200 if the target rule exists, 404 if it is absent. If multiple rules share the legacy tuple, the operation returns 409 rather than selecting one arbitrarily. Use the opaque rule ID for selection and an exact operation for mutation. The rule is mutated in place; established connections are not dropped.
    */
   patchConfigLoadbalancerExternalipaddressIPAddressPortPortProtocolProto: {
     parameters: {
@@ -10879,8 +11182,15 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Resource not found */
       404: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Ambiguous legacy tuple; use the stable opaque rule ID or an exact full-key operation */
+      409: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
@@ -10891,6 +11201,7 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -10917,6 +11228,7 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Resource not found */
       404: {
         content: {
@@ -10929,6 +11241,7 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /** Get all L7 content-routing policies */
@@ -10946,12 +11259,14 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Internal service error */
       500: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -10982,6 +11297,7 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Referenced load-balancer not found */
       404: {
         content: {
@@ -10994,6 +11310,7 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /** Get a single L7 content-routing policy by id */
@@ -11017,6 +11334,7 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Resource not found */
       404: {
         content: {
@@ -11029,6 +11347,7 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -11053,6 +11372,7 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Resource not found */
       404: {
         content: {
@@ -11065,6 +11385,7 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -11095,12 +11416,14 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Internal service error */
       500: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -11127,6 +11450,7 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Certificate not found */
       404: {
         content: {
@@ -11139,6 +11463,7 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -11175,6 +11500,7 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Certificate not found */
       404: {
         content: {
@@ -11187,6 +11513,7 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -11217,6 +11544,7 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Certificate not found */
       404: {
         content: {
@@ -11229,11 +11557,12 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
    * Get the lifecycle status of a Load balancer service
-   * @description Returns the per-LB lifecycle status (adminStateUp, operatingStatus, lastUpdated) for the rule identified by its composite key (Octavia).
+   * @description Returns lifecycle status for an unambiguous legacy tuple; returns 409 when colliding rules require opaque-ID/full-key selection.
    */
   getConfigLoadbalancerStatus: {
     parameters: {
@@ -11259,8 +11588,15 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Resource not found */
       404: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Ambiguous legacy tuple; use the stable opaque rule ID or an exact full-key operation */
+      409: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
@@ -11271,11 +11607,12 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
    * Get per-service statistics of a Load balancer service
-   * @description Returns the per-LB statistics quad (activeConnections, bytesIn, bytesOut, totalConnections) for the rule identified by its composite key (Octavia). activeConnections is the same selector-agnostic live concurrent-connection count the connectionLimit gate enforces; bytesIn/bytesOut are the real per-direction CT byte totals; totalConnections is a monotonic cumulative counter reset to zero on restart.
+   * @description Returns the per-LB statistics quad (activeConnections, bytesIn, bytesOut, totalConnections) for an unambiguous legacy tuple (Octavia), or 409 when colliding rules require opaque-ID/full-key selection. activeConnections is the same selector-agnostic live concurrent-connection count the connectionLimit gate enforces; bytesIn/bytesOut are the real per-direction CT byte totals; totalConnections is a monotonic cumulative counter reset to zero on restart.
    */
   getConfigLoadbalancerStats: {
     parameters: {
@@ -11301,8 +11638,15 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Resource not found */
       404: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Ambiguous legacy tuple; use the stable opaque rule ID or an exact full-key operation */
+      409: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
@@ -11313,6 +11657,7 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -11336,12 +11681,14 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Internal service error */
       500: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -11365,12 +11712,14 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Internal service error */
       500: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -11418,12 +11767,14 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Internal service error */
       500: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -11477,12 +11828,14 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Internal service error */
       500: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -11561,12 +11914,14 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Internal service error */
       500: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -11599,12 +11954,14 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Internal service error */
       500: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -11635,12 +11992,14 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Internal service error */
       500: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -11668,6 +12027,7 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Catalog not found */
       404: {
         content: {
@@ -11680,6 +12040,7 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -11729,6 +12090,7 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Catalog or parser not found */
       404: {
         content: {
@@ -11741,6 +12103,7 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -11769,6 +12132,7 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Catalog not found */
       404: {
         content: {
@@ -11781,6 +12145,7 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -11830,12 +12195,14 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Internal service error */
       500: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -11860,12 +12227,14 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Internal service error */
       500: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -11892,12 +12261,14 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Internal service error */
       500: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -11945,12 +12316,14 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Internal service error */
       500: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -11976,12 +12349,14 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      403: components["responses"]["ManagementForbidden"];
       /** @description Internal service error */
       500: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -12008,8 +12383,20 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      /** @description Authenticated principal is not authorized to list API keys */
+      403: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
       /** @description Internal service error */
       500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Management credential store or API-key store unavailable */
+      503: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
@@ -12045,8 +12432,26 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      /** @description Authenticated principal is not authorized to create API keys */
+      403: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description The supplied API key is already registered */
+      409: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
       /** @description Internal service error */
       500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Management credential store or API-key store unavailable */
+      503: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
@@ -12077,6 +12482,12 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      /** @description Authenticated principal is not authorized to read API keys */
+      403: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
       /** @description Resource not found */
       404: {
         content: {
@@ -12085,6 +12496,12 @@ export interface operations {
       };
       /** @description Internal service error */
       500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Management credential store or API-key store unavailable */
+      503: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
@@ -12113,6 +12530,12 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      /** @description Authenticated principal is not authorized to delete API keys */
+      403: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
       /** @description Resource not found */
       404: {
         content: {
@@ -12121,6 +12544,12 @@ export interface operations {
       };
       /** @description Internal service error */
       500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Management credential store or API-key store unavailable */
+      503: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
@@ -12154,8 +12583,20 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      /** @description Authenticated principal is not authorized to update tenant quotas */
+      403: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
       /** @description Internal service error */
       500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Management credential store or API-key store unavailable */
+      503: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
@@ -12186,6 +12627,12 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      /** @description Authenticated principal is not authorized to read tenant quotas */
+      403: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
       /** @description Resource not found */
       404: {
         content: {
@@ -12194,6 +12641,12 @@ export interface operations {
       };
       /** @description Internal service error */
       500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Management credential store or API-key store unavailable */
+      503: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
@@ -12212,12 +12665,15 @@ export interface operations {
           "application/json": components["schemas"]["OPAWatcherStatus"];
         };
       };
+      401: components["responses"]["ManagementUnauthorized"];
+      403: components["responses"]["ManagementForbidden"];
       /** @description Internal service error */
       500: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -12243,12 +12699,15 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      401: components["responses"]["ManagementUnauthorized"];
+      403: components["responses"]["ManagementForbidden"];
       /** @description Internal service error */
       500: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
   /**
@@ -12263,12 +12722,15 @@ export interface operations {
           "application/json": components["schemas"]["PostSuccess"];
         };
       };
+      401: components["responses"]["ManagementUnauthorized"];
+      403: components["responses"]["ManagementForbidden"];
       /** @description Internal service error */
       500: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
       };
+      503: components["responses"]["ManagementStoreUnavailable"];
     };
   };
 }

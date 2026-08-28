@@ -15,6 +15,7 @@ import YAML from 'yaml';
 
 const root = path.resolve(__dirname, '../..');
 const gateway = YAML.parse(fs.readFileSync(path.join(root, 'api-spec/gateway-swagger.yml'), 'utf8'));
+const gatewayExtras = YAML.parse(fs.readFileSync(path.join(root, 'api-spec/gateway-swagger-extras.yml'), 'utf8'));
 const oam = JSON.parse(fs.readFileSync(path.join(root, 'api-spec/oam-swagger.json'), 'utf8'));
 
 // response JSON pointer helpers (swagger 2.0)
@@ -75,6 +76,57 @@ describe('gateway spec contract — models the UI depends on', () => {
 		expect(props).toEqual(expect.arrayContaining(['serviceArguments', 'endpoints', 'secondaryIPs', 'allowedSources']));
 	});
 
+	it('LoadbalanceEntry exposes the complete AI engine contract', () => {
+		const serviceArguments = gateway.definitions.LoadbalanceEntry.properties.serviceArguments.properties;
+		expect(serviceArguments.kvEngineType.enum).toEqual(['vllm', 'sglang', 'trtllm', 'llamacpp']);
+		expect(serviceArguments.kvHashAlgo.enum).toEqual([
+			'sha256_cbor',
+			'xxhash_cbor',
+			'sha256_sglang',
+			'blockhash_trtllm',
+		]);
+		expect(serviceArguments.pdBootstrapPort).toEqual(
+			expect.objectContaining({type: 'integer', minimum: 0, maximum: 65535}),
+		);
+		expect(serviceArguments.security.enum).toEqual([0, 1, 2]);
+		expect(serviceArguments.api_key_auth.enum).toEqual(['disabled', 'required']);
+		expect(serviceArguments.api_key_auth.default, 'omission must not materialize explicit disabled').toBeUndefined();
+		expect(serviceArguments.api_key_auth.description).toContain('Omission is a first-class state');
+	});
+
+	it('API-key import and create response keep the secret-safe wire contract', () => {
+		const imported = gateway.definitions.ApiKeyCreateRequest.properties.api_key;
+		expect(imported).toEqual(expect.objectContaining({
+			type: 'string',
+			minLength: 16,
+			maxLength: 512,
+			pattern: '^[!-~]{16,512}$',
+		}));
+		const response = gateway.definitions.ApiKeyCreateResponse;
+		expect(response.required).toContain('key_id');
+		expect(response.required ?? []).not.toContain('raw_key');
+		expect(response.properties.raw_key).toEqual(expect.objectContaining({type: 'string'}));
+	});
+
+	it('PolicyEntry exposes rule, port-ingress, and port-egress attachments', () => {
+		const attachment = gateway.definitions.PolicyEntry.properties.targetObject.properties.attachment;
+		expect(attachment.enum).toEqual([0, 1, 2]);
+	});
+
+	it('tenant rate limits expose per-model quotas on writes and reads', () => {
+		for (const name of ['TenantRateLimitMod', 'TenantRateLimitEntry']) {
+			const modelLimits = gateway.definitions[name].properties.model_limits;
+			expect(modelLimits.type).toBe('array');
+			expect(modelLimits.items.$ref).toBe('#/definitions/TenantModelRateLimit');
+			expect(gateway.definitions[name].properties.burst_pct).toEqual(
+				expect.objectContaining({type: 'integer', minimum: 0, maximum: 1000}),
+			);
+		}
+		expect(propNames(gateway, gateway.definitions.TenantModelRateLimit)).toEqual(
+			expect.arrayContaining(['model', 'tokens_per_min']),
+		);
+	});
+
 	it('Logs model declares the pagination fields the log viewer reads', () => {
 		const props = propNames(gateway, gateway.definitions.Logs);
 		expect(props).toEqual(expect.arrayContaining(['logs', 'next_cursor', 'has_more', 'log_count']));
@@ -90,6 +142,24 @@ describe('gateway spec contract — models the UI depends on', () => {
 		expect(names).toEqual(expect.arrayContaining(['name', 'probe_type', 'probe_port']));
 	});
 
+	it('all four tuple LB DELETE shapes carry model_name', () => {
+		const paths = Object.entries<any>(gateway.paths)
+			.filter(([p, item]) => p.startsWith('/config/loadbalancer/') && item.delete)
+			.filter(([p]) => p.includes('/externalipaddress/') && !p.includes('/name/'));
+		const keyed = paths.filter(([p]) => /\/protocol\/\{proto\}$/.test(p));
+		expect(keyed).toHaveLength(4);
+		for (const [p, item] of keyed) {
+			const names = (item.delete.parameters ?? []).map((parameter: any) => parameter.name);
+			expect(names, p).toContain('model_name');
+		}
+	});
+
+	it('Gateway users use password-free summaries for list and create responses', () => {
+		expect(propNames(gateway, gateway.definitions.UserSummary)).not.toContain('password');
+		expect(gateway.paths['/auth/users'].get.responses['200'].schema.items.$ref).toBe('#/definitions/UserSummary');
+		expect(gateway.paths['/auth/users'].post.responses['201'].schema.$ref).toBe('#/definitions/UserSummary');
+	});
+
 	it('/sni/certificates GET keeps certificates/totalCertificates', () => {
 		expect(propNames(gateway, successSchema(gateway, '/sni/certificates', 'get'))).toEqual(
 			expect.arrayContaining(['certificates', 'totalCertificates']),
@@ -98,6 +168,40 @@ describe('gateway spec contract — models the UI depends on', () => {
 
 	it('/metrics stays a Prometheus text endpoint (GET declared)', () => {
 		expect(gateway.paths['/metrics']?.get, 'gateway /metrics GET disappeared').toBeTruthy();
+		expect(gateway.paths['/metrics'].get.security).toEqual([]);
+	});
+});
+
+describe('gateway management authentication response matrices', () => {
+	it('every protected main operation declares 401, 403, and 503', () => {
+		for (const [pathName, pathItem] of Object.entries<any>(gateway.paths)) {
+			for (const method of ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']) {
+				const operation = pathItem[method];
+				if (!operation) continue;
+				const security = operation.security === undefined ? gateway.security : operation.security;
+				if (!Array.isArray(security) || security.length === 0) continue;
+				expect(operation.responses, `${method.toUpperCase()} ${pathName}`).toEqual(
+					expect.objectContaining({'401': expect.anything(), '403': expect.anything(), '503': expect.anything()}),
+				);
+			}
+		}
+		expect(gateway.paths['/config/ai/apikey'].post.responses['409']).toBeTruthy();
+	});
+
+	it('every raw extras operation declares bearer auth and 401/403/503', () => {
+		expect(gatewayExtras.securityDefinitions.BearerAuth).toEqual(
+			expect.objectContaining({type: 'apiKey', name: 'Authorization', in: 'header'}),
+		);
+		expect(gatewayExtras.security).toEqual([{BearerAuth: []}]);
+		for (const [pathName, pathItem] of Object.entries<any>(gatewayExtras.paths)) {
+			for (const method of ['get', 'post', 'put', 'patch', 'delete']) {
+				const operation = pathItem[method];
+				if (!operation) continue;
+				expect(operation.responses, `${method.toUpperCase()} ${pathName}`).toEqual(
+					expect.objectContaining({'401': expect.anything(), '403': expect.anything(), '503': expect.anything()}),
+				);
+			}
+		}
 	});
 });
 

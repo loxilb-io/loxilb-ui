@@ -9,7 +9,7 @@ import DensitySmallIcon from '@mui/icons-material/DensitySmall';
 import ModeIcon from '@mui/icons-material/Mode';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import {Alert, Box, Button, Stack, Tooltip, Typography} from '@mui/material';
-import {GridColDef, GridRowSelectionModel} from '@mui/x-data-grid';
+import {GridColDef, GridRowId, GridRowSelectionModel} from '@mui/x-data-grid';
 import {
 	BooleanCell,
 	ChipCell,
@@ -51,7 +51,7 @@ export default function DataTable(props: {
 	name: string;
 	columns: IDataTableColumnDef[];
 	rows: any[];
-	selected_rows: number[];
+	selected_rows: GridRowId[];
 	onChangeSelectedRows: any;
 	hideCheckbox?: boolean;
 	hideMenuBar?: boolean;
@@ -90,7 +90,9 @@ export default function DataTable(props: {
 	const onDelete = is_viewer ? undefined : props.onDelete;
 
 	const handleRowSelectionChange = (selection: GridRowSelectionModel) => {
-		const indices = selection.map(id => Number(id));
+		// Preserve opaque string IDs. Coercing every ID through Number() makes
+		// distinct Gateway rule identities collapse to NaN or a lossy hash.
+		const indices: GridRowId[] = [...selection];
 		if (onChangeSelectedRows) onChangeSelectedRows(indices);
 	};
 

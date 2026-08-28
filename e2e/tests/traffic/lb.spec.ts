@@ -21,8 +21,13 @@ import {expect, test} from '../../fixtures';
 import {activeInstance, gw, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
 import {confirmDelete, dialog, dialogButton, expectErrorAndDismiss, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 import {refreshUntilGone, refreshUntilRow, rowByText, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
+import {lbRuleRowId} from '../../../src/types/lb_identity';
 
 const LB_PATH = '/config/loadbalancer';
+// 8080 is commonly reserved by a co-hosted OAM and is intentionally rejected
+// by the Gateway's OAM_RESERVED_ENDPOINTS collision guard. Keep the positive
+// fixture away from control-plane listener ports.
+const MIN_LB_PORT = '18080';
 
 //---------------------------------------------------------
 // API seed (D/E/V fixtures)
@@ -145,6 +150,11 @@ async function captureLbDeletes(page: Page, action: () => Promise<void>): Promis
 	return urls;
 }
 
+function rowByStableId(page: Page, id: string): Locator {
+	const quoted = id.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+	return page.locator(`.MuiDataGrid-row[data-id="${quoted}"]`);
+}
+
 //---------------------------------------------------------
 // Suite
 //---------------------------------------------------------
@@ -171,20 +181,20 @@ test.describe('LB Rule page CRUD', () => {
 
 	test('C-min: minimal create defaults to rr/dnat, then D-single via UI', async ({page}) => {
 		await openAddDialog(page);
-		await fillBasics(page, 'e2e-lb-min', '203.0.113.10', '8080');
-		await addEndpoint(page, 0, '198.51.100.1', '8080');
+		await fillBasics(page, 'e2e-lb-min', '203.0.113.10', MIN_LB_PORT);
+		await addEndpoint(page, 0, '198.51.100.1', MIN_LB_PORT);
 		const body = await submitCreate(page);
 
 		expect(body.serviceArguments).toMatchObject({
 			name: 'e2e-lb-min',
 			externalIP: '203.0.113.10',
-			port: 8080,
+			port: Number(MIN_LB_PORT),
 			protocol: 'tcp',
 			sel: 0, // rr default
 			mode: 0, // dnat default
 		});
 		expect(body.endpoints).toHaveLength(1);
-		expect(body.endpoints[0]).toMatchObject({endpointIP: '198.51.100.1', targetPort: 8080, weight: 1});
+		expect(body.endpoints[0]).toMatchObject({endpointIP: '198.51.100.1', targetPort: Number(MIN_LB_PORT), weight: 1});
 		// Client-side validation state must not leak into the payload.
 		expect(body.isValid).toBeUndefined();
 		expect(body.errors).toBeUndefined();
@@ -301,13 +311,89 @@ test.describe('LB Rule page CRUD', () => {
 		});
 	});
 
+	test('@gw C-aigw-auth-policy: omission, disabled, and required remain distinct', async ({page}) => {
+		const cases = [
+			{label: 'Preserve / unmanaged', name: 'e2e-lb-auth-absent', vip: '203.0.113.71', expected: undefined},
+			{label: 'Disabled (strip header)', name: 'e2e-lb-auth-disabled', vip: '203.0.113.72', expected: 'disabled'},
+			{label: 'Required (enforce and strip)', name: 'e2e-lb-auth-required', vip: '203.0.113.73', expected: 'required'},
+		] as const;
+
+		for (const [index, policy] of cases.entries()) {
+			await openAddDialog(page);
+			await fillBasics(page, policy.name, policy.vip, String(8471 + index));
+			await expandSection(page, ADVANCED);
+			await selectOption(page, 'Mode', 'fullproxy');
+			await expandSection(page, AIGW);
+			await selectOption(page, 'Data-plane API Key Policy', policy.label);
+			await addEndpoint(page, 0, `198.51.100.${71 + index}`, String(8471 + index));
+			const body = await submitCreate(page);
+			expect(body.serviceArguments.api_key_auth).toBe(policy.expected);
+		}
+
+		const list = await (await gw('GET', `${LB_PATH}/all`)).json();
+		for (const policy of cases) {
+			const stored = (list.lbAttr ?? []).find((rule: any) => rule.serviceArguments?.name === policy.name)?.serviceArguments;
+			expect(stored, `${policy.name} read-back`).toBeTruthy();
+			if (policy.expected === undefined) {
+				expect(Object.prototype.hasOwnProperty.call(stored, 'api_key_auth')).toBe(false);
+			} else {
+				expect(stored.api_key_auth).toBe(policy.expected);
+			}
+		}
+	});
+
+	test('@gw E-aigw-auth-policy: no-op preserves required; same-key fullproxy policy change is blocked', async ({page}) => {
+		const name = 'e2e-lb-auth-edit';
+		const create = await gw('POST', LB_PATH, {
+			serviceArguments: {
+				name, externalIP: '203.0.113.74', port: 8474, protocol: 'tcp', sel: 0, mode: 4,
+				api_key_auth: 'required',
+			},
+			endpoints: [{endpointIP: '198.51.100.74', targetPort: 8474, weight: 1}],
+		});
+		expect(create.status).toBeLessThan(300);
+		await refreshUntilRow(page, name);
+		let patchRequests = 0;
+		page.on('request', request => {
+			if (request.method() === 'PATCH' && request.url().includes('/config/loadbalancer/externalipaddress/203.0.113.74/')) patchRequests++;
+		});
+
+		// Submitting the read-back form untouched is a true no-op. In particular,
+		// it must not synthesize an api_key_auth change or attempt the L4 PATCH route.
+		await selectRowByText(page, name);
+		await openToolbarDialog(page, 'Mode', 'Edit Load Balancer Rule');
+		await dialogButton(page, 'Update').click();
+		await expect(dialog(page).getByText('No changes to apply.')).toBeVisible();
+		await dialogButton(page, 'OK').click();
+		let list = await (await gw('GET', `${LB_PATH}/all`)).json();
+		expect((list.lbAttr ?? []).find((rule: any) => rule.serviceArguments?.name === name)?.serviceArguments?.api_key_auth).toBe('required');
+		expect(patchRequests).toBe(0);
+
+		// The current Gateway contract rejects every same-key fullproxy update.
+		// The UI must stop before the network and explain the safe replacement
+		// workflow rather than sending an impossible PATCH or doing disruptive
+		// delete-and-recreate behind the operator's back.
+		await refreshUntilRow(page, name);
+		await selectRowByText(page, name);
+		await openToolbarDialog(page, 'Mode', 'Edit Load Balancer Rule');
+		await expandSection(page, ADVANCED);
+		await expandSection(page, AIGW);
+		await selectOption(page, 'Data-plane API Key Policy', 'Disabled (strip header)');
+		await dialogButton(page, 'Update').click();
+		await expect(dialog(page).getByText(/Fullproxy \(mode 4\) rules cannot be updated in place/)).toBeVisible();
+		await expectErrorAndDismiss(page);
+		expect(patchRequests).toBe(0);
+		list = await (await gw('GET', `${LB_PATH}/all`)).json();
+		expect((list.lbAttr ?? []).find((rule: any) => rule.serviceArguments?.name === name)?.serviceArguments?.api_key_auth).toBe('required');
+	});
+
 	test('@gw C-aigw-pd: prefill/decode disaggregation incl. per-endpoint roles', async ({page}) => {
 		await openAddDialog(page);
 		await fillBasics(page, 'e2e-lb-pd', '203.0.113.52', '8445');
 		await expandSection(page, ADVANCED);
 		await selectOption(page, 'Mode', 'fullproxy');
 		await expandSection(page, AIGW);
-		await field(page, 'P/D Disaggregation Mode').check();
+		await selectOption(page, 'Topology', 'P/D disaggregation');
 		await field(page, 'P/D Cache-Aware Mode').check();
 		await field(page, 'P/D Session TTL (s)').fill('60');
 		await field(page, 'P/D Cache Threshold').fill('50');
@@ -347,12 +433,12 @@ test.describe('LB Rule page CRUD', () => {
 		await expandSection(page, AIGW);
 		await setField(page, 'CHWBL Prefix Hash Level', '2');
 		await setField(page, 'CHWBL Prefix Hash Flags', '1');
-		// Mode 3 (zmq single-role) is the only kv-exact mode valid on a role-less
-		// pool: the gateway rejects mode 1 without pd_disagg_mode=true.
-		await setField(page, 'KV Exact Mode', '3'); // boundary (max)
+		// Single-role is the only KV-exact topology valid on a role-less pool.
+		await selectOption(page, 'Topology', 'Single-role KV exact');
 		await setField(page, 'KV Block Size', '1'); // boundary
-		await selectOption(page, 'KV Hash Algo', 'xxhash_cbor');
+		await selectOption(page, 'KV Hash Override', 'xxhash_cbor');
 		await setField(page, 'KV ZMQ Port', '65535'); // boundary
+		await field(page, 'Block/Page Size Confirmed').check();
 		await addEndpoint(page, 0, '198.51.100.53', '8446');
 		const body = await submitCreate(page);
 
@@ -594,5 +680,52 @@ test.describe('LB Rule page CRUD', () => {
 		const names = deletes.map(u => u.match(/\/name\/([^/?]+)/)?.[1]).sort();
 		expect(names).toEqual(['e2e-lb-d1', 'e2e-lb-d2', 'e2e-lb-d3']);
 		await refreshUntilGone(page, /e2e-lb-d[123]/);
+	});
+
+	test('@gw D-full-key: model and model-less peers have unique rows and delete selectively', async ({page}) => {
+		const base = {
+			serviceArguments: {
+				name: '', externalIP: '203.0.113.75', port: 8475, portMax: 8476,
+				protocol: 'tcp', sel: 0, mode: 4, host: 'e2e-delete.example',
+				path_prefix: '/v1/chat', path_match_mode: 'prefix',
+			},
+			endpoints: [{endpointIP: '198.51.100.75', targetPort: 8475, weight: 1}],
+		};
+		for (const configuration of [base, {
+			...base,
+			serviceArguments: {...base.serviceArguments, model_name: 'e2e/model-a'},
+		}]) {
+			const response = await gw('POST', LB_PATH, configuration);
+			expect(response.status).toBeLessThan(300);
+		}
+
+		let list = await (await gw('GET', `${LB_PATH}/all`)).json();
+		let peers = (list.lbAttr ?? []).filter((rule: any) => rule.serviceArguments?.externalIP === '203.0.113.75');
+		expect(peers).toHaveLength(2);
+		const modelPeer = peers.find((rule: any) => rule.serviceArguments?.model_name === 'e2e/model-a');
+		const plainPeer = peers.find((rule: any) => !rule.serviceArguments?.model_name);
+		expect(lbRuleRowId(modelPeer)).not.toBe(lbRuleRowId(plainPeer));
+
+		await toolbarButton(page, 'Refresh').click();
+		await showAllRows(page);
+		await expect(rowByText(page, '203.0.113.75')).toHaveCount(2);
+		await rowByStableId(page, lbRuleRowId(modelPeer)).getByRole('checkbox').check();
+		const modelDeletes = await captureLbDeletes(page, async () => {
+			await toolbarButton(page, 'Delete').click();
+			await confirmDelete(page);
+			await expect(dialog(page).getByText('Deleted 1 item(s) successfully.')).toBeVisible();
+			await dialogButton(page, 'OK').click();
+		});
+		expect(modelDeletes).toHaveLength(1);
+		expect(modelDeletes[0]).toContain('/hosturl/e2e-delete.example/');
+		expect(modelDeletes[0]).toContain('/port/8475/portmax/8476/protocol/tcp');
+		expect(new URL(modelDeletes[0]).searchParams.get('path_prefix')).toBe('/v1/chat');
+		expect(new URL(modelDeletes[0]).searchParams.get('path_match_mode')).toBe('prefix');
+		expect(new URL(modelDeletes[0]).searchParams.get('model_name')).toBe('e2e/model-a');
+
+		list = await (await gw('GET', `${LB_PATH}/all`)).json();
+		peers = (list.lbAttr ?? []).filter((rule: any) => rule.serviceArguments?.externalIP === '203.0.113.75');
+		expect(peers).toHaveLength(1);
+		expect(peers[0].serviceArguments?.model_name).toBeFalsy();
 	});
 });

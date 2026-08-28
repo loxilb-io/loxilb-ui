@@ -35,7 +35,7 @@ describe('hasFeature', () => {
 
 describe('hasField', () => {
 	it('drops gateway-only LB write fields on loxilb (silent-drop class)', () => {
-		for (const field of ['model_name', 'sse_mode', 'path_prefix', 'backend_protocol', 'mtls_frontend']) {
+		for (const field of ['model_name', 'api_key_auth', 'sse_mode', 'path_prefix', 'backend_protocol', 'mtls_frontend']) {
 			expect(hasField('loxilb', 'LoadbalanceEntry.serviceArguments', field), field).toBe(false);
 			expect(hasField('inference-gateway', 'LoadbalanceEntry.serviceArguments', field), field).toBe(true);
 		}

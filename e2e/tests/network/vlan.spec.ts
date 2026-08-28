@@ -7,7 +7,7 @@
 //---------------------------------------------------------
 import {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {activeInstance, gw, gwJson, sweepVlans, TEST_VLAN_IDS} from '../../helpers/api';
+import {activeInstance, gw, gwJson, primaryNetworkDevice, sweepVlans, TEST_VLAN_IDS} from '../../helpers/api';
 import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, openToolbarDialog} from '../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../helpers/form';
 import {refreshUntilGone, refreshUntilRow, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
@@ -29,6 +29,7 @@ const VLAN_PATH = '/config/vlan';
 // either a green run or a named, actionable failure when the pool runs out.
 let VID = 0;
 let MEMBER_VID = 0;
+let MEMBER_BASE_DEV = '';
 
 // The member sub-panel renders a second DataTable — target its (2nd) toolbar
 // and grid explicitly since #table-bar / .MuiDataGrid-root ids repeat.
@@ -58,6 +59,12 @@ let instName: string;
 test.describe('VLAN page CRUD', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
+		const preferredDevice = await primaryNetworkDevice();
+		const ports = await gwJson<{portAttr?: Array<{portName?: string; portL2Information?: {vid?: number}}>}>('/config/port/all');
+		// Adding a tagged member on an interface already enslaved as a PVID is
+		// rejected by the dataplane. Use an unassigned physical interface when the
+		// testbed has one; otherwise this optional kernel-topology scenario skips.
+		MEMBER_BASE_DEV = (ports.portAttr ?? []).find(port => port.portName === preferredDevice && !port.portL2Information?.vid)?.portName ?? '';
 		await sweepVlans();
 
 		// Whatever the sweep could not remove is wedged — skip those.
@@ -110,12 +117,13 @@ test.describe('VLAN page CRUD', () => {
 		await refreshUntilGone(page, String(VID));
 	});
 
-	test('V-member-delete: a tagged member deletes via the base device name (not eth0.<vid>)', async ({page}) => {
-		const memberDev = `eth0.${MEMBER_VID}`;
+	test('V-member-delete: a tagged member deletes via the base device name', async ({page}) => {
+		test.skip(!MEMBER_BASE_DEV, 'testbed has no unassigned physical interface available for a temporary tagged VLAN member');
+		const memberDev = `${MEMBER_BASE_DEV}.${MEMBER_VID}`;
 		// Seed vlan + tagged member via API; the gateway lists the member as
 		// "eth0.<vid>", but its delete endpoint only accepts the base dev "eth0".
 		expect((await gw('POST', VLAN_PATH, {vid: MEMBER_VID})).status).toBeLessThan(300);
-		expect((await gw('POST', `${VLAN_PATH}/${MEMBER_VID}/member`, {dev: 'eth0', tagged: true})).status).toBeLessThan(300);
+		expect((await gw('POST', `${VLAN_PATH}/${MEMBER_VID}/member`, {dev: MEMBER_BASE_DEV, tagged: true})).status).toBeLessThan(300);
 
 		await refreshUntilRow(page, String(MEMBER_VID));
 		await selectRowByText(page, String(MEMBER_VID)); // opens the member sub-panel
@@ -131,7 +139,7 @@ test.describe('VLAN page CRUD', () => {
 
 		expect(deletes).toHaveLength(1);
 		// The fix: the DELETE uses the base dev, not the "eth0.<vid>" the grid shows.
-		expect(deletes[0].pathname).toContain(`/vlan/${MEMBER_VID}/member/eth0/tagged/true`);
+		expect(deletes[0].pathname).toContain(`/vlan/${MEMBER_VID}/member/${MEMBER_BASE_DEV}/tagged/true`);
 		expect(deletes[0].pathname, 'must not send the suffixed dev').not.toContain(memberDev);
 
 		// The member must actually be gone at the gateway (base-dev delete landed).

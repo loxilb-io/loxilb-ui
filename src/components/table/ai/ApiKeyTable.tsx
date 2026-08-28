@@ -51,10 +51,9 @@ export default function ApiKeyTable(props: {
 			selected_rows={selected_rows}
 			onChangeSelectedRows={onChangeSelectedRows}
 			onAdd={onAdd}
-			onDelete={onDelete}
-			onRefresh={onRefresh}
-			error={error}
-			hideCheckbox={true}
-		/>
-	);
+				onDelete={onDelete}
+				onRefresh={onRefresh}
+				error={error}
+			/>
+		);
 }

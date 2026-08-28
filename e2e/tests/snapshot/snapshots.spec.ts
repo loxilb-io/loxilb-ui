@@ -109,8 +109,8 @@ test.describe('@gw Snapshots page (admin)', () => {
 		test.slow();
 		// Seed an LB, snapshot it, delete it — the restore must resurrect it.
 		const lb = {
-			serviceArguments: {externalIP: '198.51.100.21', port: 8080, protocol: 'tcp', name: 'e2e-snap-restore-lb'},
-			endpoints: [{endpointIP: '198.51.100.13', targetPort: 8080, weight: 1}],
+			serviceArguments: {externalIP: '198.51.100.21', port: 18021, protocol: 'tcp', name: 'e2e-snap-restore-lb'},
+			endpoints: [{endpointIP: '198.51.100.13', targetPort: 18021, weight: 1}],
 		};
 		expect((await gw('POST', '/config/loadbalancer', lb)).ok).toBeTruthy();
 
@@ -173,6 +173,14 @@ test.describe('@gw Snapshots page (admin)', () => {
 		// Reload → list state consistent (row still there, no phantom pre_restore
 		// from the aborted commit — it never reached OAM).
 		await page.reload();
+		// Force an observable server refetch. A bare reload can restore the SPA
+		// from the browser page cache with the pre-create query snapshot and never
+		// issue the list request, making a persisted row look lost.
+		await expect(page.getByRole('button', {name: 'Refresh Snapshots'})).toBeVisible();
+		await Promise.all([
+			page.waitForResponse(resp => resp.request().method() === 'GET' && /\/oam\/instances\/\d+\/snapshots\?/.test(resp.url())),
+			page.getByRole('button', {name: 'Refresh Snapshots'}).click(),
+		]);
 		await expect(snapRow(page, 'e2e-spec-outage')).toBeVisible();
 	});
 

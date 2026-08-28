@@ -47,7 +47,7 @@ test.describe.serial('zz — cleanup & leak detector', () => {
 		// predicate marks known-undeletable shapes as inert instead.
 		async function scan(apiPath: string, key: string, mark: (o: any) => boolean, id: (o: any) => string, tolerate?: (o: any) => boolean): Promise<void> {
 			const resp = await gw('GET', apiPath);
-			if (!resp.ok) return; // endpoint unavailable (e.g. AI 501) — nothing to leak
+			if (!resp.ok) return; // endpoint unavailable/auth-rejected — nothing safe to inspect
 			const data = await resp.json().catch(() => ({}));
 			for (const o of data[key] ?? []) {
 				if (!mark(o)) continue;

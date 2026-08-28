@@ -2,7 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import BlockIcon from '@mui/icons-material/Block';
-import {Stack, Typography} from '@mui/material';
+import {CircularProgress, Stack, Typography} from '@mui/material';
 import type {InstanceFeature, InstanceFlavor} from 'api/capabilities';
 import {is_logged_in} from 'common';
 import {useInstanceCapabilities} from 'hooks/query/flavorHook';
@@ -53,19 +53,31 @@ function NotAvailableOnInstance() {
 	);
 }
 
+function DetectingInstanceCapabilities() {
+	return (
+		<Stack alignItems="center" justifyContent="center" spacing={2} sx={{height: '100%', minHeight: 240, p: 4}}>
+			<CircularProgress size={32} />
+			<Typography variant="body2" color="text.secondary">{t('Detecting instance capabilities…')}</Typography>
+		</Stack>
+	);
+}
+
 // Route-level twin of the SideMenu requiresFeature/requiresFlavor gating.
 // Wrap a gated route's element (or use as a parent element for whole
 // families) — renders the children/Outlet when the instance has the
 // capability, the "not available" state when it resolved to plain loxilb,
-// and stays permissive while the flavor probe is in flight (matching the
-// nav, which shows the entries until then).
+// and a non-mutating loading state while the flavor probe is in flight. A
+// permissive pre-resolution window used to mount Gateway-only pages briefly
+// on loxilb and issue requests outside the OSS contract.
 export function RequireFeature(props: {feature?: InstanceFeature; flavor?: InstanceFlavor; children?: ReactNode}) {
 	const {feature, flavor, children} = props;
 	const caps = useInstanceCapabilities();
+	const gated = feature !== undefined || flavor !== undefined;
+	if (gated && !caps.resolved) return <DetectingInstanceCapabilities />;
 
 	const allowed =
 		(!feature || caps.hasFeature(feature)) &&
-		(!flavor || (caps.flavor ?? 'inference-gateway') === flavor);
+		(!flavor || caps.flavor === flavor);
 	if (!allowed) return <NotAvailableOnInstance />;
 	return children ? <>{children}</> : <Outlet />;
 }

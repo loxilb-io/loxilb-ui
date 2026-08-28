@@ -16,6 +16,7 @@ import {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {activeInstance, gw, gwJson, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
 import {dialog, dialogButton, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
+import {attachContractGuard, formatViolations} from '../../helpers/loxilb-contract';
 
 const LB_PATH = '/config/loadbalancer';
 
@@ -88,11 +89,7 @@ test.describe('@loxilb flavor gating — plain upstream loxilb instance', () => 
 	});
 
 	test('route: direct hit on a gated page shows the friendly state, not /404 or an error banner', async ({page, consoleGuard}) => {
-		// A direct hit mounts the page during the permissive pre-resolution
-		// window, so its read queries 404 on loxilb before the gate replaces
-		// the page — Chrome logs those. Degrading in-page is the assertion
-		// below; the resource-error noise is expected.
-		consoleGuard.allow(/Failed to load resource/i);
+		const guard = await attachContractGuard(page);
 		for (const route of ['ai/apikey', 'ipsec/tunnels', 'security/ipfilter', 'network/ip6', 'maintenance/snapshots', 'traffic/sni-certs']) {
 			await page.goto(`instance/${route}?name=${instName}`, {waitUntil: 'domcontentloaded'});
 			await waitForLoxilbChip(page);
@@ -100,6 +97,7 @@ test.describe('@loxilb flavor gating — plain upstream loxilb instance', () => 
 			expect(page.url(), `${route} must keep its URL`).not.toContain('/404');
 			await expect(page.locator('.MuiAlert-standardError'), `${route} must not show an error banner`).toHaveCount(0);
 		}
+		expect(guard.unexpected(), `a direct gated route sent Gateway-only API traffic to loxilb:\n${formatViolations(guard.unexpected())}`).toEqual([]);
 	});
 
 	test('LB form: chwbl/L7/mTLS/AI gone, n2+n3 and e2ehttps offered', async ({page}) => {

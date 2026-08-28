@@ -47,6 +47,18 @@ export interface paths {
             "application/json": components["schemas"]["SimpleError"];
           };
         };
+        /** @description Missing or invalid management credential */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ManagementError"];
+          };
+        };
+        /** @description Authenticated principal is not authorized for this operation */
+        403: {
+          content: {
+            "application/json": components["schemas"]["ManagementError"];
+          };
+        };
         /** @description Service or endpoint not found */
         404: {
           content: {
@@ -57,10 +69,10 @@ export interface paths {
         405: {
           content: never;
         };
-        /** @description KV inventory provider not registered */
+        /** @description Management credential store unavailable, or KV inventory provider not registered */
         503: {
           content: {
-            "application/json": components["schemas"]["SimpleError"];
+            "application/json": components["schemas"]["RawError"];
           };
         };
       };
@@ -99,10 +111,22 @@ export interface paths {
             "application/json": components["schemas"]["SimpleError"];
           };
         };
-        /** @description DPU manager not initialized (filtered path only) */
+        /** @description Missing or invalid management credential */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ManagementError"];
+          };
+        };
+        /** @description Authenticated principal is not authorized for this operation */
+        403: {
+          content: {
+            "application/json": components["schemas"]["ManagementError"];
+          };
+        };
+        /** @description Management credential store unavailable, or DPU manager not initialized (filtered path only) */
         503: {
           content: {
-            "application/json": components["schemas"]["SimpleError"];
+            "application/json": components["schemas"]["RawError"];
           };
         };
       };
@@ -145,14 +169,26 @@ export interface paths {
             "application/json": components["schemas"]["SimpleError"];
           };
         };
+        /** @description Missing or invalid management credential */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ManagementError"];
+          };
+        };
+        /** @description Authenticated principal is not authorized for this operation */
+        403: {
+          content: {
+            "application/json": components["schemas"]["ManagementError"];
+          };
+        };
         /** @description Method not allowed */
         405: {
           content: never;
         };
-        /** @description DPU manager not initialized */
+        /** @description Management credential store unavailable, or DPU manager not initialized */
         503: {
           content: {
-            "application/json": components["schemas"]["SimpleError"];
+            "application/json": components["schemas"]["RawError"];
           };
         };
       };
@@ -184,9 +220,27 @@ export interface paths {
             };
           };
         };
+        /** @description Missing or invalid management credential */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ManagementError"];
+          };
+        };
+        /** @description Authenticated principal is not authorized for this operation */
+        403: {
+          content: {
+            "application/json": components["schemas"]["ManagementError"];
+          };
+        };
         /** @description Method not allowed (GET only) */
         405: {
           content: never;
+        };
+        /** @description Management credential store unavailable */
+        503: {
+          content: {
+            "application/json": components["schemas"]["ManagementError"];
+          };
         };
       };
     };
@@ -214,6 +268,24 @@ export interface paths {
               circuit_breaker_state?: number;
               last_error?: string;
             };
+          };
+        };
+        /** @description Missing or invalid management credential */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ManagementError"];
+          };
+        };
+        /** @description Authenticated principal is not authorized for this operation */
+        403: {
+          content: {
+            "application/json": components["schemas"]["ManagementError"];
+          };
+        };
+        /** @description Management credential store unavailable */
+        503: {
+          content: {
+            "application/json": components["schemas"]["ManagementError"];
           };
         };
       };
@@ -259,9 +331,27 @@ export interface paths {
             "application/json": components["schemas"]["SimpleError"];
           };
         };
+        /** @description Missing or invalid management credential */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ManagementError"];
+          };
+        };
+        /** @description Authenticated principal is not authorized for this operation */
+        403: {
+          content: {
+            "application/json": components["schemas"]["ManagementError"];
+          };
+        };
         /** @description Method not allowed */
         405: {
           content: never;
+        };
+        /** @description Management credential store unavailable */
+        503: {
+          content: {
+            "application/json": components["schemas"]["ManagementError"];
+          };
         };
       };
     };
@@ -277,6 +367,24 @@ export interface paths {
             "application/json": {
               result?: string;
             };
+          };
+        };
+        /** @description Missing or invalid management credential */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ManagementError"];
+          };
+        };
+        /** @description Authenticated principal is not authorized for this operation */
+        403: {
+          content: {
+            "application/json": components["schemas"]["ManagementError"];
+          };
+        };
+        /** @description Management credential store unavailable */
+        503: {
+          content: {
+            "application/json": components["schemas"]["ManagementError"];
           };
         };
       };
@@ -316,6 +424,18 @@ export interface paths {
             "application/json": components["schemas"]["SimpleError"];
           };
         };
+        /** @description Missing or invalid management credential */
+        401: {
+          content: {
+            "application/json": components["schemas"]["ManagementError"];
+          };
+        };
+        /** @description Authenticated principal is not authorized for this operation */
+        403: {
+          content: {
+            "application/json": components["schemas"]["ManagementError"];
+          };
+        };
         /** @description Key not found */
         404: {
           content: {
@@ -328,6 +448,12 @@ export interface paths {
             "application/json": components["schemas"]["SimpleError"];
           };
         };
+        /** @description Management credential store or API-key store unavailable */
+        503: {
+          content: {
+            "application/json": components["schemas"]["RawError"];
+          };
+        };
       };
     };
   };
@@ -337,6 +463,23 @@ export type webhooks = Record<string, never>;
 
 export interface components {
   schemas: {
+    /** @description Error envelope emitted by management authentication and authorization middleware. */
+    ManagementError: {
+      /** Format: int32 */
+      code?: number;
+      message?: string;
+      result?: string;
+      fields?: string[];
+    };
+    /** @description Error returned before or after raw-route dispatch. Authentication errors use code/message/result/fields; raw handlers use error. */
+    RawError: {
+      /** Format: int32 */
+      code?: number;
+      message?: string;
+      result?: string;
+      fields?: string[];
+      error?: string;
+    };
     /** @description Minimal error envelope returned by the raw handlers. */
     SimpleError: {
       error?: string;

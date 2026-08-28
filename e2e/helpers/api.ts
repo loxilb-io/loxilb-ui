@@ -6,6 +6,7 @@
 //---------------------------------------------------------
 import fs from 'fs';
 import path from 'path';
+import {buildLBDeleteKey, buildLBDeletePath} from '../../src/types/lb_identity';
 
 // No default on purpose: the suite runs against a live OAM/gateway stack the
 // operator owns, so the address must come from the environment
@@ -153,6 +154,35 @@ export async function gwJson<T = any>(apiPath: string): Promise<T> {
 	const resp = await gw('GET', apiPath);
 	if (!resp.ok) throw new Error(`GET ${apiPath} failed: ${resp.status}`);
 	return (await resp.json()) as T;
+}
+
+/**
+ * Resolve a real data-plane interface from the selected live instance.
+ * Container and VM deployments are not required to call it `eth0`; preferring
+ * an active physical port keeps network E2E fixtures portable without ever
+ * falling back to an loxilb-owned virtual interface.
+ */
+export async function primaryNetworkDevice(): Promise<string> {
+	const data = await gwJson<{
+		portAttr?: Array<{
+			portName?: string;
+			portNo?: number;
+			portSoftwareInformation?: {portActive?: boolean; portType?: number};
+		}>;
+	}>('/config/port/all');
+	const blocked = /^(?:lo|llb|vlan|vxlan|ipip|wg|utun|docker|br-)/i;
+	const candidates = (data.portAttr ?? [])
+		.filter(port => port.portName && !blocked.test(port.portName))
+		.sort((a, b) => {
+			const active = Number(Boolean(b.portSoftwareInformation?.portActive)) - Number(Boolean(a.portSoftwareInformation?.portActive));
+			if (active) return active;
+			const physical = Number(b.portSoftwareInformation?.portType === 1) - Number(a.portSoftwareInformation?.portType === 1);
+			if (physical) return physical;
+			return (a.portNo ?? Number.MAX_SAFE_INTEGER) - (b.portNo ?? Number.MAX_SAFE_INTEGER);
+		});
+	const device = candidates[0]?.portName;
+	if (!device) throw new Error('The selected instance exposes no usable data-plane network device');
+	return device;
 }
 
 //---------------------------------------------------------
@@ -390,16 +420,32 @@ export async function sweepVxlans(): Promise<number> {
 
 /** Deletes every route whose destination sits in a documentation range. */
 export async function sweepRoutes(): Promise<number> {
+	// Always attempt the suite's fixed CIDRs as well as currently listed rows.
+	// Route creation can be applied to the kernel before it appears in the GET
+	// table; a list-only sweep then misses it and the next run receives 409.
+	const targets = new Set([
+		'203.0.113.0/26',
+		'203.0.113.64/26',
+		'203.0.113.128/26',
+		'203.0.113.192/26',
+		'198.51.100.0/26',
+	]);
 	const resp = await gw('GET', '/config/route/all');
-	if (!resp.ok) return 0;
-	const data = await resp.json();
+	if (resp.ok) {
+		const data = await resp.json();
+		for (const route of data.routeAttr ?? []) {
+			if (isDocAddr(route.destinationIPNet)) targets.add(route.destinationIPNet);
+		}
+	}
 	let removed = 0;
-	for (const r of data.routeAttr ?? []) {
-		if (!isDocAddr(r.destinationIPNet)) continue;
-		const [ip, mask] = r.destinationIPNet.split('/');
+	for (const destination of targets) {
+		const [ip, mask] = destination.split('/');
 		const del = await gw('DELETE', `/config/route/destinationIPNet/${encodeURIComponent(ip)}/${mask}`);
 		if (del.ok) removed++;
 	}
+	// The route table update is asynchronous. Give the dataplane a bounded
+	// convergence window before a following create reuses the same CIDR.
+	await new Promise(resolve => setTimeout(resolve, 750));
 	return removed;
 }
 
@@ -460,22 +506,40 @@ export async function sweepIpsecCerts(): Promise<number> {
 	return removed;
 }
 
-/**
- * True when the gateway is built WITHOUT --userservice, so every /config/ai/*
- * endpoint answers 501. The AI CRUD specs probe this once and skip their
- * mutation cases; the render + client-validation cases always run.
- */
-export async function gatewayLacksUserservice(): Promise<boolean> {
-	const resp = await gw('GET', '/config/ai/apikey');
-	return resp.status === 501;
+export interface AIManagementReadiness {
+	ready: boolean;
+	status: number;
+	reason: string;
 }
 
-/** Deletes every AI API key owned by an e2e- tenant (no-op while AI 501s). */
+/**
+ * Probe the real readiness boundary for the AI management routes.
+ *
+ * These routes are registered independently of the legacy userservice flag.
+ * A successful list proves that OAM supplied a valid Gateway service identity
+ * and that the API-key store is reachable. Authentication/authorization and
+ * store failures remain distinct so an E2E skip never hides a contract error.
+ */
+export async function gatewayAIManagementReadiness(): Promise<AIManagementReadiness> {
+	const resp = await gw('GET', '/config/ai/apikey');
+	const reasons: Record<number, string> = {
+		401: 'Gateway management service identity is missing or invalid (HTTP 401)',
+		403: 'Gateway management service identity lacks permission (HTTP 403)',
+		503: 'Gateway API-key store is unconfigured or unavailable (HTTP 503)',
+	};
+	return {
+		ready: resp.ok,
+		status: resp.status,
+		reason: resp.ok ? 'Gateway AI management API is ready' : (reasons[resp.status] ?? `Unexpected Gateway AI management response (HTTP ${resp.status})`),
+	};
+}
+
+/** Deletes every AI API key owned by an e2e- tenant (no-op unless the store is ready). */
 export async function sweepApiKeys(): Promise<number> {
 	const resp = await gw('GET', '/config/ai/apikey');
 	if (!resp.ok) return 0;
 	const data = await resp.json();
-	if (!Array.isArray(data)) return 0; // 402/501 error body, not a list
+	if (!Array.isArray(data)) return 0;
 	let removed = 0;
 	for (const k of data) {
 		if ((isE2eMarked(k.tenant_id) || isE2eMarked(k.name)) && k.key_id) {
@@ -596,23 +660,45 @@ export async function sweepInstances(): Promise<number> {
 
 /** Deletes every LB rule with an e2e- name or documentation-range VIP. */
 export async function sweepLbRules(): Promise<number> {
-	const resp = await gw('GET', '/config/loadbalancer/all');
-	if (!resp.ok) return 0;
-	const data = await resp.json();
 	let removed = 0;
-	for (const rule of data.lbAttr ?? []) {
-		const sa = rule.serviceArguments ?? {};
-		if (isE2eMarked(sa.name) || isE2eMarked(sa.externalIP)) {
-			// Name-delete works for every mode; the tuple endpoints 404 on
-			// fullproxy/L7 (mode 4) rules.
+	// A successful delete response does not guarantee that the subsequent
+	// datapath/list read has converged yet. Re-list and retry marked survivors
+	// before returning; otherwise a following create can race the stale rule and
+	// fail with 409 even though cleanup appeared successful.
+	for (let pass = 1; pass <= 5; pass++) {
+		const resp = await gw('GET', '/config/loadbalancer/all');
+		if (!resp.ok) return removed;
+		const data = await resp.json();
+		const marked = (data.lbAttr ?? []).filter((rule: any) => {
+			const sa = rule.serviceArguments ?? {};
+			return isE2eMarked(sa.name) || isE2eMarked(sa.externalIP);
+		});
+		if (marked.length === 0) return removed;
+
+		for (const rule of marked) {
+			const sa = rule.serviceArguments ?? {};
+			// Prefer the stable unique name. Nameless rules must use the same full
+			// identity builder as the UI so model/host/path/range peers cannot be
+			// deleted as collateral cleanup.
 			const path = sa.name
 				? `/config/loadbalancer/name/${encodeURIComponent(sa.name)}`
-				: sa.portMax && sa.portMax > sa.port
-				? `/config/loadbalancer/externalipaddress/${sa.externalIP}/port/${sa.port}/portmax/${sa.portMax}/protocol/${sa.protocol}`
-				: `/config/loadbalancer/externalipaddress/${sa.externalIP}/port/${sa.port}/protocol/${sa.protocol}`;
+				: buildLBDeletePath(buildLBDeleteKey(rule));
 			const del = await gw('DELETE', path);
 			if (del.ok) removed++;
 		}
+		await new Promise(resolve => setTimeout(resolve, 250 * pass));
+	}
+
+	const finalResp = await gw('GET', '/config/loadbalancer/all');
+	if (!finalResp.ok) throw new Error(`LB cleanup verification failed: GET /config/loadbalancer/all returned ${finalResp.status}`);
+	const finalData = await finalResp.json();
+	const survivors = (finalData.lbAttr ?? []).filter((rule: any) => {
+		const sa = rule.serviceArguments ?? {};
+		return isE2eMarked(sa.name) || isE2eMarked(sa.externalIP);
+	});
+	if (survivors.length > 0) {
+		const identities = survivors.map((rule: any) => rule.serviceArguments?.name || rule.serviceArguments?.externalIP || '(unknown)').join(', ');
+		throw new Error(`LB cleanup did not converge; refusing to run mutating tests with ${survivors.length} marked rule(s) still present: ${identities}`);
 	}
 	return removed;
 }
