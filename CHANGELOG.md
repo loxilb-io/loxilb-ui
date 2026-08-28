@@ -9,9 +9,15 @@ Releases follow [loxilb-io/loxilb](https://github.com/loxilb-io/loxilb)'s
 
 ## [Unreleased]
 
+## [0.9.8.9-rc.1] - 2026-08-28
+
 ### Added
 - Inference-gateway integration: AI-gateway views alongside the classic LoxiLB
   load-balancer management UI.
+- Inference-gateway API key lifecycle and tenant/per-model rate-limit
+  management, including safe secret input and quota deletion semantics.
+- Explicit runtime capability boundaries for upstream loxilb OSS and the
+  inference gateway, backed by separate live browser suites.
 - Community and governance baseline aligned with the loxilb-io organization
   policy (governance, maintainers, code owners, PR/issue templates, Dependabot).
 - `docs/container-image.md` — reference for the published container image:
@@ -69,7 +75,7 @@ Releases follow [loxilb-io/loxilb](https://github.com/loxilb-io/loxilb)'s
 - **The Compose stack runs the published image by default** instead of building
   from source, with each TLS mode as an overlay layered on `docker-compose.yml`.
   Build from a checkout with `docker-compose.build.yml`.
-- **Version is single-sourced from `package.json`** (`0.9.8.7`, the lockstep
+- **Version is single-sourced from `package.json`** (`0.9.8.9`, the lockstep
   release number). It is baked into the bundle as `REACT_APP_VERSION`, shown on
   the login page, set as the image's OCI version label, and checked against the
   git tag by the release workflow. The login page previously imported
@@ -88,4 +94,5 @@ Releases follow [loxilb-io/loxilb](https://github.com/loxilb-io/loxilb)'s
   detection was based on a regex that could not match.
 - `deploy.sh` drives the overlays with Compose v2 (`docker compose`).
 
-[Unreleased]: https://github.com/loxilb-io/loxilb-ui/commits/main
+[Unreleased]: https://github.com/loxilb-io/loxilb-ui/compare/v0.9.8.9-rc.1...HEAD
+[0.9.8.9-rc.1]: https://github.com/loxilb-io/loxilb-ui/compare/v0.9.8.7...v0.9.8.9-rc.1
