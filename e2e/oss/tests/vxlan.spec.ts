@@ -7,7 +7,7 @@
 //---------------------------------------------------------
 import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {gw, sweepVxlans} from '../../helpers/api';
+import {gw, primaryNetworkDevice, sweepVxlans} from '../../helpers/api';
 import {requireLoxilbInstance} from '../_loxilb';
 import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, openDialog, openToolbarDialog} from '../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../helpers/form';
@@ -32,10 +32,12 @@ async function captureDeletes(page: Page, needle: string, action: () => Promise<
 }
 
 let instName: string;
+let endpointDevice: string;
 
 test.describe('@loxilb VXLAN page CRUD', () => {
 	test.beforeAll(async () => {
 		instName = await requireLoxilbInstance();
+		endpointDevice = await primaryNetworkDevice();
 		await sweepVxlans();
 	});
 
@@ -51,7 +53,7 @@ test.describe('@loxilb VXLAN page CRUD', () => {
 
 	test('C-min: epIntf + vxlanID POST clean, then D-single', async ({page}) => {
 		await openToolbarDialog(page, 'Add', 'New VxLAN');
-		await field(page, 'Endpoint Interface').fill('eth0');
+		await field(page, 'Endpoint Interface').fill(endpointDevice);
 		await field(page, 'VXLAN ID').fill(String(VXID));
 
 		const [req] = await Promise.all([
@@ -59,7 +61,7 @@ test.describe('@loxilb VXLAN page CRUD', () => {
 			dialogButton(page, 'Add').click(),
 		]);
 		const body = req.postDataJSON();
-		expect(body).toMatchObject({epIntf: 'eth0', vxlanID: VXID});
+		expect(body).toMatchObject({epIntf: endpointDevice, vxlanID: VXID});
 		expect(body.isValid).toBeUndefined();
 
 		const resp = await req.response();
@@ -81,7 +83,7 @@ test.describe('@loxilb VXLAN page CRUD', () => {
 	});
 
 	test('peer add + delete via the sub-panel', async ({page}) => {
-		expect((await gw('POST', VX_PATH, {epIntf: 'eth0', vxlanID: VXID})).status).toBeLessThan(300);
+		expect((await gw('POST', VX_PATH, {epIntf: endpointDevice, vxlanID: VXID})).status).toBeLessThan(300);
 
 		await reloadUntilRow(page, String(VXID));
 		await selectRowByText(page, String(VXID)); // opens the peer sub-panel
@@ -112,7 +114,7 @@ test.describe('@loxilb VXLAN page CRUD', () => {
 	});
 
 	test('V-peer-ip: malformed peer IP blocks submit in the peer sub-panel', async ({page}) => {
-		expect((await gw('POST', VX_PATH, {epIntf: 'eth0', vxlanID: VXID})).status).toBeLessThan(300);
+		expect((await gw('POST', VX_PATH, {epIntf: endpointDevice, vxlanID: VXID})).status).toBeLessThan(300);
 
 		await reloadUntilRow(page, String(VXID));
 		await selectRowByText(page, String(VXID)); // opens the peer sub-panel

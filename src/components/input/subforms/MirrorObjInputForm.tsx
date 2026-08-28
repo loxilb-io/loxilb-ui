@@ -45,17 +45,16 @@ export default function TargetObjectInputForm(props: {value: ITargetObject; onCh
 
 	const rule_params = {...params?.mirrObjName};
 
-	const [cur_type, set_cur_type] = useState(0);
 	const [cur_rule_index, set_cur_rule_index] = useState(0);
 	const [cur_port_index, set_cur_port_index] = useState(0);
 
 	const handleChangeType = (newValue: number) => {
-		set_cur_type(newValue);
-
 		if (newValue === 0 && rules.length > 0) {
 			onChange({attachment: 0, mirrObjName: rules[0].param});
 		} else if (newValue === 1 && ports.length > 0) {
 			onChange({attachment: 1, mirrObjName: ports[0].param});
+		} else {
+			onChange({...value, attachment: newValue});
 		}
 	};
 
@@ -90,13 +89,6 @@ export default function TargetObjectInputForm(props: {value: ITargetObject; onCh
 		}
 	}, [value, onChange]);
 
-	// Synchronize cur_type with value.attachment
-	useEffect(() => {
-		if (value.attachment !== undefined && value.attachment !== cur_type) {
-			set_cur_type(value.attachment);
-		}
-	}, [value.attachment, cur_type]);
-
 	// When attachment is set but mirrObjName is not, set the first available (only once).
 	// The emit is guarded on a TRUTHY candidate name: announcing a falsy one can
 	// never latch (value.mirrObjName stays empty), so the effect would re-fire on
@@ -125,8 +117,11 @@ export default function TargetObjectInputForm(props: {value: ITargetObject; onCh
 	return (
 		<Stack spacing={2}>
 		   <ParamBox label={t('Attachment Type')} value={value?.attachment ?? ''} param_desc={{...params?.attachment, enum: attachments}} onChange={handleChangeType} />
-		   {cur_type === 0 && <ParamBox label={'Attached Rule'} value={cur_rule_index ?? 0} param_desc={{...rule_params, type: 'enum', enum: rules}} onChange={handleChangeRule} />}
-		   {cur_type === 1 && <ParamBox label={'Attached Port'} value={cur_port_index ?? 0} param_desc={{...rule_params, type: 'enum', enum: ports}} onChange={handleChangePort} />}
+			   {/* value.attachment is the single source of truth. Keeping a second
+			       cur_type state allowed the dropdown to say Port while the stale
+			       Rule target remained mounted during async query/form updates. */}
+			   {Number(value.attachment) === 0 && <ParamBox label={'Attached Rule'} value={cur_rule_index ?? 0} param_desc={{...rule_params, type: 'enum', enum: rules}} onChange={handleChangeRule} />}
+			   {Number(value.attachment) === 1 && <ParamBox label={'Attached Port'} value={cur_port_index ?? 0} param_desc={{...rule_params, type: 'enum', enum: ports}} onChange={handleChangePort} />}
 		</Stack>
 	);
 }

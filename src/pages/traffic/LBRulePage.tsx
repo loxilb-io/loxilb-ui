@@ -2,7 +2,6 @@
 // Imports
 //---------------------------------------------------------
 import {Stack} from '@mui/material';
-import { getStableHash } from 'common';
 import SubTabs from 'components/element/SubTabs';
 import LBInputForm from 'components/input/LBInputForm';
 import LowerSection from 'components/layout/LowerSection';
@@ -16,7 +15,7 @@ import QoSPanel from 'components/panel/QOSPanel';
 import SecondaryIPsPanel from 'components/panel/SecondaryIPPanel';
 import SettingsPanel from 'components/panel/SettingPanel';
 import LBTable from 'components/table/traffic/LBTable';
-import {query_get_load_balancer_config_all, request_create_load_balancer_config, request_delete_lb_by_ip_port_proto, request_delete_lb_by_ip_portrange_proto, request_delete_lb_by_name, request_patch_load_balancer_config} from 'connector/instance/load_balancer';
+import {query_get_load_balancer_config_all, request_create_load_balancer_config, request_delete_lb_by_full_key, request_delete_lb_by_name, request_patch_load_balancer_config} from 'connector/instance/load_balancer';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {InstanceFlavor} from 'api/capabilities';
 import {useInstanceCapabilities} from 'hooks/query/flavorHook';
@@ -27,8 +26,30 @@ import {t} from 'i18next';
 import {Fragment, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {useSearchParams} from 'react-router-dom';
 import {IEndpoint, ILBData, IServiceConfiguration} from 'types/load_balancer';
+import {lbRuleRowId} from 'types/lb_identity';
 import {IMirrorConfiguration} from 'types/mirror';
-import {IPolicyConfiguration} from 'types/qos';
+import {buildQoSRuleTarget, IPolicyConfiguration} from 'types/qos';
+
+export type LBEditStrategy = 'create' | 'merge-patch' | 'reconcile' | 'block-fullproxy';
+
+export function selectLBEditStrategy({
+	keyChanged,
+	hasCompositeKey,
+	mode,
+	canMergePatch,
+}: {
+	keyChanged: boolean;
+	hasCompositeKey: boolean;
+	mode?: number;
+	canMergePatch: boolean;
+}): LBEditStrategy {
+	if (keyChanged || !hasCompositeKey) return 'create';
+	// The Gateway registers the tuple PATCH route for L4 rules, but explicitly
+	// rejects fullproxy/L7 rules (mode 4). Those rules have no safe in-place
+	// update operation: delete + create would interrupt active AI traffic.
+	if (mode === 4) return 'block-fullproxy';
+	return canMergePatch ? 'merge-patch' : 'reconcile';
+}
 
 //---------------------------------------------------------
 // Functional Component
@@ -36,13 +57,14 @@ import {IPolicyConfiguration} from 'types/qos';
 export default function LBRulePage() {
 	const inst = useInstanceFromURL();
 	const caps = useInstanceCapabilities();
-	// Same fallback the capability helpers use while the /version probe is in
-	// flight: assume the gateway, i.e. strip nothing. Guessing "loxilb" instead
-	// would silently drop fields a gateway legitimately accepts.
-	const effectiveFlavor: InstanceFlavor = caps.flavor ?? 'inference-gateway';
+	// Writes must fail toward the smaller OSS contract until /version positively
+	// identifies IGW. The IGW-only controls are also hidden while unresolved, so
+	// this fallback cannot discard an operator-visible Gateway setting.
+	const effectiveFlavor: InstanceFlavor = caps.flavor ?? 'loxilb';
 
 	const [searchParams] = useSearchParams();
 	const servName = searchParams.get('servName');
+	const qosTarget = searchParams.get('qosTarget');
 
 	const {data: lb_data, isError, refetch} = useLoadBalancerConfig(inst);
 	const lb_info: ILBData = useMemo(() => ({lbAttr: lb_data ?? []}), [lb_data]);
@@ -52,32 +74,27 @@ export default function LBRulePage() {
 	const {data: data_mirror} = useMirrors(inst);
 	const mirror_info: IMirrorConfiguration = useMemo(() => ({mirrAttr: data_mirror ?? []}), [data_mirror]);
 
-	const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds stable hash ids
+	const [selected_rows, set_selected_rows] = useState<(string | number)[]>([]); // holds opaque/full rule identities
 	const [cur_tab_idx, set_cur_tab_idx] = useState(0);
 
 	// Appended at the END: existing tab indices (and the E2E tab-name queries
 	// that depend on them) stay stable.
 	const tabs = ['Settings', 'Endpoints', 'Secondary IPs', 'Allowed Sources', 'Conntrack', 'QoS', 'Mirror', 'AI Gateway'];
 
-	// Hash function for LB rule — MUST match LBTable's getHashKey exactly
-	const getHashKey = (item: IServiceConfiguration) => {
-		const str = `${item.serviceArguments.externalIP || ''}_${item.serviceArguments.port || ''}_${item.serviceArguments.protocol || ''}`;
-		return getStableHash(str);
-	};
-
 	// Resolve selected items by matching stable hash ids against the raw data
 	const selectedItems = useMemo(
 		() =>
 			selected_rows
-				.map(h => lb_info.lbAttr.find(a => getHashKey(a) === h))
+				.map(h => lb_info.lbAttr.find(a => lbRuleRowId(a) === h))
 				.filter((x): x is IServiceConfiguration => x != null),
 		[selected_rows, lb_info],
 	);
 	const selectedItem: IServiceConfiguration | null = selectedItems.length === 1 ? selectedItems[0] : null;
 	const rule_name = selectedItem ? selectedItem.serviceArguments.name || 'unnamed' : null;
+	const lb_target = selectedItem ? buildQoSRuleTarget(selectedItem.serviceArguments) : null;
 
 	// Selection handler: store the stable hash ids directly
-	const handleSelectionChange = (hashes: number[]) => set_selected_rows(hashes);
+	const handleSelectionChange = (identities: (string | number)[]) => set_selected_rows(identities);
 
 	// Reset the detail tab whenever the selection changes
 	useEffect(() => {
@@ -92,22 +109,13 @@ export default function LBRulePage() {
 
 		// Delete multiple selected load balancers
 		const deletePromises = selectedItems.map(async (selectedLB) => {
-			const externalIP = selectedLB.serviceArguments.externalIP;
-			const port = selectedLB.serviceArguments.port;
-			const protocol = selectedLB.serviceArguments.protocol;
-
 			// Name-delete works for every mode; the tuple endpoints 404 on
 			// fullproxy/L7 rules (gateway keys those differently).
 			if (selectedLB.serviceArguments.name) {
 				return request_delete_lb_by_name(inst, selectedLB.serviceArguments.name);
 			}
 
-			// if selectedLB.serviceArguments.portMax exists and is greater than port, use that API
-			if (selectedLB.serviceArguments.portMax && selectedLB.serviceArguments.portMax > port) {
-				return request_delete_lb_by_ip_portrange_proto(inst, externalIP, port, selectedLB.serviceArguments.portMax, protocol);
-			} else {
-				return request_delete_lb_by_ip_port_proto(inst, externalIP, port, protocol);
-			}
+			return request_delete_lb_by_full_key(inst, selectedLB);
 		});
 
 		const results = await Promise.all(deletePromises);
@@ -133,7 +141,7 @@ export default function LBRulePage() {
 
 	const instanceRef = useRef<IServiceConfiguration | null>(null);
 	const handleAdd = useCallback(() => {
-		if (!inst) return;
+		if (!inst || !caps.resolved) return;
 
 		const input_form = (
 			<LBInputForm
@@ -169,12 +177,15 @@ export default function LBRulePage() {
 			},
 			true,
 		);
-	}, [inst, showAddError, refetch, enableYes]);
+	// Flavor resolves asynchronously. Rebuild this callback when it changes so
+	// an IGW dialog cannot submit through the initial OSS-safe projection and
+	// silently strip the Gateway-only fields the operator just entered.
+	}, [inst, caps.resolved, effectiveFlavor, showAddError, refetch, enableYes]);
 
 	// Update handler for LB rules
 	const updateFormRef = useRef<(IServiceConfiguration & {isValid?: boolean; errors?: any}) | null>(null);
 	const handleUpdate = useCallback(() => {
-		if (!inst || !selectedItem) return;
+		if (!inst || !caps.resolved || !selectedItem) return;
 
 		const selectedLB = selectedItem;
 
@@ -223,9 +234,15 @@ export default function LBRulePage() {
 				// PATCH on the per-VIP path is gateway-only; upstream loxilb
 				// answers 405 (capability map, gatewayOnlyMethods).
 				const canMergePatch = caps.hasMethod('patch', '/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}');
+				const editStrategy = selectLBEditStrategy({
+					keyChanged,
+					hasCompositeKey: Boolean(osa.externalIP && osa.port != null && osa.protocol),
+					mode: osa.mode,
+					canMergePatch,
+				});
 
 				let res;
-				if (keyChanged || !osa.externalIP || osa.port == null || !osa.protocol) {
+				if (editStrategy === 'create') {
 					// The VIP/port/proto composite key is immutable under PATCH —
 					// changing it means a different rule, so fall back to re-POST.
 					res = await request_create_load_balancer_config(inst, serviceConfig, effectiveFlavor);
@@ -241,12 +258,29 @@ export default function LBRulePage() {
 					const isZero = (v: any) => v === undefined || v === null || v === 0 || v === '' || v === false;
 					// LBInputForm's one non-zero injected default: over an absent
 					// read-back field it is form scaffolding, not an operator edit.
-					const FORM_DEFAULTS: Record<string, unknown> = {probeTimeout: 1800};
-					const saPatch: Record<string, any> = {};
-					Object.entries(sa).forEach(([k, v]) => {
-						if (IMMUTABLE.has(k)) return;
-						const prev = (osa as any)[k];
-						if (prev === undefined && (isZero(v) || v === FORM_DEFAULTS[k])) return;
+						const FORM_DEFAULTS: Record<string, unknown> = {
+							probeTimeout: 1800,
+							path_match_mode: 'disabled',
+							backend_protocol: 'http1',
+							chwbl_prefix_hash_level: 1,
+						};
+						const isFormDefault = (key: string, value: unknown): boolean => {
+							if (value === FORM_DEFAULTS[key]) return true;
+							// The mTLS dropdown materializes the Swagger default on mount,
+							// even when the persisted rule omitted the whole object.
+							if (key === 'mtls_frontend' && value && typeof value === 'object') {
+								const mtls = value as Record<string, unknown>;
+								return mtls.client_cert_mode === 'disabled' && Object.entries(mtls).every(([field, nested]) =>
+									field === 'client_cert_mode' || isZero(nested),
+								);
+							}
+							return false;
+						};
+						const saPatch: Record<string, any> = {};
+						Object.entries(sa).forEach(([k, v]) => {
+							if (IMMUTABLE.has(k)) return;
+							const prev = (osa as any)[k];
+							if (prev === undefined && (isZero(v) || isFormDefault(k, v))) return;
 						if (JSON.stringify(v) !== JSON.stringify(prev)) saPatch[k] = v;
 					});
 					const endpointsChanged = JSON.stringify(serviceConfig.endpoints) !== JSON.stringify(editableEndpoints);
@@ -261,7 +295,24 @@ export default function LBRulePage() {
 						return;
 					}
 
-					if (canMergePatch) {
+						if (editStrategy === 'block-fullproxy') {
+							const changedFields = [
+								...Object.keys(saPatch).map(field => `serviceArguments.${field}`),
+								...(endpointsChanged ? ['endpoints'] : []),
+								...(secondaryChanged ? ['secondaryIPs'] : []),
+								...(allowedChanged ? ['allowedSources'] : []),
+							];
+							showUpdateError(
+								'load balancer rule',
+								t(
+									'Fullproxy (mode 4) rules cannot be updated in place. Create and verify a replacement rule with a different VIP, port, or protocol, then remove the original rule. Changed fields: {{fields}}.',
+									{fields: changedFields.join(', ')},
+								),
+							);
+						return;
+					}
+
+					if (editStrategy === 'merge-patch') {
 						// RFC 7386 merge-patch: send only changed, mutable fields.
 						const patch: Partial<IServiceConfiguration> = {};
 						if (Object.keys(saPatch).length > 0) patch.serviceArguments = saPatch as any;
@@ -296,7 +347,7 @@ export default function LBRulePage() {
 						if (Object.keys(saPatch).length > 0 || secondaryChanged || allowedChanged) {
 							const del = osa.name
 								? await request_delete_lb_by_name(inst, osa.name)
-								: await request_delete_lb_by_ip_port_proto(inst, osa.externalIP, osa.port, osa.protocol);
+								: await request_delete_lb_by_full_key(inst, selectedLB);
 							if (del.status !== 'success') {
 								showUpdateError('load balancer rule', del.error);
 								return;
@@ -325,13 +376,17 @@ export default function LBRulePage() {
 	};
 
 	useEffect(() => {
-		if (!servName || !lb_info || lb_info.lbAttr.length === 0) return;
-		const match = lb_info.lbAttr.find(attr => attr.serviceArguments.name === servName);
+		if ((!servName && !qosTarget) || !lb_info || lb_info.lbAttr.length === 0) return;
+		const match = lb_info.lbAttr.find(attr =>
+			servName
+				? attr.serviceArguments.name === servName
+				: buildQoSRuleTarget(attr.serviceArguments) === qosTarget,
+		);
 		if (match) {
-			set_selected_rows([getHashKey(match)]);
+			set_selected_rows([lbRuleRowId(match)]);
 			set_cur_tab_idx(0);
 		}
-	}, [servName, lb_info]);
+	}, [servName, qosTarget, lb_info]);
 
 	return lb_info && inst ? (
 		<Fragment>
@@ -339,9 +394,13 @@ export default function LBRulePage() {
 				data={lb_info}
 				selected_rows={selected_rows}
 				onChangeSelectedRows={handleSelectionChange}
-				onAdd={handleAdd}
+				// Do not open a mutation dialog until /version has selected the exact
+				// OSS or IGW write contract. A popup stores its submit callback at open
+				// time; opening during the unresolved OSS-safe fallback can otherwise
+				// strip IGW fields even if the controls appear a moment later.
+				onAdd={caps.resolved ? handleAdd : undefined}
 				onDelete={handleDelete}
-				onUpdate={handleUpdate}
+				onUpdate={caps.resolved ? handleUpdate : undefined}
 					onRefresh={handleRefresh}
 					error={isError}
 			/>
@@ -356,7 +415,7 @@ export default function LBRulePage() {
 						{cur_tab_idx === 2 && <SecondaryIPsPanel secondaryIPs={selectedItem.secondaryIPs} />}
 						{cur_tab_idx === 3 && <AllowedSourcesPanel allowedSources={selectedItem.allowedSources} />}
 						{cur_tab_idx === 4 && rule_name && <ConntrackTablePanel lb_name={rule_name} />}
-						{cur_tab_idx === 5 && rule_name && <QoSPanel data={qos_info} lb_name={rule_name} />}
+							{cur_tab_idx === 5 && lb_target && <QoSPanel data={qos_info} lb_target={lb_target} />}
 						{cur_tab_idx === 6 && rule_name && <MirrorPanel data={mirror_info} lb_name={rule_name} />}
 						{cur_tab_idx === 7 && <AIGatewayPanel serviceArguments={selectedItem.serviceArguments} />}
 					</Stack>

@@ -1,7 +1,8 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {getStableHash, isValidMacAddress} from 'common';
+import {isValidMacAddress} from 'common';
+import {GridRowId} from '@mui/x-data-grid';
 import FdbInputForm from 'components/input/FDBInputForm';
 import ErrorPopUp from 'components/modal/ErrorPopUp';
 import FDBTable from 'components/table/networks/FDBTable';
@@ -13,6 +14,7 @@ import {useFDB} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {useMemo, useRef, useState} from 'react';
 import {IFdbAttribute, IFdbData} from 'types/fdb';
+import {identifyFdbEntries} from 'types/fdb_identity';
 
 //---------------------------------------------------------
 // Functional Component
@@ -23,21 +25,19 @@ export default function FDBPage() {
 	const {data, isError, refetch} = useFDB(inst); // IFdbAttribute[]
 	const fdb_info: IFdbData = {fdbAttr: data ?? []};
 
-   const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds hash ids
+	   const [selected_rows, set_selected_rows] = useState<GridRowId[]>([]);
    const {openPopUp, enableYes} = usePopUp();
    const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
-   // Hash function for FDB entry
-   const getHashKey = (item: any) => {
-	   const str = `${item.dev || ''}_${item.macAddress || ''}`;
-	   return getStableHash(str);
-   };
-   // Resolve selected items by matching the stable hash
-   const selectedItems = useMemo(
-	   () => selected_rows.map(h => fdb_info.fdbAttr.find(a => getHashKey(a) === h)).filter((x): x is IFdbAttribute => x != null),
-	   [selected_rows, fdb_info.fdbAttr],
-   );
-   // Selection handler: page holds hash ids directly
-   const handleSelectionChange = (hashes: number[]) => set_selected_rows(hashes);
+	   // Resolve selected rows through the same duplicate-safe identities used by
+	   // the table. Exact duplicate records remain independently selectable.
+	   const selectedItems = useMemo(
+		   () => {
+			   const entriesById = new Map(identifyFdbEntries(fdb_info.fdbAttr).map(item => [item.id, item.entry]));
+			   return selected_rows.map(id => entriesById.get(String(id))).filter((x): x is IFdbAttribute => x != null);
+		   },
+		   [selected_rows, fdb_info.fdbAttr],
+	   );
+	   const handleSelectionChange = (ids: GridRowId[]) => set_selected_rows(ids);
 	const handleDelete = async () => {
 		if (!inst || selectedItems.length === 0) return;
 

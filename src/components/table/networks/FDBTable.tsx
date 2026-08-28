@@ -4,12 +4,13 @@
 import DataTable from 'components/table/DataTable';
 import {IFdbData} from 'types/fdb';
 import {IDataTableColumnDef} from 'types/global';
-import {getStableHash} from 'common';
+import {identifyFdbEntries} from 'types/fdb_identity';
+import {GridRowId} from '@mui/x-data-grid';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function FDBTable(props: {data: IFdbData; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onRefresh?: any; error?: boolean}) {
+export default function FDBTable(props: {data: IFdbData; selected_rows: GridRowId[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onRefresh?: any; error?: boolean}) {
 	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
@@ -17,20 +18,17 @@ export default function FDBTable(props: {data: IFdbData; selected_rows: number[]
 		{data_key: 'macAddress', header: 'MAC Address', width: 'wide', type: 'mono'},
 	];
 
-   // Use global hash function for FDB entry
-   const getHashKey = (item: any) => getStableHash(`${item.dev || ''}_${item.macAddress || ''}`);
-
-   const rows = data.fdbAttr
-	   ? (() => {
-		   const sorted = [...data.fdbAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
-		   return sorted.map(item => {
-			   return {
-				   id: getHashKey(item),
-				   dev: item.dev,
-				   macAddress: item.macAddress,
-				   description: '',
-				   _uniqueKey: getHashKey(item),
-			   };
+	   const rows = data.fdbAttr
+		   ? (() => {
+			   const identified = identifyFdbEntries(data.fdbAttr).sort((a, b) => a.id.localeCompare(b.id));
+			   return identified.map(({id, entry}) => {
+				   return {
+					   id,
+					   dev: entry.dev,
+					   macAddress: entry.macAddress,
+					   description: '',
+					   _uniqueKey: id,
+				   };
 		   });
 	   })()
 	   : undefined;

@@ -5,8 +5,8 @@
 //   short max_stream_duration_sec as the absolute stream cap; a companion
 //   non-SSE rule (sse_mode omitted) proves the flag is per-rule.
 //
-// SSE is a config surface — no --userservice, no live SSE stream; we assert
-// the tuning serviceArguments round-trip via REST (plan §8).
+// This configuration-only scenario asserts the tuning serviceArguments
+// round-trip via REST. Live SSE/data-plane policy proof is a separate gate.
 //---------------------------------------------------------
 import {test} from '../../../fixtures';
 import {activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';

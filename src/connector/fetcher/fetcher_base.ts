@@ -74,6 +74,17 @@ export function assertOk(resp: SimpleResponse, operation: string): void {
 	throw new ApiError(createDetailedErrorMessage(resp, operation), resp.code);
 }
 
+/**
+ * Some legacy Gateway mutations report an application failure as HTTP 200
+ * with `{result: "fail"}`. Treat that envelope as an error so callers cannot
+ * show a false success toast for an operation the dataplane rejected.
+ */
+export function isMutationFailure(resp: SimpleResponse, acceptedCodes: number[] = [200, 204]): boolean {
+	if (!acceptedCodes.includes(resp.code)) return true;
+	const result = typeof (resp.data as any)?.result === 'string' ? (resp.data as any).result.trim().toLowerCase() : '';
+	return result === 'fail' || result === 'failed' || result === 'failure' || result === 'error';
+}
+
 //---------------------------------------------------------
 // Functions
 //---------------------------------------------------------
@@ -84,6 +95,21 @@ export function load_token(): string {
 
 export function remove_token() {
 	remove_local_storage('access_token');
+}
+
+/**
+ * Decide whether a 401 invalidates the human's OAM browser session.
+ *
+ * X-Loxi-Error-Origin is trusted only as a response provenance marker added at
+ * the OAM boundary. A Gateway-origin failure belongs to the management hop and
+ * must remain inline. Missing or unknown markers retain the conservative
+ * legacy behavior so older OAM versions do not leave an expired browser token
+ * installed. Login failures are always inline.
+ */
+export function shouldExpireOAMSession(response: Response, url: string): boolean {
+	if (/\/login(?:\b|\/)/.test(url)) return false;
+	const origin = response.headers.get('X-Loxi-Error-Origin')?.trim().toLowerCase();
+	return origin !== 'gateway';
 }
 
 async function fetch_data(url: string, options?: RequestOptions): Promise<Response> {
@@ -135,10 +161,7 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 		const isInlineErrorEndpoint = typeof url === 'string' && /\/oam\/(snapshots\/|instances\/[^/]+\/snapshot)/.test(url);
 		// if (resp.status === 401 || resp.status === 403) {
 		if (resp.status === 401) {
-			// Do not force-redirect when the request itself is for the login endpoint,
-			// so we can surface server error messages (e.g., Invalid credentials) in the UI.
-			const isLoginRequest = typeof url === 'string' && /\/login(?:\b|\/)/.test(url);
-			if (!isLoginRequest) {
+			if (shouldExpireOAMSession(resp, url)) {
 				remove_token();
 				forced_relocation_to_login();
 			}

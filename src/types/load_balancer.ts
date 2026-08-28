@@ -15,8 +15,14 @@ export interface IMtlsFrontend {
 	client_crl_path?: string;			// optional static CRL (PEM) for leaf revocation
 }
 
+// Declaration carried on an Inference Gateway fullproxy service. Omission is
+// deliberately distinct from "disabled": omission leaves the backend's
+// X-Api-Key namespace unmanaged, while explicit disabled claims and strips it.
+export type ApiKeyAuthPolicy = 'disabled' | 'required';
+
 export interface IServiceArguments {
 	name: string;
+	id?: string;					// stable opaque Gateway rule identifier when available
 
 	externalIP: string;
 	inactiveTimeOut: number;
@@ -53,6 +59,7 @@ export interface IServiceArguments {
 
 	// --- AI gateway: model routing / tracing ---
 	model_name?: string;			// endpoint-pool selector for AI model routing
+	api_key_auth?: ApiKeyAuthPolicy;	// absent = preserve/unmanaged; disabled = strip; required = enforce + strip
 	trace_type?: string;			// tracing catalog name for deep inspection
 	session_header_name?: string;	// header carrying the session key (sel=persist)
 	chwbl_prefix_hash_level?: number;	// CHWBL prefix hash level (sel=8)
@@ -69,11 +76,15 @@ export interface IServiceArguments {
 	pd_session_ttl_sec?: number;	// session stickiness TTL for P/D
 	pd_cache_threshold?: number;	// P/D cache match threshold (0-100)
 	pd_balance_abs_threshold?: number;	// P/D load-imbalance threshold
-	kvExactMode?: number;			// KV-cache exact routing mode (0-3)
-	kvBlockSize?: number;			// token block size for KV hash (>=1)
-	kvHashAlgo?: 'sha256_cbor' | 'xxhash_cbor';	// KV block hash algorithm
-	kvZmqPort?: number;				// ZMQ PUB port on prefill endpoints (1-65535)
-}
+		kvExactMode?: number;			// KV-cache exact routing mode (0, 1, or 3; 2 is reserved)
+		kvBlockSize?: number;			// token block size for KV hash (>=1)
+		kvHashAlgo?: 'sha256_cbor' | 'xxhash_cbor' | 'sha256_sglang' | 'blockhash_trtllm';	// engine-coherent KV block hash algorithm
+		kvZmqPort?: number;				// ZMQ PUB port on prefill endpoints (1-65535)
+		kvWarmupSec?: number;			// inventory warmup before Tier-1.5 routing
+		kvEngineType?: 'vllm' | 'sglang' | 'trtllm' | 'llamacpp';
+		kvDpRankCount?: number;			// SGLang data-parallel rank count (1-8)
+		pdBootstrapPort?: number;		// SGLang P/D bootstrap port (0 = engine default 8998)
+	}
 
 export interface IEndpoint {
 	endpointIP: string;

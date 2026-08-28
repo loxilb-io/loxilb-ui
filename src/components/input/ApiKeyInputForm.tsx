@@ -1,7 +1,8 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {Grid2, Stack, Switch, FormControlLabel, Divider} from '@mui/material';
+import {Visibility, VisibilityOff} from '@mui/icons-material';
+import {Divider, FormControlLabel, FormLabel, Grid2, IconButton, InputAdornment, Radio, RadioGroup, Stack, Switch, TextField} from '@mui/material';
 import {LocalizationProvider} from '@mui/x-date-pickers';
 import {AdapterDayjs} from '@mui/x-date-pickers/AdapterDayjs';
 import {DateTimePicker} from '@mui/x-date-pickers/DateTimePicker';
@@ -17,9 +18,12 @@ import React from 'react';
 //---------------------------------------------------------
 interface ApiKeyInputFormProps {
 	onChange: (data: IApiKeyCreateRequest & {isValid?: boolean}) => void;
+	onDispose?: () => void;
 }
 
-interface IApiKeyFormState {
+export interface IApiKeyFormState {
+	mode: 'generate' | 'import';
+	api_key: string;
 	tenant_id: string;
 	name: string;
 	allowed_models: string; // comma-separated in the form
@@ -31,6 +35,8 @@ interface IApiKeyFormState {
 }
 
 const INITIAL_FORM: IApiKeyFormState = {
+	mode: 'generate',
+	api_key: '',
 	tenant_id: '',
 	name: '',
 	allowed_models: '',
@@ -40,6 +46,14 @@ const INITIAL_FORM: IApiKeyFormState = {
 	expires_at: '',
 	enabled: true,
 };
+
+export function importedApiKeyError(value: string): string | undefined {
+	if (value.length < 16 || value.length > 512) return 'Imported key must contain 16 to 512 characters.';
+	if (/[^\x21-\x7e]/.test(value)) {
+		return 'Imported key must use printable non-space US-ASCII characters only.';
+	}
+	return undefined;
+}
 
 // Validates the optional RFC3339 expiry, e.g. 2027-01-01T00:00:00Z. Returns
 // the error message for an invalid value, or undefined when acceptable (empty
@@ -54,7 +68,7 @@ function expiryError(value: string): string | undefined {
 	return undefined;
 }
 
-function toRequest(form: IApiKeyFormState): IApiKeyCreateRequest {
+export function apiKeyFormToRequest(form: IApiKeyFormState): IApiKeyCreateRequest {
 	const models = form.allowed_models
 		.split(',')
 		.map(m => m.trim())
@@ -69,6 +83,7 @@ function toRequest(form: IApiKeyFormState): IApiKeyCreateRequest {
 	// Omit unset optionals so the gateway applies its own defaults
 	return {
 		tenant_id: form.tenant_id.trim(),
+		...(form.mode === 'import' && importedApiKeyError(form.api_key) === undefined && {api_key: form.api_key}),
 		...(form.name.trim().length > 0 && {name: form.name.trim()}),
 		...(models.length > 0 && {allowed_models: models}),
 		...(form.rate_limit_rps > 0 && {rate_limit_rps: form.rate_limit_rps}),
@@ -80,9 +95,10 @@ function toRequest(form: IApiKeyFormState): IApiKeyCreateRequest {
 }
 
 export default function ApiKeyInputForm(props: ApiKeyInputFormProps) {
-	const {onChange} = props;
+	const {onChange, onDispose} = props;
 
 	const [form, setForm] = React.useState<IApiKeyFormState>(INITIAL_FORM);
+	const [showImportedKey, setShowImportedKey] = React.useState(false);
 	// The picker owns a dayjs value (kept even while a typed entry is momentarily
 	// invalid, so the field text persists); form.expires_at mirrors it as the
 	// string the request + validation work on.
@@ -97,6 +113,7 @@ export default function ApiKeyInputForm(props: ApiKeyInputFormProps) {
 
 	const validateForm = (data: IApiKeyFormState): boolean => {
 		if (data.tenant_id.trim().length === 0) return false;
+		if (data.mode === 'import' && importedApiKeyError(data.api_key) !== undefined) return false;
 		if (data.rate_limit_rps < 0 || data.burst_size < 0 || data.tokens_per_min < 0) return false;
 		if (expiryError(data.expires_at) !== undefined) return false;
 		return true;
@@ -105,16 +122,61 @@ export default function ApiKeyInputForm(props: ApiKeyInputFormProps) {
 	const handleChange = (field: keyof IApiKeyFormState) => (value: any) => {
 		const newForm = {...form, [field]: value};
 		setForm(newForm);
-		onChange({...toRequest(newForm), isValid: validateForm(newForm)});
+		onChange({...apiKeyFormToRequest(newForm), isValid: validateForm(newForm)});
 	};
 
 	React.useEffect(() => {
-		onChange({...toRequest(form), isValid: validateForm(form)});
+		onChange({...apiKeyFormToRequest(form), isValid: validateForm(form)});
+		return () => onDispose?.();
 	}, []);
 
 	return (
 		<NewBox item_name={t('AI API Key')}>
 			<Stack spacing={3}>
+				<Stack spacing={1}>
+					<FormLabel>{t('Key provisioning mode')}</FormLabel>
+					<RadioGroup
+						row
+						value={form.mode}
+						onChange={event => {
+							const mode = event.target.value as IApiKeyFormState['mode'];
+							const newForm = {...form, mode, api_key: ''};
+							setForm(newForm);
+							setShowImportedKey(false);
+							onChange({...apiKeyFormToRequest(newForm), isValid: validateForm(newForm)});
+						}}
+					>
+						<FormControlLabel value="generate" control={<Radio />} label={t('Generate on Gateway')} />
+						<FormControlLabel value="import" control={<Radio />} label={t('Import existing key')} />
+					</RadioGroup>
+					{form.mode === 'import' && (
+						<TextField
+							label={t('Existing API key')}
+							type={showImportedKey ? 'text' : 'password'}
+							value={form.api_key}
+							onChange={event => handleChange('api_key')(event.target.value)}
+							error={form.api_key.length > 0 && importedApiKeyError(form.api_key) !== undefined}
+							helperText={form.api_key.length > 0
+								? importedApiKeyError(form.api_key)
+								: t('16–512 printable non-space US-ASCII characters. This secret stays only in this form and the create request.')}
+							inputProps={{minLength: 16, maxLength: 512, autoComplete: 'new-password'}}
+							InputProps={{
+								endAdornment: (
+									<InputAdornment position="end">
+										<IconButton
+											aria-label={showImportedKey ? t('Hide imported key') : t('Show imported key')}
+											onClick={() => setShowImportedKey(previous => !previous)}
+											edge="end"
+										>
+											{showImportedKey ? <VisibilityOff /> : <Visibility />}
+										</IconButton>
+									</InputAdornment>
+								),
+							}}
+						/>
+					)}
+				</Stack>
+
 				<Grid2 container spacing={2}>
 					<ParamBox
 						label={t('Tenant ID')}

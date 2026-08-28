@@ -48,11 +48,11 @@ const fullproxy: LbRecipe = {
 	cicd: 'P2/advanced-fullproxy-security',
 	name: 'e2e-cicd-adv-fullproxy',
 	vip: '203.0.113.52',
-	port: '8080',
+	port: '18052',
 	protocol: 'tcp',
 	mode: 'fullproxy',
 	security: 'https',
-	endpoints: [{ip: '198.51.100.1', targetPort: '8080'}],
+	endpoints: [{ip: '198.51.100.1', targetPort: '18052'}],
 };
 
 let instName: string;

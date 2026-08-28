@@ -45,13 +45,13 @@ export default function PolicyInfoInputForm(props: {value: IPolicyInfo; onChange
 			</HorizontalStack>
 
 			<HorizontalStack>
-			   <ParamBox label={t('Committed Info Rate(bps)')} value={value?.committedInfoRate ?? ''} onChange={handleChange('committedInfoRate')} param_desc={params?.committedInfoRate} />
-			   <ParamBox label={t('Peak Info Rate(bps)')} value={value?.peakInfoRate ?? ''} onChange={handleChange('peakInfoRate')} param_desc={params?.peakInfoRate} />
+				   <ParamBox label={t('Committed Info Rate (Mbps)')} value={value?.committedInfoRate ?? ''} onChange={handleChange('committedInfoRate')} param_desc={{...params?.committedInfoRate, description: t('Gateway policy rates are configured in megabits per second.')}} />
+				   <ParamBox label={t('Peak Info Rate (Mbps)')} value={value?.peakInfoRate ?? ''} onChange={handleChange('peakInfoRate')} param_desc={{...params?.peakInfoRate, description: t('Gateway policy rates are configured in megabits per second.')}} />
 			</HorizontalStack>
 
 			<HorizontalStack>
-			   <ParamBox label={t('Committed Block Size')} value={value?.committedBlkSize ?? ''} onChange={handleChange('committedBlkSize')} param_desc={params?.committedBlkSize} />
-			   <ParamBox label={t('Excess Block Size')} value={value?.excessBlkSize ?? ''} onChange={handleChange('excessBlkSize')} param_desc={params?.excessBlkSize} />
+				   <ParamBox label={t('Committed Block Size (bytes)')} value={value?.committedBlkSize ?? ''} onChange={handleChange('committedBlkSize')} param_desc={params?.committedBlkSize} />
+				   <ParamBox label={t('Excess Block Size (bytes)')} value={value?.excessBlkSize ?? ''} onChange={handleChange('excessBlkSize')} param_desc={params?.excessBlkSize} />
 			</HorizontalStack>
 		</Stack>
 	);

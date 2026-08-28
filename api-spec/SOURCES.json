@@ -1,11 +1,11 @@
 {
-  "vendoredAt": "2026-08-13T00:00:00Z",
+  "vendoredAt": "2026-08-28T02:39:44Z",
   "gateway": {
     "repo": "loxilb-inference-gateway",
     "path": "api/swagger.yml + api/swagger-extras.yml",
-    "commit": "1e38a275",
+    "commit": "4b0532aff5e6",
     "dirty": true,
-    "note": "gateway spec intentionally NOT re-vendored on 2026-07-20 (branch moved 16+ commits incl. synflood removal; UI compat sweep pending) \u2014 still not re-vendored on 2026-08-05, when only the OAM spec was refreshed"
+    "note": "Gateway Swagger baseline at this immutable commit plus UI-required contract corrections validated against the live Gateway; dirty=true records that the vendored contract is not byte-identical to the upstream commit"
   },
   "oam": {
     "repo": "loxilb-oam",

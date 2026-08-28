@@ -2,7 +2,9 @@
 // Imports
 //---------------------------------------------------------
 import {InstanceFlavor, stripGatewayOnlyFields} from 'api/capabilities';
+import {serializeAIConfiguration, validateAIConfiguration} from 'types/ai_gateway';
 import {IServiceConfiguration} from 'types/load_balancer';
+import {buildLBDeleteKey, buildLBDeletePath} from 'types/lb_identity';
 import {IInstance} from 'types/oam';
 import {ApiResult, assertOk, createDetailedErrorMessage} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, PATCH_INST, POST_INST} from '../fetcher/fetcher_inst';
@@ -71,9 +73,25 @@ export async function query_get_load_balancer_config_all(instance: IInstance): P
 }
 
 export async function request_create_load_balancer_config(instance: IInstance, data: IServiceConfiguration, flavor: InstanceFlavor): Promise<ApiResult> {
-	// Remove keys with negative number values to avoid backend type errors
-	let cleanedData = cleanNegativeNumbers(data);
-	
+	// Project FIRST. Gateway-only form state is outside the OSS contract, so it
+	// must neither reach loxilb nor make an otherwise valid OSS create fail
+	// IGW-specific validation. Serialization stays after validation: it
+	// deliberately normalizes incompatible AI fields, which must not conceal a
+	// known-invalid IGW combination from the client-side validator.
+	const projectedData = projectOntoFlavor(data, flavor);
+
+	// Keep the client-side matrix and the final wire payload in one pure policy.
+	// Server validation remains authoritative, but known-invalid combinations
+	// must not leave the browser.
+	const aiIssues = validateAIConfiguration(projectedData);
+	if (aiIssues.length > 0) {
+		return {
+			status: 'error',
+			error: `Invalid AI Gateway configuration: ${aiIssues.map(issue => issue.message).join(' ')}`,
+		};
+	}
+	let cleanedData = cleanNegativeNumbers(serializeAIConfiguration(projectedData));
+
 	// Clean up probe values according to serviceArguments.monitor value
 	// If monitor is false, remove probetype, probeport, probereq, proberesp, probeTimeout, probeRetries
 	if (cleanedData.serviceArguments && !cleanedData.serviceArguments.monitor) {
@@ -99,7 +117,7 @@ export async function request_create_load_balancer_config(instance: IInstance, d
 		};
 	}
 
-	const resp = await POST_INST(instance, `/config/loadbalancer`, projectOntoFlavor(cleanedData, flavor));
+	const resp = await POST_INST(instance, `/config/loadbalancer`, cleanedData);
 	if (resp.code !== 200 && resp.code !== 204) {
 		const errorMessage = createDetailedErrorMessage(resp, 'Create Load Balancer');
 		return {status: 'error', error: errorMessage};
@@ -144,23 +162,14 @@ export async function request_delete_lb_by_name(instance: IInstance, name: strin
 	return {status: 'success'};
 }
 
-export async function request_delete_lb_by_ip_port_proto(instance: IInstance, ip: string, port: number, proto: string): Promise<ApiResult> {
-	const resp = await DELETE_INST(instance, `/config/loadbalancer/externalipaddress/${ip}/port/${port}/protocol/${proto}`);
+/** Delete a nameless rule by the complete key returned by the Gateway. */
+export async function request_delete_lb_by_full_key(
+	instance: IInstance,
+	configuration: IServiceConfiguration,
+): Promise<ApiResult> {
+	const resp = await DELETE_INST(instance, buildLBDeletePath(buildLBDeleteKey(configuration)));
 	if (resp.code !== 200 && resp.code !== 204) {
-		const errorMessage = createDetailedErrorMessage(resp, 'Delete Load Balancer');
-		return {status: 'error', error: errorMessage};
-	} else {
-		return {status: 'success'};
+		return {status: 'error', error: createDetailedErrorMessage(resp, 'Delete Load Balancer')};
 	}
+	return {status: 'success'};
 }
-
-export async function request_delete_lb_by_ip_portrange_proto(instance: IInstance, ip: string, port: number, portmax: number, proto: string): Promise<ApiResult> {
-	const resp = await DELETE_INST(instance, `/config/loadbalancer/externalipaddress/${ip}/port/${port}/portmax/${portmax}/protocol/${proto}`);
-	if (resp.code !== 200 && resp.code !== 204) {
-		const errorMessage = createDetailedErrorMessage(resp, 'Delete Load Balancer');
-		return {status: 'error', error: errorMessage};
-	} else {
-		return {status: 'success'};
-	}
-}
-

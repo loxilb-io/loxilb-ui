@@ -1,14 +1,11 @@
 //---------------------------------------------------------
 // AI Gateway — API Keys page spec.
 //
-// The gateway serves /config/ai/* only when built with --userservice,
-// which the shared testbed is NOT (every AI endpoint 501s by design;
-// see UI_API_GAP_ANALYSIS §2.2). So this file splits in two:
-//   • always-run: the page renders, the 501 degrades to an empty table
-//     (no white-screen), and ALL client-side form validation runs
-//     (the Add dialog opens even though the eventual POST would 501).
-//   • CRUD (create/patch/delete): test.skip(noUserservice) — lights up
-//     unchanged on a userservice-enabled gateway.
+// The routes are registered independently of the legacy --userservice flag.
+// Render and client validation always run. Live mutation tests run only when
+// the readiness probe proves both the OAM→Gateway management service identity
+// and the API-key store; 401/403/503 are reported as distinct skip reasons,
+// while a stale 501 is a hard contract failure.
 //
 // Adversarial focus — the client-validation test pins two bugs found +
 // fixed this session in ApiKeyInputForm:
@@ -21,7 +18,7 @@
 //           error, so a regression re-breaks this test immediately.
 //---------------------------------------------------------
 import {expect, test} from '../../fixtures';
-import {activeInstance, gatewayLacksUserservice, gw, sweepApiKeys} from '../../helpers/api';
+import {activeInstance, AIManagementReadiness, gatewayAIManagementReadiness, gw, sweepApiKeys} from '../../helpers/api';
 import {dialog, dialogButton, dialogTitle, openToolbarDialog} from '../../helpers/dialogs';
 import {field} from '../../helpers/form';
 import {grid, rowByText, showAllRows, toolbarButton} from '../../helpers/table';
@@ -29,12 +26,12 @@ import {grid, rowByText, showAllRows, toolbarButton} from '../../helpers/table';
 const APIKEY_PATH = '/config/ai/apikey';
 
 let instName: string;
-let noUserservice: boolean;
+let readiness: AIManagementReadiness;
 
 test.describe('@gw AI API Key page', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
-		noUserservice = await gatewayLacksUserservice();
+		readiness = await gatewayAIManagementReadiness();
 		await sweepApiKeys();
 	});
 
@@ -43,16 +40,14 @@ test.describe('@gw AI API Key page', () => {
 	});
 
 	test.beforeEach(async ({page, consoleGuard}) => {
-		// AI endpoints 501 on this testbed — that specific failure is expected.
-		consoleGuard.allow(/501/);
+		consoleGuard.allow(/status of (401|403|503)/i);
 		consoleGuard.allow(/Failed to load resource/i);
 		await page.goto(`instance/ai/apikey?name=${instName}`); // relative — see baseURL note
 		await expect(toolbarButton(page, 'Add')).toBeVisible({timeout: 20_000});
 	});
 
-	test('render: a 501 (no userservice) degrades to an empty table, never a white-screen', async ({page}) => {
+	test('render: management-auth/store failures stay inline, never a white-screen', async ({page}) => {
 		await expect(grid(page)).toBeVisible();
-		await expect(grid(page).getByText(/No .* entries yet|No rows/)).toBeVisible();
 		// The page shell is intact and interactive.
 		await expect(toolbarButton(page, 'Add')).toBeEnabled();
 	});
@@ -81,11 +76,12 @@ test.describe('@gw AI API Key page', () => {
 		// toISOString-on-invalid crash ever returns.
 	});
 
-	test('C-min → one-time raw_key; E-patch; D-single (needs --userservice)', async ({page}) => {
-		test.skip(noUserservice, 'gateway built without --userservice — /config/ai/* 501s');
+	test('C-generate/import → one-time secrecy; D-single (needs management/store readiness)', async ({page}) => {
+		expect(readiness.status, 'AI management route must never use the retired 501 capability gate').not.toBe(501);
+		test.skip(!readiness.ready, readiness.reason);
 
 		// C-min: minimal create surfaces the plaintext key exactly once.
-		await toolbarButton(page, 'Add').click();
+		await openToolbarDialog(page, 'Add', dialog(page).getByRole('heading', {name: 'New AI API Key'}));
 		await field(page, 'Tenant ID').fill('e2e-tenant');
 		await field(page, 'Name').fill('e2e-key');
 		await page.mouse.move(0, 0);
@@ -103,8 +99,31 @@ test.describe('@gw AI API Key page', () => {
 		await expect(dialog(page).getByText(/Copy this key now/i)).toBeVisible();
 		await dialogButton(page, 'OK').click();
 
+		// Import mode sends an operator-provided secret once, but the response and
+		// subsequent list must never echo it back.
+		const importedSecret = `e2e-import-${Date.now().toString(36)}-secret`;
+		await toolbarButton(page, 'Add').click();
+		await page.getByLabel('Import existing key').check();
+		await field(page, 'Existing API key').fill(importedSecret);
+		await field(page, 'Tenant ID').fill('e2e-tenant');
+		await field(page, 'Name').fill('e2e-imported-key');
+		const [importReq] = await Promise.all([
+			page.waitForRequest(r => r.method() === 'POST' && r.url().endsWith(APIKEY_PATH)),
+			dialogButton(page, 'Add').click(),
+		]);
+		expect(importReq.postDataJSON()).toMatchObject({tenant_id: 'e2e-tenant', name: 'e2e-imported-key', api_key: importedSecret});
+		const importResponse = await importReq.response();
+		expect(importResponse?.status()).toBeLessThan(300);
+		expect(await importResponse?.text()).not.toContain(importedSecret);
+		await expect(dialogTitle(page, 'API Key Imported')).toBeVisible();
+		await expect(dialog(page)).not.toContainText(importedSecret);
+		await dialogButton(page, 'OK').click();
+
 		await toolbarButton(page, 'Refresh').click();
 		await expect(rowByText(page, 'e2e-key').first()).toBeVisible({timeout: 10_000});
+		await expect(rowByText(page, 'e2e-imported-key').first()).toBeVisible({timeout: 10_000});
+		const listed = await (await gw('GET', `${APIKEY_PATH}?tenant_id=e2e-tenant`)).text();
+		expect(listed).not.toContain(importedSecret);
 
 		// D-single by key_id.
 		const list = await (await gw('GET', `${APIKEY_PATH}?tenant_id=e2e-tenant`)).json();

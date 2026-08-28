@@ -7,7 +7,7 @@
 //---------------------------------------------------------
 import {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {gw, gwJson, sweepVlans, TEST_VLAN_IDS} from '../../helpers/api';
+import {gw, gwJson, primaryNetworkDevice, sweepVlans, TEST_VLAN_IDS} from '../../helpers/api';
 import {requireLoxilbInstance} from '../_loxilb';
 import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, openToolbarDialog} from '../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../helpers/form';
@@ -28,6 +28,7 @@ const VLAN_PATH = '/config/vlan';
 // green run or a named, actionable failure when the pool runs out.
 let VID = 0;
 let MEMBER_VID = 0;
+let MEMBER_BASE_DEV = '';
 
 // The member sub-panel renders a second DataTable — target its (2nd) toolbar
 // and grid explicitly since #table-bar / .MuiDataGrid-root ids repeat.
@@ -57,6 +58,11 @@ let instName: string;
 test.describe('@loxilb VLAN page CRUD', () => {
 	test.beforeAll(async () => {
 		instName = await requireLoxilbInstance();
+		const preferredDevice = await primaryNetworkDevice();
+		const ports = await gwJson<{portAttr?: Array<{portName?: string; portL2Information?: {vid?: number}}>}>('/config/port/all');
+		// A port already enslaved to a PVID cannot safely host this temporary
+		// tagged member. Use an eligible physical interface or skip explicitly.
+		MEMBER_BASE_DEV = (ports.portAttr ?? []).find(port => port.portName === preferredDevice && !port.portL2Information?.vid)?.portName ?? '';
 		await sweepVlans();
 
 		// Whatever the sweep could not remove is wedged — skip those.
@@ -109,12 +115,13 @@ test.describe('@loxilb VLAN page CRUD', () => {
 		await refreshUntilGone(page, String(VID));
 	});
 
-	test('V-member-delete: a tagged member deletes via the base device name (not eth0.<vid>)', async ({page}) => {
-		const memberDev = `eth0.${MEMBER_VID}`;
+	test('V-member-delete: a tagged member deletes via the base device name', async ({page}) => {
+		test.skip(!MEMBER_BASE_DEV, 'testbed has no unassigned physical interface available for a temporary tagged VLAN member');
+		const memberDev = `${MEMBER_BASE_DEV}.${MEMBER_VID}`;
 		// Seed vlan + tagged member via API; the gateway lists the member as
-		// "eth0.<vid>", but its delete endpoint only accepts the base dev "eth0".
+		// "<dev>.<vid>", but its delete endpoint only accepts the base device.
 		expect((await gw('POST', VLAN_PATH, {vid: MEMBER_VID})).status).toBeLessThan(300);
-		expect((await gw('POST', `${VLAN_PATH}/${MEMBER_VID}/member`, {dev: 'eth0', tagged: true})).status).toBeLessThan(300);
+		expect((await gw('POST', `${VLAN_PATH}/${MEMBER_VID}/member`, {dev: MEMBER_BASE_DEV, tagged: true})).status).toBeLessThan(300);
 
 		await refreshUntilRow(page, String(MEMBER_VID));
 		await selectRowByText(page, String(MEMBER_VID)); // opens the member sub-panel
@@ -129,8 +136,8 @@ test.describe('@loxilb VLAN page CRUD', () => {
 		});
 
 		expect(deletes).toHaveLength(1);
-		// The fix: the DELETE uses the base dev, not the "eth0.<vid>" the grid shows.
-		expect(deletes[0].pathname).toContain(`/vlan/${MEMBER_VID}/member/eth0/tagged/true`);
+		// The DELETE uses the base device, not the suffixed name the grid shows.
+		expect(deletes[0].pathname).toContain(`/vlan/${MEMBER_VID}/member/${MEMBER_BASE_DEV}/tagged/true`);
 		expect(deletes[0].pathname, 'must not send the suffixed dev').not.toContain(memberDev);
 
 		// The member must actually be gone at the gateway (base-dev delete landed).

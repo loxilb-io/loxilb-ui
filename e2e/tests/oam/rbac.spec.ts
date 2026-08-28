@@ -51,8 +51,8 @@ test.describe('RBAC — viewer (read-only everywhere)', () => {
 
 	for (const route of MUTABLE_ROUTES) {
 		test(`viewer: ${route} exposes no mutation controls or requests`, async ({page, consoleGuard}) => {
-			// Some read endpoints answer 4xx/5xx for a viewer or an un-built feature
-			// (AI 501); Chrome logs those. We only care about controls + mutations here.
+			// Some read endpoints answer 401/403/503 for a viewer, service identity,
+			// or unavailable store. We only care about controls + mutations here.
 			consoleGuard.allow(/Failed to load resource/i);
 			consoleGuard.allow(/status of \d{3}/i);
 

@@ -328,14 +328,19 @@ export async function driveLbCreate(page: Page, r: LbRecipe): Promise<any> {
 		if (a.sseMode) await field(page, 'SSE Mode', aigw).check();
 		if (a.maxStreamDurationSec !== undefined) await setField(page, 'Max Stream Duration (s)', a.maxStreamDurationSec, aigw);
 		if (a.backendKeepaliveIntervalSec !== undefined) await setField(page, 'Backend Keepalive Interval (s)', a.backendKeepaliveIntervalSec, aigw);
-		if (a.pdDisaggMode) await field(page, 'P/D Disaggregation Mode', aigw).check();
+		// Topology replaced the independent P/D and KV-exact controls. Drive the
+		// coherent combination so the endpoint-role fields render before endpoint
+		// rows are added.
+		if (a.pdDisaggMode && a.kvExactMode === '1') await selectOption(page, 'Topology', 'P/D + KV exact');
+		else if (a.pdDisaggMode) await selectOption(page, 'Topology', 'P/D disaggregation');
+		else if (a.kvExactMode === '3') await selectOption(page, 'Topology', 'Single-role KV exact');
 		if (a.pdCacheAwareMode) await field(page, 'P/D Cache-Aware Mode', aigw).check();
 		if (a.pdSessionTtlSec !== undefined) await setField(page, 'P/D Session TTL (s)', a.pdSessionTtlSec, aigw);
 		if (a.pdCacheThreshold !== undefined) await setField(page, 'P/D Cache Threshold', a.pdCacheThreshold, aigw);
 		if (a.pdBalanceAbsThreshold !== undefined) await setField(page, 'P/D Balance Abs Threshold', a.pdBalanceAbsThreshold, aigw);
-		if (a.kvExactMode !== undefined) await setField(page, 'KV Exact Mode', a.kvExactMode, aigw);
 		if (a.kvBlockSize !== undefined) await setField(page, 'KV Block Size', a.kvBlockSize, aigw);
-		if (a.kvHashAlgo !== undefined) await selectOption(page, 'KV Hash Algo', a.kvHashAlgo);
+		if (a.kvBlockSize !== undefined) await field(page, 'Block/Page Size Confirmed', aigw).check();
+		if (a.kvHashAlgo !== undefined) await selectOption(page, 'KV Hash Override', a.kvHashAlgo);
 		if (a.kvZmqPort !== undefined) await setField(page, 'KV ZMQ Port', a.kvZmqPort, aigw);
 	}
 

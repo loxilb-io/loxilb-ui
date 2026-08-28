@@ -3,16 +3,15 @@
 //---------------------------------------------------------
 import modes from 'assets/json/modes.json';
 import sels from 'assets/json/sels.json';
-import { getStableHash } from 'common';
 import DataTable from 'components/table/DataTable';
-import { stableValueHash } from 'react-query/types/core/utils';
 import {IDataTableColumnDef, IEnumItem} from 'types/global';
 import {ILBData} from 'types/load_balancer';
+import {lbRuleRowId} from 'types/lb_identity';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function LBTable(props: {data: ILBData; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onUpdate?: any; onRefresh?: any; error?: boolean}) {
+export default function LBTable(props: {data: ILBData; selected_rows: (string | number)[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onUpdate?: any; onRefresh?: any; error?: boolean}) {
 	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onUpdate, onRefresh, error} = props;
 
 	const sel_list: IEnumItem[] = sels;
@@ -47,18 +46,12 @@ export default function LBTable(props: {data: ILBData; selected_rows: number[]; 
 		chwbl: 'chwbl',
 	};
 
-   // Simple hash function for composite key
-   const getHashKey = (item: any) => {
-	   const str = `${item.serviceArguments.externalIP || ''}_${item.serviceArguments.port || ''}_${item.serviceArguments.protocol || ''}`;
-	   return getStableHash(str);
-   };
-
-   // Generate rows and sort by hash key (externalIP, port, protocol)
-   const rows = data.lbAttr
+	// Generate rows and sort by the complete Gateway rule identity.
+	const rows = data.lbAttr
 	   ? (() => {
-		   const sorted = [...data.lbAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
+		   const sorted = [...data.lbAttr].sort((a, b) => lbRuleRowId(a).localeCompare(lbRuleRowId(b)));
 		   return sorted.map(item => {
-			   const hashKey = getHashKey(item);
+			   const hashKey = lbRuleRowId(item);
 			   const mark = item.serviceArguments.block ?? 0;
 			   const timeout = item.serviceArguments.probeTimeout ?? 1800;
 
@@ -69,7 +62,7 @@ export default function LBTable(props: {data: ILBData; selected_rows: number[]; 
 			   const mode_value = mode_list.find(item2 => item2.id === mode)?.name || '';
 
 			   return {
-				   id: getHashKey(item), // Use hash as row ID
+				   id: hashKey,
 				   externalIP: item.serviceArguments.externalIP,
 				   port: item.serviceArguments.port + (item.serviceArguments.portMax ? ` - ${item.serviceArguments.portMax}` : ''),
 				   protocol: item.serviceArguments.protocol?.toUpperCase(),
@@ -81,7 +74,7 @@ export default function LBTable(props: {data: ILBData; selected_rows: number[]; 
 				   monitor: item.serviceArguments.monitor ? 'Enabled' : 'Disabled',
 				   endpoints: item.endpoints.length,
 				   // Unique key for sorting
-				   _uniqueKey: getHashKey(item),
+				   _uniqueKey: hashKey,
 			   }
 		   });
 	   })()

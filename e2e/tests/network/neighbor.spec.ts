@@ -2,18 +2,18 @@
 // Device Neighbor page CRUD spec.
 // POST /config/neighbor (create), DELETE /config/neighbor/{ip}/dev/{dev}.
 // Neighbors point a doc-range IP at a local MAC on eth0 — a static ARP/ND
-// entry for an inert address, never affecting real reachability. The
+// entry for an inert address on the live data-plane device, never affecting real reachability. The
 // afterEach sweep only removes doc-range neighbors.
 //---------------------------------------------------------
 import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {activeInstance, gw, sweepNeighbors} from '../../helpers/api';
+import {activeInstance, gw, primaryNetworkDevice, sweepNeighbors} from '../../helpers/api';
 import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../helpers/form';
 import {refreshUntilGone, refreshUntilRow, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 
 const NB_PATH = '/config/neighbor';
-const DEV = 'eth0';
+let DEV = '';
 const MAC = '02:00:00:00:0e:2e'; // locally-administered, inert
 
 async function apiCreateNeighbor(ipAddress: string, mac = MAC): Promise<void> {
@@ -45,6 +45,7 @@ let instName: string;
 test.describe('Device Neighbor page CRUD', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
+		DEV = await primaryNetworkDevice();
 		await sweepNeighbors();
 	});
 
@@ -86,7 +87,7 @@ test.describe('Device Neighbor page CRUD', () => {
 			await dialogButton(page, 'OK').click();
 		});
 		expect(deletes).toHaveLength(1);
-		expect(deletes[0].pathname).toContain('/neighbor/203.0.113.40/dev/eth0');
+		expect(deletes[0].pathname).toContain(`/neighbor/203.0.113.40/dev/${DEV}`);
 		await refreshUntilGone(page, '203.0.113.40');
 	});
 

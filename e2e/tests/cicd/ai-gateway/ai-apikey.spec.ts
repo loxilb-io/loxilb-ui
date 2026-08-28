@@ -1,20 +1,12 @@
 //---------------------------------------------------------
 // cicd source: cicd/ai-apikey — AI Gateway API-key + tenant rate-limit CRUD.
 //
-// This is the ONE cicd AI surface that needs the gateway to be built with
-// --userservice: /config/ai/apikey and /config/ai/ratelimit 501 without
-// it. The shared testbed is currently built WITHOUT --userservice, so the CRUD
-// path auto-skips here (the field-complete render + client-validation coverage
-// already lives in e2e/tests/ai/apikey.spec.ts + ratelimit.spec.ts, which run
-// unconditionally). This spec's job is to make the --userservice dependency
-// explicit and to light up the moment it is enabled on the CI gateway.
-//
-// STATUS: --userservice NOT yet enabled on the testbed (probe → 501).
-// Enabling it is a gateway/oam launch decision owned by the engineers — not
-// a UI change — so the CRUD leg stays skipped until then.
+// These routes are independent of the legacy userservice flag. The readiness
+// probe distinguishes Gateway management authentication/authorization from
+// API-key-store availability. A 501 is always a contract regression.
 //---------------------------------------------------------
 import {expect, test} from '../../../fixtures';
-import {activeInstance, gatewayLacksUserservice, gw, sweepApiKeys} from '../../../helpers/api';
+import {activeInstance, AIManagementReadiness, gatewayAIManagementReadiness, gw, sweepApiKeys} from '../../../helpers/api';
 import {dialog, dialogButton, dialogTitle, openToolbarDialog} from '../../../helpers/dialogs';
 import {field} from '../../../helpers/form';
 import {rowByText, showAllRows, toolbarButton} from '../../../helpers/table';
@@ -22,38 +14,33 @@ import {rowByText, showAllRows, toolbarButton} from '../../../helpers/table';
 const APIKEY_PATH = '/config/ai/apikey';
 
 let instName: string;
-let noUserservice: boolean;
+let readiness: AIManagementReadiness;
 
-test.describe('@gw cicd/ai-apikey — AI API-key CRUD (needs --userservice)', () => {
+test.describe('@gw cicd/ai-apikey — AI API-key management contract', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
-		noUserservice = await gatewayLacksUserservice();
-		if (!noUserservice) await sweepApiKeys();
+		readiness = await gatewayAIManagementReadiness();
+		if (readiness.ready) await sweepApiKeys();
 	});
 
 	test.afterEach(async () => {
-		if (!noUserservice) await sweepApiKeys();
+		if (readiness.ready) await sweepApiKeys();
 	});
 
-	test('capability status: /config/ai/apikey requires --userservice (documents the 501 gate)', async () => {
-		// A plain probe of the gateway capability — the single assertion that
-		// records whether --userservice is live on this testbed.
+	test('capability status: route is registered and reports an explicit readiness state', async () => {
 		const resp = await gw('GET', APIKEY_PATH);
-		if (noUserservice) {
-			expect(resp.status, 'AI apikey 501s until --userservice is enabled').toBe(501);
-		} else {
-			expect(resp.ok, 'AI apikey list is served once --userservice is enabled').toBeTruthy();
-		}
+		expect(resp.status, 'AI API-key route must be registered independently of userservice').not.toBe(501);
+		expect([200, 401, 403, 503], 'response must identify management auth/RBAC/store readiness').toContain(resp.status);
 	});
 
-	test('C → one-time raw_key; D (needs --userservice; auto-skips otherwise)', async ({page, consoleGuard}) => {
-		test.skip(noUserservice, 'gateway built without --userservice — /config/ai/* 501s');
+	test('C → one-time raw_key; D (needs management/store readiness)', async ({page, consoleGuard}) => {
+		test.skip(!readiness.ready, readiness.reason);
 
 		consoleGuard.allow(/Failed to load resource/i);
 		await page.goto(`instance/ai/apikey?name=${instName}`); // relative — baseURL carries /netlox
 		await expect(toolbarButton(page, 'Add')).toBeVisible({timeout: 20_000});
 
-		await toolbarButton(page, 'Add').click();
+		await openToolbarDialog(page, 'Add', dialog(page).getByRole('heading', {name: 'New AI API Key'}));
 		await field(page, 'Tenant ID').fill('e2e-cicd-tenant');
 		await field(page, 'Name').fill('e2e-cicd-key');
 		await page.mouse.move(0, 0);

@@ -1,5 +1,11 @@
 import {afterEach, beforeEach, describe, expect, it, vi, type Mock} from 'vitest';
-import {createDetailedErrorMessage, DOWNLOAD_FILE_STREAM, GET, GET_TEXT} from './fetcher_base';
+import {createDetailedErrorMessage, DOWNLOAD_FILE_STREAM, GET, GET_TEXT, isMutationFailure, shouldExpireOAMSession} from './fetcher_base';
+
+const redirectToLogin = vi.hoisted(() => vi.fn());
+vi.mock('common', async importOriginal => ({
+	...(await importOriginal<typeof import('common')>()),
+	forced_relocation_to_login: redirectToLogin,
+}));
 
 function mockFetch(body: string, init: {status?: number; contentType?: string} = {}) {
 	const {status = 200, contentType = 'application/json'} = init;
@@ -11,6 +17,7 @@ function mockFetch(body: string, init: {status?: number; contentType?: string} =
 beforeEach(() => {
 	vi.stubGlobal('fetch', vi.fn());
 	localStorage.clear();
+	redirectToLogin.mockReset();
 });
 afterEach(() => {
 	vi.unstubAllGlobals();
@@ -78,6 +85,56 @@ describe('GET', () => {
 		await GET('http://gw/b');
 		expect((global.fetch as Mock).mock.calls[1][1].headers.Authorization).toBe('Bearer tok-123');
 	});
+
+	it('keeps the OAM session for a trusted Gateway-origin 401 and returns it inline', async () => {
+		localStorage.setItem('access_token', 'oam-browser-token');
+		(global.fetch as Mock).mockResolvedValue(new Response('{"result":"bad gateway service credential"}', {
+			status: 401,
+			headers: {'Content-Type': 'application/json', 'X-Loxi-Error-Origin': 'gateway'},
+		}));
+
+		const response = await GET('http://oam/loxilbs/1/netlox/v1/config/ai/apikey');
+		expect(response.code).toBe(401);
+		expect(localStorage.getItem('access_token')).toBe('oam-browser-token');
+		expect(redirectToLogin).not.toHaveBeenCalled();
+	});
+
+	it('expires the OAM session for an OAM-origin 401', async () => {
+		localStorage.setItem('access_token', 'expired-token');
+		(global.fetch as Mock).mockResolvedValue(new Response('{}', {
+			status: 401,
+			headers: {'Content-Type': 'application/json', 'X-Loxi-Error-Origin': 'oam'},
+		}));
+
+		await GET('http://oam/loxilbs/1/netlox/v1/config/ai/apikey');
+		expect(localStorage.getItem('access_token')).toBeNull();
+		expect(redirectToLogin).toHaveBeenCalledOnce();
+	});
+
+	it('uses conservative legacy logout for a missing/unknown marker and ignores a client query spoof', async () => {
+		for (const responseHeaders of [
+			{'Content-Type': 'application/json'},
+			{'Content-Type': 'application/json', 'X-Loxi-Error-Origin': 'unknown'},
+		] as Record<string, string>[]) {
+			localStorage.setItem('access_token', 'expired-token');
+			(global.fetch as Mock).mockResolvedValueOnce(new Response('{}', {status: 401, headers: responseHeaders}));
+			await GET('http://oam/loxilbs/1/netlox/v1/config/ai/apikey', undefined);
+			expect(localStorage.getItem('access_token')).toBeNull();
+		}
+		localStorage.setItem('access_token', 'expired-token');
+		(global.fetch as Mock).mockResolvedValueOnce(new Response('{}', {status: 401}));
+		await GET('http://oam/loxilbs/1/netlox/v1/config/ai/apikey', {'X-Loxi-Error-Origin': 'gateway'});
+		expect((global.fetch as Mock).mock.calls.at(-1)?.[0]).toContain('X-Loxi-Error-Origin=gateway');
+		expect(localStorage.getItem('access_token')).toBeNull();
+		expect(redirectToLogin).toHaveBeenCalledTimes(3);
+
+		const missingMarker = new Response('{}', {status: 401});
+		expect(shouldExpireOAMSession(missingMarker, 'http://oam/loxilbs/1/netlox/v1/x')).toBe(true);
+	});
+
+	it('keeps login failures inline regardless of response marker compatibility', () => {
+		expect(shouldExpireOAMSession(new Response('{}', {status: 401}), 'http://oam/oam/login')).toBe(false);
+	});
 });
 
 describe('createDetailedErrorMessage', () => {
@@ -94,5 +151,13 @@ describe('createDetailedErrorMessage', () => {
 	it('falls back to the HTTP status text when the body is empty', () => {
 		const msg = createDetailedErrorMessage({code: 500, data: null, message: 'Internal Server Error'}, 'Op');
 		expect(msg).toContain('Internal Server Error');
+	});
+});
+
+describe('isMutationFailure', () => {
+	it('rejects legacy HTTP-200 failure envelopes without rejecting successful results', () => {
+		expect(isMutationFailure({code: 200, data: {result: 'fail'}, message: 'OK'})).toBe(true);
+		expect(isMutationFailure({code: 200, data: {result: 'Success'}, message: 'OK'})).toBe(false);
+		expect(isMutationFailure({code: 409, data: {result: 'Success'}, message: 'Conflict'})).toBe(true);
 	});
 });

@@ -30,6 +30,7 @@ function RawKeyPanel(props: {created: IApiKeyCreateResponse}) {
 	const [copied, setCopied] = useState(false);
 
 	const handleCopy = () => {
+		if (!created.raw_key) return;
 		navigator.clipboard?.writeText(created.raw_key).then(() => setCopied(true));
 	};
 
@@ -45,6 +46,15 @@ function RawKeyPanel(props: {created: IApiKeyCreateResponse}) {
 					</IconButton>
 				</Tooltip>
 			</Stack>
+		</Stack>
+	);
+}
+
+function ImportedKeyPanel(props: {created: IApiKeyCreateResponse}) {
+	return (
+		<Stack spacing={2}>
+			<Alert severity="success">{t('The existing API key was registered. Its secret is not returned or stored by this UI.')}</Alert>
+			{props.created.key_id && <SingleTextField label={t('Key ID')} value={props.created.key_id} />}
 		</Stack>
 	);
 }
@@ -98,10 +108,14 @@ export default function AIApiKeyPage() {
 	const formRef = useRef<IApiKeyCreateRequest | null>(null);
 	const handleAdd = () => {
 		if (!inst) return;
+		formRef.current = null;
 
 		const input_form = (
 			<ApiKeyInputForm
 				key={Date.now()}
+				onDispose={() => {
+					formRef.current = null;
+				}}
 				onChange={data => {
 					const {isValid, ...cleanData} = data;
 					formRef.current = cleanData;
@@ -118,9 +132,19 @@ export default function AIApiKeyPage() {
 			async () => {
 				if (!formRef.current) return;
 
-				const res = await request_create_apikey(inst, formRef.current);
+				const request = formRef.current;
+				const imported = request.api_key !== undefined;
+				formRef.current = null;
+				const res = await request_create_apikey(inst, request);
 				if (res.status === 'success' && res.created) {
-					openPopUp(t('API Key Created'), <RawKeyPanel created={res.created} />, t('OK'));
+					if (imported) {
+						openPopUp(t('API Key Imported'), <ImportedKeyPanel created={res.created} />, t('OK'));
+					} else if (res.created.raw_key) {
+						openPopUp(t('API Key Created'), <RawKeyPanel created={res.created} />, t('OK'));
+					} else {
+						showAddError('AI API key', t('The Gateway did not return the one-time generated key. The key cannot be recovered; delete the metadata and create a new key.'));
+						return;
+					}
 					setTimeout(() => {
 						refetch();
 					}, 1000);

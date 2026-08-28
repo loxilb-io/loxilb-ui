@@ -169,20 +169,22 @@ test.describe('@loxilb LB Rule page CRUD', () => {
 
 	test('C-min: minimal create defaults to rr/dnat, then D-single via UI', async ({page}) => {
 		await openAddDialog(page);
-		await fillBasics(page, 'e2e-lb-min', '203.0.113.10', '8080');
-		await addEndpoint(page, 0, '198.51.100.1', '8080');
+		// 8080 is commonly reserved by OAM on production-shaped deployments.
+		// Use the suite's dedicated high listener range for the LB under test.
+		await fillBasics(page, 'e2e-lb-min', '203.0.113.10', '18010');
+		await addEndpoint(page, 0, '198.51.100.1', '18010');
 		const body = await submitCreate(page);
 
 		expect(body.serviceArguments).toMatchObject({
 			name: 'e2e-lb-min',
 			externalIP: '203.0.113.10',
-			port: 8080,
+			port: 18010,
 			protocol: 'tcp',
 			sel: 0, // rr default
 			mode: 0, // dnat default
 		});
 		expect(body.endpoints).toHaveLength(1);
-		expect(body.endpoints[0]).toMatchObject({endpointIP: '198.51.100.1', targetPort: 8080, weight: 1});
+		expect(body.endpoints[0]).toMatchObject({endpointIP: '198.51.100.1', targetPort: 18010, weight: 1});
 		// Client-side validation state must not leak into the payload.
 		expect(body.isValid).toBeUndefined();
 		expect(body.errors).toBeUndefined();

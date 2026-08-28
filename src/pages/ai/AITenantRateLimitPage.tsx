@@ -3,19 +3,20 @@
 //---------------------------------------------------------
 import {getStableHash} from 'common';
 import SearchIcon from '@mui/icons-material/Search';
-import {Button, Stack, TextField} from '@mui/material';
+import {Alert, Button, Stack, TextField} from '@mui/material';
 import TenantRateLimitInputForm from 'components/input/TenantRateLimitInputForm';
 import ErrorPopUp from 'components/modal/ErrorPopUp';
 import TenantRateLimitTable from 'components/table/ai/TenantRateLimitTable';
 import {query_get_tenant_ratelimit, query_get_tenant_ratelimits_for, request_set_tenant_ratelimit} from 'connector/instance/ai';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
-import {useApiKeys} from 'hooks/query/queryHooks';
+import {useApiKeys, useLoadBalancerConfig} from 'hooks/query/queryHooks';
 import {useQueryInstanceData} from 'hooks/query/common';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {t} from 'i18next';
 import React, {Fragment, useRef, useState} from 'react';
 import {ITenantRateLimitMod} from 'types/ai';
+import {hasRequiredApiKeyPolicy} from 'types/ai_gateway';
 
 //---------------------------------------------------------
 // Functional Component
@@ -28,6 +29,7 @@ export default function AITenantRateLimitPage() {
 	const inst = useInstanceFromURL();
 
 	const {data: apiKeys} = useApiKeys(inst);
+	const {data: loadBalancers} = useLoadBalancerConfig(inst);
 	const [extraTenants, setExtraTenants] = useState<string[]>([]);
 
 	const tenants = React.useMemo(() => {
@@ -75,10 +77,10 @@ export default function AITenantRateLimitPage() {
 		const input_form = (
 			<TenantRateLimitInputForm
 				key={Date.now()}
-				value={initial}
-				onChange={data => {
-					const {isValid, ...cleanData} = data;
-					formRef.current = cleanData;
+					value={initial}
+					onChange={data => {
+						const {isValid, errors, ...cleanData} = data;
+						formRef.current = cleanData;
 					enableYes(isValid);
 				}}
 			/>
@@ -112,7 +114,13 @@ export default function AITenantRateLimitPage() {
 		if (selected_rows.length !== 1) return;
 		const item = rows.find(r => getStableHash(String(r.tenant_id ?? '')) === selected_rows[0]);
 		if (!item) return;
-		openUpsertForm({tenant_id: item.tenant_id, rps: item.rps ?? 0, tokens_per_min: item.tokens_per_min ?? 0});
+		openUpsertForm({
+			tenant_id: item.tenant_id,
+			rps: item.rps ?? 0,
+			tokens_per_min: item.tokens_per_min ?? 0,
+			burst_pct: item.burst_pct ?? 0,
+			model_limits: item.model_limits ?? [],
+		});
 	};
 
 	const handleRefresh = () => {
@@ -122,6 +130,11 @@ export default function AITenantRateLimitPage() {
 
 	return (
 		<Fragment>
+			{rows.length > 0 && !hasRequiredApiKeyPolicy(loadBalancers ?? []) && (
+				<Alert severity="warning" sx={{mb: 1}}>
+					{t('Tenant quotas are configured, but no loaded service explicitly requires data-plane API keys. Quota enforcement is not proven until a required policy and a live request are verified.')}
+				</Alert>
+			)}
 			<Stack direction="row" spacing={1} sx={{mb: 1}} alignItems="center">
 				<TextField
 					size="small"
