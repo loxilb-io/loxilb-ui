@@ -28,6 +28,15 @@ jobs:
       - name: Every connector call maps to a declared backend route (H4 guard)
         run: npm run api:check-mapping
 
+      - name: Lint (zero warnings)
+        run: npm run lint
+
+      - name: Locale parity (en/ko/ja)
+        run: npm run locale:check
+
+      - name: Accessibility component checks (axe)
+        run: npm run a11y:test
+
       - name: Unit + backend-contract tests
         run: npm test
 
