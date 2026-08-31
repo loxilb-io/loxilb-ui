@@ -54,6 +54,11 @@ function backdrop(): Element {
 	return el!;
 }
 
+// userEvent-driven MUI dialog interactions in jsdom routinely exceed the 5s
+// default on a loaded machine; every wait here is event-driven, so the larger
+// timeout is headroom only, never added latency.
+vi.setConfig({testTimeout: 20_000});
+
 beforeEach(async () => {
 	await i18n.changeLanguage('en');
 });

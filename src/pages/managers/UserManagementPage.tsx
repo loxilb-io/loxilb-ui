@@ -353,6 +353,8 @@ export default function UserManagementPage() {
 							console.error('Re-login failed:', reloginError);
 							// If re-login fails, force logout and redirect
 							handleCloseModal();
+							// persistent: the session is already invalid — dismissing this
+							// dialog without the forced relogin would strand a dead session.
 							openPopUp(
 								t('Authentication Error'),
 								t('Username was updated but re-login failed. Please log in again with your new credentials.'),
@@ -361,13 +363,16 @@ export default function UserManagementPage() {
 								() => {
 									localStorage.removeItem('access_token');
 									move_forced('/login');
-								}
+								},
+								undefined,
+								{persistent: true}
 							);
 							return;
 						}
 					} else {
 						// No password provided - user needs to log in manually
 						handleCloseModal();
+						// persistent: same forced-relogin shape as above.
 						openPopUp(
 							t('Username Updated'),
 							t('Your username has been updated. Please log in again with your new username to continue.'),
@@ -376,7 +381,9 @@ export default function UserManagementPage() {
 							() => {
 								localStorage.removeItem('access_token');
 								move_forced('/login');
-							}
+							},
+							undefined,
+							{persistent: true}
 						);
 						return;
 					}

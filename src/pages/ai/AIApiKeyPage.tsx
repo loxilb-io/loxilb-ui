@@ -138,9 +138,11 @@ export default function AIApiKeyPage() {
 				const res = await request_create_apikey(inst, request);
 				if (res.status === 'success' && res.created) {
 					if (imported) {
-						openPopUp(t('API Key Imported'), <ImportedKeyPanel created={res.created} />, t('OK'));
+						// persistent: the key material is shown exactly once — a stray
+						// Escape/backdrop click must not dismiss it before it is copied.
+						openPopUp(t('API Key Imported'), <ImportedKeyPanel created={res.created} />, t('OK'), undefined, undefined, undefined, {persistent: true});
 					} else if (res.created.raw_key) {
-						openPopUp(t('API Key Created'), <RawKeyPanel created={res.created} />, t('OK'));
+						openPopUp(t('API Key Created'), <RawKeyPanel created={res.created} />, t('OK'), undefined, undefined, undefined, {persistent: true});
 					} else {
 						showAddError('AI API key', t('The Gateway did not return the one-time generated key. The key cannot be recovered; delete the metadata and create a new key.'));
 						return;
