@@ -21,6 +21,7 @@ import SnapshotScheduleForm, {IScheduleEntry} from 'components/input/SnapshotSch
 import TakeSnapshotForm, {ITakeSnapshotEntry} from 'components/input/TakeSnapshotForm';
 import UploadSnapshotForm, {IUploadSnapshotEntry} from 'components/input/UploadSnapshotForm';
 import RestoreWizard from 'components/snapshot/RestoreWizard';
+import {snapshotOpErrorText} from 'components/snapshot/snapshotOpError';
 import SnapshotTable from 'components/table/maintenance/SnapshotTable';
 import {
 	request_delete_snapshot,
@@ -82,14 +83,15 @@ export default function SnapshotPage() {
 		refetchSchedule();
 	};
 
-	// Renders the mapped, localized message; raw server prose stays in
-	// res.rawDetail (diagnostics only — UI-P6-1 batch 4).
-	const reportResult = (res: {status: string; localeKey: string}, successMsg: string) => {
+	// Localized headline first, then the server's verbatim detail — the
+	// snapshot inline-error convention (§5.3); a stale-row 404 must stay
+	// readable in the dialog, not collapse to the generic failure text.
+	const reportResult = (res: {status: string; localeKey: string; rawDetail?: string}, successMsg: string) => {
 		if (res.status === 'confirmed') {
 			openPopUp(t('Success'), successMsg, t('OK'));
 			refreshAll();
 		} else {
-			openPopUp(t('Error'), t(res.localeKey), t('OK'));
+			openPopUp(t('Error'), snapshotOpErrorText(res), t('OK'));
 		}
 	};
 
