@@ -8,6 +8,7 @@ import {AdapterDayjs} from '@mui/x-date-pickers/AdapterDayjs';
 import {DateTimePicker} from '@mui/x-date-pickers/DateTimePicker';
 import NewBox from 'components/layout/NewBox';
 import ParamBox from 'components/element/ParamBox';
+import {evaluateNumericField} from 'components/input/numericField';
 import dayjs from 'dayjs';
 import {t} from 'i18next';
 import {IApiKeyCreateRequest} from 'types/ai';
@@ -27,12 +28,19 @@ export interface IApiKeyFormState {
 	tenant_id: string;
 	name: string;
 	allowed_models: string; // comma-separated in the form
-	rate_limit_rps: number;
-	burst_size: number;
-	tokens_per_min: number;
+	// Raw text as typed (UI-P6-2 / ES-17): parsing happens in
+	// apiKeyFormToRequest and validity in validateForm — a typo must never
+	// silently become 0, which on these fields means UNLIMITED.
+	rate_limit_rps: string;
+	burst_size: string;
+	tokens_per_min: string;
 	expires_at: string;
 	enabled: boolean;
 }
+
+// 0 = unlimited/default, enforced BY OMISSION in the request (key spread only
+// when > 0) — the wire shape for valid inputs must stay byte-identical.
+const RATE_FIELD_SPEC = {required: false, min: 0};
 
 const INITIAL_FORM: IApiKeyFormState = {
 	mode: 'generate',
@@ -40,9 +48,9 @@ const INITIAL_FORM: IApiKeyFormState = {
 	tenant_id: '',
 	name: '',
 	allowed_models: '',
-	rate_limit_rps: 0,
-	burst_size: 0,
-	tokens_per_min: 0,
+	rate_limit_rps: '0',
+	burst_size: '0',
+	tokens_per_min: '0',
 	expires_at: '',
 	enabled: true,
 };
@@ -80,15 +88,21 @@ export function apiKeyFormToRequest(form: IApiKeyFormState): IApiKeyCreateReques
 	const expiryTrim = form.expires_at.trim();
 	const expiryValid = expiryTrim.length > 0 && !isNaN(Date.parse(expiryTrim));
 
+	// Raw → integer; an invalid raw never reaches the wire (validateForm blocks
+	// submit), and 0/blank keeps today's sentinel-by-omission shape exactly.
+	const rps = evaluateNumericField(form.rate_limit_rps, RATE_FIELD_SPEC).parsed;
+	const burst = evaluateNumericField(form.burst_size, RATE_FIELD_SPEC).parsed;
+	const tpm = evaluateNumericField(form.tokens_per_min, RATE_FIELD_SPEC).parsed;
+
 	// Omit unset optionals so the gateway applies its own defaults
 	return {
 		tenant_id: form.tenant_id.trim(),
 		...(form.mode === 'import' && importedApiKeyError(form.api_key) === undefined && {api_key: form.api_key}),
 		...(form.name.trim().length > 0 && {name: form.name.trim()}),
 		...(models.length > 0 && {allowed_models: models}),
-		...(form.rate_limit_rps > 0 && {rate_limit_rps: form.rate_limit_rps}),
-		...(form.burst_size > 0 && {burst_size: form.burst_size}),
-		...(form.tokens_per_min > 0 && {tokens_per_min: form.tokens_per_min}),
+		...(rps !== undefined && rps > 0 && {rate_limit_rps: rps}),
+		...(burst !== undefined && burst > 0 && {burst_size: burst}),
+		...(tpm !== undefined && tpm > 0 && {tokens_per_min: tpm}),
 		...(expiryValid && {expires_at: new Date(expiryTrim).toISOString()}),
 		enabled: form.enabled,
 	};
@@ -114,7 +128,9 @@ export default function ApiKeyInputForm(props: ApiKeyInputFormProps) {
 	const validateForm = (data: IApiKeyFormState): boolean => {
 		if (data.tenant_id.trim().length === 0) return false;
 		if (data.mode === 'import' && importedApiKeyError(data.api_key) !== undefined) return false;
-		if (data.rate_limit_rps < 0 || data.burst_size < 0 || data.tokens_per_min < 0) return false;
+		if (!evaluateNumericField(data.rate_limit_rps, RATE_FIELD_SPEC).valid) return false;
+		if (!evaluateNumericField(data.burst_size, RATE_FIELD_SPEC).valid) return false;
+		if (!evaluateNumericField(data.tokens_per_min, RATE_FIELD_SPEC).valid) return false;
 		if (expiryError(data.expires_at) !== undefined) return false;
 		return true;
 	};
@@ -205,20 +221,29 @@ export default function ApiKeyInputForm(props: ApiKeyInputFormProps) {
 				<Grid2 container spacing={2}>
 					<ParamBox
 						label={t('Rate Limit (req/s)')}
-						value={form.rate_limit_rps.toString()}
-						onChange={(value: string) => handleChange('rate_limit_rps')(parseInt(value) || 0)}
+						value={form.rate_limit_rps}
+						onChange={handleChange('rate_limit_rps')}
+						raw
+						error={!evaluateNumericField(form.rate_limit_rps, RATE_FIELD_SPEC).valid}
+						helperText={evaluateNumericField(form.rate_limit_rps, RATE_FIELD_SPEC).error}
 						param_desc={{type: 'integer', description: 'Maximum requests per second (0 = unlimited)'}}
 					/>
 					<ParamBox
 						label={t('Burst Size')}
-						value={form.burst_size.toString()}
-						onChange={(value: string) => handleChange('burst_size')(parseInt(value) || 0)}
+						value={form.burst_size}
+						onChange={handleChange('burst_size')}
+						raw
+						error={!evaluateNumericField(form.burst_size, RATE_FIELD_SPEC).valid}
+						helperText={evaluateNumericField(form.burst_size, RATE_FIELD_SPEC).error}
 						param_desc={{type: 'integer', description: 'Burst capacity above the steady-state RPS limit (0 = default)'}}
 					/>
 					<ParamBox
 						label={t('Tokens / Minute')}
-						value={form.tokens_per_min.toString()}
-						onChange={(value: string) => handleChange('tokens_per_min')(parseInt(value) || 0)}
+						value={form.tokens_per_min}
+						onChange={handleChange('tokens_per_min')}
+						raw
+						error={!evaluateNumericField(form.tokens_per_min, RATE_FIELD_SPEC).valid}
+						helperText={evaluateNumericField(form.tokens_per_min, RATE_FIELD_SPEC).error}
 						param_desc={{type: 'integer', description: 'Maximum LLM tokens per minute (0 = unlimited)'}}
 					/>
 				</Grid2>
