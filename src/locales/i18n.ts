@@ -23,12 +23,32 @@ export const support_lang = [
 	//{code: 'fr', name: 'Français', flag: 'fr'},
 ];
 
+// Apply the persisted language at module init — the earliest point that
+// covers EVERY route. The header's language menu also applies it, but the
+// header is not mounted on /login, so booting with default_language left a
+// ko/ja operator an English login screen and English login errors (ES-18
+// defect on exactly the screen the GS evaluation exercises for ES-27; found
+// by e2e/tests/oam/login-lockout.spec.ts).
+function initial_language(): string {
+	try {
+		const saved = localStorage.getItem('language');
+		if (saved && support_lang.some(lang => lang.code === saved)) return saved;
+	} catch {
+		// storage unavailable (SSR/tests without the shim) — fall through
+	}
+	return default_language;
+}
+
 i18n.use(initReactI18next).init({
 	resources,
-	lng: default_language,
+	lng: initial_language(),
 	fallbackLng: 'en',
 	interpolation: {escapeValue: false},
 });
+
+// Keep the document language honest from first paint (the a11y/lang gate
+// checks <html lang>); LanguageIcon re-syncs it on every later change.
+if (typeof document !== 'undefined') document.documentElement.lang = i18n.language;
 
 export function tmp(key: string) {
 	return key;
