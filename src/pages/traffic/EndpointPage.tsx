@@ -82,14 +82,16 @@ export default function EndpointPage() {
 		if (!inst || selectedItems.length === 0) return;
 
 		const results = await Promise.all(selectedItems.map(item => request_delete_endpoint_by_ip(inst, item)));
-		const failures = results.filter(res => res.status === 'error');
+		// A rule-referenced endpoint's rejected delete now maps to failed on
+		// every transport (body sniff, not reason-phrase sniff — UI-P6-1 D7).
+		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
 			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
 		} else if (failures.length < results.length) {
-			showDeleteError('endpoint', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+			showDeleteError('endpoint', t('{{succeeded}} succeeded, {{failed}} failed. {{error}}', {succeeded: results.length - failures.length, failed: failures.length, error: t(failures[0].localeKey)}));
 		} else {
-			showDeleteError('endpoint', failures[0].error);
+			showDeleteError('endpoint', t(failures[0].localeKey));
 			return;
 		}
 		set_selected_rows([]);
@@ -122,12 +124,12 @@ export default function EndpointPage() {
 				if (!instanceRef.current) return;
 
 				const res = await request_create_endpoint(inst, instanceRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
 					setTimeout(() => {
 						refetch();
 					}, 1000);
-				} else showAddError('endpoint', res.error);
+				} else showAddError('endpoint', t(res.localeKey));
 			},
 			true,
 		);
@@ -172,13 +174,13 @@ export default function EndpointPage() {
 
 				// Use POST API with same function as create (as requested by user)
 				const res = await request_create_endpoint(inst, updateFormRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Endpoint updated successfully.'), t('OK'));
 					setTimeout(() => {
 						refetch();
 					}, 1000);
 				} else {
-					showUpdateError('endpoint', res.error);
+					showUpdateError('endpoint', t(res.localeKey));
 				}
 			},
 			true,

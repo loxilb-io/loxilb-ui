@@ -119,7 +119,9 @@ export default function LBRulePage() {
 		});
 
 		const results = await Promise.all(deletePromises);
-		const failures = results.filter(res => res.status === 'error');
+		// {result:"fail"} envelopes now map to failed — a dataplane-rejected
+		// delete can no longer be counted as succeeded (UI-P6-1).
+		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
 			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: selectedItems.length}), t('OK'));
@@ -129,13 +131,13 @@ export default function LBRulePage() {
 			}, 1000);
 		} else if (failures.length < results.length) {
 			// Partial success
-			showDeleteError('load balancer rule(s)', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+			showDeleteError('load balancer rule(s)', t('{{succeeded}} succeeded, {{failed}} failed. {{error}}', {succeeded: results.length - failures.length, failed: failures.length, error: t(failures[0].localeKey)}));
 			setTimeout(() => {
 				refetch();
 			}, 1000);
 		} else {
 			// All failed
-			showDeleteError('load balancer rule(s)', failures[0].error);
+			showDeleteError('load balancer rule(s)', t(failures[0].localeKey));
 		}
 	}, [inst, selectedItems, showDeleteError, refetch, openPopUp]);
 
@@ -165,14 +167,14 @@ export default function LBRulePage() {
 				if (!instanceRef.current) return;
 
 				const res = await request_create_load_balancer_config(inst, instanceRef.current, effectiveFlavor);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
 					setTimeout(() => {
 						refetch();
 					}, 1000);
 				} else {
-					// Show formatted error popup
-					showAddError('load balancer rule', res.error);
+					// Localized mapped message; raw prose stays in diagnostics.
+					showAddError('load balancer rule', t(res.localeKey));
 				}
 			},
 			true,
@@ -349,22 +351,22 @@ export default function LBRulePage() {
 							const del = osa.name
 								? await request_delete_lb_by_name(inst, osa.name)
 								: await request_delete_lb_by_full_key(inst, selectedLB);
-							if (del.status !== 'success') {
-								showUpdateError('load balancer rule', del.error);
+							if (del.status !== 'confirmed') {
+								showUpdateError('load balancer rule', t(del.localeKey));
 								return;
 							}
 						}
 						res = await request_create_load_balancer_config(inst, upsert, effectiveFlavor);
 					}
 				}
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Load balancer rule updated successfully.'), t('OK'));
 					setTimeout(() => {
 						refetch();
 					}, 1000);
 				} else {
-					// Show formatted error popup
-					showUpdateError('load balancer rule', res.error);
+					// Localized mapped message; raw prose stays in diagnostics.
+					showUpdateError('load balancer rule', t(res.localeKey));
 				}
 			},
 			true,
