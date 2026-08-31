@@ -19,7 +19,7 @@ const BODY_ID = 'app-dialog-body';
 //---------------------------------------------------------
 export default function PopUp() {
 	const [props, set_props] = useRecoilState(is_open_popup_atom);
-	const {i18n} = useTranslation();
+	const {t, i18n} = useTranslation();
 
 	// Force re-render when language changes to update popup content
 	useEffect(() => {
@@ -116,7 +116,7 @@ export default function PopUp() {
 					<Box width="90px">
 						{/* eslint-disable-next-line jsx-a11y/no-autofocus -- deliberate: info dialogs have OK as the only action; focus lands there per the dialog pattern */}
 						<Button fullWidth autoFocus={!props.no} variant="contained" color="secondary" onClick={handleYes} disabled={props.disable_yes || props.busy}>
-							{props.busy ? <CircularProgress size={18} color="inherit" /> : props.yes}
+							{props.busy ? <CircularProgress size={18} color="inherit" aria-label={t('Loading...')} /> : props.yes}
 						</Button>
 					</Box>
 				)}

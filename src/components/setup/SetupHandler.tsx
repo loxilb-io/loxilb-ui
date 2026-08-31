@@ -3,6 +3,7 @@
 //---------------------------------------------------------
 import {Box, CircularProgress} from '@mui/material';
 import {useEffect, useState} from 'react';
+import {useTranslation} from 'react-i18next';
 import {useLocation, useNavigate} from 'react-router-dom';
 import {shouldRedirectToSetup} from 'utils/simpleSetup';
 
@@ -17,6 +18,7 @@ interface SetupHandlerProps {
 export default function SetupHandler({children}: SetupHandlerProps) {
 	const navigate = useNavigate();
 	const location = useLocation();
+	const {t} = useTranslation();
 	const [setupChecked, setSetupChecked] = useState(false);
 
 	useEffect(() => {
@@ -56,7 +58,7 @@ export default function SetupHandler({children}: SetupHandlerProps) {
 	if (!setupChecked) {
 		return (
 			<Box display="flex" alignItems="center" justifyContent="center" height="100vh" width="100%">
-				<CircularProgress />
+				<CircularProgress aria-label={t('Loading...')} />
 			</Box>
 		);
 	}

@@ -153,6 +153,10 @@ describe('PopUp busy state', () => {
 		await user.keyboard('{Escape}');
 		expect(screen.getByRole('dialog')).toBeTruthy();
 
+		// The busy spinner replaces the Yes label, so it must carry an
+		// accessible name of its own (axe aria-progressbar-name).
+		expect(screen.getByRole('progressbar', {name: 'Loading...'})).toBeTruthy();
+
 		resolveAction();
 		await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 	});
