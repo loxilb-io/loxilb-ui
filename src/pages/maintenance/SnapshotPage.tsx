@@ -82,12 +82,14 @@ export default function SnapshotPage() {
 		refetchSchedule();
 	};
 
-	const reportResult = (res: {status: string; error?: string}, successMsg: string) => {
-		if (res.status === 'success') {
+	// Renders the mapped, localized message; raw server prose stays in
+	// res.rawDetail (diagnostics only — UI-P6-1 batch 4).
+	const reportResult = (res: {status: string; localeKey: string}, successMsg: string) => {
+		if (res.status === 'confirmed') {
 			openPopUp(t('Success'), successMsg, t('OK'));
 			refreshAll();
 		} else {
-			openPopUp(t('Error'), res.error ?? t('Unknown error'), t('OK'));
+			openPopUp(t('Error'), t(res.localeKey), t('OK'));
 		}
 	};
 
@@ -133,18 +135,18 @@ export default function SnapshotPage() {
 					description: t('Automatic pre-upgrade safety snapshot'),
 					trigger_type: 'pre_upgrade',
 				});
-				if (res.status !== 'success') {
-					openPopUp(t('Error'), res.error ?? t('Unknown error'), t('OK'));
+				if (res.status !== 'confirmed') {
+					openPopUp(t('Error'), t(res.localeKey), t('OK'));
 					return;
 				}
-				let name = res.snapshot?.name ?? placeholder;
-				if (res.snapshot?.id) {
-					const gwVersion = res.snapshot.gateway_version;
+				let name = res.data?.name ?? placeholder;
+				if (res.data?.id) {
+					const gwVersion = res.data.gateway_version;
 					const finalName = gwVersion ? `pre-upgrade-${gwVersion}` : name;
-					const pin = await request_patch_snapshot(res.snapshot.id, {pinned: true, name: finalName});
-					if (pin.status !== 'success') {
+					const pin = await request_patch_snapshot(res.data.id, {pinned: true, name: finalName});
+					if (pin.status !== 'confirmed') {
 						// The snapshot exists but is NOT pinned — say so honestly.
-						openPopUp(t('Warning'), t('Snapshot "{{name}}" was created but pinning failed: {{error}}', {name, error: pin.error}), t('OK'));
+						openPopUp(t('Warning'), t('Snapshot "{{name}}" was created but pinning failed: {{error}}', {name, error: t(pin.localeKey)}), t('OK'));
 						refreshAll();
 						return;
 					}
