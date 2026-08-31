@@ -10,6 +10,10 @@ name: Release
 #     multi-stage Node build served by nginx — which is Cosign-signed
 #     (keyless/OIDC), carries a SLSA build-provenance attestation, and an
 #     SPDX SBOM attestation.
+#   - the pushed image digest, surfaced in the job summary and appended to the
+#     GitHub Release body as a "Verify this release" block (docker pull by
+#     digest + cosign verify + SBOM download), so release consumers pin an
+#     immutable ref instead of trusting a mutable tag.
 # A Trivy CRITICAL+fixable scan gates the image BEFORE it is pushed/published.
 # `-rc.` / `-alpha.` / `-beta.` tags publish as prereleases and do NOT move
 # the `:latest` image tag.
@@ -52,7 +56,7 @@ jobs:
     # required reviewer configured on the `release` environment.
     environment: release
     permissions:
-      contents: write # create the GitHub Release
+      contents: write # create the GitHub Release + append the digest block to its body
       packages: write # push the image to GHCR
       id-token: write # keyless Cosign signing + attestation OIDC
       attestations: write # record build-provenance / SBOM attestations
@@ -223,6 +227,17 @@ jobs:
           sbom-path: sbom.spdx.json
           push-to-registry: true
 
+      - name: Publish digest to job summary
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          {
+            echo "## Image digest"
+            echo '```'
+            echo "${REGISTRY}/${IMAGE_NAME}@${DIGEST}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Create GitHub Release
         # Tag push only. A dispatch republishes the image for an existing tag;
         # it must never create or mutate the release page.
@@ -236,3 +251,47 @@ jobs:
             dist/*.tar.gz
             dist/SHA256SUMS
             sbom.spdx.json
+
+      - name: Append verification commands to the Release body
+        # Tag push only, mirroring "Create GitHub Release" above: a dispatch
+        # republishes the image and must never mutate the release page (a
+        # rebuild yields a new digest; the body keeps the one the tag-push run
+        # published and signed).
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+          TAG: ${{ steps.ver.outputs.version }}
+          REPO: ${{ github.repository }}
+        run: |
+          IMAGE="${REGISTRY}/${IMAGE_NAME}"
+          # The release was created by the previous step; retry the read to
+          # ride out API read-after-write lag rather than fail a run that has
+          # already published and signed the image.
+          n=0
+          until gh release view "${TAG}" --repo "${REPO}" --json body -q .body > /tmp/body.md; do
+            n=$((n+1))
+            if [ "$n" -ge 3 ]; then
+              echo "::error::release for ${TAG} not found after ${n} attempts"
+              exit 1
+            fi
+            sleep 5
+          done
+          # Idempotent for the environment-approval re-run case: append once.
+          if grep -q '^## Verify this release$' /tmp/body.md; then
+            echo "Release body already carries the verification block; nothing to do."
+            exit 0
+          fi
+          {
+            echo ""
+            echo "## Verify this release"
+            echo '```bash'
+            echo "docker pull ${IMAGE}@${DIGEST}"
+            echo "cosign verify ${IMAGE}@${DIGEST} \\"
+            echo "  --certificate-identity-regexp 'https://github.com/${REPO}/.github/workflows/release.yml@.*' \\"
+            echo "  --certificate-oidc-issuer https://token.actions.githubusercontent.com"
+            echo "gh release download ${TAG} --repo ${REPO} --pattern sbom.spdx.json"
+            echo '```'
+          } > /tmp/verify.md
+          cat /tmp/body.md /tmp/verify.md > /tmp/new-body.md
+          gh release edit "${TAG}" --repo "${REPO}" --notes-file /tmp/new-body.md
