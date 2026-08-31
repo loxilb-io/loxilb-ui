@@ -95,14 +95,14 @@ export default function AITenantRateLimitPage() {
 				if (!formRef.current) return;
 
 				const res = await request_set_tenant_ratelimit(inst, formRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					rememberTenant(formRef.current.tenant_id);
 					openPopUp(t('Success'), t('Applied successfully.'), t('OK'));
 					set_selected_rows([]);
 					setTimeout(() => {
 						refetch();
 					}, 1000);
-				} else showAddError('AI tenant rate limit', res.error);
+				} else showAddError('AI tenant rate limit', t(res.localeKey));
 			},
 			true,
 		);

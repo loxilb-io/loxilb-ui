@@ -7,7 +7,7 @@
 
 import {ApiResult, isMutationFailure, SimpleResponse} from './fetcher_base';
 import {OpResult} from './opResult';
-import {CONFLICT_KEY, RATE_LIMITED_KEY, STATUS_LOCALE_KEYS} from './opResultCodes';
+import {CONFLICT_KEY, NOT_ENABLED_KEY, RATE_LIMITED_KEY, STATUS_LOCALE_KEYS} from './opResultCodes';
 
 // Optional until the frozen error-code contract lands (UI-P6-1 external
 // dependency); absent headers simply leave correlationId undefined.
@@ -44,6 +44,19 @@ export function fromSimpleResponse<T = unknown>(resp: SimpleResponse<T> | null |
 	if (resp.code === 429) {
 		return {status: 'denied', code: `${op}.rate_limited`, localeKey: RATE_LIMITED_KEY, retryable: true, ...common};
 	}
+	// 402: the gateway license-gates some feature families (AI) — the caller
+	// is authenticated but the feature is not purchasable/active. Denied, with
+	// a distinct code so pages and E2E can branch on it.
+	if (resp.code === 402) {
+		return {status: 'denied', code: `${op}.payment_required`, localeKey: STATUS_LOCALE_KEYS.denied, retryable: false, ...common};
+	}
+	// 501: the feature is not compiled/enabled in this gateway launch config
+	// (e.g. /config/ai/* answers 501 until --userservice is on). Still `failed`
+	// (unknown⇒failed philosophy — retrying cannot help), but with an honest
+	// message and a distinct code instead of a generic failure.
+	if (resp.code === 501) {
+		return {status: 'failed', code: `${op}.not_implemented`, localeKey: NOT_ENABLED_KEY, retryable: false, ...common};
+	}
 	// 504 added to the task-doc set (502/503/0): a gateway timeout is the same
 	// operator experience — the service is not answering right now.
 	if (resp.code === 502 || resp.code === 503 || resp.code === 504 || resp.code === 0) {
@@ -56,10 +69,10 @@ export function fromSimpleResponse<T = unknown>(resp: SimpleResponse<T> | null |
 		if (isMutationFailure(resp, [resp.code])) {
 			return {status: 'failed', code: `${op}.reported_failure`, localeKey: STATUS_LOCALE_KEYS.failed, retryable: false, ...common};
 		}
-		// handle_response swallows JSON parse failures into data:null while
-		// keeping the 2xx code — a truncated/HTML body must not look healthy.
-		// Bodyless success codes (204/205) legitimately carry no JSON.
-		if (resp.data === null && resp.code !== 204 && resp.code !== 205) {
+		// A NON-empty 2xx body that failed to parse (truncated JSON, an HTML
+		// error page) must not look healthy. A genuinely empty body is fine —
+		// 204/205 and bodyless-200 upserts confirm below with data undefined.
+		if (resp.parse_failed) {
 			return {status: 'failed', code: `${op}.parse_error`, localeKey: STATUS_LOCALE_KEYS.failed, retryable: false, ...common};
 		}
 		return {status: 'confirmed', code: `${op}.ok`, localeKey: STATUS_LOCALE_KEYS.confirmed, retryable: false, data: resp.data ?? undefined, correlationId, httpStatus: resp.code};

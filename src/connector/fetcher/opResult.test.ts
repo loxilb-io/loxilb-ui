@@ -11,7 +11,7 @@ import jaJSON from 'locales/ja.json';
 import koJSON from 'locales/ko.json';
 import {SimpleResponse} from './fetcher_base';
 import {fromNetworkError, fromSimpleResponse, toApiResult} from './opResultAdapter';
-import {CONFLICT_KEY, LOGIN_FAILED_KEY, LOGIN_INVALID_KEY, LOGIN_LOCKED_KEY, RATE_LIMITED_KEY, STATUS_LOCALE_KEYS} from './opResultCodes';
+import {CONFLICT_KEY, LOGIN_FAILED_KEY, LOGIN_INVALID_KEY, LOGIN_LOCKED_KEY, NOT_ENABLED_KEY, RATE_LIMITED_KEY, STATUS_LOCALE_KEYS} from './opResultCodes';
 
 function resp(code: number, data: any = {}, message = ''): SimpleResponse {
 	return {code, data, message};
@@ -25,6 +25,8 @@ describe('fromSimpleResponse status mapping', () => {
 		[422, 'invalid', '.rejected', false],
 		[409, 'invalid', '.conflict', false],
 		[429, 'denied', '.rate_limited', true],
+		[402, 'denied', '.payment_required', false],
+		[501, 'failed', '.not_implemented', false],
 		[502, 'unavailable', '.unavailable', true],
 		[503, 'unavailable', '.unavailable', true],
 		[504, 'unavailable', '.unavailable', true],
@@ -37,7 +39,7 @@ describe('fromSimpleResponse status mapping', () => {
 		expect(res.httpStatus).toBe(code);
 	});
 
-	it.each([301, 304, 418, 500, 501, 599])('unknown HTTP %i → failed (never success)', code => {
+	it.each([301, 304, 418, 500, 599])('unknown HTTP %i → failed (never success)', code => {
 		const res = fromSimpleResponse(resp(code), 'op');
 		expect(res.status).toBe('failed');
 	});
@@ -64,10 +66,19 @@ describe('fromSimpleResponse status mapping', () => {
 		expect(res.code).toBe('op.reported_failure');
 	});
 
-	it('200 with data:null (parse-swallow) → failed with a parse code', () => {
-		const res = fromSimpleResponse(resp(200, null), 'op');
+	it('200 with a non-empty unparseable body (parse_failed) → failed with a parse code', () => {
+		const res = fromSimpleResponse({...resp(200, null), parse_failed: true}, 'op');
 		expect(res.status).toBe('failed');
 		expect(res.code).toBe('op.parse_error');
+	});
+
+	it('200 with a genuinely EMPTY body confirms — bodyless upserts are not parse failures', () => {
+		// handle_response leaves parse_failed unset for empty bodies; mapping
+		// them to failed would false-fail real gateway upserts and push the
+		// operator into duplicate retries.
+		const res = fromSimpleResponse(resp(200, null), 'op');
+		expect(res.status).toBe('confirmed');
+		expect(res.data).toBeUndefined();
 	});
 
 	it('undefined / garbage input → failed, never throws', () => {
@@ -108,7 +119,7 @@ describe('toApiResult compatibility shim', () => {
 });
 
 describe('locale catalogue coverage for dynamically-selected keys', () => {
-	const allKeys = [...Object.values(STATUS_LOCALE_KEYS), RATE_LIMITED_KEY, CONFLICT_KEY, LOGIN_LOCKED_KEY, LOGIN_INVALID_KEY, LOGIN_FAILED_KEY];
+	const allKeys = [...Object.values(STATUS_LOCALE_KEYS), RATE_LIMITED_KEY, CONFLICT_KEY, NOT_ENABLED_KEY, LOGIN_LOCKED_KEY, LOGIN_INVALID_KEY, LOGIN_FAILED_KEY];
 	it.each([
 		['en', enJSON],
 		['ko', koJSON],

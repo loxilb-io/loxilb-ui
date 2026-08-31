@@ -25,6 +25,9 @@ export const RATE_LIMITED_KEY = 'Too many requests. Please try again later.';
 /** 409 — the request conflicts with existing server state (duplicates etc.). */
 export const CONFLICT_KEY = 'The request conflicts with an existing item.';
 
+/** 501 — the gateway build/launch config does not enable this feature (e.g. --userservice off). */
+export const NOT_ENABLED_KEY = 'This feature is not enabled on this instance.';
+
 // Login-specific keys (N-3 / ES-27). The lockout text deliberately does NOT
 // disclose attempt counts or the retry-after countdown — Q-4 conservative
 // default until SECURITY_PROFILE.md decides otherwise.

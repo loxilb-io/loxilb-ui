@@ -689,5 +689,7 @@
 	"Login failed": "ログインに失敗しました。",
 	"Another instance is already registered at this protocol/host/port/version.": "同じプロトコル/ホスト/ポート/バージョンで既に登録されているインスタンスがあります。",
 	"An instance with this name already exists.": "同じ名前のインスタンスが既に存在します。",
-	"Your role does not permit managing instances.": "現在のロールではインスタンスを管理できません。"
+	"Your role does not permit managing instances.": "現在のロールではインスタンスを管理できません。",
+	"This feature is not enabled on this instance.": "このインスタンスではこの機能は有効になっていません。",
+	"{{succeeded}} succeeded, {{failed}} failed. {{error}}": "{{succeeded}}件成功、{{failed}}件失敗。{{error}}"
 }

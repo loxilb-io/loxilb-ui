@@ -15,11 +15,16 @@ export interface RequestOptions {
 // T is the expected 2xx JSON body shape — pass a generated type from
 // src/api (e.g. GwGetResp<'/config/loadbalancer/all'>). data is null when
 // the body is not parseable JSON, and may be an error body on non-2xx codes.
+// parse_failed distinguishes the two data:null cases (UI-P6-1): a genuinely
+// empty body (legit for 204/205 and bodyless-200 upserts) leaves it unset,
+// while a NON-empty body that failed to parse (truncated JSON, an HTML error
+// page served with a 2xx) sets it — that one must never look like success.
 export interface SimpleResponse<T = any> {
 	code: number;
 	data: T | null;
 	message: string;
 	headers?: Headers;
+	parse_failed?: boolean;
 }
 
 export type ApiResult = {
@@ -220,14 +225,39 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 async function handle_response<T = any>(response: any): Promise<SimpleResponse<T>> {
 	try {
 		const cc = response.clone();
-		const resp_json = await cc.json();
-		return {
-			code: response.status,
-			data: resp_json,
-			message: response.statusText || resp_json.result,
-			headers: response.headers
-		};
+		const text = await cc.text();
+		// Empty body: legitimate for 204/205 and bodyless-200 mutations — not
+		// a parse failure. data stays null, parse_failed stays unset.
+		if (text.trim() === '') {
+			return {
+				code: response.status,
+				data: null,
+				message: response.statusText,
+				headers: response.headers
+			};
+		}
+		try {
+			const resp_json = JSON.parse(text);
+			return {
+				code: response.status,
+				data: resp_json,
+				message: response.statusText || resp_json.result,
+				headers: response.headers
+			};
+		} catch {
+			// Non-empty but unparseable (truncated JSON, HTML error page on a
+			// 2xx): flag it so the OpResult adapter maps it to `failed` instead
+			// of the legacy silent success (UI-P6-1 parse-swallow defect).
+			return {
+				code: response.status,
+				data: null,
+				message: response.statusText,
+				headers: response.headers,
+				parse_failed: true
+			};
+		}
 	} catch (error) {
+		// The body stream itself could not be read — keep the legacy shape.
 		return {
 			code: response.status,
 			data: null,

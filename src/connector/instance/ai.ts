@@ -3,8 +3,11 @@
 //---------------------------------------------------------
 import {IApiKeyCreateRequest, IApiKeyCreateResponse, IApiKeySummary, ITenantRateLimitEntry, ITenantRateLimitMod, normalizeTenantRateLimit, validateTenantRateLimit} from 'types/ai';
 import {IInstance} from 'types/oam';
-import {ApiResult, assertOk, createDetailedErrorMessage} from '../fetcher/fetcher_base';
+import {assertOk} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
+import {OpResult} from '../fetcher/opResult';
+import {fromNetworkError, fromSimpleResponse} from '../fetcher/opResultAdapter';
+import {STATUS_LOCALE_KEYS} from '../fetcher/opResultCodes';
 import type {GwGetResp} from 'api';
 
 //---------------------------------------------------------
@@ -25,32 +28,31 @@ export async function query_get_apikey_all(instance: IInstance, tenant_id?: stri
 	return Array.isArray(resp.data) ? resp.data : [];
 }
 
-export type ApiKeyCreateResult = ApiResult & {created?: IApiKeyCreateResponse};
-
 /**
- * Create a new API key for a tenant.
+ * Create a new API key for a tenant (UI-P6-1 batch 2 — OpResult).
  * Generated mode returns plaintext only in this response. Imported mode sends
  * caller-supplied material once and the response deliberately omits raw_key.
+ * The adapter closes the two false-success gaps the legacy path had: a 200
+ * carrying {result:"fail"} and a 200 whose body failed to parse both map to
+ * `failed`, so the reveal dialog can never render around a failure body.
  */
-export async function request_create_apikey(instance: IInstance, data: IApiKeyCreateRequest): Promise<ApiKeyCreateResult> {
-	const resp = await POST_INST<IApiKeyCreateResponse>(instance, `/config/ai/apikey`, data);
-	if (resp.code !== 200 && resp.code !== 201) {
-		const errorMessage = createDetailedErrorMessage(resp, 'AI API Key Create');
-		return {status: 'error', error: errorMessage};
+export async function request_create_apikey(instance: IInstance, data: IApiKeyCreateRequest): Promise<OpResult<IApiKeyCreateResponse>> {
+	try {
+		return fromSimpleResponse(await POST_INST<IApiKeyCreateResponse>(instance, `/config/ai/apikey`, data), 'ai.apikey.create');
+	} catch (error) {
+		return fromNetworkError('ai.apikey.create', error);
 	}
-	return {status: 'success', created: resp.data ?? undefined};
 }
 
 /**
  * Permanently delete an API key by its ID.
  */
-export async function request_delete_apikey(instance: IInstance, key_id: string): Promise<ApiResult> {
-	const resp = await DELETE_INST(instance, `/config/ai/apikey/${encodeURIComponent(key_id)}`);
-	if (resp.code !== 200 && resp.code !== 204) {
-		const errorMessage = createDetailedErrorMessage(resp, 'AI API Key Delete');
-		return {status: 'error', error: errorMessage};
+export async function request_delete_apikey(instance: IInstance, key_id: string): Promise<OpResult> {
+	try {
+		return fromSimpleResponse(await DELETE_INST(instance, `/config/ai/apikey/${encodeURIComponent(key_id)}`), 'ai.apikey.delete');
+	} catch (error) {
+		return fromNetworkError('ai.apikey.delete', error);
 	}
-	return {status: 'success'};
 }
 
 //---------------------------------------------------------
@@ -93,15 +95,18 @@ export async function query_get_tenant_ratelimits_for(instance: IInstance, tenan
 /**
  * Create or update (upsert) the rate limit configuration for a tenant.
  */
-export async function request_set_tenant_ratelimit(instance: IInstance, data: ITenantRateLimitMod): Promise<ApiResult> {
+export async function request_set_tenant_ratelimit(instance: IInstance, data: ITenantRateLimitMod): Promise<OpResult> {
 	const payload = normalizeTenantRateLimit(data);
 	const errors = validateTenantRateLimit(payload);
-	if (errors.length > 0) return {status: 'error', error: `Invalid tenant rate limit: ${errors.join(' ')}`};
-
-	const resp = await POST_INST(instance, `/config/ai/tenant/ratelimit`, payload);
-	if (resp.code !== 200 && resp.code !== 204) {
-		const errorMessage = createDetailedErrorMessage(resp, 'AI Tenant Rate Limit');
-		return {status: 'error', error: errorMessage};
+	if (errors.length > 0) {
+		// Client-side backstop (the form validates inline before this point):
+		// a mapped `invalid`, with the field messages in diagnostics only.
+		return {status: 'invalid', code: 'ai.ratelimit.client_invalid', localeKey: STATUS_LOCALE_KEYS.invalid, retryable: false, rawDetail: errors.join(' ')};
 	}
-	return {status: 'success'};
+
+	try {
+		return fromSimpleResponse(await POST_INST(instance, `/config/ai/tenant/ratelimit`, payload), 'ai.ratelimit.set');
+	} catch (error) {
+		return fromNetworkError('ai.ratelimit.set', error);
+	}
 }

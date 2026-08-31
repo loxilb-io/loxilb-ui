@@ -689,5 +689,7 @@
 	"Login failed": "로그인에 실패했습니다.",
 	"Another instance is already registered at this protocol/host/port/version.": "동일한 프로토콜/호스트/포트/버전으로 이미 등록된 인스턴스가 있습니다.",
 	"An instance with this name already exists.": "같은 이름의 인스턴스가 이미 있습니다.",
-	"Your role does not permit managing instances.": "현재 역할로는 인스턴스를 관리할 수 없습니다."
+	"Your role does not permit managing instances.": "현재 역할로는 인스턴스를 관리할 수 없습니다.",
+	"This feature is not enabled on this instance.": "이 인스턴스에서는 이 기능이 활성화되어 있지 않습니다.",
+	"{{succeeded}} succeeded, {{failed}} failed. {{error}}": "{{succeeded}}건 성공, {{failed}}건 실패. {{error}}"
 }

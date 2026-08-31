@@ -136,13 +136,13 @@ export default function AIApiKeyPage() {
 				const imported = request.api_key !== undefined;
 				formRef.current = null;
 				const res = await request_create_apikey(inst, request);
-				if (res.status === 'success' && res.created) {
+				if (res.status === 'confirmed' && res.data) {
 					if (imported) {
 						// persistent: the key material is shown exactly once — a stray
 						// Escape/backdrop click must not dismiss it before it is copied.
-						openPopUp(t('API Key Imported'), <ImportedKeyPanel created={res.created} />, t('OK'), undefined, undefined, undefined, {persistent: true});
-					} else if (res.created.raw_key) {
-						openPopUp(t('API Key Created'), <RawKeyPanel created={res.created} />, t('OK'), undefined, undefined, undefined, {persistent: true});
+						openPopUp(t('API Key Imported'), <ImportedKeyPanel created={res.data} />, t('OK'), undefined, undefined, undefined, {persistent: true});
+					} else if (res.data.raw_key) {
+						openPopUp(t('API Key Created'), <RawKeyPanel created={res.data} />, t('OK'), undefined, undefined, undefined, {persistent: true});
 					} else {
 						showAddError('AI API key', t('The Gateway did not return the one-time generated key. The key cannot be recovered; delete the metadata and create a new key.'));
 						return;
@@ -150,7 +150,7 @@ export default function AIApiKeyPage() {
 					setTimeout(() => {
 						refetch();
 					}, 1000);
-				} else showAddError('AI API key', res.error);
+				} else showAddError('AI API key', t(res.localeKey));
 			},
 			true,
 		);
@@ -163,14 +163,16 @@ export default function AIApiKeyPage() {
 		if (targets.length === 0) return;
 
 		const results = await Promise.all(targets.map(item => request_delete_apikey(inst, item.key_id!)));
-		const failures = results.filter(res => res.status === 'error');
+		// A gateway 200 carrying {result:"fail"} now maps to `failed` — a
+		// dataplane-rejected delete can no longer be counted as succeeded.
+		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
 			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
 		} else if (failures.length < results.length) {
-			showDeleteError('AI API key', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+			showDeleteError('AI API key', t('{{succeeded}} succeeded, {{failed}} failed. {{error}}', {succeeded: results.length - failures.length, failed: failures.length, error: t(failures[0].localeKey)}));
 		} else {
-			showDeleteError('AI API key', failures[0].error);
+			showDeleteError('AI API key', t(failures[0].localeKey));
 			return;
 		}
 		set_selected_rows([]);

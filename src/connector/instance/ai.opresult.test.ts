@@ -24,7 +24,8 @@ function mockFetch(body: string, init: {status?: number} = {}) {
 	const {status = 200} = init;
 	// X-Loxi-Error-Origin marks gateway-hop failures so the transport layer
 	// never treats them as an expired OAM browser session.
-	const resp = new Response(body, {status, headers: {'Content-Type': 'application/json', 'X-Loxi-Error-Origin': 'gateway'}});
+	// 204/205 are null-body statuses — the Response constructor rejects a body.
+	const resp = new Response(status === 204 || status === 205 ? null : body, {status, headers: {'Content-Type': 'application/json', 'X-Loxi-Error-Origin': 'gateway'}});
 	(global.fetch as Mock).mockResolvedValue(resp);
 	return resp;
 }

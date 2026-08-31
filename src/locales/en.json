@@ -689,5 +689,7 @@
 	"Login failed": "Login failed",
 	"Another instance is already registered at this protocol/host/port/version.": "Another instance is already registered at this protocol/host/port/version.",
 	"An instance with this name already exists.": "An instance with this name already exists.",
-	"Your role does not permit managing instances.": "Your role does not permit managing instances."
+	"Your role does not permit managing instances.": "Your role does not permit managing instances.",
+	"This feature is not enabled on this instance.": "This feature is not enabled on this instance.",
+	"{{succeeded}} succeeded, {{failed}} failed. {{error}}": "{{succeeded}} succeeded, {{failed}} failed. {{error}}"
 }

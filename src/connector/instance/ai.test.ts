@@ -23,7 +23,8 @@ describe('AI write connector wire contracts', () => {
 		const request = {tenant_id: 'tenant-a', api_key: 'imported-key-1234', enabled: true};
 
 		const result = await request_create_apikey(instance, request);
-		expect(result).toEqual({status: 'success', created: {key_id: 'key-1'}});
+		expect(result.status).toBe('confirmed');
+		expect(result.data).toEqual({key_id: 'key-1'});
 		expect(post).toHaveBeenCalledOnce();
 		expect(post).toHaveBeenCalledWith(instance, '/config/ai/apikey', request);
 	});
@@ -37,7 +38,7 @@ describe('AI write connector wire contracts', () => {
 			model_limits: [{model: ' retired-model ', tokens_per_min: 0}],
 		});
 
-		expect(result.status).toBe('success');
+		expect(result.status).toBe('confirmed');
 		expect(post).toHaveBeenCalledWith(instance, '/config/ai/tenant/ratelimit', {
 			tenant_id: 'tenant-a',
 			tokens_per_min: 1000,
@@ -55,7 +56,7 @@ describe('AI write connector wire contracts', () => {
 			model_limits: [{model: ' llama-70b ', tokens_per_min: 500}],
 		});
 
-		expect(result.status).toBe('success');
+		expect(result.status).toBe('confirmed');
 		expect(post).toHaveBeenCalledWith(instance, '/config/ai/tenant/ratelimit', {
 			tenant_id: 'tenant-a',
 			rps: 10,
@@ -72,7 +73,7 @@ describe('AI write connector wire contracts', () => {
 		];
 		const result = await request_set_tenant_ratelimit(instance, {tenant_id: 'tenant-a', model_limits});
 
-		expect(result.status).toBe('success');
+		expect(result.status).toBe('confirmed');
 		expect(post).toHaveBeenCalledWith(instance, '/config/ai/tenant/ratelimit', {tenant_id: 'tenant-a', model_limits});
 	});
 
@@ -85,14 +86,15 @@ describe('AI write connector wire contracts', () => {
 			],
 		});
 
-		expect(result.status).toBe('error');
-		expect(result.error).toContain('duplicated');
+		expect(result.status).toBe('invalid');
+		// Field detail is diagnostics-only under OpResult (never rendered raw).
+		expect(result.rawDetail).toContain('duplicated');
 		expect(post).not.toHaveBeenCalled();
 	});
 
 	it('rejects invalid burst locally without sending a request', async () => {
 		const result = await request_set_tenant_ratelimit(instance, {tenant_id: 'tenant-a', burst_pct: 1001});
-		expect(result.status).toBe('error');
+		expect(result.status).toBe('invalid');
 		expect(post).not.toHaveBeenCalled();
 	});
 });
