@@ -152,6 +152,12 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 		// UI instead of letting the feature page degrade to an empty / inline
 		// error state. OAM control-plane failures still redirect as before.
 		const isGatewayPassthrough = typeof url === 'string' && /\/loxilbs\/\d+\/netlox\//.test(url);
+		// Mutations must fail INLINE (UI-P6-1): their non-2xx flows through the
+		// OpResult adapter into a localized dialog. The legacy full-app
+		// redirects here discarded the operator's open form (proven live: a 500
+		// on an instance PUT ejected the app to /500 mid-dialog). Reads keep
+		// the redirect behavior until UI-P6-5 standardizes page states.
+		const isMutation = mergedOptions.method !== 'GET';
 		// OAM snapshot endpoints surface failures INLINE (error banner /
 		// verbatim error popup / wizard error panel) — snapshots are
 		// user-deletable rows, so a stale action (another session removed the
@@ -170,15 +176,19 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 			// Forbidden - user is authenticated but lacks permission or action is forbidden
 			// Return response so caller can handle the error message
 			return resp;
-		} else if (resp.status === 402) move_402();
+		} else if (resp.status === 402) {
+			// Dead license branch for reads only — a 402 on a mutation (the
+			// gateway license-gates AI writes) maps to denied in the adapter.
+			if (!isMutation) move_402();
+		}
 		else if (resp.status === 404) {
-			if (!isGatewayPassthrough && !isInlineErrorEndpoint) move_404();
+			if (!isMutation && !isGatewayPassthrough && !isInlineErrorEndpoint) move_404();
 		}
 		else if (resp.status === 503) {
-			if (!isGatewayPassthrough && !isInlineErrorEndpoint) move_503();
+			if (!isMutation && !isGatewayPassthrough && !isInlineErrorEndpoint) move_503();
 		}
 		else if (resp.status >= 500 && resp.status < 600 && resp.status !== 502 && resp.status !== 503) {
-			if (!isGatewayPassthrough && !isInlineErrorEndpoint) {
+			if (!isMutation && !isGatewayPassthrough && !isInlineErrorEndpoint) {
 				const resp_json = await resp.json();
 				const code = resp.status;
 				const message = resp_json.message || resp.statusText;
