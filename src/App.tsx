@@ -16,6 +16,7 @@ import {theme_config} from 'theme';
 import Layout from 'components/layout/Layout';
 import NavLayout from 'components/layout/NavLayout';
 import {RequireAuth, RequireFeature} from 'components/layout/RouteGuards';
+import RouteTitle from 'components/layout/RouteTitle';
 import ScrollToTop from 'components/layout/ScrollToTop';
 import PopUp from 'components/modal/PopUp';
 import SetupHandler from 'components/setup/SetupHandler';
@@ -108,6 +109,7 @@ export default function App() {
 				<QueryClientProvider client={queryClient}>
 					<BrowserRouter basename={root_url}>
 						<ScrollToTop />
+						<RouteTitle />
 						<PopUp />
 						<SetupHandler>
 							<Routes>
