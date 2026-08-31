@@ -11,7 +11,10 @@ import {cleanup, render, renderHook, screen, waitFor} from '@testing-library/rea
 import {ApiError} from 'connector/fetcher/fetcher_base';
 import type {IInstance} from 'types/oam';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import {query_get_version} from 'connector/instance/status';
+import {useInstanceCapabilities, useInstanceFlavorResolution} from 'hooks/query/flavorHook';
 
+// vi.mock calls are hoisted above every import at runtime.
 vi.mock('connector/instance/status', () => ({
 	query_get_version: vi.fn(),
 }));
@@ -20,15 +23,15 @@ vi.mock('hooks/instanceHook', async importOriginal => {
 	return {...mod, useInstanceFromURL: () => INSTANCE};
 });
 
-import {query_get_version} from 'connector/instance/status';
-import {useInstanceCapabilities, useInstanceFlavorResolution} from 'hooks/query/flavorHook';
-
 const INSTANCE = {id: 'i-1', name: 'inst-1'} as unknown as IInstance;
 const probe = vi.mocked(query_get_version);
 
-// Gateway-only anchors (from the generated capability map).
+// Gateway-only anchors (from the generated capability map). hasMethod
+// answers method-level divergence on SHARED paths (whole gateway-only path
+// families are hasFeature's job), so the method anchor is the LB merge-PATCH
+// that upstream loxilb 405s.
 const GW_FEATURE = 'ai' as const;
-const GW_METHOD = ['post', '/config/ai/apikey'] as const;
+const GW_METHOD = ['patch', '/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}'] as const;
 
 let client: QueryClient;
 function wrapper({children}: {children: React.ReactNode}) {

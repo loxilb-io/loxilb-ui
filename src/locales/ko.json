@@ -671,5 +671,9 @@
 	"Process": "프로세스",
 	"Logs": "로그",
 	"Snapshots": "스냅샷",
-	"Log Settings": "로그 설정"
+	"Log Settings": "로그 설정",
+	"Permission denied": "권한이 없습니다",
+	"Your session is not authorized to read this instance. Sign in again or contact an administrator.": "현재 세션에는 이 인스턴스를 조회할 권한이 없습니다. 다시 로그인하거나 관리자에게 문의하세요.",
+	"Instance unreachable": "인스턴스에 연결할 수 없음",
+	"The instance did not answer the capability probe. Check that it is running and reachable, then reload.": "인스턴스가 기능 확인 요청에 응답하지 않았습니다. 실행 중이고 연결 가능한지 확인한 후 다시 로드하세요."
 }

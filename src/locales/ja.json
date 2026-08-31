@@ -671,5 +671,9 @@
 	"Process": "プロセス",
 	"Logs": "ログ",
 	"Snapshots": "スナップショット",
-	"Log Settings": "ログ設定"
+	"Log Settings": "ログ設定",
+	"Permission denied": "権限がありません",
+	"Your session is not authorized to read this instance. Sign in again or contact an administrator.": "現在のセッションにはこのインスタンスを参照する権限がありません。再度サインインするか、管理者にお問い合わせください。",
+	"Instance unreachable": "インスタンスに接続できません",
+	"The instance did not answer the capability probe. Check that it is running and reachable, then reload.": "インスタンスが機能確認リクエストに応答しませんでした。稼働中で接続可能であることを確認してから、再読み込みしてください。"
 }

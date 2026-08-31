@@ -671,5 +671,9 @@
 	"Process": "Process",
 	"Logs": "Logs",
 	"Snapshots": "Snapshots",
-	"Log Settings": "Log Settings"
+	"Log Settings": "Log Settings",
+	"Permission denied": "Permission denied",
+	"Your session is not authorized to read this instance. Sign in again or contact an administrator.": "Your session is not authorized to read this instance. Sign in again or contact an administrator.",
+	"Instance unreachable": "Instance unreachable",
+	"The instance did not answer the capability probe. Check that it is running and reachable, then reload.": "The instance did not answer the capability probe. Check that it is running and reachable, then reload."
 }

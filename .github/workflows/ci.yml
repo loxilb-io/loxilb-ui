@@ -53,6 +53,14 @@ jobs:
           REACT_APP_API_URL: /api/oam
           REACT_APP_PUBLIC_URL: /netlox
 
+      - name: No broad-while-unresolved capability fallback (stop-ship guard)
+        # The capability surface must fail NARROW: an unresolved/denied
+        # flavor probe answering as the gateway exposed gateway-only write
+        # controls (certification stop-ship). This greps the trap out of
+        # ever returning.
+        run: |
+          ! grep -rn "?? 'inference-gateway'" src --include="*.ts" --include="*.tsx"
+
       - name: Build-flag agreement (Dockerfile vs .env.production)
         # INLINE_RUNTIME_CHUNK=false is load-bearing for the CSP (no
         # script-src 'unsafe-inline'); it is stated in both the Dockerfile

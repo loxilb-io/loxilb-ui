@@ -38,7 +38,11 @@ export function useLiveMetrics(
 ): {metrics: ITypedLiveMetricsResponse | undefined; isLoading: boolean; flavor: InstanceFlavor | undefined} {
 	const {keyPrefix, refetchInterval, extraKey} = options;
 	const {flavor} = useInstanceFlavor(instance);
-	const effective: InstanceFlavor = flavor ?? 'inference-gateway';
+	// Fail-narrow like the capability surface: read under the loxilb naming
+	// table while unresolved. Harmless — diverging names resolve to absent,
+	// and the flavor is part of the query key, so late resolution swaps to a
+	// fresh cache entry without a reload.
+	const effective: InstanceFlavor = flavor ?? 'loxilb';
 
 	const query = useQuery({
 		queryKey: [keyPrefix, instance?.id, effective, ...(extraKey === undefined ? [] : [extraKey])],
