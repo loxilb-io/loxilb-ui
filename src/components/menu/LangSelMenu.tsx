@@ -35,36 +35,40 @@ export default function LangSelMenu(props: {anchorEl: HTMLElement | null; handle
 		document.documentElement.lang = i18n.language;
 	}, [i18n]);
 
+	// No disableEnforceFocus/disableAutoFocusItem on the Menu: MUI's default
+	// focus management provides arrow-key navigation, Escape-close and focus
+	// return — the props existed to mask the old non-focusable trigger.
+	// The MenuItems must stay DIRECT children of the Menu: MenuList's
+	// arrow-key traversal walks sibling elements, so wrapping the items in a
+	// scroll Box (as this once did) silently breaks keyboard navigation.
+	// Scrolling lives on the paper slot instead.
 	return (
-		<Menu anchorEl={anchorEl} open={!!anchorEl} onClose={handleClose} disableEnforceFocus disableAutoFocusItem>
-			<Box id="name-box" padding="8px 16px 16px 16px" borderBottom={1} borderColor="grey.300" position="sticky" top={0}>
+		<Menu
+			anchorEl={anchorEl}
+			open={!!anchorEl}
+			onClose={handleClose}
+			slotProps={{paper: {sx: {maxHeight: '500px'}}}}
+			sx={{
+				'& .MuiMenuItem-root:hover': {backgroundColor: 'action.hover'},
+				'& .MuiMenuItem-root': {padding: '8px'},
+			}}
+		>
+			<Box id="name-box" padding="8px 16px 16px 16px" borderBottom={1} borderColor="grey.300">
 				<Typography variant="body1">{t('Select a language')}</Typography>
 			</Box>
 
-			<Box
-				sx={{
-					maxHeight: 'calc(500px - 60px)',
-					overflow: 'auto',
-					'& .MuiMenuItem-root:hover': {backgroundColor: 'action.hover'},
-					'& .MuiMenuItem-root': {padding: '8px'},
-				}}
-				paddingTop="8px"
-			>
-				{support_lang.map((item, index) => (
-					<MenuItem
-						key={index}
-						onClick={() => handleLanguageChange(item.code)}
-						sx={{
-							cursor: 'pointer',
-							backgroundColor: i18n.language === item.code ? 'action.selected' : 'transparent',
-						}}
-					>
-						<Box display="flex" gap="12px" alignItems="center" marginLeft="10px">
-							<Typography variant="body2">{item.name}</Typography>
-						</Box>
-					</MenuItem>
-				))}
-			</Box>
+			{support_lang.map((item, index) => (
+				<MenuItem
+					key={index}
+					onClick={() => handleLanguageChange(item.code)}
+					selected={i18n.language === item.code}
+					sx={{cursor: 'pointer'}}
+				>
+					<Box display="flex" gap="12px" alignItems="center" marginLeft="10px">
+						<Typography variant="body2">{item.name}</Typography>
+					</Box>
+				</MenuItem>
+			))}
 		</Menu>
 	);
 }

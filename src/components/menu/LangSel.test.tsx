@@ -6,12 +6,12 @@
 // already works (do-not-regress); the keyboard cases assert
 // WCAG-level operability of the language trigger.
 //---------------------------------------------------------
-import {render, screen, waitFor} from '@testing-library/react';
+import {cleanup, render, screen, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LanguageIcon from 'components/layout/LanguageIcon';
 import i18n, {support_lang} from 'locales/i18n';
 import {MemoryRouter} from 'react-router-dom';
-import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 // LangSelMenu calls navigate(0) after a language change to force every
 // cached string to re-render; a jsdom reload is meaningless, so stub it.
@@ -33,6 +33,10 @@ beforeEach(() => {
 	localStorage.clear();
 	navigateMock.mockClear();
 });
+
+// RTL cannot self-register cleanup without vitest globals — without this,
+// each render stacks on the last test's DOM and role queries multi-match.
+afterEach(cleanup);
 
 describe('language persistence (do not regress)', () => {
 	it('restores a saved language from localStorage on mount', async () => {
@@ -82,10 +86,10 @@ describe('keyboard operability (ES-18)', () => {
 		const menu = await screen.findByRole('menu');
 		expect(menu).toBeTruthy();
 
-		// With focus managed by the menu, arrow keys walk the items and Enter
-		// activates — selecting 한국어 (position 2 in support_lang).
+		// Keyboard-open focuses the FIRST item (WAI-ARIA menu pattern), so a
+		// single ArrowDown lands on 한국어 (position 2 in support_lang).
 		expect(support_lang[1]?.code).toBe('ko');
-		await user.keyboard('{ArrowDown}{ArrowDown}{Enter}');
+		await user.keyboard('{ArrowDown}{Enter}');
 		await waitFor(() => expect(i18n.language).toBe('ko'));
 		expect(localStorage.getItem('language')).toBe('ko');
 	});
