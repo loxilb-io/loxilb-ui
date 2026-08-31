@@ -8,7 +8,7 @@ import {t} from 'i18next';
 import {IFdbAttribute} from 'types/fdb';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePortAttr} from 'hooks/query/queryHooks';
-import {useMemo, useState, useEffect} from 'react';
+import {useMemo, useEffect} from 'react';
 
 //---------------------------------------------------------
 // Functional Component

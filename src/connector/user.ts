@@ -108,7 +108,7 @@ export function validate_password(password: string): { isValid: boolean; message
 		return { isValid: false, message: 'Password must contain at least one number' };
 	}
 	
-	if (!/(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])/.test(password)) {
+	if (!/(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?])/.test(password)) {
 		return { isValid: false, message: 'Password must contain at least one special character' };
 	}
 	

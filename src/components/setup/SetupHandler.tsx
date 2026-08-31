@@ -34,12 +34,12 @@ export default function SetupHandler({children}: SetupHandlerProps) {
 				const needsSetup = await shouldRedirectToSetup();
 
 				if (needsSetup) {
-					console.log('Setup required, redirecting to /setup');
 					navigate('/setup', {replace: true});
 				}
 
 				setSetupChecked(true);
 			} catch (error) {
+				// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 				console.warn('Setup check failed, continuing with normal flow:', error);
 				setSetupChecked(true);
 			}

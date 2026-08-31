@@ -38,6 +38,7 @@ export default function QoSPage() {
 	   () => selected_rows.map(h => qos_info.polAttr.find(a => getHashKey(a) === h)).filter((x): x is IPolicyAttribute => x != null),
 	   [selected_rows, qos_info.polAttr],
    );
+   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
    const selectedItem: IPolicyAttribute | null = selectedItems.length === 1 ? selectedItems[0] : null;
 
    const handleSelectionChange = (hashes: number[]) => set_selected_rows(hashes);

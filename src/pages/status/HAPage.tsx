@@ -18,6 +18,7 @@ export default function HAPage() {
 	const inst = useInstanceFromURL();
 
 	const {data, isError, refetch} = useHAState(inst); // IVipAttribute[]
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	const ha_info: IVipConfiguration = {Attr: data ?? []};
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
 

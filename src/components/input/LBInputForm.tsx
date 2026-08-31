@@ -14,8 +14,6 @@ import AIGatewaySettingsForm from './subforms/AIGatewaySettingsForm';
 import BasicSettingsForm from './subforms/BasicSettingsForm';
 import EndpointListForm from './subforms/EndpointListForm';
 // import HealthCheckForm from './subforms/HealthCheckForm'; // Moved to EndpointListForm
-import SecurityOptionsForm from './subforms/SecurityOptionsForm';
-
 //---------------------------------------------------------
 // Component
 //---------------------------------------------------------

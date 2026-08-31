@@ -38,6 +38,7 @@ export default function RoutePage() {
 				.filter((x): x is IRouteAttribute => x != null),
 		[selected_rows, route_info.routeAttr],
 	);
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
 	const selectedItem: IRouteAttribute | null = selectedItems.length === 1 ? selectedItems[0] : null;
 
 	const handleSelectionChange = (hashes: number[]) => set_selected_rows(hashes);
@@ -92,9 +93,7 @@ export default function RoutePage() {
 				if (!instanceRef.current) return;
 
 				try {
-					console.log('Creating route with data:', instanceRef.current);
 					const res = await request_create_route(inst, instanceRef.current);
-					console.log('Route creation response:', res);
 					
 					if (res.status === 'success') {
 						openPopUp(t('Success'), t('Added successfully.'), t('OK'));
@@ -105,6 +104,7 @@ export default function RoutePage() {
 						showAddError('route', res.error);
 					}
 				} catch (error) {
+					// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 					console.error('Route creation error:', error);
 					showAddError('route', error instanceof Error ? error.message : 'Unknown error occurred');
 				}

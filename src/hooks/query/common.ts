@@ -82,6 +82,7 @@ export function createTimeSeriesHook<TRaw, TWrapped extends {}>(
 
 				return nextSeries;
 			});
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 		}, [fetchQuery.dataUpdatedAt, instance?.id, storageKey, queryClient]);
 
 		useEffect(() => {
@@ -104,6 +105,7 @@ export function createTimeSeriesHook<TRaw, TWrapped extends {}>(
 			}
 
 			setSeriesData([]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 		}, [instance?.id, storageKey, queryClient]);
 
 		return seriesData;

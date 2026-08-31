@@ -2,7 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import LanguageIcon_ from '@mui/icons-material/Language';
+import GlobeIcon from '@mui/icons-material/Language';
 import {Button, Typography} from '@mui/material';
 import LangSelMenu from 'components/menu/LangSelMenu';
 import {support_lang} from 'locales/i18n';
@@ -43,7 +43,7 @@ export default function LanguageIcon() {
 				aria-haspopup="menu"
 				aria-expanded={Boolean(anchor_element_lang)}
 				aria-label={t('Select a language')}
-				startIcon={<LanguageIcon_ sx={{color: 'white', fontSize: '18px'}} />}
+				startIcon={<GlobeIcon sx={{color: 'white', fontSize: '18px'}} />}
 				endIcon={<ArrowDropDownIcon sx={{color: 'white'}} fontSize="small" />}
 				sx={{color: 'white', textTransform: 'none', minWidth: 0, padding: '4px 8px'}}
 			>

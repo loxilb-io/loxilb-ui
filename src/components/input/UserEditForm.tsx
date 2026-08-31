@@ -22,8 +22,6 @@ import InfoIcon from '@mui/icons-material/Info';
 
 import { t } from 'i18next';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import useFormWithParams from 'hooks/inputFormHook';
 import {
 	validate_email,
 	validate_password,
@@ -50,6 +48,7 @@ interface UserEditFormProps {
 //---------------------------------------------------------
 // Form Data Interface
 //---------------------------------------------------------
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
 interface IFormData {
 	username: string;
 	email: string;
@@ -170,6 +169,7 @@ export default function UserEditForm(props: UserEditFormProps) {
 		if (onValidation) {
 			onValidation(isValid);
 		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, [formData, confirmPassword, changePassword, onChange, onValidation]);
 
 

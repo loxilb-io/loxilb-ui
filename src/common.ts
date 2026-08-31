@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {IPostParamFieldDesc, ITimeSeriesPoint, MAX_VALUE_BY_FORMAT, UNIT_LIST} from 'types/global';
+import {ITimeSeriesPoint, UNIT_LIST} from 'types/global';
 import {ILog} from 'types/log';
 import {IMenuItem, MENU_LIST} from 'types/menu';
 
@@ -25,6 +25,7 @@ export function is_logged_in(): boolean {
 
 export function forced_relocation_to_login() {
 	if (!window.location.href.includes('/login')) {
+		// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 		console.error('Unauthorized, redirecting to login page');
 		move_forced('/login');
 	}
@@ -39,15 +40,18 @@ export function save_local_storage(name: string, value: string) {
 			error.code === 1014 || // NS_ERROR_DOM_QUOTA_REACHED (Firefox)
 			error.name === 'QuotaExceededError'
 		)) {
+			// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 			console.warn('localStorage quota exceeded, clearing old time series data');
 			clearOldTimeSeriesData();
 			// Try again after clearing
 			try {
 				localStorage.setItem(name, value);
 			} catch (retryError) {
+				// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 				console.error('Failed to save to localStorage even after cleanup:', retryError);
 			}
 		} else {
+			// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 			console.error('Error saving to localStorage:', error);
 		}
 	}

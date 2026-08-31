@@ -4,7 +4,7 @@
 import {ICert} from 'types/security';
 import {IInstance} from 'types/oam';
 import {ApiResult, createDetailedErrorMessage} from '../fetcher/fetcher_base';
-import {DELETE_INST, GET_INST, POST_INST, PUT_INST} from '../fetcher/fetcher_inst';
+import {DELETE_INST, POST_INST, PUT_INST} from '../fetcher/fetcher_inst';
 
 //---------------------------------------------------------
 // Inline-PEM certificate store (/config/cert, certId-keyed)

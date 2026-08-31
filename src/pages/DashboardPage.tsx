@@ -13,16 +13,16 @@ import SystemUsageCard from 'components/card/SystemUsageCard';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useInstanceHealth} from 'hooks/query/healthHook';
 import {t} from 'i18next';
-import {useEffect, useState, useMemo} from 'react';
+import {useEffect, useState} from 'react';
 import RGL, {Layout, WidthProvider} from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
+import {Alert, AlertTitle, CircularProgress} from '@mui/material';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
 // Measured grid: fills the viewport instead of the old hard-coded 1200px
 // column that left dead space on wide NOC displays.
 const ResponsiveGrid = WidthProvider(RGL);
-import {Alert, AlertTitle, CircularProgress} from '@mui/material';
-import RefreshIcon from '@mui/icons-material/Refresh';
 
 // Versioned so the fix for the compaction-reflow bug (gap-free default + no
 // auto-compaction) supersedes any already-corrupted layout persisted under the
@@ -107,9 +107,11 @@ export default function DashboardPage() {
 				set_layout(parsed_layout);
 			} else set_layout(DEFAULT_LAYOUT);
 		} catch (error) {
+			// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 			console.error('Failed to load layout:', error);
 			set_layout(DEFAULT_LAYOUT);
 		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, []);
 
 	// Show error state if instance is down

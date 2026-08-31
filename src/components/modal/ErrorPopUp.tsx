@@ -33,7 +33,7 @@ export default function ErrorPopUp({
 	errorData, 
 	buttonText = 'OK' 
 }: ErrorPopUpProps) {
-	const {t} = useTranslation();
+	useTranslation();
 
 	const style = {
 		position: 'absolute',

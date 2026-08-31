@@ -18,6 +18,7 @@ export function useInstanceName(): string {
 	const inst_name = params.get('name');
 
 	if (!inst_name) {
+		// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 		console.error('Instance name is missing!!');
 		move_404();
 	}

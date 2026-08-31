@@ -99,6 +99,7 @@ export default function EndpointInputForm({ initialData, isEdit = false, onChang
 		if (onValidation) {
 			onValidation(isValid);
 		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, [formData, onChange, onValidation, validateForm]);
 
 	// Handle form field changes

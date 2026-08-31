@@ -180,6 +180,7 @@ export default function LBRulePage() {
 	// Flavor resolves asynchronously. Rebuild this callback when it changes so
 	// an IGW dialog cannot submit through the initial OSS-safe projection and
 	// silently strip the Gateway-only fields the operator just entered.
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, [inst, caps.resolved, effectiveFlavor, showAddError, refetch, enableYes]);
 
 	// Update handler for LB rules
@@ -368,6 +369,7 @@ export default function LBRulePage() {
 			},
 			true,
 		);
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, [inst, caps, selectedItem, showUpdateError, refetch, enableYes]);
 
 	const handleRefresh = () => {

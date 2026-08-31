@@ -61,6 +61,7 @@ function DetailPanel(props: {entry: IIPFilterEntry}) {
 export default function IPFilterPage() {
 	const inst = useInstanceFromURL();
 	const {data, isError, refetch} = useIPFilterRules(inst);
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	const entries: IIPFilterEntry[] = data ?? [];
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds hash ids

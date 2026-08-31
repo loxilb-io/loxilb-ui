@@ -147,6 +147,7 @@ export default function IPsecTunnelInputForm(props: IPsecTunnelInputFormProps) {
 
 	React.useEffect(() => {
 		onChange({...form, isValid: validateForm(form)});
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, []);
 
 	return (

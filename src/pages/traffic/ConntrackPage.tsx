@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {Box, Stack, Typography, FormControl, InputLabel, Select, MenuItem, TextField, Button, Chip} from '@mui/material';
+import {Box, Stack, Typography, TextField, Button, Chip} from '@mui/material';
 import {formatRate} from 'common';
 import RateLineGraph from 'components/element/RateLineGraph';
 import RateTooltip from 'components/element/RateTooltip';
@@ -175,8 +175,10 @@ export default function ConntrackPage() {
 
    const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds stable hash ids
    // Apply filters and clear filters functions
+   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
    const applyFilters = useCallback(() => {
 	   // Filters will be applied in the filteredCtAttr useMemo
+   // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
    }, [servNameFilter, sourceIPFilter, sourcePortFilter, destinationIPFilter, destinationPortFilter]);
 
    const clearFilters = useCallback(() => {

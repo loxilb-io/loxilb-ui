@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {Box, capitalize, Stack, Typography} from '@mui/material';
+import {Box, Stack, Typography} from '@mui/material';
 import {t} from 'i18next';
 import TooltipMark from './TooltipMark';
 

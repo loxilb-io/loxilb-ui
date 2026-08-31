@@ -2,7 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {CurveType, LineChart} from '@mui/x-charts';
-import {extract_data_by_timestamp, getUnitFromSeries, formatRateForAxis, formatNumberForAxis} from 'common';
+import {formatRateForAxis, formatNumberForAxis} from 'common';
 import {chart_color} from 'theme';
 import {ITimelineDataSet} from 'types/global';
 

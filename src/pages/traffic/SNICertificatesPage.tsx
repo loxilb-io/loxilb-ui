@@ -55,7 +55,9 @@ function DetailPanel(props: {cert: ISNICertificateListItem}) {
 export default function SNICertificatesPage() {
 	const inst = useInstanceFromURL();
 	const {data, isError, refetch} = useSNICertificates(inst);
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	const certificates = data?.certificates ?? [];
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
 	const totalCertificates = data?.totalCertificates ?? 0;
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);

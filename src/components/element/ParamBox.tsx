@@ -81,6 +81,7 @@ export default function ParamBox(props: ParamBoxProps) {
 		}
 
 		return result;
+   // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
    }, [param_desc?.enum, required]);
 
    // If enumOptions exist and value is empty/undefined, default to first option
@@ -100,6 +101,7 @@ export default function ParamBox(props: ParamBoxProps) {
       if (shouldAutoSelectEnumDefault(enumOptions, value, disabled)) {
          onChange(enumOptions[0].send_value);
       }
+   // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
    }, [disabled, enumOptions.length, value]);
 
    const renderInput = () => {

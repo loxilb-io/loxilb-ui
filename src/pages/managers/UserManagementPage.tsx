@@ -11,7 +11,7 @@ import ValueBunch from 'components/element/ValueBunch';
 import ScrollableBox from 'components/layout/ScrollableBox';
 import UserManagementTable from 'components/table/managers/UserManagementTable';
 import UserEditModal from 'components/modal/UserEditModal';
-import {useMyInfo, useRole} from 'hooks/query/oamHooks';
+import {useMyInfo} from 'hooks/query/oamHooks';
 import {useAllUsers, updateUser, deleteUser, createUser} from 'hooks/query/userManagementHooks';
 import {usePopUp} from 'hooks/popupHook';
 import {login_user} from 'connector/user';
@@ -96,6 +96,7 @@ function UserProfilePanel(props: {onEditProfile: () => void}) {
 //---------------------------------------------------------
 // Password Management Panel
 //---------------------------------------------------------
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
 function PasswordManagementPanel() {
 	return (
 		<Stack spacing={3}>
@@ -348,6 +349,7 @@ export default function UserManagementPage() {
 							);
 							return;
 						} catch (reloginError) {
+							// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 							console.error('Re-login failed:', reloginError);
 							// If re-login fails, force logout and redirect
 							handleCloseModal();

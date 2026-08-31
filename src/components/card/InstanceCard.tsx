@@ -15,7 +15,7 @@ import {useTranslation} from 'react-i18next';
 import {useRef, useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {IVipAttribute} from 'types/ha';
-import {IInstance, IInstanceInput} from 'types/oam';
+import {IInstance} from 'types/oam';
 import {IInstanceHealth} from 'hooks/query/healthHook';
 
 //---------------------------------------------------------

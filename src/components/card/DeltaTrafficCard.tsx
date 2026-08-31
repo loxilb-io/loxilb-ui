@@ -16,7 +16,6 @@ import CardBase from './CardBase';
 //---------------------------------------------------------
 const calculateDeltaRate = (points: ITimeSeriesPoint<IProcessedTraffic>[], dataKey: keyof IProcessedTraffic) => {
 	if (points.length < 2) {
-		console.log(`[calculateDeltaRate] Not enough points: ${points.length}`);
 		return [];
 	}
 

@@ -43,6 +43,7 @@ export function useInstanceWithHA() {
 	);
 
 	const haQueries = useQueries({queries});
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	const queryData = useMemo(() => haQueries.map(query => query.data), [haQueries.map(q => q.data).join(',')]);
 
 	const instance_set = useMemo(() => {

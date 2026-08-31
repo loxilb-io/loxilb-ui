@@ -52,7 +52,7 @@ export async function request_delete_endpoint_by_ip(instance: IInstance, item: I
 	const curl_with_query = `/config/endpoint/epipaddress/${item.hostName}${queryString}`;
 	const resp = await DELETE_INST(instance, curl_with_query);
 
-	if (resp.code !== 200 && resp.code !== 204 || resp.message.includes('error') || resp.message.includes('referred')) {
+	if ((resp.code !== 200 && resp.code !== 204) || resp.message.includes('error') || resp.message.includes('referred')) {
 		const errorMessage = createDetailedErrorMessage(resp, 'Delete Endpoint');
 		return {status: 'error', error: errorMessage};
 	} else {

@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {forced_relocation_to_login, get_local_storage, move_404, move_403, move_402, move_500, move_503, move_cors, remove_local_storage} from 'common';
+import {forced_relocation_to_login, get_local_storage, move_404, move_402, move_500, move_503, move_cors, remove_local_storage} from 'common';
 
 //---------------------------------------------------------
 // Interfaces
@@ -44,20 +44,20 @@ export class ApiError extends Error {
 export function createDetailedErrorMessage(resp: any, operation: string): string {
 	const primaryMessage = resp.data?.result || resp.data?.message || resp.data?.error || resp.message || 'Unknown error';
 
-	let message = primaryMessage + '.' + '\n\n';
-	message += `Operation is \[${operation}\].\n\n`;
-	message += `HTTP Code is \[${resp.code}\].\n\n`;
+	let message = primaryMessage + '.\n\n';
+	message += `Operation is [${operation}].\n\n`;
+	message += `HTTP Code is [${resp.code}].\n\n`;
 
 	if (resp.data?.fields) {
-		message += `Fields are : \[${JSON.stringify(resp.data.fields)}\].\n\n`;
+		message += `Fields are : [${JSON.stringify(resp.data.fields)}].\n\n`;
 	}
 
 	if (resp.data?.message && resp.data.message !== primaryMessage) {
-		message += `Message is \[${resp.data.message}\].\n\n`;
+		message += `Message is [${resp.data.message}].\n\n`;
 	}
 
 	if (resp.data?.result && resp.data.result !== primaryMessage) {
-		message += `Result is \[${resp.data.result}\].\n\n`;
+		message += `Result is [${resp.data.result}].\n\n`;
 	}
 
 	return message;
@@ -207,6 +207,7 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 				move_cors();
 			} else {
 				// For network failures, don't redirect - let React Query handle retries
+				// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 				console.warn('Network request failed:', error.message);
 			}
 		} else {
@@ -309,6 +310,7 @@ export async function UPLOAD_FILE(url: string, file: File, additionalData?: Reco
 		
 		return await handle_response(response);
 	} catch (error: any) {
+		// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 		console.error('Upload file error:', error);
 		throw error;
 	}
@@ -394,6 +396,7 @@ export async function DOWNLOAD_FILE(url: string): Promise<{blob: Blob, filename:
 			// Check if the response is actually a file
 			const contentType = response.headers.get('Content-Type');
 			if (contentType && contentType.includes('text/html')) {
+				// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 				console.error('Received HTML instead of file - likely a routing error or authentication issue');
 				return undefined;
 			}
@@ -416,9 +419,11 @@ export async function DOWNLOAD_FILE(url: string): Promise<{blob: Blob, filename:
 			const blob = await response.blob();
 			return { blob, filename };
 		} else {
+			// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 			console.error('Download failed:', response.status, response.statusText);
 		}
 	} catch (error) {
+		// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 		console.error('Download file error:', error);
 	}
 	

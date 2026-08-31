@@ -80,6 +80,7 @@ function DetailPanel(props: {entry: ISecurityRateEntry}) {
 export default function SecurityRatePage() {
 	const inst = useInstanceFromURL();
 	const {data, isError, refetch} = useSecurityRate(inst);
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	const entries: ISecurityRateEntry[] = data ?? [];
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds hash ids
@@ -163,6 +164,7 @@ export default function SecurityRatePage() {
 		}
 	};
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
 	const handleReset = async () => {
 		if (!inst) return;
 

@@ -18,7 +18,7 @@ import {useFirewallRules} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {Fragment, useRef, useState} from 'react';
 import React from 'react';
-import {IFirewallRule, IFirewallRules, IOptions} from 'types/firewall';
+import {IFirewallRule, IFirewallRules} from 'types/firewall';
 import {IEnumItem} from 'types/global';
 
 const protocol_list: IEnumItem[] = protocols;

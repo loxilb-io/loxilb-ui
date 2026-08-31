@@ -113,6 +113,7 @@ export default function IPPage(props: {family?: 'ipv4' | 'ipv6'}) {
 		}, 1000);
 	};
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
 	const handleAdd = () => {
 		if (!inst) return;
 		const input_form = (

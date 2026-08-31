@@ -11,8 +11,6 @@ import {usePopUp} from 'hooks/popupHook';
 import {useInstances} from 'hooks/query/oamHooks';
 import {useTranslation} from 'react-i18next';
 import {useRef, useState} from 'react';
-import {IInstanceInput} from 'types/oam';
-
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------

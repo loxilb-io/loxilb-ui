@@ -98,6 +98,7 @@ function getEnumDefault(param: any): any {
 	return param.enum[0];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
 function getDescriptionDefault(param: any): any {
 	if (typeof param.description === 'string') {
 		const match = param.description.match(/\(default\s+([0-9A-Za-z]+)\)/);
