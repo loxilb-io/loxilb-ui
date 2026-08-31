@@ -68,8 +68,13 @@ test.describe('@gw AI API Key page', () => {
 		await dialog(page).locator('.MuiInputAdornment-root button').click();
 		await expect(page.locator('button.MuiPickersDay-root').first()).toBeVisible();
 		expect(await page.locator('button.MuiPickersDay-root[disabled]').count(), 'past days are disabled (disablePast)').toBeGreaterThan(0);
-		// Picking a future day (last enabled cell in the month) keeps the form valid.
-		await page.locator('button.MuiPickersDay-root:not([disabled])').last().click();
+		// Picking a future day keeps the form valid. Go to NEXT month first:
+		// "last enabled cell of the current month" is TODAY whenever today is
+		// the month's last day, and a day-click lands at 00:00 — a past
+		// instant the form rightly rejects (this spec failed every
+		// month-end until 2026-08-31 exposed it).
+		await page.getByRole('button', {name: /next month/i}).click();
+		await page.locator('button.MuiPickersDay-root:not([disabled])').first().click();
 		await expect(add).toBeEnabled();
 		await page.keyboard.press('Escape'); // close the picker popover
 		// The consoleGuard (RangeError NOT allowed) fails this test if the old
