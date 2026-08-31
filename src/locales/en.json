@@ -646,5 +646,7 @@
 	"Tenant": "Tenant",
 	"Time": "Time",
 	"Searched the whole log ({{total}})": "Searched the whole log ({{total}})",
-	"Searched {{scanned}} of {{total}} — more matches remain": "Searched {{scanned}} of {{total}} — more matches remain"
+	"Searched {{scanned}} of {{total}} — more matches remain": "Searched {{scanned}} of {{total}} — more matches remain",
+	"Timestamp": "Timestamp",
+	"Rule Name": "Rule Name"
 }
