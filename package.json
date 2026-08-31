@@ -65,6 +65,7 @@
 		"locale:check": "node scripts/check-locales.mjs",
 		"lint": "eslint src --ext .ts,.tsx --max-warnings 0",
 		"a11y:test": "vitest run src/a11y.test.tsx",
+		"test:flavor-capabilities": "vitest run src/hooks/query/flavorCapabilities.test.tsx",
 		"test:watch": "vitest",
 		"typecheck": "tsc --noEmit",
 		"start": "REACT_APP_VERSION=${REACT_APP_VERSION:-$npm_package_version} HTTPS=false WDS_SOCKET_PORT=0 HOST=0.0.0.0 dotenv -e .env.development react-scripts start",
