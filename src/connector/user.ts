@@ -2,6 +2,9 @@
 // User Management Connector Functions
 //---------------------------------------------------------
 import { POST_OAM } from './fetcher/fetcher_oam';
+import { OpResult } from './fetcher/opResult';
+import { fromNetworkError, fromSimpleResponse } from './fetcher/opResultAdapter';
+import { LOGIN_FAILED_KEY, LOGIN_INVALID_KEY, LOGIN_LOCKED_KEY } from './fetcher/opResultCodes';
 import type { OamPostResp } from 'api';
 import { ICreateUserRequest, IUserIdResponse, ILoginRequest, IEnhancedLoginResponse } from 'types/user';
 
@@ -46,36 +49,43 @@ export async function create_user(userData: ICreateUserRequest): Promise<IUserId
 }
 
 /**
- * Login user with username and password
- * @param credentials - Login credentials
+ * Login user with username and password (UI-P6-1 batch 1, N-3).
+ *
+ * Resolves to a discriminated OpResult instead of throwing raw server prose:
+ * the OAM lockout (HTTP 429, from the 6th failed attempt) is mapped to the
+ * distinct 'auth.locked_out' code so the page can render it differently from
+ * a plain bad password ('auth.invalid_credentials'). Raw backend text stays
+ * in rawDetail (diagnostics only, never rendered — ES-10/ES-18/ES-27).
  */
-export async function login_user(credentials: ILoginRequest): Promise<IEnhancedLoginResponse> {
+export async function login_user(credentials: ILoginRequest): Promise<OpResult<IEnhancedLoginResponse>> {
+	let response;
 	try {
-		const response = await POST_OAM<OamPostResp<'/oam/login'>>('/login', credentials);
-
-		if (response.code !== 200) {
-			// Parse error message from API response
-			let errorMessage = 'Login failed';
-
-			// non-2xx bodies are models.ErrorResponse, not the success type
-			const errBody = response.data as {error?: string} | null;
-			if (errBody && typeof errBody === 'object' && errBody.error) {
-				errorMessage = errBody.error;
-			} else if (response.message) {
-				errorMessage = response.message;
-			}
-			
-			throw new Error(errorMessage);
-		}
-
-		if (!response.data) {
-			throw new Error('No authentication data returned from server');
-		}
-
-		return response.data as IEnhancedLoginResponse;
+		response = await POST_OAM<OamPostResp<'/oam/login'>>('/login', credentials);
 	} catch (error) {
-		throw error;
+		// Network refusal / DNS / timeout — no HTTP response at all. The page
+		// must render "unavailable", not an unlocalized thrown message.
+		return fromNetworkError('auth.login', error);
 	}
+
+	// Login-specific overrides on top of the generic adapter mapping. The
+	// generated /oam/login response type carries optional fields; the runtime
+	// token guard below is what makes the IEnhancedLoginResponse cast honest.
+	if (response.code === 429) {
+		const base = fromSimpleResponse(response, 'auth') as OpResult<IEnhancedLoginResponse>;
+		return {...base, status: 'denied', code: 'auth.locked_out', localeKey: LOGIN_LOCKED_KEY, retryable: true};
+	}
+	if (response.code === 401 || response.code === 403) {
+		const base = fromSimpleResponse(response, 'auth') as OpResult<IEnhancedLoginResponse>;
+		return {...base, status: 'denied', code: 'auth.invalid_credentials', localeKey: LOGIN_INVALID_KEY, retryable: false};
+	}
+
+	const result = fromSimpleResponse(response, 'auth.login') as OpResult<IEnhancedLoginResponse>;
+	if (result.status === 'confirmed' && !result.data?.token) {
+		// A 2xx without a token must never install a session (empty/foreign body).
+		return {...result, status: 'failed', code: 'auth.login.malformed_response', localeKey: LOGIN_FAILED_KEY, data: undefined};
+	}
+	if (result.status === 'failed') return {...result, localeKey: LOGIN_FAILED_KEY};
+	return result;
 }
 
 /**

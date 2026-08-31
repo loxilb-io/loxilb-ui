@@ -5,8 +5,10 @@ import {parse_log_lines} from 'common';
 import {ILog, ILogArchiveList} from 'types/log';
 import {IInstance, IInstanceInput, IUser} from 'types/oam';
 import {ISetupStatus, IUpdateAdminRequest, IUpdateAdminResponse} from 'types/setup';
-import {ApiResult, DOWNLOAD_FILE_STREAM, DownloadProgress} from '../fetcher/fetcher_base';
+import {DOWNLOAD_FILE_STREAM, DownloadProgress} from '../fetcher/fetcher_base';
 import {DELETE_OAM, GET_OAM, POST_OAM, PUT_OAM} from '../fetcher/fetcher_oam';
+import {OpResult} from '../fetcher/opResult';
+import {fromNetworkError, fromSimpleResponse} from '../fetcher/opResultAdapter';
 import {getApiBaseUrl} from 'utils/apiProxy';
 import type {OamGetResp, OamPostResp} from 'api';
 
@@ -72,22 +74,32 @@ export async function query_get_instance_list(): Promise<IInstance[]> {
 	return (resp.data ?? []) as IInstance[];
 }
 
-export async function request_create_instance(param: IInstanceInput): Promise<ApiResult> {
-	const resp = await POST_OAM(`/loxilbs`, param);
-	if (resp.code !== 201 && resp.code !== 200) return {status: 'error', error: `Failed to create instance: ${resp.message}`};
-	else return {status: 'success'};
+// Instance mutations return a discriminated OpResult (UI-P6-1 batch 1) so
+// consumers can distinguish denied / invalid / unavailable / failed instead
+// of inventing per-site mappings — and so a 200-{result:"fail"} body or a
+// parse-swallowed 200 can never render as success.
+export async function request_create_instance(param: IInstanceInput): Promise<OpResult> {
+	try {
+		return fromSimpleResponse(await POST_OAM(`/loxilbs`, param), 'instance.create');
+	} catch (error) {
+		return fromNetworkError('instance.create', error);
+	}
 }
 
-export async function request_update_instance(id: number, param: IInstanceInput): Promise<ApiResult> {
-	const resp = await PUT_OAM(`/loxilbs/${id}`, param);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to update instance with id ${id}: ${resp.message}`};
-	else return {status: 'success'};
+export async function request_update_instance(id: number, param: IInstanceInput): Promise<OpResult> {
+	try {
+		return fromSimpleResponse(await PUT_OAM(`/loxilbs/${id}`, param), 'instance.update');
+	} catch (error) {
+		return fromNetworkError('instance.update', error);
+	}
 }
 
-export async function request_delete_instance(id: number): Promise<ApiResult> {
-	const resp = await DELETE_OAM(`/loxilbs/${id}`);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to delete instance with id ${id}: ${resp.message}`};
-	else return {status: 'success'};
+export async function request_delete_instance(id: number): Promise<OpResult> {
+	try {
+		return fromSimpleResponse(await DELETE_OAM(`/loxilbs/${id}`), 'instance.delete');
+	} catch (error) {
+		return fromNetworkError('instance.delete', error);
+	}
 }
 
 export async function download_oam_log_archive(filename: string, onProgress?: (p: DownloadProgress) => void): Promise<void> {
@@ -125,24 +137,20 @@ export async function query_get_all_users(): Promise<IUser[]> {
 	return (resp.data ?? []) as IUser[];
 }
 
-export async function request_update_user(id: number, userData: Partial<IUser>): Promise<ApiResult> {
-	const resp = await PUT_OAM(`/users/${id}`, userData);
-	if (resp.code !== 200) {
-		// Extract error message from response data if available
-		const errorMessage = resp.data?.error || resp.message || 'Failed to update user';
-		return {status: 'error', error: errorMessage};
+export async function request_update_user(id: number, userData: Partial<IUser>): Promise<OpResult> {
+	try {
+		return fromSimpleResponse(await PUT_OAM(`/users/${id}`, userData), 'user.update');
+	} catch (error) {
+		return fromNetworkError('user.update', error);
 	}
-	else return {status: 'success'};
 }
 
-export async function request_delete_user(id: number): Promise<ApiResult> {
-	const resp = await DELETE_OAM(`/users/${id}`);
-	if (resp.code !== 200) {
-		// Extract error message from response data if available (e.g., 403 Forbidden errors)
-		const errorMessage = resp.data?.error || resp.message || 'Failed to delete user';
-		return {status: 'error', error: errorMessage};
+export async function request_delete_user(id: number): Promise<OpResult> {
+	try {
+		return fromSimpleResponse(await DELETE_OAM(`/users/${id}`), 'user.delete');
+	} catch (error) {
+		return fromNetworkError('user.delete', error);
 	}
-	else return {status: 'success'};
 }
 
 //---------------------------------------------------------

@@ -675,5 +675,19 @@
 	"Permission denied": "Permission denied",
 	"Your session is not authorized to read this instance. Sign in again or contact an administrator.": "Your session is not authorized to read this instance. Sign in again or contact an administrator.",
 	"Instance unreachable": "Instance unreachable",
-	"The instance did not answer the capability probe. Check that it is running and reachable, then reload.": "The instance did not answer the capability probe. Check that it is running and reachable, then reload."
+	"The instance did not answer the capability probe. Check that it is running and reachable, then reload.": "The instance did not answer the capability probe. Check that it is running and reachable, then reload.",
+	"Operation completed successfully.": "Operation completed successfully.",
+	"The request was submitted and is awaiting confirmation.": "The request was submitted and is awaiting confirmation.",
+	"The operation is still in progress.": "The operation is still in progress.",
+	"The request was rejected as invalid.": "The request was rejected as invalid.",
+	"The service is temporarily unavailable. Please try again later.": "The service is temporarily unavailable. Please try again later.",
+	"The operation could not be completed.": "The operation could not be completed.",
+	"Too many requests. Please try again later.": "Too many requests. Please try again later.",
+	"The request conflicts with an existing item.": "The request conflicts with an existing item.",
+	"Too many failed sign-in attempts. Please try again later.": "Too many failed sign-in attempts. Please try again later.",
+	"Invalid username or password.": "Invalid username or password.",
+	"Login failed": "Login failed",
+	"Another instance is already registered at this protocol/host/port/version.": "Another instance is already registered at this protocol/host/port/version.",
+	"An instance with this name already exists.": "An instance with this name already exists.",
+	"Your role does not permit managing instances.": "Your role does not permit managing instances."
 }

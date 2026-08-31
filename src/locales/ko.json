@@ -675,5 +675,19 @@
 	"Permission denied": "권한이 없습니다",
 	"Your session is not authorized to read this instance. Sign in again or contact an administrator.": "현재 세션에는 이 인스턴스를 조회할 권한이 없습니다. 다시 로그인하거나 관리자에게 문의하세요.",
 	"Instance unreachable": "인스턴스에 연결할 수 없음",
-	"The instance did not answer the capability probe. Check that it is running and reachable, then reload.": "인스턴스가 기능 확인 요청에 응답하지 않았습니다. 실행 중이고 연결 가능한지 확인한 후 다시 로드하세요."
+	"The instance did not answer the capability probe. Check that it is running and reachable, then reload.": "인스턴스가 기능 확인 요청에 응답하지 않았습니다. 실행 중이고 연결 가능한지 확인한 후 다시 로드하세요.",
+	"Operation completed successfully.": "작업이 완료되었습니다.",
+	"The request was submitted and is awaiting confirmation.": "요청이 접수되어 확인을 기다리고 있습니다.",
+	"The operation is still in progress.": "작업이 아직 진행 중입니다.",
+	"The request was rejected as invalid.": "요청이 유효하지 않아 거부되었습니다.",
+	"The service is temporarily unavailable. Please try again later.": "서비스를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+	"The operation could not be completed.": "작업을 완료할 수 없습니다.",
+	"Too many requests. Please try again later.": "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
+	"The request conflicts with an existing item.": "요청이 기존 항목과 충돌합니다.",
+	"Too many failed sign-in attempts. Please try again later.": "로그인 실패 횟수가 너무 많습니다. 잠시 후 다시 시도해 주세요.",
+	"Invalid username or password.": "사용자 이름 또는 비밀번호가 올바르지 않습니다.",
+	"Login failed": "로그인에 실패했습니다.",
+	"Another instance is already registered at this protocol/host/port/version.": "동일한 프로토콜/호스트/포트/버전으로 이미 등록된 인스턴스가 있습니다.",
+	"An instance with this name already exists.": "같은 이름의 인스턴스가 이미 있습니다.",
+	"Your role does not permit managing instances.": "현재 역할로는 인스턴스를 관리할 수 없습니다."
 }

@@ -51,11 +51,20 @@ export default function LoginPage() {
 		setError('');
 
 		try {
+			// login_user resolves to an OpResult — mapped machine code plus a
+			// locale key. Raw backend prose never reaches this screen (N-3):
+			// the GS evaluation exercises exactly this page for ES-27, and the
+			// lockout message must stay distinct from a typo'd password while
+			// not disclosing the lockout policy (Q-4 conservative default).
 			const result = await login_user(data);
-			save_local_storage('access_token', result.token);
-			move_forced('/instance');
-		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Login failed');
+			if (result.status === 'confirmed' && result.data?.token) {
+				save_local_storage('access_token', result.data.token);
+				move_forced('/instance');
+			} else {
+				setError(t(result.localeKey));
+			}
+		} catch {
+			setError(t('Login failed'));
 		} finally {
 			setLoading(false);
 		}

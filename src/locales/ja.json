@@ -675,5 +675,19 @@
 	"Permission denied": "権限がありません",
 	"Your session is not authorized to read this instance. Sign in again or contact an administrator.": "現在のセッションにはこのインスタンスを参照する権限がありません。再度サインインするか、管理者にお問い合わせください。",
 	"Instance unreachable": "インスタンスに接続できません",
-	"The instance did not answer the capability probe. Check that it is running and reachable, then reload.": "インスタンスが機能確認リクエストに応答しませんでした。稼働中で接続可能であることを確認してから、再読み込みしてください。"
+	"The instance did not answer the capability probe. Check that it is running and reachable, then reload.": "インスタンスが機能確認リクエストに応答しませんでした。稼働中で接続可能であることを確認してから、再読み込みしてください。",
+	"Operation completed successfully.": "操作が完了しました。",
+	"The request was submitted and is awaiting confirmation.": "リクエストは送信され、確認待ちです。",
+	"The operation is still in progress.": "操作はまだ進行中です。",
+	"The request was rejected as invalid.": "リクエストが無効なため拒否されました。",
+	"The service is temporarily unavailable. Please try again later.": "サービスは一時的に利用できません。しばらくしてからもう一度お試しください。",
+	"The operation could not be completed.": "操作を完了できませんでした。",
+	"Too many requests. Please try again later.": "リクエストが多すぎます。しばらくしてからもう一度お試しください。",
+	"The request conflicts with an existing item.": "リクエストが既存の項目と競合しています。",
+	"Too many failed sign-in attempts. Please try again later.": "ログイン失敗回数が多すぎます。しばらくしてからもう一度お試しください。",
+	"Invalid username or password.": "ユーザー名またはパスワードが正しくありません。",
+	"Login failed": "ログインに失敗しました。",
+	"Another instance is already registered at this protocol/host/port/version.": "同じプロトコル/ホスト/ポート/バージョンで既に登録されているインスタンスがあります。",
+	"An instance with this name already exists.": "同じ名前のインスタンスが既に存在します。",
+	"Your role does not permit managing instances.": "現在のロールではインスタンスを管理できません。"
 }

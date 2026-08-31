@@ -331,14 +331,20 @@ export default function UserManagementPage() {
 					// Check if user provided a password (either new or current)
 					if (userData.password) {
 						try {
-							// Re-login with new username and provided password
+							// Re-login with new username and provided password.
+							// login_user resolves to an OpResult (UI-P6-1) —
+							// re-enter the existing catch flow on any
+							// non-confirmed outcome, with a localized message.
 							const loginResult = await login_user({
 								username: userData.username!,
 								password: userData.password!
 							});
+							if (loginResult.status !== 'confirmed' || !loginResult.data?.token) {
+								throw new Error(t(loginResult.localeKey));
+							}
 
 							// Update the access token
-							save_local_storage('access_token', loginResult.token);
+							save_local_storage('access_token', loginResult.data.token);
 
 							handleCloseModal();
 							handleUserRefresh(); // Refresh user list

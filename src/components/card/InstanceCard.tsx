@@ -7,7 +7,7 @@ import FlavorBadge from 'components/element/FlavorBadge';
 import IDBadge from 'components/element/IDBadge';
 import SimpleButton from 'components/element/SimpleButton';
 import InstanceInputForm from 'components/input/InstanceInputForm';
-import {describe_instance_error, TInstanceFormData} from 'components/input/instanceFormLogic';
+import {describe_instance_op_error, TInstanceFormData} from 'components/input/instanceFormLogic';
 import {request_delete_instance, request_update_instance} from 'connector/oam/oam';
 import {usePopUp} from 'hooks/popupHook';
 import {useInstances, useRole} from 'hooks/query/oamHooks';
@@ -85,7 +85,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 				}
 				const {isValid, errors, ...payload} = instanceRef.current;
 				const res = await request_update_instance(instance_info.id, payload);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Updated successfully.'), t('OK'), '', () => {
 						refetch();
 						// Trigger health check after successful update
@@ -93,7 +93,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 							onHealthRefresh();
 						}
 					});
-				} else openPopUp(t('Error'), t('Failed to update. {{error}}', {error: describe_instance_error(res.error)}), t('OK'));
+				} else openPopUp(t('Error'), t('Failed to update. {{error}}', {error: t(describe_instance_op_error(res))}), t('OK'));
 			}
 		});
 	};
@@ -101,7 +101,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 	const handleDelete = () => {
 		openPopUp(t('WARNING!! Delete Instance'), t('Are you sure you want to delete this instance? This action cannot be undone.'), t('Delete'), t('Cancel'), async () => {
 			const res = await request_delete_instance(instance_info.id);
-			if (res.status === 'success') {
+			if (res.status === 'confirmed') {
 				// First refresh the instance list
 				await refetch();
 				// Then show success message and navigate to instances page
@@ -110,8 +110,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 					navigate('/instance', { replace: true });
 				});
 			} else {
-				const error_message = res.error ? describe_instance_error(res.error) : t('Failed to delete instance');
-				openPopUp(t('Error'), error_message, t('OK'));
+				openPopUp(t('Error'), t(describe_instance_op_error(res)), t('OK'));
 			}
 		});
 	};
