@@ -67,7 +67,17 @@ test.describe('@gw AI API Key page', () => {
 		// instants unselectable (F-AI-1). Open the calendar and prove both.
 		await dialog(page).locator('.MuiInputAdornment-root button').click();
 		await expect(page.locator('button.MuiPickersDay-root').first()).toBeVisible();
-		expect(await page.locator('button.MuiPickersDay-root[disabled]').count(), 'past days are disabled (disablePast)').toBeGreaterThan(0);
+		// Time-robust disablePast proof: on the 2nd..31st the current view has
+		// disabled past day-cells; on the 1st it has NONE (this assertion's
+		// count>0 form failed every month-start — 2026-09-01 exposed it, the
+		// month-END twin of the bug fixed below), but then the whole previous
+		// month is past, so MUI disables the previous-month arrow instead.
+		const pastDayCount = await page.locator('button.MuiPickersDay-root[disabled]').count();
+		if (pastDayCount === 0) {
+			await expect(page.getByRole('button', {name: /previous month/i}), 'on the 1st, disablePast must disable the previous-month arrow').toBeDisabled();
+		} else {
+			expect(pastDayCount, 'past days are disabled (disablePast)').toBeGreaterThan(0);
+		}
 		// Picking a future day keeps the form valid. Go to NEXT month first:
 		// "last enabled cell of the current month" is TODAY whenever today is
 		// the month's last day, and a day-click lands at 00:00 — a past
