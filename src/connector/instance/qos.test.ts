@@ -30,20 +30,21 @@ describe('QoS connector target validation', () => {
 
 	it('rejects an LB display name in place of the composite key', async () => {
 		const result = await request_create_qos_policy(instance, policy(0, 'friendly-rule'));
-		expect(result.status).toBe('error');
-		expect(result.error).toContain('VIP:PORT:PROTO');
+		expect(result.status).toBe('invalid');
+		// Field detail is diagnostics-only under OpResult (never rendered raw).
+		expect(result.rawDetail).toContain('VIP:PORT:PROTO');
 		expect(post).not.toHaveBeenCalled();
 	});
 
 	it('passes the composite rule key unchanged', async () => {
 		const data = policy(0, '20.20.20.1:2020:tcp');
-		expect((await request_create_qos_policy(instance, data)).status).toBe('success');
+		expect((await request_create_qos_policy(instance, data)).status).toBe('confirmed');
 		expect(post).toHaveBeenCalledWith(instance, '/config/policy', data);
 	});
 
 	it('passes a bracketed IPv6 composite rule key unchanged', async () => {
 		const data = policy(0, '[2001:db8::20]:443:tcp');
-		expect((await request_create_qos_policy(instance, data)).status).toBe('success');
+		expect((await request_create_qos_policy(instance, data)).status).toBe('confirmed');
 		expect(post).toHaveBeenCalledWith(instance, '/config/policy', data);
 	});
 
@@ -54,14 +55,14 @@ describe('QoS connector target validation', () => {
 		'[2001:db8::20]:65536:tcp',
 	])('rejects ambiguous or malformed IPv6 target %s', async target => {
 		const result = await request_create_qos_policy(instance, policy(0, target));
-		expect(result.status).toBe('error');
-		expect(result.error).toContain('[VIP]:PORT:PROTO');
+		expect(result.status).toBe('invalid');
+		expect(result.rawDetail).toContain('[VIP]:PORT:PROTO');
 		expect(post).not.toHaveBeenCalled();
 	});
 
 	it('round-trips attachment 2 and leaves missing egress-hook errors to the Gateway', async () => {
 		const data = policy(2, 'eth0');
-		expect((await request_create_qos_policy(instance, data)).status).toBe('success');
+		expect((await request_create_qos_policy(instance, data)).status).toBe('confirmed');
 		expect(post).toHaveBeenCalledWith(instance, '/config/policy', data);
 	});
 });

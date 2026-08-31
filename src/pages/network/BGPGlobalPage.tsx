@@ -27,9 +27,9 @@ export default function BGPGlobalPage() {
 		}
 		openPopUp(t('Apply BGP Global Config'), t('Are you sure you want to apply the BGP global configuration?'), t('Apply'), t('Cancel'), async () => {
 			const res = await request_configure_bgp_global(inst, form);
-			if (res.status === 'success') {
+			if (res.status === 'confirmed') {
 				openPopUp(t('Success'), t('BGP global configuration applied.'), t('OK'));
-			} else openPopUp(t('Error'), t('Failed to update. {{error}}', {error: res.error}), t('OK'));
+			} else openPopUp(t('Error'), t('Failed to update. {{error}}', {error: t(res.localeKey)}), t('OK'));
 		});
 	};
 

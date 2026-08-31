@@ -33,10 +33,10 @@ function PeerPanel(props: {name: string; vxlanID: number; data: string[]; refetc
 
 		const res = await request_delete_vxlan_peer(inst, vxlanID, peerIP);
 
-		if (res.status === 'success') {
+		if (res.status === 'confirmed') {
 			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
 			refetch();
-		} else showDeleteError('VXLAN peer', res.error);
+		} else showDeleteError('VXLAN peer', t(res.localeKey));
 	};
 
 	const peerRef = useRef<string>('');
@@ -64,10 +64,10 @@ function PeerPanel(props: {name: string; vxlanID: number; data: string[]; refetc
 				if (!peerRef.current) return;
 
 				const res = await request_add_vxlan_peer(inst, vxlanID, peerRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Created successfully.'), t('OK'));
 					refetch();
-				} else showAddError('VXLAN peer', res.error);
+				} else showAddError('VXLAN peer', t(res.localeKey));
 			},
 			true,
 		);
@@ -120,14 +120,14 @@ export default function VxLANPage() {
 
 		const targets = selected_rows.map(hash => vxlan_info.vxlanAttr.find(v => getStableHash(String(v.vxlanID ?? '')) === hash)).filter((v): v is IVxlanAttribute => v != null);
 		const results = await Promise.all(targets.map(v => request_delete_vxlan(inst, v.vxlanID)));
-		const failures = results.filter(res => res.status === 'error');
+		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
 			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
 		} else if (failures.length < results.length) {
-			showDeleteError('VXLAN', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+			showDeleteError('VXLAN', t('{{succeeded}} succeeded, {{failed}} failed. {{error}}', {succeeded: results.length - failures.length, failed: failures.length, error: t(failures[0].localeKey)}));
 		} else {
-			showDeleteError('VXLAN', failures[0].error);
+			showDeleteError('VXLAN', t(failures[0].localeKey));
 			return;
 		}
 		set_selected_rows([]);
@@ -158,10 +158,10 @@ export default function VxLANPage() {
 				if (!instanceRef.current) return;
 
 				const res = await request_create_vxlan(inst, instanceRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
 					refetch();
-				} else showAddError('VXLAN', res.error);
+				} else showAddError('VXLAN', t(res.localeKey));
 			},
 			true,
 		);

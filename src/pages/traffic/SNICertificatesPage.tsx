@@ -89,7 +89,7 @@ export default function SNICertificatesPage() {
 		});
 
 		const results = await Promise.all(deletePromises);
-		const failures = results.filter(res => res.status === 'error');
+		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
 			openPopUp(t('Success'), t('Deleted {{count}} certificate(s) successfully.', {count: results.length}), t('OK'));
@@ -102,7 +102,7 @@ export default function SNICertificatesPage() {
 			setTimeout(() => refetch(), 1000);
 		} else {
 			// All failed
-			openPopUp(t('Error'), t('Failed to unregister. {{error}}', {error: failures[0].error}), t('OK'));
+			openPopUp(t('Error'), t('Failed to unregister. {{error}}', {error: t(failures[0].localeKey)}), t('OK'));
 		}
 	};
 
@@ -128,11 +128,11 @@ export default function SNICertificatesPage() {
 				if (!formRef.current) return;
 
 				const res = await request_register_sni_certificate(inst, formRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Certificate registered successfully.'), t('OK'));
 					setTimeout(() => refetch(), 1000);
 				} else {
-					openPopUp(t('Error'), t('Failed to register. {{error}}', {error: res.error}), t('OK'));
+					openPopUp(t('Error'), t('Failed to register. {{error}}', {error: t(res.localeKey)}), t('OK'));
 				}
 			},
 			true,
@@ -176,11 +176,11 @@ export default function SNICertificatesPage() {
 
 				const res =
 					mode === 'rotate' ? await request_rotate_cert_pem(inst, cert.certId as string, cert) : await request_upload_cert_pem(inst, cert);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), mode === 'rotate' ? t('Certificate rotated successfully.') : t('Certificate uploaded successfully.'), t('OK'));
 					setTimeout(() => refetch(), 1000);
 				} else {
-					openPopUp(t('Error'), t('Failed. {{error}}', {error: res.error}), t('OK'));
+					openPopUp(t('Error'), t('Failed. {{error}}', {error: t(res.localeKey)}), t('OK'));
 				}
 			},
 			true,
@@ -206,10 +206,10 @@ export default function SNICertificatesPage() {
 
 		openPopUp('', id_form, t('Delete'), t('Cancel'), async () => {
 			const res = await request_delete_cert_pem(inst, certIdRef.current.trim());
-			if (res.status === 'success') {
+			if (res.status === 'confirmed') {
 				openPopUp(t('Success'), t('Certificate deleted.'), t('OK'));
 				setTimeout(() => refetch(), 1000);
-			} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
+			} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: t(res.localeKey)}), t('OK'));
 		});
 	};
 

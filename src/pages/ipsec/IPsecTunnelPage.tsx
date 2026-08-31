@@ -157,11 +157,11 @@ export default function IPsecTunnelPage() {
 					isEdit && initial?.name
 						? await request_update_ipsec_tunnel(inst, initial.name, tunnelFormRef.current)
 						: await request_create_ipsec_tunnel(inst, tunnelFormRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), isEdit ? t('Tunnel updated successfully.') : t('Tunnel created successfully.'), t('OK'));
 					set_selected_rows([]);
 					setTimeout(refetchAll, 1000);
-				} else showAddError('IPsec tunnel', res.error);
+				} else showAddError('IPsec tunnel', t(res.localeKey));
 			},
 			true,
 		);
@@ -180,10 +180,10 @@ export default function IPsecTunnelPage() {
 		if (!inst || !selectedTunnel?.name) return;
 
 		const res = await request_ipsec_tunnel_action(inst, selectedTunnel.name, action);
-		if (res.status === 'success') {
+		if (res.status === 'confirmed') {
 			openPopUp(t('Success'), t('Tunnel {{action}} completed.', {action}), t('OK'));
 			setTimeout(refetchAll, 1000);
-		} else showAddError('IPsec tunnel action', res.error);
+		} else showAddError('IPsec tunnel action', t(res.localeKey));
 	};
 
 	// Mirrored strongSwan config for the remote peer, saved as a text file.
@@ -214,11 +214,11 @@ export default function IPsecTunnelPage() {
 		if (!inst || !selectedTunnel?.name) return;
 
 		const res = await request_delete_ipsec_tunnel(inst, selectedTunnel.name);
-		if (res.status === 'success') {
+		if (res.status === 'confirmed') {
 			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
 			set_selected_rows([]);
 			setTimeout(refetchAll, 1000);
-		} else showDeleteError('IPsec tunnel', res.error);
+		} else showDeleteError('IPsec tunnel', t(res.localeKey));
 	};
 
 	const configFormRef = useRef<IIPsecConfigMod | null>(null);
@@ -246,10 +246,10 @@ export default function IPsecTunnelPage() {
 				if (!configFormRef.current) return;
 
 				const res = await request_set_ipsec_config(inst, configFormRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('IPsec settings applied.'), t('OK'));
 					setTimeout(() => refetchConfig(), 1000);
-				} else showAddError('IPsec settings', res.error);
+				} else showAddError('IPsec settings', t(res.localeKey));
 			},
 			true,
 		);

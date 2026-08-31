@@ -142,11 +142,11 @@ export default function SecurityRatePage() {
 				if (!formRef.current) return;
 
 				const res = await request_configure_securityrate(inst, formRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Configured successfully.'), t('OK'));
 					setTimeout(() => refetch(), 1000);
 				} else {
-					openPopUp(t('Error'), t('Failed to configure. {{error}}', {error: res.error}), t('OK'));
+					openPopUp(t('Error'), t('Failed to configure. {{error}}', {error: t(res.localeKey)}), t('OK'));
 				}
 			},
 			true,
@@ -156,11 +156,11 @@ export default function SecurityRatePage() {
 	const handleDisable = async () => {
 		if (!inst) return;
 		const res = await request_disable_securityrate(inst);
-		if (res.status === 'success') {
+		if (res.status === 'confirmed') {
 			openPopUp(t('Success'), t('Security rate limiting disabled.'), t('OK'));
 			setTimeout(() => refetch(), 1000);
 		} else {
-			openPopUp(t('Error'), t('Failed to disable. {{error}}', {error: res.error}), t('OK'));
+			openPopUp(t('Error'), t('Failed to disable. {{error}}', {error: t(res.localeKey)}), t('OK'));
 		}
 	};
 
@@ -175,11 +175,11 @@ export default function SecurityRatePage() {
 			t('Cancel'),
 			async () => {
 				const res = await request_reset_securityrate_stats(inst);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Statistics reset successfully.'), t('OK'));
 					setTimeout(() => refetch(), 1000);
 				} else {
-					openPopUp(t('Error'), t('Failed to reset statistics. {{error}}', {error: res.error}), t('OK'));
+					openPopUp(t('Error'), t('Failed to reset statistics. {{error}}', {error: t(res.localeKey)}), t('OK'));
 				}
 			},
 		);

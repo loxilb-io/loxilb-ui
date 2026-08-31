@@ -51,14 +51,14 @@ export default function RoutePage() {
 				return request_delete_route(inst, ip, parseInt(maskStr, 10));
 			}),
 		);
-		const failures = results.filter(res => res.status === 'error');
+		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
 			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
 		} else if (failures.length < results.length) {
-			showDeleteError('route', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+			showDeleteError('route', t('{{succeeded}} succeeded, {{failed}} failed. {{error}}', {succeeded: results.length - failures.length, failed: failures.length, error: t(failures[0].localeKey)}));
 		} else {
-			showDeleteError('route', failures[0].error);
+			showDeleteError('route', t(failures[0].localeKey));
 			return;
 		}
 		set_selected_rows([]);
@@ -95,13 +95,13 @@ export default function RoutePage() {
 				try {
 					const res = await request_create_route(inst, instanceRef.current);
 					
-					if (res.status === 'success') {
+					if (res.status === 'confirmed') {
 						openPopUp(t('Success'), t('Added successfully.'), t('OK'));
 						setTimeout(() => {
 							refetch();
 						}, 1000);
 					} else {
-						showAddError('route', res.error);
+						showAddError('route', t(res.localeKey));
 					}
 				} catch (error) {
 					// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue

@@ -52,14 +52,14 @@ function MemberView(props: {name: string; vid: number; data: IMember[]; refetch:
 				return request_delete_vlan_member(inst, vid, baseDev, member.tagged);
 			}),
 		);
-		const failures = results.filter(res => res.status === 'error');
+		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
 			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
 		} else if (failures.length < results.length) {
-			showDeleteError('VLAN member', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+			showDeleteError('VLAN member', t('{{succeeded}} succeeded, {{failed}} failed. {{error}}', {succeeded: results.length - failures.length, failed: failures.length, error: t(failures[0].localeKey)}));
 		} else {
-			showDeleteError('VLAN member', failures[0].error);
+			showDeleteError('VLAN member', t(failures[0].localeKey));
 			return;
 		}
 		set_selected_rows([]);
@@ -89,10 +89,10 @@ function MemberView(props: {name: string; vid: number; data: IMember[]; refetch:
 				if (!instanceRef.current) return;
 
 				const res = await request_add_vlan_member(inst, vid, instanceRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
 					refetch();
-				} else showAddError('VLAN member', res.error);
+				} else showAddError('VLAN member', t(res.localeKey));
 			},
 			true,
 		);
@@ -143,14 +143,14 @@ export default function VLANPage() {
 		if (!inst || selectedItems.length === 0) return;
 
 		const results = await Promise.all(selectedItems.map(item => request_delete_vlan(inst, item.vid)));
-		const failures = results.filter(res => res.status === 'error');
+		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
 			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
 		} else if (failures.length < results.length) {
-			showDeleteError('VLAN', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+			showDeleteError('VLAN', t('{{succeeded}} succeeded, {{failed}} failed. {{error}}', {succeeded: results.length - failures.length, failed: failures.length, error: t(failures[0].localeKey)}));
 		} else {
-			showDeleteError('VLAN', failures[0].error);
+			showDeleteError('VLAN', t(failures[0].localeKey));
 			return;
 		}
 		set_selected_rows([]);
@@ -183,13 +183,13 @@ export default function VLANPage() {
 				if (!instanceRef.current) return;
 
 				const res = await request_create_vlan(inst, instanceRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
 					// Wait 1 second before refetching to allow backend to apply changes
 					setTimeout(() => {
 						refetch();
 					}, 1000);
-				} else showAddError('VLAN', res.error);
+				} else showAddError('VLAN', t(res.localeKey));
 			},
 			true,
 		);

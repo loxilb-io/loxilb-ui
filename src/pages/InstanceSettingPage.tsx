@@ -142,10 +142,10 @@ function LogLevelSelector() {
 
 		openPopUp(t('Log Level Change'), t('Do you want to change the log level to {{level}}?', {level: new_value}), t('Change'), t('Cancel'), async () => {
 			const res = await request_post_log_level(inst, new_value);
-			if (res.status === 'success') {
+			if (res.status === 'confirmed') {
 				set_selected_level(new_value);
 				openPopUp(t('Success'), t('Log level changed successfully.'), t('OK'));
-			} else openPopUp(t('Error'), t('Failed to change log level: {{error}}', {error: res.error}), t('OK'));
+			} else openPopUp(t('Error'), t('Failed to change log level: {{error}}', {error: t(res.localeKey)}), t('OK'));
 		});
 	};
 

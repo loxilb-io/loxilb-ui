@@ -47,14 +47,14 @@ export default function QoSPage() {
 		if (!inst || selectedItems.length === 0) return;
 
 		const results = await Promise.all(selectedItems.map(item => request_delete_qos_policy(inst, item.policyIdent)));
-		const failures = results.filter(res => res.status === 'error');
+		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
 			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
 		} else if (failures.length < results.length) {
-			showDeleteError('QoS policy', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+			showDeleteError('QoS policy', t('{{succeeded}} succeeded, {{failed}} failed. {{error}}', {succeeded: results.length - failures.length, failed: failures.length, error: t(failures[0].localeKey)}));
 		} else {
-			showDeleteError('QoS policy', failures[0].error);
+			showDeleteError('QoS policy', t(failures[0].localeKey));
 			return;
 		}
 		set_selected_rows([]);
@@ -87,12 +87,12 @@ export default function QoSPage() {
 				if (!instanceRef.current) return;
 
 				const res = await request_create_qos_policy(inst, instanceRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
 					setTimeout(() => {
 						refetch();
 					}, 1000);
-				} else showAddError('QoS policy', res.error);
+				} else showAddError('QoS policy', t(res.localeKey));
 			},
 			true,
 		);

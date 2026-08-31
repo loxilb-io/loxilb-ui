@@ -2,7 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {clean_string, format_uptime, parse_log_lines} from 'common';
-import {ApiResult, assertOk, createDetailedErrorMessage, DOWNLOAD_FILE_STREAM, DownloadProgress} from 'connector/fetcher/fetcher_base';
+import {assertOk, DOWNLOAD_FILE_STREAM, DownloadProgress} from 'connector/fetcher/fetcher_base';
 import {t} from 'i18next';
 import {ISystemInfo} from 'types/device';
 import {IFilesystemAttribute} from 'types/filesystem';
@@ -11,6 +11,8 @@ import {ILog, ILogArchiveList, LevelType} from 'types/log';
 import {IInstance} from 'types/oam';
 import {IProcessAttribute} from 'types/process';
 import {GET_INST, POST_INST} from '../fetcher/fetcher_inst';
+import {OpResult} from '../fetcher/opResult';
+import {runOp} from '../fetcher/opResultAdapter';
 import { getApiBaseUrl } from 'utils/apiProxy';
 import type {GwGetResp, GwSchema} from 'api';
 
@@ -75,17 +77,11 @@ export async function query_get_ha_state_all(instance: IInstance): Promise<IVipA
 }
 
 // not for frontend use, only for backend to update HA state
-export async function request_update_ha_state(instance: IInstance, data: IVipAttribute): Promise<ApiResult> {
+export async function request_update_ha_state(instance: IInstance, data: IVipAttribute): Promise<OpResult> {
 	// Send only the schema fields — the form rides an `isValid` flag on its
 	// onChange payload for button-gating, which must never reach the gateway.
 	const payload: IVipAttribute = {instance: data.instance, state: data.state, vip: data.vip};
-	const resp = await POST_INST(instance, `/config/cistate`, payload);
-	if (resp.code !== 200 && resp.code !== 204) {
-		const errorMessage = createDetailedErrorMessage(resp, 'Update HA State');
-		return {status: 'error', error: errorMessage};
-	} else {
-		return {status: 'success'};
-	}
+	return runOp('status.update_ha_state', () => POST_INST(instance, `/config/cistate`, payload));
 }
 
 export async function query_get_metadata(instance: IInstance): Promise<any> {
@@ -105,13 +101,8 @@ export async function query_get_version(instance: IInstance): Promise<IVersionEn
 	return (resp.data ?? {}) as IVersionEntry;
 }
 
-export async function request_post_log_level(instance: IInstance, level: LevelType): Promise<ApiResult> {
-	const resp = await POST_INST(instance, `/config/params`, {logLevel: level});
-	if (resp.code !== 200 && resp.code !== 204) {
-		const errorMessage = createDetailedErrorMessage(resp, 'Status Operation');
-		return {status: 'error', error: errorMessage};
-	}
-	else return {status: 'success'};
+export async function request_post_log_level(instance: IInstance, level: LevelType): Promise<OpResult> {
+	return runOp('status.post_log_level', () => POST_INST(instance, `/config/params`, {logLevel: level}));
 }
 
 export async function query_get_log_level(instance: IInstance): Promise<Partial<GwSchema<'OperParams'>>> {

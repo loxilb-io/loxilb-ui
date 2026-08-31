@@ -50,13 +50,13 @@ export default function HAPage() {
 				if (!instanceRef.current) return;
 
 				const res = await request_update_ha_state(inst, instanceRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Updated successfully.'), t('OK'));
 					setTimeout(() => {
 						refetch();
 					}, 1000);
 				} else {
-					openPopUp(t('Error'), t('Failed to update. {{error}}', {error: res.error}), t('OK'));
+					openPopUp(t('Error'), t('Failed to update. {{error}}', {error: t(res.localeKey)}), t('OK'));
 				}
 			},
 			true,

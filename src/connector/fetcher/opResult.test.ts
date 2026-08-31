@@ -10,7 +10,7 @@ import enJSON from 'locales/en.json';
 import jaJSON from 'locales/ja.json';
 import koJSON from 'locales/ko.json';
 import {SimpleResponse} from './fetcher_base';
-import {fromNetworkError, fromSimpleResponse, toApiResult} from './opResultAdapter';
+import {fromNetworkError, fromSimpleResponse} from './opResultAdapter';
 import {CONFLICT_KEY, LOGIN_FAILED_KEY, LOGIN_INVALID_KEY, LOGIN_LOCKED_KEY, NOT_ENABLED_KEY, RATE_LIMITED_KEY, STATUS_LOCALE_KEYS} from './opResultCodes';
 
 function resp(code: number, data: any = {}, message = ''): SimpleResponse {
@@ -107,14 +107,6 @@ describe('fromNetworkError', () => {
 		expect(res.status).toBe('unavailable');
 		expect(res.retryable).toBe(true);
 		expect(res.rawDetail).toBe('Failed to fetch');
-	});
-});
-
-describe('toApiResult compatibility shim', () => {
-	it('confirmed/submitted → success; everything else → error', () => {
-		expect(toApiResult(fromSimpleResponse(resp(200, {ok: true}), 'op'))).toEqual({status: 'success'});
-		expect(toApiResult(fromSimpleResponse(resp(403), 'op')).status).toBe('error');
-		expect(toApiResult(fromSimpleResponse(resp(599), 'op')).status).toBe('error');
 	});
 });
 

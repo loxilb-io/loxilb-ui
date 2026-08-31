@@ -129,14 +129,14 @@ export default function FirewallPage() {
 				return request_delete_all_firewall_rules(inst, {...item.ruleArguments});
 			}),
 		);
-		const failures = results.filter(res => res.status === 'error');
+		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
 			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
 		} else if (failures.length < results.length) {
-			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`}), t('OK'));
+			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: t('{{succeeded}} succeeded, {{failed}} failed. {{error}}', {succeeded: results.length - failures.length, failed: failures.length, error: t(failures[0].localeKey)})}), t('OK'));
 		} else {
-			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: failures[0].error}), t('OK'));
+			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: t(failures[0].localeKey)}), t('OK'));
 			return;
 		}
 		set_selected_rows([]);
@@ -169,12 +169,12 @@ export default function FirewallPage() {
 				if (!instanceRef.current) return;
 
 				const res = await request_create_firewall_rule(inst, instanceRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
 					setTimeout(() => {
 						refetch();
 					}, 1000);
-				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: res.error}), t('OK'));
+				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: t(res.localeKey)}), t('OK'));
 			},
 			true,
 		);

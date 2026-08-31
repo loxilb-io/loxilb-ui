@@ -5,7 +5,7 @@
 // RULE (binding, from the task contract): anything unrecognized maps to
 // `failed`, never to success. Raw server text goes only into rawDetail.
 
-import {ApiResult, isMutationFailure, SimpleResponse} from './fetcher_base';
+import {isMutationFailure, SimpleResponse} from './fetcher_base';
 import {OpResult} from './opResult';
 import {CONFLICT_KEY, NOT_ENABLED_KEY, RATE_LIMITED_KEY, STATUS_LOCALE_KEYS} from './opResultCodes';
 
@@ -80,6 +80,19 @@ export function fromSimpleResponse<T = unknown>(resp: SimpleResponse<T> | null |
 	return {status: 'failed', code: `${op}.failed`, localeKey: STATUS_LOCALE_KEYS.failed, retryable: false, ...common};
 }
 
+/**
+ * Standard wrapper for a single-call mutation: adapter mapping plus the
+ * network-throw guarantee (a thrown fetch resolves to `unavailable`, it never
+ * rejects into the page).
+ */
+export async function runOp<T = unknown>(op: string, call: () => Promise<SimpleResponse<T>>): Promise<OpResult<T>> {
+	try {
+		return fromSimpleResponse(await call(), op);
+	} catch (error) {
+		return fromNetworkError(op, error);
+	}
+}
+
 /** A thrown fetch (network refusal, DNS, timeout) — there was no HTTP response at all. */
 export function fromNetworkError(op: string, error?: unknown): OpResult<never> {
 	return {
@@ -91,12 +104,3 @@ export function fromNetworkError(op: string, error?: unknown): OpResult<never> {
 	};
 }
 
-/**
- * Compatibility shim for consumers not yet migrated off the binary ApiResult.
- * Dies with the last migration batch (`rg 'ApiResult'` outside this adapter
- * must reach 0, then both are deleted).
- */
-export function toApiResult(res: OpResult): ApiResult {
-	if (res.status === 'confirmed' || res.status === 'submitted') return {status: 'success'};
-	return {status: 'error', error: res.rawDetail};
-}

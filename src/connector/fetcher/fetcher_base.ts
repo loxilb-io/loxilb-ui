@@ -27,11 +27,6 @@ export interface SimpleResponse<T = any> {
 	parse_failed?: boolean;
 }
 
-export type ApiResult = {
-	status: 'success' | 'error';
-	error?: string;
-};
-
 // Carries the HTTP status so react-query's retry predicate (which skips 404)
 // and a page's error handling can branch on the code.
 export class ApiError extends Error {

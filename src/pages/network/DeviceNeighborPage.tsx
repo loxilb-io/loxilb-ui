@@ -49,14 +49,14 @@ export default function DeviceNeighborPage() {
 				return request_delete_device_neighbor(inst, item.ipAddress, item.dev);
 			}),
 		);
-		const failures = results.filter(res => res.status === 'error');
+		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
 			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
 		} else if (failures.length < results.length) {
-			showDeleteError('device neighbor', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+			showDeleteError('device neighbor', t('{{succeeded}} succeeded, {{failed}} failed. {{error}}', {succeeded: results.length - failures.length, failed: failures.length, error: t(failures[0].localeKey)}));
 		} else {
-			showDeleteError('device neighbor', failures[0].error);
+			showDeleteError('device neighbor', t(failures[0].localeKey));
 			return;
 		}
 		set_selected_rows([]);
@@ -92,12 +92,12 @@ export default function DeviceNeighborPage() {
 				if (!instanceRef.current) return;
 
 				const res = await request_create_device_neighbor(inst, instanceRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
 					setTimeout(() => {
 						refetch();
 					}, 1000);
-				} else showAddError('device neighbor', res.error);
+				} else showAddError('device neighbor', t(res.localeKey));
 			},
 			true,
 		);

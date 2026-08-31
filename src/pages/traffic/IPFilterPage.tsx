@@ -99,7 +99,7 @@ export default function IPFilterPage() {
 		});
 
 		const results = await Promise.all(deletePromises);
-		const failures = results.filter(res => res.status === 'error');
+		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
 			openPopUp(t('Success'), t('Deleted {{count}} rule(s) successfully.', {count: selectedItems.length}), t('OK'));
@@ -112,7 +112,7 @@ export default function IPFilterPage() {
 			setTimeout(() => refetch(), 1000);
 		} else {
 			// All failed
-			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: failures[0].error}), t('OK'));
+			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: t(failures[0].localeKey)}), t('OK'));
 		}
 	};
 
@@ -138,11 +138,11 @@ export default function IPFilterPage() {
 				if (!formRef.current) return;
 
 				const res = await request_create_ipfilter_rule(inst, formRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('IP filter rule added successfully.'), t('OK'));
 					setTimeout(() => refetch(), 1000);
 				} else {
-					openPopUp(t('Error'), t('Failed to add. {{error}}', {error: res.error}), t('OK'));
+					openPopUp(t('Error'), t('Failed to add. {{error}}', {error: t(res.localeKey)}), t('OK'));
 				}
 			},
 			true,

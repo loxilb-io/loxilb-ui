@@ -8,8 +8,11 @@ import {
 	ISNICertificatesResponse,
 } from 'types/security';
 import {IInstance} from 'types/oam';
-import {ApiResult, assertOk, createDetailedErrorMessage, SimpleResponse} from '../fetcher/fetcher_base';
+import {assertOk, SimpleResponse} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
+import {OpResult} from '../fetcher/opResult';
+import {fromNetworkError, fromSimpleResponse} from '../fetcher/opResultAdapter';
+import {STATUS_LOCALE_KEYS} from '../fetcher/opResultCodes';
 import type {GwGetResp} from 'api';
 
 //---------------------------------------------------------
@@ -23,6 +26,23 @@ import type {GwGetResp} from 'api';
 function sniSoftError(resp: SimpleResponse): boolean {
 	const result = (resp.data as any)?.result;
 	return typeof result === 'string' && result.trim().startsWith('Error');
+}
+
+// runOp plus this family's soft-error contract: the SNI store answers 200
+// with an 'Error: ...'-prefixed result string for domain rejections — the
+// generic {result:"fail"} envelope check cannot see those (UI-P6-1 batch 5).
+async function sniOp(op: string, call: () => Promise<SimpleResponse>): Promise<OpResult> {
+	let resp;
+	try {
+		resp = await call();
+	} catch (error) {
+		return fromNetworkError(op, error);
+	}
+	const res = fromSimpleResponse(resp, op);
+	if (res.status === 'confirmed' && sniSoftError(resp)) {
+		return {...res, status: 'failed', code: `${op}.reported_failure`, localeKey: STATUS_LOCALE_KEYS.failed, data: undefined, rawDetail: (resp.data as any)?.result};
+	}
+	return res;
 }
 
 /**
@@ -48,19 +68,14 @@ export async function query_get_sni_certificates(instance: IInstance): Promise<I
  * Register an SNI certificate in the global certificate store.
  * Multiple loadbalancer rules can share the same certificate by hostname.
  */
-export async function request_register_sni_certificate(instance: IInstance, data: ISNICertificateEntry): Promise<ApiResult> {
+export async function request_register_sni_certificate(instance: IInstance, data: ISNICertificateEntry): Promise<OpResult> {
 	// The input form's onChange emits its validation state (isValid) alongside
 	// the fields; build an explicit ISNICertificateEntry so that client-only key
 	// can never leak into the gateway POST, and omit an empty
 	// certPath so the gateway applies its default path.
 	const payload: ISNICertificateEntry = {hostname: data.hostname};
 	if (data.certPath && data.certPath.trim() !== '') payload.certPath = data.certPath;
-	const resp = await POST_INST(instance, `/sni/certificates`, payload);
-	if ((resp.code !== 200 && resp.code !== 204) || sniSoftError(resp)) {
-		const errorMessage = createDetailedErrorMessage(resp, 'SNI Certificate Registration');
-		return {status: 'error', error: errorMessage};
-	}
-	return {status: 'success'};
+	return sniOp('sni.register', () => POST_INST(instance, `/sni/certificates`, payload));
 }
 
 /**
@@ -70,11 +85,6 @@ export async function request_register_sni_certificate(instance: IInstance, data
 export async function request_unregister_sni_certificate(
 	instance: IInstance,
 	data: ISNICertificateDeleteRequest,
-): Promise<ApiResult> {
-	const resp = await DELETE_INST(instance, `/sni/certificates`, data);
-	if ((resp.code !== 200 && resp.code !== 204) || sniSoftError(resp)) {
-		const errorMessage = createDetailedErrorMessage(resp, 'SNI Certificate Removal');
-		return {status: 'error', error: errorMessage};
-	}
-	return {status: 'success'};
+): Promise<OpResult> {
+	return sniOp('sni.unregister', () => DELETE_INST(instance, `/sni/certificates`, data));
 }

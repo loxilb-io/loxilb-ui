@@ -56,10 +56,10 @@ export default function IPsecCertificatePage() {
 				if (!inst || !certFormRef.current) return;
 
 				const res = await request_upload_ipsec_certificate(inst, certFormRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Certificate uploaded.'), t('OK'));
 					setTimeout(() => refetchCerts(), 1000);
-				} else showAddError('IPsec certificate', res.error);
+				} else showAddError('IPsec certificate', t(res.localeKey));
 			},
 			true,
 		);
@@ -72,11 +72,11 @@ export default function IPsecCertificatePage() {
 		if (!item?.name) return;
 
 		const res = await request_delete_ipsec_certificate(inst, item.name);
-		if (res.status === 'success') {
+		if (res.status === 'confirmed') {
 			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
 			setSelectedCertRows([]);
 			setTimeout(() => refetchCerts(), 1000);
-		} else showDeleteError('IPsec certificate', res.error);
+		} else showDeleteError('IPsec certificate', t(res.localeKey));
 	};
 
 	//--- CA certificates -------------------------------------------------
@@ -100,10 +100,10 @@ export default function IPsecCertificatePage() {
 				if (!inst || !caFormRef.current) return;
 
 				const res = await request_upload_ipsec_ca_certificate(inst, caFormRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('CA certificate uploaded.'), t('OK'));
 					setTimeout(() => refetchCACerts(), 1000);
-				} else showAddError('CA certificate', res.error);
+				} else showAddError('CA certificate', t(res.localeKey));
 			},
 			true,
 		);
@@ -116,11 +116,11 @@ export default function IPsecCertificatePage() {
 		if (!item?.name) return;
 
 		const res = await request_delete_ipsec_ca_certificate(inst, item.name);
-		if (res.status === 'success') {
+		if (res.status === 'confirmed') {
 			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
 			setSelectedCARows([]);
 			setTimeout(() => refetchCACerts(), 1000);
-		} else showDeleteError('CA certificate', res.error);
+		} else showDeleteError('CA certificate', t(res.localeKey));
 	};
 
 	return (

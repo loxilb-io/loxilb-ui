@@ -3,8 +3,10 @@
 //---------------------------------------------------------
 import { IInstance } from 'types/oam';
 import { IVlanAttribute, IVlanInput, IVlanMemberInput } from 'types/vlan';
-import {ApiResult, assertOk, createDetailedErrorMessage} from '../fetcher/fetcher_base';
+import {assertOk} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
+import {OpResult} from '../fetcher/opResult';
+import {runOp} from '../fetcher/opResultAdapter';
 import type {GwGetResp} from 'api';
 
 //---------------------------------------------------------
@@ -30,42 +32,18 @@ export async function query_get_vlan_all(instance: IInstance): Promise<IVlanAttr
 		}));
 }
 
-export async function request_create_vlan(instance: IInstance, data: IVlanInput): Promise<ApiResult> {
-	const resp = await POST_INST(instance, `/config/vlan`, data);
-	if (resp.code !== 200 && resp.code !== 204) {
-		const errorMessage = createDetailedErrorMessage(resp, 'VLAN Operation');
-		return {status: 'error', error: errorMessage};
-	} else {
-		return {status: 'success'};
-	}
+export async function request_create_vlan(instance: IInstance, data: IVlanInput): Promise<OpResult> {
+	return runOp('vlan.create_vlan', () => POST_INST(instance, `/config/vlan`, data));
 }
 
-export async function request_delete_vlan(instance: IInstance, vid: number): Promise<ApiResult> {
-	const resp = await DELETE_INST(instance, `/config/vlan/${vid}`);
-	if (resp.code !== 200 && resp.code !== 204) {
-		const errorMessage = createDetailedErrorMessage(resp, 'VLAN Operation');
-		return {status: 'error', error: errorMessage};
-	} else {
-		return {status: 'success'};
-	}
+export async function request_delete_vlan(instance: IInstance, vid: number): Promise<OpResult> {
+	return runOp('vlan.delete_vlan', () => DELETE_INST(instance, `/config/vlan/${vid}`));
 }
 
-export async function request_add_vlan_member(instance: IInstance, vid: number, data: IVlanMemberInput): Promise<ApiResult> {
-	const resp = await POST_INST(instance, `/config/vlan/${vid}/member`, data);
-	if (resp.code !== 200 && resp.code !== 204) {
-		const errorMessage = createDetailedErrorMessage(resp, 'VLAN Operation');
-		return {status: 'error', error: errorMessage};
-	} else {
-		return {status: 'success'};
-	}
+export async function request_add_vlan_member(instance: IInstance, vid: number, data: IVlanMemberInput): Promise<OpResult> {
+	return runOp('vlan.add_vlan_member', () => POST_INST(instance, `/config/vlan/${vid}/member`, data));
 }
 
-export async function request_delete_vlan_member(instance: IInstance, vid: number, dev: string, tagged: boolean): Promise<ApiResult> {
-	const resp = await DELETE_INST(instance, `/config/vlan/${vid}/member/${dev}/tagged/${tagged}`);
-	if (resp.code !== 200 && resp.code !== 204) {
-		const errorMessage = createDetailedErrorMessage(resp, 'VLAN Operation');
-		return {status: 'error', error: errorMessage};
-	} else {
-		return {status: 'success'};
-	}
+export async function request_delete_vlan_member(instance: IInstance, vid: number, dev: string, tagged: boolean): Promise<OpResult> {
+	return runOp('vlan.delete_vlan_member', () => DELETE_INST(instance, `/config/vlan/${vid}/member/${dev}/tagged/${tagged}`));
 }
