@@ -48,7 +48,8 @@ jobs:
         # shipped.
         run: npm run build:prod
         env:
-          CI: 'false' # react-scripts treats warnings as errors under CI=true; flips to 'true' once the warning baseline is zero
+          # Warnings are errors: the lint baseline is zero, keep it there.
+          CI: 'true'
           REACT_APP_API_URL: /api/oam
           REACT_APP_PUBLIC_URL: /netlox
 
