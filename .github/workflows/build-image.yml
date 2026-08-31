@@ -34,6 +34,19 @@ jobs:
           load: true
           tags: loxilb-ui:ci
 
+      - name: Boot container and run smoke test
+        # Security headers (exact CSP match on every route shape, including
+        # the location blocks whose own add_header would silently drop the
+        # inherited set) + no inline <script> in the served shell.
+        run: |
+          docker run -d --name smoke -p 8080:8080 loxilb-ui:ci
+          if ! bash scripts/container-smoke.sh http://127.0.0.1:8080; then
+            echo "::group::container logs"
+            docker logs smoke
+            echo "::endgroup::"
+            exit 1
+          fi
+
       - name: Scan image with Trivy (advisory)
         # Report HIGH+CRITICAL with a fix available. Advisory: never blocks the
         # PR — surfacing is the point. The hard gate is in release.yml.

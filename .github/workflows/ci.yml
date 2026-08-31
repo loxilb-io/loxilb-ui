@@ -31,9 +31,33 @@ jobs:
       - name: Unit + backend-contract tests
         run: npm test
 
-      - name: Production build
-        run: |
-          cp .env.example .env.local
-          npm run build
+      - name: Production build (release parity)
+        # The exact path releases ship: build:prod with the tracked
+        # .env.production, and the same REACT_APP_* values the release
+        # workflow and the Dockerfile bake in. The previous `cp .env.example
+        # .env.local && npm run build` exercised a bundle no release ever
+        # shipped.
+        run: npm run build:prod
         env:
-          CI: 'false' # react-scripts treats warnings as errors under CI=true; lint gates arrive with H7
+          CI: 'false' # react-scripts treats warnings as errors under CI=true; flips to 'true' once the warning baseline is zero
+          REACT_APP_API_URL: /api/oam
+          REACT_APP_PUBLIC_URL: /netlox
+
+      - name: Build-flag agreement (Dockerfile vs .env.production)
+        # INLINE_RUNTIME_CHUNK=false is load-bearing for the CSP (no
+        # script-src 'unsafe-inline'); it is stated in both the Dockerfile
+        # builder stage and .env.production, and this gate fails the build
+        # the moment the two drift.
+        run: |
+          grep -q '^ENV INLINE_RUNTIME_CHUNK=false' Dockerfile
+          grep -q '^INLINE_RUNTIME_CHUNK=false' .env.production
+          grep -q '^ENV GENERATE_SOURCEMAP=false' Dockerfile
+          grep -q '^GENERATE_SOURCEMAP=false' .env.production
+
+      - name: Built shell has no inline script (CSP script-src 'self')
+        run: |
+          count=$(grep -oE '<script[^>]*>' build/index.html | grep -cv 'src=' || true)
+          if [ "${count:-0}" != 0 ]; then
+            echo "::error::build/index.html contains ${count} inline <script> tag(s) — the CSP (script-src 'self') will blank the app"
+            exit 1
+          fi

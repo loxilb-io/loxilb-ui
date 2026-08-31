@@ -13,14 +13,11 @@
 root /usr/share/nginx/html;
 index index.html;
 
-# Security headers. HSTS is deliberately NOT here — it belongs only to the TLS
-# server block (nginx-https.conf), since advertising it over plain HTTP either
-# does nothing or locks out a deployment that fronts this container with its
-# own edge.
-add_header X-Frame-Options "SAMEORIGIN" always;
-add_header X-Content-Type-Options "nosniff" always;
-add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https: wss: http: ws:;" always;
+# Security headers (X-Frame-Options, nosniff, Referrer-Policy, CSP) come from
+# a shared snippet — see the inheritance warning inside it: every location
+# below that declares its own add_header must re-include the snippet or it
+# silently serves with NO security headers at all.
+include /etc/nginx/snippets/security-headers.conf;
 # The SPA shell must never be cached, or a browser keeps booting the previous
 # bundle after an upgrade. Content-hashed assets opt back into caching below.
 add_header Cache-Control "no-store" always;
@@ -29,6 +26,8 @@ add_header Cache-Control "no-store" always;
 # Served in every mode, and never redirected to HTTPS.
 location = /health {
     access_log off;
+    # Own add_header ⇒ inherited headers are gone; restate the security set.
+    include /etc/nginx/snippets/security-headers.conf;
     add_header Content-Type text/plain;
     return 200 "healthy\n";
 }
@@ -97,10 +96,11 @@ location ~ ^/api/oam/(?<oam_path>.*)$ {
 # page with no clue why.
 location /static/ {
     expires 1y;
-    # An add_header in a nested block replaces the inherited set, so the header
-    # that still matters for assets is restated.
+    # Own add_header ⇒ inherited headers are gone; the security set (which
+    # already carries nosniff) is re-included, and the Cache-Control that
+    # differs from the server-level no-store is stated explicitly.
+    include /etc/nginx/snippets/security-headers.conf;
     add_header Cache-Control "public, immutable" always;
-    add_header X-Content-Type-Options "nosniff" always;
     try_files $uri =404;
 }
 
