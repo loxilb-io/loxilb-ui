@@ -170,7 +170,11 @@ describe('stale rows disable every write', () => {
 
 	it('says the rows are out of date', () => {
 		renderTable({state: staleState, rows: ROWS});
-		expect(screen.getByText(/out of date/i)).toBeDefined();
+		// Exact, not a substring: the write-guard's own explanation ends in
+		// "…out of date." too, and a loose matcher there matches both and
+		// reports an ambiguity rather than the banner's absence.
+		expect(screen.getByText('Out of date')).toBeDefined();
+		expect(screen.getByRole('status').textContent).toMatch(/last read at/i);
 	});
 
 	it('disables Add, Edit and Delete', () => {

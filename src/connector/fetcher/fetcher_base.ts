@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {get_local_storage, move_404, move_402, move_500, move_503, move_cors, remove_local_storage} from 'common';
+import {get_local_storage, move_404, move_402, move_500, move_cors, remove_local_storage} from 'common';
 import {terminateSession} from 'session/session';
 
 //---------------------------------------------------------
@@ -187,25 +187,11 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 			if (!isMutation) move_402();
 		}
 		else if (resp.status === 404) {
+			// The one redirect a read keeps (UI-P6-5, user decision). "This
+			// resource does not exist" is an answer about the route the operator
+			// asked for, not about one panel on the page — a 404 page is the
+			// honest destination, and there is no stale content worth staying on.
 			if (!isMutation && !isGatewayPassthrough && !isInlineErrorEndpoint) move_404();
-		}
-		else if (resp.status === 503) {
-			if (!isMutation && !isGatewayPassthrough && !isInlineErrorEndpoint) move_503();
-		}
-		else if (resp.status >= 500 && resp.status < 600 && resp.status !== 502 && resp.status !== 503) {
-			if (!isMutation && !isGatewayPassthrough && !isInlineErrorEndpoint) {
-				const resp_json = await resp.json();
-				const code = resp.status;
-				const message = resp_json.message || resp.statusText;
-				const result = resp_json.result || '';
-
-				// Filter for "not running" messages and redirect to move_503
-				if (message.includes('not running') || result.includes('not running')) {
-					move_503(code, message);
-				} else {
-					move_500(code, message);
-				}
-			}
 		}
 
 		return resp;
