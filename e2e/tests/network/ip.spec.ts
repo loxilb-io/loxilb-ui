@@ -48,19 +48,34 @@ test.describe('IPv4 address page (edit-is-create)', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepIpAddresses('ipv4');
-		// Pick the edit-target row from the live address table: the first
-		// non-loopback device with a real (non-doc-range) primary address.
+		// Pick the edit-target row from the live address table: a non-loopback
+		// device with a real (non-doc-range) primary address that is UNIQUE
+		// across the table.
+		//
+		// Uniqueness is not a nicety. The grid is addressed by row text, so an
+		// address carried by several devices resolves to several rows and
+		// selectRowByText's toHaveCount(1) fails. The testbed host runs Docker,
+		// and every `docker compose up` adds another bridge holding the same
+		// default gateway address — 7 devices carried 172.22.0.1/16 when this
+		// bit us. Whether the old "first non-lo device" pick landed on an
+		// ambiguous address then depended on the order the gateway happened to
+		// list interfaces in, so the spec passed or failed by luck; it failed in
+		// the UI-P6-3 AFTER-run and passed in isolation minutes later, with the
+		// same 7 bridges present both times.
 		const data = await gwJson<{ipAttr?: Array<{dev: string; ipAddress?: string[]}>}>(`${V4_PATH}/all`);
-		for (const attr of data.ipAttr ?? []) {
+		const attrs = data.ipAttr ?? [];
+		const bareAddrs = attrs.flatMap(a => (a.ipAddress ?? []).map(cidr => cidr.split('/')[0]));
+		const occurrences = (ip: string) => bareAddrs.filter(a => a === ip).length;
+		for (const attr of attrs) {
 			if (attr.dev === 'lo') continue;
-			const primary = (attr.ipAddress ?? []).find(cidr => !isDocAddr(cidr));
+			const primary = (attr.ipAddress ?? []).find(cidr => !isDocAddr(cidr) && occurrences(cidr.split('/')[0]) === 1);
 			if (primary) {
 				BASE_DEV = attr.dev;
 				BASE_IP = primary.split('/')[0];
 				break;
 			}
 		}
-		expect(BASE_DEV, 'testbed must expose a non-lo device with an IPv4 address').toBeTruthy();
+		expect(BASE_DEV, 'testbed must expose a non-lo device whose IPv4 address is unique across the address table').toBeTruthy();
 	});
 
 	test.afterEach(async () => {
