@@ -97,9 +97,20 @@ export function msUntilProactiveLogout(token: string): number {
  *
  * Stored ONLY if it is a local path: an absolute or protocol-relative URL
  * would turn the login screen into an open redirect, and a value that is not a
- * path at all cannot be a route. The query string is dropped — it routinely
- * carries instance names and other identifiers, and the path alone is enough
- * to land on the right page.
+ * path at all cannot be a route.
+ *
+ * The QUERY STRING IS KEPT. It was dropped originally, on the reasoning that
+ * it carries instance names and that the path alone is enough to land on the
+ * right page. Both halves turned out to be wrong, and UI-P6-6's ES-12
+ * walkthrough caught it: nearly every route under /instance reads `?name=`,
+ * and `useInstanceName()` logs an error and calls `move_404()` without it — so
+ * signing out of the LB page and back in returned the operator to a page that
+ * could not function, which ES-12's decision rule counts as an outright FAIL.
+ * The privacy half buys nothing either: the browser's own history already
+ * holds the full URL including the query.
+ *
+ * The fragment is still dropped — it addresses a position within a page, never
+ * which page, so it cannot help restore a route.
  */
 function rememberRedirectTarget(path: string): void {
 	if (!path.startsWith('/') || path.startsWith('//')) return;
@@ -108,9 +119,10 @@ function rememberRedirectTarget(path: string): void {
 	// under a sub-path does not end up at /ui/ui/instance/... on re-login.
 	const root = get_root_url();
 	const withoutRoot = root && path.startsWith(root + '/') ? path.slice(root.length) : path;
-	const bare = withoutRoot.split(/[?#]/)[0];
+	const withoutFragment = withoutRoot.split('#')[0];
+	const bare = withoutFragment.split('?')[0];
 	if (bare === '/login' || bare === '/') return;
-	sessionStorage.setItem(REDIRECT_KEY, bare);
+	sessionStorage.setItem(REDIRECT_KEY, withoutFragment);
 }
 
 export function consumeRedirectTarget(): string | null {
@@ -199,7 +211,10 @@ export async function terminateSession(
 		sessionStorage.setItem(REASON_KEY, reason);
 		// After the purge: the scan clears sessionStorage too, so remembering
 		// the route before it would erase what we just stored.
-		rememberRedirectTarget(opts?.path ?? window.location.pathname);
+		// pathname + search, not pathname alone: `?name=` is what tells an
+		// instance page which instance it is, and without it the operator is
+		// returned to a page that immediately 404s (see rememberRedirectTarget).
+		rememberRedirectTarget(opts?.path ?? window.location.pathname + window.location.search);
 		opts?.onTeardown?.();
 
 		// Clear BEFORE navigate (parent ordering rule): by here every store is

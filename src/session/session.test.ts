@@ -132,6 +132,32 @@ describe('UI-P6-4 — returning the operator to where they were', () => {
 		expect(consumeRedirectTarget()).toBeNull();
 	});
 
+	it('RED: keeps the query string — most instance routes are useless without it', async () => {
+		// Found by UI-P6-6's ES-12 walkthrough. Dropping the query looked
+		// harmless ("the path alone is enough to land on the right page") but
+		// nearly every page under /instance reads ?name=: useInstanceName()
+		// logs 'Instance name is missing!!' and calls move_404() when it is
+		// absent. So a sign-out from the LB page followed by a re-login
+		// returned the operator to /instance/traffic/lb with no instance —
+		// a broken page and, per ES-12's own decision rule, a FAIL.
+		//
+		// Proven in a browser before this fix: post-relogin URL was
+		// http://localhost:3000/netlox/instance/traffic/lb with 8 console
+		// errors. Stripping the query protects nothing anyway — the browser's
+		// history already holds the full URL, query and all.
+		seedLoggedInStorage(tokenWithExp(1_700_000_000));
+		await terminateSession('expired', {path: '/instance/traffic/lb?name=gw-1'});
+
+		expect(consumeRedirectTarget()).toBe('/instance/traffic/lb?name=gw-1');
+	});
+
+	it('drops the fragment, which is never needed to restore a route', async () => {
+		seedLoggedInStorage(tokenWithExp(1_700_000_000));
+		await terminateSession('expired', {path: '/instance/traffic/lb?name=gw-1#row-3'});
+
+		expect(consumeRedirectTarget()).toBe('/instance/traffic/lb?name=gw-1');
+	});
+
 	it('never remembers the login page itself', async () => {
 		seedLoggedInStorage(tokenWithExp(1_700_000_000));
 		await terminateSession('revoked', {path: '/login'});
@@ -163,10 +189,15 @@ describe('UI-P6-4 — returning the operator to where they were', () => {
 		vi.unstubAllEnvs();
 	});
 
-	it('keeps the path but drops the query string, which can carry identifiers', async () => {
+	// REPLACES an earlier assertion that the query string was dropped "because
+	// it can carry identifiers". UI-P6-6's ES-12 walkthrough disproved the
+	// premise: the pages this feature returns operators to cannot function
+	// without ?name=, and the browser's history keeps the full URL regardless,
+	// so dropping it cost the feature its purpose and protected nothing.
+	it('keeps the whole query string, which is what makes the target usable', async () => {
 		seedLoggedInStorage(tokenWithExp(1_700_000_000));
-		await terminateSession('idle', {path: '/instance/traffic/lb?name=prod-gw&secret=x'});
-		expect(consumeRedirectTarget()).toBe('/instance/traffic/lb');
+		await terminateSession('idle', {path: '/instance/traffic/lb?name=prod-gw&tab=rules'});
+		expect(consumeRedirectTarget()).toBe('/instance/traffic/lb?name=prod-gw&tab=rules');
 	});
 });
 
