@@ -121,12 +121,32 @@ export function fromFailure(failure: OpResult): PageDataState<never> {
 
 /**
  * The write-guard rule (task doc §2.3): stale data can be *looked at*, never
- * *acted on*. While the last read failed we cannot know that the operator is
- * still authorized, nor that the rows match the server — so Add/Edit/Delete
- * are disabled rather than sent against a guess.
+ * *acted on*. This answers "may the operator act on the ROWS on screen?" —
+ * Edit and Delete take a selected row as their target, so rows we cannot vouch
+ * for make them unsafe.
  */
 export function writesEnabled(state: PageDataState<unknown>): boolean {
 	return state.kind === 'data' || state.kind === 'empty';
+}
+
+/**
+ * May the operator create a NEW item? A different question, and the first cut
+ * of this task got it wrong by answering it with `writesEnabled`.
+ *
+ * Add reads nothing off the table: it does not target a row, so rows that are
+ * missing or untrustworthy do not make it unsafe. Blocking it whenever a read
+ * failed removed the one action that still makes sense when a list will not
+ * load — and broke a supported flow, creating a BGP neighbour on an instance
+ * whose neighbour list answers 403 because BGP mode is off
+ * (`cicd/ha/bgp-neighbor.spec.ts`). It also went dead during every ordinary
+ * page load, where nothing is stale because nothing has been claimed yet.
+ *
+ * `stale` is the one state that does bar it: rows exist and are being shown,
+ * but may not match the server, so the operator could duplicate something they
+ * cannot see.
+ */
+export function createEnabled(state: PageDataState<unknown>): boolean {
+	return state.kind !== 'stale';
 }
 
 /**

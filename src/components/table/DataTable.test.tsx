@@ -201,8 +201,47 @@ describe('stale rows disable every write', () => {
 		expect(document.getElementById(described!)?.textContent).toMatch(/out of date/i);
 	});
 
-	it('a hard failure disables writes too — the rows are gone, not merely old', () => {
-		renderTable({state: {kind: 'unavailable', result: opResult({status: 'unavailable', retryable: true})}});
+	it('a hard failure still disables the row-targeted actions', () => {
+		renderTable({state: {kind: 'unavailable', result: opResult({status: 'unavailable', retryable: true})}, selected_rows: ['r1']});
+		expect(button(/^edit/i).disabled).toBe(true);
+		expect(button(/^delete/i).disabled).toBe(true);
+	});
+});
+
+//---------------------------------------------------------
+// 2b. Add is not an action ON the rows, and is guarded differently
+//---------------------------------------------------------
+// Edit and Delete operate on a SELECTED ROW, so rows we cannot vouch for make
+// them unsafe. Add creates something new and reads nothing off the table, so
+// the same reasoning does not reach it. Blocking it anyway took away the one
+// action that still makes sense when a list will not load — proven by
+// `cicd/ha/bgp-neighbor.spec.ts`, which creates a neighbour on an instance
+// whose neighbour list answers 403 because BGP mode is off. That is a
+// supported operator flow, and the first cut of this guard broke it.
+describe('Add survives a read that failed, because it does not depend on the read', () => {
+	const hardFailures = [
+		{name: 'denied', state: {kind: 'denied' as const, result: opResult({status: 'denied' as const})}},
+		{name: 'unavailable', state: {kind: 'unavailable' as const, result: opResult({status: 'unavailable' as const, retryable: true})}},
+		{name: 'failed', state: {kind: 'failed' as const, result: opResult({status: 'failed' as const})}},
+	];
+
+	for (const {name, state} of hardFailures) {
+		it(`${name}: Add stays available — there are no rows to be wrong about`, () => {
+			renderTable({state});
+			expect(button(/^add/i).disabled).toBe(false);
+		});
+	}
+
+	it('loading: Add stays available — nothing has been claimed yet, let alone gone stale', () => {
+		renderTable({state: {kind: 'loading'}});
+		expect(button(/^add/i).disabled).toBe(false);
+	});
+
+	it('stale is the exception: rows exist but may be wrong, so a duplicate is a real hazard', () => {
+		renderTable({
+			state: {kind: 'stale', rows: ROWS, fetchedAt: FETCHED_AT, failure: opResult({status: 'unavailable', retryable: true})},
+			rows: ROWS,
+		});
 		expect(button(/^add/i).disabled).toBe(true);
 	});
 });
@@ -213,7 +252,11 @@ describe('stale rows disable every write', () => {
 describe('empty and loading are told apart', () => {
 	it('empty: a successful response with no rows says so, with no error styling', () => {
 		renderTable({state: {kind: 'empty', fetchedAt: FETCHED_AT}});
-		expect(screen.getByText(/no widget entries yet/i)).toBeDefined();
+		// Two nodes carry this sentence on purpose: the grid's overlay shows it
+		// where the rows would be, and a visually-hidden live region outside
+		// the grid announces it. They cannot be one node — role="grid" forbids
+		// a role="status" child (see the aria-required-children case below).
+		expect(screen.getAllByText(/no widget entries yet/i).length).toBeGreaterThan(0);
 		expect(screen.queryByRole('alert')).toBeNull();
 	});
 
@@ -225,6 +268,16 @@ describe('empty and loading are told apart', () => {
 	it('empty is announced, so a screen reader learns the table filled or emptied', () => {
 		renderTable({state: {kind: 'empty', fetchedAt: FETCHED_AT}});
 		expect(screen.getByRole('status')).toBeDefined();
+	});
+
+	it('the announcement is NOT a child of the grid — role="grid" forbids it', () => {
+		// axe `aria-required-children` (critical, WCAG 1.3.1): a role="grid"
+		// may contain only row/rowgroup. Announcing emptiness from inside the
+		// DataGrid's own overlay put a role="status" in there and failed the
+		// route-level axe pass on the LB page. Caught by the AFTER-run.
+		renderTable({state: {kind: 'empty', fetchedAt: FETCHED_AT}});
+		expect(document.querySelector('[role="grid"] [role="status"]')).toBeNull();
+		expect(document.querySelector('[role="grid"] [aria-live]')).toBeNull();
 	});
 
 	it('loading: does NOT claim the resource is empty before the server has answered', () => {

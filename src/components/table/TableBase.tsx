@@ -11,14 +11,14 @@ import {FOCUS_RING} from 'theme';
 //---------------------------------------------------------
 // Designed empty state: a blank rectangle reads as "broken"; a labeled one
 // reads as "empty on purpose". The caller supplies resource-aware copy.
-// The overlay IS the live region for "this table has nothing in it" (ES-10).
-// A grid that silently swaps its rows for a placeholder tells a sighted
-// operator everything and a screen-reader user nothing; announcing it here
-// means the message is announced exactly once, at the place it is displayed,
-// rather than duplicated into a second hidden node beside it.
+// Visual only, deliberately. This renders INSIDE the DataGrid, whose
+// `.MuiDataGrid-main` carries role="grid" — and a grid may contain nothing but
+// row/rowgroup, so a role="status" here is a critical `aria-required-children`
+// violation (WCAG 1.3.1). It was one, and the route-level axe pass caught it.
+// The live region for ES-10 lives in DataTable instead, outside the grid.
 function EmptyOverlay(props: {label: string}) {
 	return (
-		<Box role="status" aria-live="polite" height="100%" display="flex" flexDirection="column" alignItems="center" justifyContent="center" gap="6px">
+		<Box height="100%" display="flex" flexDirection="column" alignItems="center" justifyContent="center" gap="6px">
 			<InboxOutlinedIcon sx={{fontSize: '36px', color: 'grey.400'}} />
 			<Typography variant="body2" color="text.secondary">
 				{props.label}

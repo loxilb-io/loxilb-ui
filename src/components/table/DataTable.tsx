@@ -36,7 +36,7 @@ import {usePopUp} from 'hooks/popupHook';
 import {useRole} from 'hooks/query/oamHooks';
 import {t} from 'i18next';
 import {IDataTableColumnDef} from 'types/global';
-import {PageDataState, writesEnabled} from 'components/state/pageState';
+import {PageDataState, createEnabled, writesEnabled} from 'components/state/pageState';
 import {ReactNode, useId} from 'react';
 import {TableBase} from './TableBase';
 
@@ -87,12 +87,15 @@ export default function DataTable(props: {
 }) {
 	const {name, columns, rows, selected_rows, onChangeSelectedRows, hideMenuBar, hideCheckbox, hideIdColumn, disableSelect, onRefresh, state, error, defaultSort, deleteConfirm} = props;
 
-	// Stale data may be looked at, never acted on (task §2.3 / ES-14). While
-	// the last read failed we know neither that the operator is still
-	// authorized nor that these rows match the server, so a write would be
-	// sent against a guess. Callers still on the legacy `error` boolean are
-	// unaffected — it carries no such claim either way.
-	const writes_ok = state ? writesEnabled(state) : true;
+	// Stale data may be looked at, never acted on (task §2.3 / ES-14). Two
+	// different questions, and they must not share one answer: Edit and Delete
+	// target a SELECTED ROW, so rows we cannot vouch for make them unsafe,
+	// while Add reads nothing off the table. Guarding Add with the row rule
+	// took away the one action that still makes sense when a list will not
+	// load — see createEnabled. Callers still on the legacy `error` boolean
+	// are unaffected; it carries no such claim either way.
+	const row_actions_ok = state ? writesEnabled(state) : true;
+	const create_ok = state ? createEnabled(state) : true;
 	// Reserved for the guard's explanation so the disabled buttons can point
 	// at it; useId keeps it unique when several tables share one page.
 	const guard_id = useId();
@@ -121,7 +124,8 @@ export default function DataTable(props: {
 	// The accessible NAME stays resource-qualified ("Add Widget") — E2E
 	// locators and screen-reader users both rely on it being stable — so the
 	// reason arrives as a description instead of being folded into the label.
-	const guard_props = writes_ok ? {} : {'aria-describedby': guard_id};
+	const guard_needed = !row_actions_ok || !create_ok;
+	const guard_props = (blocked: boolean) => (blocked ? {'aria-describedby': guard_id} : {});
 
 	const handleRowSelectionChange = (selection: GridRowSelectionModel) => {
 		// Preserve opaque string IDs. Coercing every ID through Number() makes
@@ -286,9 +290,9 @@ export default function DataTable(props: {
 					)}
 
 					{onEdit && (
-						<Tooltip title={writes_ok ? t('Edit {{name}}', {name}) : guard_reason} placement="top" arrow>
+						<Tooltip title={row_actions_ok ? t('Edit {{name}}', {name}) : guard_reason} placement="top" arrow>
 							<span>
-								<Button size="small" color="inherit" aria-label={t('Edit {{name}}', {name})} {...guard_props} disabled={!writes_ok || selected_rows.length !== 1} onClick={onEdit} startIcon={<ModeIcon />} sx={{color: 'text.secondary'}}>
+								<Button size="small" color="inherit" aria-label={t('Edit {{name}}', {name})} {...guard_props(!row_actions_ok)} disabled={!row_actions_ok || selected_rows.length !== 1} onClick={onEdit} startIcon={<ModeIcon />} sx={{color: 'text.secondary'}}>
 									{t('Edit')}
 								</Button>
 							</span>
@@ -296,14 +300,14 @@ export default function DataTable(props: {
 					)}
 
 					{onDelete && (
-						<Tooltip title={writes_ok ? (deleteConfirm?.tooltip ?? t('Delete {{name}}', {name})) : guard_reason} placement="top" arrow>
+						<Tooltip title={row_actions_ok ? (deleteConfirm?.tooltip ?? t('Delete {{name}}', {name})) : guard_reason} placement="top" arrow>
 							<span>
 								<Button
 									size="small"
 									color="error"
 									aria-label={deleteConfirm?.tooltip ?? t('Delete {{name}}', {name})}
-									{...guard_props}
-									disabled={!writes_ok || selected_rows.length === 0}
+									{...guard_props(!row_actions_ok)}
+									disabled={!row_actions_ok || selected_rows.length === 0}
 									onClick={handleDelete}
 									startIcon={deleteConfirm?.icon === 'block' ? <BlockIcon /> : <DeleteIcon />}
 								>
@@ -314,9 +318,9 @@ export default function DataTable(props: {
 					)}
 
 					{onAdd && (
-						<Tooltip title={writes_ok ? t('Add {{name}}', {name}) : guard_reason} placement="top" arrow>
+						<Tooltip title={create_ok ? t('Add {{name}}', {name}) : guard_reason} placement="top" arrow>
 							<span>
-								<Button size="small" variant="contained" color="primary" aria-label={t('Add {{name}}', {name})} {...guard_props} disabled={!writes_ok} onClick={onAdd} startIcon={<AddIcon />}>
+								<Button size="small" variant="contained" color="primary" aria-label={t('Add {{name}}', {name})} {...guard_props(!create_ok)} disabled={!create_ok} onClick={onAdd} startIcon={<AddIcon />}>
 									{t('Add')}
 								</Button>
 							</span>
@@ -327,9 +331,21 @@ export default function DataTable(props: {
 
 			{/* The disabled buttons' description. Rendered only while the guard
 			    is on, so nothing references a missing id the rest of the time. */}
-			{!writes_ok && (
+			{guard_needed && (
 				<Box id={guard_id} sx={visuallyHidden}>
 					{guard_reason}
+				</Box>
+			)}
+
+			{/* The ES-10 live region for "this table is empty". It must live
+			    HERE and not in the grid's own overlay: `.MuiDataGrid-main` is
+			    role="grid", which may contain only row/rowgroup, so a
+			    role="status" inside it is a critical aria-required-children
+			    violation. The overlay keeps the visible message; this announces
+			    it. */}
+			{state?.kind === 'empty' && (
+				<Box role="status" aria-live="polite" sx={visuallyHidden}>
+					{t('No {{name}} entries yet', {name})}
 				</Box>
 			)}
 
