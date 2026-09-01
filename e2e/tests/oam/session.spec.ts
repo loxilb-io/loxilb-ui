@@ -12,6 +12,31 @@
 //---------------------------------------------------------
 import {expect, test} from '../../fixtures';
 
+// ⚠ This file signs out, and `request_logout()` REVOKES the token server-side.
+// The rest of the suite shares one admin token from `.auth/admin.json`, so
+// signing out on that shared session poisons every spec that runs after this
+// file — proven the hard way: the first full run of this spec failed
+// `oam/users.spec.ts` onward with `GET /loxilbs failed: 401`, 26 failures and
+// 81 tests never reached.
+//
+// So these tests run on their OWN session: a blank storage state plus one UI
+// login. That costs a single extra login against the rate-limited endpoint per
+// run, and the token it revokes is nobody else's.
+test.use({storageState: {cookies: [], origins: []}});
+
+const ADMIN_USER = process.env.E2E_ADMIN_USER ?? 'admin';
+const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? '';
+
+/** One UI login into a fresh context — mirrors auth.setup.ts's flow. */
+async function signIn(page: import('@playwright/test').Page) {
+	await page.goto('login');
+	await page.locator('#username').waitFor({state: 'visible', timeout: 20_000});
+	await page.locator('#username').fill(ADMIN_USER);
+	await page.locator('#password').fill(ADMIN_PASSWORD);
+	await page.getByRole('button', {name: 'Login'}).click();
+	await expect(page, 'session spec could not sign in').toHaveURL(/\/instance/, {timeout: 20_000});
+}
+
 const PERSISTED_CACHE_KEY = 'REACT_QUERY_OFFLINE_CACHE';
 
 /** Everything in web storage that could carry session data. */
@@ -40,9 +65,8 @@ async function storageScan(page: import('@playwright/test').Page) {
 }
 
 test('signing out leaves no token, no persisted query cache and no series data (ES-22)', async ({page}) => {
-	// Land on a data-heavy page so the persisted cache is genuinely populated.
-	await page.goto('instance');
-	await expect(page).toHaveURL(/\/instance/);
+	// Own session (see the note at the top): this test revokes its token.
+	await signIn(page);
 
 	const before = await storageScan(page);
 	expect(before.token, 'the fixture session should be signed in').toBeTruthy();
@@ -69,8 +93,7 @@ test('signing out leaves no token, no persisted query cache and no series data (
 });
 
 test('an expired token ends the session with an explanation instead of a silent redirect (ES-27)', async ({page}) => {
-	await page.goto('instance');
-	await expect(page).toHaveURL(/\/instance/);
+	await signIn(page);
 
 	// Swap in a well-formed token whose exp is already past: the proactive
 	// watcher must end the session on its own, without waiting for a request
