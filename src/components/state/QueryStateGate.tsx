@@ -6,12 +6,14 @@
 // not tables (dashboard cards, the log console, single-record panels) use the
 // gate directly.
 //
-// Accessibility (ES-10): the banner region is a live region so a state flip is
-// announced rather than silently repainted — `role="status"` for the benign
-// transitions, `role="alert"` for a hard failure.
+// Accessibility (ES-10) lives in PageStateBanner: the banner region is a live
+// region so a state flip is announced rather than silently repainted.
 
+import {Box, CircularProgress} from '@mui/material';
 import {ReactNode} from 'react';
-import {PageDataState} from './pageState';
+import {useTranslation} from 'react-i18next';
+import PageStateBanner from './PageStateBanner';
+import {PageDataState, writesEnabled} from './pageState';
 
 export interface QueryStateGateProps<T> {
 	state: PageDataState<T>;
@@ -30,8 +32,35 @@ export interface QueryStateGateProps<T> {
 	loadingFallback?: ReactNode;
 }
 
-export default function QueryStateGate<T>(props: QueryStateGateProps<T>): JSX.Element {
-	// UI-P6-5 red commit: contract only. Implemented in the following commit.
-	void props;
-	throw new Error('QueryStateGate is not implemented yet (UI-P6-5)');
+export default function QueryStateGate<T>({state, name, onRetry, children, emptyMessage, loadingFallback}: QueryStateGateProps<T>) {
+	const {t} = useTranslation();
+
+	if (state.kind === 'loading') {
+		return (
+			<>
+				{loadingFallback ?? (
+					<Box sx={{display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', py: 4}}>
+						{/* A nameless progressbar is the axe violation UI-P2-2 had to
+						    fix on the setup spinner — every busy indicator gets a name. */}
+						<CircularProgress size={32} aria-label={t('Loading {{name}}...', {name})} />
+					</Box>
+				)}
+			</>
+		);
+	}
+
+	const banner = <PageStateBanner state={state} name={name} onRetry={onRetry} emptyMessage={emptyMessage} />;
+
+	// denied / unavailable / failed: there are no rows to show, and rendering
+	// the children with an empty payload is exactly the "error looks like an
+	// empty resource" defect this task closes.
+	if (state.kind === 'denied' || state.kind === 'unavailable' || state.kind === 'failed') return banner;
+
+	const rows = state.kind === 'empty' ? undefined : state.rows;
+	return (
+		<>
+			{banner}
+			{children(rows, {writesEnabled: writesEnabled(state), stale: state.kind === 'stale'})}
+		</>
+	);
 }

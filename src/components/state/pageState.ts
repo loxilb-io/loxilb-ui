@@ -13,6 +13,7 @@
 // so the precedence rules can be unit-tested as a table, without a DOM.
 
 import {ApiError} from 'connector/fetcher/fetcher_base';
+import {fromThrownError} from 'connector/fetcher/opResultAdapter';
 import {OpResult} from 'connector/fetcher/opResult';
 
 export type PageDataState<T> =
@@ -80,10 +81,30 @@ export function defaultIsEmpty(data: unknown): boolean {
  * the window in which the operator most needs to be told the rows are old.
  */
 export function toPageState<T>(query: ReadQueryLike<T>, opts: PageStateOptions<T>): PageDataState<T> {
-	// UI-P6-5 red commit: contract only. Implemented in the following commit.
-	void query;
-	void opts;
-	throw new Error('toPageState is not implemented yet (UI-P6-5)');
+	const isEmpty = opts.isEmpty ?? (defaultIsEmpty as (data: T) => boolean);
+	// `undefined` is react-query's "no successful response yet"; `null` is a
+	// value a connector deliberately returned (IPsec config that is not
+	// configured), so it counts as data and must not spin forever.
+	const hasRows = query.data !== undefined;
+
+	if (query.error) {
+		const failure = fromThrownError(opts.op, query.error);
+		if (hasRows) return {kind: 'stale', rows: query.data as T, fetchedAt: query.dataUpdatedAt, failure};
+		switch (failure.status) {
+			case 'denied':
+				return {kind: 'denied', result: failure};
+			case 'unavailable':
+				return {kind: 'unavailable', result: failure};
+			default:
+				return {kind: 'failed', result: failure};
+		}
+	}
+
+	if (!hasRows) return {kind: 'loading'};
+
+	const rows = query.data as T;
+	if (isEmpty(rows)) return {kind: 'empty', fetchedAt: query.dataUpdatedAt};
+	return {kind: 'data', rows, fetchedAt: query.dataUpdatedAt};
 }
 
 /**
@@ -93,9 +114,7 @@ export function toPageState<T>(query: ReadQueryLike<T>, opts: PageStateOptions<T
  * are disabled rather than sent against a guess.
  */
 export function writesEnabled(state: PageDataState<unknown>): boolean {
-	// UI-P6-5 red commit: contract only. Implemented in the following commit.
-	void state;
-	throw new Error('writesEnabled is not implemented yet (UI-P6-5)');
+	return state.kind === 'data' || state.kind === 'empty';
 }
 
 /**

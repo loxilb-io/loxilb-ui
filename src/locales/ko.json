@@ -701,5 +701,13 @@
 	"Your session expired. Please sign in again.": "세션이 만료되었습니다. 다시 로그인해 주세요.",
 	"You were signed out after a period of inactivity. Please sign in again.": "일정 시간 사용하지 않아 자동으로 로그아웃되었습니다. 다시 로그인해 주세요.",
 	"Your session ended. Please sign in again.": "세션이 종료되었습니다. 다시 로그인해 주세요.",
-	"The server returned a token this client cannot read. Please try again or contact your administrator.": "서버가 이 클라이언트에서 읽을 수 없는 토큰을 반환했습니다. 다시 시도하거나 관리자에게 문의하세요."
+	"The server returned a token this client cannot read. Please try again or contact your administrator.": "서버가 이 클라이언트에서 읽을 수 없는 토큰을 반환했습니다. 다시 시도하거나 관리자에게 문의하세요.",
+	"No {{name}} entries yet": "{{name}} 항목이 아직 없습니다",
+	"Out of date": "최신 정보가 아님",
+	"Showing {{name}} last read at {{time}}. The latest refresh failed, so this may not match the server.": "{{time}}에 마지막으로 읽은 {{name}}을(를) 표시하고 있습니다. 최신 새로 고침에 실패하여 서버와 다를 수 있습니다.",
+	"You don't have permission to view {{name}}.": "{{name}}을(를) 볼 수 있는 권한이 없습니다.",
+	"{{name}} is temporarily unavailable.": "{{name}}을(를) 일시적으로 사용할 수 없습니다.",
+	"Loading {{name}}...": "{{name}} 불러오는 중...",
+	"Reference: {{id}}": "참조: {{id}}",
+	"Unavailable while the data on screen is out of date.": "화면의 데이터가 최신이 아니므로 사용할 수 없습니다."
 }

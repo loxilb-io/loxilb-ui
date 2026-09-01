@@ -5,7 +5,7 @@
 // RULE (binding, from the task contract): anything unrecognized maps to
 // `failed`, never to success. Raw server text goes only into rawDetail.
 
-import {isMutationFailure, SimpleResponse} from './fetcher_base';
+import {ApiError, isMutationFailure, SimpleResponse} from './fetcher_base';
 import {OpResult} from './opResult';
 import {CONFLICT_KEY, NOT_ENABLED_KEY, RATE_LIMITED_KEY, STATUS_LOCALE_KEYS} from './opResultCodes';
 
@@ -91,6 +91,29 @@ export async function runOp<T = unknown>(op: string, call: () => Promise<SimpleR
 	} catch (error) {
 		return fromNetworkError(op, error);
 	}
+}
+
+/**
+ * A read connector's thrown error → OpResult (UI-P6-5).
+ *
+ * `assertOk` throws an ApiError carrying the HTTP status, and react-query hands
+ * that to the page as `query.error`. Reuse the one mapping table above rather
+ * than growing a second one, with a single read-specific correction: a read
+ * never carries operator input, so `invalid` — whose whole message is "fix what
+ * you submitted" (400/422/409) — would send them looking for a form that does
+ * not exist. For a GET those codes are simply a failure.
+ *
+ * Anything that is not an ApiError never reached HTTP at all (transport, DNS,
+ * abort, a bug throwing inside the connector) and maps to `unavailable`.
+ */
+export function fromThrownError(op: string, error: unknown): OpResult<never> {
+	const status = error instanceof ApiError ? error.status : undefined;
+	if (typeof status !== 'number' || !Number.isFinite(status) || (status >= 200 && status < 300)) {
+		return fromNetworkError(op, error);
+	}
+	const mapped = fromSimpleResponse<never>({code: status, data: null, message: (error as ApiError).message}, op);
+	if (mapped.status !== 'invalid') return mapped;
+	return {...mapped, status: 'failed', code: `${op}.failed`, localeKey: STATUS_LOCALE_KEYS.failed};
 }
 
 /** A thrown fetch (network refusal, DNS, timeout) — there was no HTTP response at all. */

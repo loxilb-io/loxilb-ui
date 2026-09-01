@@ -701,5 +701,13 @@
 	"Your session expired. Please sign in again.": "セッションの有効期限が切れました。もう一度サインインしてください。",
 	"You were signed out after a period of inactivity. Please sign in again.": "一定時間操作がなかったため、サインアウトされました。もう一度サインインしてください。",
 	"Your session ended. Please sign in again.": "セッションが終了しました。もう一度サインインしてください。",
-	"The server returned a token this client cannot read. Please try again or contact your administrator.": "サーバーが本クライアントでは読み取れないトークンを返しました。再試行するか、管理者にお問い合わせください。"
+	"The server returned a token this client cannot read. Please try again or contact your administrator.": "サーバーが本クライアントでは読み取れないトークンを返しました。再試行するか、管理者にお問い合わせください。",
+	"No {{name}} entries yet": "{{name}} のエントリはまだありません",
+	"Out of date": "最新ではありません",
+	"Showing {{name}} last read at {{time}}. The latest refresh failed, so this may not match the server.": "{{time}} に最後に読み取った {{name}} を表示しています。最新の更新に失敗したため、サーバーと一致しない可能性があります。",
+	"You don't have permission to view {{name}}.": "{{name}} を表示する権限がありません。",
+	"{{name}} is temporarily unavailable.": "{{name}} は一時的に利用できません。",
+	"Loading {{name}}...": "{{name}} を読み込んでいます...",
+	"Reference: {{id}}": "参照: {{id}}",
+	"Unavailable while the data on screen is out of date.": "画面のデータが最新ではないため使用できません。"
 }

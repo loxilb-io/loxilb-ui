@@ -701,5 +701,13 @@
 	"Your session expired. Please sign in again.": "Your session expired. Please sign in again.",
 	"You were signed out after a period of inactivity. Please sign in again.": "You were signed out after a period of inactivity. Please sign in again.",
 	"Your session ended. Please sign in again.": "Your session ended. Please sign in again.",
-	"The server returned a token this client cannot read. Please try again or contact your administrator.": "The server returned a token this client cannot read. Please try again or contact your administrator."
+	"The server returned a token this client cannot read. Please try again or contact your administrator.": "The server returned a token this client cannot read. Please try again or contact your administrator.",
+	"No {{name}} entries yet": "No {{name}} entries yet",
+	"Out of date": "Out of date",
+	"Showing {{name}} last read at {{time}}. The latest refresh failed, so this may not match the server.": "Showing {{name}} last read at {{time}}. The latest refresh failed, so this may not match the server.",
+	"You don't have permission to view {{name}}.": "You don't have permission to view {{name}}.",
+	"{{name}} is temporarily unavailable.": "{{name}} is temporarily unavailable.",
+	"Loading {{name}}...": "Loading {{name}}...",
+	"Reference: {{id}}": "Reference: {{id}}",
+	"Unavailable while the data on screen is out of date.": "Unavailable while the data on screen is out of date."
 }

@@ -16,6 +16,11 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {cleanup, render, screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+// userEvent + MUI in jsdom exceeds the 5s default under load; the assertions
+// are event-driven, so this is headroom only (same reason PopUp.test.tsx
+// raises it — UI-P2-2).
+vi.setConfig({testTimeout: 20_000});
+
 const FETCHED_AT = new Date('2026-09-01T12:00:00Z').getTime();
 
 function opResult(over: Partial<OpResult>): OpResult {
