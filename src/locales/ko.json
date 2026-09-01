@@ -697,5 +697,9 @@
 	"This feature is not enabled on this instance.": "이 인스턴스에서는 이 기능이 활성화되어 있지 않습니다.",
 	"{{succeeded}} succeeded, {{failed}} failed. {{error}}": "{{succeeded}}건 성공, {{failed}}건 실패. {{error}}",
 	"Submitted": "제출됨",
-	"The gateway accepted the change, but it has not appeared yet. Refresh to check again.": "게이트웨이가 변경을 수락했지만 아직 목록에 나타나지 않았습니다. 새로 고침하여 다시 확인하세요."
+	"The gateway accepted the change, but it has not appeared yet. Refresh to check again.": "게이트웨이가 변경을 수락했지만 아직 목록에 나타나지 않았습니다. 새로 고침하여 다시 확인하세요.",
+	"Your session expired. Please sign in again.": "세션이 만료되었습니다. 다시 로그인해 주세요.",
+	"You were signed out after a period of inactivity. Please sign in again.": "일정 시간 사용하지 않아 자동으로 로그아웃되었습니다. 다시 로그인해 주세요.",
+	"Your session ended. Please sign in again.": "세션이 종료되었습니다. 다시 로그인해 주세요.",
+	"The server returned a token this client cannot read. Please try again or contact your administrator.": "서버가 이 클라이언트에서 읽을 수 없는 토큰을 반환했습니다. 다시 시도하거나 관리자에게 문의하세요."
 }

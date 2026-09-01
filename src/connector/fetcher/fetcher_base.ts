@@ -1,7 +1,8 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {forced_relocation_to_login, get_local_storage, move_404, move_402, move_500, move_503, move_cors, remove_local_storage} from 'common';
+import {get_local_storage, move_404, move_402, move_500, move_503, move_cors, remove_local_storage} from 'common';
+import {terminateSession} from 'session/session';
 
 //---------------------------------------------------------
 // Interfaces
@@ -167,10 +168,14 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 		const isInlineErrorEndpoint = typeof url === 'string' && /\/oam\/(snapshots\/|instances\/[^/]+\/snapshot)/.test(url);
 		// if (resp.status === 401 || resp.status === 403) {
 		if (resp.status === 401) {
-			if (shouldExpireOAMSession(resp, url)) {
-				remove_token();
-				forced_relocation_to_login();
-			}
+			// One idempotent teardown for the whole app (UI-P6-4). N parallel
+			// queries can all answer 401 at once; the old code called the
+			// relocation helper once per response and leaned on a
+			// "already on /login?" guard to hide the duplicates, while the
+			// persisted query cache survived either way.
+			// The gateway-origin carve-out below is unchanged: a management-hop
+			// 401 is not the human's OAM session ending.
+			if (shouldExpireOAMSession(resp, url)) void terminateSession('revoked');
 			return resp;
 		} else if (resp.status === 403) {
 			// Forbidden - user is authenticated but lacks permission or action is forbidden

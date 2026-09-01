@@ -4,7 +4,7 @@
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
 import {Box, Divider, Menu, MenuItem, Stack, Typography} from '@mui/material';
-import {move_forced} from 'common';
+import {terminateSession} from 'session/session';
 import {request_logout} from 'connector/oam/oam';
 import {usePopUp} from 'hooks/popupHook';
 import {t} from 'i18next';
@@ -20,8 +20,11 @@ export default function ProfileMenu(props: {user_name: string; user_id: string; 
 		openPopUp(t('Sign out'), t('Are you sure you want to sign out?'), t('Yes'), t('Cancel'), async () => {
 			// Invalidate server-side first (best-effort), then clear local state.
 			await request_logout();
-			localStorage.removeItem('access_token');
-			move_forced('/login');
+			// One teardown for every way a session can end (UI-P6-4). Removing
+			// just `access_token` left the persisted React Query cache — LB
+			// rules, endpoints, API-key metadata, user lists — readable in
+			// localStorage by whoever used the terminal next (ES-22).
+			await terminateSession('logout');
 		});
 	};
 

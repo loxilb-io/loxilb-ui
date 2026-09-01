@@ -28,7 +28,7 @@
 //---------------------------------------------------------
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {IDLE_LIMIT_MS, PROACTIVE_SKEW_MS} from 'session/sessionPolicy';
-import {SessionEndReason, consumeSessionEndReason, msUntilProactiveLogout, parseJwtExp, terminateSession} from 'session/session';
+import {SessionEndReason, beginSession, consumeSessionEndReason, msUntilProactiveLogout, parseJwtExp, terminateSession} from 'session/session';
 
 const PERSISTED_CACHE_KEY = 'REACT_QUERY_OFFLINE_CACHE';
 
@@ -40,6 +40,7 @@ function tokenWithExp(expSeconds: number, payloadOverride?: string): string {
 
 /** Everything terminateSession is expected to clear, plus a decoy that must survive. */
 function seedLoggedInStorage(token: string) {
+	beginSession(); // installing a token starts a session — mirrors the login path
 	localStorage.setItem('access_token', token);
 	localStorage.setItem(PERSISTED_CACHE_KEY, JSON.stringify({clientState: {queries: [{queryKey: ['lb_data', '1'], state: {data: [{serviceArguments: {externalIP: '10.0.0.1'}}]}}]}}));
 	localStorage.setItem('conntrack-series_1', JSON.stringify([{timestamp: 1, data: {ct: 5}}]));
@@ -75,6 +76,15 @@ afterEach(() => {
 describe('UI-P6-4 — JWT expiry parsing', () => {
 	it('reads exp as epoch milliseconds', () => {
 		expect(parseJwtExp(tokenWithExp(1_700_000_000))).toBe(1_700_000_000_000);
+	});
+
+	it('reads a real OAM token shape: base64url, unpadded, exp alongside role claims', () => {
+		// Shaped after a live testbed token — payload length 86 (86 % 4 === 2),
+		// no '=' padding, claims {exp, role, user_id, username}.
+		const claims = {exp: 1_788_257_880, role: 'admin', user_id: 1, username: 'admin'};
+		const unpadded = btoa(JSON.stringify(claims)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+		expect(unpadded.endsWith('=')).toBe(false);
+		expect(parseJwtExp(`header.${unpadded}.signature`)).toBe(1_788_257_880_000);
 	});
 
 	it.each([
