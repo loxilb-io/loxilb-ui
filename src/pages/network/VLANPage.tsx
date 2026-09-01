@@ -17,6 +17,7 @@ import {useVLANAttr} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {Fragment, useMemo, useRef, useState} from 'react';
 import {IMember, IVlanAttribute, IVlanData, IVlanInput, IVlanMemberInput} from 'types/vlan';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -120,7 +121,8 @@ function MemberView(props: {name: string; vid: number; data: IMember[]; refetch:
 export default function VLANPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, isError, refetch} = useVLANAttr(inst); // IVlanAttribute[]
+	const vlan_query = useVLANAttr(inst);
+	const {data, refetch} = vlan_query; // IVlanAttribute[]
 	const vlan_info: IVlanData = {vlanAttr: data ?? []};
 
    const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds stable hash ids
@@ -204,7 +206,7 @@ export default function VLANPage() {
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
 			   onRefresh={refetch}
-			   error={isError}
+			   state={toPageState(vlan_query, {op: 'vlan.list'})}
 		   />
 		   {selectedItem && (
 			   <LowerSection>

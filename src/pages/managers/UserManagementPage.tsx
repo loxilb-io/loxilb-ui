@@ -22,6 +22,7 @@ import {Fragment, useState, useMemo, useEffect, useCallback, useRef} from 'react
 import {getStableHash} from 'common';
 import {IUser} from 'types/oam';
 import {IUserUpdateRequest, ICreateUserRequest} from 'types/user';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Tab Panel Component
@@ -135,7 +136,7 @@ function AdminUserManagementPanel(props: {
 	refetchRef?: React.MutableRefObject<(() => void) | null>;
 }) {
 	const {currentUser, onEditUser, onAddUser, onRefresh, refetchRef} = props;
-	const {users, isLoading, refetch} = useAllUsers();
+	const {users, isLoading, refetch, query: users_query} = useAllUsers();
 
 	const {openPopUp} = usePopUp();
 	const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds hash ids
@@ -235,6 +236,7 @@ function AdminUserManagementPanel(props: {
 					onRefresh={handleRefresh}
 					currentUserId={currentUser?.id}
 					isAdmin={currentUser?.role === 'admin'}
+					state={toPageState(users_query, {op: 'user.list'})}
 				/>
 			</Fragment>
 		</Stack>

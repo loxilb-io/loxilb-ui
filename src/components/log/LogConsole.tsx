@@ -30,6 +30,8 @@ import {useEffect, useMemo, useState} from 'react';
 import {formatBytes} from 'common';
 import {IDataTableColumnDef} from 'types/global';
 import {ILog, ILogArchiveInfo} from 'types/log';
+import PageStateBanner from 'components/state/PageStateBanner';
+import {PageDataState} from 'components/state/pageState';
 import {
 	TIME_RANGE_PRESETS,
 	TimeRangePreset,
@@ -73,6 +75,8 @@ export interface LogConsoleProps {
 	handleRefresh: () => void;
 	resetFilters: () => void;
 	dense?: boolean;
+	/** What the log read is actually showing right now (UI-P6-5). */
+	state?: PageDataState<unknown>;
 }
 
 export default function LogConsole(props: LogConsoleProps) {
@@ -81,8 +85,13 @@ export default function LogConsole(props: LogConsoleProps) {
 		selectedLevel, setSelectedLevel, preset, setPreset, customRange, setCustomRange,
 		liveTail, toggleLiveTail, selectedFile, selectFile, archives, archiveInfo,
 		keywordSearchedWholeFile, totalSize, scannedBytes,
-		hasMore, isLoadingMore, handleLoadMore, handleRefresh, resetFilters, dense,
+		hasMore, isLoadingMore, handleLoadMore, handleRefresh, resetFilters, dense, state,
 	} = props;
+
+	// A read that failed must not reach the "No logs to display" line below —
+	// that sentence claims the instance has nothing to say, which is a
+	// statement about the instance rather than about the request.
+	const read_failed = state?.kind === 'denied' || state?.kind === 'unavailable' || state?.kind === 'failed';
 
 	// Archive metadata, keyed by name. size_bytes is absent both on gateways that
 	// predate archive_info and — currently — for zero-byte files, so a missing
@@ -285,6 +294,10 @@ export default function LogConsole(props: LogConsoleProps) {
 				</Box>
 			)}
 
+			{/* Above the lines, not instead of them: on `stale` the console keeps
+			    everything already paged in and says only that it is not current. */}
+			{state && state.kind !== 'empty' && <PageStateBanner state={state} name={t('Instance Logs')} onRetry={handleRefresh} />}
+
 			{rows.length > 0 ? (
 				<DataTable
 					name="Log"
@@ -296,7 +309,7 @@ export default function LogConsole(props: LogConsoleProps) {
 					hideCheckbox
 					hideIdColumn
 				/>
-			) : (
+			) : read_failed ? null : (
 				<Typography variant="body2" color="text.secondary" padding="8px 0">
 					{filtersActive ? t('No lines match the current filters') : t('No logs to display')}
 				</Typography>

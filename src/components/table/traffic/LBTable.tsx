@@ -7,12 +7,13 @@ import DataTable from 'components/table/DataTable';
 import {IDataTableColumnDef, IEnumItem} from 'types/global';
 import {ILBData} from 'types/load_balancer';
 import {lbRuleRowId} from 'types/lb_identity';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function LBTable(props: {data: ILBData; selected_rows: (string | number)[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onUpdate?: any; onRefresh?: any; error?: boolean}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onUpdate, onRefresh, error} = props;
+export default function LBTable(props: {data: ILBData; selected_rows: (string | number)[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onUpdate?: any; onRefresh?: any; state?: PageDataState<unknown>; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onUpdate, onRefresh, state, error} = props;
 
 	const sel_list: IEnumItem[] = sels;
 	const mode_list: IEnumItem[] = modes;
@@ -81,6 +82,6 @@ export default function LBTable(props: {data: ILBData; selected_rows: (string | 
 	   : undefined;
 
 	return (
-	   <DataTable name={'Load Balancer'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onEdit={onUpdate} onRefresh={onRefresh} error={error} />
+	   <DataTable name={'Load Balancer'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onEdit={onUpdate} onRefresh={onRefresh} state={state} error={error} />
 	);
 }

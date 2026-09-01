@@ -9,6 +9,7 @@ import {IInstance} from 'types/oam';
 import CardBase from './CardBase';
 import {derive_endpoint_health} from './cardMetricsLogic';
 import MetricFigure from './MetricFigure';
+import MetricScrapeState from './MetricScrapeState';
 
 //---------------------------------------------------------
 // Component Props
@@ -25,7 +26,7 @@ export default function HealthStatusCard(props: HealthStatusCardProps) {
 	const {title, instance} = props;
 
 	// Get live metrics with polling
-	const {metrics: liveMetrics, isLoading} = useLiveMetrics(instance, {keyPrefix: 'health-status-realtime', refetchInterval: 10000});
+	const {metrics: liveMetrics, isLoading, failure: scrapeFailure, refetch: refetchMetrics} = useLiveMetrics(instance, {keyPrefix: 'health-status-realtime', refetchInterval: 10000});
 
 	// Derivation lives in cardMetricsLogic so the "absent ≠ zero" rule is
 	// unit-testable without a renderer.
@@ -43,6 +44,10 @@ export default function HealthStatusCard(props: HealthStatusCardProps) {
 	};
 
 	const currentStatus = statusConfig[healthData.status as keyof typeof statusConfig];
+
+	// A refused or disabled scrape is not this instance declining to publish a
+	// metric — say which it was, instead of falling through to "not reported".
+	if (scrapeFailure) return <MetricScrapeState title={title} failure={scrapeFailure} onRetry={refetchMetrics} />;
 
 	if (isLoading) {
 		return (

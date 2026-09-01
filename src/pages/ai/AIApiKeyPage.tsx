@@ -22,6 +22,7 @@ import {useErrorPopup} from 'hooks/useErrorPopup';
 import {t} from 'i18next';
 import React, {Fragment, useRef, useState} from 'react';
 import {IApiKeyCreateRequest, IApiKeyCreateResponse, IApiKeySummary} from 'types/ai';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Components
@@ -92,7 +93,8 @@ function DetailPanel(props: {data: IApiKeySummary}) {
 export default function AIApiKeyPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, isError, refetch} = useApiKeys(inst);
+	const apikey_query = useApiKeys(inst);
+	const {data, refetch} = apikey_query;
 	// Defense in depth: even though the connector normalizes to an array, never
 	// spread an unchecked hook result (a gateway 402 body is a non-iterable object).
 	const keys = React.useMemo(() => {
@@ -203,7 +205,7 @@ export default function AIApiKeyPage() {
 				onAdd={handleAdd}
 				onDelete={handleDelete}
 				onRefresh={handleRefresh}
-				error={!!isError}
+				state={toPageState(apikey_query, {op: 'ai_apikey.list'})}
 			/>
 			{selectedKey && (
 				<LowerSection>

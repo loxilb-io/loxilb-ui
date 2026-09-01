@@ -15,6 +15,7 @@ import {t} from 'i18next';
 import {useMemo, useRef, useState} from 'react';
 import {IFdbAttribute, IFdbData} from 'types/fdb';
 import {identifyFdbEntries} from 'types/fdb_identity';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -22,7 +23,8 @@ import {identifyFdbEntries} from 'types/fdb_identity';
 export default function FDBPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, isError, refetch} = useFDB(inst); // IFdbAttribute[]
+	const fdb_query = useFDB(inst);
+	const {data, refetch} = fdb_query; // IFdbAttribute[]
 	const fdb_info: IFdbData = {fdbAttr: data ?? []};
 
 	   const [selected_rows, set_selected_rows] = useState<GridRowId[]>([]);
@@ -105,7 +107,7 @@ export default function FDBPage() {
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
 			   onRefresh={refetch}
-			   error={isError}
+			   state={toPageState(fdb_query, {op: 'fdb.list'})}
 		   />
 
 		   {/* Error Popup */}

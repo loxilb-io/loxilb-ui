@@ -21,6 +21,7 @@ import {endpointAppeared, endpointsGone} from 'hooks/query/confirmPredicates';
 import {t} from 'i18next';
 import {Fragment, useRef, useState, useMemo} from 'react';
 import {IEndpointAttr, IEndpointInput, IEndpointItem} from 'types/endpoint';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -56,7 +57,8 @@ function ProbeInfoPanel(props: {name: string; data: IEndpointItem}) {
 export default function EndpointPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, isError, refetch} = useEndpoints(inst);
+	const endpoint_query = useEndpoints(inst);
+	const {data, refetch} = endpoint_query;
 	const ep_info: IEndpointAttr = {Attr: data ?? []};
 
 	// Selection is keyed by a stable content hash (the same id the table assigns
@@ -206,7 +208,7 @@ export default function EndpointPage() {
 				onDelete={handleDelete}
 				onUpdate={handleUpdate}
 				onRefresh={handleRefresh}
-				error={isError}
+				state={toPageState(endpoint_query, {op: 'endpoint.list'})}
 			/>
 
 			{selectedItem && (

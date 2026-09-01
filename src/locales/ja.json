@@ -709,5 +709,7 @@
 	"{{name}} is temporarily unavailable.": "{{name}} は一時的に利用できません。",
 	"Loading {{name}}...": "{{name}} を読み込んでいます...",
 	"Reference: {{id}}": "参照: {{id}}",
-	"Unavailable while the data on screen is out of date.": "画面のデータが最新ではないため使用できません。"
+	"Unavailable while the data on screen is out of date.": "画面のデータが最新ではないため使用できません。",
+	"No instances are registered yet. Add one to start managing a loxilb or inference-gateway deployment.": "登録されているインスタンスはありません。インスタンスを追加すると、loxilb または inference-gateway のデプロイを管理できます。",
+	"Metrics": "メトリクス"
 }

@@ -5,6 +5,7 @@ import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {ISecurityRateEntry} from 'types/security';
 import {IDataTableColumnDef} from 'types/global';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -16,11 +17,12 @@ interface SecurityRateTableProps {
 	onEdit?: () => void;
 	onDisable?: () => void;
 	onRefresh?: () => void;
+	state?: PageDataState<unknown>;
 	error?: boolean;
 }
 
 export default function SecurityRateTable(props: SecurityRateTableProps) {
-	const {data, selected_rows, onChangeSelectedRows, onEdit, onDisable, onRefresh, error} = props;
+	const {data, selected_rows, onChangeSelectedRows, onEdit, onDisable, onRefresh, state, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'synEnabled', header: 'SYN Enabled', width: 'narrow'},
@@ -76,6 +78,7 @@ export default function SecurityRateTable(props: SecurityRateTableProps) {
 					: undefined
 			}
 			onRefresh={onRefresh}
+			state={state}
 			error={error}
 		/>
 	);

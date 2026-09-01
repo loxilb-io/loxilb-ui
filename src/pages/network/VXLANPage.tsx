@@ -18,6 +18,7 @@ import {t} from 'i18next';
 import {Fragment, useRef, useState} from 'react';
 import {getStableHash, isValidIPAddress} from 'common';
 import {IVxlanAttribute, IVxlanData, IVxlanInput} from 'types/vxlan';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -103,7 +104,8 @@ function PeerPanel(props: {name: string; vxlanID: number; data: string[]; refetc
 export default function VxLANPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, isError, refetch} = useVxlanAttr(inst); // IVxlanAttribute[]
+	const vxlan_query = useVxlanAttr(inst);
+	const {data, refetch} = vxlan_query; // IVxlanAttribute[]
 	const vxlan_info: IVxlanData = {vxlanAttr: data ?? []};
 
 	// selected_rows holds a stable hash of vxlanID (the row id the table
@@ -169,7 +171,7 @@ export default function VxLANPage() {
 
 	return (
 		<Fragment>
-			<VXLANTable data={vxlan_info} selected_rows={selected_rows} onChangeSelectedRows={handleSelectionChange} onAdd={handleAdd} onDelete={handleDelete} error={isError} />
+			<VXLANTable data={vxlan_info} selected_rows={selected_rows} onChangeSelectedRows={handleSelectionChange} onAdd={handleAdd} onDelete={handleDelete} state={toPageState(vxlan_query, {op: 'vxlan.list'})} />
 
 			{selectedVxlan && (
 				<LowerSection>

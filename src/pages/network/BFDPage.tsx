@@ -13,6 +13,7 @@ import {useBFD} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {useMemo, useRef, useState} from 'react';
 import {IBFDAttribute, IBFDAttribureInfo, IBfdInput} from 'types/bfd';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -20,7 +21,8 @@ import {IBFDAttribute, IBFDAttribureInfo, IBfdInput} from 'types/bfd';
 export default function BFDPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, isError, refetch} = useBFD(inst); // IBFDAttribute[]
+	const bfd_query = useBFD(inst);
+	const {data, refetch} = bfd_query; // IBFDAttribute[]
 	const attr_info: IBFDAttribureInfo = {Attr: data ?? []};
 
    const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds hash ids
@@ -110,7 +112,7 @@ export default function BFDPage() {
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
 		   onRefresh={handleRefresh}
-		   error={isError}
+		   state={toPageState(bfd_query, {op: 'bfd.list'})}
 		   />
 
 		   {/* Error Popup */}

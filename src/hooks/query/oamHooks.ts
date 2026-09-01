@@ -19,16 +19,21 @@ export function useOAMLogArchives() {
 }
 
 export function useInstances() {
-	const {data: instance_list = [], refetch} = useQueryOAMData(['instance_list'], query_get_instance_list);
+	const query = useQueryOAMData(['instance_list'], query_get_instance_list);
+	const {data: instance_list = [], refetch} = query;
 
 	const get_instance = useCallback((id: number) => instance_list.find(item => item.id === id), [instance_list]);
 	const get_instance_name = useCallback((id: number) => instance_list.find(item => item.id === id)?.name || 'INVALID INSTANCE', [instance_list]);
 
-	return {get_instance, get_instance_name, instance_list, refetch};
+	// `query` is the un-defaulted read (UI-P6-5). The `= []` default above is
+	// what let a failed /oam/loxilbs render the landing page as an operator
+	// who has simply registered nothing — the one screen where that lie costs
+	// the most, because there is no other page to notice it on.
+	return {get_instance, get_instance_name, instance_list, refetch, query};
 }
 
 export function useInstanceWithHA() {
-	const {instance_list} = useInstances();
+	const {instance_list, query, refetch} = useInstances();
 
 	const queries = useMemo(
 		() =>
@@ -53,7 +58,7 @@ export function useInstanceWithHA() {
 		});
 	}, [instance_list, queryData]);
 
-	return {instance_set};
+	return {instance_set, instance_query: query, refetch};
 }
 
 export function useMyInfo() {

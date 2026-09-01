@@ -16,6 +16,7 @@ import {
 import {useInstanceLogs} from 'hooks/query/instanceHook';
 import {IInstance} from 'types/oam';
 import {ILog} from 'types/log';
+import {toPageState} from 'components/state/pageState';
 
 export const LIVE_TAIL_INTERVAL_MS = 5000;
 
@@ -54,7 +55,8 @@ export function useInstanceLogPaging(inst: IInstance | null) {
 		enableAutoRefresh: false,
 	});
 
-	const {data: log_response, isFetching} = useInstanceLogs(inst, queryOptions);
+	const log_query = useInstanceLogs(inst, queryOptions);
+	const {data: log_response, isFetching} = log_query;
 
 	// The response already folded into rawLogs. react-query hands back the same
 	// object on every render, so without this the append branch would re-append
@@ -201,6 +203,18 @@ export function useInstanceLogPaging(inst: IInstance | null) {
 		hasMore,
 		isLoadingMore,
 		isFetching,
+		// What the console is actually showing (UI-P6-5). Lines already paged in
+		// live in local state, not in the query, so a failed refresh over loaded
+		// lines must map to `stale` rather than to a hard failure — the operator
+		// keeps reading what they have, told that it is not current.
+		state: toPageState(
+			{
+				data: rawLogs.length > 0 ? rawLogs : log_query.data?.logs,
+				error: log_query.error,
+				dataUpdatedAt: log_query.dataUpdatedAt,
+			},
+			{op: 'instance_log.read'},
+		),
 		handleLoadMore,
 		handleRefresh,
 		resetFilters,

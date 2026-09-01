@@ -15,6 +15,7 @@ import {useOAMLogArchives, useOAMLogs} from 'hooks/query/oamHooks';
 import {t} from 'i18next';
 import {useEffect, useState} from 'react';
 import {ILog} from 'types/log';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -57,7 +58,8 @@ export default function SystemPage() {
 		);
 	};
 
-	const {data: log_list} = useOAMLogs();
+	const oam_log_query = useOAMLogs();
+	const {data: log_list} = oam_log_query;
 
 	const {data: log_archives} = useOAMLogArchives();
 	const log_file_list = log_archives?.archives.map((filename: string, idx: number) => ({id: idx, filename})) ?? [];
@@ -82,7 +84,13 @@ export default function SystemPage() {
 
 				<Divider />
 
-				<LogTable data={log_list ?? []} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} />
+				<LogTable
+					data={log_list ?? []}
+					selected_rows={selected_rows}
+					onChangeSelectedRows={set_selected_rows}
+					state={toPageState(oam_log_query, {op: 'oam_log.list'})}
+					onRefresh={() => void oam_log_query.refetch()}
+				/>
 
 				{selected_rows.length === 1 && log_list && (
 					<LowerSection>

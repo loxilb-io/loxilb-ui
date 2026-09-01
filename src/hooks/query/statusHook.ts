@@ -11,10 +11,13 @@ import {useQueryInstanceData} from './common';
 export function useStatus(instance: IInstance | null) {
 	const instance_id = instance?.id ? instance.id.toString() : '';
 
-	const {data: filesystemAttr = [], isLoading: fsLoading, error: fsError, refetch: refetchFs} = useQueryInstanceData(['status', 'filesystem', instance_id], query_get_filesystem_status, instance);
+	const fsQuery = useQueryInstanceData(['status', 'filesystem', instance_id], query_get_filesystem_status, instance);
+	const psQuery = useQueryInstanceData(['status', 'process', instance_id], query_get_process_status, instance);
+	const devQuery = useQueryInstanceData(['status', 'device', instance_id], query_get_device_status, instance);
 
-	const {data: processAttr = [], isLoading: psLoading, error: psError, refetch: refetchProcess} = useQueryInstanceData(['status', 'process', instance_id], query_get_process_status, instance);
-	const {data: systemInfo, isLoading: devLoading, error: devError, refetch: refetchDevice} = useQueryInstanceData(['status', 'device', instance_id], query_get_device_status, instance);
+	const {data: filesystemAttr = [], isLoading: fsLoading, error: fsError, refetch: refetchFs} = fsQuery;
+	const {data: processAttr = [], isLoading: psLoading, error: psError, refetch: refetchProcess} = psQuery;
+	const {data: systemInfo, isLoading: devLoading, error: devError, refetch: refetchDevice} = devQuery;
 
 	const isLoading = fsLoading || psLoading || devLoading;
 	const error = fsError || psError || devError;
@@ -36,6 +39,13 @@ export function useStatus(instance: IInstance | null) {
 		fsError,
 		psError,
 		devError,
+		// The queries themselves, for pages that map their own read onto a
+		// page state (UI-P6-5). Three unrelated resources share this hook, so
+		// a page must be able to speak for its own read rather than inherit a
+		// sibling's outage — the reason the per-resource errors exist too.
+		fsQuery,
+		psQuery,
+		devQuery,
 		refetch,
 	};
 }

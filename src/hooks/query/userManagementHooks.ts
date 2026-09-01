@@ -16,16 +16,21 @@ import { IUserUpdateRequest, ICreateUserRequest } from 'types/user';
 //---------------------------------------------------------
 
 export function useAllUsers() {
-    const { data: users = [], refetch, isLoading, error } = useQueryOAMData(
+    const query = useQueryOAMData(
         ['all_users'], 
         query_get_all_users
     );
+    const { data: users = [], refetch, isLoading, error } = query;
 
     return {
         users,
         refetch,
         isLoading,
-        error
+        error,
+        // The un-defaulted query, so the page can tell "the read failed" from
+        // "there are no users" (UI-P6-5). The `users = []` default above
+        // erases exactly that distinction for every other caller.
+        query
     };
 }
 

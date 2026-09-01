@@ -217,4 +217,6 @@ export interface ITypedLiveMetricsResponse {
 	total_metrics: number;
 	/** See `ILiveMetricsResponse.available`. */
 	available: boolean;
+	/** See `ILiveMetricsResponse.failure`. */
+	failure?: OpResult;
 }

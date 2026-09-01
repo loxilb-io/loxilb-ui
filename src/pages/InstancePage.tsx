@@ -8,6 +8,8 @@ import {useInstanceWithHA, useRole} from 'hooks/query/oamHooks';
 import {useInstancesHealthRefresh, useInstanceHealth} from 'hooks/query/healthHook';
 import {t} from 'i18next';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import QueryStateGate from 'components/state/QueryStateGate';
+import {toPageState} from 'components/state/pageState';
 import {useMemo, memo, useState, useEffect} from 'react';
 
 //---------------------------------------------------------
@@ -48,7 +50,7 @@ InstanceCardWithHealth.displayName = 'InstanceCardWithHealth';
 // Functional Component
 //---------------------------------------------------------
 export default function InstancePage() {
-	const {instance_set} = useInstanceWithHA();
+	const {instance_set, instance_query, refetch} = useInstanceWithHA();
 	// Registering an instance is admin-only (OAM ActInstanceWrite) — the card
 	// is hidden for other roles rather than letting them build a form the
 	// server will 403. Server-side enforcement is independent.
@@ -62,6 +64,11 @@ export default function InstancePage() {
 
 	// Use bulk refresh hook for the refresh all button
 	const {refreshAllHealth, isLoading} = useInstancesHealthRefresh(instances);
+
+	// Cards, not a table, so the gate is used directly. Emptiness is a real
+	// answer here — a fresh deployment genuinely has no instances — and it
+	// gets the sentence that says what to do about it, not an error.
+	const instance_state = toPageState(instance_query, {op: 'instance.list'});
 
 	return (
 		<Stack position="relative" id="fixed-container" width="100%" height="100%" padding="16px 0px 16px 16px">
@@ -98,10 +105,28 @@ export default function InstancePage() {
 				gap="24px"
 				alignItems="space-between"
 			>
-				{Array.isArray(instance_set) && instance_set.map((item: any, index: number) => (
-					<InstanceCardWithHealth key={item.instance.id} item={item} index={index} onHealthRefresh={refreshAllHealth} />
-				))}
-				{can_manage_instances && <InstanceCardAdd />}
+				{/* The landing page is the one screen with nothing else to
+				    contradict it: a failed /oam/loxilbs read used to render as
+				    an operator who has registered no instances, next to a
+				    friendly "add one" card. The gate makes the read say what
+				    actually happened, and withholds the Add card while it is
+				    unknown whether this operator may register anything. */}
+				<QueryStateGate
+					state={instance_state}
+					name={t('Instances')}
+					onRetry={refetch}
+					emptyMessage={t('No instances are registered yet. Add one to start managing a loxilb or inference-gateway deployment.')}
+				>
+					{(_rows, ctx) => (
+						<>
+							{Array.isArray(instance_set) &&
+								instance_set.map((item: any, index: number) => (
+									<InstanceCardWithHealth key={item.instance.id} item={item} index={index} onHealthRefresh={refreshAllHealth} />
+								))}
+							{can_manage_instances && ctx.writesEnabled && <InstanceCardAdd />}
+						</>
+					)}
+				</QueryStateGate>
 			</Box>
 		</Stack>
 	);

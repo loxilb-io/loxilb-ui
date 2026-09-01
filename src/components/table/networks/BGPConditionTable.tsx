@@ -5,12 +5,13 @@ import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IConditionSet} from 'types/bgp_policy_condition';
 import {IDataTableColumnDef} from 'types/global';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function BGPConditionTable(props: {condition_list: IConditionSet[]; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; error?: boolean}) {
-	const {condition_list, selected_rows, onChangeSelectedRows, onAdd, onDelete, error} = props;
+export default function BGPConditionTable(props: {condition_list: IConditionSet[]; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; state?: PageDataState<unknown>; error?: boolean}) {
+	const {condition_list, selected_rows, onChangeSelectedRows, onAdd, onDelete, state, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'matchPrefixSet', header: 'Prefix'},
@@ -51,5 +52,5 @@ export default function BGPConditionTable(props: {condition_list: IConditionSet[
 		};
 	});
 
-	return <DataTable name={'Condition'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} error={error} />;
+	return <DataTable name={'Condition'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} state={state} error={error} />;
 }

@@ -709,5 +709,7 @@
 	"{{name}} is temporarily unavailable.": "{{name}} is temporarily unavailable.",
 	"Loading {{name}}...": "Loading {{name}}...",
 	"Reference: {{id}}": "Reference: {{id}}",
-	"Unavailable while the data on screen is out of date.": "Unavailable while the data on screen is out of date."
+	"Unavailable while the data on screen is out of date.": "Unavailable while the data on screen is out of date.",
+	"No instances are registered yet. Add one to start managing a loxilb or inference-gateway deployment.": "No instances are registered yet. Add one to start managing a loxilb or inference-gateway deployment.",
+	"Metrics": "Metrics"
 }

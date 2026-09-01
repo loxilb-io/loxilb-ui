@@ -13,6 +13,7 @@ import {useQOSPolicies} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {useMemo, useRef, useState} from 'react';
 import {IPolicyAttribute, IPolicyConfiguration} from 'types/qos';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -20,7 +21,8 @@ import {IPolicyAttribute, IPolicyConfiguration} from 'types/qos';
 export default function QoSPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, isError, refetch} = useQOSPolicies(inst);
+	const qos_query = useQOSPolicies(inst);
+	const {data, refetch} = qos_query;
 	const qos_info: IPolicyConfiguration = {polAttr: data ?? []};
 
    // Holds STABLE content-hash row ids (not array indices)
@@ -112,7 +114,7 @@ export default function QoSPage() {
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
 			   onRefresh={handleRefresh}
-			   error={isError}
+			   state={toPageState(qos_query, {op: 'qos.list'})}
 		   />
 
 		   {/* Error Popup */}

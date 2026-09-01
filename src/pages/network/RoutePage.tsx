@@ -13,6 +13,7 @@ import { useRouteAttr } from 'hooks/query/queryHooks';
 import { t } from 'i18next';
 import { useMemo, useRef, useState } from 'react';
 import { IRouteAttribute, IRouteAttrInput, IRouteData } from 'types/route_attr';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -20,7 +21,8 @@ import { IRouteAttribute, IRouteAttrInput, IRouteData } from 'types/route_attr';
 export default function RoutePage() {
 	const inst = useInstanceFromURL();
 
-	const { data, isError, refetch } = useRouteAttr(inst); // IRouteAttribute[]
+	const route_query = useRouteAttr(inst);
+	const { data, refetch } = route_query; // IRouteAttribute[]
 	const route_info: IRouteData = { routeAttr: data ?? [] };
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds stable hash ids
@@ -127,7 +129,7 @@ export default function RoutePage() {
 				onAdd={handleAdd}
 				onDelete={handleDelete}
 				onRefresh={handleRefresh}
-				error={isError}
+				state={toPageState(route_query, {op: 'route.list'})}
 			/>
 
 			{/* Error Popup */}

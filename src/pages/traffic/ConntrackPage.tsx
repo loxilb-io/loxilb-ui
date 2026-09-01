@@ -18,6 +18,7 @@ import {Fragment, useCallback, useEffect, useMemo, useState} from 'react';
 import {ICtAttribute, ICtData} from 'types/conn_track';
 import {ITimeSeriesPoint, ITimelineDataSet} from 'types/global';
 import {IInstance} from 'types/oam';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Sub Component
@@ -164,7 +165,8 @@ function ConntrackPanel(props: {instance: IInstance | null; data: ICtAttribute})
 export default function ConntrackPage() {
 	const inst = useInstanceFromURL();
 
-	const {data: ct_info, isError, refetch} = useConntrack(inst);
+	const conntrack_query = useConntrack(inst);
+	const {data: ct_info, refetch} = conntrack_query;
 
 	// Filter states
 	const [servNameFilter, setServNameFilter] = useState<string>('');
@@ -358,7 +360,7 @@ export default function ConntrackPage() {
 			   data={{ctAttr: filteredCtAttr}}
 			   selected_rows={selected_rows}
 			   onRefresh={refetch}
-			   error={isError}
+			   state={toPageState(conntrack_query, {op: 'conntrack.list'})}
 			   onChangeSelectedRows={handleSelectionChange}
 		   />
 		   {selected_attr && (

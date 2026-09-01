@@ -709,5 +709,7 @@
 	"{{name}} is temporarily unavailable.": "{{name}}을(를) 일시적으로 사용할 수 없습니다.",
 	"Loading {{name}}...": "{{name}} 불러오는 중...",
 	"Reference: {{id}}": "참조: {{id}}",
-	"Unavailable while the data on screen is out of date.": "화면의 데이터가 최신이 아니므로 사용할 수 없습니다."
+	"Unavailable while the data on screen is out of date.": "화면의 데이터가 최신이 아니므로 사용할 수 없습니다.",
+	"No instances are registered yet. Add one to start managing a loxilb or inference-gateway deployment.": "등록된 인스턴스가 없습니다. 인스턴스를 추가하면 loxilb 또는 inference-gateway 배포를 관리할 수 있습니다.",
+	"Metrics": "메트릭"
 }

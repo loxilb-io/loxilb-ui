@@ -32,6 +32,7 @@ import {IEndpoint, ILBData, IServiceConfiguration} from 'types/load_balancer';
 import {lbRuleRowId} from 'types/lb_identity';
 import {IMirrorConfiguration} from 'types/mirror';
 import {buildQoSRuleTarget, IPolicyConfiguration} from 'types/qos';
+import {toPageState} from 'components/state/pageState';
 
 export type LBEditStrategy = 'create' | 'merge-patch' | 'reconcile' | 'block-fullproxy';
 
@@ -69,7 +70,8 @@ export default function LBRulePage() {
 	const servName = searchParams.get('servName');
 	const qosTarget = searchParams.get('qosTarget');
 
-	const {data: lb_data, isError, refetch} = useLoadBalancerConfig(inst);
+	const lb_query = useLoadBalancerConfig(inst);
+	const {data: lb_data, refetch} = lb_query;
 	const lb_info: ILBData = useMemo(() => ({lbAttr: lb_data ?? []}), [lb_data]);
 
 	const {data: data_qos} = useQOSPolicies(inst);
@@ -408,7 +410,7 @@ export default function LBRulePage() {
 				onDelete={handleDelete}
 				onUpdate={caps.resolved ? handleUpdate : undefined}
 					onRefresh={handleRefresh}
-					error={isError}
+					state={toPageState(lb_query, {op: 'lb.list'})}
 			/>
 
 			{selectedItem && (

@@ -23,6 +23,7 @@ import {useSNICertificates} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {Fragment, useRef, useState, useMemo} from 'react';
 import {ICert, ISNICertificateEntry, ISNICertificateListItem} from 'types/security';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Detail Panel Component
@@ -54,7 +55,8 @@ function DetailPanel(props: {cert: ISNICertificateListItem}) {
 //---------------------------------------------------------
 export default function SNICertificatesPage() {
 	const inst = useInstanceFromURL();
-	const {data, isError, refetch} = useSNICertificates(inst);
+	const sni_query = useSNICertificates(inst);
+	const {data, refetch} = sni_query;
 	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	const certificates = data?.certificates ?? [];
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
@@ -235,7 +237,7 @@ export default function SNICertificatesPage() {
 				onAdd={handleAdd}
 				onDelete={selectedItems.length > 0 ? handleDelete : undefined}
 				onRefresh={handleRefresh}
-				error={isError}
+				state={toPageState(sni_query, {op: 'sni_certificate.list'})}
 			/>
 			{selectedItem && (
 				<LowerSection>

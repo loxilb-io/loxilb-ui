@@ -16,6 +16,7 @@ import {Fragment, useEffect, useMemo, useRef, useState} from 'react';
 import {IBgpPolicy, IBgpPolicyInfo} from 'types/bgp_policy';
 import {IActionSet} from 'types/bgp_policy_action';
 import {IConditionSet} from 'types/bgp_policy_condition';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -23,7 +24,8 @@ import {IConditionSet} from 'types/bgp_policy_condition';
 export default function BGPDefinitionPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, isError, refetch} = useBGPPolicyDefs(inst); // IBgpPolicy[]
+	const bgp_policy_query = useBGPPolicyDefs(inst);
+	const {data, refetch} = bgp_policy_query; // IBgpPolicy[]
 	// wire fields are optional in swagger; the policy views require them — narrow once here
 	const def_info: IBgpPolicyInfo = {bgpPolicyAttr: (data ?? []) as IBgpPolicy[]};
 
@@ -122,11 +124,11 @@ export default function BGPDefinitionPage() {
 					onChangeSelectedRows={set_selected_rows}
 					onAdd={handleAdd}
 					onDelete={handleDelete}
-					error={isError}
+					state={toPageState(bgp_policy_query, {op: 'bgp_policy.list'})}
 				/>
 			)}
 			{cur_tab_idx === 1 && (
-				<BGPActionTable action_list={action_list} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} onAdd={handleAdd} onDelete={handleDelete} error={isError} />
+				<BGPActionTable action_list={action_list} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} onAdd={handleAdd} onDelete={handleDelete} state={toPageState(bgp_policy_query, {op: 'bgp_policy.list'})} />
 			)}
 		</Fragment>
 	);

@@ -19,6 +19,7 @@ import {useErrorPopup} from 'hooks/useErrorPopup';
 import {t} from 'i18next';
 import {Fragment, useRef, useState} from 'react';
 import {IIPsecCACertificateMod, IIPsecCertificateMod} from 'types/ipsec';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -26,8 +27,10 @@ import {IIPsecCACertificateMod, IIPsecCertificateMod} from 'types/ipsec';
 export default function IPsecCertificatePage() {
 	const inst = useInstanceFromURL();
 
-	const {data: certs, isError: certsError, refetch: refetchCerts} = useIPsecCertificates(inst);
-	const {data: caCerts, isError: caCertsError, refetch: refetchCACerts} = useIPsecCACertificates(inst);
+	const cert_query = useIPsecCertificates(inst);
+	const ca_cert_query = useIPsecCACertificates(inst);
+	const {data: certs, refetch: refetchCerts} = cert_query;
+	const {data: caCerts, refetch: refetchCACerts} = ca_cert_query;
 
 	const [selectedCertRows, setSelectedCertRows] = useState<number[]>([]);
 	const [selectedCARows, setSelectedCARows] = useState<number[]>([]);
@@ -136,7 +139,7 @@ export default function IPsecCertificatePage() {
 						setSelectedCertRows([]);
 						refetchCerts();
 					}}
-					error={certsError}
+					state={toPageState(cert_query, {op: 'ipsec_certificate.list'})}
 				/>
 				<IPsecCACertTable
 					data={caCerts ?? []}
@@ -148,7 +151,7 @@ export default function IPsecCertificatePage() {
 						setSelectedCARows([]);
 						refetchCACerts();
 					}}
-					error={caCertsError}
+					state={toPageState(ca_cert_query, {op: 'ipsec_ca_certificate.list'})}
 				/>
 			</Stack>
 

@@ -17,6 +17,7 @@ import {useIPAttr} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {Fragment, useRef, useState, useMemo} from 'react';
 import {IIpAttribute, IIpAttributeInput, IIpData} from 'types/ip';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -37,7 +38,8 @@ export default function IPPage(props: {family?: 'ipv4' | 'ipv6'}) {
 	const request_delete_ip = family === 'ipv6' ? request_delete_ipv6 : request_delete_ipv4;
 	const inst = useInstanceFromURL();
 
-	const {data, isError, refetch} = useIPAttr(inst, family); // IIpAttribute[]
+	const ip_query = useIPAttr(inst, family);
+	const {data, refetch} = ip_query; // IIpAttribute[]
 	
 	// Transform data: split entries with multiple IPs into separate entries
 	const ip_info: IIpData = useMemo(() => {
@@ -210,7 +212,7 @@ export default function IPPage(props: {family?: 'ipv4' | 'ipv6'}) {
 				onDelete={handleDelete}
 				onUpdate={handleUpdate}
 				onRefresh={handleRefresh}
-				error={isError}
+				state={toPageState(ip_query, {op: 'ip_address.list'})}
 			/>
 
 			{selectedItem && (

@@ -6,6 +6,7 @@ import { getStableHash } from 'common';
 import DataTable from 'components/table/DataTable';
 import {IFirewallRules} from 'types/firewall';
 import {IDataTableColumnDef, IEnumItem} from 'types/global';
+import {PageDataState} from 'components/state/pageState';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
 const protocol_order = [1, 6, 17, 132];
@@ -14,8 +15,8 @@ const protocol_list: IEnumItem[] = protocols;
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function FirewallTable(props: {data: IFirewallRules; selected_rows: number[]; onChangeSelectedRows: any; onAdd?: any; onDelete?: any; onRefresh?: any; error?: boolean}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
+export default function FirewallTable(props: {data: IFirewallRules; selected_rows: number[]; onChangeSelectedRows: any; onAdd?: any; onDelete?: any; onRefresh?: any; state?: PageDataState<unknown>; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, state, error} = props;
 
 	// const sorted_data = useMemo(() => {
 	// 	const protocol_map = new Map<number, number>();
@@ -76,5 +77,5 @@ export default function FirewallTable(props: {data: IFirewallRules; selected_row
 	   })()
 	   : undefined;
 
-	return <DataTable name={'Firewall'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onRefresh={onRefresh} error={error} />;
+	return <DataTable name={'Firewall'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onRefresh={onRefresh} state={state} error={error} />;
 }

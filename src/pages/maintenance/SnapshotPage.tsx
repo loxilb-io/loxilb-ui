@@ -39,6 +39,7 @@ import {t} from 'i18next';
 import {Fragment, useRef, useState} from 'react';
 import {getStableHash} from 'common';
 import {ISnapshot} from 'types/snapshot';
+import {toPageState} from 'components/state/pageState';
 
 // Server page size. Retention caps unpinned snapshots at 100 per instance, so
 // a single max-size page covers every realistic list; total_count is checked
@@ -51,7 +52,8 @@ const PAGE_LIMIT = 100;
 export default function SnapshotPage() {
 	const inst = useInstanceFromURL();
 	const instanceId = inst?.id;
-	const {data, isError, isLoading, refetch} = useSnapshots(instanceId, 1, PAGE_LIMIT);
+	const snapshot_query = useSnapshots(instanceId, 1, PAGE_LIMIT);
+	const {data, isError, isLoading, refetch} = snapshot_query;
 	const {data: schedule, refetch: refetchSchedule} = useSnapshotSchedule(instanceId);
 	const invalidate = useInvalidateSnapshots(instanceId);
 	const {can_manage_config} = useRole();
@@ -358,7 +360,7 @@ export default function SnapshotPage() {
 				selected_rows={selected_rows}
 				onChangeSelectedRows={set_selected_rows}
 				onRefresh={refreshAll}
-				error={isError}
+				state={toPageState(snapshot_query, {op: 'snapshot.list'})}
 			/>
 
 			<Box sx={{mt: 1}}>

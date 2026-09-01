@@ -13,6 +13,7 @@ import {IInstance} from 'types/oam';
 import {ITimeSeriesPoint} from 'types/global';
 import {ITypedLiveMetricsResponse} from 'types/metrics';
 import CardBase from './CardBase';
+import MetricScrapeState from './MetricScrapeState';
 
 //---------------------------------------------------------
 // Component Props
@@ -46,7 +47,7 @@ export default function RealTimeRateCard(props: RealTimeRateCardProps) {
 	const {title, instance, counterField, unit, maxPoints = 300} = props;
 
 	// Get live metrics with polling (shared query key → one poll for all rate cards)
-	const {metrics: liveMetrics} = useLiveMetrics(instance, {keyPrefix: 'live-metrics-realtime', refetchInterval: 1000});
+	const {metrics: liveMetrics, failure: scrapeFailure, refetch: refetchMetrics} = useLiveMetrics(instance, {keyPrefix: 'live-metrics-realtime', refetchInterval: 1000});
 
 	// Accumulate raw cumulative-counter samples; the rate is the delta between
 	// consecutive samples divided by the elapsed time.
@@ -87,6 +88,12 @@ export default function RealTimeRateCard(props: RealTimeRateCardProps) {
 
 	// Get current rate (last point)
 	const currentRate = rateHistory[rateHistory.length - 1]?.data ?? 0;
+
+	// A refused or disabled scrape is not this instance declining to publish a
+	// counter — say which it was. Checked BEFORE the skeleton below, or a card
+	// whose scrape is being refused sits on a loading skeleton forever, since
+	// the second sample it is waiting for can never arrive.
+	if (scrapeFailure) return <MetricScrapeState title={title} failure={scrapeFailure} onRetry={refetchMetrics} />;
 
 	// Rates are deltas between samples — until the second poll lands there
 	// is nothing to plot, so show a skeleton instead of an empty chart.

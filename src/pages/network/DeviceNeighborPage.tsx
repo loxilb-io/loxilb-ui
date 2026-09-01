@@ -13,6 +13,7 @@ import {useDeviceNeighbors} from 'hooks/query/deviceHooks';
 import {t} from 'i18next';
 import {useMemo, useRef, useState} from 'react';
 import {INeighborAttr, INeighborData} from 'types/device_neighbor';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -20,7 +21,8 @@ import {INeighborAttr, INeighborData} from 'types/device_neighbor';
 export default function DeviceNeighborPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, isError, refetch} = useDeviceNeighbors(inst); // INeighborAttr[]
+	const neighbor_query = useDeviceNeighbors(inst);
+	const {data, refetch} = neighbor_query; // INeighborAttr[]
 	const neighbor_info: INeighborData = {neighborAttr: data ?? []};
 
    const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds hash ids
@@ -117,7 +119,7 @@ export default function DeviceNeighborPage() {
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
 		   onRefresh={handleRefresh}
-		   error={isError}
+		   state={toPageState(neighbor_query, {op: 'neighbor.list'})}
 		   />
 
 		   {/* Error Popup */}

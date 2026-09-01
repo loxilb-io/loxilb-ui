@@ -20,6 +20,7 @@ import {Fragment, useRef, useState} from 'react';
 import React from 'react';
 import {IFirewallRule, IFirewallRules} from 'types/firewall';
 import {IEnumItem} from 'types/global';
+import {toPageState} from 'components/state/pageState';
 
 const protocol_list: IEnumItem[] = protocols;
 
@@ -95,7 +96,8 @@ function OptionPannel(props: {rule: IFirewallRule}) {
 export default function FirewallPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, isError, refetch} = useFirewallRules(inst);
+	const firewall_query = useFirewallRules(inst);
+	const {data, refetch} = firewall_query;
 	const fw_info: IFirewallRules = {fwAttr: data ?? []};
 
    // Selection is keyed by a stable content hash (the row id assigned by
@@ -194,7 +196,7 @@ export default function FirewallPage() {
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
 			   onRefresh={handleRefresh}
-			   error={isError}
+			   state={toPageState(firewall_query, {op: 'firewall.list'})}
 		   />
 	   {selectedItem && (
 		   <LowerSection>

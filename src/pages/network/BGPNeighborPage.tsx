@@ -11,6 +11,7 @@ import {useBGPNeighbors} from 'hooks/query/bgpHooks';
 import {t} from 'i18next';
 import {useRef, useState} from 'react';
 import {IBgpNeighborAttribute, IBgpNeighborInput, IBgpNeighborState} from 'types/bgp_neighbor';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -18,7 +19,8 @@ import {IBgpNeighborAttribute, IBgpNeighborInput, IBgpNeighborState} from 'types
 export default function BGPNeighborPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, isError, refetch} = useBGPNeighbors(inst); // IBgpNeighborAttribute[]
+	const bgp_neighbor_query = useBGPNeighbors(inst);
+	const {data, refetch} = bgp_neighbor_query; // IBgpNeighborAttribute[]
 	// wire fields are optional in swagger; the table/delete flow requires them — narrow once here
 	const bgp_neighbor_info: IBgpNeighborState = {bgpNeiAttr: (data ?? []) as IBgpNeighborAttribute[]};
 
@@ -78,5 +80,5 @@ export default function BGPNeighborPage() {
 		);
 	};
 
-	return <BGPNeighborTable data={bgp_neighbor_info} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} onAdd={handleAdd} onDelete={handleDelete} error={isError} />;
+	return <BGPNeighborTable data={bgp_neighbor_info} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} onAdd={handleAdd} onDelete={handleDelete} state={toPageState(bgp_neighbor_query, {op: 'bgp_neighbor.list'})} />;
 }

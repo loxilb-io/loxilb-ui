@@ -9,6 +9,7 @@ import {IInstance} from 'types/oam';
 import CardBase from './CardBase';
 import {derive_connection_flows, is_reporting} from './cardMetricsLogic';
 import MetricFigure from './MetricFigure';
+import MetricScrapeState from './MetricScrapeState';
 
 //---------------------------------------------------------
 // Component Props
@@ -26,7 +27,7 @@ export default function ConnectionFlowCard(props: ConnectionFlowCardProps) {
 	const {title, instance, showBreakdown = true} = props;
 
 	// Get live metrics with polling
-	const {metrics: liveMetrics, isLoading} = useLiveMetrics(instance, {keyPrefix: 'connection-flow-realtime', refetchInterval: 10000});
+	const {metrics: liveMetrics, isLoading, failure: scrapeFailure, refetch: refetchMetrics} = useLiveMetrics(instance, {keyPrefix: 'connection-flow-realtime', refetchInterval: 10000});
 
 	// `available === false` means the instance served no exposition at all
 	// (collection disabled, or the scrape was refused). Every figure below is
@@ -35,6 +36,10 @@ export default function ConnectionFlowCard(props: ConnectionFlowCardProps) {
 	// so that rule is unit-testable.
 	const reporting = is_reporting(liveMetrics);
 	const connectionData = useMemo(() => derive_connection_flows(liveMetrics), [liveMetrics]);
+
+	// A refused or disabled scrape is not this instance declining to publish a
+	// metric — say which it was, instead of falling through to "not reported".
+	if (scrapeFailure) return <MetricScrapeState title={title} failure={scrapeFailure} onRetry={refetchMetrics} />;
 
 	if (isLoading) {
 		return (

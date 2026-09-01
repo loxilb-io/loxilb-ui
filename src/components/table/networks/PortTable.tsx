@@ -4,12 +4,13 @@
 import DataTable from 'components/table/DataTable';
 import {IDataTableColumnDef} from 'types/global';
 import {IPortInfo} from 'types/port';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function PortTable(props: {data: IPortInfo; selected_rows: number[]; onChangeSelectedRows: any; onRefresh?: any; error?: boolean}) {
-	const {data, selected_rows, onChangeSelectedRows, onRefresh, error} = props;
+export default function PortTable(props: {data: IPortInfo; selected_rows: number[]; onChangeSelectedRows: any; onRefresh?: any; state?: PageDataState<unknown>; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onRefresh, state, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'port', header: 'Port No.', width: 'medium', type: 'mono'},
@@ -71,6 +72,7 @@ export default function PortTable(props: {data: IPortInfo; selected_rows: number
 			onRefresh={onRefresh}
 			hideIdColumn
 			defaultSort={{field: 'port', sort: 'asc'}}
+			state={state}
 			error={error}
 		/>
 	);

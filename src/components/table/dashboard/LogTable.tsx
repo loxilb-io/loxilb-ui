@@ -9,12 +9,13 @@ import {useMemo, useState} from 'react';
 import {IDataTableColumnDef} from 'types/global';
 import {ILog} from 'types/log';
 import {filterLogsByPeriod, sortLogsNewestFirst, toLogRow} from './logTableLogic';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function LogTable(props: {data: ILog[]; selected_rows: number[]; onChangeSelectedRows: any}) {
-	const {data, selected_rows, onChangeSelectedRows} = props;
+export default function LogTable(props: {data: ILog[]; selected_rows: number[]; onChangeSelectedRows: any; state?: PageDataState<unknown>; onRefresh?: () => void}) {
+	const {data, selected_rows, onChangeSelectedRows, state, onRefresh} = props;
 
 	const [startDatetimeStr, setStartDatetimeStr] = useState<string>('');
 	const [endDatetimeStr, setEndDatetimeStr] = useState<string>('');
@@ -53,7 +54,7 @@ export default function LogTable(props: {data: ILog[]; selected_rows: number[]; 
 			</Box>
 
 			{rows.length > 0 ? (
-				<DataTable name={'Log'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} hideMenuBar hideCheckbox />
+				<DataTable name={'Log'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} state={state} onRefresh={onRefresh} hideMenuBar hideCheckbox />
 			) : (
 				<Typography variant="body2" color="text.secondary">
 					{startDatetimeStr || endDatetimeStr ? t('No logs in selected period') : t('No logs to display')}

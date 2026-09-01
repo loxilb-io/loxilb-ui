@@ -34,6 +34,7 @@ import {useErrorPopup} from 'hooks/useErrorPopup';
 import {t} from 'i18next';
 import React, {Fragment, useRef, useState} from 'react';
 import {IIPsecConfigMod, IIPsecTunnel, IIPsecTunnelAction, IIPsecTunnelMod} from 'types/ipsec';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Components
@@ -101,7 +102,8 @@ export default function IPsecTunnelPage() {
 	const inst = useInstanceFromURL();
 	const {can_write_gateway} = useRole();
 
-	const {data: tunnels, isError: tunnelsError, refetch: refetchTunnels} = useIPsecTunnels(inst);
+	const tunnel_query = useIPsecTunnels(inst);
+	const {data: tunnels, refetch: refetchTunnels} = tunnel_query;
 	const {data: sas, refetch: refetchSAs} = useIPsecSAs(inst);
 	const {data: stats, refetch: refetchStats} = useIPsecStats(inst);
 	const {data: config, refetch: refetchConfig} = useIPsecConfig(inst);
@@ -294,7 +296,7 @@ export default function IPsecTunnelPage() {
 				onEdit={handleEdit}
 				onDelete={handleDelete}
 				onRefresh={handleRefresh}
-				error={tunnelsError}
+				state={toPageState(tunnel_query, {op: 'ipsec_tunnel.list'})}
 			/>
 
 			{selectedTunnel && (

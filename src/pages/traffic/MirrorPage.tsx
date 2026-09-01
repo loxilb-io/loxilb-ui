@@ -17,6 +17,7 @@ import {useMirrors} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {Fragment, useMemo, useRef, useState} from 'react';
 import {IMirrorAttribute, IMirrorConfiguration} from 'types/mirror';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -61,7 +62,8 @@ function DetailPanel(props: {name: string; data: IMirrorAttribute}) {
 export default function MirrorPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, isError, refetch} = useMirrors(inst);
+	const mirror_query = useMirrors(inst);
+	const {data, refetch} = mirror_query;
 	const mirror_info: IMirrorConfiguration = {mirrAttr: data ?? []};
 
    // Holds STABLE content-hash row ids (not array indices)
@@ -157,7 +159,7 @@ export default function MirrorPage() {
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
 			   onRefresh={handleRefresh}
-			   error={isError}
+			   state={toPageState(mirror_query, {op: 'mirror.list'})}
 		   />
 		   {selectedItem && (
 			   <LowerSection>

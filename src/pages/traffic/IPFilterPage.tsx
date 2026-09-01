@@ -18,6 +18,7 @@ import {t} from 'i18next';
 import {Fragment, useRef, useState, useMemo} from 'react';
 import React from 'react';
 import {IIPFilterEntry} from 'types/security';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Detail Panel Component
@@ -60,7 +61,8 @@ function DetailPanel(props: {entry: IIPFilterEntry}) {
 //---------------------------------------------------------
 export default function IPFilterPage() {
 	const inst = useInstanceFromURL();
-	const {data, isError, refetch} = useIPFilterRules(inst);
+	const ipfilter_query = useIPFilterRules(inst);
+	const {data, refetch} = ipfilter_query;
 	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	const entries: IIPFilterEntry[] = data ?? [];
 
@@ -163,7 +165,7 @@ export default function IPFilterPage() {
 				onAdd={handleAdd}
 				onDelete={selected_rows.length > 0 ? handleDelete : undefined}
 				onRefresh={handleRefresh}
-				error={isError}
+				state={toPageState(ipfilter_query, {op: 'ip_filter.list'})}
 			/>
 			{selectedItem && (
 				<LowerSection>

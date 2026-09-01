@@ -5,6 +5,7 @@ import {formatBytes, getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IDataTableColumnDef} from 'types/global';
 import {ISnapshot} from 'types/snapshot';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Row shaping (docs/SNAPSHOT_UI_DESIGN.md §4)
@@ -54,11 +55,12 @@ interface SnapshotTableProps {
 	onChangeSelectedRows: (indices: number[]) => void;
 	onRefresh?: () => void;
 	onDelete?: () => void;
+	state?: PageDataState<unknown>;
 	error?: boolean;
 }
 
 export default function SnapshotTable(props: SnapshotTableProps) {
-	const {data, selected_rows, onChangeSelectedRows, onRefresh, onDelete, error} = props;
+	const {data, selected_rows, onChangeSelectedRows, onRefresh, onDelete, state, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'name', header: 'Name', width: 'wide'},
@@ -84,6 +86,7 @@ export default function SnapshotTable(props: SnapshotTableProps) {
 			onChangeSelectedRows={onChangeSelectedRows}
 			onRefresh={onRefresh}
 			onDelete={onDelete}
+			state={state}
 			error={error}
 			hideIdColumn
 		/>

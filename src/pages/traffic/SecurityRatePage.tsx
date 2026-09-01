@@ -20,6 +20,7 @@ import {useSecurityRate} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {Fragment, useRef, useState, useMemo} from 'react';
 import {ISecurityRateConfigMod, ISecurityRateEntry} from 'types/security';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Detail Panel Component
@@ -79,7 +80,8 @@ function DetailPanel(props: {entry: ISecurityRateEntry}) {
 //---------------------------------------------------------
 export default function SecurityRatePage() {
 	const inst = useInstanceFromURL();
-	const {data, isError, refetch} = useSecurityRate(inst);
+	const secrate_query = useSecurityRate(inst);
+	const {data, refetch} = secrate_query;
 	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	const entries: ISecurityRateEntry[] = data ?? [];
 
@@ -199,7 +201,7 @@ export default function SecurityRatePage() {
 				onEdit={handleEdit}
 				onDisable={handleDisable}
 				onRefresh={handleRefresh}
-				error={isError}
+				state={toPageState(secrate_query, {op: 'security_rate.list'})}
 			/>
 			{selectedItem && (
 				<LowerSection>

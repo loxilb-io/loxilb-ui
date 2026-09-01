@@ -90,14 +90,7 @@ export function toPageState<T>(query: ReadQueryLike<T>, opts: PageStateOptions<T
 	if (query.error) {
 		const failure = fromThrownError(opts.op, query.error);
 		if (hasRows) return {kind: 'stale', rows: query.data as T, fetchedAt: query.dataUpdatedAt, failure};
-		switch (failure.status) {
-			case 'denied':
-				return {kind: 'denied', result: failure};
-			case 'unavailable':
-				return {kind: 'unavailable', result: failure};
-			default:
-				return {kind: 'failed', result: failure};
-		}
+		return fromFailure(failure);
 	}
 
 	if (!hasRows) return {kind: 'loading'};
@@ -105,6 +98,25 @@ export function toPageState<T>(query: ReadQueryLike<T>, opts: PageStateOptions<T
 	const rows = query.data as T;
 	if (isEmpty(rows)) return {kind: 'empty', fetchedAt: query.dataUpdatedAt};
 	return {kind: 'data', rows, fetchedAt: query.dataUpdatedAt};
+}
+
+/**
+ * Which hard state an OpResult failure belongs to. Split out of toPageState
+ * because not every read arrives as a thrown error: the metrics scrape polls
+ * and deliberately does not throw, so it carries its failure as a VALUE
+ * (`ILiveMetricsResponse.failure`). Both paths must land on the same three
+ * kinds, or a denied scrape and a denied list would look different for no
+ * reason the operator could name.
+ */
+export function fromFailure(failure: OpResult): PageDataState<never> {
+	switch (failure.status) {
+		case 'denied':
+			return {kind: 'denied', result: failure};
+		case 'unavailable':
+			return {kind: 'unavailable', result: failure};
+		default:
+			return {kind: 'failed', result: failure};
+	}
 }
 
 /**

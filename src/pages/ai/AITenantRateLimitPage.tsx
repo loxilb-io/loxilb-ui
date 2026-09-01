@@ -20,6 +20,7 @@ import {t} from 'i18next';
 import React, {Fragment, useRef, useState} from 'react';
 import {ITenantRateLimitMod} from 'types/ai';
 import {hasRequiredApiKeyPolicy} from 'types/ai_gateway';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -42,11 +43,12 @@ export default function AITenantRateLimitPage() {
 		return Array.from(new Set([...fromKeys, ...extraTenants])).sort();
 	}, [apiKeys, extraTenants]);
 
-	const {data: entries, isError, refetch} = useQueryInstanceData(
+	const ratelimit_query = useQueryInstanceData(
 		['ai_ratelimits', tenants.join('|')],
 		instance => query_get_tenant_ratelimits_for(instance, tenants),
 		inst,
 	);
+	const {data: entries, refetch} = ratelimit_query;
 	const rows = entries ?? [];
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
@@ -159,7 +161,7 @@ export default function AITenantRateLimitPage() {
 				onAdd={handleAdd}
 				onEdit={handleEdit}
 				onRefresh={handleRefresh}
-				error={!!isError}
+				state={toPageState(ratelimit_query, {op: 'ai_ratelimit.list'})}
 			/>
 
 			{/* Error Popup */}
