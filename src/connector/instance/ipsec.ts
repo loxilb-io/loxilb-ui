@@ -28,7 +28,12 @@ import {runOp} from '../fetcher/opResultAdapter';
 
 export async function query_get_ipsec_config(instance: IInstance): Promise<IIPsecConfig | null> {
 	const resp = await GET_INST<IIPsecConfig>(instance, `/config/ipsec`);
-	return resp.code === 200 ? resp.data : null;
+	// 404 keeps its meaning — IPsec simply is not configured on this instance,
+	// which the panel renders as such. Anything else is a failure the operator
+	// must be told about instead of seeing an empty settings panel.
+	if (resp.code === 404) return null;
+	assertOk(resp, 'Get IPsec Configuration');
+	return resp.data;
 }
 
 export async function request_set_ipsec_config(instance: IInstance, data: IIPsecConfigMod): Promise<OpResult> {
@@ -69,7 +74,9 @@ export async function request_ipsec_tunnel_action(instance: IInstance, name: str
  */
 export async function query_get_ipsec_tunnel_peerconfig(instance: IInstance, name: string): Promise<IIPsecPeerConfig | null> {
 	const resp = await GET_INST<IIPsecPeerConfig>(instance, `/config/ipsec/tunnels/${encodeURIComponent(name)}/peerconfig`);
-	return resp.code === 200 ? resp.data : null;
+	if (resp.code === 404) return null;
+	assertOk(resp, 'Get IPsec Peer Configuration');
+	return resp.data;
 }
 
 export async function request_delete_ipsec_tunnel(instance: IInstance, name: string): Promise<OpResult> {
@@ -82,12 +89,15 @@ export async function request_delete_ipsec_tunnel(instance: IInstance, name: str
 
 export async function query_get_ipsec_sa_all(instance: IInstance): Promise<IIPsecSA[]> {
 	const resp = await GET_INST<{ipsecSaAttr: IIPsecSA[] | null}>(instance, `/config/ipsec/sas/all`);
+	assertOk(resp, 'Get IPsec Security Associations');
 	return resp.data?.ipsecSaAttr ?? [];
 }
 
 export async function query_get_ipsec_stats(instance: IInstance): Promise<IIPsecStats | null> {
 	const resp = await GET_INST<IIPsecStats>(instance, `/config/ipsec/stats`);
-	return resp.code === 200 ? resp.data : null;
+	if (resp.code === 404) return null;
+	assertOk(resp, 'Get IPsec Statistics');
+	return resp.data;
 }
 
 //---------------------------------------------------------

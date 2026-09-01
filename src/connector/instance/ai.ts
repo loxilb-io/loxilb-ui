@@ -68,7 +68,12 @@ export async function request_delete_apikey(instance: IInstance, key_id: string)
  */
 export async function query_get_tenant_ratelimit(instance: IInstance, tenant_id: string): Promise<ITenantRateLimitEntry | null> {
 	const resp = await GET_INST<GwGetResp<'/config/ai/tenant/ratelimit/{tenant_id}'>>(instance, `/config/ai/tenant/ratelimit/${encodeURIComponent(tenant_id)}`);
-	if (resp.code !== 200 || !resp.data) return null;
+	// 404 is the normal answer for a tenant with no rate limit configured —
+	// this read is fanned out over every tenant, so treating "absent" as a
+	// failure would put an error on a healthy page.
+	if (resp.code === 404) return null;
+	assertOk(resp, 'Get Tenant Rate Limit');
+	if (!resp.data) return null;
 	return resp.data;
 }
 

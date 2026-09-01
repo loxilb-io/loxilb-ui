@@ -5,7 +5,7 @@ import {parse_log_lines} from 'common';
 import {ILog, ILogArchiveList} from 'types/log';
 import {IInstance, IInstanceInput, IUser} from 'types/oam';
 import {ISetupStatus, IUpdateAdminRequest, IUpdateAdminResponse} from 'types/setup';
-import {DOWNLOAD_FILE_STREAM, DownloadProgress} from '../fetcher/fetcher_base';
+import {assertOk, DOWNLOAD_FILE_STREAM, DownloadProgress} from '../fetcher/fetcher_base';
 import {DELETE_OAM, GET_OAM, POST_OAM, PUT_OAM} from '../fetcher/fetcher_oam';
 import {OpResult} from '../fetcher/opResult';
 import {fromNetworkError, fromSimpleResponse} from '../fetcher/opResultAdapter';
@@ -17,6 +17,7 @@ import type {OamGetResp, OamPostResp} from 'api';
 //---------------------------------------------------------
 export async function query_get_me(): Promise<IUser | undefined> {
 	const resp = await GET_OAM<OamGetResp<'/oam/users/me'>>(`/users/me`);
+	assertOk(resp, 'Get My Info');
 	return (resp.data ?? undefined) as IUser | undefined;
 }
 
@@ -71,6 +72,11 @@ export async function request_logout(): Promise<void> {
 
 export async function query_get_instance_list(): Promise<IInstance[]> {
 	const resp = await GET_OAM<OamGetResp<'/oam/loxilbs'>>(`/loxilbs`);
+	// UI-P6-5 answers the question UI-P6-6 left open below: an unusable
+	// response SURFACES as an error rather than reading as "no instances".
+	// A management API that is down is not the same fact as an operator who
+	// has registered nothing, and the landing page said the second one.
+	assertOk(resp, 'Get Instance List');
 	// Array.isArray, not `?? []`: `??` only guards null/undefined, so an error
 	// object — or a string, or 0, or false — used to pass straight through the
 	// cast as if it were a list. Every instance page then calls .find on it
@@ -126,6 +132,7 @@ export async function query_get_oam_logs(): Promise<ILog[]> {
 	//	...
 	//]
 	const resp = await GET_OAM<OamGetResp<'/oam/logs'>>(`/logs`);
+	assertOk(resp, 'Get OAM Logs');
 	const log_strings = resp.data?.logs;
 	if (!log_strings) return [];
 	else {
@@ -136,7 +143,7 @@ export async function query_get_oam_logs(): Promise<ILog[]> {
 
 export async function query_get_log_archives(): Promise<ILogArchiveList> {
 	const resp = await GET_OAM<OamGetResp<'/oam/logs/archives'>>(`/logs/archives`);
-	if (resp.code !== 200) return {archives: []};
+	assertOk(resp, 'Get OAM Log Archives');
 	return (resp.data ?? {archives: []}) as ILogArchiveList;
 }
 
@@ -146,7 +153,12 @@ export async function query_get_log_archives(): Promise<ILogArchiveList> {
 //---------------------------------------------------------
 export async function query_get_all_users(): Promise<IUser[]> {
 	const resp = await GET_OAM<OamGetResp<'/oam/users'>>('/users');
-	return (resp.data ?? []) as IUser[];
+	assertOk(resp, 'Get All Users');
+	// Array.isArray for the same reason as the instance list above: this was
+	// the last read casting a whole response body to an array, and
+	// UserManagementPage maps over the result. A 200 carrying an unexpected
+	// shape would take the page to the error boundary.
+	return Array.isArray(resp.data) ? (resp.data as IUser[]) : [];
 }
 
 export async function request_update_user(id: number, userData: Partial<IUser>): Promise<OpResult> {
@@ -170,6 +182,10 @@ export async function request_delete_user(id: number): Promise<OpResult> {
 //---------------------------------------------------------
 export async function query_setup_status(): Promise<ISetupStatus | undefined> {
 	const resp = await GET_OAM<OamGetResp<'/oam/setup/status'>>('/setup/status');
+	// Its two callers in utils/simpleSetup.ts already catch and fail open, so
+	// this changes no behaviour at start-up — it stops a 500 from being
+	// reported to them as "setup is not needed", which is a different claim.
+	assertOk(resp, 'Get Setup Status');
 	return (resp.data ?? undefined) as ISetupStatus | undefined;
 }
 

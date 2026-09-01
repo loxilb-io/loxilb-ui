@@ -5,6 +5,7 @@ import {InstanceFlavor} from 'api/capabilities';
 import {ILiveMetricsResponse} from 'types/metrics';
 import {IInstance} from 'types/oam';
 import {GET_INST_TEXT} from '../fetcher/fetcher_inst';
+import {fromSimpleResponse} from '../fetcher/opResultAdapter';
 
 //---------------------------------------------------------
 // Live Metrics via Prometheus exposition (gateway: /netlox/v1/metrics)
@@ -169,16 +170,24 @@ export function normalize_metric_names(metrics: Record<string, number>, flavor: 
  * read zero still sets it true, because it served samples. Consumers must
  * branch on it rather than on `total_metrics` — see METRICS_LOXILB_PARITY.md.
  *
- * REMAINING GAP: "collection is off" (503) and "scrape refused" (401 under
- * --userservice) are still collapsed into the same unavailable snapshot. They
- * warrant different UI — a placeholder vs. an actual error — but telling the
- * operator which one it is needs a channel this return type does not have yet.
+ * The snapshot also carries `failure` (UI-P6-5), which separates "collection
+ * is off" (503, a state — show a placeholder) from "scrape refused" (401 under
+ * --userservice, denied) from an instance that is actually broken (5xx). Those
+ * three were collapsed into one unavailable snapshot until this read had a
+ * channel to say which. Note it does NOT throw: the metrics card polls, and a
+ * card that tore itself down on one bad scrape would flicker rather than
+ * inform.
  */
 export async function query_get_live_metrics(instance: IInstance, flavor: InstanceFlavor): Promise<ILiveMetricsResponse> {
 	const resp = await GET_INST_TEXT(instance, `/metrics`);
 	// Any non-200 (503 collection disabled, 401 under --userservice, 5xx) is not
 	// an exposition at all.
 	const body = resp.code === 200 && typeof resp.data === 'string' ? resp.data : '';
+	// Reuse the one HTTP→status table rather than re-deciding here. A 2xx maps
+	// to `confirmed`, which is not a failure — including the pre-parity 200
+	// whose body parses to nothing.
+	const outcome = fromSimpleResponse(resp, 'metrics.scrape');
+	const failure = outcome.status === 'confirmed' ? undefined : outcome;
 	const metrics = body ? normalize_metric_names(parse_prometheus_text(body), flavor) : {};
 
 	// Availability is decided by CONTENT: did the body yield at least one
@@ -195,5 +204,6 @@ export async function query_get_live_metrics(instance: IInstance, flavor: Instan
 		important: metrics,
 		total_metrics: Object.keys(metrics).length,
 		available,
+		failure,
 	};
 }

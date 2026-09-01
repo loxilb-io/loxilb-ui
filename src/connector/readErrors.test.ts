@@ -26,7 +26,6 @@
 //---------------------------------------------------------
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {ApiError, SimpleResponse} from './fetcher/fetcher_base';
-import {OpResult} from './fetcher/opResult';
 import {GET_INST, GET_INST_TEXT} from './fetcher/fetcher_inst';
 import {GET_OAM} from './fetcher/fetcher_oam';
 import {query_get_tenant_ratelimit} from './instance/ai';
@@ -75,9 +74,22 @@ const MUST_THROW: [name: string, call: () => Promise<unknown>][] = [
 	['instance: log level', () => query_get_log_level(INSTANCE)],
 	['instance: logs', () => query_get_inst_logs(INSTANCE)],
 	['instance: log archives', () => query_get_inst_log_archives(INSTANCE)],
-	['instance: health', () => query_instance_health(INSTANCE)],
 	['ipsec: security associations', () => query_get_ipsec_sa_all(INSTANCE)],
 ];
+
+// `query_instance_health` looked like an 18th offender in the file-level
+// audit and is not one: its return value IS the verdict ({isHealthy, code,
+// error}), so an unreachable gateway is the answer, not a swallowed failure.
+// The instance card branches on that code — 402 means "reachable but
+// unlicensed", which reads differently from an outage — and all of it would be
+// lost if the probe threw. Pinned as a non-thrower so a later assertOk sweep
+// cannot quietly break the card.
+describe('the health probe reports rather than throws', () => {
+	it.each([500, 502, 402])('a %i resolves to an unhealthy verdict carrying the code', async code => {
+		serveError(code);
+		await expect(query_instance_health(INSTANCE)).resolves.toMatchObject({isHealthy: false, code});
+	});
+});
 
 describe.each([500, 502, 401, 403])('a %i on a list read', code => {
 	beforeEach(() => serveError(code));
@@ -139,27 +151,23 @@ describe('the metrics scrape carries its failure instead of throwing', () => {
 	// (a placeholder is right) from "the instance answered 500" (an error is
 	// right) — the connector says so in its own doc comment. Give it the
 	// channel rather than leaving the two identical.
-	// The `failure` channel is what this task adds; the cast keeps typecheck
-	// green while the assertions run red against the pre-fix return type.
-	const failureOf = (res: unknown): OpResult | undefined => (res as {failure?: OpResult}).failure;
-
 	it('a 503 reports unavailable, not merely "no metrics"', async () => {
 		serveError(503);
 		const res = await query_get_live_metrics(INSTANCE, 'loxilb');
 		expect(res.available).toBe(false);
-		expect(failureOf(res)?.status).toBe('unavailable');
+		expect(res.failure?.status).toBe('unavailable');
 	});
 
 	it('a 500 reports failed', async () => {
 		serveError(500);
 		const res = await query_get_live_metrics(INSTANCE, 'loxilb');
-		expect(failureOf(res)?.status).toBe('failed');
+		expect(res.failure?.status).toBe('failed');
 	});
 
 	it('a healthy scrape carries no failure', async () => {
 		instGetText.mockResolvedValue({code: 200, data: 'loxilb_healthy_host_count 3\n', message: 'OK'});
 		const res = await query_get_live_metrics(INSTANCE, 'loxilb');
-		expect(failureOf(res)).toBeUndefined();
+		expect(res.failure).toBeUndefined();
 		expect(res.available).toBe(true);
 	});
 
@@ -170,6 +178,6 @@ describe('the metrics scrape carries its failure instead of throwing', () => {
 		instGetText.mockResolvedValue({code: 200, data: '"Prometheus option is disabled."', message: 'OK'});
 		const res = await query_get_live_metrics(INSTANCE, 'loxilb');
 		expect(res.available).toBe(false);
-		expect(failureOf(res)).toBeUndefined();
+		expect(res.failure).toBeUndefined();
 	});
 });
