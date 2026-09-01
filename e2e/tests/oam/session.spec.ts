@@ -64,7 +64,21 @@ async function storageScan(page: import('@playwright/test').Page) {
 	);
 }
 
-test('signing out leaves no token, no persisted query cache and no series data (ES-22)', async ({page}) => {
+/**
+ * Signing out revokes the token server-side while queries may still be in
+ * flight, so those requests come back 401 and the browser logs them. That is
+ * the expected consequence of ending a session, not a defect — and whether it
+ * happens at all depends on timing, which is exactly the kind of flake that
+ * must be settled deliberately rather than left to luck. Same allowance the
+ * no-false-success spec makes for its injected failures.
+ */
+function allowLogoutFetchNoise(consoleGuard: {allow(p: RegExp): void}) {
+	consoleGuard.allow(/Failed to load resource/i);
+	consoleGuard.allow(/status of 401/i);
+}
+
+test('signing out leaves no token, no persisted query cache and no series data (ES-22)', async ({page, consoleGuard}) => {
+	allowLogoutFetchNoise(consoleGuard);
 	// Own session (see the note at the top): this test revokes its token.
 	await signIn(page);
 
@@ -92,7 +106,8 @@ test('signing out leaves no token, no persisted query cache and no series data (
 	expect(after.seriesKeys).toEqual([]);
 });
 
-test('an expired token ends the session with an explanation instead of a silent redirect (ES-27)', async ({page}) => {
+test('an expired token ends the session with an explanation instead of a silent redirect (ES-27)', async ({page, consoleGuard}) => {
+	allowLogoutFetchNoise(consoleGuard);
 	await signIn(page);
 
 	// Swap in a well-formed token whose exp is already past: the proactive
