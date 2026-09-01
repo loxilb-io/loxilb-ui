@@ -71,7 +71,19 @@ export async function request_logout(): Promise<void> {
 
 export async function query_get_instance_list(): Promise<IInstance[]> {
 	const resp = await GET_OAM<OamGetResp<'/oam/loxilbs'>>(`/loxilbs`);
-	return (resp.data ?? []) as IInstance[];
+	// Array.isArray, not `?? []`: `??` only guards null/undefined, so an error
+	// object — or a string, or 0, or false — used to pass straight through the
+	// cast as if it were a list. Every instance page then calls .find on it
+	// (useInstanceFromURL, get_instance, get_instance_name), so one odd
+	// response became a TypeError during render and took the whole route to
+	// RouteErrorBoundary. Seen in UI-P6-6's AFTER-run as 121 console errors
+	// headed by `instance_list.find is not a function` in <LBRulePage>.
+	//
+	// This only guarantees the shape. Whether an unusable response should
+	// SURFACE as an error instead of reading as "no instances" is UI-P6-5's
+	// call — this read feeds SetupHandler and flavor probing, so making it
+	// throw touches app start-up (evidence/UI-P6-5/prep-notes.md).
+	return Array.isArray(resp.data) ? (resp.data as IInstance[]) : [];
 }
 
 // Instance mutations return a discriminated OpResult (UI-P6-1 batch 1) so
