@@ -14,13 +14,14 @@
 // `fetcher_base` must be able to call it, and a hook cannot be called from
 // there. The query-cache purge is registered by the app at start-up.
 //---------------------------------------------------------
-import {move_forced} from 'common';
+import {get_root_url, move_forced} from 'common';
 import {PROACTIVE_SKEW_MS} from './sessionPolicy';
 
 export type SessionEndReason = 'logout' | 'expired' | 'idle' | 'revoked';
 
 const TOKEN_KEY = 'access_token';
 const REASON_KEY = 'session_end_reason';
+const REDIRECT_KEY = 'session_redirect_target';
 /** Default key of @tanstack/query-sync-storage-persister. */
 const PERSISTED_CACHE_KEY = 'REACT_QUERY_OFFLINE_CACHE';
 /** Suffix of the metric time-series keys written by createTimeSeriesHook. */
@@ -90,6 +91,34 @@ export function msUntilProactiveLogout(token: string): number {
 // Why the session ended — handed to the login screen once
 //---------------------------------------------------------
 
+/**
+ * Where the operator was when the session ended, so a re-login returns them
+ * there instead of the landing page.
+ *
+ * Stored ONLY if it is a local path: an absolute or protocol-relative URL
+ * would turn the login screen into an open redirect, and a value that is not a
+ * path at all cannot be a route. The query string is dropped — it routinely
+ * carries instance names and other identifiers, and the path alone is enough
+ * to land on the right page.
+ */
+function rememberRedirectTarget(path: string): void {
+	if (!path.startsWith('/') || path.startsWith('//')) return;
+	// `move_forced` prepends the app basename, and `location.pathname` already
+	// contains it — store the route relative to the app so a deployment served
+	// under a sub-path does not end up at /ui/ui/instance/... on re-login.
+	const root = get_root_url();
+	const withoutRoot = root && path.startsWith(root + '/') ? path.slice(root.length) : path;
+	const bare = withoutRoot.split(/[?#]/)[0];
+	if (bare === '/login' || bare === '/') return;
+	sessionStorage.setItem(REDIRECT_KEY, bare);
+}
+
+export function consumeRedirectTarget(): string | null {
+	const target = sessionStorage.getItem(REDIRECT_KEY);
+	sessionStorage.removeItem(REDIRECT_KEY);
+	return target || null;
+}
+
 export function consumeSessionEndReason(): SessionEndReason | null {
 	const reason = sessionStorage.getItem(REASON_KEY);
 	sessionStorage.removeItem(REASON_KEY);
@@ -147,7 +176,7 @@ export function beginSession(): void {
  */
 export async function terminateSession(
 	reason: SessionEndReason,
-	opts?: {onTeardown?: () => void; navigate?: (reason: SessionEndReason) => void},
+	opts?: {onTeardown?: () => void; navigate?: (reason: SessionEndReason) => void; path?: string},
 ): Promise<void> {
 	if (terminating) return;
 	terminating = true;
@@ -168,6 +197,9 @@ export async function terminateSession(
 
 		purgeSessionStorage(token);
 		sessionStorage.setItem(REASON_KEY, reason);
+		// After the purge: the scan clears sessionStorage too, so remembering
+		// the route before it would erase what we just stored.
+		rememberRedirectTarget(opts?.path ?? window.location.pathname);
 		opts?.onTeardown?.();
 
 		// Clear BEFORE navigate (parent ordering rule): by here every store is

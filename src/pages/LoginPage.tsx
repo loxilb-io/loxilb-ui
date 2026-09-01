@@ -10,7 +10,7 @@ import BackBoard from 'components/element/BackBoard';
 import AuthForm from 'components/input/AuthForm';
 import {preflight_oam} from 'connector/oam/oam';
 import {login_user} from 'connector/user';
-import {beginSession, consumeSessionEndReason, parseJwtExp, SessionEndReason} from 'session/session';
+import {beginSession, consumeRedirectTarget, consumeSessionEndReason, parseJwtExp, SessionEndReason} from 'session/session';
 import {t} from 'i18next';
 import {useCallback, useEffect, useState} from 'react';
 import {ILoginRequest} from 'types/user';
@@ -76,7 +76,10 @@ export default function LoginPage() {
 				}
 				beginSession();
 				save_local_storage('access_token', result.data.token);
-				move_forced('/instance');
+				// Return the operator to where the session ended, not to the
+				// landing page (UI-P6-4). The stored value is a validated local
+				// route; anything else was refused at storage time.
+				move_forced(consumeRedirectTarget() ?? '/instance');
 			} else {
 				setError(t(result.localeKey));
 			}

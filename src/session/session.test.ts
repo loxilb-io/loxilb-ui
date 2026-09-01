@@ -28,7 +28,7 @@
 //---------------------------------------------------------
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {IDLE_LIMIT_MS, PROACTIVE_SKEW_MS} from 'session/sessionPolicy';
-import {SessionEndReason, beginSession, consumeSessionEndReason, msUntilProactiveLogout, parseJwtExp, terminateSession} from 'session/session';
+import {SessionEndReason, beginSession, consumeRedirectTarget, consumeSessionEndReason, msUntilProactiveLogout, parseJwtExp, terminateSession} from 'session/session';
 
 const PERSISTED_CACHE_KEY = 'REACT_QUERY_OFFLINE_CACHE';
 
@@ -118,6 +118,55 @@ describe('UI-P6-4 — proactive logout scheduling', () => {
 		expect(IDLE_LIMIT_MS).toBeGreaterThanOrEqual(5 * 60_000);
 		expect(PROACTIVE_SKEW_MS).toBeGreaterThan(0);
 		expect(PROACTIVE_SKEW_MS).toBeLessThan(IDLE_LIMIT_MS);
+	});
+});
+
+describe('UI-P6-4 — returning the operator to where they were', () => {
+	it('remembers the path so a re-login does not dump the operator on the landing page', async () => {
+		seedLoggedInStorage(tokenWithExp(1_700_000_000));
+		await terminateSession('expired', {path: '/instance/traffic/lb'});
+
+		expect(consumeRedirectTarget()).toBe('/instance/traffic/lb');
+		// Consumed once — a later manual visit to /login must not bounce the
+		// operator somewhere they did not ask to go.
+		expect(consumeRedirectTarget()).toBeNull();
+	});
+
+	it('never remembers the login page itself', async () => {
+		seedLoggedInStorage(tokenWithExp(1_700_000_000));
+		await terminateSession('revoked', {path: '/login'});
+		expect(consumeRedirectTarget()).toBeNull();
+	});
+
+	it.each([
+		['an absolute URL', 'https://evil.example/steal'],
+		['a protocol-relative URL', '//evil.example/steal'],
+		// Assembled rather than written literally: a literal script URL trips
+		// the no-script-url lint rule, and the point is the value, not the text.
+		['a scheme', `${'java'}${'script'}:alert(1)`],
+		['a non-path', 'instance/traffic/lb'],
+	])('refuses %s — a remembered target is a local path, never a destination', async (_label, path) => {
+		seedLoggedInStorage(tokenWithExp(1_700_000_000));
+		await terminateSession('expired', {path});
+		expect(consumeRedirectTarget()).toBeNull();
+	});
+
+	it('stores the route relative to the app basename, which move_forced re-adds', async () => {
+		// A deployment served under a sub-path has that prefix in
+		// location.pathname AND in move_forced's output; storing the raw
+		// pathname would land the operator on /ui/ui/instance/... after login.
+		vi.stubEnv('REACT_APP_PUBLIC_URL', '/ui');
+		seedLoggedInStorage(tokenWithExp(1_700_000_000));
+		await terminateSession('expired', {path: '/ui/instance/traffic/lb'});
+
+		expect(consumeRedirectTarget()).toBe('/instance/traffic/lb');
+		vi.unstubAllEnvs();
+	});
+
+	it('keeps the path but drops the query string, which can carry identifiers', async () => {
+		seedLoggedInStorage(tokenWithExp(1_700_000_000));
+		await terminateSession('idle', {path: '/instance/traffic/lb?name=prod-gw&secret=x'});
+		expect(consumeRedirectTarget()).toBe('/instance/traffic/lb');
 	});
 });
 
