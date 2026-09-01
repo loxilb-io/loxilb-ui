@@ -99,7 +99,13 @@ test.describe('the four states, end to end on the Load Balancer page', () => {
 		await page.route(LB_URL, readAnswers(200, JSON.stringify({lbAttr: []})));
 		await page.goto(lbPage());
 
-		await expect(page.getByText(EMPTY_SENTENCE)).toBeVisible();
+		// The sentence appears TWICE by design and neither copy is redundant:
+		// the grid's overlay shows it where the rows would be, and a
+		// visually-hidden live region outside the grid announces it. They
+		// cannot be merged — role="grid" forbids a role="status" child, which
+		// is the aria-required-children violation the first cut shipped.
+		await expect(page.getByRole('status').filter({hasText: EMPTY_SENTENCE})).toBeVisible();
+		await expect(page.getByRole('grid').getByText(EMPTY_SENTENCE)).toBeVisible();
 		await expect(page.getByRole('alert')).toHaveCount(0);
 		await expect(page.getByRole('button', {name: `Add Load Balancer`})).toBeEnabled();
 		expect(consoleGuard.violations()).toEqual([]);
@@ -117,13 +123,24 @@ test.describe('the four states, end to end on the Load Balancer page', () => {
 		await expect(page.getByText(/boom on node-3/)).toHaveCount(0);
 	});
 
-	test('500 — writes are held while the rows are unknown', async ({page, consoleGuard}) => {
+	test('500 — the row-targeted actions are held, but creating is still possible', async ({page, consoleGuard}) => {
 		allowFailedReadNoise(consoleGuard);
 		await page.route(LB_URL, readAnswers(500, JSON.stringify({message: 'boom'})));
 		await page.goto(lbPage());
 
 		await expect(page.getByRole('alert')).toBeVisible({timeout: AFTER_RETRIES});
-		await expect(page.getByRole('button', {name: 'Add Load Balancer'})).toBeDisabled();
+
+		// Edit and Delete target a selected row, and there are no rows we can
+		// vouch for.
+		await expect(page.getByRole('button', {name: 'Edit Load Balancer'})).toBeDisabled();
+		await expect(page.getByRole('button', {name: 'Delete Load Balancer'})).toBeDisabled();
+
+		// Add does not. This assertion was the other way round in the first
+		// cut, and the full run proved it wrong: on an instance whose list
+		// answers 403 because a feature is off, creating is exactly what the
+		// operator still needs to do (cicd/ha/bgp-neighbor.spec.ts). Only
+		// `stale` bars creation — see the stale case below.
+		await expect(page.getByRole('button', {name: 'Add Load Balancer'})).toBeEnabled();
 	});
 
 	test('403 — reads as a permission problem, not as a server error or an empty table', async ({page, consoleGuard}) => {
