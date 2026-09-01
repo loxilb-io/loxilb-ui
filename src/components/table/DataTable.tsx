@@ -29,6 +29,7 @@ import {
 	UsageCell,
 } from 'components/element/CustomGridCell';
 import useLocalStorageState from 'hooks/localStorageHook';
+import {DEFAULT_TABLE_DENSITY, PREFERENCE_KEYS, TableDensity, isTableDensity} from 'preferences';
 import {usePopUp} from 'hooks/popupHook';
 import {useRole} from 'hooks/query/oamHooks';
 import {t} from 'i18next';
@@ -78,7 +79,7 @@ export default function DataTable(props: {
 	// Global density preference, shared by every table via localStorage
 	// (comfortable 44px / compact 36px rows). useLocalStorageState's event bus
 	// keeps all mounted tables in sync when one toggles.
-	const [density, setDensity] = useLocalStorageState<'comfortable' | 'compact'>('table_density', 'comfortable');
+	const [density, setDensity] = useLocalStorageState<TableDensity>(PREFERENCE_KEYS.tableDensity, DEFAULT_TABLE_DENSITY, isTableDensity);
 	const is_compact = density === 'compact';
 
 	// RBAC: viewers are read-only everywhere, so hide the mutation

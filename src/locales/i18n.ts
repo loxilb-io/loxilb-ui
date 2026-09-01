@@ -5,6 +5,7 @@ import jaJSON from 'locales/ja.json';
 import koJSON from 'locales/ko.json';
 
 import {initReactI18next} from 'react-i18next';
+import {PREFERENCE_KEYS} from 'preferences';
 
 export const default_language = 'en';
 //export const default_language = 'cimode';
@@ -31,7 +32,7 @@ export const support_lang = [
 // by e2e/tests/oam/login-lockout.spec.ts).
 function initial_language(): string {
 	try {
-		const saved = localStorage.getItem('language');
+		const saved = localStorage.getItem(PREFERENCE_KEYS.language);
 		if (saved && support_lang.some(lang => lang.code === saved)) return saved;
 	} catch {
 		// storage unavailable (SSR/tests without the shim) — fall through

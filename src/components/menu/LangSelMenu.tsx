@@ -3,6 +3,7 @@
 //---------------------------------------------------------
 import {Box, Menu, MenuItem, Typography} from '@mui/material';
 import {get_local_storage, save_local_storage} from 'common';
+import {PREFERENCE_KEYS} from 'preferences';
 import {t} from 'i18next';
 import {support_lang} from 'locales/i18n';
 import {useEffect} from 'react';
@@ -20,7 +21,7 @@ export default function LangSelMenu(props: {anchorEl: HTMLElement | null; handle
 
 	const handleLanguageChange = (langCode: string) => {
 		i18n.changeLanguage(langCode);
-		save_local_storage('language', langCode);
+		save_local_storage(PREFERENCE_KEYS.language, langCode);
 		document.documentElement.lang = langCode;
 		handleClose();
 
@@ -28,7 +29,7 @@ export default function LangSelMenu(props: {anchorEl: HTMLElement | null; handle
 	};
 
 	useEffect(() => {
-		const saved_lang = get_local_storage('language');
+		const saved_lang = get_local_storage(PREFERENCE_KEYS.language);
 
 		if (saved_lang && support_lang.some(lang => lang.code === saved_lang)) i18n.changeLanguage(saved_lang);
 		else i18n.changeLanguage('en');

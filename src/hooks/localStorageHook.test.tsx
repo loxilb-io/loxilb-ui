@@ -154,13 +154,18 @@ describe('storage events from another tab', () => {
 		expect(result.current[0]).toBe('compact');
 	});
 
-	it('RED: a corrupt value from another tab is ignored, not adopted', () => {
+	it('RED: a corrupt value from another tab is ignored, and does not reset this tab', () => {
+		// Started from a NON-default value on purpose: it separates "ignored"
+		// from "fell back to the default". Another tab writing garbage must
+		// not discard the preference this operator actually chose.
+		localStorage.setItem(DENSITY_KEY, JSON.stringify('compact'));
 		const {result} = renderHook(() => useLocalStorageState<Density>(DENSITY_KEY, 'comfortable', isDensity));
+		expect(result.current[0]).toBe('compact');
 
 		act(() => {
 			window.dispatchEvent(new StorageEvent('storage', {key: DENSITY_KEY, newValue: '{broken'}));
 		});
 
-		expect(result.current[0]).toBe('comfortable');
+		expect(result.current[0]).toBe('compact');
 	});
 });

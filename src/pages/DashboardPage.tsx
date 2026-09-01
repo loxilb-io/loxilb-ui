@@ -3,6 +3,7 @@
 //---------------------------------------------------------
 import {Box, Button, Paper, Typography} from '@mui/material';
 import {get_local_storage, save_local_storage} from 'common';
+import {PREFERENCE_KEYS} from 'preferences';
 import RealTimeRateCard from 'components/card/RealTimeRateCard';
 import CriticalMetricCard from 'components/card/CriticalMetricCard';
 import HealthStatusCard from 'components/card/HealthStatusCard';
@@ -27,7 +28,7 @@ const ResponsiveGrid = WidthProvider(RGL);
 // Versioned so the fix for the compaction-reflow bug (gap-free default + no
 // auto-compaction) supersedes any already-corrupted layout persisted under the
 // old `layout` key — stale saves floated the log card above the rate cards.
-const LAYOUT_STORAGE_KEY = 'dashboard_layout_v2';
+const LAYOUT_STORAGE_KEY = PREFERENCE_KEYS.dashboardLayout;
 
 //---------------------------------------------------------
 // Functional Component
