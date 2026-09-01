@@ -695,5 +695,7 @@
 	"An instance with this name already exists.": "같은 이름의 인스턴스가 이미 있습니다.",
 	"Your role does not permit managing instances.": "현재 역할로는 인스턴스를 관리할 수 없습니다.",
 	"This feature is not enabled on this instance.": "이 인스턴스에서는 이 기능이 활성화되어 있지 않습니다.",
-	"{{succeeded}} succeeded, {{failed}} failed. {{error}}": "{{succeeded}}건 성공, {{failed}}건 실패. {{error}}"
+	"{{succeeded}} succeeded, {{failed}} failed. {{error}}": "{{succeeded}}건 성공, {{failed}}건 실패. {{error}}",
+	"Submitted": "제출됨",
+	"The gateway accepted the change, but it has not appeared yet. Refresh to check again.": "게이트웨이가 변경을 수락했지만 아직 목록에 나타나지 않았습니다. 새로 고침하여 다시 확인하세요."
 }

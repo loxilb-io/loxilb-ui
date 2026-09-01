@@ -4,6 +4,8 @@
 import HATable from 'components/table/status/HATable';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useHAState} from 'hooks/query/queryHooks';
+import {fromQueryRefetch} from 'hooks/query/reconcile';
+import {useReconcileReporter} from 'hooks/query/reconcileReport';
 import {useCallback, useRef, useState} from 'react';
 import {IVipAttribute, IVipConfiguration} from 'types/ha';
 import VipInputForm from 'components/input/VipInputForm';
@@ -23,6 +25,7 @@ export default function HAPage() {
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
 
 	const {openPopUp, enableYes} = usePopUp();
+	const {reconcile} = useReconcileReporter();
 	const instanceRef = useRef<IVipAttribute | null>(null);
 
 	const handleEdit = useCallback(() => {
@@ -51,17 +54,21 @@ export default function HAPage() {
 
 				const res = await request_update_ha_state(inst, instanceRef.current);
 				if (res.status === 'confirmed') {
+					// UI-P6-3 EXEMPT from poll-to-confirm (task doc 2.4): an HA state
+					// change is inherently asynchronous — the cluster reports its own
+					// progress through the HA status API, and this list cannot
+					// distinguish "not converged yet" from "converged back". So the
+					// blind 1 s timer is replaced by a single invalidating read, not
+					// by a confirm poll that would guess at a verdict it cannot see.
 					openPopUp(t('Success'), t('Updated successfully.'), t('OK'));
-					setTimeout(() => {
-						refetch();
-					}, 1000);
+					await reconcile({refetch: fromQueryRefetch(refetch)});
 				} else {
 					openPopUp(t('Error'), t('Failed to update. {{error}}', {error: t(res.localeKey)}), t('OK'));
 				}
 			},
 			true,
 		);
-	}, [inst, selected_rows, ha_info, openPopUp, refetch, enableYes]);
+	}, [inst, selected_rows, ha_info, openPopUp, refetch, enableYes, reconcile]);
 
 	return <HATable data={ha_info} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} onEdit={handleEdit} onRefresh={refetch} error={!!isError} />;
 }

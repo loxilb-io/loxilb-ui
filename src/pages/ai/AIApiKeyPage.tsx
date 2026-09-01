@@ -15,6 +15,9 @@ import {request_create_apikey, request_delete_apikey} from 'connector/instance/a
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useApiKeys} from 'hooks/query/queryHooks';
+import {fromQueryRefetch} from 'hooks/query/reconcile';
+import {useReconcileReporter} from 'hooks/query/reconcileReport';
+import {apiKeyAppeared, apiKeysGone} from 'hooks/query/confirmPredicates';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {t} from 'i18next';
 import React, {Fragment, useRef, useState} from 'react';
@@ -100,6 +103,7 @@ export default function AIApiKeyPage() {
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
 	const {openPopUp, enableYes} = usePopUp();
 	const {errorPopup, showAddError, showDeleteError, closeErrorPopup} = useErrorPopup();
+	const {report, reconcile} = useReconcileReporter();
 
 	// selected_rows holds a stable hash of key_id (the row id the table assigns),
 	// so selection tracks the key across refetches/re-sorts, not array position.
@@ -147,9 +151,10 @@ export default function AIApiKeyPage() {
 						showAddError('AI API key', t('The Gateway did not return the one-time generated key. The key cannot be recovered; delete the metadata and create a new key.'));
 						return;
 					}
-					setTimeout(() => {
-						refetch();
-					}, 1000);
+					// The one-time key reveal IS the result dialog here (persistent,
+					// UI-P2-2) — stacking a second popup on top of it would hide
+					// the key material, so reconcile quietly behind it.
+					await reconcile({refetch: fromQueryRefetch(refetch), confirm: res.data.key_id ? apiKeyAppeared(res.data.key_id) : undefined});
 				} else showAddError('AI API key', t(res.localeKey));
 			},
 			true,
@@ -167,18 +172,21 @@ export default function AIApiKeyPage() {
 		// dataplane-rejected delete can no longer be counted as succeeded.
 		const failures = results.filter(res => res.status !== 'confirmed');
 
+		// Promise.all preserves order, so results[i] belongs to targets[i].
+		const deletedIds = targets.filter((_, i) => results[i].status === 'confirmed').map(item => item.key_id!);
 		if (failures.length === 0) {
-			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
-		} else if (failures.length < results.length) {
-			showDeleteError('AI API key', t('{{succeeded}} succeeded, {{failed}} failed. {{error}}', {succeeded: results.length - failures.length, failed: failures.length, error: t(failures[0].localeKey)}));
-		} else {
-			showDeleteError('AI API key', t(failures[0].localeKey));
+			set_selected_rows([]);
+			await report({refetch: fromQueryRefetch(refetch), confirm: apiKeysGone(deletedIds)}, t('Deleted {{count}} item(s) successfully.', {count: results.length}));
 			return;
 		}
-		set_selected_rows([]);
-		setTimeout(() => {
-			refetch();
-		}, 1000);
+		if (failures.length < results.length) {
+			// The error popup already states the partial outcome; reconcile quietly.
+			showDeleteError('AI API key', t('{{succeeded}} succeeded, {{failed}} failed. {{error}}', {succeeded: results.length - failures.length, failed: failures.length, error: t(failures[0].localeKey)}));
+			set_selected_rows([]);
+			await reconcile({refetch: fromQueryRefetch(refetch), confirm: apiKeysGone(deletedIds)});
+			return;
+		}
+		showDeleteError('AI API key', t(failures[0].localeKey));
 	};
 
 	const handleRefresh = () => {

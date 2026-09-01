@@ -55,7 +55,10 @@ function mountReconciler() {
  */
 async function settle<T>(p: Promise<T>): Promise<T> {
 	let done = false;
-	const tracked = p.then(v => ((done = true), v));
+	const tracked = p.then(v => {
+		done = true;
+		return v;
+	});
 	for (let i = 0; i < 200 && !done; i++) {
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(250);

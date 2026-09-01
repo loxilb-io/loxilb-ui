@@ -58,6 +58,14 @@ export interface ReconcileSpec<T> {
 	intervalsMs?: number[];
 }
 
+/**
+ * Adapts react-query's `refetch` handle to a `ReconcileSpec.refetch`. Kept
+ * here so the eleven call sites do not each re-derive the same unwrapping.
+ */
+export function fromQueryRefetch<T>(refetch: () => Promise<{data?: T}>): () => Promise<T | undefined> {
+	return async () => (await refetch()).data;
+}
+
 /** Resolves after `ms`, or immediately once `signal` aborts. */
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
 	return new Promise(resolve => {

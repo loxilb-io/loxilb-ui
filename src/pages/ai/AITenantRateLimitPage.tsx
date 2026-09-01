@@ -12,6 +12,9 @@ import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useApiKeys, useLoadBalancerConfig} from 'hooks/query/queryHooks';
 import {useQueryInstanceData} from 'hooks/query/common';
+import {fromQueryRefetch} from 'hooks/query/reconcile';
+import {useReconcileReporter} from 'hooks/query/reconcileReport';
+import {tenantRateLimitAppeared} from 'hooks/query/confirmPredicates';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {t} from 'i18next';
 import React, {Fragment, useRef, useState} from 'react';
@@ -50,6 +53,7 @@ export default function AITenantRateLimitPage() {
 	const [lookupTenant, setLookupTenant] = useState('');
 	const {openPopUp, enableYes} = usePopUp();
 	const {errorPopup, showAddError, closeErrorPopup} = useErrorPopup();
+	const {report} = useReconcileReporter();
 
 	const rememberTenant = (tenant_id: string) => {
 		setExtraTenants(prev => (prev.includes(tenant_id) ? prev : [...prev, tenant_id]));
@@ -94,14 +98,12 @@ export default function AITenantRateLimitPage() {
 			async () => {
 				if (!formRef.current) return;
 
+				const tenantId = formRef.current.tenant_id;
 				const res = await request_set_tenant_ratelimit(inst, formRef.current);
 				if (res.status === 'confirmed') {
-					rememberTenant(formRef.current.tenant_id);
-					openPopUp(t('Success'), t('Applied successfully.'), t('OK'));
+					rememberTenant(tenantId);
 					set_selected_rows([]);
-					setTimeout(() => {
-						refetch();
-					}, 1000);
+					await report({refetch: fromQueryRefetch(refetch), confirm: tenantRateLimitAppeared(tenantId)}, t('Applied successfully.'));
 				} else showAddError('AI tenant rate limit', t(res.localeKey));
 			},
 			true,

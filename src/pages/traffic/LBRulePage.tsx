@@ -22,6 +22,9 @@ import {useInstanceCapabilities} from 'hooks/query/flavorHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useLoadBalancerConfig, useMirrors, useQOSPolicies} from 'hooks/query/queryHooks';
+import {fromQueryRefetch} from 'hooks/query/reconcile';
+import {useReconcileReporter} from 'hooks/query/reconcileReport';
+import {lbRuleAppeared, lbRulesGone} from 'hooks/query/confirmPredicates';
 import {t} from 'i18next';
 import {Fragment, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {useSearchParams} from 'react-router-dom';
@@ -103,6 +106,7 @@ export default function LBRulePage() {
 
 	const {openPopUp, enableYes} = usePopUp();
 	const {errorPopup, showAddError, showUpdateError, showDeleteError, closeErrorPopup} = useErrorPopup();
+	const {report, reconcile} = useReconcileReporter();
 
 	const handleDelete = useCallback(async () => {
 		if (!inst || selectedItems.length === 0) return;
@@ -124,22 +128,23 @@ export default function LBRulePage() {
 		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
-			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: selectedItems.length}), t('OK'));
 			set_selected_rows([]);
-			setTimeout(() => {
-				refetch();
-			}, 1000);
+			// Confirmation is "the rules are gone from the list", not "the DELETE
+			// was accepted" — a dataplane that rejects after acceptance leaves
+			// the rows in place, which the operator must be told about.
+			await report({refetch: fromQueryRefetch(refetch), confirm: lbRulesGone(selectedItems)}, t('Deleted {{count}} item(s) successfully.', {count: selectedItems.length}));
 		} else if (failures.length < results.length) {
-			// Partial success
+			// Partial success: the error popup already carries the outcome, so
+			// reconcile silently — but only against the rules that actually
+			// went (Promise.all preserves order, so results[i] is selectedItems[i]).
 			showDeleteError('load balancer rule(s)', t('{{succeeded}} succeeded, {{failed}} failed. {{error}}', {succeeded: results.length - failures.length, failed: failures.length, error: t(failures[0].localeKey)}));
-			setTimeout(() => {
-				refetch();
-			}, 1000);
+			const deleted = selectedItems.filter((_, i) => results[i].status === 'confirmed');
+			await reconcile({refetch: fromQueryRefetch(refetch), confirm: lbRulesGone(deleted)});
 		} else {
 			// All failed
 			showDeleteError('load balancer rule(s)', t(failures[0].localeKey));
 		}
-	}, [inst, selectedItems, showDeleteError, refetch, openPopUp]);
+	}, [inst, selectedItems, showDeleteError, refetch, report, reconcile]);
 
 	const instanceRef = useRef<IServiceConfiguration | null>(null);
 	const handleAdd = useCallback(() => {
@@ -166,12 +171,10 @@ export default function LBRulePage() {
 			async () => {
 				if (!instanceRef.current) return;
 
-				const res = await request_create_load_balancer_config(inst, instanceRef.current, effectiveFlavor);
+				const submitted = instanceRef.current;
+				const res = await request_create_load_balancer_config(inst, submitted, effectiveFlavor);
 				if (res.status === 'confirmed') {
-					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
-					setTimeout(() => {
-						refetch();
-					}, 1000);
+					await report({refetch: fromQueryRefetch(refetch), confirm: lbRuleAppeared(submitted)}, t('Added successfully.'));
 				} else {
 					// Localized mapped message; raw prose stays in diagnostics.
 					showAddError('load balancer rule', t(res.localeKey));
@@ -360,10 +363,9 @@ export default function LBRulePage() {
 					}
 				}
 				if (res.status === 'confirmed') {
-					openPopUp(t('Success'), t('Load balancer rule updated successfully.'), t('OK'));
-					setTimeout(() => {
-						refetch();
-					}, 1000);
+					// The delete+re-create strategy can move the rule's key, so
+					// confirm against the EDITED identity, not the original row.
+					await report({refetch: fromQueryRefetch(refetch), confirm: lbRuleAppeared(serviceConfig)}, t('Load balancer rule updated successfully.'));
 				} else {
 					// Localized mapped message; raw prose stays in diagnostics.
 					showUpdateError('load balancer rule', t(res.localeKey));

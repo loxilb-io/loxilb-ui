@@ -30,6 +30,21 @@ module.exports = {
 				selector: "LogicalExpression[operator='||'][right.value=0][left.callee.name='parseInt']",
 				message: 'parseInt(...) || 0 coerces garbage to 0. Keep raw-string state and validate with evaluateNumericField (UI-P6-2 / ES-17).',
 			},
+			// Three shapes, because the 49 C-2 sites used all three:
+			// setTimeout(() => refetch(), 1000), setTimeout(() => qc.invalidateQueries(...), 1000)
+			// and the bare-reference form setTimeout(refetchAll, 1000).
+			{
+				selector: "CallExpression[callee.name='setTimeout'] CallExpression[callee.name=/refetch|invalidate/i]",
+				message: 'A timed blind refetch claims success before convergence and then looks exactly once. Reconcile instead: useReconcileReporter (UI-P6-3 / ES-02).',
+			},
+			{
+				selector: "CallExpression[callee.name='setTimeout'] CallExpression[callee.property.name=/refetch|invalidate/i]",
+				message: 'A timed blind refetch claims success before convergence and then looks exactly once. Reconcile instead: useReconcileReporter (UI-P6-3 / ES-02).',
+			},
+			{
+				selector: "CallExpression[callee.name='setTimeout'] > Identifier[name=/refetch|invalidate/i]",
+				message: 'A timed blind refetch claims success before convergence and then looks exactly once. Reconcile instead: useReconcileReporter (UI-P6-3 / ES-02).',
+			},
 		],
 	},
 	overrides: [
@@ -39,6 +54,33 @@ module.exports = {
 			// allowlist question is decided. Remove this exemption with that
 			// conversion.
 			files: ['src/components/input/IPsecTunnelInputForm.tsx', 'src/components/input/IPsecConfigForm.tsx'],
+			rules: {'no-restricted-syntax': 'off'},
+		},
+		{
+			// UI-P6-3 Tranche B (owner: GS-cert campaign, 2026-09-01): these 14
+			// files hold the remaining 38 blind-refetch sites. Tranche A (the 5
+			// certified-core pages, 11 sites) is converted; Tranche B is gated on
+			// Q-1, the certified-allowlist question — pages ruled in convert with
+			// the same recipe, pages ruled out get a deferral-log entry. Delete
+			// each path from this list as its page converts; when the list is
+			// empty, delete the override. The rule itself stays either way, so a
+			// NEW blind refetch anywhere else is an error today.
+			files: [
+				'src/pages/ipsec/IPsecCertificatePage.tsx',
+				'src/pages/ipsec/IPsecTunnelPage.tsx',
+				'src/pages/network/BFDPage.tsx',
+				'src/pages/network/DeviceNeighborPage.tsx',
+				'src/pages/network/FDBPage.tsx',
+				'src/pages/network/IPPage.tsx',
+				'src/pages/network/RoutePage.tsx',
+				'src/pages/network/VLANPage.tsx',
+				'src/pages/traffic/FirewallPage.tsx',
+				'src/pages/traffic/IPFilterPage.tsx',
+				'src/pages/traffic/MirrorPage.tsx',
+				'src/pages/traffic/QoSPage.tsx',
+				'src/pages/traffic/SNICertificatesPage.tsx',
+				'src/pages/traffic/SecurityRatePage.tsx',
+			],
 			rules: {'no-restricted-syntax': 'off'},
 		},
 	],

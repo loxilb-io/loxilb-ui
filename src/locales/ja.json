@@ -695,5 +695,7 @@
 	"An instance with this name already exists.": "同じ名前のインスタンスが既に存在します。",
 	"Your role does not permit managing instances.": "現在のロールではインスタンスを管理できません。",
 	"This feature is not enabled on this instance.": "このインスタンスではこの機能は有効になっていません。",
-	"{{succeeded}} succeeded, {{failed}} failed. {{error}}": "{{succeeded}}件成功、{{failed}}件失敗。{{error}}"
+	"{{succeeded}} succeeded, {{failed}} failed. {{error}}": "{{succeeded}}件成功、{{failed}}件失敗。{{error}}",
+	"Submitted": "送信済み",
+	"The gateway accepted the change, but it has not appeared yet. Refresh to check again.": "ゲートウェイは変更を受け付けましたが、まだ一覧に反映されていません。再読み込みして確認してください。"
 }
