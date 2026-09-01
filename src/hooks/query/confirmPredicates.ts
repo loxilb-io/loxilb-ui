@@ -1,65 +1,107 @@
 //---------------------------------------------------------
 // UI-P6-3 — confirm predicates ("did my write land?") per endpoint family.
 //
-// Rule 6: never structurally compare the submitted object against what the
-// list returns. Gateway GET canonicalization is asymmetric — zero-valued
-// fields come back omitted, `[]` can come back `null`, optional fields are
-// defaulted server-side and row order is not stable. A deep-equal check would
-// report a landed write as "never appeared" and poll out to a false pending.
+// Two opposite mistakes are possible here and both are silent:
 //
-// So each predicate compares the SMALLEST stable identity for its family and
-// nothing else. Until the gateway canonicalization table lands (external
-// input, tracked with Tranche B), that means primary-key fields only —
-// deliberately not the whole tuple `canonicalLBRuleIdentity` uses for row
-// identity, because parts of that tuple (portMax, path fields) are exactly
-// what the server is free to normalize.
+//   too LOOSE  → a sibling row satisfies the predicate and a write that never
+//                landed is reported as confirmed. That is the false success
+//                UI-P6-3 exists to remove, reintroduced one layer down.
+//   too TIGHT  → the gateway's own canonicalization (zero-valued fields come
+//                back omitted, `[]` comes back `null`, optionals are defaulted
+//                server-side, order is unstable) makes a landed write look
+//                absent, and the operator is told "Submitted" about something
+//                that is done (parent rule 6).
+//
+// The resolution is not one rule but two, because the two directions compare
+// different things:
+//
+//   GONE (delete) — both sides are SERVER-shaped: the rows being deleted were
+//   read from this same list. Canonicalization is therefore symmetric and the
+//   full canonical identity is both safe and necessary. It is necessary
+//   because the gateway legitimately serves rules that share VIP/port/protocol
+//   and differ only by host, path, range or model — which is exactly why
+//   canonicalLBRuleIdentity exists. Keying on VIP+port+protocol alone made a
+//   completed delete look unconfirmed for as long as any peer survived
+//   (caught by lb.spec.ts D-full-key).
+//
+//   APPEARED (create/update) — the submitted side is CLIENT-shaped, so the
+//   full identity would compare fields the server is free to rewrite. Compare
+//   only the fields the client actually SET: the key tuple, plus whichever
+//   discriminators were specified. That is tight enough that a peer cannot
+//   confirm someone else's write, and loose enough that a server default
+//   cannot hide one.
 //---------------------------------------------------------
 import {IEndpointItem} from 'types/endpoint';
+import {canonicalLBRuleIdentity} from 'types/lb_identity';
 import {IServiceArguments, IServiceConfiguration} from 'types/load_balancer';
 
-/** VIP + port + protocol: the tuple the gateway keys a rule on. */
-function lbKey(args: Pick<IServiceArguments, 'externalIP' | 'port' | 'protocol'>): string {
-	return [args.externalIP ?? '', String(args.port ?? ''), (args.protocol ?? '').toLowerCase()].join('|');
-}
+//---------------------------------------------------------
+// Load balancer rules
+//---------------------------------------------------------
 
-/** The rule the operator just created/updated is present. */
-export const lbRuleAppeared =
-	(submitted: IServiceConfiguration) =>
-	(rows: IServiceConfiguration[]): boolean => {
-		const wanted = lbKey(submitted.serviceArguments);
-		return rows.some(r => lbKey(r.serviceArguments) === wanted);
-	};
-
-/** Every rule the operator deleted is gone. */
+/** Every rule the operator deleted is gone (server-shaped on both sides). */
 export const lbRulesGone =
 	(deleted: IServiceConfiguration[]) =>
 	(rows: IServiceConfiguration[]): boolean => {
-		const present = new Set(rows.map(r => lbKey(r.serviceArguments)));
-		return deleted.every(d => !present.has(lbKey(d.serviceArguments)));
+		const present = new Set(rows.map(canonicalLBRuleIdentity));
+		return deleted.every(d => !present.has(canonicalLBRuleIdentity(d)));
 	};
 
-/**
- * Endpoints are keyed by host. `name` is optional on input and may be
- * server-assigned, so it is not part of the identity used here.
- */
-const epKey = (item: {hostName?: string}): string => item.hostName ?? '';
+/** Discriminators, included only when the client actually set them. */
+const LB_DISCRIMINATORS = ['name', 'host', 'path_prefix', 'model_name'] as const;
 
-export const endpointAppeared =
-	(submitted: {hostName: string}) =>
-	(rows: IEndpointItem[]): boolean =>
-		rows.some(r => epKey(r) === epKey(submitted));
+/** The rule the operator created/updated is present. */
+export const lbRuleAppeared =
+	(submitted: IServiceConfiguration) =>
+	(rows: IServiceConfiguration[]): boolean => {
+		const want = submitted.serviceArguments;
+		const set = LB_DISCRIMINATORS.filter(f => {
+			const v = want[f as keyof IServiceArguments];
+			return typeof v === 'string' && v.length > 0;
+		});
+		return rows.some(r => {
+			const got = r.serviceArguments;
+			if ((got.externalIP ?? '') !== (want.externalIP ?? '')) return false;
+			if (got.port !== want.port) return false;
+			if ((got.protocol ?? '').toLowerCase() !== (want.protocol ?? '').toLowerCase()) return false;
+			return set.every(f => got[f as keyof IServiceArguments] === want[f as keyof IServiceArguments]);
+		});
+	};
+
+//---------------------------------------------------------
+// Endpoints
+//---------------------------------------------------------
+
+/**
+ * The same composite the endpoint table uses for row identity — a host can
+ * carry several endpoints that differ by name, probe port or probe type.
+ */
+const epIdentity = (item: {name?: string; hostName?: string; probePort?: number; probeType?: string}): string =>
+	[item.name ?? '', item.hostName ?? '', item.probePort ?? '', item.probeType ?? ''].join('|');
 
 export const endpointsGone =
 	(deleted: IEndpointItem[]) =>
 	(rows: IEndpointItem[]): boolean => {
-		const present = new Set(rows.map(epKey));
-		return deleted.every(d => !present.has(epKey(d)));
+		const present = new Set(rows.map(epIdentity));
+		return deleted.every(d => !present.has(epIdentity(d)));
 	};
 
 /**
- * API keys are identified by the gateway-issued `key_id`. The create response
- * carries it, so confirmation is exact; a create whose response omitted the
- * id has already been reported as a failure before reconciliation is reached.
+ * `name` is optional on submission and assigned by the gateway when omitted,
+ * so it joins the comparison only when the operator supplied it.
+ */
+export const endpointAppeared =
+	(submitted: {hostName: string; name?: string}) =>
+	(rows: IEndpointItem[]): boolean =>
+		rows.some(r => (r.hostName ?? '') === submitted.hostName && (!submitted.name || r.name === submitted.name));
+
+//---------------------------------------------------------
+// AI API keys / tenant rate limits
+//---------------------------------------------------------
+
+/**
+ * API keys are identified by the gateway-issued `key_id`, which the create
+ * response carries — so confirmation here is exact, with no near-miss risk.
  */
 export const apiKeyAppeared =
 	(keyId: string) =>
@@ -73,7 +115,7 @@ export const apiKeysGone =
 		return deletedKeyIds.every(id => !present.has(id));
 	};
 
-/** A tenant rate limit is confirmed once the tenant has a row at all. */
+/** One rate-limit row per tenant, so the tenant id is the whole identity. */
 export const tenantRateLimitAppeared =
 	(tenantId: string) =>
 	(rows: {tenant_id?: string}[]): boolean =>
