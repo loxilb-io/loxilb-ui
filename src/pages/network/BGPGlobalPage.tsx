@@ -33,6 +33,10 @@ export default function BGPGlobalPage() {
 	const localAsState = evaluateNumericField(localAsRaw, LOCAL_AS_SPEC);
 	const handleLocalAsChange = (raw: string) => {
 		setLocalAsRaw(raw);
+		// `form` is the discriminant of the hook's return union: checking it
+		// narrows the destructured `handleChange` to its fetched signature
+		// (metadata pending renders nothing, so this is display-only).
+		if (!form) return;
 		handleChange('localAs')(evaluateNumericField(raw, LOCAL_AS_SPEC).parsed);
 	};
 
