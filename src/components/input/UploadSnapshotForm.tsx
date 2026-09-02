@@ -42,6 +42,7 @@ export default function UploadSnapshotForm(props: UploadSnapshotFormProps) {
 
 	React.useEffect(() => {
 		onChange({...form, isValid: false});
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, []);
 
 	return (

@@ -12,6 +12,7 @@ import {IInstance} from 'types/oam';
 import {IPieChartData} from 'types/global';
 import {derive_cpu_usage, derive_disk_usage, derive_memory_usage, IDerivedUsage} from 'utils/systemUsage';
 import CardBase from './CardBase';
+import MetricScrapeState from './MetricScrapeState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -20,7 +21,7 @@ export default function SystemUsageCard(props: {instance: IInstance | null}) {
 	const {instance} = props;
 
 	// Get live metrics with polling (same as ConnectionFlowCard)
-	const {metrics: liveMetrics, isLoading} = useLiveMetrics(instance, {keyPrefix: 'system-usage-realtime', refetchInterval: 10000});
+	const {metrics: liveMetrics, isLoading, failure: scrapeFailure, refetch: refetchMetrics} = useLiveMetrics(instance, {keyPrefix: 'system-usage-realtime', refetchInterval: 10000});
 
 	// Get system info separately using useStatus hook
 	const {processAttr, systemInfo, filesystemAttr} = useStatus(instance);
@@ -110,6 +111,10 @@ export default function SystemUsageCard(props: {instance: IInstance | null}) {
 	};
 
 	// Loading state
+	// A refused or disabled scrape is not this instance declining to publish a
+	// metric — say which it was, instead of falling through to "not reported".
+	if (scrapeFailure) return <MetricScrapeState title={t('System Usage')} failure={scrapeFailure} onRetry={refetchMetrics} />;
+
 	if (isLoading) {
 		return (
 			<CardBase title={t('System Usage')}>

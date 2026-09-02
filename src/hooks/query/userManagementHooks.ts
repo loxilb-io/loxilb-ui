@@ -7,6 +7,7 @@ import {
     request_delete_user
 } from 'connector/oam/oam';
 import { create_user } from 'connector/user';
+import { t } from 'i18next';
 import { useQueryOAMData } from './common';
 import { IUserUpdateRequest, ICreateUserRequest } from 'types/user';
 
@@ -15,16 +16,21 @@ import { IUserUpdateRequest, ICreateUserRequest } from 'types/user';
 //---------------------------------------------------------
 
 export function useAllUsers() {
-    const { data: users = [], refetch, isLoading, error } = useQueryOAMData(
+    const query = useQueryOAMData(
         ['all_users'], 
         query_get_all_users
     );
+    const { data: users = [], refetch, isLoading, error } = query;
 
     return {
         users,
         refetch,
         isLoading,
-        error
+        error,
+        // The un-defaulted query, so the page can tell "the read failed" from
+        // "there are no users". The `users = ` default above
+        // erases exactly that distinction for every other caller.
+        query
     };
 }
 
@@ -37,8 +43,10 @@ export function useAllUsers() {
  */
 export const updateUser = async (id: number, userData: IUserUpdateRequest) => {
     const result = await request_update_user(id, userData);
-    if (result.status === 'error') {
-        throw new Error(result.error);
+    if (result.status !== 'confirmed') {
+        // Thrown message is already localized (raw server prose stays in
+        // result.rawDetail, diagnostics only).
+        throw new Error(t(result.localeKey));
     }
     return result;
 };
@@ -48,8 +56,8 @@ export const updateUser = async (id: number, userData: IUserUpdateRequest) => {
  */
 export const deleteUser = async (id: number) => {
     const result = await request_delete_user(id);
-    if (result.status === 'error') {
-        throw new Error(result.error);
+    if (result.status !== 'confirmed') {
+        throw new Error(t(result.localeKey));
     }
     return result;
 };

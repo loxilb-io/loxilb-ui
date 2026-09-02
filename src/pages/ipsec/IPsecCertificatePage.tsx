@@ -19,6 +19,7 @@ import {useErrorPopup} from 'hooks/useErrorPopup';
 import {t} from 'i18next';
 import {Fragment, useRef, useState} from 'react';
 import {IIPsecCACertificateMod, IIPsecCertificateMod} from 'types/ipsec';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -26,8 +27,10 @@ import {IIPsecCACertificateMod, IIPsecCertificateMod} from 'types/ipsec';
 export default function IPsecCertificatePage() {
 	const inst = useInstanceFromURL();
 
-	const {data: certs, isError: certsError, refetch: refetchCerts} = useIPsecCertificates(inst);
-	const {data: caCerts, isError: caCertsError, refetch: refetchCACerts} = useIPsecCACertificates(inst);
+	const cert_query = useIPsecCertificates(inst);
+	const ca_cert_query = useIPsecCACertificates(inst);
+	const {data: certs, refetch: refetchCerts} = cert_query;
+	const {data: caCerts, refetch: refetchCACerts} = ca_cert_query;
 
 	const [selectedCertRows, setSelectedCertRows] = useState<number[]>([]);
 	const [selectedCARows, setSelectedCARows] = useState<number[]>([]);
@@ -56,10 +59,10 @@ export default function IPsecCertificatePage() {
 				if (!inst || !certFormRef.current) return;
 
 				const res = await request_upload_ipsec_certificate(inst, certFormRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Certificate uploaded.'), t('OK'));
 					setTimeout(() => refetchCerts(), 1000);
-				} else showAddError('IPsec certificate', res.error);
+				} else showAddError('IPsec certificate', t(res.localeKey));
 			},
 			true,
 		);
@@ -72,11 +75,11 @@ export default function IPsecCertificatePage() {
 		if (!item?.name) return;
 
 		const res = await request_delete_ipsec_certificate(inst, item.name);
-		if (res.status === 'success') {
+		if (res.status === 'confirmed') {
 			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
 			setSelectedCertRows([]);
 			setTimeout(() => refetchCerts(), 1000);
-		} else showDeleteError('IPsec certificate', res.error);
+		} else showDeleteError('IPsec certificate', t(res.localeKey));
 	};
 
 	//--- CA certificates -------------------------------------------------
@@ -100,10 +103,10 @@ export default function IPsecCertificatePage() {
 				if (!inst || !caFormRef.current) return;
 
 				const res = await request_upload_ipsec_ca_certificate(inst, caFormRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('CA certificate uploaded.'), t('OK'));
 					setTimeout(() => refetchCACerts(), 1000);
-				} else showAddError('CA certificate', res.error);
+				} else showAddError('CA certificate', t(res.localeKey));
 			},
 			true,
 		);
@@ -116,11 +119,11 @@ export default function IPsecCertificatePage() {
 		if (!item?.name) return;
 
 		const res = await request_delete_ipsec_ca_certificate(inst, item.name);
-		if (res.status === 'success') {
+		if (res.status === 'confirmed') {
 			openPopUp(t('Success'), t('Deleted successfully.'), t('OK'));
 			setSelectedCARows([]);
 			setTimeout(() => refetchCACerts(), 1000);
-		} else showDeleteError('CA certificate', res.error);
+		} else showDeleteError('CA certificate', t(res.localeKey));
 	};
 
 	return (
@@ -136,7 +139,7 @@ export default function IPsecCertificatePage() {
 						setSelectedCertRows([]);
 						refetchCerts();
 					}}
-					error={certsError}
+					state={toPageState(cert_query, {op: 'ipsec_certificate.list'})}
 				/>
 				<IPsecCACertTable
 					data={caCerts ?? []}
@@ -148,7 +151,7 @@ export default function IPsecCertificatePage() {
 						setSelectedCARows([]);
 						refetchCACerts();
 					}}
-					error={caCertsError}
+					state={toPageState(ca_cert_query, {op: 'ipsec_ca_certificate.list'})}
 				/>
 			</Stack>
 

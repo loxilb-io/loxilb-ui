@@ -16,6 +16,7 @@ import {Fragment, useEffect, useMemo, useRef, useState} from 'react';
 import {IBgpPolicy, IBgpPolicyInfo} from 'types/bgp_policy';
 import {IActionSet} from 'types/bgp_policy_action';
 import {IConditionSet} from 'types/bgp_policy_condition';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -23,7 +24,8 @@ import {IConditionSet} from 'types/bgp_policy_condition';
 export default function BGPDefinitionPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, isError, refetch} = useBGPPolicyDefs(inst); // IBgpPolicy[]
+	const bgp_policy_query = useBGPPolicyDefs(inst);
+	const {data, refetch} = bgp_policy_query; // IBgpPolicy[]
 	// wire fields are optional in swagger; the policy views require them — narrow once here
 	const def_info: IBgpPolicyInfo = {bgpPolicyAttr: (data ?? []) as IBgpPolicy[]};
 
@@ -58,10 +60,10 @@ export default function BGPDefinitionPage() {
 		if (!inst || !cur_policy || selected_rows.length === 0) return;
 
 		const res = await request_delete_bgp_policy_definition(inst, cur_policy.name);
-		if (res.status === 'success') {
+		if (res.status === 'confirmed') {
 			openPopUp(t('Success'), t('Deleted "{{name}}" successfully.', {name: cur_policy.name}), t('OK'));
 		} else {
-			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
+			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: t(res.localeKey)}), t('OK'));
 			return;
 		}
 		set_selected_rows([]);
@@ -92,10 +94,10 @@ export default function BGPDefinitionPage() {
 				if (!instanceRef.current) return;
 
 				const res = await request_create_bgp_policy_definition(inst, instanceRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
 					refetch();
-				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: res.error}), t('OK'));
+				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: t(res.localeKey)}), t('OK'));
 			},
 			true,
 		);
@@ -122,11 +124,11 @@ export default function BGPDefinitionPage() {
 					onChangeSelectedRows={set_selected_rows}
 					onAdd={handleAdd}
 					onDelete={handleDelete}
-					error={isError}
+					state={toPageState(bgp_policy_query, {op: 'bgp_policy.list'})}
 				/>
 			)}
 			{cur_tab_idx === 1 && (
-				<BGPActionTable action_list={action_list} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} onAdd={handleAdd} onDelete={handleDelete} error={isError} />
+				<BGPActionTable action_list={action_list} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} onAdd={handleAdd} onDelete={handleDelete} state={toPageState(bgp_policy_query, {op: 'bgp_policy.list'})} />
 			)}
 		</Fragment>
 	);

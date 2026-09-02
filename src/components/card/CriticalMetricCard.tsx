@@ -11,6 +11,7 @@ import {ITypedLiveMetricsResponse} from 'types/metrics';
 import AnimatedValue from 'components/element/AnimatedValue';
 import RateLineGraph from 'components/element/RateLineGraph';
 import CardBase from './CardBase';
+import MetricScrapeState from './MetricScrapeState';
 
 //---------------------------------------------------------
 // Component Props
@@ -42,7 +43,7 @@ export default function CriticalMetricCard(props: CriticalMetricCardProps) {
 	} = props;
 
 	// Get live metrics with polling
-	const {metrics: liveMetrics} = useLiveMetrics(instance, {
+	const {metrics: liveMetrics, failure: scrapeFailure, refetch: refetchMetrics} = useLiveMetrics(instance, {
 		keyPrefix: 'critical-metrics-realtime',
 		refetchInterval: 10000,
 		extraKey: metricField as string,
@@ -100,6 +101,10 @@ export default function CriticalMetricCard(props: CriticalMetricCardProps) {
 		label: title,
 		values: metricHistory
 	}), [metricHistory, title]);
+
+	// A refused or disabled scrape is not this instance declining to publish a
+	// metric — say which it was, instead of falling through to "not reported".
+	if (scrapeFailure) return <MetricScrapeState title={title} failure={scrapeFailure} onRetry={refetchMetrics} />;
 
 	// First poll still in flight → skeleton, not a blank card.
 	if (!polled && metricHistory.length === 0) {

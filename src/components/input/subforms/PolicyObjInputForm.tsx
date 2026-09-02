@@ -96,6 +96,7 @@ export default function TargetObjectInputForm(props: {value: IQoSTargetObject; o
 				onChange({attachment: cur_type, polObjName: ''});
 			}
 		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, [cur_type, rules, ports]);
 
 	return (

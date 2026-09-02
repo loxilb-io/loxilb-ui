@@ -15,6 +15,7 @@ import {t} from 'i18next';
 import {useMemo, useRef, useState} from 'react';
 import {IFdbAttribute, IFdbData} from 'types/fdb';
 import {identifyFdbEntries} from 'types/fdb_identity';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -22,7 +23,8 @@ import {identifyFdbEntries} from 'types/fdb_identity';
 export default function FDBPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, isError, refetch} = useFDB(inst); // IFdbAttribute[]
+	const fdb_query = useFDB(inst);
+	const {data, refetch} = fdb_query; // IFdbAttribute[]
 	const fdb_info: IFdbData = {fdbAttr: data ?? []};
 
 	   const [selected_rows, set_selected_rows] = useState<GridRowId[]>([]);
@@ -46,14 +48,14 @@ export default function FDBPage() {
 				return request_delete_fdb(inst, item.macAddress, item.dev);
 			}),
 		);
-		const failures = results.filter(res => res.status === 'error');
+		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
 			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
 		} else if (failures.length < results.length) {
-			showDeleteError('FDB entry', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+			showDeleteError('FDB entry', t('{{succeeded}} succeeded, {{failed}} failed. {{error}}', {succeeded: results.length - failures.length, failed: failures.length, error: t(failures[0].localeKey)}));
 		} else {
-			showDeleteError('FDB entry', failures[0].error);
+			showDeleteError('FDB entry', t(failures[0].localeKey));
 			return;
 		}
 		set_selected_rows([]);
@@ -85,12 +87,12 @@ export default function FDBPage() {
 				if (!instanceRef.current) return;
 
 				const res = await request_create_fdb(inst, instanceRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
 					setTimeout(() => {
 						refetch();
 					}, 1000);
-				} else showAddError('FDB entry', res.error);
+				} else showAddError('FDB entry', t(res.localeKey));
 			},
 			true,
 		);
@@ -105,7 +107,7 @@ export default function FDBPage() {
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
 			   onRefresh={refetch}
-			   error={isError}
+			   state={toPageState(fdb_query, {op: 'fdb.list'})}
 		   />
 
 		   {/* Error Popup */}

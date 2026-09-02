@@ -22,6 +22,9 @@ import {useInstanceCapabilities} from 'hooks/query/flavorHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useLoadBalancerConfig, useMirrors, useQOSPolicies} from 'hooks/query/queryHooks';
+import {fromQueryRefetch} from 'hooks/query/reconcile';
+import {useReconcileReporter} from 'hooks/query/reconcileReport';
+import {lbRuleAppeared, lbRulesGone} from 'hooks/query/confirmPredicates';
 import {t} from 'i18next';
 import {Fragment, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {useSearchParams} from 'react-router-dom';
@@ -29,6 +32,7 @@ import {IEndpoint, ILBData, IServiceConfiguration} from 'types/load_balancer';
 import {lbRuleRowId} from 'types/lb_identity';
 import {IMirrorConfiguration} from 'types/mirror';
 import {buildQoSRuleTarget, IPolicyConfiguration} from 'types/qos';
+import {toPageState} from 'components/state/pageState';
 
 export type LBEditStrategy = 'create' | 'merge-patch' | 'reconcile' | 'block-fullproxy';
 
@@ -66,7 +70,8 @@ export default function LBRulePage() {
 	const servName = searchParams.get('servName');
 	const qosTarget = searchParams.get('qosTarget');
 
-	const {data: lb_data, isError, refetch} = useLoadBalancerConfig(inst);
+	const lb_query = useLoadBalancerConfig(inst);
+	const {data: lb_data, refetch} = lb_query;
 	const lb_info: ILBData = useMemo(() => ({lbAttr: lb_data ?? []}), [lb_data]);
 
 	const {data: data_qos} = useQOSPolicies(inst);
@@ -103,6 +108,7 @@ export default function LBRulePage() {
 
 	const {openPopUp, enableYes} = usePopUp();
 	const {errorPopup, showAddError, showUpdateError, showDeleteError, closeErrorPopup} = useErrorPopup();
+	const {report, reconcile} = useReconcileReporter();
 
 	const handleDelete = useCallback(async () => {
 		if (!inst || selectedItems.length === 0) return;
@@ -119,25 +125,28 @@ export default function LBRulePage() {
 		});
 
 		const results = await Promise.all(deletePromises);
-		const failures = results.filter(res => res.status === 'error');
+		// {result:"fail"} envelopes now map to failed — a dataplane-rejected
+		// delete can no longer be counted as succeeded.
+		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
-			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: selectedItems.length}), t('OK'));
 			set_selected_rows([]);
-			setTimeout(() => {
-				refetch();
-			}, 1000);
+			// Confirmation is "the rules are gone from the list", not "the DELETE
+			// was accepted" — a dataplane that rejects after acceptance leaves
+			// the rows in place, which the operator must be told about.
+			await report({refetch: fromQueryRefetch(refetch), confirm: lbRulesGone(selectedItems)}, t('Deleted {{count}} item(s) successfully.', {count: selectedItems.length}));
 		} else if (failures.length < results.length) {
-			// Partial success
-			showDeleteError('load balancer rule(s)', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
-			setTimeout(() => {
-				refetch();
-			}, 1000);
+			// Partial success: the error popup already carries the outcome, so
+			// reconcile silently — but only against the rules that actually
+			// went (Promise.all preserves order, so results[i] is selectedItems[i]).
+			showDeleteError('load balancer rule(s)', t('{{succeeded}} succeeded, {{failed}} failed. {{error}}', {succeeded: results.length - failures.length, failed: failures.length, error: t(failures[0].localeKey)}));
+			const deleted = selectedItems.filter((_, i) => results[i].status === 'confirmed');
+			await reconcile({refetch: fromQueryRefetch(refetch), confirm: lbRulesGone(deleted)});
 		} else {
 			// All failed
-			showDeleteError('load balancer rule(s)', failures[0].error);
+			showDeleteError('load balancer rule(s)', t(failures[0].localeKey));
 		}
-	}, [inst, selectedItems, showDeleteError, refetch, openPopUp]);
+	}, [inst, selectedItems, showDeleteError, refetch, report, reconcile]);
 
 	const instanceRef = useRef<IServiceConfiguration | null>(null);
 	const handleAdd = useCallback(() => {
@@ -164,15 +173,13 @@ export default function LBRulePage() {
 			async () => {
 				if (!instanceRef.current) return;
 
-				const res = await request_create_load_balancer_config(inst, instanceRef.current, effectiveFlavor);
-				if (res.status === 'success') {
-					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
-					setTimeout(() => {
-						refetch();
-					}, 1000);
+				const submitted = instanceRef.current;
+				const res = await request_create_load_balancer_config(inst, submitted, effectiveFlavor);
+				if (res.status === 'confirmed') {
+					await report({refetch: fromQueryRefetch(refetch), confirm: lbRuleAppeared(submitted)}, t('Added successfully.'));
 				} else {
-					// Show formatted error popup
-					showAddError('load balancer rule', res.error);
+					// Localized mapped message; raw prose stays in diagnostics.
+					showAddError('load balancer rule', t(res.localeKey));
 				}
 			},
 			true,
@@ -180,6 +187,7 @@ export default function LBRulePage() {
 	// Flavor resolves asynchronously. Rebuild this callback when it changes so
 	// an IGW dialog cannot submit through the initial OSS-safe projection and
 	// silently strip the Gateway-only fields the operator just entered.
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, [inst, caps.resolved, effectiveFlavor, showAddError, refetch, enableYes]);
 
 	// Update handler for LB rules
@@ -348,26 +356,26 @@ export default function LBRulePage() {
 							const del = osa.name
 								? await request_delete_lb_by_name(inst, osa.name)
 								: await request_delete_lb_by_full_key(inst, selectedLB);
-							if (del.status !== 'success') {
-								showUpdateError('load balancer rule', del.error);
+							if (del.status !== 'confirmed') {
+								showUpdateError('load balancer rule', t(del.localeKey));
 								return;
 							}
 						}
 						res = await request_create_load_balancer_config(inst, upsert, effectiveFlavor);
 					}
 				}
-				if (res.status === 'success') {
-					openPopUp(t('Success'), t('Load balancer rule updated successfully.'), t('OK'));
-					setTimeout(() => {
-						refetch();
-					}, 1000);
+				if (res.status === 'confirmed') {
+					// The delete+re-create strategy can move the rule's key, so
+					// confirm against the EDITED identity, not the original row.
+					await report({refetch: fromQueryRefetch(refetch), confirm: lbRuleAppeared(serviceConfig)}, t('Load balancer rule updated successfully.'));
 				} else {
-					// Show formatted error popup
-					showUpdateError('load balancer rule', res.error);
+					// Localized mapped message; raw prose stays in diagnostics.
+					showUpdateError('load balancer rule', t(res.localeKey));
 				}
 			},
 			true,
 		);
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, [inst, caps, selectedItem, showUpdateError, refetch, enableYes]);
 
 	const handleRefresh = () => {
@@ -402,7 +410,7 @@ export default function LBRulePage() {
 				onDelete={handleDelete}
 				onUpdate={caps.resolved ? handleUpdate : undefined}
 					onRefresh={handleRefresh}
-					error={isError}
+					state={toPageState(lb_query, {op: 'lb.list'})}
 			/>
 
 			{selectedItem && (

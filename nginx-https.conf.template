@@ -7,10 +7,16 @@ server {
     listen [::]:${HTTP_PORT};
     server_name _;
 
+    # Redirect responses carry the security set too (no HSTS on plain HTTP —
+    # see the snippet's header comment).
+    include /etc/nginx/snippets/security-headers.conf;
+
     # Load balancers probe over HTTP; a 301 here would make them mark the
     # container unhealthy.
     location = /health {
         access_log off;
+        # Own add_header ⇒ inherited headers are gone; restate the set.
+        include /etc/nginx/snippets/security-headers.conf;
         add_header Content-Type text/plain;
         return 200 "healthy\n";
     }

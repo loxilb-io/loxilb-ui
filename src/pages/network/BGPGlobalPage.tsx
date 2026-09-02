@@ -3,12 +3,18 @@
 //---------------------------------------------------------
 import {Box, Button, Stack, Typography} from '@mui/material';
 import ParamBox from 'components/element/ParamBox';
+import {evaluateNumericField} from 'components/input/numericField';
+import {isValidPort} from 'common';
 import {request_configure_bgp_global} from 'connector/instance/bgp';
 import useFormWithParams from 'hooks/inputFormHook';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
 import {t} from 'i18next';
+import React from 'react';
 import {IBgpGlobalConfig} from 'types/bgp_policy';
+
+// AS number: 1..2^32-1 (0 is reserved, not a usable AS).
+const LOCAL_AS_SPEC = {required: true, min: 1, max: 4294967295};
 
 //---------------------------------------------------------
 // Main Component
@@ -19,17 +25,42 @@ export default function BGPGlobalPage() {
 
 	const {form, params, handleChange} = useFormWithParams<IBgpGlobalConfig>('IBgpGlobalConfig');
 
+	// Raw text as typed: the wire value updates only on a
+	// valid parse; garbage keeps the text on screen with a field error and
+	// blocks Apply — it must never silently become 0 (an invalid AS the
+	// old required-check then blamed on a "missing" field).
+	const [localAsRaw, setLocalAsRaw] = React.useState('');
+	const localAsState = evaluateNumericField(localAsRaw, LOCAL_AS_SPEC);
+	const handleLocalAsChange = (raw: string) => {
+		setLocalAsRaw(raw);
+		// `form` is the discriminant of the hook's return union: checking it
+		// narrows the destructured `handleChange` to its fetched signature
+		// (metadata pending renders nothing, so this is display-only).
+		if (!form) return;
+		handleChange('localAs')(evaluateNumericField(raw, LOCAL_AS_SPEC).parsed);
+	};
+
+	// PortBox reports '' as undefined and out-of-range as its own field error;
+	// the page only has to keep undefined out of the wire (key omitted — the
+	// gateway defaults to 179) and gate Apply on a sane value.
+	const listenPortInvalid = form?.listenPort !== undefined && !isValidPort(form.listenPort);
+
 	const handleApply = () => {
 		if (!inst || !form) return;
+		// Visible field errors block Apply; an untouched empty field falls
+		// through to the required popup below instead of a silent no-op.
+		if ((localAsRaw !== '' && !localAsState.valid) || listenPortInvalid) return;
 		if (!form.routerId || !form.localAs) {
 			openPopUp(t('Error'), t('Router ID and Local AS are required.'), t('OK'));
 			return;
 		}
 		openPopUp(t('Apply BGP Global Config'), t('Are you sure you want to apply the BGP global configuration?'), t('Apply'), t('Cancel'), async () => {
-			const res = await request_configure_bgp_global(inst, form);
-			if (res.status === 'success') {
+			const {listenPort, ...rest} = form;
+			const payload = {...rest, ...(listenPort !== undefined && {listenPort})} as IBgpGlobalConfig;
+			const res = await request_configure_bgp_global(inst, payload);
+			if (res.status === 'confirmed') {
 				openPopUp(t('Success'), t('BGP global configuration applied.'), t('OK'));
-			} else openPopUp(t('Error'), t('Failed to update. {{error}}', {error: res.error}), t('OK'));
+			} else openPopUp(t('Error'), t('Failed to update. {{error}}', {error: t(res.localeKey)}), t('OK'));
 		});
 	};
 
@@ -41,14 +72,17 @@ export default function BGPGlobalPage() {
 			<ParamBox label={t('Router ID')} value={form.routerId ?? ''} onChange={handleChange('routerId')} param_desc={{...params?.routerId, type: 'ipaddress'}} />
 			<ParamBox
 				label={t('Local AS')}
-				value={form.localAs ?? ''}
-				onChange={(v: any) => handleChange('localAs')(parseInt(v) || 0)}
+				value={localAsRaw}
+				onChange={handleLocalAsChange}
+				raw
+				error={localAsRaw !== '' && !localAsState.valid}
+				helperText={localAsRaw !== '' ? localAsState.error : undefined}
 				param_desc={{...params?.localAs, type: 'integer'}}
 			/>
 			<ParamBox
 				label={t('Listen Port')}
 				value={form.listenPort ?? ''}
-				onChange={(v: any) => handleChange('listenPort')(parseInt(v) || 0)}
+				onChange={handleChange('listenPort')}
 				param_desc={{...params?.listenPort, type: 'port', description: 'BGP listen port (default 179)'}}
 			/>
 			<ParamBox

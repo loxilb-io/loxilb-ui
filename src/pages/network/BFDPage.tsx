@@ -13,6 +13,7 @@ import {useBFD} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {useMemo, useRef, useState} from 'react';
 import {IBFDAttribute, IBFDAttribureInfo, IBfdInput} from 'types/bfd';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -20,7 +21,8 @@ import {IBFDAttribute, IBFDAttribureInfo, IBfdInput} from 'types/bfd';
 export default function BFDPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, isError, refetch} = useBFD(inst); // IBFDAttribute[]
+	const bfd_query = useBFD(inst);
+	const {data, refetch} = bfd_query; // IBFDAttribute[]
 	const attr_info: IBFDAttribureInfo = {Attr: data ?? []};
 
    const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds hash ids
@@ -46,14 +48,14 @@ export default function BFDPage() {
 		if (!inst || selectedItems.length === 0) return;
 
 		const results = await Promise.all(selectedItems.map(item => request_delete_bfd(inst, item.remoteIp)));
-		const failures = results.filter(res => res.status === 'error');
+		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
 			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
 		} else if (failures.length < results.length) {
-			showDeleteError('BFD entry', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+			showDeleteError('BFD entry', t('{{succeeded}} succeeded, {{failed}} failed. {{error}}', {succeeded: results.length - failures.length, failed: failures.length, error: t(failures[0].localeKey)}));
 		} else {
-			showDeleteError('BFD entry', failures[0].error);
+			showDeleteError('BFD entry', t(failures[0].localeKey));
 			return;
 		}
 		set_selected_rows([]);
@@ -85,12 +87,12 @@ export default function BFDPage() {
 			   if (!instanceRef.current) return;
 
 			   const res = await request_create_bfd(inst, instanceRef.current);
-			   if (res.status === 'success') {
+			   if (res.status === 'confirmed') {
 				   openPopUp(t('Success'), t('Added successfully.'), t('OK'));
 				   setTimeout(() => {
 						refetch();
 					}, 1000);
-			   } else showAddError('BFD entry', res.error);
+			   } else showAddError('BFD entry', t(res.localeKey));
 		   },
 		   true,
 	   );
@@ -110,7 +112,7 @@ export default function BFDPage() {
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
 		   onRefresh={handleRefresh}
-		   error={isError}
+		   state={toPageState(bfd_query, {op: 'bfd.list'})}
 		   />
 
 		   {/* Error Popup */}

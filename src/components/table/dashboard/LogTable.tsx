@@ -9,12 +9,18 @@ import {useMemo, useState} from 'react';
 import {IDataTableColumnDef} from 'types/global';
 import {ILog} from 'types/log';
 import {filterLogsByPeriod, sortLogsNewestFirst, toLogRow} from './logTableLogic';
+import {PageDataState} from 'components/state/pageState';
+import PageStateBanner from 'components/state/PageStateBanner';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function LogTable(props: {data: ILog[]; selected_rows: number[]; onChangeSelectedRows: any}) {
-	const {data, selected_rows, onChangeSelectedRows} = props;
+export default function LogTable(props: {data: ILog[]; selected_rows: number[]; onChangeSelectedRows: any; state?: PageDataState<unknown>; onRefresh?: () => void}) {
+	const {data, selected_rows, onChangeSelectedRows, state, onRefresh} = props;
+
+	// "No logs to display" is a claim about the server; it must not be made on
+	// behalf of a request that never got an answer.
+	const read_failed = state?.kind === 'denied' || state?.kind === 'unavailable' || state?.kind === 'failed';
 
 	const [startDatetimeStr, setStartDatetimeStr] = useState<string>('');
 	const [endDatetimeStr, setEndDatetimeStr] = useState<string>('');
@@ -52,9 +58,15 @@ export default function LogTable(props: {data: ILog[]; selected_rows: number[]; 
 				/>
 			</Box>
 
+			{/* This table short-circuits on zero rows and never mounts DataTable,
+			    so the page state has to be rendered here as well — otherwise it
+			    is unreachable in exactly the case it exists for, a read that
+			    failed and therefore produced no rows. */}
+			{state && state.kind !== 'empty' && <PageStateBanner state={state} name={t('Log')} onRetry={onRefresh} />}
+
 			{rows.length > 0 ? (
-				<DataTable name={'Log'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} hideMenuBar hideCheckbox />
-			) : (
+				<DataTable name={'Log'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} state={state} onRefresh={onRefresh} hideMenuBar hideCheckbox />
+			) : read_failed ? null : (
 				<Typography variant="body2" color="text.secondary">
 					{startDatetimeStr || endDatetimeStr ? t('No logs in selected period') : t('No logs to display')}
 				</Typography>

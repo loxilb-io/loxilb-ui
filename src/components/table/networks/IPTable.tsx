@@ -5,12 +5,13 @@ import DataTable from 'components/table/DataTable';
 import {IDataTableColumnDef} from 'types/global';
 import {IIpData} from 'types/ip';
 import {getStableHash} from 'common';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function IPTable(props: {data: IIpData; title?: string; selected_rows: number[]; onChangeSelectedRows: any; onDelete: any; onUpdate?: any; onRefresh?: any; error?: boolean}) {
-	const {data, title, selected_rows, onChangeSelectedRows, onDelete, onUpdate, onRefresh, error} = props;
+export default function IPTable(props: {data: IIpData; title?: string; selected_rows: number[]; onChangeSelectedRows: any; onDelete: any; onUpdate?: any; onRefresh?: any; state?: PageDataState<unknown>; error?: boolean}) {
+	const {data, title, selected_rows, onChangeSelectedRows, onDelete, onUpdate, onRefresh, state, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'ipAddress', header: 'IP Addresses', width: 'super_wide', type: 'mono', tooltip: 'Assigned IP Addresses'},
@@ -44,6 +45,7 @@ export default function IPTable(props: {data: IIpData; title?: string; selected_
 			onRefresh={onRefresh}
 			hideIdColumn={false}
 			defaultSort={{field: 'dev', sort: 'asc'}}
+			state={state}
 			error={error}
 		/>
 	);

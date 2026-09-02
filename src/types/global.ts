@@ -55,15 +55,19 @@ export interface IPostParamDesc {
 	};
 }
 
+export type PopupCloseReason = 'yes' | 'no' | 'escape' | 'backdrop';
+
 export interface IPopupState {
 	is_open: boolean;
 	title: string;
 	contents: string | ReactNode;
 	yes: string;
 	no: string | undefined;
-	handle_yes: () => void;
-	handle_no: () => void;
+	handle_yes: () => void | Promise<void>;
+	handle_no: (reason: PopupCloseReason) => void;
 	disable_yes?: boolean;
+	persistent?: boolean; // Escape/backdrop do nothing; only for API-key reveal + forced relogin
+	busy?: boolean; // set true while handle_yes runs; disables both buttons + Escape
 }
 
 export interface IPieChartData {

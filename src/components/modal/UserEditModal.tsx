@@ -72,6 +72,7 @@ export default function UserEditModal(props: UserEditModalProps) {
 		} catch (error) {
 			// Error is already handled by parent component (UserManagementPage)
 			// Just need to prevent the error from bubbling up further
+			// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 			console.error('User update failed:', error);
 		}
 	};

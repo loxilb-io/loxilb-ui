@@ -42,6 +42,7 @@ export default function MACAddressBox(props: {
 
 	useEffect(() => {
 		onChange('');
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, [disabled]);
 
 	// Combine internal and external error states

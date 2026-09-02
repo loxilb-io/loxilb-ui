@@ -1,3 +1,5 @@
+import {OpResult} from 'connector/fetcher/opResult';
+
 //---------------------------------------------------------
 // Interfaces for /metrics/flowcount
 //---------------------------------------------------------
@@ -156,6 +158,19 @@ export interface ILiveMetricsResponse {
 	 * exposition with no samples yet would make them diverge.
 	 */
 	available: boolean;
+	/**
+ * Why the scrape produced nothing, when it produced nothing.
+	 *
+	 * `available: false` says we do not know the numbers; this says whether
+	 * that is a *state* or a *failure*, which is the difference between a
+	 * placeholder and an error banner. Absent on a healthy scrape, and also
+	 * absent when the instance answered 200 with an exposition that parses to
+	 * no samples — that is a working instance reporting nothing, not a fault.
+	 *
+	 * `denied` here is the --userservice 401, `unavailable` is collection
+	 * switched off (503), `failed` is an instance that is actually broken.
+	 */
+	failure?: OpResult;
 }
 
 /**
@@ -202,4 +217,6 @@ export interface ITypedLiveMetricsResponse {
 	total_metrics: number;
 	/** See `ILiveMetricsResponse.available`. */
 	available: boolean;
+	/** See `ILiveMetricsResponse.failure`. */
+	failure?: OpResult;
 }

@@ -53,7 +53,11 @@ test.describe('@gw cicd/ai-apikey — AI API-key management contract', () => {
 		expect(body.isValid).toBeUndefined();
 		expect((await req.response())?.status()).toBeLessThan(300);
 
-		// The plaintext key is surfaced exactly once.
+		// The plaintext key is surfaced exactly once — the reveal is persistent,
+		// so Escape and a backdrop click must NOT dismiss it before OK.
+		await expect(dialogTitle(page, 'API Key Created')).toBeVisible();
+		await page.keyboard.press('Escape');
+		await page.mouse.click(5, 5);
 		await expect(dialogTitle(page, 'API Key Created')).toBeVisible();
 		await dialogButton(page, 'OK').click();
 

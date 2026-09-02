@@ -1,0 +1,5 @@
+# Configuration for actionlint (.github/workflows/actionlint.yml).
+self-hosted-runner:
+  # e2e.yml targets the project's self-hosted E2E runner by this label.
+  labels:
+    - loxilb-testbed

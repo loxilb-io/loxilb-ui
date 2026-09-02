@@ -42,8 +42,9 @@ describe('load-balancer AI wire boundary', () => {
 
 		const result = await request_create_load_balancer_config(instance, data, 'inference-gateway');
 
-		expect(result.status).toBe('error');
-		expect(result.error).toContain('llama.cpp');
+		expect(result.status).toBe('invalid');
+		// Field detail is diagnostics-only under OpResult (never rendered raw).
+		expect(result.rawDetail).toContain('llama.cpp');
 		expect(post).not.toHaveBeenCalled();
 	});
 
@@ -62,7 +63,7 @@ describe('load-balancer AI wire boundary', () => {
 
 		const result = await request_create_load_balancer_config(instance, data, 'inference-gateway');
 
-		expect(result.status).toBe('success');
+		expect(result.status).toBe('confirmed');
 		expect(post).toHaveBeenCalledOnce();
 		const payload = post.mock.calls[0][2] as IServiceConfiguration;
 		expect(payload.serviceArguments.pdBootstrapPort).toBe(8998);
@@ -80,7 +81,7 @@ describe('load-balancer AI wire boundary', () => {
 
 		const result = await request_create_load_balancer_config(instance, data, 'inference-gateway');
 
-		expect(result.status).toBe('success');
+		expect(result.status).toBe('confirmed');
 		const payload = post.mock.calls[0][2] as IServiceConfiguration;
 		expect(payload.serviceArguments).not.toHaveProperty('kvEngineType');
 		expect(payload.serviceArguments).not.toHaveProperty('kvBlockSize');
@@ -110,7 +111,7 @@ describe('load-balancer AI wire boundary', () => {
 
 		const result = await request_create_load_balancer_config(instance, data, 'loxilb');
 
-		expect(result.status).toBe('success');
+		expect(result.status).toBe('confirmed');
 		const payload = post.mock.calls[0][2] as IServiceConfiguration;
 		expect(payload.serviceArguments).not.toHaveProperty('api_key_auth');
 		expect(payload.serviceArguments).not.toHaveProperty('kvEngineType');
@@ -134,7 +135,7 @@ describe('load-balancer full-key delete boundary', () => {
 		data.serviceArguments.name = '';
 		data.serviceArguments.model_name = 'meta/llama 3';
 
-		expect((await request_delete_lb_by_full_key(instance, data)).status).toBe('success');
+		expect((await request_delete_lb_by_full_key(instance, data)).status).toBe('confirmed');
 		expect(del).toHaveBeenCalledWith(
 			instance,
 			'/config/loadbalancer/externalipaddress/192.0.2.10/port/8000/protocol/tcp?model_name=meta%2Fllama+3',

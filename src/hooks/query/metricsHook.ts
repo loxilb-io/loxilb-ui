@@ -5,6 +5,7 @@ import {useQuery} from '@tanstack/react-query';
 import {InstanceFlavor} from 'api/capabilities';
 import {query_get_live_metrics} from 'connector/instance/metrics';
 import {ITypedLiveMetricsResponse} from 'types/metrics';
+import {OpResult} from 'connector/fetcher/opResult';
 import {IInstance} from 'types/oam';
 import {useInstanceFlavor} from './flavorHook';
 
@@ -35,10 +36,28 @@ export interface ILiveMetricsOptions {
 export function useLiveMetrics(
 	instance: IInstance | null,
 	options: ILiveMetricsOptions
-): {metrics: ITypedLiveMetricsResponse | undefined; isLoading: boolean; flavor: InstanceFlavor | undefined} {
+): {
+	metrics: ITypedLiveMetricsResponse | undefined;
+	isLoading: boolean;
+	flavor: InstanceFlavor | undefined;
+	/**
+	 * Why the last scrape produced no exposition, when that is knowable
+ *. Undefined means the scrape succeeded — including a healthy
+	 * instance whose counters read zero. A card must branch on this BEFORE
+	 * falling back to "not reported by this instance": a refused scrape (401)
+	 * and collection being switched off (503) are not the instance choosing
+	 * not to publish a metric, and saying so blames the wrong thing.
+	 */
+	failure: OpResult | undefined;
+	refetch: () => void;
+} {
 	const {keyPrefix, refetchInterval, extraKey} = options;
 	const {flavor} = useInstanceFlavor(instance);
-	const effective: InstanceFlavor = flavor ?? 'inference-gateway';
+	// Fail-narrow like the capability surface: read under the loxilb naming
+	// table while unresolved. Harmless — diverging names resolve to absent,
+	// and the flavor is part of the query key, so late resolution swaps to a
+	// fresh cache entry without a reload.
+	const effective: InstanceFlavor = flavor ?? 'loxilb';
 
 	const query = useQuery({
 		queryKey: [keyPrefix, instance?.id, effective, ...(extraKey === undefined ? [] : [extraKey])],
@@ -52,5 +71,14 @@ export function useLiveMetrics(
 		staleTime: 5000,
 	});
 
-	return {metrics: query.data as ITypedLiveMetricsResponse | undefined, isLoading: query.isLoading, flavor};
+	const snapshot = query.data as ITypedLiveMetricsResponse | undefined;
+	return {
+		metrics: snapshot,
+		isLoading: query.isLoading,
+		flavor,
+		failure: snapshot?.failure,
+		refetch: () => {
+			void query.refetch();
+		},
+	};
 }

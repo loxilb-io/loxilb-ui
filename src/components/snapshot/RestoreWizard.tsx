@@ -37,6 +37,7 @@ import {t} from 'i18next';
 import React from 'react';
 import {IGatewayRestoreResult, IRestoreOutcomeParsed, ISnapshot, TRestoreWizardStep} from 'types/snapshot';
 import {canContinueToCommit, classifyCommitResult, isDryRunBlocked} from './wizardLogic';
+import {snapshotOpErrorText} from './snapshotOpError';
 
 //---------------------------------------------------------
 // Sub-renderers
@@ -200,8 +201,11 @@ export default function RestoreWizard(props: RestoreWizardProps) {
 		request_restore_snapshot(snapshot.id, 'dry-run').then(res => {
 			if (cancelled) return;
 			setDryRunLoading(false);
-			if (res.status === 'success') setDryRunOutcome(res.outcome);
-			else setDryRunError(res.error);
+			if (res.status === 'confirmed' && res.data) setDryRunOutcome(res.data);
+			// The wizard's error panel is this flow's diagnostic surface — keep
+			// the server detail visible under the localized headline (deliberate
+			// deviation; restore panels render gateway output verbatim by design).
+			else setDryRunError(snapshotOpErrorText(res));
 		});
 		return () => {
 			cancelled = true;
@@ -229,8 +233,8 @@ export default function RestoreWizard(props: RestoreWizardProps) {
 		setStep('committing');
 		committedRef.current = true;
 		const res = await request_restore_snapshot(snapshot.id, 'commit');
-		if (res.status === 'success') setCommitOutcome(res.outcome);
-		else setCommitError(res.error);
+		if (res.status === 'confirmed' && res.data) setCommitOutcome(res.data);
+		else setCommitError(snapshotOpErrorText(res));
 		setStep('result');
 	};
 

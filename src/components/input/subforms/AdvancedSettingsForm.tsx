@@ -1,4 +1,4 @@
-import {Box, Stack} from '@mui/material';
+import {Stack} from '@mui/material';
 import modes from 'assets/json/modes.json';
 import opers from 'assets/json/opers.json';
 import securities from 'assets/json/securities.json';

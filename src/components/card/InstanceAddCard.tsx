@@ -5,14 +5,12 @@ import AddIcon from '@mui/icons-material/Add';
 import {Box, Card, CardContent, Typography} from '@mui/material';
 import ImageInstance from 'assets/image/instance.svg';
 import InstanceInputForm from 'components/input/InstanceInputForm';
-import {describe_instance_error, TInstanceFormData} from 'components/input/instanceFormLogic';
+import {describe_instance_op_error, TInstanceFormData} from 'components/input/instanceFormLogic';
 import {request_create_instance} from 'connector/oam/oam';
 import {usePopUp} from 'hooks/popupHook';
 import {useInstances} from 'hooks/query/oamHooks';
 import {useTranslation} from 'react-i18next';
 import {useRef, useState} from 'react';
-import {IInstanceInput} from 'types/oam';
-
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
@@ -63,15 +61,16 @@ export default function InstanceCardAdd() {
 				try {
 					const {isValid, errors, ...payload} = instanceRef.current;
 					const res = await request_create_instance(payload);
-					if (res.status === 'success') {
+					if (res.status === 'confirmed') {
 						openPopUp(t('Success'), t('Instance created successfully.'), t('OK'));
 						refetch();
 					} else {
-						openPopUp(t('Error'), t('Failed to create instance. {{error}}', {error: describe_instance_error(res.error)}), t('OK'));
+						// Localized detail only — raw server prose stays in
+						// res.rawDetail (diagnostics), never in the dialog.
+						openPopUp(t('Error'), t('Failed to create instance. {{error}}', {error: t(describe_instance_op_error(res))}), t('OK'));
 					}
-				} catch (err) {
-					const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-					openPopUp(t('Error'), t('Failed to create instance. {{error}}', {error: errorMessage}), t('OK'));
+				} catch {
+					openPopUp(t('Error'), t('Failed to create instance. {{error}}', {error: t('The operation could not be completed.')}), t('OK'));
 				} finally {
 					setLoading(false);
 				}

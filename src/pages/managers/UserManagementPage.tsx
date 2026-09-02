@@ -11,7 +11,7 @@ import ValueBunch from 'components/element/ValueBunch';
 import ScrollableBox from 'components/layout/ScrollableBox';
 import UserManagementTable from 'components/table/managers/UserManagementTable';
 import UserEditModal from 'components/modal/UserEditModal';
-import {useMyInfo, useRole} from 'hooks/query/oamHooks';
+import {useMyInfo} from 'hooks/query/oamHooks';
 import {useAllUsers, updateUser, deleteUser, createUser} from 'hooks/query/userManagementHooks';
 import {usePopUp} from 'hooks/popupHook';
 import {login_user} from 'connector/user';
@@ -22,6 +22,7 @@ import {Fragment, useState, useMemo, useEffect, useCallback, useRef} from 'react
 import {getStableHash} from 'common';
 import {IUser} from 'types/oam';
 import {IUserUpdateRequest, ICreateUserRequest} from 'types/user';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Tab Panel Component
@@ -96,6 +97,7 @@ function UserProfilePanel(props: {onEditProfile: () => void}) {
 //---------------------------------------------------------
 // Password Management Panel
 //---------------------------------------------------------
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
 function PasswordManagementPanel() {
 	return (
 		<Stack spacing={3}>
@@ -134,7 +136,7 @@ function AdminUserManagementPanel(props: {
 	refetchRef?: React.MutableRefObject<(() => void) | null>;
 }) {
 	const {currentUser, onEditUser, onAddUser, onRefresh, refetchRef} = props;
-	const {users, isLoading, refetch} = useAllUsers();
+	const {users, isLoading, refetch, query: users_query} = useAllUsers();
 
 	const {openPopUp} = usePopUp();
 	const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds hash ids
@@ -234,6 +236,7 @@ function AdminUserManagementPanel(props: {
 					onRefresh={handleRefresh}
 					currentUserId={currentUser?.id}
 					isAdmin={currentUser?.role === 'admin'}
+					state={toPageState(users_query, {op: 'user.list'})}
 				/>
 			</Fragment>
 		</Stack>
@@ -330,14 +333,20 @@ export default function UserManagementPage() {
 					// Check if user provided a password (either new or current)
 					if (userData.password) {
 						try {
-							// Re-login with new username and provided password
+							// Re-login with new username and provided password.
+							// login_user resolves to an OpResult —
+							// re-enter the existing catch flow on any
+							// non-confirmed outcome, with a localized message.
 							const loginResult = await login_user({
 								username: userData.username!,
 								password: userData.password!
 							});
+							if (loginResult.status !== 'confirmed' || !loginResult.data?.token) {
+								throw new Error(t(loginResult.localeKey));
+							}
 
 							// Update the access token
-							save_local_storage('access_token', loginResult.token);
+							save_local_storage('access_token', loginResult.data.token);
 
 							handleCloseModal();
 							handleUserRefresh(); // Refresh user list
@@ -348,9 +357,12 @@ export default function UserManagementPage() {
 							);
 							return;
 						} catch (reloginError) {
+							// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 							console.error('Re-login failed:', reloginError);
 							// If re-login fails, force logout and redirect
 							handleCloseModal();
+							// persistent: the session is already invalid — dismissing this
+							// dialog without the forced relogin would strand a dead session.
 							openPopUp(
 								t('Authentication Error'),
 								t('Username was updated but re-login failed. Please log in again with your new credentials.'),
@@ -359,13 +371,16 @@ export default function UserManagementPage() {
 								() => {
 									localStorage.removeItem('access_token');
 									move_forced('/login');
-								}
+								},
+								undefined,
+								{persistent: true}
 							);
 							return;
 						}
 					} else {
 						// No password provided - user needs to log in manually
 						handleCloseModal();
+						// persistent: same forced-relogin shape as above.
 						openPopUp(
 							t('Username Updated'),
 							t('Your username has been updated. Please log in again with your new username to continue.'),
@@ -374,7 +389,9 @@ export default function UserManagementPage() {
 							() => {
 								localStorage.removeItem('access_token');
 								move_forced('/login');
-							}
+							},
+							undefined,
+							{persistent: true}
 						);
 						return;
 					}

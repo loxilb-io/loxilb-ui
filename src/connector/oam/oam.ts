@@ -5,8 +5,10 @@ import {parse_log_lines} from 'common';
 import {ILog, ILogArchiveList} from 'types/log';
 import {IInstance, IInstanceInput, IUser} from 'types/oam';
 import {ISetupStatus, IUpdateAdminRequest, IUpdateAdminResponse} from 'types/setup';
-import {ApiResult, DOWNLOAD_FILE_STREAM, DownloadProgress} from '../fetcher/fetcher_base';
+import {assertOk, DOWNLOAD_FILE_STREAM, DownloadProgress} from '../fetcher/fetcher_base';
 import {DELETE_OAM, GET_OAM, POST_OAM, PUT_OAM} from '../fetcher/fetcher_oam';
+import {OpResult} from '../fetcher/opResult';
+import {fromNetworkError, fromSimpleResponse} from '../fetcher/opResultAdapter';
 import {getApiBaseUrl} from 'utils/apiProxy';
 import type {OamGetResp, OamPostResp} from 'api';
 
@@ -15,6 +17,7 @@ import type {OamGetResp, OamPostResp} from 'api';
 //---------------------------------------------------------
 export async function query_get_me(): Promise<IUser | undefined> {
 	const resp = await GET_OAM<OamGetResp<'/oam/users/me'>>(`/users/me`);
+	assertOk(resp, 'Get My Info');
 	return (resp.data ?? undefined) as IUser | undefined;
 }
 
@@ -69,25 +72,52 @@ export async function request_logout(): Promise<void> {
 
 export async function query_get_instance_list(): Promise<IInstance[]> {
 	const resp = await GET_OAM<OamGetResp<'/oam/loxilbs'>>(`/loxilbs`);
-	return (resp.data ?? []) as IInstance[];
+	// answers the question left open below: an unusable
+	// response SURFACES as an error rather than reading as "no instances".
+	// A management API that is down is not the same fact as an operator who
+	// has registered nothing, and the landing page said the second one.
+	assertOk(resp, 'Get Instance List');
+	// Array.isArray, not `?? []`: `??` only guards null/undefined, so an error
+	// object — or a string, or 0, or false — used to pass straight through the
+	// cast as if it were a list. Every instance page then calls .find on it
+	// (useInstanceFromURL, get_instance, get_instance_name), so one odd
+	// response became a TypeError during render and took the whole route to
+	// RouteErrorBoundary. Seen in a full AFTER-run as 121 console errors
+	// headed by `instance_list.find is not a function` in <LBRulePage>.
+	//
+	// This only guarantees the shape. Whether an unusable response should
+	// SURFACE as an error instead of reading as "no instances" is 's
+	// call — this read feeds SetupHandler and flavor probing, so making it
+	// throw touches app start-up.
+	return Array.isArray(resp.data) ? (resp.data as IInstance[]) : [];
 }
 
-export async function request_create_instance(param: IInstanceInput): Promise<ApiResult> {
-	const resp = await POST_OAM(`/loxilbs`, param);
-	if (resp.code !== 201 && resp.code !== 200) return {status: 'error', error: `Failed to create instance: ${resp.message}`};
-	else return {status: 'success'};
+// Instance mutations return a discriminated OpResult ( batch 1) so
+// consumers can distinguish denied / invalid / unavailable / failed instead
+// of inventing per-site mappings — and so a 200-{result:"fail"} body or a
+// parse-swallowed 200 can never render as success.
+export async function request_create_instance(param: IInstanceInput): Promise<OpResult> {
+	try {
+		return fromSimpleResponse(await POST_OAM(`/loxilbs`, param), 'instance.create');
+	} catch (error) {
+		return fromNetworkError('instance.create', error);
+	}
 }
 
-export async function request_update_instance(id: number, param: IInstanceInput): Promise<ApiResult> {
-	const resp = await PUT_OAM(`/loxilbs/${id}`, param);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to update instance with id ${id}: ${resp.message}`};
-	else return {status: 'success'};
+export async function request_update_instance(id: number, param: IInstanceInput): Promise<OpResult> {
+	try {
+		return fromSimpleResponse(await PUT_OAM(`/loxilbs/${id}`, param), 'instance.update');
+	} catch (error) {
+		return fromNetworkError('instance.update', error);
+	}
 }
 
-export async function request_delete_instance(id: number): Promise<ApiResult> {
-	const resp = await DELETE_OAM(`/loxilbs/${id}`);
-	if (resp.code !== 200) return {status: 'error', error: `Failed to delete instance with id ${id}: ${resp.message}`};
-	else return {status: 'success'};
+export async function request_delete_instance(id: number): Promise<OpResult> {
+	try {
+		return fromSimpleResponse(await DELETE_OAM(`/loxilbs/${id}`), 'instance.delete');
+	} catch (error) {
+		return fromNetworkError('instance.delete', error);
+	}
 }
 
 export async function download_oam_log_archive(filename: string, onProgress?: (p: DownloadProgress) => void): Promise<void> {
@@ -102,6 +132,7 @@ export async function query_get_oam_logs(): Promise<ILog[]> {
 	//	...
 	//]
 	const resp = await GET_OAM<OamGetResp<'/oam/logs'>>(`/logs`);
+	assertOk(resp, 'Get OAM Logs');
 	const log_strings = resp.data?.logs;
 	if (!log_strings) return [];
 	else {
@@ -112,7 +143,7 @@ export async function query_get_oam_logs(): Promise<ILog[]> {
 
 export async function query_get_log_archives(): Promise<ILogArchiveList> {
 	const resp = await GET_OAM<OamGetResp<'/oam/logs/archives'>>(`/logs/archives`);
-	if (resp.code !== 200) return {archives: []};
+	assertOk(resp, 'Get OAM Log Archives');
 	return (resp.data ?? {archives: []}) as ILogArchiveList;
 }
 
@@ -122,27 +153,28 @@ export async function query_get_log_archives(): Promise<ILogArchiveList> {
 //---------------------------------------------------------
 export async function query_get_all_users(): Promise<IUser[]> {
 	const resp = await GET_OAM<OamGetResp<'/oam/users'>>('/users');
-	return (resp.data ?? []) as IUser[];
+	assertOk(resp, 'Get All Users');
+	// Array.isArray for the same reason as the instance list above: this was
+	// the last read casting a whole response body to an array, and
+	// UserManagementPage maps over the result. A 200 carrying an unexpected
+	// shape would take the page to the error boundary.
+	return Array.isArray(resp.data) ? (resp.data as IUser[]) : [];
 }
 
-export async function request_update_user(id: number, userData: Partial<IUser>): Promise<ApiResult> {
-	const resp = await PUT_OAM(`/users/${id}`, userData);
-	if (resp.code !== 200) {
-		// Extract error message from response data if available
-		const errorMessage = resp.data?.error || resp.message || 'Failed to update user';
-		return {status: 'error', error: errorMessage};
+export async function request_update_user(id: number, userData: Partial<IUser>): Promise<OpResult> {
+	try {
+		return fromSimpleResponse(await PUT_OAM(`/users/${id}`, userData), 'user.update');
+	} catch (error) {
+		return fromNetworkError('user.update', error);
 	}
-	else return {status: 'success'};
 }
 
-export async function request_delete_user(id: number): Promise<ApiResult> {
-	const resp = await DELETE_OAM(`/users/${id}`);
-	if (resp.code !== 200) {
-		// Extract error message from response data if available (e.g., 403 Forbidden errors)
-		const errorMessage = resp.data?.error || resp.message || 'Failed to delete user';
-		return {status: 'error', error: errorMessage};
+export async function request_delete_user(id: number): Promise<OpResult> {
+	try {
+		return fromSimpleResponse(await DELETE_OAM(`/users/${id}`), 'user.delete');
+	} catch (error) {
+		return fromNetworkError('user.delete', error);
 	}
-	else return {status: 'success'};
 }
 
 //---------------------------------------------------------
@@ -150,6 +182,10 @@ export async function request_delete_user(id: number): Promise<ApiResult> {
 //---------------------------------------------------------
 export async function query_setup_status(): Promise<ISetupStatus | undefined> {
 	const resp = await GET_OAM<OamGetResp<'/oam/setup/status'>>('/setup/status');
+	// Its two callers in utils/simpleSetup.ts already catch and fail open, so
+	// this changes no behaviour at start-up — it stops a 500 from being
+	// reported to them as "setup is not needed", which is a different claim.
+	assertOk(resp, 'Get Setup Status');
 	return (resp.data ?? undefined) as ISetupStatus | undefined;
 }
 

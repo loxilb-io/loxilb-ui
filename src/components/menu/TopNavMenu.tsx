@@ -6,6 +6,7 @@ import {get_menu_name_from_path, get_menu_root, get_root_url} from 'common';
 import FlavorBadge from 'components/element/FlavorBadge';
 import SimpleButton from 'components/element/SimpleButton';
 import useLocalStorageState from 'hooks/localStorageHook';
+import {DEFAULT_SIDE_MENU_OPEN, PREFERENCE_KEYS, isBooleanPreference} from 'preferences';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useInstanceName} from 'hooks/query/instanceHook';
 import {Link} from 'react-router-dom';
@@ -15,7 +16,7 @@ import {MENU_LIST} from 'types/menu';
 // Component
 //---------------------------------------------------------
 export default function TopNavMenu() {
-	const [_, set_is_open] = useLocalStorageState('is_open_side_menu', true);
+	const [_, set_is_open] = useLocalStorageState(PREFERENCE_KEYS.sideMenuOpen, DEFAULT_SIDE_MENU_OPEN, isBooleanPreference);
 	const instance_name = useInstanceName();
 	const instance = useInstanceFromURL();
 

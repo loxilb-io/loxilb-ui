@@ -24,8 +24,9 @@ export default function TextBox(props: {
    onChange: (val: string | number) => void;
    error?: boolean;
    helperText?: string;
+   raw?: boolean;
 }) {
-   const {label, multiline, minRows, value, type = 'string', format, disabled, onChange, error, helperText} = props;
+   const {label, multiline, minRows, value, type = 'string', format, disabled, onChange, error, helperText, raw} = props;
 
 	const inputType = mapMetaTypeToInputType(type);
 	const max = format ? MAX_VALUE_BY_FORMAT[format] : undefined;
@@ -102,9 +103,32 @@ export default function TextBox(props: {
 	// 	if (disabled) onChange('');
 	// }, [disabled]);
 
+	// Raw-string numeric mode: the parent owns the verbatim
+	// text and derives parse/validation itself — no local state, no coercion,
+	// and type="text" because type="number" hides invalid input from JS
+	// entirely (badInput reads back as ''). Opt-in; the legacy number mode
+	// below is unchanged for unconverted forms. Placed after the hooks so the
+	// hook order is identical whichever mode renders.
+	if (raw) {
+		return (
+			<TextField
+				label={label}
+				size="small"
+				fullWidth
+				value={value ?? ''}
+				type="text"
+				disabled={disabled}
+				onChange={event => onChange(event.target.value)}
+				error={!!error}
+				helperText={helperText}
+				slotProps={{inputLabel: {shrink: true}, htmlInput: {inputMode: 'numeric'}}}
+			/>
+		);
+	}
+
 	// For number inputs, use local state when focused to allow free typing
-	const displayValue = (inputType === 'number' && isFocused) 
-		? localValue 
+	const displayValue = (inputType === 'number' && isFocused)
+		? localValue
 		: (value === undefined || value === null ? '' : value);
 
 	return (

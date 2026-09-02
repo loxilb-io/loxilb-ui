@@ -28,6 +28,7 @@ export default function DropDownSelectBox(props: {label: string; item_list: IEnu
 				onChange(item_list[defaultIndex].send_value);
 			}
 		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, [value, item_list]);
 
 	const handleChange = (event: SelectChangeEvent<number>) => {

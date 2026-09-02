@@ -27,3 +27,16 @@ for (const target of [globalThis, typeof window !== 'undefined' ? window : undef
 		Object.defineProperty(target, 'localStorage', {value: memoryStorage(), writable: true, configurable: true});
 	}
 }
+
+// jsdom implements no layout engine and therefore no ResizeObserver, but
+// several shared components (ScrollableBox, and anything measuring itself)
+// construct one in a mount effect and throw without it. A no-op observer is
+// the honest stand-in: with no layout there is nothing to report, and a test
+// that needs real measurements belongs in Playwright.
+if (typeof globalThis.ResizeObserver === 'undefined') {
+	globalThis.ResizeObserver = class {
+		observe() {}
+		unobserve() {}
+		disconnect() {}
+	} as unknown as typeof ResizeObserver;
+}

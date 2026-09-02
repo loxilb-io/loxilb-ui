@@ -12,11 +12,15 @@ import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useApiKeys, useLoadBalancerConfig} from 'hooks/query/queryHooks';
 import {useQueryInstanceData} from 'hooks/query/common';
+import {fromQueryRefetch} from 'hooks/query/reconcile';
+import {useReconcileReporter} from 'hooks/query/reconcileReport';
+import {tenantRateLimitAppeared} from 'hooks/query/confirmPredicates';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {t} from 'i18next';
 import React, {Fragment, useRef, useState} from 'react';
 import {ITenantRateLimitMod} from 'types/ai';
 import {hasRequiredApiKeyPolicy} from 'types/ai_gateway';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -39,17 +43,19 @@ export default function AITenantRateLimitPage() {
 		return Array.from(new Set([...fromKeys, ...extraTenants])).sort();
 	}, [apiKeys, extraTenants]);
 
-	const {data: entries, isError, refetch} = useQueryInstanceData(
+	const ratelimit_query = useQueryInstanceData(
 		['ai_ratelimits', tenants.join('|')],
 		instance => query_get_tenant_ratelimits_for(instance, tenants),
 		inst,
 	);
+	const {data: entries, refetch} = ratelimit_query;
 	const rows = entries ?? [];
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
 	const [lookupTenant, setLookupTenant] = useState('');
 	const {openPopUp, enableYes} = usePopUp();
 	const {errorPopup, showAddError, closeErrorPopup} = useErrorPopup();
+	const {report} = useReconcileReporter();
 
 	const rememberTenant = (tenant_id: string) => {
 		setExtraTenants(prev => (prev.includes(tenant_id) ? prev : [...prev, tenant_id]));
@@ -94,15 +100,13 @@ export default function AITenantRateLimitPage() {
 			async () => {
 				if (!formRef.current) return;
 
+				const tenantId = formRef.current.tenant_id;
 				const res = await request_set_tenant_ratelimit(inst, formRef.current);
-				if (res.status === 'success') {
-					rememberTenant(formRef.current.tenant_id);
-					openPopUp(t('Success'), t('Applied successfully.'), t('OK'));
+				if (res.status === 'confirmed') {
+					rememberTenant(tenantId);
 					set_selected_rows([]);
-					setTimeout(() => {
-						refetch();
-					}, 1000);
-				} else showAddError('AI tenant rate limit', res.error);
+					await report({refetch: fromQueryRefetch(refetch), confirm: tenantRateLimitAppeared(tenantId)}, t('Applied successfully.'));
+				} else showAddError('AI tenant rate limit', t(res.localeKey));
 			},
 			true,
 		);
@@ -157,7 +161,7 @@ export default function AITenantRateLimitPage() {
 				onAdd={handleAdd}
 				onEdit={handleEdit}
 				onRefresh={handleRefresh}
-				error={!!isError}
+				state={toPageState(ratelimit_query, {op: 'ai_ratelimit.list'})}
 			/>
 
 			{/* Error Popup */}

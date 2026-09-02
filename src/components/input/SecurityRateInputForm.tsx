@@ -4,6 +4,7 @@
 import {Alert, Grid2, Stack, Switch, FormControlLabel, Divider} from '@mui/material';
 import NewBox from 'components/layout/NewBox';
 import ParamBox from 'components/element/ParamBox';
+import {evaluateNumericField, NumericFieldSpec} from 'components/input/numericField';
 import {t} from 'i18next';
 import {ISecurityRateConfigMod} from 'types/security';
 import React from 'react';
@@ -46,17 +47,35 @@ function withDefaults(value?: ISecurityRateConfigMod): ISecurityRateConfigMod {
 	};
 }
 
+type NumericRateField = 'synThreshold' | 'cookieThreshold' | 'ratePerSec' | 'udpPktThreshold' | 'udpBandwidthMB';
+type RateRaws = Record<NumericRateField, string>;
+
+function rawsFrom(v: ISecurityRateConfigMod): RateRaws {
+	return {
+		synThreshold: String(v.synThreshold),
+		cookieThreshold: String(v.cookieThreshold),
+		ratePerSec: String(v.ratePerSec),
+		udpPktThreshold: String(v.udpPktThreshold),
+		udpBandwidthMB: String(v.udpBandwidthMB),
+	};
+}
+
 export default function SecurityRateInputForm(props: SecurityRateInputFormProps) {
 	const {onChange, value} = props;
 
 	const [form, setForm] = React.useState<ISecurityRateConfigMod>(withDefaults(value));
+
+	// Raw text as typed for the numeric fields: the wire
+	// object keeps the last VALID numbers; garbage never overwrites them and
+	// never coerces to 0 — it just makes the form invalid until corrected.
+	const [raws, setRaws] = React.useState<RateRaws>(() => rawsFrom(withDefaults(value)));
 
 	const [whitelistInput, setWhitelistInput] = React.useState((value?.whitelistIps ?? []).join(', '));
 
 	const handleChange = (field: keyof ISecurityRateConfigMod) => (value: any) => {
 		const newForm = {...form, [field]: value};
 		setForm(newForm);
-		onChange({...newForm, isValid: validateForm(newForm)});
+		onChange({...newForm, isValid: validateForm(newForm) && allRawsValid(raws)});
 	};
 
 	// Gateway upper bounds (securityrate.go): PPS thresholds cap at 2^24 and
@@ -65,6 +84,33 @@ export default function SecurityRateInputForm(props: SecurityRateInputFormProps)
 	// an out-of-range value is caught here instead of coming back as a 400.
 	const PPS_MAX = 1 << 24; // secRateMaxPPSThreshold
 	const UDP_BW_MAX = 4095; // secRateMaxUDPBandwidthMB
+
+	const NUMERIC_SPECS: Record<NumericRateField, NumericFieldSpec> = {
+		synThreshold: {required: true, min: 0, max: PPS_MAX},
+		cookieThreshold: {required: true, min: 0, max: PPS_MAX},
+		ratePerSec: {required: true, min: 0, max: PPS_MAX},
+		udpPktThreshold: {required: true, min: 0, max: PPS_MAX},
+		udpBandwidthMB: {required: true, min: 0, max: UDP_BW_MAX},
+	};
+
+	const allRawsValid = (r: RateRaws): boolean =>
+		(Object.keys(NUMERIC_SPECS) as NumericRateField[]).every(f => evaluateNumericField(r[f], NUMERIC_SPECS[f]).valid);
+
+	const handleNumericChange = (field: NumericRateField) => (rawVal: string) => {
+		const newRaws = {...raws, [field]: rawVal};
+		setRaws(newRaws);
+		const state = evaluateNumericField(rawVal, NUMERIC_SPECS[field]);
+		// Only a fully valid integer reaches the wire object; the stale number
+		// is unreachable while invalid because isValid gates the submit.
+		const newForm = state.parsed !== undefined ? {...form, [field]: state.parsed} : form;
+		if (state.parsed !== undefined) setForm(newForm);
+		onChange({...newForm, isValid: validateForm(newForm) && allRawsValid(newRaws)});
+	};
+
+	const numericFieldProps = (field: NumericRateField) => {
+		const state = evaluateNumericField(raws[field], NUMERIC_SPECS[field]);
+		return {value: raws[field], onChange: handleNumericChange(field), raw: true, error: !state.valid, helperText: state.error};
+	};
 
 	// The gateway also rejects a zero threshold on any *enabled* protection and
 	// a config with every protection switched off (disable has its own
@@ -100,12 +146,14 @@ export default function SecurityRateInputForm(props: SecurityRateInputFormProps)
 	React.useEffect(() => {
 		if (value) {
 			setForm(withDefaults(value));
+			setRaws(rawsFrom(withDefaults(value)));
 			setWhitelistInput((value.whitelistIps ?? []).join(', '));
 		}
 	}, [value]);
 
 	React.useEffect(() => {
 		onChange({...form, isValid: validateForm(form)});
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, []);
 
 	return (
@@ -121,14 +169,12 @@ export default function SecurityRateInputForm(props: SecurityRateInputFormProps)
 						<Grid2 container spacing={2}>
 							<ParamBox
 								label={t('SYN Threshold')}
-								value={form.synThreshold.toString()}
-								onChange={(value: string) => handleChange('synThreshold')(parseInt(value) || 0)}
+								{...numericFieldProps('synThreshold')}
 								param_desc={{type: 'integer', description: 'Maximum SYNs per second per IP (hard drop threshold)', required: true}}
 							/>
 							<ParamBox
 								label={t('Cookie Threshold')}
-								value={form.cookieThreshold.toString()}
-								onChange={(value: string) => handleChange('cookieThreshold')(parseInt(value) || 0)}
+								{...numericFieldProps('cookieThreshold')}
 								param_desc={{type: 'integer', description: 'Enable SYN cookies above this rate (must be < synThreshold)', required: true}}
 							/>
 						</Grid2>
@@ -147,8 +193,7 @@ export default function SecurityRateInputForm(props: SecurityRateInputFormProps)
 						<Grid2 container spacing={2}>
 							<ParamBox
 								label={t('Rate Per Second')}
-								value={form.ratePerSec.toString()}
-								onChange={(value: string) => handleChange('ratePerSec')(parseInt(value) || 0)}
+								{...numericFieldProps('ratePerSec')}
 								param_desc={{type: 'integer', description: 'Maximum new connections per second per IP', required: true}}
 							/>
 						</Grid2>
@@ -167,14 +212,12 @@ export default function SecurityRateInputForm(props: SecurityRateInputFormProps)
 						<Grid2 container spacing={2}>
 							<ParamBox
 								label={t('UDP Packet Threshold')}
-								value={form.udpPktThreshold.toString()}
-								onChange={(value: string) => handleChange('udpPktThreshold')(parseInt(value) || 0)}
+								{...numericFieldProps('udpPktThreshold')}
 								param_desc={{type: 'integer', description: 'Maximum UDP packets per second per IP', required: true}}
 							/>
 							<ParamBox
 								label={t('UDP Bandwidth (MB/s)')}
-								value={form.udpBandwidthMB.toString()}
-								onChange={(value: string) => handleChange('udpBandwidthMB')(parseInt(value) || 0)}
+								{...numericFieldProps('udpBandwidthMB')}
 								param_desc={{type: 'integer', description: 'Maximum UDP bandwidth in MB per second per IP', required: true}}
 							/>
 						</Grid2>

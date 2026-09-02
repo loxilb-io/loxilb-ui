@@ -17,6 +17,7 @@ import {useMirrors} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {Fragment, useMemo, useRef, useState} from 'react';
 import {IMirrorAttribute, IMirrorConfiguration} from 'types/mirror';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -61,7 +62,8 @@ function DetailPanel(props: {name: string; data: IMirrorAttribute}) {
 export default function MirrorPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, isError, refetch} = useMirrors(inst);
+	const mirror_query = useMirrors(inst);
+	const {data, refetch} = mirror_query;
 	const mirror_info: IMirrorConfiguration = {mirrAttr: data ?? []};
 
    // Holds STABLE content-hash row ids (not array indices)
@@ -92,14 +94,14 @@ export default function MirrorPage() {
 		if (!inst || selectedItems.length === 0) return;
 
 		const results = await Promise.all(selectedItems.map(item => request_delete_mirror_by_ident(inst, item.mirrorIdent)));
-		const failures = results.filter(res => res.status === 'error');
+		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
 			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
 		} else if (failures.length < results.length) {
-			showDeleteError('mirror', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+			showDeleteError('mirror', t('{{succeeded}} succeeded, {{failed}} failed. {{error}}', {succeeded: results.length - failures.length, failed: failures.length, error: t(failures[0].localeKey)}));
 		} else {
-			showDeleteError('mirror', failures[0].error);
+			showDeleteError('mirror', t(failures[0].localeKey));
 			return;
 		}
 		set_selected_rows([]);
@@ -132,12 +134,12 @@ export default function MirrorPage() {
 				if (!instanceRef.current) return;
 
 				const res = await request_create_mirror(inst, instanceRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
 					setTimeout(() => {
 						refetch();
 					}, 1000);
-				} else showAddError('mirror', res.error);
+				} else showAddError('mirror', t(res.localeKey));
 			},
 			true,
 		);
@@ -157,7 +159,7 @@ export default function MirrorPage() {
 			   onAdd={handleAdd}
 			   onDelete={handleDelete}
 			   onRefresh={handleRefresh}
-			   error={isError}
+			   state={toPageState(mirror_query, {op: 'mirror.list'})}
 		   />
 		   {selectedItem && (
 			   <LowerSection>

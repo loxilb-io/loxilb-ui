@@ -20,6 +20,7 @@ import {useSecurityRate} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {Fragment, useRef, useState, useMemo} from 'react';
 import {ISecurityRateConfigMod, ISecurityRateEntry} from 'types/security';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Detail Panel Component
@@ -79,7 +80,9 @@ function DetailPanel(props: {entry: ISecurityRateEntry}) {
 //---------------------------------------------------------
 export default function SecurityRatePage() {
 	const inst = useInstanceFromURL();
-	const {data, isError, refetch} = useSecurityRate(inst);
+	const secrate_query = useSecurityRate(inst);
+	const {data, refetch} = secrate_query;
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	const entries: ISecurityRateEntry[] = data ?? [];
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds hash ids
@@ -141,11 +144,11 @@ export default function SecurityRatePage() {
 				if (!formRef.current) return;
 
 				const res = await request_configure_securityrate(inst, formRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Configured successfully.'), t('OK'));
 					setTimeout(() => refetch(), 1000);
 				} else {
-					openPopUp(t('Error'), t('Failed to configure. {{error}}', {error: res.error}), t('OK'));
+					openPopUp(t('Error'), t('Failed to configure. {{error}}', {error: t(res.localeKey)}), t('OK'));
 				}
 			},
 			true,
@@ -155,14 +158,15 @@ export default function SecurityRatePage() {
 	const handleDisable = async () => {
 		if (!inst) return;
 		const res = await request_disable_securityrate(inst);
-		if (res.status === 'success') {
+		if (res.status === 'confirmed') {
 			openPopUp(t('Success'), t('Security rate limiting disabled.'), t('OK'));
 			setTimeout(() => refetch(), 1000);
 		} else {
-			openPopUp(t('Error'), t('Failed to disable. {{error}}', {error: res.error}), t('OK'));
+			openPopUp(t('Error'), t('Failed to disable. {{error}}', {error: t(res.localeKey)}), t('OK'));
 		}
 	};
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
 	const handleReset = async () => {
 		if (!inst) return;
 
@@ -173,11 +177,11 @@ export default function SecurityRatePage() {
 			t('Cancel'),
 			async () => {
 				const res = await request_reset_securityrate_stats(inst);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Statistics reset successfully.'), t('OK'));
 					setTimeout(() => refetch(), 1000);
 				} else {
-					openPopUp(t('Error'), t('Failed to reset statistics. {{error}}', {error: res.error}), t('OK'));
+					openPopUp(t('Error'), t('Failed to reset statistics. {{error}}', {error: t(res.localeKey)}), t('OK'));
 				}
 			},
 		);
@@ -197,7 +201,7 @@ export default function SecurityRatePage() {
 				onEdit={handleEdit}
 				onDisable={handleDisable}
 				onRefresh={handleRefresh}
-				error={isError}
+				state={toPageState(secrate_query, {op: 'security_rate.list'})}
 			/>
 			{selectedItem && (
 				<LowerSection>

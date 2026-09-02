@@ -2,8 +2,10 @@
 // Imports
 //---------------------------------------------------------
 import { IInstance } from 'types/oam';
-import {ApiResult, assertOk, createDetailedErrorMessage} from '../fetcher/fetcher_base';
+import {assertOk} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
+import {OpResult} from '../fetcher/opResult';
+import {runOp} from '../fetcher/opResultAdapter';
 import { IIpAttribute, IIpAttributeInput } from 'types/ip';
 import type {GwGetResp} from 'api';
 
@@ -16,24 +18,12 @@ export async function query_get_ipv4_all(instance: IInstance): Promise<IIpAttrib
 	return (resp.data?.ipAttr ?? []) as IIpAttribute[];
 }
 
-export async function request_create_ipv4(instance: IInstance, data: IIpAttributeInput): Promise<ApiResult> {
-	const resp = await POST_INST(instance, `/config/ipv4address`, data);
-	if (resp.code !== 200 && resp.code !== 204) {
-		const errorMessage = createDetailedErrorMessage(resp, 'IP Operation');
-		return {status: 'error', error: errorMessage};
-	} else {
-		return {status: 'success'};
-	}
+export async function request_create_ipv4(instance: IInstance, data: IIpAttributeInput): Promise<OpResult> {
+	return runOp('ip.create_ipv4', () => POST_INST(instance, `/config/ipv4address`, data));
 }
 
-export async function request_delete_ipv4(instance: IInstance, ip: string, mask: number, dev: string): Promise<ApiResult> {
-	const resp = await DELETE_INST(instance, `/config/ipv4address/${ip}/${mask}/dev/${dev}`);
-	if (resp.code !== 200 && resp.code !== 204) {
-		const errorMessage = createDetailedErrorMessage(resp, 'IP Operation');
-		return {status: 'error', error: errorMessage};
-	} else {
-		return {status: 'success'};
-	}
+export async function request_delete_ipv4(instance: IInstance, ip: string, mask: number, dev: string): Promise<OpResult> {
+	return runOp('ip.delete_ipv4', () => DELETE_INST(instance, `/config/ipv4address/${ip}/${mask}/dev/${dev}`));
 }
 
 // IPv6 — same entry shapes as ipv4 (dev + ipAddress / GET returns ipAttr[])
@@ -43,18 +33,10 @@ export async function query_get_ipv6_all(instance: IInstance): Promise<IIpAttrib
 	return (resp.data?.ipAttr ?? []) as IIpAttribute[];
 }
 
-export async function request_create_ipv6(instance: IInstance, data: IIpAttributeInput): Promise<ApiResult> {
-	const resp = await POST_INST(instance, `/config/ipv6address`, data);
-	if (resp.code !== 200 && resp.code !== 204) {
-		return {status: 'error', error: createDetailedErrorMessage(resp, 'IPv6 Operation')};
-	}
-	return {status: 'success'};
+export async function request_create_ipv6(instance: IInstance, data: IIpAttributeInput): Promise<OpResult> {
+	return runOp('ip.create_ipv6', () => POST_INST(instance, `/config/ipv6address`, data));
 }
 
-export async function request_delete_ipv6(instance: IInstance, ip: string, mask: number, dev: string): Promise<ApiResult> {
-	const resp = await DELETE_INST(instance, `/config/ipv6address/${encodeURIComponent(ip)}/${mask}/dev/${dev}`);
-	if (resp.code !== 200 && resp.code !== 204) {
-		return {status: 'error', error: createDetailedErrorMessage(resp, 'IPv6 Operation')};
-	}
-	return {status: 'success'};
+export async function request_delete_ipv6(instance: IInstance, ip: string, mask: number, dev: string): Promise<OpResult> {
+	return runOp('ip.delete_ipv6', () => DELETE_INST(instance, `/config/ipv6address/${encodeURIComponent(ip)}/${mask}/dev/${dev}`));
 }

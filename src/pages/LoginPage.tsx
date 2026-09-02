@@ -10,6 +10,7 @@ import BackBoard from 'components/element/BackBoard';
 import AuthForm from 'components/input/AuthForm';
 import {preflight_oam} from 'connector/oam/oam';
 import {login_user} from 'connector/user';
+import {beginSession, consumeRedirectTarget, consumeSessionEndReason, parseJwtExp, SessionEndReason} from 'session/session';
 import {t} from 'i18next';
 import {useCallback, useEffect, useState} from 'react';
 import {ILoginRequest} from 'types/user';
@@ -29,6 +30,11 @@ const StyledPaper = styled(Paper)(({theme}) => ({
 
 export default function LoginPage() {
 	const [error, setError] = useState<string>('');
+	// Why the previous session ended, if it ended on its own. Read ONCE (the
+	// reason is consumed as it is read) so a later reload cannot re-accuse the
+	// operator of having gone idle. reports this here rather than in a
+	// dialog on the page being navigated away from.
+	const [endedReason] = useState<SessionEndReason | null>(() => consumeSessionEndReason());
 	const [loading, setLoading] = useState(false);
 	// Preflight: is the loxilb-oam backend reachable at all? The UI is only a
 	// front-end for OAM, so a missing backend is the single most common
@@ -51,11 +57,34 @@ export default function LoginPage() {
 		setError('');
 
 		try {
+			// login_user resolves to an OpResult — mapped machine code plus a
+			// locale key. Raw backend prose never reaches this screen:
+			// this page is the first thing every operator sees, and the
+			// lockout message must stay distinct from a typo'd password while
+			// not disclosing the lockout policy (the conservative default).
 			const result = await login_user(data);
-			save_local_storage('access_token', result.token);
-			move_forced('/instance');
-		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Login failed');
+			if (result.status === 'confirmed' && result.data?.token) {
+				// A token whose lifetime cannot be established must not be
+				// installed: without a readable `exp` the UI has no
+				// basis for a proactive logout and the session would run
+				// unbounded until some request happened to bounce 401.
+				try {
+					parseJwtExp(result.data.token);
+				} catch {
+					setError(t('The server returned a token this client cannot read. Please try again or contact your administrator.'));
+					return;
+				}
+				beginSession();
+				save_local_storage('access_token', result.data.token);
+				// Return the operator to where the session ended, not to the
+				// landing page. The stored value is a validated local
+				// route; anything else was refused at storage time.
+				move_forced(consumeRedirectTarget() ?? '/instance');
+			} else {
+				setError(t(result.localeKey));
+			}
+		} catch {
+			setError(t('Login failed'));
 		} finally {
 			setLoading(false);
 		}
@@ -107,6 +136,18 @@ export default function LoginPage() {
 						>
 							<AlertTitle>{t("Can't reach the loxilb-oam management API")}</AlertTitle>
 							{t('This UI is a front-end for loxilb-oam and needs a running backend to sign in. Check that loxilb-oam is up and that BACKEND_URL points to it — see the deployment guide.')}
+						</Alert>
+					)}
+
+					{/* Why the last session ended — an explanation, not an error:
+					    the operator did nothing wrong and the next login is
+					    expected to succeed. 'revoked' is deliberately worded
+					    without disclosing WHY the server rejected the token. */}
+					{endedReason && endedReason !== 'logout' && (
+						<Alert severity="info" sx={{mt: 2, width: '100%'}}>
+							{endedReason === 'expired' && t('Your session expired. Please sign in again.')}
+							{endedReason === 'idle' && t('You were signed out after a period of inactivity. Please sign in again.')}
+							{endedReason === 'revoked' && t('Your session ended. Please sign in again.')}
 						</Alert>
 					)}
 

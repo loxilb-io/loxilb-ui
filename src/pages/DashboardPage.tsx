@@ -3,6 +3,7 @@
 //---------------------------------------------------------
 import {Box, Button, Paper, Typography} from '@mui/material';
 import {get_local_storage, save_local_storage} from 'common';
+import {PREFERENCE_KEYS} from 'preferences';
 import RealTimeRateCard from 'components/card/RealTimeRateCard';
 import CriticalMetricCard from 'components/card/CriticalMetricCard';
 import HealthStatusCard from 'components/card/HealthStatusCard';
@@ -13,21 +14,21 @@ import SystemUsageCard from 'components/card/SystemUsageCard';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useInstanceHealth} from 'hooks/query/healthHook';
 import {t} from 'i18next';
-import {useEffect, useState, useMemo} from 'react';
+import {useEffect, useState} from 'react';
 import RGL, {Layout, WidthProvider} from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
+import {Alert, AlertTitle, CircularProgress} from '@mui/material';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
 // Measured grid: fills the viewport instead of the old hard-coded 1200px
 // column that left dead space on wide NOC displays.
 const ResponsiveGrid = WidthProvider(RGL);
-import {Alert, AlertTitle, CircularProgress} from '@mui/material';
-import RefreshIcon from '@mui/icons-material/Refresh';
 
 // Versioned so the fix for the compaction-reflow bug (gap-free default + no
 // auto-compaction) supersedes any already-corrupted layout persisted under the
 // old `layout` key — stale saves floated the log card above the rate cards.
-const LAYOUT_STORAGE_KEY = 'dashboard_layout_v2';
+const LAYOUT_STORAGE_KEY = PREFERENCE_KEYS.dashboardLayout;
 
 //---------------------------------------------------------
 // Functional Component
@@ -107,9 +108,11 @@ export default function DashboardPage() {
 				set_layout(parsed_layout);
 			} else set_layout(DEFAULT_LAYOUT);
 		} catch (error) {
+			// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 			console.error('Failed to load layout:', error);
 			set_layout(DEFAULT_LAYOUT);
 		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, []);
 
 	// Show error state if instance is down

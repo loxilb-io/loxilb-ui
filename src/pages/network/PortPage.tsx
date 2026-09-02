@@ -98,6 +98,7 @@ export default function PortPage() {
 	const port_info: IPortInfo = {portAttr: data ?? []};
 
 	const [searchParams] = useSearchParams();
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
 	const url_param = searchParams.get('port') ?? '';
 
    const [cur_tab_idx, set_cur_tab_idx] = useState(0);

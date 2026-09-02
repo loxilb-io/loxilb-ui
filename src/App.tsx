@@ -3,8 +3,7 @@
 //---------------------------------------------------------
 import {ThemeProvider} from '@emotion/react';
 import {createTheme, CssBaseline} from '@mui/material';
-import {createSyncStoragePersister} from '@tanstack/query-sync-storage-persister';
-import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
+import {QueryClientProvider} from '@tanstack/react-query';
 import {persistQueryClient, persistQueryClientRestore} from '@tanstack/react-query-persist-client';
 import {useEffect, useState} from 'react';
 import {BrowserRouter, Outlet, Route, Routes} from 'react-router-dom';
@@ -16,6 +15,7 @@ import {theme_config} from 'theme';
 import Layout from 'components/layout/Layout';
 import NavLayout from 'components/layout/NavLayout';
 import {RequireAuth, RequireFeature} from 'components/layout/RouteGuards';
+import RouteTitle from 'components/layout/RouteTitle';
 import ScrollToTop from 'components/layout/ScrollToTop';
 import PopUp from 'components/modal/PopUp';
 import SetupHandler from 'components/setup/SetupHandler';
@@ -69,6 +69,9 @@ import UserManagementPage from 'pages/managers/UserManagementPage';
 import SnapshotPage from 'pages/maintenance/SnapshotPage';
 
 import {MAX_DURATION_MS} from 'hooks/query/common';
+import {persister, queryClient} from 'queryClientSingleton';
+import {registerSessionPurge} from 'session/session';
+import {useSessionWatch} from 'session/useSessionWatch';
 import LogPage from 'pages/status/LogPage';
 import 'root.css';
 
@@ -76,8 +79,16 @@ import 'root.css';
 //---------------------------------------------------------
 // Global Instance
 //---------------------------------------------------------
-const queryClient = new QueryClient();
-const persister = createSyncStoragePersister({storage: window.localStorage});
+// both live in one module so the session teardown can purge the
+// PERSISTED cache — clearing only the in-memory client would leave every
+// query's data sitting in localStorage after logout.
+registerSessionPurge(async () => {
+	// Cancel first: a query that resolves after the purge would write the data
+	// straight back into the cache we just cleared.
+	await queryClient.cancelQueries();
+	queryClient.clear();
+	await persister.removeClient();
+});
 
 //---------------------------------------------------------
 // Root Component
@@ -85,6 +96,7 @@ const persister = createSyncStoragePersister({storage: window.localStorage});
 export default function App() {
 	const theme = createTheme(theme_config);
 	const [isReady, setIsReady] = useState(false);
+	useSessionWatch();
 
 	useEffect(() => {
 		persistQueryClientRestore({queryClient, persister}).then(() => {
@@ -108,6 +120,7 @@ export default function App() {
 				<QueryClientProvider client={queryClient}>
 					<BrowserRouter basename={root_url}>
 						<ScrollToTop />
+						<RouteTitle />
 						<PopUp />
 						<SetupHandler>
 							<Routes>

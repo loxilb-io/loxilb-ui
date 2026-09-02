@@ -4,11 +4,14 @@
 // All endpoints are OAM's — the UI never talks to the gateway's
 // /config/snapshot|restore directly; OAM proxies, stores and audits.
 // Reads throw through assertOk (inline error banner); mutations return
-// ApiResult with createDetailedErrorMessage payloads.
+// OpResult ( batch 4) and NEVER reject — a thrown fetch once
+// stranded the restore wizard's non-dismissable committing screen.
 //---------------------------------------------------------
 import type {OamGetResp, OamPostResp} from 'api';
 import {ISnapshot, ISnapshotList, ISnapshotSchedule, IRestoreOutcomeParsed} from 'types/snapshot';
-import {ApiResult, assertOk, createDetailedErrorMessage, DOWNLOAD_FILE_STREAM, DownloadProgress} from '../fetcher/fetcher_base';
+import {assertOk, DOWNLOAD_FILE_STREAM, DownloadProgress} from '../fetcher/fetcher_base';
+import {OpResult} from '../fetcher/opResult';
+import {fromNetworkError, fromSimpleResponse} from '../fetcher/opResultAdapter';
 import {DELETE_OAM, GET_OAM, PATCH_OAM, POST_OAM, PUT_OAM, UPLOAD_FILE_OAM} from '../fetcher/fetcher_oam';
 import {getApiBaseUrl} from 'utils/apiProxy';
 
@@ -36,17 +39,13 @@ export async function query_get_snapshot_schedule(instanceId: number): Promise<I
 //---------------------------------------------------------
 // Mutations
 //---------------------------------------------------------
-export type SnapshotMutationResult = ApiResult & {snapshot?: ISnapshot};
+export type SnapshotMutationResult = OpResult<ISnapshot>;
 
 // fetch_data RETHROWS network-level failures (OAM host unreachable) instead
 // of returning a SimpleResponse. An uncaught rejection here would strand the
 // UI mid-flow — the restore wizard's non-dismissable "committing" screen
 // being the worst case (found by §9.3 case 3). Every mutation converts a
-// thrown error into an honest ApiResult instead.
-function caught(operation: string, e: unknown): {status: 'error'; error: string} {
-	const msg = e instanceof Error ? e.message : String(e);
-	return {status: 'error', error: `${operation} failed: ${msg} (server unreachable)`};
-}
+// thrown error into a mapped `unavailable` OpResult instead.
 
 export async function request_take_snapshot(
 	instanceId: number,
@@ -54,10 +53,9 @@ export async function request_take_snapshot(
 ): Promise<SnapshotMutationResult> {
 	try {
 		const resp = await POST_OAM<OamPostResp<'/oam/instances/{id}/snapshots'>>(`/instances/${instanceId}/snapshots`, data);
-		if (resp.code !== 201) return {status: 'error', error: createDetailedErrorMessage(resp, 'Take Snapshot')};
-		return {status: 'success', snapshot: (resp.data ?? undefined) as ISnapshot | undefined};
+		return fromSimpleResponse(resp, 'snapshot.take') as SnapshotMutationResult;
 	} catch (e) {
-		return caught('Take Snapshot', e);
+		return fromNetworkError('snapshot.take', e);
 	}
 }
 
@@ -71,10 +69,9 @@ export async function request_upload_snapshot(
 		if (meta?.name) extra.name = meta.name;
 		if (meta?.description) extra.description = meta.description;
 		const resp = await UPLOAD_FILE_OAM(`/instances/${instanceId}/snapshots/upload`, file, extra);
-		if (resp.code !== 201) return {status: 'error', error: createDetailedErrorMessage(resp, 'Upload Snapshot')};
-		return {status: 'success', snapshot: (resp.data ?? undefined) as ISnapshot | undefined};
+		return fromSimpleResponse(resp, 'snapshot.upload') as SnapshotMutationResult;
 	} catch (e) {
-		return caught('Upload Snapshot', e);
+		return fromNetworkError('snapshot.upload', e);
 	}
 }
 
@@ -83,7 +80,7 @@ export async function request_upload_snapshot(
 // outcome.gateway_response (rendered verbatim by the wizard). Non-200 here
 // means OAM refused before reaching the apply stage (integrity 422, gateway
 // unreachable 502, pre-restore snapshot failure 502, …).
-export type RestoreCallResult = {status: 'success'; outcome: IRestoreOutcomeParsed} | {status: 'error'; error: string};
+export type RestoreCallResult = OpResult<IRestoreOutcomeParsed>;
 
 export async function request_restore_snapshot(
 	sid: string,
@@ -94,10 +91,16 @@ export async function request_restore_snapshot(
 		const body: {mode: string; target_instance_id?: number} = {mode};
 		if (targetInstanceId !== undefined) body.target_instance_id = targetInstanceId;
 		const resp = await POST_OAM<OamPostResp<'/oam/snapshots/{sid}/restore'>>(`/snapshots/${sid}/restore`, body);
-		if (resp.code !== 200 || !resp.data) return {status: 'error', error: createDetailedErrorMessage(resp, `Restore Snapshot (${mode})`)};
-		return {status: 'success', outcome: resp.data as IRestoreOutcomeParsed};
+		const res = fromSimpleResponse(resp, 'snapshot.restore') as RestoreCallResult;
+		// A confirmed restore call MUST carry the outcome object — the wizard
+		// renders gateway_status/gateway_response from it. A bodyless 200 is
+		// not a usable outcome.
+		if (res.status === 'confirmed' && !res.data) {
+			return {...res, status: 'failed', code: 'snapshot.restore.malformed_response', data: undefined};
+		}
+		return res;
 	} catch (e) {
-		return caught(`Restore Snapshot (${mode})`, e);
+		return fromNetworkError('snapshot.restore', e);
 	}
 }
 
@@ -106,37 +109,31 @@ export async function request_patch_snapshot(
 	data: {name?: string; description?: string; pinned?: boolean},
 ): Promise<SnapshotMutationResult> {
 	try {
-		const resp = await PATCH_OAM(`/snapshots/${sid}`, data);
-		if (resp.code !== 200) return {status: 'error', error: createDetailedErrorMessage(resp, 'Update Snapshot')};
-		return {status: 'success', snapshot: (resp.data ?? undefined) as ISnapshot | undefined};
+		return fromSimpleResponse(await PATCH_OAM(`/snapshots/${sid}`, data), 'snapshot.patch') as SnapshotMutationResult;
 	} catch (e) {
-		return caught('Update Snapshot', e);
+		return fromNetworkError('snapshot.patch', e);
 	}
 }
 
 // The UI deliberately has no force=true path: deleting a pinned snapshot is
 // blocked until the user unpins it (design §5.3 — mirror the API's force
 // semantics instead of silently overriding them).
-export async function request_delete_snapshot(sid: string): Promise<ApiResult> {
+export async function request_delete_snapshot(sid: string): Promise<OpResult> {
 	try {
-		const resp = await DELETE_OAM(`/snapshots/${sid}`);
-		if (resp.code !== 200) return {status: 'error', error: createDetailedErrorMessage(resp, 'Delete Snapshot')};
-		return {status: 'success'};
+		return fromSimpleResponse(await DELETE_OAM(`/snapshots/${sid}`), 'snapshot.delete');
 	} catch (e) {
-		return caught('Delete Snapshot', e);
+		return fromNetworkError('snapshot.delete', e);
 	}
 }
 
 export async function request_put_snapshot_schedule(
 	instanceId: number,
 	data: {enabled: boolean; interval_hours: number; retain_count: number},
-): Promise<ApiResult & {schedule?: ISnapshotSchedule}> {
+): Promise<OpResult<ISnapshotSchedule>> {
 	try {
-		const resp = await PUT_OAM(`/instances/${instanceId}/snapshot-schedule`, data);
-		if (resp.code !== 200) return {status: 'error', error: createDetailedErrorMessage(resp, 'Update Snapshot Schedule')};
-		return {status: 'success', schedule: (resp.data ?? undefined) as ISnapshotSchedule | undefined};
+		return fromSimpleResponse(await PUT_OAM(`/instances/${instanceId}/snapshot-schedule`, data), 'snapshot.schedule') as OpResult<ISnapshotSchedule>;
 	} catch (e) {
-		return caught('Update Snapshot Schedule', e);
+		return fromNetworkError('snapshot.schedule', e);
 	}
 }
 

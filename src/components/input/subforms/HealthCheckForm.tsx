@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {Box, Stack} from '@mui/material';
+import {Stack} from '@mui/material';
 import AccordionBox from 'components/element/AccordionBox';
 import ParamBox from 'components/element/ParamBox';
 import DropDownSelectBox from 'components/element/DropDownSelectBox';

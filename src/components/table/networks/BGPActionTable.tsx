@@ -5,12 +5,13 @@ import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IActionSet} from 'types/bgp_policy_action';
 import {IDataTableColumnDef} from 'types/global';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function BGPActionTable(props: {action_list: IActionSet[]; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; error?: boolean}) {
-	const {action_list, selected_rows, onChangeSelectedRows, onAdd, onDelete, error} = props;
+export default function BGPActionTable(props: {action_list: IActionSet[]; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; state?: PageDataState<unknown>; error?: boolean}) {
+	const {action_list, selected_rows, onChangeSelectedRows, onAdd, onDelete, state, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'routeDisposition', header: 'Route Disposition', type: 'tag', tooltip: '“Handling” to specify how the policy should handle matching routes'},
@@ -41,5 +42,5 @@ export default function BGPActionTable(props: {action_list: IActionSet[]; select
 		};
 	});
 
-	return <DataTable name={'Action'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} error={error} />;
+	return <DataTable name={'Action'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} state={state} error={error} />;
 }

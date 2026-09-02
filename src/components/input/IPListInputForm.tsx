@@ -14,7 +14,7 @@ import {IAllowedSource, ISecondaryIP} from 'types/load_balancer';
 // Component
 //---------------------------------------------------------
 export function SecondaryIPListInputForm(props: {values: ISecondaryIP[]; onChange: (values: ISecondaryIP[]) => void; description?: string}) {
-	const {values, onChange, description} = props;
+	const {values, onChange} = props;
 
    const [ip_list, set_ip_list] = useState<string[]>(() => (Array.isArray(values) ? values.map(v => v?.secondaryIP ?? '') : []));
 
@@ -68,7 +68,7 @@ export function SecondaryIPListInputForm(props: {values: ISecondaryIP[]; onChang
 }
 
 export function AllowedSourcesListInputForm(props: {values: IAllowedSource[]; onChange: (values: IAllowedSource[]) => void; description?: string}) {
-	const {values, onChange, description} = props;
+	const {values, onChange} = props;
 
    const [ip_list, set_ip_list] = useState<string[]>(() => (Array.isArray(values) ? values.map(v => v?.prefix ?? '') : []));
 

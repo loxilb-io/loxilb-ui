@@ -34,10 +34,10 @@ export default function BGPApplyPage() {
 		else {
 			openPopUp(t('Apply BGP Policy'), t('Are you sure you want to apply the selected BGP policy to this neighbor?'), t('Apply'), t('Cancel'), async () => {
 				const res = await request_apply_bgp_policy(inst, form);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Updated successfully.'), t('OK'));
 					refetchNeighbors();
-				} else openPopUp(t('Error'), t('Failed to update. {{error}}', {error: res.error}), t('OK'));
+				} else openPopUp(t('Error'), t('Failed to update. {{error}}', {error: t(res.localeKey)}), t('OK'));
 			});
 		}
 	};
@@ -48,10 +48,10 @@ export default function BGPApplyPage() {
 			openPopUp(t('Remove BGP Policy'), t('Are you sure you want to remove the selected BGP policy from this neighbor?'), t('Remove'), t('Cancel'), async () => {
 				// DELETE takes the same required body as apply (incl. routeAction)
 				const res = await request_unapply_bgp_policy(inst, form);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Removed successfully.'), t('OK'));
 					refetchNeighbors();
-				} else openPopUp(t('Error'), t('Failed to remove. {{error}}', {error: res.error}), t('OK'));
+				} else openPopUp(t('Error'), t('Failed to remove. {{error}}', {error: t(res.localeKey)}), t('OK'));
 			});
 		}
 	};

@@ -17,6 +17,7 @@ import {LevelType, LevelTypeList} from 'types/log';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
 function FirmwareAvailablePannel(props: {handleUpdate: () => void}) {
 	const {handleUpdate} = props;
 
@@ -61,6 +62,7 @@ function FirmwareAvailablePannel(props: {handleUpdate: () => void}) {
 	);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
 function FirmwareUpdatingPannel() {
 	return (
 		<Stack width="100%" height="100%">
@@ -83,6 +85,7 @@ function FirmwareUpdatingPannel() {
 	);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
 function FirmwareResultPannel(props: {is_success: boolean}) {
 	const {is_success} = props;
 
@@ -139,10 +142,10 @@ function LogLevelSelector() {
 
 		openPopUp(t('Log Level Change'), t('Do you want to change the log level to {{level}}?', {level: new_value}), t('Change'), t('Cancel'), async () => {
 			const res = await request_post_log_level(inst, new_value);
-			if (res.status === 'success') {
+			if (res.status === 'confirmed') {
 				set_selected_level(new_value);
 				openPopUp(t('Success'), t('Log level changed successfully.'), t('OK'));
-			} else openPopUp(t('Error'), t('Failed to change log level: {{error}}', {error: res.error}), t('OK'));
+			} else openPopUp(t('Error'), t('Failed to change log level: {{error}}', {error: t(res.localeKey)}), t('OK'));
 		});
 	};
 
@@ -162,11 +165,15 @@ function LogLevelSelector() {
 }
 
 export default function InstanceSettingPage() {
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
 	const [is_success, set_is_success] = useState(true);
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
 	const [is_updated, set_is_updated] = useState(false);
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
 	const [is_updating, set_is_updating] = useState(false);
 	const {openPopUp} = usePopUp();
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
 	const handleUpdate = () => {
 		const message = t(
 			'You are about to update the firmware of your load balancer. The update may take a few minutes and will require a system reboot. Do you want to proceed?',

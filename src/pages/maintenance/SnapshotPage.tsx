@@ -21,6 +21,7 @@ import SnapshotScheduleForm, {IScheduleEntry} from 'components/input/SnapshotSch
 import TakeSnapshotForm, {ITakeSnapshotEntry} from 'components/input/TakeSnapshotForm';
 import UploadSnapshotForm, {IUploadSnapshotEntry} from 'components/input/UploadSnapshotForm';
 import RestoreWizard from 'components/snapshot/RestoreWizard';
+import {snapshotOpErrorText} from 'components/snapshot/snapshotOpError';
 import SnapshotTable from 'components/table/maintenance/SnapshotTable';
 import {
 	request_delete_snapshot,
@@ -38,6 +39,7 @@ import {t} from 'i18next';
 import {Fragment, useRef, useState} from 'react';
 import {getStableHash} from 'common';
 import {ISnapshot} from 'types/snapshot';
+import {toPageState} from 'components/state/pageState';
 
 // Server page size. Retention caps unpinned snapshots at 100 per instance, so
 // a single max-size page covers every realistic list; total_count is checked
@@ -50,7 +52,8 @@ const PAGE_LIMIT = 100;
 export default function SnapshotPage() {
 	const inst = useInstanceFromURL();
 	const instanceId = inst?.id;
-	const {data, isError, isLoading, refetch} = useSnapshots(instanceId, 1, PAGE_LIMIT);
+	const snapshot_query = useSnapshots(instanceId, 1, PAGE_LIMIT);
+	const {data, isError, isLoading, refetch} = snapshot_query;
 	const {data: schedule, refetch: refetchSchedule} = useSnapshotSchedule(instanceId);
 	const invalidate = useInvalidateSnapshots(instanceId);
 	const {can_manage_config} = useRole();
@@ -82,12 +85,15 @@ export default function SnapshotPage() {
 		refetchSchedule();
 	};
 
-	const reportResult = (res: {status: string; error?: string}, successMsg: string) => {
-		if (res.status === 'success') {
+	// Localized headline first, then the server's verbatim detail — the
+	// snapshot inline-error convention (§5.3); a stale-row 404 must stay
+	// readable in the dialog, not collapse to the generic failure text.
+	const reportResult = (res: {status: string; localeKey: string; rawDetail?: string}, successMsg: string) => {
+		if (res.status === 'confirmed') {
 			openPopUp(t('Success'), successMsg, t('OK'));
 			refreshAll();
 		} else {
-			openPopUp(t('Error'), res.error ?? t('Unknown error'), t('OK'));
+			openPopUp(t('Error'), snapshotOpErrorText(res), t('OK'));
 		}
 	};
 
@@ -133,18 +139,18 @@ export default function SnapshotPage() {
 					description: t('Automatic pre-upgrade safety snapshot'),
 					trigger_type: 'pre_upgrade',
 				});
-				if (res.status !== 'success') {
-					openPopUp(t('Error'), res.error ?? t('Unknown error'), t('OK'));
+				if (res.status !== 'confirmed') {
+					openPopUp(t('Error'), t(res.localeKey), t('OK'));
 					return;
 				}
-				let name = res.snapshot?.name ?? placeholder;
-				if (res.snapshot?.id) {
-					const gwVersion = res.snapshot.gateway_version;
+				let name = res.data?.name ?? placeholder;
+				if (res.data?.id) {
+					const gwVersion = res.data.gateway_version;
 					const finalName = gwVersion ? `pre-upgrade-${gwVersion}` : name;
-					const pin = await request_patch_snapshot(res.snapshot.id, {pinned: true, name: finalName});
-					if (pin.status !== 'success') {
+					const pin = await request_patch_snapshot(res.data.id, {pinned: true, name: finalName});
+					if (pin.status !== 'confirmed') {
 						// The snapshot exists but is NOT pinned — say so honestly.
-						openPopUp(t('Warning'), t('Snapshot "{{name}}" was created but pinning failed: {{error}}', {name, error: pin.error}), t('OK'));
+						openPopUp(t('Warning'), t('Snapshot "{{name}}" was created but pinning failed: {{error}}', {name, error: t(pin.localeKey)}), t('OK'));
 						refreshAll();
 						return;
 					}
@@ -354,7 +360,7 @@ export default function SnapshotPage() {
 				selected_rows={selected_rows}
 				onChangeSelectedRows={set_selected_rows}
 				onRefresh={refreshAll}
-				error={isError}
+				state={toPageState(snapshot_query, {op: 'snapshot.list'})}
 			/>
 
 			<Box sx={{mt: 1}}>

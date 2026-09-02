@@ -5,12 +5,13 @@ import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IDataTableColumnDef} from 'types/global';
 import {IVxlanData} from 'types/vxlan';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function VXLANTable(props: {data: IVxlanData; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; error?: boolean}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, error} = props;
+export default function VXLANTable(props: {data: IVxlanData; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; state?: PageDataState<unknown>; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, state, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'vxlanID', header: 'VxLAN ID', width: 'wide', type: 'mono'},
@@ -29,5 +30,5 @@ export default function VXLANTable(props: {data: IVxlanData; selected_rows: numb
 		};
 	});
 
-	return <DataTable name={'VxLAN'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} error={error} />;
+	return <DataTable name={'VxLAN'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} state={state} error={error} />;
 }

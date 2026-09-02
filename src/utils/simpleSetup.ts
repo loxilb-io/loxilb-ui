@@ -44,6 +44,7 @@ export async function checkNeedsCredentialUpdate(): Promise<boolean> {
 		const status = await with_timeout(query_setup_status());
 		return status?.needsCredentialUpdate === true;
 	} catch (error) {
+		// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 		console.warn('Credential update check failed:', error);
 		// On API error OR timeout, assume no setup needed rather than blocking
 		// login behind an unanswerable request.
@@ -67,6 +68,7 @@ export async function getSetupStatus(): Promise<ISetupStatus | null> {
 		const status = await with_timeout(query_setup_status());
 		return status || null;
 	} catch (error) {
+		// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 		console.warn('Failed to get setup status:', error);
 		return null;
 	}
@@ -82,6 +84,7 @@ export async function isFirstTimeSetup(): Promise<boolean> {
 		return status?.hasDefaultCredentials === true &&
 		       status?.credentialsUpdated === false;
 	} catch (error) {
+		// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 		console.warn('Failed to check first-time setup:', error);
 		return false;
 	}

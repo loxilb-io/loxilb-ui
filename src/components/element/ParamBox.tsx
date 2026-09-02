@@ -29,6 +29,8 @@ interface ParamBoxProps {
    error?: boolean;
    helperText?: string;
    onValidation?: (isValid: boolean) => void;
+   /** raw-string numeric mode: value/onChange carry the verbatim text */
+   raw?: boolean;
 }
 
 export function shouldAutoSelectEnumDefault(enumOptions: IEnumItem[], value: unknown, disabled?: boolean): boolean {
@@ -36,7 +38,7 @@ export function shouldAutoSelectEnumDefault(enumOptions: IEnumItem[], value: unk
 }
 
 export default function ParamBox(props: ParamBoxProps) {
-   const {label, value, param_desc, onChange, width, multiline, minRows, disabled, error, helperText, onValidation} = props;
+   const {label, value, param_desc, onChange, width, multiline, minRows, disabled, error, helperText, onValidation, raw} = props;
    const type = param_desc?.type ?? (typeof value === 'number' ? 'integer' : typeof value === 'boolean' ? 'boolean' : 'string');
    const format = param_desc?.format;
    const description = param_desc?.description;
@@ -81,6 +83,7 @@ export default function ParamBox(props: ParamBoxProps) {
 		}
 
 		return result;
+   // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
    }, [param_desc?.enum, required]);
 
    // If enumOptions exist and value is empty/undefined, default to first option
@@ -100,6 +103,7 @@ export default function ParamBox(props: ParamBoxProps) {
       if (shouldAutoSelectEnumDefault(enumOptions, value, disabled)) {
          onChange(enumOptions[0].send_value);
       }
+   // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
    }, [disabled, enumOptions.length, value]);
 
    const renderInput = () => {
@@ -117,8 +121,8 @@ export default function ParamBox(props: ParamBoxProps) {
 		return <PortBox label={labelText} value={value} disabled={disabled} error={!!error || showRequiredHelper} helperText={finalHelperText} onChange={handleChange} />;
 	else if (type === 'macaddress') 
 		return <MACAddressBox label={labelText} value={value} disabled={disabled} onChange={handleChange} error={!!error || showRequiredHelper} helperText={finalHelperText}/>;
-	else 
-		return <TextBox label={labelText} value={value} type={type} format={format} disabled={disabled} multiline={multiline} minRows={minRows} onChange={handleChange} error={!!error || showRequiredHelper} helperText={finalHelperText} />;
+	else
+		return <TextBox label={labelText} value={value} type={type} format={format} disabled={disabled} multiline={multiline} minRows={minRows} onChange={handleChange} error={!!error || showRequiredHelper} helperText={finalHelperText} raw={raw} />;
    };
 
    return (

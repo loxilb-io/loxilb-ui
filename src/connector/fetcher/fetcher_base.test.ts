@@ -1,10 +1,17 @@
 import {afterEach, beforeEach, describe, expect, it, vi, type Mock} from 'vitest';
 import {createDetailedErrorMessage, DOWNLOAD_FILE_STREAM, GET, GET_TEXT, isMutationFailure, shouldExpireOAMSession} from './fetcher_base';
 
+// routed the 401 branch through terminateSession, which navigates via
+// move_forced. The contract under test is unchanged — an OAM-origin 401 ends
+// the browser session, a gateway-origin one does not — so these assert the
+// contract (token gone, sent to /login) rather than the name of the helper.
+import {beginSession} from 'session/session';
+
 const redirectToLogin = vi.hoisted(() => vi.fn());
 vi.mock('common', async importOriginal => ({
 	...(await importOriginal<typeof import('common')>()),
 	forced_relocation_to_login: redirectToLogin,
+	move_forced: redirectToLogin,
 }));
 
 function mockFetch(body: string, init: {status?: number; contentType?: string} = {}) {
@@ -116,11 +123,18 @@ describe('GET', () => {
 			{'Content-Type': 'application/json'},
 			{'Content-Type': 'application/json', 'X-Loxi-Error-Origin': 'unknown'},
 		] as Record<string, string>[]) {
+			// Each iteration models a fresh page life: the teardown is
+			// idempotent per session by design (five parallel 401s collapse to
+			// one), and in the browser it navigates via window.location, so the
+			// module is reloaded before another session can end. The collapse
+			// itself is pinned in src/session/session.test.ts.
+			beginSession();
 			localStorage.setItem('access_token', 'expired-token');
 			(global.fetch as Mock).mockResolvedValueOnce(new Response('{}', {status: 401, headers: responseHeaders}));
 			await GET('http://oam/loxilbs/1/netlox/v1/config/ai/apikey', undefined);
 			expect(localStorage.getItem('access_token')).toBeNull();
 		}
+		beginSession();
 		localStorage.setItem('access_token', 'expired-token');
 		(global.fetch as Mock).mockResolvedValueOnce(new Response('{}', {status: 401}));
 		await GET('http://oam/loxilbs/1/netlox/v1/config/ai/apikey', {'X-Loxi-Error-Origin': 'gateway'});

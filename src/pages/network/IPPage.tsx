@@ -17,6 +17,7 @@ import {useIPAttr} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {Fragment, useRef, useState, useMemo} from 'react';
 import {IIpAttribute, IIpAttributeInput, IIpData} from 'types/ip';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -37,7 +38,8 @@ export default function IPPage(props: {family?: 'ipv4' | 'ipv6'}) {
 	const request_delete_ip = family === 'ipv6' ? request_delete_ipv6 : request_delete_ipv4;
 	const inst = useInstanceFromURL();
 
-	const {data, isError, refetch} = useIPAttr(inst, family); // IIpAttribute[]
+	const ip_query = useIPAttr(inst, family);
+	const {data, refetch} = ip_query; // IIpAttribute[]
 	
 	// Transform data: split entries with multiple IPs into separate entries
 	const ip_info: IIpData = useMemo(() => {
@@ -97,14 +99,14 @@ export default function IPPage(props: {family?: 'ipv4' | 'ipv6'}) {
 				return request_delete_ip(inst, ip, parseInt(maskStr, 10), item.dev);
 			}),
 		);
-		const failures = results.filter(res => res.status === 'error');
+		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
 			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
 		} else if (failures.length < results.length) {
-			showDeleteError('IP address', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
+			showDeleteError('IP address', t('{{succeeded}} succeeded, {{failed}} failed. {{error}}', {succeeded: results.length - failures.length, failed: failures.length, error: t(failures[0].localeKey)}));
 		} else {
-			showDeleteError('IP address', failures[0].error);
+			showDeleteError('IP address', t(failures[0].localeKey));
 			return;
 		}
 		set_selected_rows([]);
@@ -113,6 +115,7 @@ export default function IPPage(props: {family?: 'ipv4' | 'ipv6'}) {
 		}, 1000);
 	};
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
 	const handleAdd = () => {
 		if (!inst) return;
 		const input_form = (
@@ -131,12 +134,12 @@ export default function IPPage(props: {family?: 'ipv4' | 'ipv6'}) {
 			async () => {
 				if (!instanceRef.current) return;
 				const res = await request_create_ip(inst, instanceRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
 					setTimeout(() => {
 						refetch();
 					}, 1000);
-				} else showAddError('IP address', res.error);
+				} else showAddError('IP address', t(res.localeKey));
 			},
 			true,
 		);
@@ -181,13 +184,13 @@ export default function IPPage(props: {family?: 'ipv4' | 'ipv6'}) {
 				
 				// Use same API as create
 				const res = await request_create_ip(inst, updateData);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('IP address updated successfully.'), t('OK'));
 					setTimeout(() => {
 						refetch();
 					}, 1000);
 				} else {
-					showAddError('IP address', res.error);
+					showAddError('IP address', t(res.localeKey));
 				}
 			},
 			true,
@@ -209,7 +212,7 @@ export default function IPPage(props: {family?: 'ipv4' | 'ipv6'}) {
 				onDelete={handleDelete}
 				onUpdate={handleUpdate}
 				onRefresh={handleRefresh}
-				error={isError}
+				state={toPageState(ip_query, {op: 'ip_address.list'})}
 			/>
 
 			{selectedItem && (
