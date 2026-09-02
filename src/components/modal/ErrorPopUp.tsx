@@ -5,6 +5,12 @@ import {Box, Button, Modal, Stack, Typography} from '@mui/material';
 import {useTranslation} from 'react-i18next';
 
 //---------------------------------------------------------
+// Constants
+//---------------------------------------------------------
+const ERROR_TITLE_ID = 'app-error-dialog-title';
+const ERROR_BODY_ID = 'app-error-dialog-body';
+
+//---------------------------------------------------------
 // Types
 //---------------------------------------------------------
 interface ErrorPopUpProps {
@@ -117,12 +123,18 @@ export default function ErrorPopUp({
 
 	return (
 		<Modal open={isOpen} onClose={handleClose}>
-			<Box sx={style}>
+			{/* MUI's Modal adds no dialog semantics of its own — without these a
+			    screen reader announces this as an unnamed group, not as a dialog.
+			    Same contract the shared PopUp carries (UI-P2-2); this second copy
+			    of the shape was missed then and is pinned by
+			    e2e/tests/oam/dialog-contract.spec.ts. */}
+			<Box sx={style} role="dialog" aria-modal="true" aria-labelledby={ERROR_TITLE_ID} aria-describedby={ERROR_BODY_ID}>
 				<Stack spacing={3}>
 					{/* Header with icon */}
 					<Box display="flex" alignItems="center" gap="12px">
 						<span style={{ fontSize: '24px' }}>⚠️</span>
 						<Typography 
+							id={ERROR_TITLE_ID}
 							variant="h6" 
 							component="h2" 
 							style={{ 
@@ -136,7 +148,7 @@ export default function ErrorPopUp({
 					</Box>
 
 					{/* Error content */}
-					<Box sx={{ minHeight: '40px' }}>
+					<Box id={ERROR_BODY_ID} sx={{ minHeight: '40px' }}>
 						<div style={{ textAlign: 'left' }}>
 							{/* Main message */}
 							<div style={{ marginBottom: '12px', fontWeight: '500' }}>
