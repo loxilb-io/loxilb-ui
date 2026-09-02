@@ -1,8 +1,8 @@
 //---------------------------------------------------------
-// UI-P6-2 — numeric input raw-string state (no silent coercion)
+// numeric input raw-string state (no silent coercion)
 // (npm test src/components/input/NumericInputs.test.tsx)
 //
-// Red-first against the parseInt(...)||0 sites (C-3 inventory, 17/5) AND the
+// Red-first against the parseInt(...)||0 sites (17 of them, 5 families) AND the
 // TextBox number-mode coercion layer beneath them: empty → onChange(0),
 // negative/over-max silently clamped, NaN swallowed (parent keeps a STALE
 // value while the display shows garbage), and type="number" hides invalid
@@ -48,7 +48,7 @@ const lastCall = (fn: ReturnType<typeof vi.fn>) => fn.mock.calls[fn.mock.calls.l
 // ApiKeyInputForm — rate_limit_rps / burst_size / tokens_per_min
 // (all optional int64, 0 = unlimited/default BY OMISSION)
 //---------------------------------------------------------
-describe('UI-P6-2 ApiKey numeric fields', () => {
+describe('ApiKey numeric fields', () => {
 	async function renderFormWithTenant(user: ReturnType<typeof userEvent.setup>) {
 		const onChange = vi.fn();
 		render(<ApiKeyInputForm onChange={onChange} />);
@@ -159,7 +159,7 @@ describe('UI-P6-2 ApiKey numeric fields', () => {
 // bounds; garbage→0 today trips the *zero-threshold* warning
 // (misleading) and destroys the typed text.
 //---------------------------------------------------------
-describe('UI-P6-2 SecurityRate numeric fields', () => {
+describe('SecurityRate numeric fields', () => {
 	function renderForm() {
 		const onChange = vi.fn();
 		render(<SecurityRateInputForm onChange={onChange} />);
@@ -232,7 +232,7 @@ describe('UI-P6-2 SecurityRate numeric fields', () => {
 //---------------------------------------------------------
 // BGPGlobalPage — localAs (required, AS number) + listenPort (optional port)
 //---------------------------------------------------------
-describe('UI-P6-2 BGP numeric fields', () => {
+describe('BGP numeric fields', () => {
 	function renderPage() {
 		return render(
 			<RecoilRoot>

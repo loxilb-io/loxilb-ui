@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// UI-P6-1 follow-up — snapshot inline-error convention regression
+// follow-up — snapshot inline-error convention regression
 // (npm test src/components/snapshot/snapshotOpError.test.ts)
 //
 // The snapshot family's design (§5.3 / do-not-regress list) surfaces the

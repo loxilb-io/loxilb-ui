@@ -49,13 +49,13 @@ export async function create_user(userData: ICreateUserRequest): Promise<IUserId
 }
 
 /**
- * Login user with username and password (UI-P6-1 batch 1, N-3).
+ * Login user with username and password.
  *
  * Resolves to a discriminated OpResult instead of throwing raw server prose:
  * the OAM lockout (HTTP 429, from the 6th failed attempt) is mapped to the
  * distinct 'auth.locked_out' code so the page can render it differently from
  * a plain bad password ('auth.invalid_credentials'). Raw backend text stays
- * in rawDetail (diagnostics only, never rendered — ES-10/ES-18/ES-27).
+ * in rawDetail (diagnostics only, never rendered).
  */
 export async function login_user(credentials: ILoginRequest): Promise<OpResult<IEnhancedLoginResponse>> {
 	let response;

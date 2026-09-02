@@ -25,7 +25,7 @@ export default function BGPGlobalPage() {
 
 	const {form, params, handleChange} = useFormWithParams<IBgpGlobalConfig>('IBgpGlobalConfig');
 
-	// Raw text as typed (UI-P6-2 / ES-17): the wire value updates only on a
+	// Raw text as typed: the wire value updates only on a
 	// valid parse; garbage keeps the text on screen with a field error and
 	// blocks Apply — it must never silently become 0 (an invalid AS the
 	// old required-check then blamed on a "missing" field).

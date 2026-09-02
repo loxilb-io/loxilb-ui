@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// UI-P2-2 — shared confirm/info dialog contract
+// shared confirm/info dialog contract
 // (npm test src/components/modal/PopUp.test.tsx)
 //
 // Red-first for the dialog rebuild: dismissal (Escape /
@@ -19,7 +19,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 //---------------------------------------------------------
 // Harness
 //---------------------------------------------------------
-// The extra opts argument ({persistent, handle_no}) is part of the UI-P2-2
+// The extra opts argument ({persistent, handle_no}) is part of the 
 // contract; the cast keeps typecheck green while the tests run red against
 // the pre-fix signature.
 type OpenArgs = [string, any, string?, string?, (() => void | Promise<void>)?, boolean?, {persistent?: boolean; handle_no?: (reason: string) => void}?];
@@ -66,7 +66,7 @@ beforeEach(async () => {
 afterEach(cleanup);
 
 //---------------------------------------------------------
-// Dismissal + close reason (ES-16/13)
+// Dismissal + close reason (/13)
 //---------------------------------------------------------
 describe('PopUp dismissal', () => {
 	it('Escape closes a normal dialog and calls handle_no("escape") exactly once', async () => {
@@ -113,7 +113,7 @@ describe('PopUp dismissal', () => {
 });
 
 //---------------------------------------------------------
-// Naming for assistive tech (ES-10)
+// Naming for assistive tech 
 //---------------------------------------------------------
 describe('PopUp dialog semantics', () => {
 	it('has aria-labelledby and aria-describedby resolving to the rendered title/body', async () => {
@@ -130,7 +130,7 @@ describe('PopUp dialog semantics', () => {
 });
 
 //---------------------------------------------------------
-// Truthful in-flight semantics (ES-15/24)
+// Truthful in-flight semantics (/24)
 //---------------------------------------------------------
 describe('PopUp busy state', () => {
 	it('keeps the dialog up and locked while handle_yes is pending, closes after it resolves', async () => {
@@ -276,7 +276,7 @@ describe('PopUp focus management', () => {
 });
 
 //---------------------------------------------------------
-// i18n chrome (ES-18)
+// i18n chrome 
 //---------------------------------------------------------
 describe('PopUp default labels', () => {
 	it('default Yes label goes through i18n (ko shows 예, not the literal "Yes")', async () => {

@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// UI-P6-3 proof: an accepted mutation is reported by what the LIST shows,
+// proof: an accepted mutation is reported by what the LIST shows,
 // not by the fact that the POST returned 200.
 //
 // Both legs are fully intercepted — the POST is answered locally and the
@@ -10,7 +10,7 @@
 //   converges late  → the success popup waits for the row to actually appear
 //   never converges → 'Submitted', which is NEITHER a success NOR an error
 //
-// The second case is the stop-ship one: before UI-P6-3 the page said
+// The second case is the stop-ship one: before the page said
 // "Added successfully" the instant the POST was accepted and then looked
 // exactly once, 1 s later, so a slow or silently-dropped write was reported
 // to the operator as a completed one.

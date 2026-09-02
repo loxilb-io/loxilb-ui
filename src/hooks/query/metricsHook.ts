@@ -42,7 +42,7 @@ export function useLiveMetrics(
 	flavor: InstanceFlavor | undefined;
 	/**
 	 * Why the last scrape produced no exposition, when that is knowable
-	 * (UI-P6-5). Undefined means the scrape succeeded — including a healthy
+ *. Undefined means the scrape succeeded — including a healthy
 	 * instance whose counters read zero. A card must branch on this BEFORE
 	 * falling back to "not reported by this instance": a refused scrape (401)
 	 * and collection being switched off (503) are not the instance choosing

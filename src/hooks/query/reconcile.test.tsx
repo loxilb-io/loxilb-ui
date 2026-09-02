@@ -1,9 +1,9 @@
 //---------------------------------------------------------
-// UI-P6-3 — bounded reconciliation replaces the blind 1-second refetch
+// bounded reconciliation replaces the blind 1-second refetch
 // (npm test src/hooks/query/reconcile.test.tsx)
 //
-// Red-first against the pattern repeated at 49 sites (C-2 inventory, 49/19;
-// Tranche A = 11):
+// Red-first against the pattern repeated at 49 sites (19 families;
+// first tranche = 11):
 //
 //     openPopUp(t('Success'), t('Added successfully.'), t('OK'));  // (1)
 //     setTimeout(() => { refetch(); }, 1000);                      // (2)
@@ -73,7 +73,7 @@ afterEach(() => {
 	vi.restoreAllMocks();
 });
 
-describe('UI-P6-3 reconciler — bounded convergence, honest outcomes', () => {
+describe('reconciler — bounded convergence, honest outcomes', () => {
 	it('1. converges on a later poll → confirmed (today: success is claimed at once, one blind look)', async () => {
 		// The row shows up only on the 3rd read: acceptance, then two polls.
 		let reads = 0;
@@ -181,7 +181,7 @@ describe('UI-P6-3 reconciler — bounded convergence, honest outcomes', () => {
 	});
 
 	it('8. the budget is bounded and ordered — no unbounded retry storm', async () => {
-		// Pins the Q-2-provisional table itself: strictly increasing backoff,
+		// Pins the table itself: strictly increasing backoff,
 		// a budget an operator will actually wait through.
 		expect(DEFAULT_RECONCILE_INTERVALS_MS.length).toBeGreaterThanOrEqual(3);
 		for (let i = 1; i < DEFAULT_RECONCILE_INTERVALS_MS.length; i++) {

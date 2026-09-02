@@ -32,7 +32,7 @@ export default function LoginPage() {
 	const [error, setError] = useState<string>('');
 	// Why the previous session ended, if it ended on its own. Read ONCE (the
 	// reason is consumed as it is read) so a later reload cannot re-accuse the
-	// operator of having gone idle. UI-P6-4 reports this here rather than in a
+	// operator of having gone idle. reports this here rather than in a
 	// dialog on the page being navigated away from.
 	const [endedReason] = useState<SessionEndReason | null>(() => consumeSessionEndReason());
 	const [loading, setLoading] = useState(false);
@@ -58,14 +58,14 @@ export default function LoginPage() {
 
 		try {
 			// login_user resolves to an OpResult — mapped machine code plus a
-			// locale key. Raw backend prose never reaches this screen (N-3):
-			// the GS evaluation exercises exactly this page for ES-27, and the
+			// locale key. Raw backend prose never reaches this screen:
+			// this page is the first thing every operator sees, and the
 			// lockout message must stay distinct from a typo'd password while
-			// not disclosing the lockout policy (Q-4 conservative default).
+			// not disclosing the lockout policy (the conservative default).
 			const result = await login_user(data);
 			if (result.status === 'confirmed' && result.data?.token) {
 				// A token whose lifetime cannot be established must not be
-				// installed (UI-P6-4): without a readable `exp` the UI has no
+				// installed: without a readable `exp` the UI has no
 				// basis for a proactive logout and the session would run
 				// unbounded until some request happened to bounce 401.
 				try {
@@ -77,7 +77,7 @@ export default function LoginPage() {
 				beginSession();
 				save_local_storage('access_token', result.data.token);
 				// Return the operator to where the session ended, not to the
-				// landing page (UI-P6-4). The stored value is a validated local
+				// landing page. The stored value is a validated local
 				// route; anything else was refused at storage time.
 				move_forced(consumeRedirectTarget() ?? '/instance');
 			} else {

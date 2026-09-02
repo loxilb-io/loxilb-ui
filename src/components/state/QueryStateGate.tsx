@@ -1,12 +1,12 @@
 //---------------------------------------------------------
-// QueryStateGate — one rendering for every page data state (UI-P6-5)
+// QueryStateGate — one rendering for every page data state 
 //---------------------------------------------------------
 // Wraps a table body, card or panel and renders the state the read is really
 // in. Tables reach this through DataTable's `state` prop; surfaces that are
 // not tables (dashboard cards, the log console, single-record panels) use the
 // gate directly.
 //
-// Accessibility (ES-10) lives in PageStateBanner: the banner region is a live
+// Accessibility lives in PageStateBanner: the banner region is a live
 // region so a state flip is announced rather than silently repainted.
 
 import {Box, CircularProgress} from '@mui/material';
@@ -40,7 +40,7 @@ export default function QueryStateGate<T>({state, name, onRetry, children, empty
 			<>
 				{loadingFallback ?? (
 					<Box sx={{display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', py: 4}}>
-						{/* A nameless progressbar is the axe violation UI-P2-2 had to
+						{/* A nameless progressbar is the axe violation had to
 						    fix on the setup spinner — every busy indicator gets a name. */}
 						<CircularProgress size={32} aria-label={t('Loading {{name}}...', {name})} />
 					</Box>

@@ -1,10 +1,10 @@
 //---------------------------------------------------------
-// UI-P6-5 — the shared table's page-state contract
+// the shared table's page-state contract
 // (npm test src/components/table/DataTable.test.tsx)
 //
 // RED against the current DataTable, which knows only `error?: boolean`.
 // Every family table in the app renders through this component, so what it
-// can and cannot express IS the app's answer to ES-10 / ES-14:
+// can and cannot express IS the app's answer to that question:
 //
 //   - a failed read still draws the grid, so the operator reads
 //     "No Widget entries yet" under the banner — the exact "an error looks
@@ -96,7 +96,7 @@ function button(name: RegExp): HTMLButtonElement {
 
 beforeEach(async () => {
 	// i18n is a module singleton — a case that switches language leaks into
-	// every later case unless it is reset here (UI-P6-6, the hard way).
+	// every later case unless it is reset here (the hard way).
 	await i18n.changeLanguage('en');
 });
 afterEach(cleanup);
@@ -152,7 +152,7 @@ describe('a failed read is not an empty table', () => {
 });
 
 //---------------------------------------------------------
-// 2. Stale rows may be read, never acted on (§2.3, ES-14)
+// 2. Stale rows may be read, never acted on (§2.3)
 //---------------------------------------------------------
 describe('stale rows disable every write', () => {
 	const staleState: PageDataState<unknown> = {
@@ -300,7 +300,7 @@ describe('empty and loading are told apart', () => {
 });
 
 //---------------------------------------------------------
-// 4. The copy is localized like everything else (ES-27)
+// 4. The copy is localized like everything else 
 //---------------------------------------------------------
 describe('page-state copy follows the operator language', () => {
 	it('renders the failure in Korean once the language is Korean', async () => {

@@ -89,7 +89,7 @@ export default function EndpointPage() {
 
 		const results = await Promise.all(selectedItems.map(item => request_delete_endpoint_by_ip(inst, item)));
 		// A rule-referenced endpoint's rejected delete now maps to failed on
-		// every transport (body sniff, not reason-phrase sniff — UI-P6-1 D7).
+		// every transport (body sniff, not reason-phrase sniff — D7).
 		const failures = results.filter(res => res.status !== 'confirmed');
 
 		// Promise.all preserves order, so results[i] belongs to selectedItems[i]

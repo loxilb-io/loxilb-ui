@@ -1,7 +1,7 @@
 import {t} from 'i18next';
 
 //---------------------------------------------------------
-// UI-P6-2 — raw-string numeric field state (ES-17).
+// raw-string numeric field state.
 // Raw text is the single source of truth for the control; invalid input is
 // never coerced to 0, never clamped, never reverted; submit gates on `valid`.
 // Forms keep the raw string in their state and serialize from `parsed`.

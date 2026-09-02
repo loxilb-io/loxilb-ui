@@ -126,7 +126,7 @@ export default function LBRulePage() {
 
 		const results = await Promise.all(deletePromises);
 		// {result:"fail"} envelopes now map to failed — a dataplane-rejected
-		// delete can no longer be counted as succeeded (UI-P6-1).
+		// delete can no longer be counted as succeeded.
 		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {

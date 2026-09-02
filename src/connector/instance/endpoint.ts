@@ -63,7 +63,7 @@ export async function request_delete_endpoint_by_ip(instance: IInstance, item: I
 	// by loadbalancer rule" when the delete is rejected. The legacy check
 	// sniffed resp.message — the HTTP reason phrase on HTTP/1.1 ("OK"), so it
 	// only ever fired over HTTP/2. Inspect the BODY's result string directly;
-	// transport-independent (UI-P6-1 batch 3, D7).
+	// transport-independent ( batch 3, D7).
 	const bodyResult = typeof (resp.data as any)?.result === 'string' ? (resp.data as any).result.toLowerCase() : '';
 	if (res.status === 'confirmed' && (bodyResult.includes('error') || bodyResult.includes('referred'))) {
 		return {...res, status: 'failed', code: 'endpoint.delete.reported_failure', localeKey: STATUS_LOCALE_KEYS.failed, data: undefined, rawDetail: (resp.data as any).result};

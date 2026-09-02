@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// UI-P6-5 — a failed read must never resolve as a successful empty result.
+// a failed read must never resolve as a successful empty result.
 // (npm test src/connector/readErrors.test.ts)
 //
 // RED against the connectors as they stand. `assertOk` has existed in
@@ -109,7 +109,7 @@ describe('a 2xx read is untouched', () => {
 		await expect(query_get_instance_list()).resolves.toEqual([{id: 1, name: 'gw-1'}]);
 	});
 
-	it('a 200 whose body is not a list still hands back a list (UI-P6-6 regression guard)', async () => {
+	it('a 200 whose body is not a list still hands back a list (regression guard)', async () => {
 		oamGet.mockResolvedValue({code: 200, data: {result: 'unexpected'} as any, message: 'OK'});
 		await expect(query_get_instance_list()).resolves.toEqual([]);
 	});
@@ -117,7 +117,7 @@ describe('a 2xx read is untouched', () => {
 	it('the users read has the same whole-body-cast crash shape and must also be guarded', async () => {
 		// oam.ts:149 `return (resp.data ?? []) as IUser[]` — the last remaining
 		// instance of the shape that took every instance page to the error
-		// boundary in UI-P6-6. UserManagementPage calls .map on it.
+		// boundary in. UserManagementPage calls.map on it.
 		oamGet.mockResolvedValue({code: 200, data: {result: 'unexpected'} as any, message: 'OK'});
 		await expect(query_get_all_users()).resolves.toEqual([]);
 	});

@@ -1,10 +1,10 @@
 //---------------------------------------------------------
-// UI-P6-4 — session expiry, idle policy, logout hygiene (ES-22 / ES-27)
+// session expiry, idle policy, logout hygiene 
 // (npm test src/session/session.test.ts)
 //
 // Red-first against three separate defects that exist today:
 //
-//   1. LOGOUT LEAVES SERVER DATA BEHIND (the headline, ES-22). Both logout
+// 1. LOGOUT LEAVES SERVER DATA BEHIND (the headline). Both logout
 //      paths clear exactly one key, `access_token`. But App.tsx persists the
 //      WHOLE React Query cache to localStorage via createSyncStoragePersister
 //      (key REACT_QUERY_OFFLINE_CACHE), and the metrics hooks persist their
@@ -46,12 +46,12 @@ function seedLoggedInStorage(token: string) {
 	localStorage.setItem('conntrack-series_1', JSON.stringify([{timestamp: 1, data: {ct: 5}}]));
 	// A stray key that happens to embed the token — the scan must catch this class.
 	localStorage.setItem('debug_last_request', JSON.stringify({authorization: `Bearer ${token}`}));
-	// ES-12 preference keys must SURVIVE logout (UI-P6-6 owns them).
+	// preference keys must SURVIVE logout ( owns them).
 	localStorage.setItem('i18nextLng', 'ko');
 	localStorage.setItem('table_density', 'compact');
 }
 
-/** The ES-22 proof: nothing left anywhere that carries session data. */
+/** The proof: nothing left anywhere that carries session data. */
 function residue(token: string): string[] {
 	const found: string[] = [];
 	for (const store of [localStorage, sessionStorage]) {
@@ -73,7 +73,7 @@ afterEach(() => {
 	vi.restoreAllMocks();
 });
 
-describe('UI-P6-4 — JWT expiry parsing', () => {
+describe('JWT expiry parsing', () => {
 	it('reads exp as epoch milliseconds', () => {
 		expect(parseJwtExp(tokenWithExp(1_700_000_000))).toBe(1_700_000_000_000);
 	});
@@ -99,7 +99,7 @@ describe('UI-P6-4 — JWT expiry parsing', () => {
 	});
 });
 
-describe('UI-P6-4 — proactive logout scheduling', () => {
+describe('proactive logout scheduling', () => {
 	it('schedules the logout a skew margin BEFORE the server expiry', () => {
 		const now = 1_700_000_000_000;
 		vi.setSystemTime(now);
@@ -121,7 +121,7 @@ describe('UI-P6-4 — proactive logout scheduling', () => {
 	});
 });
 
-describe('UI-P6-4 — returning the operator to where they were', () => {
+describe('returning the operator to where they were', () => {
 	it('remembers the path so a re-login does not dump the operator on the landing page', async () => {
 		seedLoggedInStorage(tokenWithExp(1_700_000_000));
 		await terminateSession('expired', {path: '/instance/traffic/lb'});
@@ -133,13 +133,13 @@ describe('UI-P6-4 — returning the operator to where they were', () => {
 	});
 
 	it('RED: keeps the query string — most instance routes are useless without it', async () => {
-		// Found by UI-P6-6's ES-12 walkthrough. Dropping the query looked
+		// Found by the customization walkthrough. Dropping the query looked
 		// harmless ("the path alone is enough to land on the right page") but
 		// nearly every page under /instance reads ?name=: useInstanceName()
 		// logs 'Instance name is missing!!' and calls move_404() when it is
 		// absent. So a sign-out from the LB page followed by a re-login
 		// returned the operator to /instance/traffic/lb with no instance —
-		// a broken page and, per ES-12's own decision rule, a FAIL.
+		// a broken page and, by that same decision rule, a failure.
 		//
 		// Proven in a browser before this fix: post-relogin URL was
 		// http://localhost:3000/netlox/instance/traffic/lb with 8 console
@@ -190,7 +190,7 @@ describe('UI-P6-4 — returning the operator to where they were', () => {
 	});
 
 	// REPLACES an earlier assertion that the query string was dropped "because
-	// it can carry identifiers". UI-P6-6's ES-12 walkthrough disproved the
+	// it can carry identifiers". The customization walkthrough disproved the
 	// premise: the pages this feature returns operators to cannot function
 	// without ?name=, and the browser's history keeps the full URL regardless,
 	// so dropping it cost the feature its purpose and protected nothing.
@@ -201,7 +201,7 @@ describe('UI-P6-4 — returning the operator to where they were', () => {
 	});
 });
 
-describe('UI-P6-4 — terminateSession leaves no residue (ES-22)', () => {
+describe('terminateSession leaves no residue', () => {
 	const REASONS: SessionEndReason[] = ['logout', 'expired', 'idle', 'revoked'];
 
 	it.each(REASONS)('purges token, persisted query cache and series storage on %s', async reason => {
@@ -215,7 +215,7 @@ describe('UI-P6-4 — terminateSession leaves no residue (ES-22)', () => {
 		expect(residue(token)).toEqual([]);
 	});
 
-	it('keeps ES-12 preferences, which are not session data', async () => {
+	it('keeps preferences, which are not session data', async () => {
 		seedLoggedInStorage(tokenWithExp(1_700_000_000));
 		await terminateSession('logout');
 

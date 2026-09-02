@@ -30,7 +30,7 @@ function sniSoftError(resp: SimpleResponse): boolean {
 
 // runOp plus this family's soft-error contract: the SNI store answers 200
 // with an 'Error: ...'-prefixed result string for domain rejections — the
-// generic {result:"fail"} envelope check cannot see those (UI-P6-1 batch 5).
+// generic {result:"fail"} envelope check cannot see those ( batch 5).
 async function sniOp(op: string, call: () => Promise<SimpleResponse>): Promise<OpResult> {
 	let resp;
 	try {

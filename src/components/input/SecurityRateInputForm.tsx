@@ -65,7 +65,7 @@ export default function SecurityRateInputForm(props: SecurityRateInputFormProps)
 
 	const [form, setForm] = React.useState<ISecurityRateConfigMod>(withDefaults(value));
 
-	// Raw text as typed for the numeric fields (UI-P6-2 / ES-17): the wire
+	// Raw text as typed for the numeric fields: the wire
 	// object keeps the last VALID numbers; garbage never overwrites them and
 	// never coerces to 0 — it just makes the form invalid until corrected.
 	const [raws, setRaws] = React.useState<RateRaws>(() => rawsFrom(withDefaults(value)));

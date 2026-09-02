@@ -1,4 +1,4 @@
-// UI-P6-1 batch 2 (AI key/quota) — real defects pinned before migration:
+// batch 2 (AI key/quota) — real defects pinned before migration:
 //
 //  D1  request_create_apikey accepts HTTP 200 + {result:"fail"} as success —
 //      the page then renders the reveal dialog around a failure body, so the

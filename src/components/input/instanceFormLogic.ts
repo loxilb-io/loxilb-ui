@@ -324,9 +324,9 @@ export function describe_instance_error(raw: string | undefined): string {
 }
 
 /**
- * OpResult flavour of describe_instance_error (UI-P6-1 batch 1): returns a
+ * OpResult flavour of describe_instance_error: returns a
  * locale KEY — the caller renders it through t(). Unlike the legacy helper it
- * never falls back to raw server prose (ES-10/ES-18): unrecognized details
+ * never falls back to raw server prose: unrecognized details
  * resolve to the result's own mapped localeKey. The duplicate-entry sniffing
  * inspects rawDetail (diagnostics), because OAM's 409 body still carries the
  * driver text on older builds.

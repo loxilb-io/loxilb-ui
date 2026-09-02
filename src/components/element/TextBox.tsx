@@ -103,7 +103,7 @@ export default function TextBox(props: {
 	// 	if (disabled) onChange('');
 	// }, [disabled]);
 
-	// Raw-string numeric mode (UI-P6-2 / ES-17): the parent owns the verbatim
+	// Raw-string numeric mode: the parent owns the verbatim
 	// text and derives parse/validation itself — no local state, no coercion,
 	// and type="text" because type="number" hides invalid input from JS
 	// entirely (badInput reads back as ''). Opt-in; the legacy number mode

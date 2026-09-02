@@ -125,7 +125,7 @@ export default function ErrorPopUp({
 		<Modal open={isOpen} onClose={handleClose}>
 			{/* MUI's Modal adds no dialog semantics of its own — without these a
 			    screen reader announces this as an unnamed group, not as a dialog.
-			    Same contract the shared PopUp carries (UI-P2-2); this second copy
+ Same contract the shared PopUp carries; this second copy
 			    of the shape was missed then and is pinned by
 			    e2e/tests/oam/dialog-contract.spec.ts. */}
 			<Box sx={style} role="dialog" aria-modal="true" aria-labelledby={ERROR_TITLE_ID} aria-describedby={ERROR_BODY_ID}>

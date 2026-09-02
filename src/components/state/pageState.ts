@@ -1,9 +1,9 @@
 //---------------------------------------------------------
-// Standardized page data states (UI-P6-5)
+// Standardized page data states 
 //---------------------------------------------------------
 // One vocabulary for "what is this page actually showing right now", so a
-// failed read can never be rendered as a successful empty resource (ES-10 /
-// ES-14). Before this module, each page hand-rolled the distinction — or
+// failed read can never be rendered as a successful empty resource ( /
+// ). Before this module, each page hand-rolled the distinction — or
 // skipped it: `error={isError}` is a boolean, so a refresh that failed while
 // cached rows were still on screen looked identical to a healthy page, and
 // 401/403 (denied) was indistinguishable from 503 (unavailable) and from a
@@ -23,7 +23,7 @@ export type PageDataState<T> =
 	| {kind: 'empty'; fetchedAt: number}
 	/** Last-known-good rows are still on screen, and we can say why the refresh failed. */
 	| {kind: 'stale'; rows: T; fetchedAt: number; failure: OpResult}
-	/** 401/403 in an inline context (the app-level session teardown is UI-P6-4's). */
+	/** 401/403 in an inline context; the app-level session teardown is handled elsewhere. */
 	| {kind: 'denied'; result: OpResult}
 	/** 502/503/504/timeout/transport — the service is not answering right now. */
 	| {kind: 'unavailable'; result: OpResult}
@@ -151,7 +151,7 @@ export function createEnabled(state: PageDataState<unknown>): boolean {
 
 /**
  * Turn whatever a read connector threw into the same OpResult vocabulary the
- * mutation path already speaks (UI-P6-1). Exported for connectors and tests.
+ * mutation path already speaks. Exported for connectors and tests.
  */
 export function isApiError(error: unknown): error is ApiError {
 	return error instanceof ApiError;

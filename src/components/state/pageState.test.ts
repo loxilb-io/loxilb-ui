@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// UI-P6-5 — the page-state precedence table
+// the page-state precedence table
 // (npm test src/components/state/pageState.test.ts)
 //
 // RED against the stub in pageState.ts, which throws. These cases are the
@@ -12,7 +12,7 @@
 //     last successful rows when a background refetch fails, so today the
 //     operator sees rows with an error banner and no way to tell how old they
 //     are — and every write button stays live against data we no longer know
-//     to be current (ES-14, "stale data must not enable destructive actions").
+// to be current ("stale data must not enable destructive actions").
 //   - DENIED vs UNAVAILABLE vs FAILED. All three collapse into the same
 //     "Couldn't load … The server returned an error." banner, so a permission
 //     problem the operator could fix reads the same as a gateway that is down.
@@ -152,7 +152,7 @@ describe('toPageState — emptiness', () => {
 	});
 });
 
-describe('writesEnabled — the ES-14 guard', () => {
+describe('writesEnabled — the write guard', () => {
 	it('allows writes only when the data on screen is current', () => {
 		expect(writesEnabled({kind: 'data', rows: [1], fetchedAt: FETCHED_AT})).toBe(true);
 		expect(writesEnabled({kind: 'empty', fetchedAt: FETCHED_AT})).toBe(true);

@@ -1,4 +1,4 @@
-// UI-P6-1 batch 4 (snapshot) — OpResult contract, preserving this family's
+// Snapshot family — OpResult contract, preserving this family's
 // two hard-won conventions: mutations NEVER reject (a thrown fetch stranded
 // the restore wizard's non-dismissable committing screen, §9.3 case 3), and
 // restore's 200-with-failure-outcome is DATA (the wizard renders the gateway
@@ -10,7 +10,7 @@
 //      exists unpinned, no warning), and the rename-to-real-version step is
 //      lost.
 //  D10 The network-failure result is raw English concat ("... failed: ...
-//      (server unreachable)") shown verbatim in popups (ES-10/ES-18); it must
+//      (server unreachable)") shown verbatim in popups; it must
 //      be a mapped, localized `unavailable`.
 import {afterEach, beforeEach, describe, expect, it, vi, type Mock} from 'vitest';
 import {request_delete_snapshot, request_put_snapshot_schedule, request_restore_snapshot, request_take_snapshot} from './snapshotApi';

@@ -64,7 +64,7 @@ describe('language persistence (do not regress)', () => {
 	});
 });
 
-describe('keyboard operability (ES-18)', () => {
+describe('keyboard operability', () => {
 	it('trigger is a focusable button with menu semantics', async () => {
 		renderTrigger();
 		const trigger = screen.getByRole('button', {name: /select a language/i});

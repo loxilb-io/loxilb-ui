@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// UI-P6-5 state matrix (ES-10 / ES-14) — what a page shows, in a browser.
+// state matrix — what a page shows, in a browser.
 //
 // The unit suites pin the rendering of a state that is handed to a component.
 // This pins the thing that actually matters to an operator: that a real read,
@@ -12,7 +12,7 @@
 //
 // Two notes on the choice of status codes:
 //   - 401 is used ONLY on gateway pass-through reads. On an OAM route a 401
-//     is the operator's session ending (UI-P6-4 tears the app down and every
+//     is the operator's session ending (it tears the app down and every
 //     later spec in the run would fail on a revoked token); the management-hop
 //     carve-out is what makes it safe here. OAM reads use 403 for the denied
 //     case instead, which maps to the same state without the teardown.
@@ -119,7 +119,7 @@ test.describe('the four states, end to end on the Load Balancer page', () => {
 		await expect(page.getByRole('alert')).toBeVisible({timeout: AFTER_RETRIES});
 		// The whole point of the task: an error is never an empty resource.
 		await expect(page.getByText(EMPTY_SENTENCE)).toHaveCount(0);
-		// Raw server prose must not reach the screen (ES-15).
+		// Raw server prose must not reach the screen.
 		await expect(page.getByText(/boom on node-3/)).toHaveCount(0);
 	});
 
@@ -225,7 +225,7 @@ test.describe('the four states, end to end on the Load Balancer page', () => {
 		const rowsBefore = await page.locator('.MuiDataGrid-row').count();
 		expect(rowsBefore, 'phase 1 must put a row on screen for phase 2 to preserve').toBeGreaterThan(0);
 
-		// Phase 2: the refresh fails over rows that are already on screen.
+		// the refresh fails over rows that are already on screen.
 		await page.getByRole('button', {name: 'Refresh Load Balancer'}).click();
 
 		await expect(page.getByText(/Out of date/i).first()).toBeVisible({timeout: AFTER_RETRIES});
@@ -326,7 +326,7 @@ test('instance list: a genuinely empty list still invites the operator to add on
 //---------------------------------------------------------
 // 4. The app must stay where the operator is
 //---------------------------------------------------------
-// Before UI-P6-5 an OAM control-plane read answering 503 or 5xx ejected the
+// Before an OAM control-plane read answering 503 or 5xx ejected the
 // whole application to a full-screen error page, discarding the operator's
 // context. (The fixtures assert the same thing globally; this states it
 // deliberately, so the guarantee has a test that is ABOUT it.)

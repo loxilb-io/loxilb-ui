@@ -72,7 +72,7 @@ export async function request_logout(): Promise<void> {
 
 export async function query_get_instance_list(): Promise<IInstance[]> {
 	const resp = await GET_OAM<OamGetResp<'/oam/loxilbs'>>(`/loxilbs`);
-	// UI-P6-5 answers the question UI-P6-6 left open below: an unusable
+	// answers the question left open below: an unusable
 	// response SURFACES as an error rather than reading as "no instances".
 	// A management API that is down is not the same fact as an operator who
 	// has registered nothing, and the landing page said the second one.
@@ -82,17 +82,17 @@ export async function query_get_instance_list(): Promise<IInstance[]> {
 	// cast as if it were a list. Every instance page then calls .find on it
 	// (useInstanceFromURL, get_instance, get_instance_name), so one odd
 	// response became a TypeError during render and took the whole route to
-	// RouteErrorBoundary. Seen in UI-P6-6's AFTER-run as 121 console errors
+	// RouteErrorBoundary. Seen in a full AFTER-run as 121 console errors
 	// headed by `instance_list.find is not a function` in <LBRulePage>.
 	//
 	// This only guarantees the shape. Whether an unusable response should
-	// SURFACE as an error instead of reading as "no instances" is UI-P6-5's
+	// SURFACE as an error instead of reading as "no instances" is 's
 	// call — this read feeds SetupHandler and flavor probing, so making it
-	// throw touches app start-up (evidence/UI-P6-5/prep-notes.md).
+	// throw touches app start-up.
 	return Array.isArray(resp.data) ? (resp.data as IInstance[]) : [];
 }
 
-// Instance mutations return a discriminated OpResult (UI-P6-1 batch 1) so
+// Instance mutations return a discriminated OpResult ( batch 1) so
 // consumers can distinguish denied / invalid / unavailable / failed instead
 // of inventing per-site mappings — and so a 200-{result:"fail"} body or a
 // parse-swallowed 200 can never render as success.

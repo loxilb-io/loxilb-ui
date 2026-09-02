@@ -79,9 +79,9 @@ import 'root.css';
 //---------------------------------------------------------
 // Global Instance
 //---------------------------------------------------------
-// UI-P6-4: both live in one module so the session teardown can purge the
+// both live in one module so the session teardown can purge the
 // PERSISTED cache — clearing only the in-memory client would leave every
-// query's data sitting in localStorage after logout (ES-22).
+// query's data sitting in localStorage after logout.
 registerSessionPurge(async () => {
 	// Cancel first: a query that resolves after the purge would write the data
 	// straight back into the cache we just cleared.

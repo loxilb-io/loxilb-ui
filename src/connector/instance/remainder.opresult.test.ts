@@ -1,4 +1,4 @@
-// UI-P6-1 batch 5 (remainder families) — the same false-success class
+// Remainder families — the same false-success class
 // pinned once per family before the sweep migration:
 //
 //  D11 Every family below except vxlan accepts HTTP 200 + {result:"fail"}

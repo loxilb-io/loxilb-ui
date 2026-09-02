@@ -1,12 +1,12 @@
 //---------------------------------------------------------
-// Normalized operation result (UI-P6-1)
+// Normalized operation result 
 //---------------------------------------------------------
 // One discriminated result type for every connector operation. The binary
 // legacy ApiResult ('success' | 'error') collapses denied / invalid /
 // unavailable / submitted-but-unconfirmed into two states, which forces every
 // consumer to invent its own mapping — or map unknown to success. OpResult
 // makes the truthful state explicit and keeps raw server prose out of the
-// rendering path (ES-02 / ES-10 / ES-15 / ES-18).
+// rendering path.
 
 export type OpStatus = 'confirmed' | 'submitted' | 'pending' | 'denied' | 'invalid' | 'unavailable' | 'failed';
 

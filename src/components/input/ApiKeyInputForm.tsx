@@ -28,7 +28,7 @@ export interface IApiKeyFormState {
 	tenant_id: string;
 	name: string;
 	allowed_models: string; // comma-separated in the form
-	// Raw text as typed (UI-P6-2 / ES-17): parsing happens in
+	// Raw text as typed: parsing happens in
 	// apiKeyFormToRequest and validity in validateForm — a typo must never
 	// silently become 0, which on these fields means UNLIMITED.
 	rate_limit_rps: string;

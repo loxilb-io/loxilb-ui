@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// OpResult → locale-key mapping table (UI-P6-1)
+// OpResult → locale-key mapping table 
 //---------------------------------------------------------
 // Keys are English source strings (this repo's i18n convention) and must
 // exist in ALL of src/locales/{en,ko,ja}.json — opResult.test.ts enforces
@@ -28,8 +28,8 @@ export const CONFLICT_KEY = 'The request conflicts with an existing item.';
 /** 501 — the gateway build/launch config does not enable this feature (e.g. --userservice off). */
 export const NOT_ENABLED_KEY = 'This feature is not enabled on this instance.';
 
-// Login-specific keys (N-3 / ES-27). The lockout text deliberately does NOT
-// disclose attempt counts or the retry-after countdown — Q-4 conservative
+// Login-specific keys. The lockout text deliberately does NOT
+// disclose attempt counts or the retry-after countdown — conservative
 // default until SECURITY_PROFILE.md decides otherwise.
 export const LOGIN_LOCKED_KEY = 'Too many failed sign-in attempts. Please try again later.';
 export const LOGIN_INVALID_KEY = 'Invalid username or password.';

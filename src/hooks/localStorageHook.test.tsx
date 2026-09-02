@@ -1,10 +1,10 @@
 //---------------------------------------------------------
-// UI-P6-6 — the storage hook that backs the ES-12 preferences
+// the storage hook that backs the preferences
 // (npm test src/hooks/localStorageHook.test.tsx)
 //
-// ES-12 verifies: change → apply → reload → verify persistence → restore.
+// verifies: change → apply → reload → verify persistence → restore.
 // "Reload" is a remount reading localStorage, which is exactly this hook, so
-// the persistence half of ES-12 rests entirely on the contract below.
+// the persistence half of rests entirely on the contract below.
 //
 // Red-first for the corrupt-value defect: on a JSON parse error the hook
 // ADOPTS the raw string as state instead of falling back to the default, and
@@ -18,7 +18,7 @@ import {act, cleanup, renderHook} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it} from 'vitest';
 import type {Dispatch, SetStateAction} from 'react';
 
-// The optional third argument (a shape validator) is part of the UI-P6-6
+// The optional third argument (a shape validator) is part of the 
 // contract; the cast keeps `tsc` green while the tests run red against the
 // pre-fix two-parameter signature.
 const useLocalStorageState = rawUseLocalStorageState as unknown as <T>(
@@ -44,9 +44,9 @@ afterEach(() => {
 });
 
 //---------------------------------------------------------
-// Persistence — the ES-12 "reload" half
+// Persistence — the "reload" half
 //---------------------------------------------------------
-describe('persistence across a remount (ES-12 reload step)', () => {
+describe('persistence across a remount (reload step)', () => {
 	it('uses the default when nothing is stored', () => {
 		const {result} = renderHook(() => useLocalStorageState<Density>(DENSITY_KEY, 'comfortable', isDensity));
 		expect(result.current[0]).toBe('comfortable');
@@ -64,7 +64,7 @@ describe('persistence across a remount (ES-12 reload step)', () => {
 		expect(second.result.current[0]).toBe('compact');
 	});
 
-	it('restoring the default persists too (ES-12 restore step)', () => {
+	it('restoring the default persists too (restore step)', () => {
 		localStorage.setItem(DENSITY_KEY, JSON.stringify('compact'));
 		const {result, unmount} = renderHook(() => useLocalStorageState<Density>(DENSITY_KEY, 'comfortable', isDensity));
 		act(() => result.current[1]('comfortable'));

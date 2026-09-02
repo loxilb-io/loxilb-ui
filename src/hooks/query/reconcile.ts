@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// UI-P6-3 — bounded reconciliation (ES-02 / ES-24 / ES-29)
+// bounded reconciliation 
 //
 // Replaces the `setTimeout(() => refetch(), 1000)` pattern that followed
 // every accepted mutation. That pattern claimed success on HTTP acceptance
@@ -28,11 +28,11 @@ import {useCallback, useEffect, useRef} from 'react';
  * entry after the acceptance read, so the worst case is
  * `1 + intervals.length` reads over `sum(intervals)`.
  *
- * ⚠ PROVISIONAL pending open question Q-2 (approved poll/backoff/timeout
+ * ⚠ PROVISIONAL pending open question (approved poll/backoff/timeout
  * values). These are deliberately conservative: a total budget of 7.5 s is
  * long enough to cover the gateway convergence actually observed on the
  * testbed under E2E load, short enough that an operator waits through it,
- * and the growth is geometric so a slow backend is not hammered. When Q-2
+ * and the growth is geometric so a slow backend is not hammered. When 
  * lands, change this table — nothing else — and the whole app adopts it.
  */
 export const DEFAULT_RECONCILE_INTERVALS_MS = [500, 1000, 2000, 4000];
@@ -54,7 +54,7 @@ export interface ReconcileSpec<T> {
 	 * `confirmed` after a single read.
 	 */
 	confirm?: (latest: T) => boolean;
-	/** Override the Q-2 table for an endpoint family with its own timing. */
+	/** Override the table for an endpoint family with its own timing. */
 	intervalsMs?: number[];
 }
 

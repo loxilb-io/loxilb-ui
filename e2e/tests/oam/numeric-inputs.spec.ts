@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// UI-P6-2 raw-string numeric input (ES-17), in a browser.
+// raw-string numeric input, in a browser.
 //
 // The defect this pins was `parseInt(value) || 0` on 17 form sites. Its worst
 // instance is the one exercised below: typing a typo into "Rate Limit (req/s)"

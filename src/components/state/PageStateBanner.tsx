@@ -1,13 +1,13 @@
 //---------------------------------------------------------
-// PageStateBanner — the one place a page state becomes words (UI-P6-5)
+// PageStateBanner — the one place a page state becomes words 
 //---------------------------------------------------------
 // Shared by QueryStateGate and by DataTable's `state` prop, so a table and a
 // dashboard card describe the same situation identically.
 //
 // Two rules this component exists to keep:
 //   1. Raw server prose never reaches the screen. Every message comes from the
-//      catalogue; OpResult.rawDetail stays diagnostics-only (ES-15).
-//   2. A state flip is announced, not silently repainted (ES-10). Benign
+// catalogue; OpResult.rawDetail stays diagnostics-only.
+// 2. A state flip is announced, not silently repainted. Benign
 //      states are role="status" / aria-live="polite"; a hard failure is
 //      role="alert", which interrupts.
 

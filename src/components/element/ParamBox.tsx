@@ -29,7 +29,7 @@ interface ParamBoxProps {
    error?: boolean;
    helperText?: string;
    onValidation?: (isValid: boolean) => void;
-   /** UI-P6-2 raw-string numeric mode: value/onChange carry the verbatim text */
+   /** raw-string numeric mode: value/onChange carry the verbatim text */
    raw?: boolean;
 }
 

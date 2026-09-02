@@ -1,12 +1,12 @@
-// UI-P6-1 — transport-layer navigation side effects on MUTATIONS.
+// transport-layer navigation side effects on MUTATIONS.
 //
 // Defect (task doc §1, proven live by e2e/tests/oam/no-false-success.spec.ts
 // batch-1 case): a 5xx on an OAM mutation fires move_500 and ejects the
 // whole app to /500 mid-form — the operator's dialog and input are
 // discarded, and the OpResult adapter never gets to render the localized
-// failure. The 401 session path is untouched (UI-P6-4 owns it).
+// failure. The 401 session path is untouched ( owns it).
 //
-// UI-P6-5 extends the same reasoning to READS, but only as far as it has
+// extends the same reasoning to READS, but only as far as it has
 // somewhere better to put the failure. A read answered 503 or 5xx now stays
 // inline so the page it belongs to can render `unavailable` / `failed` beside
 // the rows the operator was already looking at, instead of throwing the whole
@@ -68,7 +68,7 @@ describe('mutations fail inline — no full-app error-page redirect', () => {
 	});
 });
 
-describe('reads fail inline where a page state can carry the failure (UI-P6-5)', () => {
+describe('reads fail inline where a page state can carry the failure', () => {
 	it('GET answered 500 on an OAM control-plane URL no longer ejects the app to /500', async () => {
 		mockFetch(JSON.stringify({message: 'boom'}), 500);
 		const resp = await GET('http://oam/oam/logs');
@@ -101,7 +101,7 @@ describe('reads fail inline where a page state can carry the failure (UI-P6-5)',
 	});
 });
 
-describe('what UI-P6-5 deliberately did NOT change', () => {
+describe('what this work deliberately did NOT change', () => {
 	it('GET answered 404 on an OAM control-plane URL STILL redirects to /404', async () => {
 		// A missing resource is an answer about the route the operator asked
 		// for, not about one panel on the page. Kept by explicit decision.

@@ -1,11 +1,11 @@
 //---------------------------------------------------------
-// UI-P6-3 — confirm predicates ("did my write land?") per endpoint family.
+// confirm predicates ("did my write land?") per endpoint family.
 //
 // Two opposite mistakes are possible here and both are silent:
 //
 //   too LOOSE  → a sibling row satisfies the predicate and a write that never
 //                landed is reported as confirmed. That is the false success
-//                UI-P6-3 exists to remove, reintroduced one layer down.
+// exists to remove, reintroduced one layer down.
 //   too TIGHT  → the gateway's own canonicalization (zero-valued fields come
 //                back omitted, `[]` comes back `null`, optionals are defaulted
 //                server-side, order is unstable) makes a landed write look

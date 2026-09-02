@@ -1,10 +1,10 @@
 //---------------------------------------------------------
-// N-3 / ES-27 / ES-18 — login result mapping on the screen the GS
-// evaluation exercises.
+// Login result mapping on the sign-in screen: what the operator
+// sees when a sign-in is refused.
 //
 //   • the OAM lockout (HTTP 429) renders a LOCALIZED locked-out message,
 //     distinct from a plain bad password, with no raw server prose and no
-//     retry-after policy detail (Q-4 conservative default)
+//     retry-after policy detail (the conservative default)
 //   • the same message in Korean (persisted `language` key)
 //   • a plain bad password renders the localized invalid-credentials text
 //
@@ -65,13 +65,13 @@ test.describe('login result mapping (logged-out context)', () => {
 		await expect(alert).toHaveText(EN_LOCKED);
 		await expect(alert).not.toContainText('Retry after');
 		await expect(alert).not.toContainText('Too many failed login attempts');
-		// Distinct from the plain-failure message (ES-27: lockout must be
+		// Distinct from the plain-failure message (: lockout must be
 		// recognizable as lockout).
 		await expect(alert).not.toHaveText(EN_INVALID);
 		await expect(page).toHaveURL(/\/login/);
 	});
 
-	test('lockout message is Korean when the persisted language is ko (ES-18)', async ({page, consoleGuard}) => {
+	test('lockout message is Korean when the persisted language is ko', async ({page, consoleGuard}) => {
 		consoleGuard.allow(/Failed to load resource/i);
 		consoleGuard.allow(/status of 429/i);
 		await page.addInitScript(() => localStorage.setItem('language', 'ko'));

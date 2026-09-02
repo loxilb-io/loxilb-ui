@@ -1,12 +1,12 @@
 //---------------------------------------------------------
-// UI-P6-4 — session policy constants (ES-22 / ES-27).
+// session policy constants.
 //
 // ⚠ PROVISIONAL, pending the Phase-0 `SECURITY_PROFILE.md`, which does not
-// exist yet. These follow the campaign's established pattern for an unanswered
-// Phase-0 input (UI-P6-1's Q-4 lockout wording, UI-P6-3's Q-2 poll table):
+// exist yet. These follow the established pattern for an unanswered
+// Phase-0 input (the lockout wording and the poll table):
 // pick the conservative value, put it in ONE module so the approved numbers
 // land in a single edit, and record the reasoning where a reviewer will find
-// it — here and in `docs/internal/gs-cert/m1/ui-impl/evidence/UI-P6-4/`.
+// it.
 //
 // The UI schedules UX only. The OAM remains authoritative on session lifetime:
 // nothing here extends a token, and a 401 still ends the session regardless of
@@ -31,7 +31,7 @@ export const PROACTIVE_SKEW_MS = 30_000;
  * Rationale: the OAM's own token TTL is 8 hours (`OAM_TOKEN_TTL_MINUTES`
  * default, set during the Phase-4 RBAC hardening), which is far too long to
  * leave an authenticated console open on an unattended operator terminal —
- * the ES-22 exposure this task exists to close. 15 minutes is the
+ * the exposure this task exists to close. 15 minutes is the
  * conservative end of the range operators tolerate for an admin console and
  * matches common baseline guidance; it is deliberately shorter than any
  * plausible approved value, so adopting the real profile can only relax it.

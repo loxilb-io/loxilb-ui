@@ -28,7 +28,7 @@ export function useAllUsers() {
         isLoading,
         error,
         // The un-defaulted query, so the page can tell "the read failed" from
-        // "there are no users" (UI-P6-5). The `users = []` default above
+        // "there are no users". The `users = ` default above
         // erases exactly that distinction for every other caller.
         query
     };
@@ -45,7 +45,7 @@ export const updateUser = async (id: number, userData: IUserUpdateRequest) => {
     const result = await request_update_user(id, userData);
     if (result.status !== 'confirmed') {
         // Thrown message is already localized (raw server prose stays in
-        // result.rawDetail, diagnostics only — UI-P6-1).
+        // result.rawDetail, diagnostics only).
         throw new Error(t(result.localeKey));
     }
     return result;

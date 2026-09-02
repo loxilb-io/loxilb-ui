@@ -16,7 +16,7 @@ export interface RequestOptions {
 // T is the expected 2xx JSON body shape — pass a generated type from
 // src/api (e.g. GwGetResp<'/config/loadbalancer/all'>). data is null when
 // the body is not parseable JSON, and may be an error body on non-2xx codes.
-// parse_failed distinguishes the two data:null cases (UI-P6-1): a genuinely
+// parse_failed distinguishes the two data:null cases: a genuinely
 // empty body (legit for 204/205 and bodyless-200 upserts) leaves it unset,
 // while a NON-empty body that failed to parse (truncated JSON, an HTML error
 // page served with a 2xx) sets it — that one must never look like success.
@@ -153,11 +153,11 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 		// UI instead of letting the feature page degrade to an empty / inline
 		// error state. OAM control-plane failures still redirect as before.
 		const isGatewayPassthrough = typeof url === 'string' && /\/loxilbs\/\d+\/netlox\//.test(url);
-		// Mutations must fail INLINE (UI-P6-1): their non-2xx flows through the
+		// Mutations must fail INLINE: their non-2xx flows through the
 		// OpResult adapter into a localized dialog. The legacy full-app
 		// redirects here discarded the operator's open form (proven live: a 500
 		// on an instance PUT ejected the app to /500 mid-dialog). Reads keep
-		// the redirect behavior until UI-P6-5 standardizes page states.
+		// the redirect behavior until standardizes page states.
 		const isMutation = mergedOptions.method !== 'GET';
 		// OAM snapshot endpoints surface failures INLINE (error banner /
 		// verbatim error popup / wizard error panel) — snapshots are
@@ -168,7 +168,7 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 		const isInlineErrorEndpoint = typeof url === 'string' && /\/oam\/(snapshots\/|instances\/[^/]+\/snapshot)/.test(url);
 		// if (resp.status === 401 || resp.status === 403) {
 		if (resp.status === 401) {
-			// One idempotent teardown for the whole app (UI-P6-4). N parallel
+			// One idempotent teardown for the whole app. N parallel
 			// queries can all answer 401 at once; the old code called the
 			// relocation helper once per response and leaned on a
 			// "already on /login?" guard to hide the duplicates, while the
@@ -187,7 +187,7 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 			if (!isMutation) move_402();
 		}
 		else if (resp.status === 404) {
-			// The one redirect a read keeps (UI-P6-5, user decision). "This
+			// The one redirect a read keeps (user decision). "This
 			// resource does not exist" is an answer about the route the operator
 			// asked for, not about one panel on the page — a 404 page is the
 			// honest destination, and there is no stale content worth staying on.
@@ -243,7 +243,7 @@ async function handle_response<T = any>(response: any): Promise<SimpleResponse<T
 		} catch {
 			// Non-empty but unparseable (truncated JSON, HTML error page on a
 			// 2xx): flag it so the OpResult adapter maps it to `failed` instead
-			// of the legacy silent success (UI-P6-1 parse-swallow defect).
+			// of the legacy silent success ( parse-swallow defect).
 			return {
 				code: response.status,
 				data: null,

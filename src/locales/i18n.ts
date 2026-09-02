@@ -27,9 +27,9 @@ export const support_lang = [
 // Apply the persisted language at module init — the earliest point that
 // covers EVERY route. The header's language menu also applies it, but the
 // header is not mounted on /login, so booting with default_language left a
-// ko/ja operator an English login screen and English login errors (ES-18
-// defect on exactly the screen the GS evaluation exercises for ES-27; found
-// by e2e/tests/oam/login-lockout.spec.ts).
+// ko/ja operator an English login screen and English login errors — a
+// defect on the one screen every operator must pass through, found
+// by e2e/tests/oam/login-lockout.spec.ts.
 function initial_language(): string {
 	try {
 		const saved = localStorage.getItem(PREFERENCE_KEYS.language);

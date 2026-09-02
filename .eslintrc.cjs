@@ -20,7 +20,7 @@ module.exports = {
 		// placeholders); rest-sibling destructuring is the idiom for omitting
 		// keys from an object copy.
 		'@typescript-eslint/no-unused-vars': ['warn', {varsIgnorePattern: '^_$', ignoreRestSiblings: true}],
-		// UI-P6-2 recurrence guard (ES-17): `parseInt(x) || 0` silently turns
+		// Recurrence guard: `parseInt(x) || 0` silently turns
 		// garbage into 0 — which on rate-limit fields means UNLIMITED. Numeric
 		// fields keep raw-string state and validate via
 		// components/input/numericField instead.
@@ -28,39 +28,39 @@ module.exports = {
 			'error',
 			{
 				selector: "LogicalExpression[operator='||'][right.value=0][left.callee.name='parseInt']",
-				message: 'parseInt(...) || 0 coerces garbage to 0. Keep raw-string state and validate with evaluateNumericField (UI-P6-2 / ES-17).',
+				message: 'parseInt(...) || 0 coerces garbage to 0. Keep raw-string state and validate with evaluateNumericField.',
 			},
-			// Three shapes, because the 49 C-2 sites used all three:
+			// Three shapes, because the 49 known sites used all three:
 			// setTimeout(() => refetch(), 1000), setTimeout(() => qc.invalidateQueries(...), 1000)
 			// and the bare-reference form setTimeout(refetchAll, 1000).
 			{
 				selector: "CallExpression[callee.name='setTimeout'] CallExpression[callee.name=/refetch|invalidate/i]",
-				message: 'A timed blind refetch claims success before convergence and then looks exactly once. Reconcile instead: useReconcileReporter (UI-P6-3 / ES-02).',
+				message: 'A timed blind refetch claims success before convergence and then looks exactly once. Reconcile instead: useReconcileReporter.',
 			},
 			{
 				selector: "CallExpression[callee.name='setTimeout'] CallExpression[callee.property.name=/refetch|invalidate/i]",
-				message: 'A timed blind refetch claims success before convergence and then looks exactly once. Reconcile instead: useReconcileReporter (UI-P6-3 / ES-02).',
+				message: 'A timed blind refetch claims success before convergence and then looks exactly once. Reconcile instead: useReconcileReporter.',
 			},
 			{
 				selector: "CallExpression[callee.name='setTimeout'] > Identifier[name=/refetch|invalidate/i]",
-				message: 'A timed blind refetch claims success before convergence and then looks exactly once. Reconcile instead: useReconcileReporter (UI-P6-3 / ES-02).',
+				message: 'A timed blind refetch claims success before convergence and then looks exactly once. Reconcile instead: useReconcileReporter.',
 			},
 		],
 	},
 	overrides: [
 		{
-			// Q-1 gate (owner: GS-cert campaign, 2026-09-01): the IPsec forms'
-			// 7 sites convert with UI-P6-2's IPsec tranche once the certified
+			// Deferred (2026-09-01): the IPsec forms'
+			// 7 sites convert with the IPsec tranche once the supported-function
 			// allowlist question is decided. Remove this exemption with that
 			// conversion.
 			files: ['src/components/input/IPsecTunnelInputForm.tsx', 'src/components/input/IPsecConfigForm.tsx'],
 			rules: {'no-restricted-syntax': 'off'},
 		},
 		{
-			// UI-P6-3 Tranche B (owner: GS-cert campaign, 2026-09-01): these 14
-			// files hold the remaining 38 blind-refetch sites. Tranche A (the 5
-			// certified-core pages, 11 sites) is converted; Tranche B is gated on
-			// Q-1, the certified-allowlist question — pages ruled in convert with
+			// Deferred tranche (2026-09-01): these 14
+			// files hold the remaining 38 blind-refetch sites. The first tranche (the 5
+			// core pages, 11 sites) is converted; the rest is gated on
+			// the supported-function allowlist question — pages ruled in convert with
 			// the same recipe, pages ruled out get a deferral-log entry. Delete
 			// each path from this list as its page converts; when the list is
 			// empty, delete the override. The rule itself stays either way, so a

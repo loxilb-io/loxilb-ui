@@ -1,13 +1,13 @@
 //---------------------------------------------------------
-// UI-P2-2 shared dialog contract (ES-11 / ES-13 / ES-15 / ES-16 / ES-17),
+// shared dialog contract,
 // in a browser.
 //
 // The old shared PopUp was a bare MUI Modal with `open` and nothing else:
 //   - no onClose, so Escape and the backdrop were DEAD — a keyboard-only
-//     operator could not dismiss a confirmation at all (ES-13);
+// operator could not dismiss a confirmation at all;
 //   - handleYes() closed the dialog and THEN started the (async) mutation, so
 //     the confirmation vanished while the work was still running and could be
-//     re-opened and re-submitted (ES-15/ES-24);
+// re-opened and re-submitted;
 //   - callers could not pass a Cancel handler at all.
 //
 // Every case here dismisses rather than confirms, and asserts on a REQUEST
@@ -116,7 +116,7 @@ test.describe('the shared confirmation dialog', () => {
 	});
 
 	test('the whole dialog is reachable and dismissable from the keyboard alone', async ({page, consoleGuard}) => {
-		// ES-13: a confirmation an operator cannot dismiss without a mouse is a
+		// a confirmation an operator cannot dismiss without a mouse is a
 		// dead end. This drives the dialog with no pointer input at all.
 		allowBgpDisabled(consoleGuard);
 		const writes = await countBgpWrites(page);

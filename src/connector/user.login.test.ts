@@ -1,10 +1,10 @@
-// UI-P6-1 batch 1 (N-3) — login result contract.
+// Login result contract.
 //
 // login_user must resolve to a discriminated OpResult with a stable machine
 // code and a locale key, instead of throwing raw server prose at the page.
 // The OAM lockout response (HTTP 429, begins after the 5th failed attempt)
 // must be distinguishable from a plain bad password (HTTP 401), and no raw
-// backend text may reach the rendered message (ES-10/ES-18/ES-27).
+// backend text may reach the rendered message.
 import {afterEach, beforeEach, describe, expect, it, vi, type Mock} from 'vitest';
 import i18n from 'locales/i18n';
 import {login_user} from './user';
@@ -37,7 +37,7 @@ describe('login_user OpResult contract', () => {
 		expect(res.code).toBe('auth.locked_out');
 		expect(res.retryable).toBe(true);
 		// The locale key must resolve WITHOUT leaking the backend sentence or
-		// the retry-after policy detail (Q-4 conservative default: no counts,
+		// the retry-after policy detail (the conservative default: no counts,
 		// no countdown, until SECURITY_PROFILE.md decides otherwise).
 		const rendered = i18n.t(res.localeKey);
 		expect(rendered).not.toMatch(/Retry after/i);

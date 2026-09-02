@@ -1,4 +1,4 @@
-// UI-P6-1 batch 3 (endpoint / LB) — real defects pinned before migration:
+// batch 3 (endpoint / LB) — real defects pinned before migration:
 //
 //  D6  None of the four LB mutations checks the gateway's legacy
 //      200-{result:"fail"} envelope (isMutationFailure was written for

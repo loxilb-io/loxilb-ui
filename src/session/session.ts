@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// UI-P6-4 — one way for a session to end (ES-22 / ES-27).
+// one way for a session to end.
 //
 // Before this module the teardown was scattered: the profile menu removed
 // `access_token` and navigated, the 401 branch removed `access_token` and
@@ -101,11 +101,11 @@ export function msUntilProactiveLogout(token: string): number {
  *
  * The QUERY STRING IS KEPT. It was dropped originally, on the reasoning that
  * it carries instance names and that the path alone is enough to land on the
- * right page. Both halves turned out to be wrong, and UI-P6-6's ES-12
+ * right page. Both halves turned out to be wrong, and the customization
  * walkthrough caught it: nearly every route under /instance reads `?name=`,
  * and `useInstanceName()` logs an error and calls `move_404()` without it — so
  * signing out of the LB page and back in returned the operator to a page that
- * could not function, which ES-12's decision rule counts as an outright FAIL.
+ * could not function, which the decision rule counts as an outright failure.
  * The privacy half buys nothing either: the browser's own history already
  * holds the full URL including the query.
  *
@@ -146,7 +146,7 @@ export function consumeSessionEndReason(): SessionEndReason | null {
  *
  * Written as a SCAN rather than a list of known keys. The known keys are
  * removed by name, but anything else whose value embeds the token goes too —
- * so a cache added later cannot silently reintroduce the ES-22 residue. ES-12
+ * so a cache added later cannot silently reintroduce the residue. 
  * preference keys (language, table density, layout) hold no session data and
  * are deliberately left alone.
  */

@@ -1,18 +1,18 @@
 //---------------------------------------------------------
-// UI-P2-3 route titles (finding N-7) and keyboard-operable language selection
-// (ES-18 / ES-13), in a browser.
+// Route titles and keyboard-operable language selection
+// in a browser.
 //
 // Two defects, one screen:
 //
-//   N-7 — every route shared the static "LoxiLB Dashboard" baked into
+//   Every route shared the static "LoxiLB Dashboard" baked into
 //   public/index.html. Browser history, pinned tabs, window switchers and
 //   screen-reader page announcements could not tell any two pages apart. The
 //   fix mounts RouteTitle inside the router; only a real navigation can prove
 //   it re-runs, which is why this lives here and not only in the unit test.
 //
-//   ES-18 — the language trigger was a <Box> (a div): not focusable, no role,
+// the language trigger was a <Box> (a div): not focusable, no role,
 //   no Enter/Space activation. A keyboard-only operator could not change the
-//   language AT ALL, which fails ES-18 on its own before any translation
+// language AT ALL, which fails on its own before any translation
 //   quality is considered. Every interaction below is keyboard-only on
 //   purpose — one mouse click anywhere in this file would hide the defect.
 //
@@ -104,7 +104,7 @@ test('a keyboard-only operator can open the menu, choose Korean, and see it appl
 	await expect(page, 'the route title must be localized too, not just the body').toHaveTitle(/인스턴스/, {timeout: 20_000});
 
 	// It survives a reload — a language that resets on refresh is not a
-	// preference (ES-12 pins the general case; this is the ES-18 half).
+	// preference (the persistence suite pins the general case; this is the language half).
 	await page.reload({waitUntil: 'domcontentloaded'});
 	await expect(page.locator('html')).toHaveAttribute('lang', 'ko', {timeout: 20_000});
 	await expect(page).toHaveTitle(/인스턴스/, {timeout: 20_000});

@@ -1,4 +1,4 @@
-// UI-P6-1 — exhaustive adapter mapping (HTTP → OpStatus → localeKey).
+// exhaustive adapter mapping (HTTP → OpStatus → localeKey).
 //
 // The binding rule under test: anything unrecognized maps to `failed`,
 // never to success. And because localeKeys are selected dynamically, the

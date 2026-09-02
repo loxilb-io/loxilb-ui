@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// SimpleResponse → OpResult adapter (UI-P6-1)
+// SimpleResponse → OpResult adapter 
 //---------------------------------------------------------
 // The single place HTTP outcomes become user-meaningful statuses.
 // RULE (binding, from the task contract): anything unrecognized maps to
@@ -9,7 +9,7 @@ import {ApiError, isMutationFailure, SimpleResponse} from './fetcher_base';
 import {OpResult} from './opResult';
 import {CONFLICT_KEY, NOT_ENABLED_KEY, RATE_LIMITED_KEY, STATUS_LOCALE_KEYS} from './opResultCodes';
 
-// Optional until the frozen error-code contract lands (UI-P6-1 external
+// Optional until the frozen error-code contract lands ( external
 // dependency); absent headers simply leave correlationId undefined.
 const CORRELATION_HEADER = 'X-Correlation-Id';
 
@@ -94,7 +94,7 @@ export async function runOp<T = unknown>(op: string, call: () => Promise<SimpleR
 }
 
 /**
- * A read connector's thrown error → OpResult (UI-P6-5).
+ * A read connector's thrown error → OpResult.
  *
  * `assertOk` throws an ApiError carrying the HTTP status, and react-query hands
  * that to the page as `query.error`. Reuse the one mapping table above rather

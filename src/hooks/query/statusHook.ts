@@ -40,7 +40,7 @@ export function useStatus(instance: IInstance | null) {
 		psError,
 		devError,
 		// The queries themselves, for pages that map their own read onto a
-		// page state (UI-P6-5). Three unrelated resources share this hook, so
+		// page state. Three unrelated resources share this hook, so
 		// a page must be able to speak for its own read rather than inherit a
 		// sibling's outage — the reason the per-resource errors exist too.
 		fsQuery,

@@ -75,7 +75,7 @@ export interface LogConsoleProps {
 	handleRefresh: () => void;
 	resetFilters: () => void;
 	dense?: boolean;
-	/** What the log read is actually showing right now (UI-P6-5). */
+	/** What the log read is actually showing right now. */
 	state?: PageDataState<unknown>;
 }
 

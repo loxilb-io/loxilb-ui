@@ -20,10 +20,10 @@ export default function ProfileMenu(props: {user_name: string; user_id: string; 
 		openPopUp(t('Sign out'), t('Are you sure you want to sign out?'), t('Yes'), t('Cancel'), async () => {
 			// Invalidate server-side first (best-effort), then clear local state.
 			await request_logout();
-			// One teardown for every way a session can end (UI-P6-4). Removing
+			// One teardown for every way a session can end. Removing
 			// just `access_token` left the persisted React Query cache — LB
 			// rules, endpoints, API-key metadata, user lists — readable in
-			// localStorage by whoever used the terminal next (ES-22).
+			// localStorage by whoever used the terminal next.
 			await terminateSession('logout');
 		});
 	};

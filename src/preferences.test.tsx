@@ -1,12 +1,12 @@
 //---------------------------------------------------------
-// UI-P6-6 — the ES-12 supported-customization list, pinned
+// the supported-customization list, pinned
 // (npm test src/preferences.test.tsx)
 //
-// ES-12 is evaluated by discovering each customization the product claims,
+// is evaluated by discovering each customization the product claims,
 // changing it, reloading, and checking it survived. The features already work;
-// the risk this file exists for is that UI-P2-2 / UI-P2-3 / UI-P6-5 refactor
-// exactly these components, and a single storage-key rename would fail ES-12
-// on the RC without failing anything else (v2 finding N-4).
+// the risk this file exists for is that refactor
+// exactly these components, and a single storage-key rename would fail 
+// on the RC without failing anything else.
 //
 // So the keys are asserted against the REAL components rather than against a
 // constant talking to itself: renaming the key in DataTable.tsx has to break a
@@ -14,7 +14,7 @@
 //
 // EXCLUDED from the claimed list, deliberately: log-console filters. They are
 // in-memory only (nothing under src/pages/status/ touches localStorage) and
-// reset on reload. ES-12 asks for "supported customization list AND excluded
+// reset on reload. asks for "supported customization list AND excluded
 // items" and instructs the evaluator to record missing features as
 // unavailable, so this is an exclusion, not a defect.
 //---------------------------------------------------------
@@ -77,12 +77,12 @@ afterEach(() => {
 //---------------------------------------------------------
 // The claimed list — key names, as used by the real components
 //---------------------------------------------------------
-describe('ES-12 supported customization: storage keys are what the components actually use', () => {
+describe('supported customization: storage keys are what the components actually use', () => {
 	it('the claimed keys are these exact strings', () => {
 		// The literal pin. Without it the assertions below would only prove the
 		// constants agree with themselves: once the components import
 		// PREFERENCE_KEYS, renaming a key would move both sides together and
-		// every render-based check would still pass while ES-12 broke on the
+		// every render-based check would still pass while broke on the
 		// RC. Changing any string here is a deliberate act that must be paired
 		// with a migration for operators who already have the old key stored.
 		expect(PREFERENCE_KEYS).toEqual({
@@ -109,8 +109,8 @@ describe('ES-12 supported customization: storage keys are what the components ac
 	it('density applies to every mounted table, not just the one that was toggled', async () => {
 		// DataTable.tsx documents density as a GLOBAL preference. Two tables on
 		// one page is the ordinary case (dashboard, instance detail), and an
-		// evaluator toggling one and seeing the other unchanged is an ES-11
-		// consistency finding as well as an ES-12 one.
+		// evaluator toggling one and seeing the other unchanged is an 
+		// consistency finding as well as an one.
 		const user = userEvent.setup();
 		render(
 			<Providers>
@@ -154,7 +154,7 @@ describe('ES-12 supported customization: storage keys are what the components ac
 		// Deliberate asymmetry worth pinning: `language` is written by
 		// save_local_storage as a bare string, while the hook-backed
 		// preferences are JSON. i18n's boot-time read (locales/i18n.ts) and
-		// UI-P6-4's purge scan both depend on that shape.
+		// the session purge scan both depend on that shape.
 		const user = userEvent.setup();
 		render(
 			<Providers>
@@ -173,15 +173,15 @@ describe('ES-12 supported customization: storage keys are what the components ac
 		const source = await import('pages/DashboardPage');
 		expect(source).toBeTruthy();
 		// The key is not exported; pin it here and in the evidence list so a
-		// rename during UI-P6-5 has to be a deliberate, reviewed act.
+		// rename during has to be a deliberate, reviewed act.
 		expect(PREFERENCE_KEYS.dashboardLayout).toBe('dashboard_layout_v2');
 	});
 });
 
 //---------------------------------------------------------
-// Cross-assertion with UI-P6-4's logout purge (both directions)
+// Cross-assertion with the logout purge (both directions)
 //---------------------------------------------------------
-describe('ES-12 × ES-22: logout keeps preferences and drops session data', () => {
+describe('logout keeps preferences and drops session data', () => {
 	const TOKEN = 'header.payload.signature';
 
 	function seedLoggedInStorage() {
@@ -241,9 +241,9 @@ describe('ES-12 × ES-22: logout keeps preferences and drops session data', () =
 });
 
 //---------------------------------------------------------
-// Defaults, so "restore" in the ES-12 procedure has a target
+// Defaults, so "restore" in the procedure has a target
 //---------------------------------------------------------
-describe('ES-12 restore step', () => {
+describe('restore step', () => {
 	it('defaults are the documented ones', () => {
 		expect(DEFAULT_TABLE_DENSITY).toBe('comfortable');
 		expect(DEFAULT_SIDE_MENU_OPEN).toBe(true);

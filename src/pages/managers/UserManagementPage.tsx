@@ -334,7 +334,7 @@ export default function UserManagementPage() {
 					if (userData.password) {
 						try {
 							// Re-login with new username and provided password.
-							// login_user resolves to an OpResult (UI-P6-1) —
+							// login_user resolves to an OpResult —
 							// re-enter the existing catch flow on any
 							// non-confirmed outcome, with a localized message.
 							const loginResult = await login_user({

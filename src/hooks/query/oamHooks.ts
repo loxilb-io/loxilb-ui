@@ -25,7 +25,7 @@ export function useInstances() {
 	const get_instance = useCallback((id: number) => instance_list.find(item => item.id === id), [instance_list]);
 	const get_instance_name = useCallback((id: number) => instance_list.find(item => item.id === id)?.name || 'INVALID INSTANCE', [instance_list]);
 
-	// `query` is the un-defaulted read (UI-P6-5). The `= []` default above is
+	// `query` is the un-defaulted read. The `= ` default above is
 	// what let a failed /oam/loxilbs render the landing page as an operator
 	// who has simply registered nothing — the one screen where that lie costs
 	// the most, because there is no other page to notice it on.

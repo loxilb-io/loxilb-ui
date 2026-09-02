@@ -2,8 +2,8 @@
 // The instance-list read must always hand back a list.
 // (npm test src/connector/oam/instanceList.test.ts)
 //
-// Found by UI-P6-6's full-suite AFTER-run, not by the task's own tests: the
-// ES-12 walkthrough failed with 121 console errors, headed by
+// Found by a full-suite AFTER-run, not by the task's own tests: the
+// walkthrough failed with 121 console errors, headed by
 //
 //     pageerror: instance_list.find is not a function
 //     The above error occurred in the <LBRulePage> component
@@ -19,14 +19,14 @@
 // get_instance / get_instance_name (oamHooks.ts:24-25). The result is a
 // TypeError during render, which takes the whole route to RouteErrorBoundary.
 //
-// ES-12's decision rule counts an unexplained page error as an outright FAIL,
+// An unexplained page error counts as an outright failure,
 // and the operator sees a blank page rather than anything they can act on.
 //
 // ⚠ SCOPE: this pins only that the read cannot crash its consumers. Whether a
 // bad instance-list response should instead SURFACE as an error (rather than
-// read as "no instances") is UI-P6-5's call — that read feeds SetupHandler and
+// read as "no instances") is the page-state work's call — that read feeds SetupHandler and
 // flavor probing, so making it throw touches app start-up, which is exactly
-// why evidence/UI-P6-5/prep-notes.md flags it. Either decision satisfies this
+// why the prep notes flag it. Either decision satisfies this
 // test; neither is allowed to reach .find with a non-array.
 //---------------------------------------------------------
 import {beforeEach, describe, expect, it, vi} from 'vitest';

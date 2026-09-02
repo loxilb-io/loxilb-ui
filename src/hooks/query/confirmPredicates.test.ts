@@ -1,12 +1,12 @@
 //---------------------------------------------------------
-// UI-P6-3 — confirm predicates must be identities, not near-misses.
+// confirm predicates must be identities, not near-misses.
 // (npm test src/hooks/query/confirmPredicates.test.ts)
 //
 // These pin BOTH failure directions, which pull against each other:
 //
 //   too LOOSE  → a sibling row satisfies the predicate, so a write that never
 //                landed is reported as confirmed (false success — the exact
-//                class UI-P6-3 exists to remove);
+// class exists to remove);
 //   too TIGHT  → server canonicalization (omitted zeros, null for [], defaulted
 //                optionals, re-ordering) makes a landed write look absent, so
 //                it is reported as pending forever (false doubt, rule 6).

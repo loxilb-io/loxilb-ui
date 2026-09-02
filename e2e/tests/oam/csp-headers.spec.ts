@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// UI-P2-1 Content-Security-Policy contract (ES-22 / ES-23 / ES-29), against a
+// Content-Security-Policy contract, against a
 // CONTAINER-BUILT image.
 //
 // Why this file is skipped by default, and must stay that way: the CSP lives
@@ -11,7 +11,7 @@
 // security header.
 //
 // To run it, point E2E_CONTAINER_URL at a running container built from this
-// tree (see docs/container-image.md; the campaign builds on the Linux testbed,
+// tree (see docs/container-image.md; images are built on the Linux testbed,
 // not on macOS):
 //
 //   E2E_CONTAINER_URL=http://<host>:8080/netlox/ \
@@ -19,7 +19,7 @@
 //
 // Scope: the policy contract on the served shell, plus zero violations on what
 // that shell renders unauthenticated. The full authenticated 40-route walk is
-// an evidence-run procedure (evidence/UI-P2-1/) because it needs a session on
+// a separate evidence-run procedure because it needs a session on
 // the container's own origin; this file is the part that can run every phase.
 //---------------------------------------------------------
 import {expect, test} from '../../fixtures';

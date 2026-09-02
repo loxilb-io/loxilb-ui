@@ -1,11 +1,11 @@
 //---------------------------------------------------------
-// UI-P6-4 — session hygiene, proven in a real browser (ES-22 / ES-27).
+// session hygiene, proven in a real browser.
 //
 // The unit matrix pins the teardown logic; this proves the whole loop against
 // the running app: a real login, a real persisted React Query cache written by
 // App.tsx, a real sign-out, and then a storage SCAN of what is left behind.
 //
-// The residue scan is the stop-ship assertion. Before UI-P6-4 both logout
+// The residue scan is the stop-ship assertion. Before both logout
 // paths cleared exactly one key while the entire query cache — LB rules,
 // endpoints, API-key metadata, user lists — stayed in localStorage for the
 // next person at a shared operator terminal.
@@ -77,7 +77,7 @@ function allowLogoutFetchNoise(consoleGuard: {allow(p: RegExp): void}) {
 	consoleGuard.allow(/status of 401/i);
 }
 
-test('signing out leaves no token, no persisted query cache and no series data (ES-22)', async ({page, consoleGuard}) => {
+test('signing out leaves no token, no persisted query cache and no series data', async ({page, consoleGuard}) => {
 	allowLogoutFetchNoise(consoleGuard);
 	// Own session (see the note at the top): this test revokes its token.
 	await signIn(page);
@@ -106,7 +106,7 @@ test('signing out leaves no token, no persisted query cache and no series data (
 	expect(after.seriesKeys).toEqual([]);
 });
 
-test('an expired token ends the session with an explanation instead of a silent redirect (ES-27)', async ({page, consoleGuard}) => {
+test('an expired token ends the session with an explanation instead of a silent redirect', async ({page, consoleGuard}) => {
 	allowLogoutFetchNoise(consoleGuard);
 	await signIn(page);
 

@@ -1,7 +1,7 @@
 import {afterEach, beforeEach, describe, expect, it, vi, type Mock} from 'vitest';
 import {createDetailedErrorMessage, DOWNLOAD_FILE_STREAM, GET, GET_TEXT, isMutationFailure, shouldExpireOAMSession} from './fetcher_base';
 
-// UI-P6-4 routed the 401 branch through terminateSession, which navigates via
+// routed the 401 branch through terminateSession, which navigates via
 // move_forced. The contract under test is unchanged — an OAM-origin 401 ends
 // the browser session, a gateway-origin one does not — so these assert the
 // contract (token gone, sent to /login) rather than the name of the helper.

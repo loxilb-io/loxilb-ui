@@ -75,7 +75,7 @@ export default function DataTable(props: {
 	// "Couldn't load …" banner instead of a bare "No rows" that reads as an
 	// empty resource. Retry reuses onRefresh.
 	//
-	// `state` supersedes it for every caller driven by a read query (UI-P6-5):
+	// `state` supersedes it for every caller driven by a read query:
 	// a boolean cannot tell denied from unavailable, cannot say that the rows
 	// on screen are last-known-good rather than current, and cannot carry the
 	// write-guard that follows from not knowing. `error` stays for the callers
@@ -87,7 +87,7 @@ export default function DataTable(props: {
 }) {
 	const {name, columns, rows, selected_rows, onChangeSelectedRows, hideMenuBar, hideCheckbox, hideIdColumn, disableSelect, onRefresh, state, error, defaultSort, deleteConfirm} = props;
 
-	// Stale data may be looked at, never acted on (task §2.3 / ES-14). Two
+	// Stale data may be looked at, never acted on (task §2.3). Two
 	// different questions, and they must not share one answer: Edit and Delete
 	// target a SELECTED ROW, so rows we cannot vouch for make them unsafe,
 	// while Add reads nothing off the table. Guarding Add with the row rule
@@ -337,7 +337,7 @@ export default function DataTable(props: {
 				</Box>
 			)}
 
-			{/* The ES-10 live region for "this table is empty". It must live
+			{/* The live region for "this table is empty". It must live
 			    HERE and not in the grid's own overlay: `.MuiDataGrid-main` is
 			    role="grid", which may contain only row/rowgroup, so a
 			    role="status" inside it is a critical aria-required-children

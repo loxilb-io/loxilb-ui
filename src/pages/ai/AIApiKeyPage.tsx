@@ -154,7 +154,7 @@ export default function AIApiKeyPage() {
 						return;
 					}
 					// The one-time key reveal IS the result dialog here (persistent,
-					// UI-P2-2) — stacking a second popup on top of it would hide
+					// ) — stacking a second popup on top of it would hide
 					// the key material, so reconcile quietly behind it.
 					await reconcile({refetch: fromQueryRefetch(refetch), confirm: res.data.key_id ? apiKeyAppeared(res.data.key_id) : undefined});
 				} else showAddError('AI API key', t(res.localeKey));

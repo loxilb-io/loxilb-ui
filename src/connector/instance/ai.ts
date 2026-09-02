@@ -29,7 +29,7 @@ export async function query_get_apikey_all(instance: IInstance, tenant_id?: stri
 }
 
 /**
- * Create a new API key for a tenant (UI-P6-1 batch 2 — OpResult).
+ * Create a new API key for a tenant ( batch 2 — OpResult).
  * Generated mode returns plaintext only in this response. Imported mode sends
  * caller-supplied material once and the response deliberately omits raw_key.
  * The adapter closes the two false-success gaps the legacy path had: a 200

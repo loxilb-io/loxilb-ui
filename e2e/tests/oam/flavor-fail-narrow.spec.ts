@@ -1,8 +1,8 @@
 //---------------------------------------------------------
-// UI-P2-4 fail-narrow capability resolution (ES-07 / ES-10 / ES-14 / ES-22),
+// fail-narrow capability resolution,
 // in a browser, against a real inference-gateway instance.
 //
-// This is the release stop-ship the campaign closed: "unresolved / failed /
+// This is the release stop-ship this work closed: "unresolved / failed /
 // denied instance flavor discovery exposes Gateway-only controls". The old
 // code answered every capability question as the gateway while the /version
 // probe was unresolved, and a denied probe was never cached — so a user the
@@ -50,7 +50,7 @@ function probeAnswers(status: number, counter: {n: number}) {
 		if (route.request().method() === 'OPTIONS') return route.fulfill({status: 204, headers: CORS});
 		counter.n++;
 		// The gateway-origin marker keeps a 401/403 on this hop from being read
-		// as the operator's OAM session ending (UI-P6-4 would tear the app down
+		// as the operator's OAM session ending (the app would tear itself down
 		// and every later spec in the run would fail on a revoked token).
 		return route.fulfill({
 			status,

@@ -56,7 +56,7 @@ export default function HAPage() {
 
 				const res = await request_update_ha_state(inst, instanceRef.current);
 				if (res.status === 'confirmed') {
-					// UI-P6-3 EXEMPT from poll-to-confirm (task doc 2.4): an HA state
+					// EXEMPT from poll-to-confirm (task doc 2.4): an HA state
 					// change is inherently asynchronous — the cluster reports its own
 					// progress through the HA status API, and this list cannot
 					// distinguish "not converged yet" from "converged back". So the

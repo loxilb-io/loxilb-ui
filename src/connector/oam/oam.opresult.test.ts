@@ -1,4 +1,4 @@
-// UI-P6-1 batch 1 — OAM/instance connectors return a truthful OpResult.
+// batch 1 — OAM/instance connectors return a truthful OpResult.
 //
 // Task-doc red tests 1–3 exercised through a live batch-1 call site:
 //  1. HTTP 200 carrying {result:"fail"} must map to `failed` (the legacy

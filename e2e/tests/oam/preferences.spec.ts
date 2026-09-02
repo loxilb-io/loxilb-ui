@@ -1,16 +1,16 @@
 //---------------------------------------------------------
-// UI-P6-6 — UI customization persists across reload and re-login (ES-12).
+// UI customization persists across reload and re-login.
 //
-// ES-12 is evaluated as a procedure: discover each customization the product
+// is evaluated as a procedure: discover each customization the product
 // claims, change it, apply it, reload or reconnect, verify it persisted, then
 // restore. This spec walks that procedure in a real browser over the three
 // preferences that survive a reload, and doubles as the rehearsal for the
 // Phase-8 MCP-driven run — each step writes the snapshot/screenshot pair the
-// ES-12 evidence template asks for.
+// evidence template asks for.
 //
 // The claimed list is src/preferences.ts. Log-console filters are deliberately
 // EXCLUDED from it: nothing under src/pages/status/ persists them, so they
-// reset on reload. ES-12 asks for the supported list AND the excluded items
+// reset on reload. asks for the supported list AND the excluded items
 // and tells the evaluator to record a missing feature as unavailable, so they
 // are reported rather than claimed.
 //---------------------------------------------------------
@@ -29,7 +29,7 @@ test.use({storageState: {cookies: [], origins: []}});
 const ADMIN_USER = process.env.E2E_ADMIN_USER ?? 'admin';
 const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? '';
 
-const EVIDENCE_DIR = path.join('docs/internal/gs-cert/m1/ui-impl/evidence/UI-P6-6/es12-walkthrough');
+const EVIDENCE_DIR = process.env.E2E_EVIDENCE_DIR ?? path.join('test-results', 'customization-walkthrough');
 
 const KEYS = {
 	density: 'table_density',
@@ -74,7 +74,7 @@ async function readPreferences(page: import('@playwright/test').Page) {
 }
 
 /**
- * The ES-12 evidence pair for one step. Written under the task's evidence
+ * The evidence pair for one step. Written under the task's evidence
  * directory (gitignored) so the Phase-8 run has a known-good baseline to
  * compare against rather than a blank page.
  */
@@ -134,7 +134,7 @@ test.beforeAll(async () => {
 	instName = (await activeInstance()).name;
 });
 
-test('every claimed customization survives a reload and a re-login, then restores (ES-12)', async ({page, consoleGuard}) => {
+test('every claimed customization survives a reload and a re-login, then restores', async ({page, consoleGuard}) => {
 	allowLogoutFetchNoise(consoleGuard);
 	await signIn(page);
 	await captureStep(page, '01-signed-in-defaults');
@@ -152,7 +152,7 @@ test('every claimed customization survives a reload and a re-login, then restore
 
 	// Side menu: the hamburger in the top nav. The IconButton carries no
 	// accessible name today (components/element/SimpleButton.tsx renders a bare
-	// MenuIcon) — noted as an a11y observation for the ES-11/ES-13 sweep, and
+	// MenuIcon) — noted as an a11y observation for the sweep, and
 	// located here by its icon rather than by role+name.
 	await page.locator('button:has([data-testid="MenuIcon"])').first().click();
 	await expect.poll(async () => (await readPreferences(page)).sideMenu, {timeout: 10_000}).toBe(JSON.stringify(false));
@@ -169,7 +169,7 @@ test('every claimed customization survives a reload and a re-login, then restore
 	await captureStep(page, '02-customized');
 
 	//---------------------------------------------------------
-	// 2. Reload — the ES-12 persistence step
+	// 2. Reload — the persistence step
 	//---------------------------------------------------------
 	await page.reload();
 	await expect(page).toHaveURL(/\/instance\/traffic\/lb/, {timeout: 20_000});
@@ -181,8 +181,8 @@ test('every claimed customization survives a reload and a re-login, then restore
 	await captureStep(page, '03-after-reload');
 
 	//---------------------------------------------------------
-	// 3. Logout then login — the ES-12 "reconnect" step, and the
-	//    cross-assertion against UI-P6-4's purge
+	// 3. Logout then login — the "reconnect" step, and the
+	// cross-assertion against the logout purge
 	//---------------------------------------------------------
 	await signOut(page);
 
@@ -196,7 +196,7 @@ test('every claimed customization survives a reload and a re-login, then restore
 		}),
 		KEYS,
 	);
-	// Preferences are not secrets — they are precisely what ES-12 wants kept.
+	// Preferences are not secrets — they are precisely what wants kept.
 	expect(afterLogout.density, 'logout must not purge a preference').toBe(changed.density);
 	expect(afterLogout.sideMenu).toBe(changed.sideMenu);
 	expect(afterLogout.language).toBe(changed.language);
@@ -210,17 +210,17 @@ test('every claimed customization survives a reload and a re-login, then restore
 
 	await signIn(page);
 	expect(await readPreferences(page), 'a re-login must not lose any claimed preference').toEqual(changed);
-	// ES-12's decision rule makes a transition to /404 an outright FAIL, and
-	// UI-P6-4's return-to-route lands the operator on the page they left — so
+	// A transition to /404 here is an outright failure, and the
+	// return-to-route behaviour lands the operator on the page they left — so
 	// that page has to actually work when they get there.
 	await expect(page, 'a re-login must not land the operator on /404').not.toHaveURL(/\/404/);
 	await captureStep(page, '05-after-relogin');
 
 	//---------------------------------------------------------
-	// 4. Restore defaults — the ES-12 restore step
+	// 4. Restore defaults — the restore step
 	//---------------------------------------------------------
 	// Back to a page that has a table: re-login lands on the instance list
-	// (or, thanks to UI-P6-4's return-to-route, wherever the session ended),
+	// (or, thanks to return-to-route, wherever the session ended),
 	// and neither is guaranteed to be the LB page.
 	await page.goto(`instance/traffic/lb?name=${instName}`);
 	await expect(densityToggle(page, 'compact')).toBeVisible({timeout: 20_000});
@@ -241,8 +241,8 @@ test('every claimed customization survives a reload and a re-login, then restore
 	await captureStep(page, '06-restored');
 });
 
-test('a corrupt stored preference falls back to the default instead of being adopted (ES-12)', async ({page}) => {
-	// The negative path, in a real browser. Before UI-P6-6 the hook adopted an
+test('a corrupt stored preference falls back to the default instead of being adopted', async ({page}) => {
+	// The negative path, in a real browser. Before the hook adopted an
 	// unparseable value as state — a density that is neither 'comfortable' nor
 	// 'compact' — and then re-serialised it, so the bad value outlived the
 	// session. Nothing throws either way, which is what made it worth pinning.

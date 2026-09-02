@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// UI-P6-3 — reporting half of bounded reconciliation.
+// reporting half of bounded reconciliation.
 //
 // Kept out of `reconcile.ts` so the reconciler itself stays a pure hook with
 // no popup or i18n dependency (its unit matrix mounts it without providers).

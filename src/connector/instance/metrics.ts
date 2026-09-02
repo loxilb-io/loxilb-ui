@@ -170,7 +170,7 @@ export function normalize_metric_names(metrics: Record<string, number>, flavor: 
  * read zero still sets it true, because it served samples. Consumers must
  * branch on it rather than on `total_metrics` — see METRICS_LOXILB_PARITY.md.
  *
- * The snapshot also carries `failure` (UI-P6-5), which separates "collection
+ * The snapshot also carries `failure`, which separates "collection
  * is off" (503, a state — show a placeholder) from "scrape refused" (401 under
  * --userservice, denied) from an instance that is actually broken (5xx). Those
  * three were collapsed into one unavailable snapshot until this read had a

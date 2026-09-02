@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// UI-P6-5 — how each page state actually renders
+// how each page state actually renders
 // (npm test src/components/state/QueryStateGate.test.tsx)
 //
 // RED against the stub. The assertions are written against what an operator
@@ -18,7 +18,7 @@ import userEvent from '@testing-library/user-event';
 
 // userEvent + MUI in jsdom exceeds the 5s default under load; the assertions
 // are event-driven, so this is headroom only (same reason PopUp.test.tsx
-// raises it — UI-P2-2).
+// raises it).
 vi.setConfig({testTimeout: 20_000});
 
 const FETCHED_AT = new Date('2026-09-01T12:00:00Z').getTime();
@@ -44,7 +44,7 @@ function renderGate(state: PageDataState<string[]>, onRetry?: () => void) {
 
 beforeEach(async () => {
 	// i18n is a module singleton — a case that switches language leaks into
-	// every later case unless it is reset here (UI-P6-6, the hard way).
+	// every later case unless it is reset here (the hard way).
 	await i18n.changeLanguage('en');
 });
 
@@ -109,7 +109,7 @@ describe('stale — rows stay, and they are labelled as old', () => {
 		expect(text).not.toContain(String(FETCHED_AT));
 	});
 
-	it('disables writes while the data cannot be trusted (ES-14)', () => {
+	it('disables writes while the data cannot be trusted', () => {
 		renderGate(staleState);
 		expect(screen.getByRole('button', {name: 'Add'}).hasAttribute('disabled')).toBe(true);
 	});
@@ -124,7 +124,7 @@ describe('loading', () => {
 	it('shows a busy indicator with an accessible name, never an empty table', () => {
 		renderGate({kind: 'loading'});
 		expect(document.body.textContent).not.toMatch(/no load balancer rule entries yet/i);
-		// A nameless progressbar is exactly the axe violation UI-P2-2 had to
+		// A nameless progressbar is exactly the axe violation had to
 		// fix on the setup spinner — do not reintroduce it here.
 		const busy = screen.getByRole('progressbar');
 		expect(busy.getAttribute('aria-label') || busy.getAttribute('aria-labelledby')).toBeTruthy();

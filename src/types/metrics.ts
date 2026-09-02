@@ -159,7 +159,7 @@ export interface ILiveMetricsResponse {
 	 */
 	available: boolean;
 	/**
-	 * Why the scrape produced nothing, when it produced nothing (UI-P6-5).
+ * Why the scrape produced nothing, when it produced nothing.
 	 *
 	 * `available: false` says we do not know the numbers; this says whether
 	 * that is a *state* or a *failure*, which is the difference between a

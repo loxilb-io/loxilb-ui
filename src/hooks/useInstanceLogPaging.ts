@@ -203,7 +203,7 @@ export function useInstanceLogPaging(inst: IInstance | null) {
 		hasMore,
 		isLoadingMore,
 		isFetching,
-		// What the console is actually showing (UI-P6-5). Lines already paged in
+		// What the console is actually showing. Lines already paged in
 		// live in local state, not in the query, so a failed refresh over loaded
 		// lines must map to `stale` rather than to a hard failure — the operator
 		// keeps reading what they have, told that it is not current.

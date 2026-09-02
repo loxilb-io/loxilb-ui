@@ -1,10 +1,10 @@
-// UI-P6-1 batch 1 (N-3) — the login screen renders localized, mapped
-// messages; raw backend prose must never appear (ES-10/ES-18/ES-27).
+// The login screen renders localized, mapped
+// messages; raw backend prose must never appear.
 //
-// The GS evaluation exercises exactly this screen for ES-27: a locked-out
+// The contract for this screen: a locked-out
 // account must show a message distinct from a typo'd password, in the
 // operator's language, and must not disclose the lockout policy details
-// (Q-4 conservative default).
+// (the conservative default).
 import {cleanup, render, screen, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {afterEach, beforeEach, describe, expect, it, vi, type Mock} from 'vitest';
@@ -53,7 +53,7 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
-describe('LoginPage message mapping (N-3)', () => {
+describe('LoginPage message mapping', () => {
 	it('lockout (429) shows a localized locked-out message — no raw prose, no retry-after policy detail', async () => {
 		mockFetchByUrl(() => new Response(JSON.stringify({error: 'Too many failed login attempts. Please try again later. Retry after 47 seconds.', retry_after_seconds: 47}), {status: 429, headers: {'Content-Type': 'application/json'}}));
 		render(<LoginPage />);
@@ -66,7 +66,7 @@ describe('LoginPage message mapping (N-3)', () => {
 		expect(alert.textContent).toBe(i18n.t('Too many failed sign-in attempts. Please try again later.'));
 	});
 
-	it('lockout message is localized in Korean (ES-18)', async () => {
+	it('lockout message is localized in Korean', async () => {
 		await i18n.changeLanguage('ko');
 		mockFetchByUrl(() => new Response(JSON.stringify({error: 'Too many failed login attempts. Please try again later. Retry after 47 seconds.'}), {status: 429, headers: {'Content-Type': 'application/json'}}));
 		render(<LoginPage />);
@@ -98,7 +98,7 @@ describe('LoginPage message mapping (N-3)', () => {
 	});
 
 	it('refuses a token whose lifetime it cannot read, rather than starting an unbounded session', async () => {
-		// UI-P6-4: without a readable `exp` there is no basis for a proactive
+		// without a readable `exp` there is no basis for a proactive
 		// logout, so the session would run until some request happened to
 		// bounce 401 — the very state this task removes. The old code stored
 		// whatever string arrived.

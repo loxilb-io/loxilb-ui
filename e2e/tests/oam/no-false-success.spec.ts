@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// UI-P6-1 stop-ship proof (parent plan): a mutation whose server response
+// stop-ship proof (parent plan): a mutation whose server response
 // failed must NEVER render a success popup — one representative page per
 // migrated connector batch, failure injected via route interception so the
 // testbed is never mutated and every case reproduces identically forever.
@@ -13,7 +13,7 @@
 //   batch 5  VLAN create                → HTTP 200 + {result:"fail"}
 //
 // Each case also asserts the rendered message is the LOCALIZED mapped text,
-// with no raw server prose (ES-10/ES-15).
+// with no raw server prose.
 //---------------------------------------------------------
 import {Route} from '@playwright/test';
 import {expect, test} from '../../fixtures';

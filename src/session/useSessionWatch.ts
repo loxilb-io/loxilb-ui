@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// UI-P6-4 — the timers half of session hygiene (ES-27).
+// the timers half of session hygiene.
 //
 // Mounted once at the app root. Three watchers, all funnelling into the same
 // `terminateSession`:

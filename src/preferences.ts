@@ -1,11 +1,11 @@
 //---------------------------------------------------------
-// UI-P6-6 — the ES-12 supported-customization list, in code.
+// the supported-customization list, in code.
 //
-// ES-12 ("operational procedure and UI customization") is evaluated by
+// ("operational procedure and UI customization") is evaluated by
 // discovering each customization the product claims, changing it, reloading,
 // and checking it survived. That claim needs one place to live: these are the
 // preferences we support, the exact keys they persist under, and the defaults
-// the ES-12 "restore" step returns to.
+// the "restore" step returns to.
 //
 // The keys are literal strings an operator's browser already holds — renaming
 // one silently discards their saved preference, so `preferences.test.tsx`
@@ -13,7 +13,7 @@
 // migration.
 //
 // EXCLUDED from the claimed list, deliberately: log-console filters. They are
-// in-memory only and reset on reload; ES-12 asks for the supported list AND
+// in-memory only and reset on reload; asks for the supported list AND
 // the excluded items, so this is recorded as unavailable rather than fixed.
 //---------------------------------------------------------
 

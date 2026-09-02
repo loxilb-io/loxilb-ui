@@ -60,7 +60,7 @@ test.describe('IPv4 address page (edit-is-create)', () => {
 		// bit us. Whether the old "first non-lo device" pick landed on an
 		// ambiguous address then depended on the order the gateway happened to
 		// list interfaces in, so the spec passed or failed by luck; it failed in
-		// the UI-P6-3 AFTER-run and passed in isolation minutes later, with the
+		// the AFTER-run and passed in isolation minutes later, with the
 		// same 7 bridges present both times.
 		const data = await gwJson<{ipAttr?: Array<{dev: string; ipAddress?: string[]}>}>(`${V4_PATH}/all`);
 		const attrs = data.ipAttr ?? [];
