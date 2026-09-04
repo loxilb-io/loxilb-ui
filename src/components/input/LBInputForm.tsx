@@ -5,8 +5,11 @@ import React from 'react';
 import {Alert, Stack, Typography} from '@mui/material';
 import {isValidIPAddress} from 'common';
 import useFormWithParams from 'hooks/inputFormHook';
+import {useInstanceFromURL} from 'hooks/instanceHook';
+import {useInstanceCapabilities} from 'hooks/query/flavorHook';
+import {useModelProfiles} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
-import {isAIEngineChange, validateAIConfiguration} from 'types/ai_gateway';
+import {isAIEngineChange, validateAIConfiguration, validateProfileSelection} from 'types/ai_gateway';
 import {IServiceConfiguration} from 'types/load_balancer';
 import {AllowedSourcesListInputForm, SecondaryIPListInputForm} from './IPListInputForm';
 import AdvancedSettingsForm from './subforms/AdvancedSettingsForm';
@@ -59,6 +62,13 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 	// Get params for validation (still use useFormWithParams for param definitions)
 	const {params} = useFormWithParams<IServiceConfiguration>('IServiceConfiguration');
 
+	// Published profile registry for strict-rule pre-flight validation.
+	// Gateway-only endpoint: never fetched for a loxilb instance.
+	const inst = useInstanceFromURL();
+	const caps = useInstanceCapabilities();
+	const profilesQuery = useModelProfiles(caps.resolved && caps.flavor === 'inference-gateway' ? inst : null);
+	const publishedProfiles = profilesQuery.data?.profiles;
+
 	// Derive validation from formData (no setState-in-effect — that pattern caused
 	// an infinite render loop / "Maximum update depth exceeded"). The gateway
 	// LoadbalanceEntry key is externalIP+port+protocol and each endpoint requires
@@ -101,6 +111,18 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 		if (isEdit && isAIEngineChange(initialData?.serviceArguments?.kvEngineType, sa.kvEngineType)) {
 			aiIssues.unshift({field: 'kvEngineType', message: 'The AI engine is immutable; delete and recreate the rule to change it.'});
 		}
+		// Strict-rule profile pre-flight (AC-05): field-level block BEFORE the
+		// POST; the gateway admission stays the final authority. Skipped while
+		// the registry has not answered yet — an in-flight list must not brand
+		// a valid selection "stale"; the submit-time freshness check covers it.
+		if (sa.kvModelProfile && publishedProfiles !== undefined) {
+			aiIssues.push(...validateProfileSelection(sa, publishedProfiles.find(profile => profile.profileId === sa.kvModelProfile)));
+		}
+		// New strict rules declare their API surface explicitly (FR-02) instead
+		// of leaning on the gateway's profile-default resolution.
+		if (!isEdit && sa.kvModelProfile && !sa.kvExactApiMode) {
+			aiIssues.push({field: 'kvExactApiMode', message: 'Select the API surface this strict rule serves.'});
+		}
 		if (aiIssues.length > 0) {
 			e.aiGateway = aiIssues.map(issue => t(issue.message)).join(' ');
 		}
@@ -112,7 +134,7 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 		}
 
 		return {errors: e, isValid: Object.keys(e).length === 0};
-	}, [blockSizeConfirmed, formData, initialData?.serviceArguments?.kvEngineType, isEdit]);
+	}, [blockSizeConfirmed, formData, initialData?.serviceArguments?.kvEngineType, isEdit, publishedProfiles]);
 
 	// Notify the parent via refs so callback identity does not drive the effect
 	// (another loop source). Runs only when the derived state actually changes.

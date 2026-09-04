@@ -4,17 +4,21 @@ import DropDownSelectBox from 'components/element/DropDownSelectBox';
 import ParamBox from 'components/element/ParamBox';
 import HorizontalStack from 'components/layout/HorizontalStack';
 import {useInstanceCapabilities} from 'hooks/query/flavorHook';
+import {useInstanceFromURL} from 'hooks/instanceHook';
+import {useModelProfiles} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {useCallback} from 'react';
 import {
 	AI_ENGINES,
 	AIEngine,
 	allowedAIHashes,
+	allowedProfileApiModes,
 	effectiveAIHash,
+	profileAcceptsModel,
 	resolveAIEngine,
 } from 'types/ai_gateway';
 import {IEnumItem} from 'types/global';
-import {IServiceArguments} from 'types/load_balancer';
+import {IServiceArguments, KvExactApiMode} from 'types/load_balancer';
 
 type TopologySelection = 'plain' | 'pd' | 'pd-exact' | 'single-role';
 
@@ -54,6 +58,7 @@ export default function AIGatewaySettingsForm(props: {
 	// of the loxilb OSS LB schema and must never flash into an OSS form.
 	const hasAiFields = caps.resolved && caps.flavor === 'inference-gateway' && caps.hasField('LoadbalanceEntry.serviceArguments', 'model_name');
 	const hasApiKeyPolicy = caps.resolved && caps.flavor === 'inference-gateway' && caps.hasField('LoadbalanceEntry.serviceArguments', 'api_key_auth');
+	const hasProfileFields = caps.resolved && caps.flavor === 'inference-gateway' && caps.hasField('LoadbalanceEntry.serviceArguments', 'kvModelProfile');
 	const isL7 = value.mode === 4;
 	const engine = resolveAIEngine(value.kvEngineType);
 	const topology = currentTopology(value);
@@ -75,6 +80,50 @@ export default function AIGatewaySettingsForm(props: {
 		(field: keyof IServiceArguments) => (newValue: any) => onChange({[field]: newValue}),
 		[onChange],
 	);
+
+	// Published model profiles (read-only registry). Fetched ONLY on a
+	// positively identified gateway — a loxilb instance must never see the
+	// gateway-only endpoint (request-side contract guard).
+	const inst = useInstanceFromURL();
+	const profilesQuery = useModelProfiles(hasProfileFields ? inst : null);
+	const registry = profilesQuery.data;
+	const profiles = registry?.profiles ?? [];
+	const modelName = value.model_name?.trim() ?? '';
+	// FR-02: with a model name declared, offer only the profiles that serve it
+	// (base model or allowed alias); without one, offer the whole set. The
+	// profile currently selected always stays listed — dropping it from the
+	// options would leave the Select with an out-of-range value (console
+	// error) and hide what the field-level mismatch error is pointing at.
+	const selectableProfiles = modelName
+		? profiles.filter(profile => profileAcceptsModel(profile, modelName) !== null || profile.profileId === value.kvModelProfile)
+		: profiles;
+	const selectedProfile = profiles.find(profile => profile.profileId === value.kvModelProfile);
+	const profileItems: IEnumItem[] = [
+		{id: 0, name: t('None (legacy profile-less routing)'), send_value: ''},
+		...selectableProfiles.map((profile, index) => {
+			const aliasContext = modelName && profileAcceptsModel(profile, modelName) === 'alias' ? ` (${t('alias')}: ${modelName})` : '';
+			return {
+				id: index + 1,
+				name: `${profile.profileId} — ${profile.baseModel} — ${(profile.supportedApis ?? []).join('/')}${aliasContext}`,
+				send_value: profile.profileId,
+			};
+		}),
+	];
+	const apiModeItems: IEnumItem[] = (selectedProfile ? allowedProfileApiModes(selectedProfile) : []).map((mode, index) => ({id: index, name: mode, send_value: mode}));
+
+	const handleProfileChange = useCallback((profileId: string) => {
+		if (!profileId) {
+			onChange({kvModelProfile: undefined, kvExactApiMode: undefined});
+			return;
+		}
+		const profile = profiles.find(entry => entry.profileId === profileId);
+		const modes = profile ? allowedProfileApiModes(profile) : [];
+		// A new strict rule declares its API surface explicitly (FR-02): a
+		// single-surface profile is preselected, a multi-surface one demands a
+		// deliberate choice — validation keeps submit blocked until it is made.
+		onChange({kvModelProfile: profileId, kvExactApiMode: modes.length === 1 ? modes[0] : undefined});
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- profiles identity follows the query data
+	}, [onChange, registry]);
 
 	const handleEngineChange = useCallback((newEngine: AIEngine) => {
 		onBlockSizeConfirmed?.(false);
@@ -207,6 +256,62 @@ export default function AIGatewaySettingsForm(props: {
 								{t('TensorRT-LLM events are drained over each endpoint serving port; no ZMQ or client DP-rank setting is sent.')}
 							</Typography>
 						)}
+
+						{hasProfileFields && (isEdit ? (
+							// FR-03: after create the binding is immutable — read-only on a
+							// strict rule, and NO attach affordance on a profile-less rule
+							// (the migration attach is deliberately out of MVP scope).
+							value.kvModelProfile ? (
+								<Stack spacing={1}>
+									<HorizontalStack>
+										<DropDownSelectBox label={t('Model Profile')} value={value.kvModelProfile} onChange={() => {}} item_list={[{id: 0, name: value.kvModelProfile, send_value: value.kvModelProfile}]} disabled />
+										<DropDownSelectBox label={t('API Surface')} value={value.kvExactApiMode ?? ''} onChange={() => {}} item_list={[{id: 0, name: value.kvExactApiMode ?? t('Profile default'), send_value: value.kvExactApiMode ?? ''}]} disabled />
+									</HorizontalStack>
+									<Typography variant="caption" color="warning.main">
+										{t('The model profile and API surface are immutable. Delete and recreate the rule to change them.')}
+									</Typography>
+								</Stack>
+							) : null
+						) : (
+							<Stack spacing={1}>
+								<HorizontalStack>
+									<DropDownSelectBox
+										label={t('Model Profile')}
+										value={value.kvModelProfile ?? ''}
+										onChange={handleProfileChange}
+										item_list={profileItems}
+										disabled={!isL7}
+									/>
+									{/* Rendered only once the selection resolves against the
+									    published set: a stale profile id would hand the
+									    dropdown an empty option list (its default-announce
+									    effect dereferences item_list[0] — crash), and the
+									    stale-selection error below is the honest surface. */}
+									{value.kvModelProfile && selectedProfile && (
+										<DropDownSelectBox
+											label={t('API Surface')}
+											value={value.kvExactApiMode ?? ''}
+											onChange={(mode: KvExactApiMode) => onChange({kvExactApiMode: mode})}
+											item_list={apiModeItems}
+											disabled={!isL7}
+										/>
+									)}
+								</HorizontalStack>
+								<Typography variant="caption" color="text.secondary">
+									{t('Binding a published profile makes this a strict rule: the gateway verifies the pinned tokenizer artifacts and attests enforcement before exact routing serves. Profile and API surface are immutable after create.')}
+								</Typography>
+								{registry !== undefined && modelName && selectableProfiles.length === 0 && profiles.length > 0 && (
+									<Typography variant="caption" color="warning.main">
+										{t('No published profile serves this model name (base model or allowed alias). Legacy profile-less routing remains available.')}
+									</Typography>
+								)}
+								{value.kvModelProfile && !selectedProfile && registry !== undefined && (
+									<Typography variant="caption" color="error">
+										{t('Selected profile is not in the currently published registry. Refresh the profile list.')}
+									</Typography>
+								)}
+							</Stack>
+						))}
 					</>
 				)}
 			</Stack>

@@ -16,6 +16,8 @@ import SecondaryIPsPanel from 'components/panel/SecondaryIPPanel';
 import SettingsPanel from 'components/panel/SettingPanel';
 import LBTable from 'components/table/traffic/LBTable';
 import {query_get_load_balancer_config_all, request_create_load_balancer_config, request_delete_lb_by_full_key, request_delete_lb_by_name, request_patch_load_balancer_config} from 'connector/instance/load_balancer';
+import {query_get_model_profile} from 'connector/instance/model_profile';
+import {useQueryClient} from '@tanstack/react-query';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {InstanceFlavor} from 'api/capabilities';
 import {useInstanceCapabilities} from 'hooks/query/flavorHook';
@@ -61,6 +63,7 @@ export function selectLBEditStrategy({
 export default function LBRulePage() {
 	const inst = useInstanceFromURL();
 	const caps = useInstanceCapabilities();
+	const queryClient = useQueryClient();
 	// Writes must fail toward the smaller OSS contract until /version positively
 	// identifies IGW. The IGW-only controls are also hidden while unresolved, so
 	// this fallback cannot discard an operator-visible Gateway setting.
@@ -149,12 +152,13 @@ export default function LBRulePage() {
 	}, [inst, selectedItems, showDeleteError, refetch, report, reconcile]);
 
 	const instanceRef = useRef<IServiceConfiguration | null>(null);
-	const handleAdd = useCallback(() => {
+	const openAddDialog = useCallback(function openAddDialog(seed?: Partial<IServiceConfiguration>) {
 		if (!inst || !caps.resolved) return;
 
 		const input_form = (
 			<LBInputForm
 				key={Date.now()}
+				initialData={seed}
 				onChange={data => {
 					// Keep client-side validation state (isValid/errors) out of the
 					// POST payload — the gateway schema has no such keys.
@@ -165,6 +169,16 @@ export default function LBRulePage() {
 			/>
 		);
 
+		// AC-06: a strict-rule create that fails must not cost the operator
+		// their form. Reopening the dialog seeded with the submitted values
+		// (from inside handle_yes, so the popup's follow-up rule keeps it
+		// alive) preserves the draft; the registry cache is invalidated so the
+		// reopened selector reflects the current published set.
+		const preserveStrictDraft = (draft: IServiceConfiguration) => {
+			queryClient.invalidateQueries({queryKey: ['ai_model_profiles']});
+			openAddDialog(draft);
+		};
+
 		openPopUp(
 			'',
 			input_form,
@@ -174,12 +188,35 @@ export default function LBRulePage() {
 				if (!instanceRef.current) return;
 
 				const submitted = instanceRef.current;
+				const profileId = submitted.serviceArguments?.kvModelProfile;
+
+				// Submit-time freshness check (FR-02): the discovery cache the
+				// selector was built from may predate a registry reload. A
+				// profile that vanished answers 404 here — block the POST, keep
+				// the form, refresh the registry. Any other failure falls
+				// through: the gateway POST is the admission authority.
+				if (profileId) {
+					try {
+						await query_get_model_profile(inst, profileId);
+					} catch (error) {
+						if ((error as any)?.status === 404) {
+							showAddError('load balancer rule', t('The selected model profile is no longer published — the registry changed after it was chosen. The profile list has been refreshed; reselect a profile and submit again.'));
+							preserveStrictDraft(submitted);
+							return;
+						}
+					}
+				}
+
 				const res = await request_create_load_balancer_config(inst, submitted, effectiveFlavor);
 				if (res.status === 'confirmed') {
 					await report({refetch: fromQueryRefetch(refetch), confirm: lbRuleAppeared(submitted)}, t('Added successfully.'));
 				} else {
 					// Localized mapped message; raw prose stays in diagnostics.
 					showAddError('load balancer rule', t(res.localeKey));
+					// A rejected strict create (stale-generation admission included)
+					// keeps the operator's draft on screen — never a success, never
+					// a lost form.
+					if (profileId) preserveStrictDraft(submitted);
 				}
 			},
 			true,
@@ -188,7 +225,11 @@ export default function LBRulePage() {
 	// an IGW dialog cannot submit through the initial OSS-safe projection and
 	// silently strip the Gateway-only fields the operator just entered.
 	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
-	}, [inst, caps.resolved, effectiveFlavor, showAddError, refetch, enableYes]);
+	}, [inst, caps.resolved, effectiveFlavor, showAddError, refetch, enableYes, queryClient]);
+
+	// The table's Add button passes its click event — keep the seeded reopen
+	// path (AC-06 draft preservation) out of that signature.
+	const handleAdd = useCallback(() => openAddDialog(undefined), [openAddDialog]);
 
 	// Update handler for LB rules
 	const updateFormRef = useRef<(IServiceConfiguration & {isValid?: boolean; errors?: any}) | null>(null);
