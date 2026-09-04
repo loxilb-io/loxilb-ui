@@ -27,13 +27,18 @@ export function kvExactStatusRetry(failureCount: number, error: unknown): boolea
 	return failureCount < BOUNDED_RETRIES;
 }
 
-export function useKvExactStatus(instance: IInstance | null, key: IKvExactStatusKey | null, visible: boolean) {
+/**
+ * @param visible poll only while the status panel is actually on screen
+ * @param strict  FR-05: only strict (profile-bound) rules poll; a legacy
+ *                rule reads once and sits still
+ */
+export function useKvExactStatus(instance: IInstance | null, key: IKvExactStatusKey | null, visible: boolean, strict = true) {
 	const instanceId = instance?.id ? instance.id.toString() : '';
 	return useQuery({
 		queryKey: ['kvexact_status', instanceId, key?.externalIP ?? '', key?.port ?? 0, key?.protocol ?? '', key?.modelName ?? ''],
 		queryFn: () => query_get_kvexact_status(instance!, key!),
 		enabled: !!instance && !!key && visible,
-		refetchInterval: query => kvExactPollIntervalMs(query.state.data),
+		refetchInterval: strict ? query => kvExactPollIntervalMs(query.state.data) : false,
 		refetchIntervalInBackground: false,
 		retry: kvExactStatusRetry,
 		retryDelay: attempt => Math.min(3000 * 2 ** attempt, 15000),

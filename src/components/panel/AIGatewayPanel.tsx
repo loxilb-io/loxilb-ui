@@ -1,6 +1,7 @@
 import {Alert, Grid2, Stack, Typography} from '@mui/material';
 import SingleTextBox from 'components/element/SingleTextBox';
 import ValueBunch from 'components/element/ValueBunch';
+import KvExactStatusPanel from 'components/panel/KvExactStatusPanel';
 import {t} from 'i18next';
 import {effectiveAIHash, resolveAIEngine, resolveAITopology} from 'types/ai_gateway';
 import {IServiceArguments} from 'types/load_balancer';
@@ -43,6 +44,8 @@ export default function AIGatewayPanel({serviceArguments}: {serviceArguments: IS
 		serviceArguments.kvWarmupSec,
 		serviceArguments.kvDpRankCount,
 		serviceArguments.pdBootstrapPort,
+		serviceArguments.kvModelProfile,
+		serviceArguments.kvExactApiMode,
 	];
 
 	if (!aiValues.some(isSet)) {
@@ -126,6 +129,10 @@ export default function AIGatewayPanel({serviceArguments}: {serviceArguments: IS
 						{engine !== 'trtllm' && <SingleTextBox label={t('KV ZMQ Port')} value={serviceArguments.kvZmqPort} tooltip={t('Base event-publisher port.')} />}
 						<SingleTextBox label={t('KV Warmup (s)')} value={serviceArguments.kvWarmupSec} tooltip={t('Inventory warmup before exact routing activates.')} />
 						{engine === 'sglang' && exactMode === 3 && <SingleTextBox label={t('KV DP Rank Count')} value={serviceArguments.kvDpRankCount || 1} tooltip={t('Ranks publish at base ZMQ port plus rank index.')} />}
+						{/* DECLARED binding only — the resolved/live position renders in the
+						    separate enforcement-status section below, never merged here. */}
+						<SingleTextBox label={t('Model Profile (declared)')} value={serviceArguments.kvModelProfile ?? t('None — legacy profile-less rule')} tooltip={t('Bound ModelPromptProfile ID as declared on the rule. Immutable after create.')} />
+						{serviceArguments.kvModelProfile && <SingleTextBox label={t('API Surface (declared)')} value={serviceArguments.kvExactApiMode ?? t('Profile default')} tooltip={t('Declared KV-exact API surface. Immutable after create.')} />}
 					</Grid2>
 				</ValueBunch>
 			)}
@@ -135,6 +142,10 @@ export default function AIGatewayPanel({serviceArguments}: {serviceArguments: IS
 					{t('llama.cpp uses plain load balancing or CHWBL/session affinity and has no KV event plane or P/D controls.')}
 				</Alert>
 			)}
+
+			{/* Resolved status — a dedicated read model, kept structurally apart
+			    from the declared configuration above (renders only on KV-exact rules). */}
+			<KvExactStatusPanel serviceArguments={serviceArguments} />
 		</Stack>
 	);
 }
