@@ -1,4 +1,5 @@
-import {IEndpoint, IServiceArguments, IServiceConfiguration} from './load_balancer';
+import type {GwSchema} from 'api';
+import {IEndpoint, IServiceArguments, IServiceConfiguration, KvExactApiMode} from './load_balancer';
 
 export type AIEngine = NonNullable<IServiceArguments['kvEngineType']>;
 export type AIHashAlgorithm = NonNullable<IServiceArguments['kvHashAlgo']>;
@@ -47,6 +48,8 @@ const AI_ONLY_FIELDS: readonly (keyof IServiceArguments)[] = [
 	'kvEngineType',
 	'kvDpRankCount',
 	'pdBootstrapPort',
+	'kvModelProfile',
+	'kvExactApiMode',
 ];
 
 const KV_FIELDS: readonly (keyof IServiceArguments)[] = [
@@ -250,6 +253,20 @@ export function validateAIConfiguration(configuration: IServiceConfiguration): A
 		}
 	}
 
+	// Structural model-profile checks that need no registry: the contract
+	// rejects both fields outside KV-exact routing outright.
+	if (hasValue(args.kvModelProfile) && exactMode === 0) {
+		issues.push({field: 'kvModelProfile', message: 'A model profile binds only to a KV-exact rule.'});
+	}
+	if (hasValue(args.kvExactApiMode)) {
+		if (exactMode === 0) {
+			issues.push({field: 'kvExactApiMode', message: 'An API surface declaration is meaningless without KV exact routing.'});
+		}
+		if (!KV_EXACT_API_MODES.includes(args.kvExactApiMode as KvExactApiMode)) {
+			issues.push({field: 'kvExactApiMode', message: 'API surface must be completions, chat, or both.'});
+		}
+	}
+
 	validateEndpointTopology(engine, topology, endpoints, issues);
 	return issues;
 }
@@ -303,5 +320,204 @@ export function serializeAIConfiguration(configuration: IServiceConfiguration): 
 	if (engine === 'trtllm' || engine === 'llamacpp') delete serviceArguments.kvZmqPort;
 	if (engine === 'llamacpp') serviceArguments = omitFields(serviceArguments, KV_FIELDS);
 
+	// Last: the topology/engine rules above may have stripped kvExactMode, and
+	// the profile fields must never outlive the exact routing they qualify.
+	serviceArguments = serializeStrictProfileFields(serviceArguments);
+
 	return {...configuration, serviceArguments, endpoints};
+}
+
+//---------------------------------------------------------
+// KV-exact model-profile binding (read/select/status — never mutation)
+//
+// Types derive from the vendored gateway swagger (src/api/gen/gateway.ts)
+// so they cannot drift from the live contract. The gateway POST is the
+// admission authority; everything here is client-side convenience and
+// pre-flight courtesy validation.
+//---------------------------------------------------------
+
+export type IModelProfileRegistry = GwSchema<'AiModelProfileRegistry'>;
+export type IModelProfileEntry = GwSchema<'AiModelProfileEntry'>;
+export type IKvExactStatusEntry = GwSchema<'KvExactStatusEntry'>;
+export type IKvExactEnforcement = GwSchema<'KvExactEnforcement'>;
+
+export const KV_EXACT_API_MODES: readonly KvExactApiMode[] = ['completions', 'chat', 'both'];
+
+function hasValue(value: unknown): boolean {
+	return value !== undefined && value !== null && value !== '';
+}
+
+export type ProfileModelMatch = 'base' | 'alias';
+
+/**
+ * Whether a published profile admits a served model name, and how.
+ * aliasPolicy is a closed set by contract: base_model_only or list — there
+ * is no "any". An empty model name matches nothing (the caller filters only
+ * when the rule declares a model).
+ */
+export function profileAcceptsModel(profile: IModelProfileEntry, modelName: string): ProfileModelMatch | null {
+	if (!hasValue(modelName)) return null;
+	if (profile.baseModel === modelName) return 'base';
+	if (profile.aliasPolicy === 'list' && (profile.allowedAliases ?? []).includes(modelName)) return 'alias';
+	return null;
+}
+
+/**
+ * API surfaces selectable for a profile: each declared surface, plus "both"
+ * only when the profile declares both. supportedApis is contractually
+ * non-empty; unknown future surface strings pass through untouched so a
+ * newer gateway does not brick the selector.
+ */
+export function allowedProfileApiModes(profile: IModelProfileEntry): KvExactApiMode[] {
+	const apis = profile.supportedApis ?? [];
+	const modes = KV_EXACT_API_MODES.filter(mode => mode !== 'both' && apis.includes(mode));
+	if (apis.includes('completions') && apis.includes('chat')) modes.push('both');
+	return modes;
+}
+
+/**
+ * Pre-flight validation of a profile selection against the rule draft.
+ * Field-level issues block the POST in the form (AC-05); the gateway POST
+ * remains the final admission authority — this never replaces it.
+ */
+export function validateProfileSelection(
+	args: Pick<IServiceArguments, 'model_name' | 'kvModelProfile' | 'kvExactApiMode' | 'kvExactMode'>,
+	profile: IModelProfileEntry | undefined,
+): AIValidationIssue[] {
+	const issues: AIValidationIssue[] = [];
+	if (!hasValue(args.kvModelProfile)) return issues;
+
+	if ((args.kvExactMode ?? 0) === 0) {
+		issues.push({field: 'kvModelProfile', message: 'A model profile binds only to a KV-exact rule.'});
+	}
+	if (!profile) {
+		issues.push({field: 'kvModelProfile', message: 'Selected profile is not in the currently published registry. Refresh the profile list.'});
+		return issues;
+	}
+	if (profile.profileId !== args.kvModelProfile) {
+		issues.push({field: 'kvModelProfile', message: 'Selected profile does not match the profile entry being validated.'});
+		return issues;
+	}
+	if (hasValue(args.model_name) && profileAcceptsModel(profile, args.model_name!) === null) {
+		issues.push({field: 'kvModelProfile', message: `Profile ${profile.profileId} does not serve model ${args.model_name} (base model or allowed alias required).`});
+	}
+	if (hasValue(args.kvExactApiMode) && !allowedProfileApiModes(profile).includes(args.kvExactApiMode as KvExactApiMode)) {
+		issues.push({field: 'kvExactApiMode', message: `API surface ${args.kvExactApiMode} is outside the profile's supported surfaces (${(profile.supportedApis ?? []).join(', ')}).`});
+	}
+	return issues;
+}
+
+/**
+ * Serialize the strict-rule profile fields: exactly the two scalars when a
+ * profile is bound to a KV-exact rule, neither otherwise.
+ *
+ * - No KV-exact routing (kvExactMode absent/0) → both fields dropped; the
+ *   contract rejects them outright there.
+ * - No profile → kvExactApiMode is also dropped. The contract does allow a
+ *   surface declaration on a profile-less rule, but this UI never produces
+ *   one: the selector derives its options from the bound profile, so a
+ *   surviving orphan value could only be stale form state.
+ * - Empty strings are form artifacts, never wire values.
+ */
+export function serializeStrictProfileFields(args: IServiceArguments): IServiceArguments {
+	const result = {...args};
+	if (!hasValue(result.kvModelProfile)) delete result.kvModelProfile;
+	if (!hasValue(result.kvExactApiMode)) delete result.kvExactApiMode;
+
+	const exactMode = result.kvExactMode ?? 0;
+	if (exactMode === 0 || result.kvModelProfile === undefined) {
+		delete result.kvModelProfile;
+		delete result.kvExactApiMode;
+	}
+	return result;
+}
+
+//---------------------------------------------------------
+// KV-exact enforcement status classification
+//
+// The state vocabulary is OPEN (x-kv-status-states, versioned by
+// x-kv-status-vocabulary-version). Binding forward-compatibility rule from
+// the contract: an unrecognized enforcedState MUST be treated as "not
+// ready / in transition" and rendered raw; an unrecognized reasonCode MUST
+// be rendered raw and MUST NOT be fatal.
+//---------------------------------------------------------
+
+export type KvExactReadinessKind =
+	| 'legacy'
+	| 'pending'
+	| 'ready'
+	| 'ready-functional-only'
+	| 'degrading'
+	| 'degraded'
+	| 'fault'
+	| 'requires-migration'
+	| 'unknown';
+
+export interface KvExactReadiness {
+	kind: KvExactReadinessKind;
+	/** Safe to render as Ready: a READY-class enforcedState AND an explicitly lifted fence (goFenced === false). POST 2xx and pending are never ready. */
+	ready: boolean;
+	/** READY_FUNCTIONAL_ONLY: functionally attested with no manifest trust root — always rendered with a warning, never as plain Ready. */
+	warning: boolean;
+	/** Tri-state fence passthrough: true = denied, false = explicitly lifted, undefined = unreported. false and undefined MUST render differently. */
+	fenced?: boolean;
+	/** Verbatim enforcedState for display — unknown vocabulary is shown raw, never remapped. */
+	rawState: string;
+}
+
+const PENDING_STATES = new Set([
+	'PROFILE_VALIDATED',
+	'PENDING_DATAPLANE_CONTRACT',
+	'TOKEN_PARITY_VERIFIED',
+	'TOKEN_PARITY_NOT_AVAILABLE_WITH_APPROVED_ORACLE',
+	'ENGINE_HASH_ATTESTED',
+]);
+
+function readinessKind(state: string): KvExactReadinessKind {
+	if (state === 'LEGACY_ACTIVE_UNATTESTED') return 'legacy';
+	if (PENDING_STATES.has(state)) return 'pending';
+	if (state === 'READY') return 'ready';
+	if (state === 'READY_FUNCTIONAL_ONLY') return 'ready-functional-only';
+	if (state === 'DEGRADING') return 'degrading';
+	if (state === 'DEGRADED') return 'degraded';
+	if (state === 'ENFORCEMENT_FAULT') return 'fault';
+	if (state === 'REQUIRES_MIGRATION') return 'requires-migration';
+	return 'unknown';
+}
+
+export function classifyKvExactReadiness(entry: Pick<IKvExactStatusEntry, 'enforcedState' | 'enforcement'>): KvExactReadiness {
+	const rawState = entry.enforcedState ?? '';
+	const kind = readinessKind(rawState);
+	const fenced = entry.enforcement?.goFenced;
+	return {
+		kind,
+		ready: (kind === 'ready' || kind === 'ready-functional-only') && fenced === false,
+		warning: kind === 'ready-functional-only',
+		fenced,
+		rawState,
+	};
+}
+
+//---------------------------------------------------------
+// Status polling cadence (FR-05)
+//---------------------------------------------------------
+
+export const KV_STATUS_POLL_FAST_MS = 5000;
+export const KV_STATUS_POLL_STEADY_MS = 30000;
+
+/**
+ * Poll cadence for the enforcement status panel. Transitional states (and
+ * "no data yet") poll fast; settled states — READY included — keep a slower
+ * steady-state cadence, never zero: drift and degradation after READY must
+ * still surface while the panel is visible. Callers stop polling entirely
+ * only by unmounting/hiding the panel, not through this function.
+ */
+export function kvExactPollIntervalMs(entries: readonly IKvExactStatusEntry[] | null | undefined): number {
+	if (entries === undefined) return KV_STATUS_POLL_FAST_MS;
+	if (entries === null || entries.length === 0) return KV_STATUS_POLL_STEADY_MS;
+	const transitional = entries.some(entry => {
+		const kind = classifyKvExactReadiness(entry).kind;
+		return kind === 'pending' || kind === 'degrading' || kind === 'unknown';
+	});
+	return transitional ? KV_STATUS_POLL_FAST_MS : KV_STATUS_POLL_STEADY_MS;
 }
