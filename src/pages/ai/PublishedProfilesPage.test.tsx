@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// Published Profiles inventory — read-only contract (FR-01, AC-01/02/03/12)
+// Published Profiles inventory — read-only contract
 //
 // The page must render the operator-published registry with zero mutation
 // affordances, treat gen0 as a normal legacy state (exact copy pinned), and

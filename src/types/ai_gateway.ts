@@ -499,7 +499,7 @@ export function classifyKvExactReadiness(entry: Pick<IKvExactStatusEntry, 'enfor
 }
 
 //---------------------------------------------------------
-// Status polling cadence (FR-05)
+// Status polling cadence
 //---------------------------------------------------------
 
 export const KV_STATUS_POLL_FAST_MS = 5000;

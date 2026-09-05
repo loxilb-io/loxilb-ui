@@ -118,7 +118,7 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 		if (sa.kvModelProfile && publishedProfiles !== undefined) {
 			aiIssues.push(...validateProfileSelection(sa, publishedProfiles.find(profile => profile.profileId === sa.kvModelProfile)));
 		}
-		// New strict rules declare their API surface explicitly (FR-02) instead
+		// New strict rules declare their API surface explicitly instead
 		// of leaning on the gateway's profile-default resolution.
 		if (!isEdit && sa.kvModelProfile && !sa.kvExactApiMode) {
 			aiIssues.push({field: 'kvExactApiMode', message: 'Select the API surface this strict rule serves.'});

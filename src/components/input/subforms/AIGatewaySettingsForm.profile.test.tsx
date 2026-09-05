@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// Model Profile selector on the KV-exact rule form (FR-02/FR-03).
+// Model Profile selector on the KV-exact rule form.
 //
 // Pins: compatible-only filtering by model name, alias context, API-surface
 // restriction to the profile's declared set, single-surface preselection,

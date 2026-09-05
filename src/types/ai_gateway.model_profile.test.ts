@@ -308,7 +308,7 @@ describe('classifyKvExactReadiness', () => {
 });
 
 //---------------------------------------------------------
-// kvExactPollIntervalMs — FR-05 cadence
+// kvExactPollIntervalMs — polling cadence policy
 //---------------------------------------------------------
 describe('kvExactPollIntervalMs', () => {
 	it('polls fast before the first data arrives', () => {

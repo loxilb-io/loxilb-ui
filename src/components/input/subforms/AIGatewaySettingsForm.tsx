@@ -89,7 +89,7 @@ export default function AIGatewaySettingsForm(props: {
 	const registry = profilesQuery.data;
 	const profiles = registry?.profiles ?? [];
 	const modelName = value.model_name?.trim() ?? '';
-	// FR-02: with a model name declared, offer only the profiles that serve it
+	// With a model name declared, offer only the profiles that serve it
 	// (base model or allowed alias); without one, offer the whole set. The
 	// profile currently selected always stays listed — dropping it from the
 	// options would leave the Select with an out-of-range value (console
@@ -118,7 +118,7 @@ export default function AIGatewaySettingsForm(props: {
 		}
 		const profile = profiles.find(entry => entry.profileId === profileId);
 		const modes = profile ? allowedProfileApiModes(profile) : [];
-		// A new strict rule declares its API surface explicitly (FR-02): a
+		// A new strict rule declares its API surface explicitly: a
 		// single-surface profile is preselected, a multi-surface one demands a
 		// deliberate choice — validation keeps submit blocked until it is made.
 		onChange({kvModelProfile: profileId, kvExactApiMode: modes.length === 1 ? modes[0] : undefined});
@@ -258,7 +258,7 @@ export default function AIGatewaySettingsForm(props: {
 						)}
 
 						{hasProfileFields && (isEdit ? (
-							// FR-03: after create the binding is immutable — read-only on a
+							// After create the binding is immutable — read-only on a
 							// strict rule, and NO attach affordance on a profile-less rule
 							// (the migration attach is deliberately out of MVP scope).
 							value.kvModelProfile ? (

@@ -190,7 +190,7 @@ export default function LBRulePage() {
 				const submitted = instanceRef.current;
 				const profileId = submitted.serviceArguments?.kvModelProfile;
 
-				// Submit-time freshness check (FR-02): the discovery cache the
+				// Submit-time freshness check: the discovery cache the
 				// selector was built from may predate a registry reload. A
 				// profile that vanished answers 404 here — block the POST, keep
 				// the form, refresh the registry. Any other failure falls

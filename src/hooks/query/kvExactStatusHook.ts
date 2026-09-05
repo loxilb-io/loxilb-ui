@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// KV-exact enforcement status polling (FR-05)
+// KV-exact enforcement status polling
 //
 // Cadence and lifecycle rules, pinned by the request document:
 // - poll only while the status panel is visible AND the rule is strict;
@@ -29,7 +29,7 @@ export function kvExactStatusRetry(failureCount: number, error: unknown): boolea
 
 /**
  * @param visible poll only while the status panel is actually on screen
- * @param strict  FR-05: only strict (profile-bound) rules poll; a legacy
+ * @param strict  only strict (profile-bound) rules poll; a legacy
  *                rule reads once and sits still
  */
 export function useKvExactStatus(instance: IInstance | null, key: IKvExactStatusKey | null, visible: boolean, strict = true) {

@@ -16,7 +16,7 @@ import {IModelProfileEntry} from 'types/ai_gateway';
 import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
-// Published Model Profiles — READ ONLY inventory (FR-01)
+// Published Model Profiles — READ ONLY inventory
 //
 // The registry is operator-published on the gateway. This page reads it;
 // the only action anywhere on it is Refresh. Add/Edit/Delete/Upload/

@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// KV Exact Enforcement Status (FR-04/FR-05) — the RESOLVED, live position
+// KV Exact Enforcement Status — the RESOLVED, live position
 // of the data plane, deliberately separate from the declared configuration
 // shown above it. Resolved status never rides the config object (dedicated
 // read model), so nothing here can be replayed back as configuration.
@@ -144,7 +144,7 @@ export default function KvExactStatusPanel({serviceArguments}: {serviceArguments
 	const isExact = exactMode !== 0;
 	const isStrict = Boolean(serviceArguments.kvModelProfile);
 
-	// Mounted only on the visible panel tab; strict rules poll on the FR-05
+	// Mounted only on the visible panel tab; strict rules poll on the status
 	// cadence, a legacy rule reads once (no polling), non-exact rules never
 	// query at all.
 	const statusQuery = useKvExactStatus(
