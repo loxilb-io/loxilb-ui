@@ -25,7 +25,11 @@ const recipe: LbRecipe = {
 	port: '2020',
 	mode: 'fullproxy',
 	host: '203.0.113.108',
-	ai: {pdDisaggMode: true, kvExactMode: '1', kvHashAlgo: 'sha256_cbor', kvBlockSize: '16', kvZmqPort: '5557'},
+	// modelName: the gateway admits NO kvExactMode rule without model_name
+	// ("must equal the served model and staged tokenizer identity" — admission
+	// present since the pinned contract revision). Qwen3-0.6B is the cicd
+	// scenario's KV_MODEL default.
+	ai: {modelName: 'Qwen/Qwen3-0.6B', pdDisaggMode: true, kvExactMode: '1', kvHashAlgo: 'sha256_cbor', kvBlockSize: '16', kvZmqPort: '5557'},
 	endpoints: [
 		{ip: '198.51.100.61', targetPort: '8000', epRole: 'prefill'},
 		{ip: '198.51.100.62', targetPort: '8000', epRole: 'decode'},

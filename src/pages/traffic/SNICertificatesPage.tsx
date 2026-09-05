@@ -16,6 +16,7 @@ import SubTitlePannel from 'components/layout/SubTitlePannel';
 import SNICertificatesTable from 'components/table/traffic/SNICertificatesTable';
 import {request_delete_cert_pem, request_rotate_cert_pem, request_upload_cert_pem} from 'connector/instance/cert';
 import {request_register_sni_certificate, request_unregister_sni_certificate} from 'connector/instance/sni_certificates';
+import {OpResult} from 'connector/fetcher/opResult';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useRole} from 'hooks/query/oamHooks';
@@ -24,6 +25,19 @@ import {t} from 'i18next';
 import {Fragment, useRef, useState, useMemo} from 'react';
 import {ICert, ISNICertificateEntry, ISNICertificateListItem} from 'types/security';
 import {toPageState} from 'components/state/pageState';
+
+//---------------------------------------------------------
+// SNI-store soft errors follow the snapshot inline-error convention:
+// localized headline first, the store's verbatim detail after. The store
+// reports domain rejections inside a 200 body ("Error: Failed to load
+// certificate … Check certificate files at <path>") — operator-actionable
+// text that the generic OpResult copy would erase, so this family
+// deliberately renders rawDetail.
+//---------------------------------------------------------
+function sniOpErrorText(res: Pick<OpResult, 'localeKey' | 'rawDetail'>): string {
+	const detail = res.rawDetail?.trim();
+	return detail ? `${t(res.localeKey)} ${detail}` : t(res.localeKey);
+}
 
 //---------------------------------------------------------
 // Detail Panel Component
@@ -104,7 +118,7 @@ export default function SNICertificatesPage() {
 			setTimeout(() => refetch(), 1000);
 		} else {
 			// All failed
-			openPopUp(t('Error'), t('Failed to unregister. {{error}}', {error: t(failures[0].localeKey)}), t('OK'));
+			openPopUp(t('Error'), t('Failed to unregister. {{error}}', {error: sniOpErrorText(failures[0])}), t('OK'));
 		}
 	};
 
@@ -134,7 +148,7 @@ export default function SNICertificatesPage() {
 					openPopUp(t('Success'), t('Certificate registered successfully.'), t('OK'));
 					setTimeout(() => refetch(), 1000);
 				} else {
-					openPopUp(t('Error'), t('Failed to register. {{error}}', {error: t(res.localeKey)}), t('OK'));
+					openPopUp(t('Error'), t('Failed to register. {{error}}', {error: sniOpErrorText(res)}), t('OK'));
 				}
 			},
 			true,

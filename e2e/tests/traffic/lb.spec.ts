@@ -435,6 +435,12 @@ test.describe('LB Rule page CRUD', () => {
 		await setField(page, 'CHWBL Prefix Hash Flags', '1');
 		// Single-role is the only KV-exact topology valid on a role-less pool.
 		await selectOption(page, 'Topology', 'Single-role KV exact');
+		// The gateway admits no kvExactMode rule without model_name AND a
+		// loadable tokenizer for it (staged under /etc/loxilb/tokenizers/ or
+		// via a bound profile) — runtime admission, present since the pinned
+		// contract revision. Qwen3-0.6B is the testbed's staged model (the
+		// cicd KV scenario's KV_MODEL default).
+		await field(page, 'Model Name').fill('Qwen/Qwen3-0.6B');
 		await setField(page, 'KV Block Size', '1'); // boundary
 		await selectOption(page, 'KV Hash Override', 'xxhash_cbor');
 		await setField(page, 'KV ZMQ Port', '65535'); // boundary
@@ -446,6 +452,7 @@ test.describe('LB Rule page CRUD', () => {
 			sel: 8,
 			chwbl_prefix_hash_level: 2,
 			chwbl_prefix_hash_flags: 1,
+			model_name: 'Qwen/Qwen3-0.6B',
 			kvExactMode: 3,
 			kvBlockSize: 1,
 			kvHashAlgo: 'xxhash_cbor',

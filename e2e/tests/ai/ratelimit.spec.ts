@@ -59,6 +59,11 @@ test.describe('@gw AI Tenant Rate Limit page', () => {
 	});
 
 	test('lookup of an unknown tenant surfaces a Not Found popup, no crash', async ({page}) => {
+		// The lookup needs a configured key store: an unconfigured store
+		// answers 503 ai_key_store_unconfigured for EVERY tenant, so the
+		// 404→Not-Found path under test is unreachable (same readiness gate
+		// as upsert; observed live on a gateway without --aikey-db-host).
+		test.skip(!readiness.ready, readiness.reason);
 		await page.getByLabel('Tenant ID lookup').fill('e2e-nonexistent-tenant');
 		await page.getByRole('button', {name: 'Lookup'}).click();
 		await expect(dialogTitle(page, 'Not Found')).toBeVisible({timeout: 10_000});
