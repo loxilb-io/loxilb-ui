@@ -85,9 +85,13 @@ test.describe('@gw Published Model Profiles — hardening', () => {
 		// Enter the grid, walk rows with arrows, select with Space — the
 		// detail panel must open without a pointer.
 		const firstCell = grid(page).locator('.MuiDataGrid-row').first().locator('[role="gridcell"]').first();
-		await firstCell.click(); // seed focus inside the grid (grid roving tabindex)
+		await firstCell.click(); // seed focus inside the grid (grid roving tabindex); also selects row 1
+		// The detail opens only for EXACTLY one selected row, and Space on the
+		// selection column TOGGLES — so keyboard-deselect row 1 before walking
+		// to row 2, or the two-row selection hides the panel by design.
+		await page.keyboard.press('Space'); // keyboard-deselect row 1
 		await page.keyboard.press('ArrowDown');
-		await page.keyboard.press('Space');
+		await page.keyboard.press('Space'); // keyboard-select row 2 — exactly one
 		await expect(page.getByText('Profile Details')).toBeVisible();
 	});
 

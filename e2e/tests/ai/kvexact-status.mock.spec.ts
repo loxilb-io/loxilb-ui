@@ -135,8 +135,10 @@ test.describe('@gw KV-exact enforcement status — mock contract', () => {
 		await openStatusPanel(page);
 		await expect(page.getByText(/Enforcement fault — fenced, not silently downgraded to legacy/)).toBeVisible({timeout: 20_000});
 		await expect(page.getByText('Fenced — exact routing denied')).toBeVisible();
-		await expect(page.getByText('enforcement_fault')).toBeVisible();
-		await expect(page.getByText('binding_state_missing')).toBeVisible();
+		// exact:true — the case-insensitive substring form also matches the two
+		// ENFORCEMENT_FAULT state fields; the reason CHIP is the lowercase text.
+		await expect(page.getByText('enforcement_fault', {exact: true})).toBeVisible();
+		await expect(page.getByText('binding_state_missing', {exact: true})).toBeVisible();
 	});
 
 	test('MP-E2E-013: unknown state/reason vocabulary renders raw, non-ready, without a crash', async ({page}) => {
