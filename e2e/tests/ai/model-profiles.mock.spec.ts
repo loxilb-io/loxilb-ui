@@ -151,7 +151,14 @@ test.describe('@gw Published Model Profiles — mock contract', () => {
 		// management-hop credential failing must not tear down the human's
 		// OAM browser session.
 		await page.unroute(LIST_RE);
-		await mockList(page, {message: 'unauthorized'}, 401, {'X-Loxi-Error-Origin': 'gateway'});
+		// The provenance marker is a custom header on a cross-origin response:
+		// without Access-Control-Expose-Headers the browser hides it from
+		// headers.get() and the UI's conservative fallback signs the session
+		// out (the exact behavior page-states.spec.ts pins for a BARE 401).
+		await mockList(page, {message: 'unauthorized'}, 401, {
+			'X-Loxi-Error-Origin': 'gateway',
+			'Access-Control-Expose-Headers': 'X-Loxi-Error-Origin',
+		});
 		await page.goto(`instance/ai/profiles?name=${instName}`);
 		await expect(page.getByText(/don't have permission to view/)).toBeVisible({timeout: 20_000});
 		expect(page.url(), 'gateway-origin 401 must not log the session out').toContain('instance/ai/profiles');
