@@ -7,9 +7,12 @@
 // explicitness on multi-surface profiles, exact-match alias policy edges,
 // the block-size confirmation gate on both strict topologies, stale strict
 // state never leaking into a legacy POST, forward-compat with unknown
-// registry surfaces, and engine × topology interactions. Every gateway
-// endpoint the flow touches is intercepted; no rule ever reaches the
-// real gateway.
+// registry surfaces, and engine × topology interactions. MP-E2E-035..039
+// replay real fleet shapes proven in the gateway's CI/CD campaigns
+// (converged llama.cpp CHWBL, SGLang P/D bootstrap, TRT-LLM role'd P/D,
+// hash-pinned failover, vLLM NIXL P/D) and pin their wire bodies. Every
+// gateway endpoint the flow touches is intercepted; no rule ever reaches
+// the real gateway.
 //---------------------------------------------------------
 import type {Page, Route} from '@playwright/test';
 import {expect, test} from '../../fixtures';
@@ -543,6 +546,189 @@ test.describe('@gw Strict-rule option matrix — mock contract', () => {
 
 		const body = await submitAndCapture(page);
 		expect(Object.prototype.hasOwnProperty.call(body.serviceArguments, 'chwbl_prefix_hash_level')).toBe(false);
+		expect(world.postBodies()).toHaveLength(1);
+	});
+
+	test('MP-E2E-035: converged llama.cpp CHWBL fleet — engine-agnostic method rule with health probes, no strict residue', async ({page}) => {
+		const world = await mockWorld(page);
+		const {sec} = await fillRuleScaffold(page, 'e2e-mp-mx-lcp', {addEndpoints: false});
+
+		// The day-0 posture a converged llama.cpp fleet runs: plain LB +
+		// content prefix-hash selection, streaming kept alive, HTTP health
+		// probes — and NO kv*/pd* routing state at all.
+		await selectOption(page, 'SEL', 'chwbl');
+		await selectOption(page, 'AI Engine', 'llamacpp');
+		await field(page, 'SSE Mode').check();
+		await field(page, 'Enable Monitor').check();
+		await selectOption(page, 'Probe Type', 'HTTP');
+		await setField(page, 'Probe Port', '8081', sec);
+		await setField(page, 'Probe Request', '/health', sec);
+		await setField(page, 'Probe Retries', '1', sec);
+
+		// Converged means role-less: every endpoint serves both phases.
+		for (let i = 0; i < 3; i++) {
+			await sec.getByRole('button', {name: 'Add', exact: true}).click();
+			await field(page, 'IP', sec).nth(i).fill(`198.51.100.7${i + 1}`);
+			await field(page, 'Target Port', sec).nth(i).fill('8081');
+		}
+
+		const body = await submitAndCapture(page);
+		const sa = body.serviceArguments;
+		expect(sa.sel).toBe(8);
+		expect(sa.mode).toBe(4);
+		expect(sa.kvEngineType).toBe('llamacpp');
+		expect(sa.sse_mode).toBe(true);
+		expect(sa.monitor).toBe(true);
+		expect(sa.probetype).toBe('http');
+		expect(sa.probeport).toBe(8081);
+		expect(sa.probereq).toBe('/health');
+		expect(sa.probeRetries).toBe(1);
+		// The vhost key stays empty on purpose — keying it to the VIP breaks
+		// clients whose Host header differs (floating/NAT'd external IPs).
+		expect(sa.host ?? '').toBe('');
+		// llamacpp offers only plain routing, so no strict or P/D state may
+		// ride along — and CHWBL fields left untouched stay absent even when
+		// the chwbl selector itself is active.
+		for (const key of ['pd_disagg_mode', 'kvExactMode', 'kvModelProfile', 'chwbl_prefix_hash_level', 'chwbl_prefix_hash_flags']) {
+			expect(Object.prototype.hasOwnProperty.call(sa, key), `${key} must be absent`).toBe(false);
+		}
+		expect(body.endpoints).toHaveLength(3);
+		for (const ep of body.endpoints) {
+			expect(ep.ep_role ?? 0).toBe(0);
+			expect(ep.weight).toBe(1);
+			expect(ep.targetPort).toBe(8081);
+		}
+		expect(world.postBodies()).toHaveLength(1);
+	});
+
+	test('MP-E2E-036: SGLang P/D bootstrap fleet — profile-less KV-exact with the full transport tuple on the wire', async ({page}) => {
+		const world = await mockWorld(page);
+		const {aigw} = await fillRuleScaffold(page, 'e2e-mp-mx-sgl');
+		await selectOption(page, 'AI Engine', 'sglang');
+		await selectOption(page, 'Topology', 'P/D + KV exact');
+		await assignPdRoles(page);
+
+		// A role-partitioned SGLang fleet needs the whole transport tuple:
+		// the disaggregation bootstrap port, the ZMQ event port, the page
+		// size read back from the live engine, DP rank fan-out, and a warmup
+		// hold before cache-aware picks engage.
+		await field(page, 'SSE Mode', aigw).check();
+		await setField(page, 'P/D Bootstrap Port', '8998', aigw);
+		await setField(page, 'KV Block Size', '64', aigw);
+		await field(page, 'Block/Page Size Confirmed', aigw).check();
+		await setField(page, 'KV ZMQ Port', '5570', aigw);
+		await setField(page, 'KV DP Rank Count', '2', aigw);
+		await setField(page, 'KV Warmup (s)', '30', aigw);
+
+		const body = await submitAndCapture(page);
+		const sa = body.serviceArguments;
+		expect(sa.kvEngineType).toBe('sglang');
+		expect(sa.pd_disagg_mode).toBe(true);
+		expect(sa.kvExactMode).toBe(1);
+		expect(sa.pdBootstrapPort).toBe(8998);
+		expect(sa.kvBlockSize).toBe(64);
+		expect(sa.kvZmqPort).toBe(5570);
+		expect(sa.kvDpRankCount).toBe(2);
+		expect(sa.kvWarmupSec).toBe(30);
+		expect(sa.sse_mode).toBe(true);
+		// The fleets that predate the profile registry run strict routing
+		// WITHOUT a profile binding — legacy profile-less admission must
+		// stay composable, with both profile keys absent.
+		expect(Object.prototype.hasOwnProperty.call(sa, 'kvModelProfile')).toBe(false);
+		expect(Object.prototype.hasOwnProperty.call(sa, 'kvExactApiMode')).toBe(false);
+		expect(body.endpoints.map((ep: any) => ep.ep_role)).toEqual([1, 2]);
+		expect(world.postBodies()).toHaveLength(1);
+	});
+
+	test('MP-E2E-037: TRT-LLM role\'d P/D fleet — engine-foreign transport knobs stay off the wire', async ({page}) => {
+		const world = await mockWorld(page);
+		const {aigw} = await fillRuleScaffold(page, 'e2e-mp-mx-trt');
+		await selectOption(page, 'AI Engine', 'trtllm');
+		await selectOption(page, 'Topology', 'P/D + KV exact');
+		await assignPdRoles(page);
+		await setField(page, 'KV Block Size', '32', aigw);
+		await field(page, 'Block/Page Size Confirmed', aigw).check();
+		await setField(page, 'KV Warmup (s)', '30', aigw);
+
+		const body = await submitAndCapture(page);
+		const sa = body.serviceArguments;
+		expect(sa.kvEngineType).toBe('trtllm');
+		expect(sa.pd_disagg_mode).toBe(true);
+		expect(sa.kvExactMode).toBe(1);
+		expect(sa.kvBlockSize).toBe(32);
+		expect(sa.kvWarmupSec).toBe(30);
+		// TRT-LLM subscribes its context workers over the polled HTTP drain:
+		// ZMQ, the SGLang bootstrap port, and DP rank fan-out are meaningless
+		// for this engine and MUST be absent — MP-E2E-031 pins that the
+		// fields never render; this pins that nothing ships anyway.
+		for (const key of ['kvZmqPort', 'pdBootstrapPort', 'kvDpRankCount']) {
+			expect(Object.prototype.hasOwnProperty.call(sa, key), `${key} must be absent for trtllm`).toBe(false);
+		}
+		expect(body.endpoints.map((ep: any) => ep.ep_role)).toEqual([1, 2]);
+		expect(world.postBodies()).toHaveLength(1);
+	});
+
+	test('MP-E2E-038: failover-QA hash-pinned rule — an explicit KV hash override survives to the wire beside probe tuning', async ({page}) => {
+		const world = await mockWorld(page);
+		const {aigw, sec} = await fillRuleScaffold(page, 'e2e-mp-mx-hashpin');
+		await selectOption(page, 'Topology', 'P/D + KV exact');
+		await assignPdRoles(page);
+		await setField(page, 'KV Block Size', '16', aigw);
+		await field(page, 'Block/Page Size Confirmed', aigw).check();
+
+		// The failover drills pin the hash algorithm explicitly instead of
+		// trusting the engine default, shorten warmup, and run tight probes —
+		// the shape that keeps the pre-detection window measurable.
+		await selectOption(page, 'KV Hash Override', 'xxhash_cbor');
+		await setField(page, 'KV ZMQ Port', '5558', aigw);
+		await setField(page, 'KV Warmup (s)', '20', aigw);
+		await field(page, 'Enable Monitor').check();
+		await setField(page, 'Probe Retries', '1', sec);
+
+		const body = await submitAndCapture(page);
+		const sa = body.serviceArguments;
+		expect(sa.kvHashAlgo).toBe('xxhash_cbor');
+		expect(sa.pd_disagg_mode).toBe(true);
+		expect(sa.kvExactMode).toBe(1);
+		expect(sa.kvZmqPort).toBe(5558);
+		expect(sa.kvWarmupSec).toBe(20);
+		expect(sa.monitor).toBe(true);
+		expect(sa.probeRetries).toBe(1);
+		expect(world.postBodies()).toHaveLength(1);
+	});
+
+	test('MP-E2E-039: vLLM NIXL P/D fleet — per-endpoint side-channel ports ride the endpoints, baseline stays cache-blind', async ({page}) => {
+		const world = await mockWorld(page);
+		const {aigw, sec} = await fillRuleScaffold(page, 'e2e-mp-mx-nixl', {addEndpoints: false});
+		await selectOption(page, 'Topology', 'P/D disaggregation');
+
+		// vLLM P/D moves KV blocks over per-endpoint NIXL side channels; the
+		// port is endpoint state, not rule state, and each row keeps its own.
+		const rows = [
+			{ip: '198.51.100.85', role: 'prefill', nixl: '5601'},
+			{ip: '198.51.100.86', role: 'decode', nixl: '5602'},
+		] as const;
+		for (let i = 0; i < rows.length; i++) {
+			await sec.getByRole('button', {name: 'Add', exact: true}).click();
+			await field(page, 'IP', sec).nth(i).fill(rows[i].ip);
+			await field(page, 'Target Port', sec).nth(i).fill('8000');
+			await selectOption(page, 'EP Role', rows[i].role, i);
+			await field(page, 'NIXL Port', sec).nth(i).fill(rows[i].nixl);
+		}
+		// The baseline drill shape: a session TTL for sticky decode picks,
+		// but cache-aware routing deliberately OFF — every prefill pick is a
+		// fresh min-load decision.
+		await setField(page, 'P/D Session TTL (s)', '30', aigw);
+
+		const body = await submitAndCapture(page);
+		const sa = body.serviceArguments;
+		expect(sa.pd_disagg_mode).toBe(true);
+		expect(sa.pd_session_ttl_sec).toBe(30);
+		expect(sa.pd_cache_aware_mode ?? false).toBe(false);
+		expect(sa.kvExactMode ?? 0).toBe(0);
+		expect(Object.prototype.hasOwnProperty.call(sa, 'kvModelProfile')).toBe(false);
+		expect(body.endpoints.map((ep: any) => ep.ep_role)).toEqual([1, 2]);
+		expect(body.endpoints.map((ep: any) => ep.nixl_port)).toEqual([5601, 5602]);
 		expect(world.postBodies()).toHaveLength(1);
 	});
 });
