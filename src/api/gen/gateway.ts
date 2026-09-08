@@ -21,8 +21,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         401: components["responses"]["ManagementUnauthorized"];
         403: components["responses"]["ManagementForbidden"];
@@ -144,6 +146,8 @@ export interface paths {
         query?: {
           /** @description dry-run (default) validates and returns the plan without mutating anything; commit applies the snapshot with automatic rollback on failure. */
           mode?: "dry-run" | "commit";
+          /** @description Comma-separated snapshot domains to restore. Defaults to every domain the document covers (its included_domains). Requesting a domain the document does not cover is refused. */
+          components?: string;
         };
       };
       /** @description The snapshot document, as produced by GET /config/snapshot. */
@@ -371,7 +375,7 @@ export interface paths {
         /** @description Created */
         201: {
           content: {
-            "application/json": components["schemas"]["UserSummary"];
+            "application/json": components["schemas"]["User"];
           };
         };
         /** @description Bad Request */
@@ -629,8 +633,10 @@ export interface paths {
     delete: {
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -691,8 +697,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -742,7 +750,7 @@ export interface paths {
   "/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}": {
     /**
      * Get a Load balancer service by composite key
-     * @description Returns a single load balancer rule identified by its legacy VIP/port/protocol composite key (Octavia). If more than one rule shares that tuple, the lookup returns 409 instead of selecting an arbitrary rule; use the stable opaque serviceArguments.id with /config/loadbalancer/id/{id}.
+     * @description Returns a single load balancer rule identified by its VIP/port/protocol composite key (Octavia).
      */
     get: operations["getConfigLoadbalancerExternalipaddressIPAddressPortPortProtocolProto"];
     /**
@@ -770,8 +778,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -819,7 +829,7 @@ export interface paths {
     };
     /**
      * Patch an existing Load balancer service (RFC 7386 JSON merge-patch)
-     * @description Apply an RFC 7386 JSON merge-patch to an existing load balancer rule identified by its VIP/port/protocol composite key (Octavia). Fields present in the body are overwritten, absent fields are left untouched, and an explicit null clears a clearable field. Immutable fields (security, egress, mode, protocol, VIP composite key) are rejected with 400. Returns 200 if the target rule exists, 404 if it is absent. If multiple rules share the legacy tuple, the operation returns 409 rather than selecting one arbitrarily. Use the opaque rule ID for selection and an exact operation for mutation. The rule is mutated in place; established connections are not dropped.
+     * @description Apply an RFC 7386 JSON merge-patch to an existing load balancer rule identified by its VIP/port/protocol composite key (Octavia). Fields present in the body are overwritten, absent fields are left untouched, and an explicit null clears a clearable field. Immutable fields (security, egress, mode, protocol, VIP composite key) are rejected with 400. Returns 200 if the target rule exists, 404 if it is absent. The rule is mutated in place; established connections are not dropped.
      */
     patch: operations["patchConfigLoadbalancerExternalipaddressIPAddressPortPortProtocolProto"];
   };
@@ -875,7 +885,7 @@ export interface paths {
   "/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}/status": {
     /**
      * Get the lifecycle status of a Load balancer service
-     * @description Returns lifecycle status for an unambiguous legacy tuple; returns 409 when colliding rules require opaque-ID/full-key selection.
+     * @description Returns the per-LB lifecycle status (adminStateUp, operatingStatus, lastUpdated) for the rule identified by its composite key (Octavia).
      */
     get: operations["getConfigLoadbalancerStatus"];
   };
@@ -889,7 +899,7 @@ export interface paths {
   "/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}/stats": {
     /**
      * Get per-service statistics of a Load balancer service
-     * @description Returns the per-LB statistics quad (activeConnections, bytesIn, bytesOut, totalConnections) for an unambiguous legacy tuple (Octavia), or 409 when colliding rules require opaque-ID/full-key selection. activeConnections is the same selector-agnostic live concurrent-connection count the connectionLimit gate enforces; bytesIn/bytesOut are the real per-direction CT byte totals; totalConnections is a monotonic cumulative counter reset to zero on restart.
+     * @description Returns the per-LB statistics quad (activeConnections, bytesIn, bytesOut, totalConnections) for the rule identified by its composite key (Octavia). activeConnections is the same selector-agnostic live concurrent-connection count the connectionLimit gate enforces; bytesIn/bytesOut are the real per-direction CT byte totals; totalConnections is a monotonic cumulative counter reset to zero on restart.
      */
     get: operations["getConfigLoadbalancerStats"];
   };
@@ -921,8 +931,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -1003,8 +1015,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -1083,8 +1097,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -1563,8 +1579,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -1627,8 +1645,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -1726,8 +1746,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -1788,8 +1810,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -1887,8 +1911,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -1951,8 +1977,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -2050,8 +2078,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -2112,8 +2142,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -2211,8 +2243,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -2273,8 +2307,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -2372,8 +2408,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -2438,8 +2476,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -2537,8 +2577,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -2603,8 +2645,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -2702,8 +2746,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -2766,8 +2812,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -2865,8 +2913,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -2929,8 +2979,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -3028,8 +3080,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -3090,8 +3144,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -3158,8 +3214,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -3224,8 +3282,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -3312,8 +3372,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Invalid authentication credentials */
         401: {
@@ -3357,8 +3419,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Invalid authentication credentials */
         401: {
@@ -3523,8 +3587,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -3622,8 +3688,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -3684,8 +3752,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -3754,8 +3824,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -3853,8 +3925,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -3929,8 +4003,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -4023,8 +4099,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -4065,8 +4143,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -4111,8 +4191,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -4143,8 +4225,10 @@ export interface paths {
     delete: {
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -4245,9 +4329,7 @@ export interface paths {
         /** @description OK */
         200: {
           content: {
-            "application/json": {
-              processAttr?: components["schemas"]["ProcessInfoEntry"][];
-            };
+            "application/json": components["schemas"]["ProcessStatus"];
           };
         };
         /** @description Invalid authentication credentials */
@@ -4317,9 +4399,7 @@ export interface paths {
         /** @description OK */
         200: {
           content: {
-            "application/json": {
-              filesystemAttr?: components["schemas"]["FileSystemInfoEntry"][];
-            };
+            "application/json": components["schemas"]["FilesystemStatus"];
           };
         };
         /** @description Invalid authentication credentials */
@@ -4337,6 +4417,128 @@ export interface paths {
         };
         /** @description Maintenance mode */
         503: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+      };
+    };
+  };
+  "/status/ready": {
+    /**
+     * Configuration readiness of this gateway
+     * @description READY means the boot config replay settled without degradation (or an operator's commit restore has since recovered it) and every REQUIRED external recovery dependency answers right now. A not-ready gateway returns 503 with the same body shape, carrying the reasons - a failed boot restore is never silently READY.
+     */
+    get: {
+      responses: {
+        /** @description Ready */
+        200: {
+          content: {
+            "application/json": components["schemas"]["ReadyStatus"];
+          };
+        };
+        /** @description Invalid authentication credentials */
+        401: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Not ready (body carries the reasons) */
+        503: {
+          content: {
+            "application/json": components["schemas"]["ReadyStatus"];
+          };
+        };
+      };
+    };
+  };
+  "/maintenance": {
+    /**
+     * Operator maintenance state with drain read-back
+     * @description Reports whether an operator holds the gateway in maintenance, what is being refused while it does, and how far the drain has progressed - the in-flight streaming-session count, elapsed time against the declared drain window, and whether that window has been exceeded. Every field is the observed truth - in particular refusing_new_inference reports what the data path actually refuses, not what an operator might wish it refused.
+     */
+    get: {
+      responses: {
+        /** @description OK */
+        200: {
+          content: {
+            "application/json": components["schemas"]["MaintenanceStatus"];
+          };
+        };
+        /** @description Invalid authentication credentials */
+        401: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Internal service error */
+        500: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+      };
+    };
+    /**
+     * Enter or leave operator maintenance
+     * @description Idempotent - entering while already in maintenance changes nothing (same operation_id, same entered_at, and the original drain window is kept; changing the window requires leave then enter), and leaving while active is a no-op. While maintenance holds, mutating configuration calls are refused with 503 except the configuration-lifecycle operations maintenance exists to make safe (snapshot, persist, restore) and this endpoint itself. The response to a leave carries the operation_id of the episode it ended.
+     */
+    put: {
+      /** @description Desired maintenance state */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["MaintenanceRequest"];
+        };
+      };
+      responses: {
+        /** @description Resulting maintenance state */
+        200: {
+          content: {
+            "application/json": components["schemas"]["MaintenanceStatus"];
+          };
+        };
+        /** @description Malformed arguments for API call */
+        400: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Invalid authentication credentials */
+        401: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Internal service error */
+        500: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+      };
+    };
+  };
+  "/diagnostics": {
+    /**
+     * Secret-safe gateway diagnostics
+     * @description A bounded, allowlist-only diagnostic assembly - build identity, served API contract, process uptime, readiness verdict with reasons, operator maintenance state, per-interface eBPF attachment, per-map utilization against capacity, external-dependency reachability with a latency class (identity only, never credentials or connection strings), and the last configuration lifecycle outcomes with their checksums and identities. Request/response bodies, prompts, rule contents, key material, and environment are never collected here. Failed internal errors elsewhere in the API carry a short correlation ref in their 500 body that ties them to the gateway log; this endpoint carries no raw log content.
+     */
+    get: {
+      responses: {
+        /** @description OK */
+        200: {
+          content: {
+            "application/json": components["schemas"]["DiagnosticsStatus"];
+          };
+        };
+        /** @description Invalid authentication credentials */
+        401: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Internal service error */
+        500: {
           content: {
             "application/json": components["schemas"]["Error"];
           };
@@ -4418,8 +4620,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -4508,8 +4712,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -4716,8 +4922,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Invalid authentication credentials */
         401: {
@@ -4904,8 +5112,10 @@ export interface paths {
     delete: {
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Invalid authentication credentials */
         401: {
@@ -5058,8 +5268,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Invalid authentication credentials */
         401: {
@@ -5266,8 +5478,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Invalid authentication credentials */
         401: {
@@ -5376,8 +5590,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -5442,8 +5658,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -5576,8 +5794,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -5644,8 +5864,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -5743,8 +5965,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -5805,8 +6029,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -5862,8 +6088,10 @@ export interface paths {
       requestBody: components["requestBodies"]["BGPApplyPolicyToNeighborMod"];
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -5917,8 +6145,10 @@ export interface paths {
       requestBody: components["requestBodies"]["BGPApplyPolicyToNeighborMod"];
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -5979,8 +6209,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -6081,8 +6313,10 @@ export interface paths {
     post: {
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -6115,8 +6349,10 @@ export interface paths {
     delete: {
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -6937,8 +7173,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -7003,8 +7241,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -7680,8 +7920,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -7742,8 +7984,10 @@ export interface paths {
       };
       responses: {
         /** @description OK */
-        204: {
-          content: never;
+        200: {
+          content: {
+            "application/json": components["schemas"]["OperationResult"];
+          };
         };
         /** @description Malformed arguments for API call */
         400: {
@@ -7883,10 +8127,225 @@ export interface components {
       errors?: string[];
       /** @description ok, rolled-back, or ROLLBACK-FAILED; empty when the pipeline stopped before APPLY. */
       result?: string;
+      /**
+       * Format: uint64
+       * @description The restored document's lineage generation (absent for documents that predate generations and for bare captures).
+       */
+      snapshot_generation?: number;
+      /** @description Non-fatal anomalies the pipeline tolerated (degraded external stores, duplicate document items skipped at boot). Warnings never change the result field or trigger rollback. */
+      warnings?: string[];
+      /** @description The document's recovery-dependency manifest with this restore's per-entry disposition. Required entries are verified before anything is planned, wiped, or applied. */
+      external_dependencies?: components["schemas"]["ExternalDependencyStatus"][];
+      /** @description Write-through disposition of a committed restore. true when the committed state was persisted to snapshot.json; false when the restore applied but the write-through failed - the applied state will NOT survive a restart until a later persist succeeds (the failure detail is in errors). Absent for dry-run and for pipelines that never reached a successful commit. */
+      persisted?: boolean;
+      /**
+       * Format: uint64
+       * @description Lineage generation stamped by the successful write-through (present with persisted=true only).
+       */
+      persisted_generation?: number;
       /** @description On-disk path of the pre-restore snapshot captured before APPLY (commit mode only). */
       pre_restore_snapshot_persisted?: string;
     };
-    /** @description Result of POST /config/persist. */
+    /** @description Configuration readiness verdict with the evidence behind it - the boot replay outcome, live external-dependency probes, and the most recent successful persist/restore identities. */
+    ReadyStatus: {
+      ready: boolean;
+      /** @description Why the gateway is not ready; empty when ready. */
+      reasons?: string[];
+      boot?: components["schemas"]["BootStatus"];
+      /** @description Live availability of the stores this gateway is wired to (status ready or failed - a probe, unlike the restore engine's configured-only checks). */
+      external_dependencies?: components["schemas"]["ExternalDependencyStatus"][];
+      last_persist?: components["schemas"]["ConfigOpRecord"];
+      last_restore?: components["schemas"]["ConfigOpRecord"];
+      auto_persist?: components["schemas"]["AutoPersistStatus"];
+      /** @description Live per-interface eBPF attachment, verified against the kernel (netlink) rather than the control plane's bookkeeping. Informational - attachment state does not gate the ready verdict. */
+      ebpf_attachments?: components["schemas"]["EbpfAttachmentStatus"][];
+    };
+    /** @description Per-process CPU usage report (the /status/process body, formalized - the wire shape is unchanged). */
+    ProcessStatus: {
+      processAttr?: components["schemas"]["ProcessInfoEntry"][];
+    };
+    /** @description Filesystem usage report (the /status/filesystem body, formalized - the wire shape is unchanged). */
+    FilesystemStatus: {
+      filesystemAttr?: components["schemas"]["FileSystemInfoEntry"][];
+    };
+    /** @description Bounded utilization of one datapath table against its capacity. Counts only - never entry contents. */
+    MapUtilization: {
+      /** @description Table name (e.g. conntrack). */
+      name: string;
+      /**
+       * Format: int64
+       * @description Entries currently held, as last observed by the gateway's own periodic collector (shares its source with the metrics surface - no second counting layer).
+       */
+      count: number;
+      /**
+       * Format: int64
+       * @description Maximum entries the table can hold.
+       */
+      capacity: number;
+    };
+    /** @description One external dependency's live reachability with a latency class. Identity by type only - IDs, digests, credentials and connection strings are deliberately absent from this surface. */
+    DependencyDiagnostic: {
+      /** @description Dependency type (e.g. keystore, certstore). */
+      type: string;
+      /** @description Whether recovery treats this dependency as required. */
+      required: boolean;
+      /**
+       * @description The probe's verdict, taken live for this response.
+       * @enum {string}
+       */
+      status: "ready" | "failed";
+      /**
+       * @description Probe round-trip class - fast is under 250ms, slow is 250ms or more, failed means the probe errored (its latency is meaningless).
+       * @enum {string}
+       */
+      latency_class: "fast" | "slow" | "failed";
+    };
+    /** @description The allowlist-only diagnostic assembly served by /diagnostics. */
+    DiagnosticsStatus: {
+      /** @description Gateway version. */
+      version: string;
+      /** @description Build/source-revision identity string. */
+      build_info?: string;
+      /** @description Product identifier. */
+      product?: string;
+      /** @description Served API contract identity (base path and spec version), read from the embedded spec at startup. */
+      api_version?: string;
+      /**
+       * Format: int64
+       * @description Seconds since this gateway's API layer initialized.
+       */
+      uptime_seconds: number;
+      /** @description The same configuration-readiness verdict /status/ready serves. */
+      ready: boolean;
+      /** @description Why the gateway is not ready; empty when ready. */
+      ready_reasons?: string[];
+      /**
+       * @description The operator maintenance state (see /maintenance for the full drain read-back).
+       * @enum {string}
+       */
+      maintenance_state: "active" | "maintenance";
+      /** @description Live per-interface eBPF attachment, kernel-verified. */
+      ebpf_attachments?: components["schemas"]["EbpfAttachmentStatus"][];
+      /** @description Bounded per-table utilization/capacity. */
+      maps?: components["schemas"]["MapUtilization"][];
+      external_dependencies?: components["schemas"]["DependencyDiagnostic"][];
+      boot?: components["schemas"]["BootStatus"];
+      last_persist?: components["schemas"]["ConfigOpRecord"];
+      last_restore?: components["schemas"]["ConfigOpRecord"];
+      auto_persist?: components["schemas"]["AutoPersistStatus"];
+    };
+    /** @description One interface/hook attachment fact. A tc entry appears for every port the control plane dispatched a program load for, so attached=false there means the kernel and the control plane's intent disagree. An xdp entry appears only where an XDP program is verifiably attached (XDP expectation depends on datapath compile flags, so its absence is not reported as divergence). */
+    EbpfAttachmentStatus: {
+      /** @description Interface name. */
+      name: string;
+      /**
+       * @description Attachment hook.
+       * @enum {string}
+       */
+      mode: "tc" | "xdp";
+      /** @description Kernel-verified attachment state. */
+      attached: boolean;
+    };
+    /** @description Desired operator maintenance state. */
+    MaintenanceRequest: {
+      /** @description true enters maintenance, false leaves it. Both directions are idempotent. */
+      enabled: boolean;
+      /**
+       * Format: uint32
+       * @description Drain window declared on enter (0 or absent = no deadline). Ignored on a repeat enter and on leave - an episode's window is immutable.
+       */
+      drain_timeout_seconds?: number;
+    };
+    /** @description Operator maintenance state with drain read-back. Refusal fields report the observed truth of what this gateway build refuses in the current state, never an aspiration. */
+    MaintenanceStatus: {
+      /** @enum {string} */
+      state: "active" | "maintenance";
+      /** @description Identity of the maintenance episode - stable across repeated idempotent enters; a leave response carries the id of the episode it ended; empty when active. */
+      operation_id?: string;
+      /** @description Mutating configuration API calls are being refused (503), except the configuration-lifecycle operations and the maintenance endpoint itself. */
+      refusing_new_config: boolean;
+      /** @description New data-path inference requests are being refused. Gateway-wide data-path refusal is not implemented by this management-plane state - this field reports false so no caller mistakes maintenance for a traffic drain; per-service and per-endpoint drain remain the data path's own mechanisms. */
+      refusing_new_inference: boolean;
+      /**
+       * Format: int64
+       * @description AI inference streaming sessions (SSE) currently open through the gateway. Non-streaming requests have no in-flight counter and are deliberately not estimated.
+       */
+      in_flight_streams: number;
+      /**
+       * Format: date-time
+       * @description When the current episode began (absent when active).
+       */
+      entered_at?: string;
+      /**
+       * Format: int64
+       * @description Seconds spent in the current episode (0 when active).
+       */
+      elapsed_seconds: number;
+      /**
+       * Format: uint32
+       * @description The episode's declared drain window (0 = none declared).
+       */
+      drain_timeout_seconds?: number;
+      /** @description The declared drain window has elapsed. The gateway never leaves maintenance on its own - the operator owns the transition; an overrun is reported, not acted on. */
+      drain_deadline_exceeded: boolean;
+      /** @description Leaving maintenance is possible right now (always true - PUT with enabled=false is never refused by the maintenance gate). */
+      cancellable: boolean;
+    };
+    /** @description Auto-persist failure streak (present only while failing; any successful persist clears it). Nonzero means recent config changes may not survive a restart - also surfaced as a not-ready reason and in the loxilb_autopersist_consecutive_failures gauge. */
+    AutoPersistStatus: {
+      consecutive_failures?: number;
+      last_error?: string;
+      /** Format: date-time */
+      last_attempt?: string;
+    };
+    /** @description The boot config replay's recorded outcome. */
+    BootStatus: {
+      /** @description The --config-boot-profile the boot ran under (strict or compat). */
+      profile?: string;
+      snapshot_found: boolean;
+      succeeded: boolean;
+      /**
+       * Format: uint64
+       * @description Applied boot document's lineage generation (success only).
+       */
+      generation?: number;
+      /** @description Where a failing snapshot was preserved (failure only). */
+      quarantine_path?: string;
+      /** @description The compat profile replayed the legacy *.txt artifacts after a failed snapshot restore. */
+      legacy_fallback: boolean;
+      /** @description The boot snapshot restore failed (strict booted empty; compat may be running legacy-replayed configuration). */
+      degraded: boolean;
+      reasons?: string[];
+    };
+    /** @description One successful persist or restore - identity of what is durable/applied. */
+    ConfigOpRecord: {
+      /** Format: uint64 */
+      generation?: number;
+      checksum?: string;
+      /** @description For persists, the capture trigger (write-through, manual); for restores, commit or boot. */
+      mode?: string;
+      /** Format: date-time */
+      at?: string;
+    };
+    /** @description Identity of one external recovery dependency (from the snapshot document's recovery_dependencies manifest) plus the reporting operation's disposition toward it. Identity only - never store content or credentials. */
+    ExternalDependencyStatus: {
+      /** @description Dependency type (api-key-db, auth-db, engine-contracts, kv-model-profiles, cert-store). */
+      type?: string;
+      /** @description Stable identity of the concrete store instance (database name, registry root); absent for single-instance types. */
+      id?: string;
+      /** @description Store generation at capture (decimal string or opaque version token); absent for stores without generation tracking. */
+      generation?: string;
+      /** @description Store content digest at capture ("sha256:<hex>"); absent for stores without content digests. */
+      digest?: string;
+      /** @description Whether recovery of the captured configuration requires this store (restore verifies required entries before planning anything). */
+      required?: boolean;
+      /**
+       * @description Persist responses report ready (identity read from the live process) or configured (store wired; reachability deliberately unclaimed - the readiness surface owns liveness). Restore responses report verified, warning (detail in warnings), failed (detail in errors; the restore stopped before mutating anything), or declared (optional entry, informational only).
+       * @enum {string}
+       */
+      status?: "ready" | "configured" | "verified" | "warning" | "failed" | "declared";
+    };
+    /** @description Result of POST /config/persist - the persisted document's identity and coverage, so automation can verify what was saved without re-reading the file. */
     PersistResult: {
       /** @description Always "ok" on 200. */
       result?: string;
@@ -7894,6 +8353,26 @@ export interface components {
       path?: string;
       /** @description SHA-256 checksum of the persisted snapshot document. */
       checksum?: string;
+      /** @description Schema version of the persisted document. */
+      schema_version?: string;
+      /**
+       * Format: uint64
+       * @description Monotonic lineage generation stamped into the persisted document.
+       */
+      generation?: number;
+      /** @description The snapshot domains the persisted document covers. */
+      included_domains?: string[];
+      /** @description Configuration areas deliberately never captured by snapshots (honesty marker). */
+      excluded_domains?: string[];
+      /** @description The persisted document's recovery-dependency manifest with capture-time dispositions. */
+      external_dependencies?: components["schemas"]["ExternalDependencyStatus"][];
+      /** @description Non-fatal anomalies of this persist; empty on a clean save. */
+      warnings?: string[];
+    };
+    /** @description Result envelope returned by configuration operations that succeed with a body ({"result":"Success"} or an informational message). */
+    OperationResult: {
+      /** @description Outcome message. "Success" for most operations; some carry an informational sentence instead. */
+      result?: string;
     };
     Error: {
       /** Format: int32 */
@@ -9884,6 +10363,10 @@ export interface components {
       state?: string;
       /** @description Current uptime */
       updowntime?: string;
+      /** @description Configured non-default BGP peering port (0 means the default, 179) */
+      remotePort?: number;
+      /** @description Whether eBGP multihop is enabled for this neighbor */
+      multiHop?: boolean;
     };
     BGPGlobalConfig: {
       /** @description BGP Router ID */
@@ -11000,7 +11483,7 @@ export interface components {
       tenant_id: string;
       /** @description Human-readable label for the API key */
       name?: string;
-      /** @description Optional caller-supplied key material to register instead of generating one, for importing keys minted elsewhere. Write-only: it is never returned by GET or by the list, and the create response omits raw_key when it is set, because the caller already holds the value. It must contain 16 to 512 printable non-space US-ASCII characters. */
+      /** @description Optional caller-supplied key material to register instead of generating one, for importing keys minted elsewhere. Write-only: it is never returned by GET or by the list, and the create response omits raw_key when it is set, because the caller already holds the value. */
       api_key?: string;
       /** @description List of model identifiers this key may access */
       allowed_models?: string[];
@@ -11028,10 +11511,10 @@ export interface components {
       enabled?: boolean | null;
     };
     ApiKeyCreateResponse: {
-      /** @description The plaintext API key — returned only when the Gateway generated it */
-      raw_key?: string;
+      /** @description The plaintext API key — returned ONLY at creation time */
+      raw_key: string;
       /** @description Unique identifier of the created API key */
-      key_id: string;
+      key_id?: string;
     };
     ApiKeySummary: {
       /** @description Unique identifier of the API key */
@@ -11085,7 +11568,7 @@ export interface components {
       tokens_per_min?: number;
       /**
        * Format: int64
-       * @description Token bucket capacity as a percent of tokens_per_min; 0 uses the deployment-specific process default configured by LLB_AI_QUOTA_BURST_PCT (100 when unset)
+       * @description Token bucket capacity as a percent of tokens_per_min; 0 uses the server default
        */
       burst_pct?: number;
       /** @description Per-model token quotas for the tenant */
@@ -11115,7 +11598,7 @@ export interface components {
       tokens_per_min?: number;
       /**
        * Format: int64
-       * @description Stored token bucket capacity override as a percent of tokens_per_min; 0 means the deployment-specific process default configured by LLB_AI_QUOTA_BURST_PCT (100 when unset)
+       * @description Token bucket capacity as a percent of tokens_per_min; 0 uses the server default
        */
       burst_pct?: number;
       /** @description Per-model token quotas for the tenant */
@@ -11170,12 +11653,6 @@ export interface components {
     };
   };
   responses: {
-    /** @description Missing or invalid management credential */
-    ManagementUnauthorized: {
-      content: {
-        "application/json": components["schemas"]["Error"];
-      };
-    };
     /** @description Authenticated principal is not authorized for this operation */
     ManagementForbidden: {
       content: {
@@ -11184,6 +11661,12 @@ export interface components {
     };
     /** @description Management credential store unavailable; the credential could not be evaluated */
     ManagementStoreUnavailable: {
+      content: {
+        "application/json": components["schemas"]["Error"];
+      };
+    };
+    /** @description Missing or invalid management credential */
+    ManagementUnauthorized: {
       content: {
         "application/json": components["schemas"]["Error"];
       };
@@ -11236,7 +11719,7 @@ export interface operations {
   };
   /**
    * Get a Load balancer service by composite key
-   * @description Returns a single load balancer rule identified by its legacy VIP/port/protocol composite key (Octavia). If more than one rule shares that tuple, the lookup returns 409 instead of selecting an arbitrary rule; use the stable opaque serviceArguments.id with /config/loadbalancer/id/{id}.
+   * @description Returns a single load balancer rule identified by its VIP/port/protocol composite key (Octavia).
    */
   getConfigLoadbalancerExternalipaddressIPAddressPortPortProtocolProto: {
     parameters: {
@@ -11269,12 +11752,6 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
-      /** @description Ambiguous legacy tuple; use the stable opaque rule ID or an exact full-key operation */
-      409: {
-        content: {
-          "application/json": components["schemas"]["Error"];
-        };
-      };
       /** @description Internal service error */
       500: {
         content: {
@@ -11286,7 +11763,7 @@ export interface operations {
   };
   /**
    * Patch an existing Load balancer service (RFC 7386 JSON merge-patch)
-   * @description Apply an RFC 7386 JSON merge-patch to an existing load balancer rule identified by its VIP/port/protocol composite key (Octavia). Fields present in the body are overwritten, absent fields are left untouched, and an explicit null clears a clearable field. Immutable fields (security, egress, mode, protocol, VIP composite key) are rejected with 400. Returns 200 if the target rule exists, 404 if it is absent. If multiple rules share the legacy tuple, the operation returns 409 rather than selecting one arbitrarily. Use the opaque rule ID for selection and an exact operation for mutation. The rule is mutated in place; established connections are not dropped.
+   * @description Apply an RFC 7386 JSON merge-patch to an existing load balancer rule identified by its VIP/port/protocol composite key (Octavia). Fields present in the body are overwritten, absent fields are left untouched, and an explicit null clears a clearable field. Immutable fields (security, egress, mode, protocol, VIP composite key) are rejected with 400. Returns 200 if the target rule exists, 404 if it is absent. The rule is mutated in place; established connections are not dropped.
    */
   patchConfigLoadbalancerExternalipaddressIPAddressPortPortProtocolProto: {
     parameters: {
@@ -11326,12 +11803,6 @@ export interface operations {
       403: components["responses"]["ManagementForbidden"];
       /** @description Resource not found */
       404: {
-        content: {
-          "application/json": components["schemas"]["Error"];
-        };
-      };
-      /** @description Ambiguous legacy tuple; use the stable opaque rule ID or an exact full-key operation */
-      409: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
@@ -11441,6 +11912,12 @@ export interface operations {
       403: components["responses"]["ManagementForbidden"];
       /** @description Referenced load-balancer not found */
       404: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Resource conflict (duplicate policy id, or the load-balancer already carries a policy) */
+      409: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
@@ -11703,7 +12180,7 @@ export interface operations {
   };
   /**
    * Get the lifecycle status of a Load balancer service
-   * @description Returns lifecycle status for an unambiguous legacy tuple; returns 409 when colliding rules require opaque-ID/full-key selection.
+   * @description Returns the per-LB lifecycle status (adminStateUp, operatingStatus, lastUpdated) for the rule identified by its composite key (Octavia).
    */
   getConfigLoadbalancerStatus: {
     parameters: {
@@ -11732,12 +12209,6 @@ export interface operations {
       403: components["responses"]["ManagementForbidden"];
       /** @description Resource not found */
       404: {
-        content: {
-          "application/json": components["schemas"]["Error"];
-        };
-      };
-      /** @description Ambiguous legacy tuple; use the stable opaque rule ID or an exact full-key operation */
-      409: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
@@ -11791,7 +12262,7 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
-      /** @description No KV-exact status on this key. Deliberately coalesced: no rule exists on the composite key, the rule(s) on the key are not KV-exact, or the model_name filter matched no rule — all three answer 404. A 200 body always carries at least one entry (empty result sets are never emitted as 200). */
+      /** @description No KV-exact status on this key. Deliberately coalesced: no rule exists on the composite key, the rule(s) on the key are not KV-exact, the model_name filter matched no rule, or the composite key itself is unservable (for example an unsupported protocol — a key that can never hold a rule answers the same as an empty key) — all four answer 404. A 200 body always carries at least one entry (empty result sets are never emitted as 200). */
       404: {
         content: {
           "application/json": components["schemas"]["Error"];
@@ -11819,7 +12290,7 @@ export interface operations {
   };
   /**
    * Get per-service statistics of a Load balancer service
-   * @description Returns the per-LB statistics quad (activeConnections, bytesIn, bytesOut, totalConnections) for an unambiguous legacy tuple (Octavia), or 409 when colliding rules require opaque-ID/full-key selection. activeConnections is the same selector-agnostic live concurrent-connection count the connectionLimit gate enforces; bytesIn/bytesOut are the real per-direction CT byte totals; totalConnections is a monotonic cumulative counter reset to zero on restart.
+   * @description Returns the per-LB statistics quad (activeConnections, bytesIn, bytesOut, totalConnections) for the rule identified by its composite key (Octavia). activeConnections is the same selector-agnostic live concurrent-connection count the connectionLimit gate enforces; bytesIn/bytesOut are the real per-direction CT byte totals; totalConnections is a monotonic cumulative counter reset to zero on restart.
    */
   getConfigLoadbalancerStats: {
     parameters: {
@@ -11848,12 +12319,6 @@ export interface operations {
       403: components["responses"]["ManagementForbidden"];
       /** @description Resource not found */
       404: {
-        content: {
-          "application/json": components["schemas"]["Error"];
-        };
-      };
-      /** @description Ambiguous legacy tuple; use the stable opaque rule ID or an exact full-key operation */
-      409: {
         content: {
           "application/json": components["schemas"]["Error"];
         };
@@ -12641,12 +13106,6 @@ export interface operations {
       };
       /** @description Authenticated principal is not authorized to create API keys */
       403: {
-        content: {
-          "application/json": components["schemas"]["Error"];
-        };
-      };
-      /** @description The supplied API key is already registered */
-      409: {
         content: {
           "application/json": components["schemas"]["Error"];
         };

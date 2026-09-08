@@ -37,14 +37,16 @@ paths:
           type: file
           description: The configuration file to upload.
       responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '401':
           $ref: '#/responses/ManagementUnauthorized'
         '403':
           $ref: '#/responses/ManagementForbidden'
         '503':
           $ref: '#/responses/ManagementStoreUnavailable'
-        '204':
-          description: OK
   '/config/export':
     get:
       summary: Export all configurations
@@ -57,8 +59,6 @@ paths:
       produces:
         - application/json
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: Configuration JSON file download
           schema:
@@ -71,6 +71,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error' 
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -92,8 +94,6 @@ paths:
       produces:
         - application/json
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: Snapshot document download
           schema:
@@ -111,6 +111,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '409':
           description: Another snapshot or restore operation is in progress
           schema:
@@ -134,6 +136,10 @@ paths:
           type: string
           enum: [dry-run, commit]
           default: dry-run
+        - name: components
+          in: query
+          description: Comma-separated snapshot domains to restore. Defaults to every domain the document covers (its included_domains). Requesting a domain the document does not cover is refused.
+          type: string
         - name: snapshot
           in: body
           required: true
@@ -143,8 +149,6 @@ paths:
       produces:
         - application/json
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: Restore result (both modes; inspect result and errors fields)
           schema:
@@ -157,6 +161,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '409':
           description: Another snapshot or restore operation is in progress
           schema:
@@ -176,8 +182,6 @@ paths:
       produces:
         - application/json
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: Configuration persisted
           schema:
@@ -186,6 +190,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '409':
           description: Another snapshot or restore operation is in progress
           schema:
@@ -294,26 +300,26 @@ paths:
       produces:
       - application/json
       responses:
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          description: Authenticated principal is not authorized to list users
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Management credential store unavailable
+          schema:
+            $ref: '#/definitions/Error'
         "200":
           description: OK
           schema:
             items:
               $ref: '#/definitions/UserSummary'
             type: array
-        "401":
-          description: Invalid authentication credentials
-          schema:
-            $ref: '#/definitions/Error'
-        "403":
-          description: Authenticated principal is not authorized to list users
-          schema:
-            $ref: '#/definitions/Error'
         "500":
           description: Internal Server Error
-          schema:
-            $ref: '#/definitions/Error'
-        "503":
-          description: Management credential store unavailable
           schema:
             $ref: '#/definitions/Error'
       summary: Fetch all users
@@ -345,10 +351,14 @@ paths:
       - application/json
       security: [] # Authentication is enforced in the handler; see description
       responses:
+        '503':
+          description: Management credential store unavailable
+          schema:
+            $ref: '#/definitions/Error'
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/UserSummary'
+            $ref: '#/definitions/User'
         "400":
           description: Bad Request
           schema:
@@ -365,10 +375,6 @@ paths:
             $ref: '#/definitions/Error'
         "500":
           description: Internal Server Error
-          schema:
-            $ref: '#/definitions/Error'
-        "503":
-          description: Management credential store unavailable
           schema:
             $ref: '#/definitions/Error'
       summary: Create a new user
@@ -549,8 +555,6 @@ paths:
             This is a CONVENIENCE filter, NOT a tenant-isolation/authz boundary:
             an unfiltered GET still returns rules with any projectId.
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
@@ -564,6 +568,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -576,8 +582,10 @@ paths:
       summary: Delete all Load balancer services
       description: Delete all load balancer services.
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -617,8 +625,10 @@ paths:
           required: true
           description: Attributes for load balance service name
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -650,11 +660,7 @@ paths:
   '/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}':
     get:
       summary: Get a Load balancer service by composite key
-      description: >-
-        Returns a single load balancer rule identified by its legacy
-        VIP/port/protocol composite key (Octavia). If more than one rule shares
-        that tuple, the lookup returns 409 instead of selecting an arbitrary
-        rule; use the stable opaque serviceArguments.id with /config/loadbalancer/id/{id}.
+      description: Returns a single load balancer rule identified by its VIP/port/protocol composite key (Octavia).
       operationId: getConfigLoadbalancerExternalipaddressIPAddressPortPortProtocolProto
       parameters:
         - name: ip_address
@@ -673,10 +679,6 @@ paths:
           required: true
           description: Protocol of the load balancer service (tcp/udp/sctp)
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
@@ -685,18 +687,18 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Resource not found
-          schema:
-            $ref: '#/definitions/Error'
-        '409':
-          description: Ambiguous legacy tuple; use the stable opaque rule ID or an exact full-key operation
           schema:
             $ref: '#/definitions/Error'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
     delete:
       summary: Delete an existing Load balancer service
       description: Delete an existing load balancer service with .
@@ -736,8 +738,10 @@ paths:
             naming a model and one not, a delete without `model_name` removes the model-less rule and
             leaves the other serving.
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -774,10 +778,7 @@ paths:
         overwritten, absent fields are left untouched, and an explicit null clears a clearable
         field. Immutable fields (security, egress, mode, protocol, VIP composite key)
         are rejected with 400. Returns 200 if the target rule exists, 404 if it is
-        absent. If multiple rules share the legacy tuple, the operation returns
-        409 rather than selecting one arbitrarily. Use the opaque rule ID for
-        selection and an exact operation for mutation. The rule is mutated in
-        place; established connections are not dropped.
+        absent. The rule is mutated in place; established connections are not dropped.
       operationId: patchConfigLoadbalancerExternalipaddressIPAddressPortPortProtocolProto
       consumes:
         - application/merge-patch+json
@@ -805,10 +806,6 @@ paths:
           schema:
             $ref: '#/definitions/LoadbalanceEntry'
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: Updated
         '400':
@@ -819,18 +816,18 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Resource not found
-          schema:
-            $ref: '#/definitions/Error'
-        '409':
-          description: Ambiguous legacy tuple; use the stable opaque rule ID or an exact full-key operation
           schema:
             $ref: '#/definitions/Error'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
   '/config/loadbalancer/id/{id}':
     get:
       summary: Get a Load balancer service by opaque id
@@ -843,10 +840,6 @@ paths:
           required: true
           description: Stable opaque identifier of the load balancer rule
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
@@ -855,6 +848,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Resource not found
           schema:
@@ -863,6 +858,8 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
   '/config/l7policy':
     post:
       summary: Create an L7 content-routing policy
@@ -883,10 +880,6 @@ paths:
           schema:
             $ref: '#/definitions/L7Policy'
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '204':
           description: OK
         '400':
@@ -897,22 +890,26 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Referenced load-balancer not found
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Resource conflict (duplicate policy id, or the load-balancer already carries a policy)
           schema:
             $ref: '#/definitions/Error'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
     get:
       summary: Get all L7 content-routing policies
       operationId: getConfigL7PolicyAll
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
@@ -921,10 +918,14 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
   '/config/l7policy/id/{id}':
     get:
       summary: Get a single L7 content-routing policy by id
@@ -936,10 +937,6 @@ paths:
           required: true
           description: Stable opaque identifier of the L7 policy
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
@@ -948,6 +945,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Resource not found
           schema:
@@ -956,6 +955,8 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
     delete:
       summary: Delete an L7 content-routing policy by id
       description: Detaches the policy from its load-balancer (proxy_detach_l7_policy regfrees every compiled REGEX) and removes the resource.
@@ -967,16 +968,14 @@ paths:
           required: true
           description: Stable opaque identifier of the L7 policy
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '204':
           description: OK
         '401':
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Resource not found
           schema:
@@ -985,6 +984,8 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
   '/config/cert':
     post:
       summary: Upload a TLS certificate under an opaque certId
@@ -1005,10 +1006,6 @@ paths:
           schema:
             $ref: '#/definitions/Cert'
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '201':
           description: Created
         '400':
@@ -1019,10 +1016,14 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
   '/config/cert/{certId}':
     put:
       summary: Rotate the material under a stable certId
@@ -1044,10 +1045,6 @@ paths:
           schema:
             $ref: '#/definitions/Cert'
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
         '400':
@@ -1058,6 +1055,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Certificate not found
           schema:
@@ -1066,6 +1065,8 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
     delete:
       summary: Delete a certId
       description: Removes the managed-dir material and unregisters the derived hostnames from the SNI store.
@@ -1077,10 +1078,6 @@ paths:
           required: true
           description: Opaque certificate management handle
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '204':
           description: OK
         '400':
@@ -1091,6 +1088,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Certificate not found
           schema:
@@ -1099,6 +1098,8 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
     get:
       summary: Get a certId's metadata
       description: Returns the certId metadata (id + auto-derived hostnames + public cert/chain). The private key is never returned.
@@ -1110,10 +1111,6 @@ paths:
           required: true
           description: Opaque certificate management handle
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
@@ -1122,6 +1119,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Certificate not found
           schema:
@@ -1130,10 +1129,12 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
   '/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}/status':
     get:
       summary: Get the lifecycle status of a Load balancer service
-      description: Returns lifecycle status for an unambiguous legacy tuple; returns 409 when colliding rules require opaque-ID/full-key selection.
+      description: Returns the per-LB lifecycle status (adminStateUp, operatingStatus, lastUpdated) for the rule identified by its composite key (Octavia).
       operationId: getConfigLoadbalancerStatus
       parameters:
         - name: ip_address
@@ -1152,10 +1153,6 @@ paths:
           required: true
           description: Protocol of the load balancer service (tcp/udp/sctp)
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
@@ -1164,18 +1161,18 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Resource not found
-          schema:
-            $ref: '#/definitions/Error'
-        '409':
-          description: Ambiguous legacy tuple; use the stable opaque rule ID or an exact full-key operation
           schema:
             $ref: '#/definitions/Error'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
   '/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}/kvexactstatus':
     get:
       summary: Get the resolved KV-exact composition status of Load balancer rules
@@ -1221,7 +1218,7 @@ paths:
           schema:
             $ref: '#/definitions/Error'
         '404':
-          description: 'No KV-exact status on this key. Deliberately coalesced: no rule exists on the composite key, the rule(s) on the key are not KV-exact, or the model_name filter matched no rule — all three answer 404. A 200 body always carries at least one entry (empty result sets are never emitted as 200).'
+          description: 'No KV-exact status on this key. Deliberately coalesced: no rule exists on the composite key, the rule(s) on the key are not KV-exact, the model_name filter matched no rule, or the composite key itself is unservable (for example an unsupported protocol — a key that can never hold a rule answers the same as an empty key) — all four answer 404. A 200 body always carries at least one entry (empty result sets are never emitted as 200).'
           schema:
             $ref: '#/definitions/Error'
         '422':
@@ -1239,7 +1236,7 @@ paths:
   '/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}/stats':
     get:
       summary: Get per-service statistics of a Load balancer service
-      description: Returns the per-LB statistics quad (activeConnections, bytesIn, bytesOut, totalConnections) for an unambiguous legacy tuple (Octavia), or 409 when colliding rules require opaque-ID/full-key selection. activeConnections is the same selector-agnostic live concurrent-connection count the connectionLimit gate enforces; bytesIn/bytesOut are the real per-direction CT byte totals; totalConnections is a monotonic cumulative counter reset to zero on restart.
+      description: Returns the per-LB statistics quad (activeConnections, bytesIn, bytesOut, totalConnections) for the rule identified by its composite key (Octavia). activeConnections is the same selector-agnostic live concurrent-connection count the connectionLimit gate enforces; bytesIn/bytesOut are the real per-direction CT byte totals; totalConnections is a monotonic cumulative counter reset to zero on restart.
       operationId: getConfigLoadbalancerStats
       parameters:
         - name: ip_address
@@ -1258,10 +1255,6 @@ paths:
           required: true
           description: Protocol of the load balancer service (tcp/udp/sctp)
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
@@ -1270,18 +1263,18 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Resource not found
-          schema:
-            $ref: '#/definitions/Error'
-        '409':
-          description: Ambiguous legacy tuple; use the stable opaque rule ID or an exact full-key operation
           schema:
             $ref: '#/definitions/Error'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
   '/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/portmax/{portmax}/protocol/{proto}':
     delete:
       summary: Delete an existing Load balancer service
@@ -1327,8 +1320,10 @@ paths:
             naming a model and one not, a delete without `model_name` removes the model-less rule and
             leaves the other serving.
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -1421,8 +1416,10 @@ paths:
             naming a model and one not, a delete without `model_name` removes the model-less rule and
             leaves the other serving.
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -1510,8 +1507,10 @@ paths:
             naming a model and one not, a delete without `model_name` removes the model-less rule and
             leaves the other serving.
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -1555,12 +1554,6 @@ paths:
           schema:
             $ref: '#/definitions/SNICertificateEntry'
       responses:
-        '401':
-          $ref: '#/responses/ManagementUnauthorized'
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
@@ -1569,6 +1562,10 @@ paths:
           description: Bad Request - Certificate load failed or invalid parameters
           schema:
             $ref: '#/definitions/ErrorResponse'
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '409':
           description: Conflict - Certificate already registered for this hostname
           schema:
@@ -1577,6 +1574,8 @@ paths:
           description: Internal server error
           schema:
             $ref: '#/definitions/ErrorResponse'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
     delete:
       summary: Unregister SNI certificate globally
       description: Remove SNI certificate from global store
@@ -1594,16 +1593,14 @@ paths:
                 type: string
                 description: Hostname to unregister (e.g., api.example.com)
       responses:
-        '401':
-          $ref: '#/responses/ManagementUnauthorized'
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
             $ref: '#/definitions/SuccessResponse'
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Certificate not found
           schema:
@@ -1612,16 +1609,12 @@ paths:
           description: Internal server error
           schema:
             $ref: '#/definitions/ErrorResponse'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
     get:
       summary: List all global SNI certificates
       description: Get all SNI certificates in the global certificate store (shared by all proxies)
       responses:
-        '401':
-          $ref: '#/responses/ManagementUnauthorized'
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
@@ -1644,10 +1637,16 @@ paths:
               totalCertificates:
                 type: integer
                 description: Total number of registered certificates
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal server error
           schema:
             $ref: '#/definitions/ErrorResponse'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 #----------------------------------------------
 # HTTP/HTTPS Tracing (Protocol Analyzer)
 #----------------------------------------------
@@ -1659,10 +1658,6 @@ paths:
       tags:
         - Tracing
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: Tracing enabled successfully
           schema:
@@ -1675,10 +1670,14 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
   '/config/trace/disable':
     post:
       summary: Disable HTTP/HTTPS protocol tracing
@@ -1687,10 +1686,6 @@ paths:
       tags:
         - Tracing
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: Tracing disabled successfully
           schema:
@@ -1703,10 +1698,14 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
   '/config/trace/status':
     get:
       summary: Get HTTP/HTTPS tracing status
@@ -1715,10 +1714,6 @@ paths:
       tags:
         - Tracing
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: Tracing status retrieved successfully
           schema:
@@ -1756,10 +1751,14 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
   '/config/trace/otlp':
     post:
       summary: Configure OTLP endpoint for trace export (with TLS security)
@@ -1817,10 +1816,6 @@ paths:
                   Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                   X-API-Key: "your-api-key-here"
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OTLP endpoint configured successfully
           schema:
@@ -1837,10 +1832,14 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
     get:
       summary: Get OTLP endpoint configuration (with security settings)
       description: Returns current OTLP endpoint address, protocol, TLS settings, and connection status.
@@ -1848,10 +1847,6 @@ paths:
       tags:
         - Tracing
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OTLP configuration retrieved successfully
           schema:
@@ -1888,10 +1883,14 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
   '/config/trace/catalogs':
     get:
       x-not-implemented: true  # declared but no handler wired (returns 501); do not build clients against this yet
@@ -1916,10 +1915,6 @@ paths:
       security:
         - BearerAuth: []
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: List of loaded trace catalogs
           schema:
@@ -1930,10 +1925,14 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
   '/config/trace/parsers':
     get:
       summary: List all available trace parsers
@@ -1953,10 +1952,6 @@ paths:
       security:
         - BearerAuth: []
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: List of available parsers
           schema:
@@ -1970,10 +1965,14 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
   '/config/trace/catalog/{catalog_id}/parser':
     get:
       summary: Get parser assignment for a catalog
@@ -1994,10 +1993,6 @@ paths:
           minimum: 1
           maximum: 255
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: Catalog parser mapping
           schema:
@@ -2006,6 +2001,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Catalog not found
           schema:
@@ -2014,6 +2011,8 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
     put:
       summary: Update parser assignment for a catalog
       description: |
@@ -2049,10 +2048,6 @@ paths:
           schema:
             $ref: '#/definitions/TraceParserUpdate'
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: Parser updated successfully
           schema:
@@ -2065,6 +2060,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Catalog or parser not found
           schema:
@@ -2073,6 +2070,8 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
     delete:
       summary: Remove parser assignment for a catalog
       description: |
@@ -2095,16 +2094,14 @@ paths:
           minimum: 1
           maximum: 255
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '204':
           description: Parser mapping removed successfully
         '401':
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Catalog not found
           schema:
@@ -2113,6 +2110,8 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 #----------------------------------------------
 # L4 Connection Tracing (TCP/SCTP)
 #----------------------------------------------
@@ -2146,10 +2145,6 @@ paths:
                 description: Percentage of connections to trace (0-100)
                 example: 100
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: L4 tracing enabled successfully
           schema:
@@ -2166,10 +2161,14 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
   '/config/l4trace/disable':
     post:
       summary: Disable L4 connection tracing
@@ -2180,10 +2179,6 @@ paths:
       tags:
         - L4Tracing
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: L4 tracing disabled successfully
           schema:
@@ -2196,10 +2191,14 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
   '/config/l4trace/status':
     get:
       summary: Get L4 tracing status and statistics
@@ -2215,10 +2214,6 @@ paths:
       tags:
         - L4Tracing
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: L4 tracing status retrieved successfully
           schema:
@@ -2227,10 +2222,14 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
   '/config/l4trace/sampling':
     put:
       summary: Update L4 tracing sampling rate
@@ -2262,10 +2261,6 @@ paths:
                 description: Percentage of connections to trace (0-100)
                 example: 10
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: Sampling rate updated successfully
           schema:
@@ -2282,10 +2277,14 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
   '/config/l4trace/stats/reset':
     post:
       summary: Reset L4 tracing statistics
@@ -2297,10 +2296,6 @@ paths:
       tags:
         - L4Tracing
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: Statistics reset successfully
           schema:
@@ -2313,10 +2308,14 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 #----------------------------------------------
 # Conntrack
 #----------------------------------------------
@@ -2325,8 +2324,6 @@ paths:
       summary: Get all of the conntrack entries.
       description: Get all of the conntrack infomation for all of the service.
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
@@ -2340,6 +2337,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -2357,8 +2356,6 @@ paths:
       summary: Get all of the port interfaces
       description: Get all of the port interfaces.
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
@@ -2372,6 +2369,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -2438,8 +2437,10 @@ paths:
           schema:
             $ref: '#/definitions/RouteEntry'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -2485,8 +2486,10 @@ paths:
           required: true
           description: Attributes for destination route
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -2525,8 +2528,6 @@ paths:
       summary: Get all of the port interfaces
       description: Get all of the port interfaces.
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
@@ -2540,6 +2541,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -2561,8 +2564,10 @@ paths:
           schema:
             $ref: '#/definitions/SessionEntry'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -2603,8 +2608,10 @@ paths:
           required: true
           description: Attributes 5G session Ident.
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -2639,8 +2646,6 @@ paths:
       summary: Get 
       description: Get 
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
@@ -2654,6 +2659,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -2675,8 +2682,10 @@ paths:
           schema:
             $ref: '#/definitions/SessionUlClEntry'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -2722,8 +2731,10 @@ paths:
           required: true
           description: Attributes for session ulcl address
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -2763,8 +2774,6 @@ paths:
       summary: Get 
       description: Get 
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
@@ -2778,6 +2787,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -2799,8 +2810,10 @@ paths:
           schema:
             $ref: '#/definitions/PolicyEntry'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -2841,8 +2854,10 @@ paths:
           required: true
           description: Attributes of Policy Ident.
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -2881,8 +2896,6 @@ paths:
       summary: Get 
       description: Get 
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
@@ -2896,6 +2909,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -2916,8 +2931,10 @@ paths:
           schema:
             $ref: '#/definitions/MirrorEntry'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -2958,8 +2975,10 @@ paths:
           required: true
           description: Attributes of Mirror Ident.
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -2998,8 +3017,6 @@ paths:
       summary: Get IPv4 addresses in the device(interface)
       description: Get IPv4 addresses in the device(interface)
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
@@ -3013,6 +3030,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -3034,8 +3053,10 @@ paths:
           schema:
             $ref: '#/definitions/IPv4AddressEntry'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -3086,8 +3107,10 @@ paths:
           required: true
           description: Attributes of the target device
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -3122,8 +3145,6 @@ paths:
       summary: Get IPv6 addresses in the device(interface)
       description: Get IPv6 addresses in the device(interface)
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
@@ -3137,6 +3158,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -3158,8 +3181,10 @@ paths:
           schema:
             $ref: '#/definitions/IPv6AddressEntry'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -3210,8 +3235,10 @@ paths:
           required: true
           description: Attributes of the target device
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -3250,8 +3277,6 @@ paths:
       summary: Get IPv4 neighbor in the device(interface)
       description: Get IPv4 neighbor in the device(interface)
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
@@ -3265,6 +3290,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -3286,8 +3313,10 @@ paths:
           schema:
             $ref: '#/definitions/NeighborEntry'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -3333,8 +3362,10 @@ paths:
           required: true
           description: Attributes of the target device
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -3373,8 +3404,6 @@ paths:
       summary: Get FDB in the device(interface)
       description: Get FDB in the device(interface). 
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
@@ -3388,6 +3417,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -3408,8 +3439,10 @@ paths:
           schema:
             $ref: '#/definitions/FDBEntry'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -3455,8 +3488,10 @@ paths:
           required: true
           description: Attributes of the target device
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -3494,8 +3529,6 @@ paths:
       summary: Get vlan in the device
       description: Get vlan in the device
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
@@ -3509,6 +3542,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -3530,8 +3565,10 @@ paths:
           schema:
             $ref: '#/definitions/VlanBridgeEntry'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -3573,8 +3610,10 @@ paths:
           description: Attributes IPv4 Address in the device
         
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -3622,8 +3661,10 @@ paths:
           schema:
             $ref: '#/definitions/VlanMemberEntry'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -3674,10 +3715,10 @@ paths:
           type: boolean
           description: Tagged status
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -3686,6 +3727,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Vlan interface is not defined/Vlan member is not found on this Vlan interface
           schema:
@@ -3707,8 +3750,6 @@ paths:
       summary: Get a list of vxlan configurations
       description: Return a list of existing tunnels of a type. If there're no tunnels to return, empty list will be returned.
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
@@ -3722,6 +3763,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -3742,14 +3785,16 @@ paths:
           schema:
             $ref: '#/definitions/VxlanBridgeEntry'    
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '401':
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '409':
           description: Resource Conflict. VxLAN already exists OR dependency VRF/VNET not found
           schema:
@@ -3775,14 +3820,16 @@ paths:
           description: vxlan id (24-bit). Allows to remove routes with defined vnid only. Applicable for routes with nexthop_type 'vxlan-tunnel'. Otherwise '400' error will be returned
          
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '401':
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -3810,8 +3857,6 @@ paths:
           schema:
             $ref: '#/definitions/VxlanPeerEntry'
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
@@ -3820,6 +3865,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -3847,8 +3894,6 @@ paths:
           description: attributes for vxlan Peer IP address
         
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
@@ -3857,6 +3902,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -3874,8 +3921,6 @@ paths:
       summary: Get Cluster Instance State in the device
       description: Get Cluster Instance State in the device
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
@@ -3889,6 +3934,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -3910,8 +3957,10 @@ paths:
           schema:
             $ref: '#/definitions/CIStatusEntry'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -3948,8 +3997,6 @@ paths:
       summary: Get End-Points State in loxilb
       description: Get End-Points State in loxilb
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
@@ -3963,6 +4010,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -3984,8 +4033,10 @@ paths:
           schema:
             $ref: '#/definitions/EndPoint'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -4027,8 +4078,10 @@ paths:
           schema:
             $ref: '#/definitions/EndPointHostState'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -4084,8 +4137,10 @@ paths:
           required: false
           description: Probe port
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -4123,8 +4178,6 @@ paths:
       summary: Get all of the firewall config
       description: Get all of the firewall configuration.
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
@@ -4138,6 +4191,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -4159,8 +4214,10 @@ paths:
           schema:
             $ref: '#/definitions/FirewallEntry'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -4232,8 +4289,10 @@ paths:
           description: User preference for ordering
   
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -4271,10 +4330,6 @@ paths:
       summary: Get all IP filter rules
       description: Get all IP whitelist and blacklist rules with statistics.
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
@@ -4288,10 +4343,14 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/config/ipfilter':
     post:
@@ -4305,12 +4364,10 @@ paths:
           schema:
             $ref: '#/definitions/IPFilterEntry'
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -4319,10 +4376,14 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
     
     delete:
       summary: Delete an IP filter rule
@@ -4343,12 +4404,10 @@ paths:
           type: integer
           description: Security zone (0 = all zones)
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -4357,6 +4416,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Resource not found
           schema:
@@ -4365,6 +4426,8 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
 #----------------------------------------------
 # SYN Flood Protection
@@ -4384,12 +4447,10 @@ paths:
           schema:
             $ref: '#/definitions/SecurityRateConfigMod'
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -4398,21 +4459,23 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
     
     delete:
       summary: Disable unified security rate limiting
       description: Disable all security rate limiting (SYN flood + connection rate) and clear tracking state.
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -4421,6 +4484,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Resource not found
           schema:
@@ -4429,16 +4494,14 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/config/securityrate/all':
     get:
       summary: Get unified security rate limiting configuration and statistics
       description: Get current unified security rate limiting (P0-5 + P0-6 + P0-7) configuration and statistics.
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
@@ -4452,30 +4515,34 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/config/securityrate/reset':
     put:
       summary: Reset security rate limiting statistics
       description: Reset all accumulated statistics counters for security rate limiting (SYN/Conn/UDP) to zero.
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '204':
           description: Statistics reset successfully
         '401':
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
 #----------------------------------------------
 # System Status
@@ -4485,21 +4552,16 @@ paths:
       summary: Get a process based on CPU usage info in the device
       description: Get a process based on high usage CPU(linux command "top") in the device or system.
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
-            type: object
-            properties:
-              processAttr:
-                type: array
-                items:
-                  $ref: '#/definitions/ProcessInfoEntry'
+            $ref: '#/definitions/ProcessStatus'
         '401':
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -4515,8 +4577,6 @@ paths:
       summary: Get a basic info in the device
       description: Get a basic info (linux command "uptime, hostnamectl") in the device or system.
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: Device unique informations
           schema:
@@ -4525,6 +4585,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -4539,17 +4601,54 @@ paths:
       summary: Get a File System info in the device
       description: Get a File system infomation (linux command "df") in the device or system.
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
-            type: object
-            properties:
-              filesystemAttr:
-                type: array
-                items:
-                  $ref: '#/definitions/FileSystemInfoEntry'
+            $ref: '#/definitions/FilesystemStatus'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Maintenance mode
+          schema:
+            $ref: '#/definitions/Error'
+  '/status/ready':
+    get:
+      summary: Configuration readiness of this gateway
+      description: READY means the boot config replay settled without degradation (or an operator's commit restore has since recovered it) and every REQUIRED external recovery dependency answers right now. A not-ready gateway returns 503 with the same body shape, carrying the reasons - a failed boot restore is never silently READY.
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: Ready
+          schema:
+            $ref: '#/definitions/ReadyStatus'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '503':
+          description: Not ready (body carries the reasons)
+          schema:
+            $ref: '#/definitions/ReadyStatus'
+  '/maintenance':
+    get:
+      summary: Operator maintenance state with drain read-back
+      description: Reports whether an operator holds the gateway in maintenance, what is being refused while it does, and how far the drain has progressed - the in-flight streaming-session count, elapsed time against the declared drain window, and whether that window has been exceeded. Every field is the observed truth - in particular refusing_new_inference reports what the data path actually refuses, not what an operator might wish it refused.
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/MaintenanceStatus'
         '401':
           description: Invalid authentication credentials
           schema:
@@ -4558,8 +4657,50 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
-        '503':
-          description: Maintenance mode
+    put:
+      summary: Enter or leave operator maintenance
+      description: Idempotent - entering while already in maintenance changes nothing (same operation_id, same entered_at, and the original drain window is kept; changing the window requires leave then enter), and leaving while active is a no-op. While maintenance holds, mutating configuration calls are refused with 503 except the configuration-lifecycle operations maintenance exists to make safe (snapshot, persist, restore) and this endpoint itself. The response to a leave carries the operation_id of the episode it ended.
+      parameters:
+        - name: attr
+          in: body
+          required: true
+          description: Desired maintenance state
+          schema:
+            $ref: '#/definitions/MaintenanceRequest'
+      responses:
+        '200':
+          description: Resulting maintenance state
+          schema:
+            $ref: '#/definitions/MaintenanceStatus'
+        '400':
+          description: Malformed arguments for API call
+          schema:
+            $ref: '#/definitions/Error'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
+          schema:
+            $ref: '#/definitions/Error'
+  '/diagnostics':
+    get:
+      summary: Secret-safe gateway diagnostics
+      description: A bounded, allowlist-only diagnostic assembly - build identity, served API contract, process uptime, readiness verdict with reasons, operator maintenance state, per-interface eBPF attachment, per-map utilization against capacity, external-dependency reachability with a latency class (identity only, never credentials or connection strings), and the last configuration lifecycle outcomes with their checksums and identities. Request/response bodies, prompts, rule contents, key material, and environment are never collected here. Failed internal errors elsewhere in the API carry a short correlation ref in their 500 body that ties them to the gateway log; this endpoint carries no raw log content.
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/DiagnosticsStatus'
+        '401':
+          description: Invalid authentication credentials
+          schema:
+            $ref: '#/definitions/Error'
+        '500':
+          description: Internal service error
           schema:
             $ref: '#/definitions/Error'
 #----------------------------------------------
@@ -4577,8 +4718,10 @@ paths:
           schema:
             $ref: '#/definitions/OperParams'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -4654,10 +4797,6 @@ paths:
       summary: Get IPsec configuration
       description: Get current IPsec global configuration including fast-path and hardware offload settings.
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
@@ -4666,10 +4805,14 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
     
     post:
       summary: Update IPsec configuration
@@ -4682,12 +4825,10 @@ paths:
           schema:
             $ref: '#/definitions/IPsecConfigMod'
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -4696,20 +4837,20 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/config/ipsec/tunnels/all':
     get:
       summary: Get all IPsec tunnels
       description: Get all configured IPsec tunnels with their current state and statistics.
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
@@ -4723,10 +4864,14 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/config/ipsec/tunnels':
     post:
@@ -4740,10 +4885,6 @@ paths:
           schema:
             $ref: '#/definitions/IPsecTunnelMod'
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '204':
           description: OK
         '400':
@@ -4754,6 +4895,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '409':
           description: Tunnel already exists
           schema:
@@ -4762,6 +4905,8 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/config/ipsec/tunnels/{name}':
     get:
@@ -4774,10 +4919,6 @@ paths:
           required: true
           description: Tunnel name
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
@@ -4786,6 +4927,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Tunnel not found
           schema:
@@ -4794,6 +4937,8 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
     put:
       summary: Update an IPsec tunnel
@@ -4811,10 +4956,6 @@ paths:
           schema:
             $ref: '#/definitions/IPsecTunnelMod'
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '204':
           description: OK
         '400':
@@ -4825,6 +4966,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Tunnel not found
           schema:
@@ -4833,6 +4976,8 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
     delete:
       summary: Delete an IPsec tunnel
@@ -4844,16 +4989,16 @@ paths:
           required: true
           description: Tunnel name
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '401':
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Tunnel not found
           schema:
@@ -4862,6 +5007,8 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/config/ipsec/tunnels/{name}/action':
     post:
@@ -4880,10 +5027,6 @@ paths:
           schema:
             $ref: '#/definitions/IPsecTunnelActionMod'
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '204':
           description: OK
         '400':
@@ -4894,6 +5037,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Tunnel not found
           schema:
@@ -4902,6 +5047,8 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/config/ipsec/tunnels/{name}/peerconfig':
     get:
@@ -4914,10 +5061,6 @@ paths:
           required: true
           description: Tunnel name
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
@@ -4926,6 +5069,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Tunnel not found
           schema:
@@ -4934,16 +5079,14 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/config/ipsec/sas/all':
     get:
       summary: Get all Security Associations
       description: Get all active Security Associations (SAs) from kernel XFRM.
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
@@ -4957,20 +5100,20 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/config/ipsec/stats':
     get:
       summary: Get IPsec statistics
       description: Get aggregated IPsec statistics for all tunnels and SAs.
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
@@ -4979,39 +5122,41 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
     
     delete:
       summary: Reset IPsec statistics
       description: Reset all IPsec statistics counters to zero.
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '401':
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/config/ipsec/certificates/all':
     get:
       summary: Get all certificates
       description: Get all installed certificates (without private keys).
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
@@ -5025,10 +5170,14 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/config/ipsec/certificates':
     post:
@@ -5042,10 +5191,6 @@ paths:
           schema:
             $ref: '#/definitions/IPsecCertificateMod'
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '201':
           description: Certificate installed
           schema:
@@ -5058,6 +5203,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '409':
           description: Certificate already exists
           schema:
@@ -5066,6 +5213,8 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/config/ipsec/certificates/{name}':
     get:
@@ -5078,10 +5227,6 @@ paths:
           required: true
           description: Certificate name
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
@@ -5090,6 +5235,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Certificate not found
           schema:
@@ -5098,6 +5245,8 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
     
     delete:
       summary: Delete a certificate
@@ -5109,16 +5258,16 @@ paths:
           required: true
           description: Certificate name
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '401':
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: Certificate not found
           schema:
@@ -5131,6 +5280,8 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/config/ipsec/certificates/validate':
     post:
@@ -5144,10 +5295,6 @@ paths:
           schema:
             $ref: '#/definitions/IPsecCertificateMod'
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: Validation result
           schema:
@@ -5160,20 +5307,20 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/config/ipsec/ca-certificates/all':
     get:
       summary: Get all CA certificates
       description: Get all CA certificates from trust store.
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
@@ -5187,10 +5334,14 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/config/ipsec/ca-certificates':
     post:
@@ -5204,10 +5355,6 @@ paths:
           schema:
             $ref: '#/definitions/IPsecCACertificateMod'
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '201':
           description: CA certificate installed
           schema:
@@ -5220,6 +5367,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '409':
           description: CA certificate already exists
           schema:
@@ -5228,6 +5377,8 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/config/ipsec/ca-certificates/{name}':
     get:
@@ -5240,10 +5391,6 @@ paths:
           required: true
           description: CA certificate name
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
@@ -5252,6 +5399,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: CA certificate not found
           schema:
@@ -5260,6 +5409,8 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
     
     delete:
       summary: Delete a CA certificate
@@ -5271,16 +5422,16 @@ paths:
           required: true
           description: CA certificate name
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '401':
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: CA certificate not found
           schema:
@@ -5293,6 +5444,8 @@ paths:
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
 #----------------------------------------------
 # GoBGP
@@ -5353,8 +5506,10 @@ paths:
           schema:
             $ref: '#/definitions/BGPNeigh'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -5401,8 +5556,10 @@ paths:
           required: false
           description: Remote ASN number
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -5504,8 +5661,10 @@ paths:
           required: true
           description: type name
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -5552,8 +5711,10 @@ paths:
           schema:
             $ref: '#/definitions/BGPPolicyDefinedSetsMod'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -5587,8 +5748,6 @@ paths:
       summary: Get BGP Policy definitions
       description: Get BGP Policy definitions
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
@@ -5602,6 +5761,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -5623,8 +5784,10 @@ paths:
           schema:
             $ref: '#/definitions/BGPPolicyDefinitionsMod'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -5665,8 +5828,10 @@ paths:
           required: true
           description: The name of the community
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -5709,8 +5874,10 @@ paths:
           schema:
             $ref: '#/definitions/BGPApplyPolicyToNeighborMod'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -5750,8 +5917,10 @@ paths:
           schema:
             $ref: '#/definitions/BGPApplyPolicyToNeighborMod'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -5793,8 +5962,10 @@ paths:
           schema:
             $ref: '#/definitions/BGPGlobalConfig'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -5840,8 +6011,6 @@ paths:
     get:
       summary: Get prometheus config value
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: prometheus config value
           schema:
@@ -5854,6 +6023,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -5865,10 +6036,10 @@ paths:
     post:
       summary: turn on prometheus option
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -5877,6 +6048,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -5888,10 +6061,10 @@ paths:
     delete:
       summary: turn off prometheus option
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -5900,6 +6073,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -5916,8 +6091,6 @@ paths:
       summary: Enable GPU-aware load balancing
       description: Activates GPU-aware routing mode and starts conversation cleanup thread
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: GPU monitoring enabled successfully
           schema:
@@ -5930,6 +6103,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Failed to enable GPU monitoring
           schema:
@@ -5943,8 +6118,6 @@ paths:
       summary: Disable GPU-aware load balancing
       description: Deactivates GPU-aware routing and reverts to standard CHWBL
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: GPU monitoring disabled successfully
           schema:
@@ -5957,6 +6130,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Failed to disable GPU monitoring
           schema:
@@ -5970,8 +6145,6 @@ paths:
       summary: Get GPU monitoring status
       description: Returns current GPU monitoring state and statistics
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: GPU monitoring status
           schema:
@@ -5980,6 +6153,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -6000,8 +6175,6 @@ paths:
           default: 1
           description: Maximum age in hours for conversations to keep (older ones deleted)
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: Cleanup completed successfully
           schema:
@@ -6014,6 +6187,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Cleanup operation failed
           schema:
@@ -6033,8 +6208,6 @@ paths:
           schema:
             $ref: '#/definitions/WorkerMetricsEntry'
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: Metrics updated successfully
           schema:
@@ -6047,6 +6220,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Failed to update metrics
           schema:
@@ -6059,8 +6234,6 @@ paths:
       summary: Get all worker metrics
       description: Returns current GPU metrics for all tracked workers
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: Worker metrics retrieved successfully
           schema:
@@ -6069,6 +6242,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -6098,8 +6273,6 @@ paths:
                 type: boolean
                 description: Enable (true) or disable (false) PII detection
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: PII detection status updated successfully
           schema:
@@ -6112,6 +6285,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -6132,8 +6307,6 @@ paths:
           schema:
             $ref: '#/definitions/PIIConfigEntry'
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: PII configuration updated successfully
           schema:
@@ -6146,6 +6319,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -6166,8 +6341,6 @@ paths:
           schema:
             $ref: '#/definitions/PIIURLPatternsEntry'
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: URL patterns updated successfully
           schema:
@@ -6180,6 +6353,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -6193,8 +6368,6 @@ paths:
       summary: Get current PII detection configuration
       description: Retrieve current PII detection settings and status
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: PII configuration retrieved successfully
           schema:
@@ -6203,6 +6376,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -6216,8 +6391,6 @@ paths:
       summary: Get PII detection statistics
       description: Retrieve PII detection statistics (scans, detections, blocks, errors)
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: PII statistics retrieved successfully
           schema:
@@ -6226,6 +6399,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -6255,8 +6430,6 @@ paths:
                 type: boolean
                 description: Enable (true) or disable (false) LlamaFirewall scanning
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: LlamaFirewall status updated successfully
           schema:
@@ -6269,6 +6442,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -6289,8 +6464,6 @@ paths:
           schema:
             $ref: '#/definitions/LlamaFirewallConfigEntry'
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: LlamaFirewall configuration updated successfully
           schema:
@@ -6303,6 +6476,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -6323,8 +6498,6 @@ paths:
           schema:
             $ref: '#/definitions/LlamaFirewallScannersEntry'
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: Scanner configuration updated successfully
           schema:
@@ -6337,6 +6510,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -6350,8 +6525,6 @@ paths:
       summary: Get current LlamaFirewall configuration and status
       description: Retrieve current LlamaFirewall settings, connection status, and enabled scanners
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: LlamaFirewall status retrieved successfully
           schema:
@@ -6360,6 +6533,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -6373,8 +6548,6 @@ paths:
       summary: Get LlamaFirewall security scanning statistics
       description: Retrieve scanning statistics (scans, blocks, scanner performance, decisions)
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: LlamaFirewall statistics retrieved successfully
           schema:
@@ -6383,6 +6556,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -6396,8 +6571,6 @@ paths:
       summary: Trigger LlamaFirewall health check
       description: Check connectivity and health of LlamaFirewall gRPC server
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: Health check successful
           schema:
@@ -6406,6 +6579,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error (health check failed)
           schema:
@@ -6448,8 +6623,6 @@ paths:
       summary: Get BFD session inforrmation in the device
       description: Get BFD session inforrmation
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
@@ -6463,6 +6636,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -6484,8 +6659,10 @@ paths:
           schema:
             $ref: '#/definitions/BfdEntry'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -6530,8 +6707,10 @@ paths:
           required: false
           description: Cluster instance name
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -6570,20 +6749,20 @@ paths:
       summary: Get flow count metrics
       description: Get metrics related to flow counts.
       responses:
-        '401':
-          $ref: '#/responses/ManagementUnauthorized'
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
             $ref: '#/definitions/FlowCountMetrics'
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/metrics/hostcount':
     get:
@@ -6591,20 +6770,20 @@ paths:
       summary: Get host count metrics
       description: Get metrics related to host counts.
       responses:
-        '401':
-          $ref: '#/responses/ManagementUnauthorized'
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
             $ref: '#/definitions/HostCountMetrics'
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/metrics/lbrulecount':
     get:
@@ -6612,20 +6791,20 @@ paths:
       summary: Get load balancer rule count metrics
       description: Get metrics related to load balancer rule counts.
       responses:
-        '401':
-          $ref: '#/responses/ManagementUnauthorized'
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
             $ref: '#/definitions/LbRuleCountMetrics'
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/metrics/newflowcount':
     get:
@@ -6633,20 +6812,20 @@ paths:
       summary: Get new flow count metrics
       description: Get metrics related to new flow counts.
       responses:
-        '401':
-          $ref: '#/responses/ManagementUnauthorized'
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
             $ref: '#/definitions/NewFlowCountMetrics'
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/metrics/requestcount':
     get:
@@ -6654,20 +6833,20 @@ paths:
       summary: Get request count metrics
       description: Get metrics related to request counts.
       responses:
-        '401':
-          $ref: '#/responses/ManagementUnauthorized'
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
             $ref: '#/definitions/RequestCountMetrics'
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/metrics/errorcount':
     get:
@@ -6675,20 +6854,20 @@ paths:
       summary: Get error count metrics
       description: Get metrics related to error counts.
       responses:
-        '401':
-          $ref: '#/responses/ManagementUnauthorized'
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
             $ref: '#/definitions/ErrorCountMetrics'
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/metrics/processedtraffic':
     get:
@@ -6696,20 +6875,20 @@ paths:
       summary: Get processed traffic metrics
       description: Get metrics related to processed traffic.
       responses:
-        '401':
-          $ref: '#/responses/ManagementUnauthorized'
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
             $ref: '#/definitions/ProcessedTrafficMetrics'
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/metrics/lbprocessedtraffic':
     get:
@@ -6717,20 +6896,20 @@ paths:
       summary: Get load balancer processed traffic metrics
       description: Get metrics related to load balancer processed traffic.
       responses:
-        '401':
-          $ref: '#/responses/ManagementUnauthorized'
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
             $ref: '#/definitions/LbProcessedTrafficMetrics'
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/metrics/epdisttraffic':
     get:
@@ -6738,20 +6917,20 @@ paths:
       summary: Get endpoint distribution traffic metrics
       description: Get metrics related to endpoint distribution traffic per service. The additionalProp is service name.
       responses:
-        '401':
-          $ref: '#/responses/ManagementUnauthorized'
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
             $ref: '#/definitions/EpDistTrafficMetrics'
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/metrics/servicedisttraffic':
     get:
@@ -6759,20 +6938,20 @@ paths:
       summary: Get service distribution traffic metrics
       description: Get metrics related to service distribution traffic. The additionalProp is service name.
       responses:
-        '401':
-          $ref: '#/responses/ManagementUnauthorized'
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
             $ref: '#/definitions/ServiceDistTrafficMetrics'
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/metrics/fwdrops':
     get:
@@ -6780,20 +6959,20 @@ paths:
       summary: Get firewall drops metrics
       description: Get metrics related to firewall drops.
       responses:
-        '401':
-          $ref: '#/responses/ManagementUnauthorized'
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
             $ref: '#/definitions/FwDropsMetrics'
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/metrics/reqcountperclient':
     get:
@@ -6801,20 +6980,20 @@ paths:
       summary: Get request count per client metrics
       description: Get metrics related to request counts per client. The additionalProp is client IP address.
       responses:
-        '401':
-          $ref: '#/responses/ManagementUnauthorized'
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: OK
           schema:
             $ref: '#/definitions/ReqCountPerClientMetrics'
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/logs':
     get:
@@ -6855,12 +7034,6 @@ paths:
           type: string
           description: Specific log file to read (default is the current log file). Rotated .log.gz archives are accepted and decompressed transparently.
       responses:
-        '401':
-          $ref: '#/responses/ManagementUnauthorized'
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: Logs fetched successfully
           schema:
@@ -6869,10 +7042,16 @@ paths:
           description: Invalid query parameters
           schema:
             $ref: '#/definitions/Error'
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal server error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
 #----------------------------------------------
 # Log Archives
@@ -6882,20 +7061,20 @@ paths:
       summary: List available log archives
       description: Retrieve a list of all rotated log archive files available for download.
       responses:
-        '401':
-          $ref: '#/responses/ManagementUnauthorized'
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: List of log archive files
           schema:
             $ref: '#/definitions/LogArchives'
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal server error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
   '/log-archives/{filename}':
     get:
@@ -6914,12 +7093,6 @@ paths:
           type: string
           description: Name of the log archive file to download.
       responses:
-        '401':
-          $ref: '#/responses/ManagementUnauthorized'
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         '200':
           description: Log archive file download
           schema:
@@ -6928,6 +7101,10 @@ paths:
           description: Missing or invalid filename
           schema:
             $ref: '#/definitions/Error'
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '404':
           description: File not found
           schema:
@@ -6936,6 +7113,8 @@ paths:
           description: Internal server error
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
 
 #----------------------------------------------
 # Topology
@@ -6946,8 +7125,6 @@ paths:
       summary: List current topology
       description: Retrieve a list of all nodes and edges in the current topology.
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
@@ -6956,6 +7133,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -6977,8 +7156,6 @@ paths:
           type: string
           description: Name of the service to filter the topology by.
       responses:
-        '403':
-          $ref: '#/responses/ManagementForbidden'
         '200':
           description: OK
           schema:
@@ -6987,6 +7164,8 @@ paths:
           description: Invalid authentication credentials
           schema:
             $ref: '#/definitions/Error'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
         '500':
           description: Internal service error
           schema:
@@ -7102,12 +7281,6 @@ paths:
       produces:
         - application/json
       responses:
-        '401':
-          $ref: '#/responses/ManagementUnauthorized'
-        '403':
-          $ref: '#/responses/ManagementForbidden'
-        '503':
-          $ref: '#/responses/ManagementStoreUnavailable'
         200:
           description: get cors list
           schema:
@@ -7116,6 +7289,12 @@ paths:
                 type: array
                 items:
                   type: string
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
     
   '/config/cors':
     post:
@@ -7129,8 +7308,10 @@ paths:
           schema:
             $ref: '#/definitions/CorsEntry'
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -7171,8 +7352,10 @@ paths:
           required: true
           description: cors url ex) http://localhost:3000
       responses:
-        '204':
+        '200':
           description: OK
+          schema:
+            $ref: '#/definitions/OperationResult'
         '400':
           description: Malformed arguments for API call
           schema:
@@ -7229,10 +7412,6 @@ paths:
             $ref: '#/definitions/Error'
         '403':
           description: Authenticated principal is not authorized to create API keys
-          schema:
-            $ref: '#/definitions/Error'
-        '409':
-          description: The supplied API key is already registered
           schema:
             $ref: '#/definitions/Error'
         '500':
@@ -7598,6 +7777,19 @@ paths:
 #----------------------------------------------
 # Schema definitions
 #----------------------------------------------
+responses:
+  ManagementForbidden:
+    description: Authenticated principal is not authorized for this operation
+    schema:
+      $ref: '#/definitions/Error'
+  ManagementStoreUnavailable:
+    description: Management credential store unavailable; the credential could not be evaluated
+    schema:
+      $ref: '#/definitions/Error'
+  ManagementUnauthorized:
+    description: Missing or invalid management credential
+    schema:
+      $ref: '#/definitions/Error'
 definitions:
   RestorePlanItem:
     type: object
@@ -7635,12 +7827,340 @@ definitions:
       result:
         type: string
         description: ok, rolled-back, or ROLLBACK-FAILED; empty when the pipeline stopped before APPLY.
+      snapshot_generation:
+        type: integer
+        format: uint64
+        description: The restored document's lineage generation (absent for documents that predate generations and for bare captures).
+      warnings:
+        type: array
+        description: Non-fatal anomalies the pipeline tolerated (degraded external stores, duplicate document items skipped at boot). Warnings never change the result field or trigger rollback.
+        items:
+          type: string
+      external_dependencies:
+        type: array
+        description: The document's recovery-dependency manifest with this restore's per-entry disposition. Required entries are verified before anything is planned, wiped, or applied.
+        items:
+          $ref: '#/definitions/ExternalDependencyStatus'
+      persisted:
+        type: boolean
+        description: Write-through disposition of a committed restore. true when the committed state was persisted to snapshot.json; false when the restore applied but the write-through failed - the applied state will NOT survive a restart until a later persist succeeds (the failure detail is in errors). Absent for dry-run and for pipelines that never reached a successful commit.
+      persisted_generation:
+        type: integer
+        format: uint64
+        description: Lineage generation stamped by the successful write-through (present with persisted=true only).
       pre_restore_snapshot_persisted:
         type: string
         description: On-disk path of the pre-restore snapshot captured before APPLY (commit mode only).
+  ReadyStatus:
+    type: object
+    description: Configuration readiness verdict with the evidence behind it - the boot replay outcome, live external-dependency probes, and the most recent successful persist/restore identities.
+    required:
+      - ready
+    properties:
+      ready:
+        type: boolean
+      reasons:
+        type: array
+        description: Why the gateway is not ready; empty when ready.
+        items:
+          type: string
+      boot:
+        $ref: '#/definitions/BootStatus'
+      external_dependencies:
+        type: array
+        description: Live availability of the stores this gateway is wired to (status ready or failed - a probe, unlike the restore engine's configured-only checks).
+        items:
+          $ref: '#/definitions/ExternalDependencyStatus'
+      last_persist:
+        $ref: '#/definitions/ConfigOpRecord'
+      last_restore:
+        $ref: '#/definitions/ConfigOpRecord'
+      auto_persist:
+        $ref: '#/definitions/AutoPersistStatus'
+      ebpf_attachments:
+        type: array
+        description: Live per-interface eBPF attachment, verified against the kernel (netlink) rather than the control plane's bookkeeping. Informational - attachment state does not gate the ready verdict.
+        items:
+          $ref: '#/definitions/EbpfAttachmentStatus'
+  ProcessStatus:
+    type: object
+    description: Per-process CPU usage report (the /status/process body, formalized - the wire shape is unchanged).
+    properties:
+      processAttr:
+        type: array
+        items:
+          $ref: '#/definitions/ProcessInfoEntry'
+  FilesystemStatus:
+    type: object
+    description: Filesystem usage report (the /status/filesystem body, formalized - the wire shape is unchanged).
+    properties:
+      filesystemAttr:
+        type: array
+        items:
+          $ref: '#/definitions/FileSystemInfoEntry'
+  MapUtilization:
+    type: object
+    description: Bounded utilization of one datapath table against its capacity. Counts only - never entry contents.
+    required:
+      - name
+      - count
+      - capacity
+    properties:
+      name:
+        type: string
+        description: Table name (e.g. conntrack).
+      count:
+        type: integer
+        format: int64
+        description: Entries currently held, as last observed by the gateway's own periodic collector (shares its source with the metrics surface - no second counting layer).
+      capacity:
+        type: integer
+        format: int64
+        description: Maximum entries the table can hold.
+  DependencyDiagnostic:
+    type: object
+    description: One external dependency's live reachability with a latency class. Identity by type only - IDs, digests, credentials and connection strings are deliberately absent from this surface.
+    required:
+      - type
+      - required
+      - status
+      - latency_class
+    properties:
+      type:
+        type: string
+        description: Dependency type (e.g. keystore, certstore).
+      required:
+        type: boolean
+        description: Whether recovery treats this dependency as required.
+      status:
+        type: string
+        enum: [ready, failed]
+        description: The probe's verdict, taken live for this response.
+      latency_class:
+        type: string
+        enum: [fast, slow, failed]
+        description: Probe round-trip class - fast is under 250ms, slow is 250ms or more, failed means the probe errored (its latency is meaningless).
+  DiagnosticsStatus:
+    type: object
+    description: The allowlist-only diagnostic assembly served by /diagnostics.
+    required:
+      - version
+      - uptime_seconds
+      - ready
+      - maintenance_state
+    properties:
+      version:
+        type: string
+        description: Gateway version.
+      build_info:
+        type: string
+        description: Build/source-revision identity string.
+      product:
+        type: string
+        description: Product identifier.
+      api_version:
+        type: string
+        description: Served API contract identity (base path and spec version), read from the embedded spec at startup.
+      uptime_seconds:
+        type: integer
+        format: int64
+        description: Seconds since this gateway's API layer initialized.
+      ready:
+        type: boolean
+        description: The same configuration-readiness verdict /status/ready serves.
+      ready_reasons:
+        type: array
+        description: Why the gateway is not ready; empty when ready.
+        items:
+          type: string
+      maintenance_state:
+        type: string
+        enum: [active, maintenance]
+        description: The operator maintenance state (see /maintenance for the full drain read-back).
+      ebpf_attachments:
+        type: array
+        description: Live per-interface eBPF attachment, kernel-verified.
+        items:
+          $ref: '#/definitions/EbpfAttachmentStatus'
+      maps:
+        type: array
+        description: Bounded per-table utilization/capacity.
+        items:
+          $ref: '#/definitions/MapUtilization'
+      external_dependencies:
+        type: array
+        items:
+          $ref: '#/definitions/DependencyDiagnostic'
+      boot:
+        $ref: '#/definitions/BootStatus'
+      last_persist:
+        $ref: '#/definitions/ConfigOpRecord'
+      last_restore:
+        $ref: '#/definitions/ConfigOpRecord'
+      auto_persist:
+        $ref: '#/definitions/AutoPersistStatus'
+  EbpfAttachmentStatus:
+    type: object
+    description: One interface/hook attachment fact. A tc entry appears for every port the control plane dispatched a program load for, so attached=false there means the kernel and the control plane's intent disagree. An xdp entry appears only where an XDP program is verifiably attached (XDP expectation depends on datapath compile flags, so its absence is not reported as divergence).
+    required:
+      - name
+      - mode
+      - attached
+    properties:
+      name:
+        type: string
+        description: Interface name.
+      mode:
+        type: string
+        enum: [tc, xdp]
+        description: Attachment hook.
+      attached:
+        type: boolean
+        description: Kernel-verified attachment state.
+  MaintenanceRequest:
+    type: object
+    description: Desired operator maintenance state.
+    required:
+      - enabled
+    properties:
+      enabled:
+        type: boolean
+        description: true enters maintenance, false leaves it. Both directions are idempotent.
+      drain_timeout_seconds:
+        type: integer
+        format: uint32
+        description: Drain window declared on enter (0 or absent = no deadline). Ignored on a repeat enter and on leave - an episode's window is immutable.
+  MaintenanceStatus:
+    type: object
+    description: Operator maintenance state with drain read-back. Refusal fields report the observed truth of what this gateway build refuses in the current state, never an aspiration.
+    required:
+      - state
+      - refusing_new_config
+      - refusing_new_inference
+      - cancellable
+      - in_flight_streams
+      - elapsed_seconds
+      - drain_deadline_exceeded
+    properties:
+      state:
+        type: string
+        enum: [active, maintenance]
+      operation_id:
+        type: string
+        description: Identity of the maintenance episode - stable across repeated idempotent enters; a leave response carries the id of the episode it ended; empty when active.
+      refusing_new_config:
+        type: boolean
+        description: Mutating configuration API calls are being refused (503), except the configuration-lifecycle operations and the maintenance endpoint itself.
+      refusing_new_inference:
+        type: boolean
+        description: New data-path inference requests are being refused. Gateway-wide data-path refusal is not implemented by this management-plane state - this field reports false so no caller mistakes maintenance for a traffic drain; per-service and per-endpoint drain remain the data path's own mechanisms.
+      in_flight_streams:
+        type: integer
+        format: int64
+        description: AI inference streaming sessions (SSE) currently open through the gateway. Non-streaming requests have no in-flight counter and are deliberately not estimated.
+      entered_at:
+        type: string
+        format: date-time
+        description: When the current episode began (absent when active).
+      elapsed_seconds:
+        type: integer
+        format: int64
+        description: Seconds spent in the current episode (0 when active).
+      drain_timeout_seconds:
+        type: integer
+        format: uint32
+        description: The episode's declared drain window (0 = none declared).
+      drain_deadline_exceeded:
+        type: boolean
+        description: The declared drain window has elapsed. The gateway never leaves maintenance on its own - the operator owns the transition; an overrun is reported, not acted on.
+      cancellable:
+        type: boolean
+        description: Leaving maintenance is possible right now (always true - PUT with enabled=false is never refused by the maintenance gate).
+  AutoPersistStatus:
+    type: object
+    description: Auto-persist failure streak (present only while failing; any successful persist clears it). Nonzero means recent config changes may not survive a restart - also surfaced as a not-ready reason and in the loxilb_autopersist_consecutive_failures gauge.
+    properties:
+      consecutive_failures:
+        type: integer
+      last_error:
+        type: string
+      last_attempt:
+        type: string
+        format: date-time
+  BootStatus:
+    type: object
+    description: The boot config replay's recorded outcome.
+    required:
+      - snapshot_found
+      - succeeded
+      - legacy_fallback
+      - degraded
+    properties:
+      profile:
+        type: string
+        description: The --config-boot-profile the boot ran under (strict or compat).
+      snapshot_found:
+        type: boolean
+      succeeded:
+        type: boolean
+      generation:
+        type: integer
+        format: uint64
+        description: Applied boot document's lineage generation (success only).
+      quarantine_path:
+        type: string
+        description: Where a failing snapshot was preserved (failure only).
+      legacy_fallback:
+        type: boolean
+        description: The compat profile replayed the legacy *.txt artifacts after a failed snapshot restore.
+      degraded:
+        type: boolean
+        description: The boot snapshot restore failed (strict booted empty; compat may be running legacy-replayed configuration).
+      reasons:
+        type: array
+        items:
+          type: string
+  ConfigOpRecord:
+    type: object
+    description: One successful persist or restore - identity of what is durable/applied.
+    properties:
+      generation:
+        type: integer
+        format: uint64
+      checksum:
+        type: string
+      mode:
+        type: string
+        description: For persists, the capture trigger (write-through, manual); for restores, commit or boot.
+      at:
+        type: string
+        format: date-time
+  ExternalDependencyStatus:
+    type: object
+    description: Identity of one external recovery dependency (from the snapshot document's recovery_dependencies manifest) plus the reporting operation's disposition toward it. Identity only - never store content or credentials.
+    properties:
+      type:
+        type: string
+        description: Dependency type (api-key-db, auth-db, engine-contracts, kv-model-profiles, cert-store).
+      id:
+        type: string
+        description: Stable identity of the concrete store instance (database name, registry root); absent for single-instance types.
+      generation:
+        type: string
+        description: Store generation at capture (decimal string or opaque version token); absent for stores without generation tracking.
+      digest:
+        type: string
+        description: Store content digest at capture ("sha256:<hex>"); absent for stores without content digests.
+      required:
+        type: boolean
+        description: Whether recovery of the captured configuration requires this store (restore verifies required entries before planning anything).
+      status:
+        type: string
+        enum: [ready, configured, verified, warning, failed, declared]
+        description: Persist responses report ready (identity read from the live process) or configured (store wired; reachability deliberately unclaimed - the readiness surface owns liveness). Restore responses report verified, warning (detail in warnings), failed (detail in errors; the restore stopped before mutating anything), or declared (optional entry, informational only).
   PersistResult:
     type: object
-    description: Result of POST /config/persist.
+    description: Result of POST /config/persist - the persisted document's identity and coverage, so automation can verify what was saved without re-reading the file.
     properties:
       result:
         type: string
@@ -7651,6 +8171,40 @@ definitions:
       checksum:
         type: string
         description: SHA-256 checksum of the persisted snapshot document.
+      schema_version:
+        type: string
+        description: Schema version of the persisted document.
+      generation:
+        type: integer
+        format: uint64
+        description: Monotonic lineage generation stamped into the persisted document.
+      included_domains:
+        type: array
+        description: The snapshot domains the persisted document covers.
+        items:
+          type: string
+      excluded_domains:
+        type: array
+        description: Configuration areas deliberately never captured by snapshots (honesty marker).
+        items:
+          type: string
+      external_dependencies:
+        type: array
+        description: The persisted document's recovery-dependency manifest with capture-time dispositions.
+        items:
+          $ref: '#/definitions/ExternalDependencyStatus'
+      warnings:
+        type: array
+        description: Non-fatal anomalies of this persist; empty on a clean save.
+        items:
+          type: string
+  OperationResult:
+    type: object
+    description: 'Result envelope returned by configuration operations that succeed with a body ({"result":"Success"} or an informational message).'
+    properties:
+      result:
+        type: string
+        description: Outcome message. "Success" for most operations; some carry an informational sentence instead.
   Error:
     type: object
     properties:
@@ -7752,6 +8306,7 @@ definitions:
       enforcement_fault: Data-plane fence/contract transaction could not be acknowledged.
       runtime_fault: Engine runtime fault reported through the inventory stream.
       restored_profile_less_requires_migration: Profile-less rule arrived via restore; fenced until a profile is attached by replace.
+      profile_registry_unavailable: Restored rule's declared profile could not be resolved because no registry generation is published; the declaration is preserved and the exact path stays fenced until the registry is repaired.
       drain_sequence_gap: Destructive-read drain stream shows a sequence gap - inventory evidence untrustworthy.
       drain_ownership_lost: Drain ownership lost to another consumer - inventory evidence untrustworthy.
       attestation_pending: Attestation controller registered but has not published a verdict yet.
@@ -10672,6 +11227,12 @@ definitions:
       updowntime:
         type: string
         description: Current uptime
+      remotePort:
+        type: integer
+        description: Configured non-default BGP peering port (0 means the default, 179)
+      multiHop:
+        type: boolean
+        description: Whether eBGP multihop is enabled for this neighbor
 
 
   BGPGlobalConfig:
@@ -12116,15 +12677,11 @@ definitions:
         description: Human-readable label for the API key
       api_key:
         type: string
-        minLength: 16
-        maxLength: 512
-        pattern: '^[!-~]{16,512}$'
         description: >-
           Optional caller-supplied key material to register instead of
           generating one, for importing keys minted elsewhere. Write-only: it is
           never returned by GET or by the list, and the create response omits
           raw_key when it is set, because the caller already holds the value.
-          It must contain 16 to 512 printable non-space US-ASCII characters.
       allowed_models:
         type: array
         items:
@@ -12154,14 +12711,13 @@ definitions:
   ApiKeyCreateResponse:
     type: object
     required:
-      - key_id
+      - raw_key
     properties:
       raw_key:
         type: string
-        description: The plaintext API key — returned only when the Gateway generated it
+        description: The plaintext API key — returned ONLY at creation time
       key_id:
         type: string
-        minLength: 1
         description: Unique identifier of the created API key
 
   ApiKeySummary:
@@ -12230,9 +12786,7 @@ definitions:
       burst_pct:
         type: integer
         format: int64
-        minimum: 0
-        maximum: 1000
-        description: Token bucket capacity as a percent of tokens_per_min; 0 uses the deployment-specific process default configured by LLB_AI_QUOTA_BURST_PCT (100 when unset)
+        description: Token bucket capacity as a percent of tokens_per_min; 0 uses the server default
       model_limits:
         type: array
         description: Per-model token quotas for the tenant
@@ -12269,9 +12823,7 @@ definitions:
       burst_pct:
         type: integer
         format: int64
-        minimum: 0
-        maximum: 1000
-        description: Stored token bucket capacity override as a percent of tokens_per_min; 0 means the deployment-specific process default configured by LLB_AI_QUOTA_BURST_PCT (100 when unset)
+        description: Token bucket capacity as a percent of tokens_per_min; 0 uses the server default
       model_limits:
         type: array
         description: Per-model token quotas for the tenant
@@ -12334,20 +12886,6 @@ definitions:
       last_error:
         type: string
         description: Last error message if any
-
-responses:
-  ManagementUnauthorized:
-    description: Missing or invalid management credential
-    schema:
-      $ref: '#/definitions/Error'
-  ManagementForbidden:
-    description: Authenticated principal is not authorized for this operation
-    schema:
-      $ref: '#/definitions/Error'
-  ManagementStoreUnavailable:
-    description: Management credential store unavailable; the credential could not be evaluated
-    schema:
-      $ref: '#/definitions/Error'
 
 securityDefinitions:
   BearerAuth:

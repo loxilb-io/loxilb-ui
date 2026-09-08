@@ -9,8 +9,25 @@
 #   npm test                  # contract tests: backward-compat of wire shapes
 # Failures after a bump = the new backend is not backward compatible with this
 # UI — fix connectors/pages (or the backend) before merging.
+#
+# Usage:
+#   sync-specs.sh                 # full re-vendor: gateway + loxilb + oam
+#   sync-specs.sh --only gateway  # gateway specs + SOURCES.json gateway entry
+#                                 # only; oam/loxilb files and provenance are
+#                                 # left byte-for-byte untouched. Requires the
+#                                 # gateway checkout to be CLEAN and DETACHED
+#                                 # (pin the exact merge SHA with
+#                                 # `git worktree add --detach <dir> <sha>`) so
+#                                 # the recorded commit is immutable truth.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+ONLY="${1:-}"
+if [ -n "$ONLY" ]; then
+	[ "$ONLY" = "--only" ] && [ "${2:-}" = "gateway" ] || {
+		echo "usage: $0 [--only gateway]" >&2; exit 2; }
+	ONLY=gateway
+fi
 
 GATEWAY_REPO="${GATEWAY_REPO:-../loxilb-inference-gateway}"
 # The OAM checkout is ../loxilb-oam since the repo moved to loxilb-io/loxilb-oam.
@@ -22,6 +39,43 @@ OAM_REPO="${OAM_REPO:-../loxilb-oam}"
 LOXILB_REPO="${LOXILB_REPO:-../loxilb}"
 
 [ -f "$GATEWAY_REPO/api/swagger.yml" ] || { echo "gateway repo not found at $GATEWAY_REPO (set GATEWAY_REPO=...)"; exit 1; }
+
+rev() { git -C "$1" rev-parse HEAD 2>/dev/null || echo unknown; }
+dirty() { [ -n "$(git -C "$1" status --porcelain 2>/dev/null)" ] && echo true || echo false; }
+
+if [ "$ONLY" = "gateway" ]; then
+	# Immutable-input gate: a branch head can move and a dirty tree has no
+	# commit at all, so either would record provenance that is not the truth.
+	[ "$(dirty "$GATEWAY_REPO")" = "false" ] || {
+		echo "refusing --only gateway: $GATEWAY_REPO working tree is dirty" >&2; exit 1; }
+	git -C "$GATEWAY_REPO" symbolic-ref -q HEAD >/dev/null && {
+		echo "refusing --only gateway: $GATEWAY_REPO is on a branch, not a detached SHA" >&2
+		echo "  pin the input: git -C $GATEWAY_REPO worktree add --detach <dir> <merge-sha>" >&2; exit 1; }
+
+	cp "$GATEWAY_REPO/api/swagger.yml" api-spec/gateway-swagger.yml
+	cp "$GATEWAY_REPO/api/swagger-extras.yml" api-spec/gateway-swagger-extras.yml
+
+	# Rewrite only the gateway entry; oam/loxilb objects (including their
+	# hand-written notes) stay byte-for-byte untouched.
+	GW_SHA="$(rev "$GATEWAY_REPO")" node - <<'EOF'
+const fs = require('fs');
+const p = 'api-spec/SOURCES.json';
+const s = JSON.parse(fs.readFileSync(p, 'utf8'));
+s.vendoredAt = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+s.gateway = {
+	repo: 'loxilb-inference-gateway',
+	path: 'api/swagger.yml + api/swagger-extras.yml',
+	commit: process.env.GW_SHA,
+	dirty: false,
+	note: 'clean re-vendor via sync-specs.sh --only gateway from a detached checkout; byte-identical to the recorded commit',
+};
+fs.writeFileSync(p, JSON.stringify(s, null, 2) + '\n');
+EOF
+	echo "vendored gateway specs from $(rev "$GATEWAY_REPO"):"
+	cat api-spec/SOURCES.json
+	exit 0
+fi
+
 [ -d "$OAM_REPO" ] || { echo "oam repo not found at $OAM_REPO (set OAM_REPO=...)"; exit 1; }
 [ -f "$LOXILB_REPO/api/swagger.yml" ] || { echo "loxilb repo not found at $LOXILB_REPO (set LOXILB_REPO=...)"; exit 1; }
 
@@ -36,9 +90,6 @@ else
 	echo "  swag not installed — vendoring the existing $OAM_REPO/docs/swagger.json as-is"
 fi
 cp "$OAM_REPO/docs/swagger.json" api-spec/oam-swagger.json
-
-rev() { git -C "$1" rev-parse --short HEAD 2>/dev/null || echo unknown; }
-dirty() { [ -n "$(git -C "$1" status --porcelain 2>/dev/null)" ] && echo true || echo false; }
 
 cat > api-spec/SOURCES.json <<EOF
 {
