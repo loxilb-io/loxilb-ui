@@ -220,6 +220,9 @@ export default function LBRulePage() {
 				}
 			},
 			true,
+			// The LB form is the heaviest dialog in the app (six sub-sections
+			// of row-laid fields) — it gets the wide dialog size.
+			{size: 'wide'},
 		);
 	// Flavor resolves asynchronously. Rebuild this callback when it changes so
 	// an IGW dialog cannot submit through the initial OSS-safe projection and
@@ -415,6 +418,9 @@ export default function LBRulePage() {
 				}
 			},
 			true,
+			// The LB form is the heaviest dialog in the app (six sub-sections
+			// of row-laid fields) — it gets the wide dialog size.
+			{size: 'wide'},
 		);
 	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, [inst, caps, selectedItem, showUpdateError, refetch, enableYes]);

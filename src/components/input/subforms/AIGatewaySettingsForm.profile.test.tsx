@@ -108,6 +108,27 @@ describe('profile selector (create mode)', () => {
 		expect(onChange).toHaveBeenCalledWith({kvModelProfile: 'llama-both', kvExactApiMode: undefined});
 	});
 
+	it('an unselected API surface announces the placeholder — never a silent first surface', () => {
+		// The dropdown's default-announce effect fires item_list[0] into
+		// onChange whenever its value is empty. Before the placeholder existed
+		// that defaulted every multi-surface profile to 'completions' on the
+		// render AFTER selection — making the explicit-choice validation
+		// unreachable. The handler-delta test above cannot catch this: the
+		// announce needs the mounted dropdown, not the handler.
+		const onChange = renderForm(strictArgs({kvModelProfile: 'llama-both'}));
+		expect(onChange).not.toHaveBeenCalledWith(expect.objectContaining({kvExactApiMode: 'completions'}));
+		expect(screen.getByLabelText('API Surface').textContent).toContain('Select an API surface');
+	});
+
+	it('the CHWBL level dropdown announces "Not set" — never a silent level 1 (F-CHWBL)', () => {
+		// Same announce mechanism as the API surface: with a bare enum the
+		// mount-time default-announce injected level 1 into EVERY draft, which
+		// the gateway silently drops off the chwbl selector.
+		const onChange = renderForm(strictArgs());
+		expect(onChange).not.toHaveBeenCalledWith(expect.objectContaining({chwbl_prefix_hash_level: 1}));
+		expect(screen.getByLabelText('CHWBL Prefix Hash Level').textContent).toContain('Not set');
+	});
+
 	it('restricts the API-surface options to the selected profile declaration (MP-E2E-008 seed)', async () => {
 		renderForm(strictArgs({kvModelProfile: 'llama-both'}));
 		const listbox = await openSelect('API Surface');
@@ -127,6 +148,35 @@ describe('profile selector (create mode)', () => {
 	it('flags a selection that fell out of the published registry', () => {
 		renderForm(strictArgs({kvModelProfile: 'ghost-profile'}));
 		expect(screen.getByText(/Selected profile is not in the currently published registry/)).toBeTruthy();
+	});
+});
+
+describe('leaving KV-exact routing takes the binding with it', () => {
+	// The selector only renders under KV-exact: a binding that survived the
+	// exit would block submit through a control the operator can no longer
+	// see or clear.
+	it('a topology switch to plain routing clears the profile binding in the same delta', async () => {
+		const onChange = renderForm(strictArgs({kvModelProfile: 'qwen3-chat', kvExactApiMode: 'chat'}));
+		const user = userEvent.setup();
+		await user.click(screen.getByLabelText('Topology'));
+		await user.click(within(await screen.findByRole('listbox')).getByText('Plain routing'));
+		expect(onChange).toHaveBeenCalledWith({pd_disagg_mode: false, kvExactMode: 0, kvModelProfile: undefined, kvExactApiMode: undefined});
+	});
+
+	it('an engine switch to llama.cpp (no KV event plane) clears the profile binding', async () => {
+		const onChange = renderForm(strictArgs({kvModelProfile: 'qwen3-chat', kvExactApiMode: 'chat'}));
+		const user = userEvent.setup();
+		await user.click(screen.getByLabelText('AI Engine'));
+		await user.click(within(await screen.findByRole('listbox')).getByText('llamacpp'));
+		expect(onChange).toHaveBeenCalledWith(expect.objectContaining({kvEngineType: 'llamacpp', kvExactMode: 0, kvModelProfile: undefined, kvExactApiMode: undefined}));
+	});
+
+	it('on EDIT nothing is cleared — the binding is immutable and the gateway judges the transition', async () => {
+		const onChange = renderForm(strictArgs({kvModelProfile: 'qwen3-chat', kvExactApiMode: 'chat'}), vi.fn(), true);
+		const user = userEvent.setup();
+		await user.click(screen.getByLabelText('Topology'));
+		await user.click(within(await screen.findByRole('listbox')).getByText('Plain routing'));
+		expect(onChange).toHaveBeenCalledWith({pd_disagg_mode: false, kvExactMode: 0});
 	});
 });
 

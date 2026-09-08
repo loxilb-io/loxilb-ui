@@ -11,7 +11,7 @@ import HorizontalStack from 'components/layout/HorizontalStack';
 import ep_roles from 'assets/json/ep_roles.json';
 import {useInstanceCapabilities} from 'hooks/query/flavorHook';
 import {t} from 'i18next';
-import {useCallback, useState, useEffect} from 'react';
+import {useCallback, useState} from 'react';
 import {resolveAIEngine} from 'types/ai_gateway';
 import {IEnumItem} from 'types/global';
 import {IEndpoint, IServiceArguments} from 'types/load_balancer';
@@ -29,13 +29,16 @@ export default function EndpointListForm(props: {
 }) {
 	const {values, onChange, params, serviceArguments, onServiceArgumentsChange, serviceArgumentsParams} = props;
 
-	// Local state to manage endpoints including empty ones for UI
+	// Local state to manage endpoints including empty ones for UI.
+	//
+	// Local state is the single source for the dialog's lifetime, seeded once
+	// at mount (LBInputForm remounts this form per dialog via key). There is
+	// deliberately NO values→local sync effect: the parent only ever holds
+	// the IP-filtered copy of what this component emitted, so syncing it back
+	// deleted any still-empty row the moment ANY of its fields changed —
+	// setting a fresh row's EP Role (or target port) before its IP wiped the
+	// row the operator just added.
 	const [localEndpoints, setLocalEndpoints] = useState<IEndpoint[]>(values);
-
-	// Sync local state with props when values change externally
-	useEffect(() => {
-		setLocalEndpoints(values);
-	}, [values]);
 
 	const handleChange = useCallback(
 		(index: number, field: keyof IEndpoint, value: string | number) => {
@@ -49,12 +52,10 @@ export default function EndpointListForm(props: {
 	);
 
 	const handleAdd = useCallback(() => {
-		// Add empty endpoint to local state without calling onChange.
-		// ep_role/nixl_port get concrete defaults (0 = normal / use target
-		// port): with P/D mode on the EP Role dropdown would otherwise
-		// auto-announce its default, and that announce path filters the
-		// still-empty row out of the parent — which syncs back and deletes
-		// the row the user just added.
+		// Add empty endpoint to local state without calling onChange (the
+		// parent only receives IP'd rows). ep_role/nixl_port get concrete
+		// defaults (0 = normal / use target port) so the EP Role dropdown
+		// under P/D mode has a matching value and never auto-announces.
 		setLocalEndpoints([...localEndpoints, {endpointIP: '', weight: 1, targetPort: 0, state: '', counter: '', ep_role: 0, nixl_port: 0}]);
 	}, [localEndpoints]);
 

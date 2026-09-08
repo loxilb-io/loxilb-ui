@@ -75,6 +75,14 @@ export default function AIGatewaySettingsForm(props: {
 			.allowedEnum('LoadbalanceEntry.serviceArguments.kvHashAlgo', [...allowedAIHashes(engine)])
 			.map((item, index) => ({id: index + 1, name: item, send_value: item})),
 	];
+	// Leading "Not set" maps to '' so the dropdown's default-announce lands on
+	// "unselected" instead of injecting level 1 into every draft (F-CHWBL —
+	// the fields only apply under the chwbl selector, and the serializer
+	// strips the placeholder). Same pattern as the API-surface placeholder.
+	const chwblLevelItems: IEnumItem[] = [
+		{id: 0, name: t('Not set'), send_value: ''},
+		...[1, 2, 3].map(level => ({id: level, name: String(level), send_value: level})),
+	];
 
 	const handleChange = useCallback(
 		(field: keyof IServiceArguments) => (newValue: any) => onChange({[field]: newValue}),
@@ -109,7 +117,16 @@ export default function AIGatewaySettingsForm(props: {
 			};
 		}),
 	];
-	const apiModeItems: IEnumItem[] = (selectedProfile ? allowedProfileApiModes(selectedProfile) : []).map((mode, index) => ({id: index, name: mode, send_value: mode}));
+	// The leading placeholder maps to '' so the dropdown's default-announce
+	// effect (which fires item_list[0] into onChange on an empty value) lands
+	// on "still unselected" instead of silently defaulting a multi-surface
+	// profile to its first surface — that silent default made the explicit
+	// API-surface requirement unreachable and shipped 'completions' rules the
+	// operator never chose.
+	const apiModeItems: IEnumItem[] = [
+		{id: 0, name: t('Select an API surface…'), send_value: ''},
+		...(selectedProfile ? allowedProfileApiModes(selectedProfile) : []).map((mode, index) => ({id: index + 1, name: mode, send_value: mode})),
+	];
 
 	const handleProfileChange = useCallback((profileId: string) => {
 		if (!profileId) {
@@ -125,6 +142,13 @@ export default function AIGatewaySettingsForm(props: {
 	// eslint-disable-next-line react-hooks/exhaustive-deps -- profiles identity follows the query data
 	}, [onChange, registry]);
 
+	// Leaving KV-exact routing must take the profile binding with it: the
+	// selector only renders under KV-exact, so a surviving kvModelProfile
+	// would block submit through a control the operator can no longer see or
+	// clear. On edit nothing is cleared — the binding is immutable there and
+	// the gateway is the authority on an invalid transition.
+	const dropProfileBinding = isEdit ? {} : {kvModelProfile: undefined, kvExactApiMode: undefined};
+
 	const handleEngineChange = useCallback((newEngine: AIEngine) => {
 		onBlockSizeConfirmed?.(false);
 		onChange({
@@ -132,18 +156,19 @@ export default function AIGatewaySettingsForm(props: {
 			kvHashAlgo: undefined,
 			pdBootstrapPort: undefined,
 			kvDpRankCount: undefined,
-			...(newEngine === 'llamacpp' ? {pd_disagg_mode: false, kvExactMode: 0} : {}),
+			...(newEngine === 'llamacpp' ? {pd_disagg_mode: false, kvExactMode: 0, ...dropProfileBinding} : {}),
 		});
-	}, [onChange, onBlockSizeConfirmed]);
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- dropProfileBinding derives from isEdit, which never changes within a dialog
+	}, [onChange, onBlockSizeConfirmed, isEdit]);
 
 	const handleTopologyChange = useCallback((selection: TopologySelection) => {
 		onBlockSizeConfirmed?.(false);
 		switch (selection) {
 			case 'plain':
-				onChange({pd_disagg_mode: false, kvExactMode: 0});
+				onChange({pd_disagg_mode: false, kvExactMode: 0, ...dropProfileBinding});
 				break;
 			case 'pd':
-				onChange({pd_disagg_mode: true, kvExactMode: 0});
+				onChange({pd_disagg_mode: true, kvExactMode: 0, ...dropProfileBinding});
 				break;
 			case 'pd-exact':
 				onChange({pd_disagg_mode: true, kvExactMode: 1});
@@ -152,7 +177,8 @@ export default function AIGatewaySettingsForm(props: {
 				onChange({pd_disagg_mode: false, kvExactMode: 3});
 				break;
 		}
-	}, [onChange, onBlockSizeConfirmed]);
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- dropProfileBinding derives from isEdit, which never changes within a dialog
+	}, [onChange, onBlockSizeConfirmed, isEdit]);
 
 	const handleBlockSize = useCallback((newValue: number | undefined) => {
 		onBlockSizeConfirmed?.(false);
@@ -200,7 +226,7 @@ export default function AIGatewaySettingsForm(props: {
 				</HorizontalStack>
 				<HorizontalStack>
 					<ParamBox label={t('Session Header Name')} value={value.session_header_name ?? ''} onChange={handleChange('session_header_name')} param_desc={{...params?.session_header_name, description: t('Header carrying the session key for persistent routing.')}} disabled={!isL7} />
-					<ParamBox label={t('CHWBL Prefix Hash Level')} value={value.chwbl_prefix_hash_level ?? ''} onChange={handleChange('chwbl_prefix_hash_level')} param_desc={{...params?.chwbl_prefix_hash_level, type: 'integer'}} disabled={!isL7} />
+					<ParamBox label={t('CHWBL Prefix Hash Level')} value={value.chwbl_prefix_hash_level ?? ''} onChange={handleChange('chwbl_prefix_hash_level')} param_desc={{...params?.chwbl_prefix_hash_level, type: 'integer', enum: chwblLevelItems, description: t('Prefix hash level for the chwbl selector (SEL); leave Not set on other algorithms.')}} disabled={!isL7} />
 				</HorizontalStack>
 				<HorizontalStack>
 					<ParamBox label={t('CHWBL Prefix Hash Flags')} value={value.chwbl_prefix_hash_flags ?? ''} onChange={handleChange('chwbl_prefix_hash_flags')} param_desc={{...params?.chwbl_prefix_hash_flags, type: 'integer'}} disabled={!isL7} />

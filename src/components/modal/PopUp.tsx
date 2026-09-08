@@ -30,9 +30,12 @@ export default function PopUp() {
 	// internally instead of pushing the title above / the action buttons below
 	// the fold (they were unclickable at laptop heights — e.g. the IPsec tunnel
 	// and LB dialogs at 1512×741). Title and footer stay fixed; body scrolls.
+	// 'wide' serves the heavy multi-section forms (LB rule): their sub-forms lay
+	// fields out in horizontal rows, so width converts directly into visible
+	// fields instead of wrap-and-scroll. 95vw keeps it usable on laptops.
 	const style = {
-		width: '500px',
-		maxWidth: '90%',
+		width: props.size === 'wide' ? '880px' : '500px',
+		maxWidth: props.size === 'wide' ? '95vw' : '90%',
 		maxHeight: '90vh',
 		display: 'flex',
 		flexDirection: 'column',
@@ -43,7 +46,7 @@ export default function PopUp() {
 	};
 
 	const handleClose = () => {
-		set_props({is_open: false, title: '', contents: '', yes: '', no: '', handle_yes: () => {}, handle_no: () => {}, disable_yes: false, persistent: false, busy: false});
+		set_props({is_open: false, title: '', contents: '', yes: '', no: '', handle_yes: () => {}, handle_no: () => {}, disable_yes: false, persistent: false, busy: false, size: 'default'});
 	};
 
 	// Every non-Yes dismissal funnels through here so handle_no fires exactly
@@ -72,7 +75,7 @@ export default function PopUp() {
 			// that opened a follow-up popup (openPopUp resets busy to false —
 			// e.g. the one-time API-key reveal, Success confirmations) must not
 			// have it torn down from under the user.
-			set_props(p => (p.busy ? {is_open: false, title: '', contents: '', yes: '', no: '', handle_yes: () => {}, handle_no: () => {}, disable_yes: false, persistent: false, busy: false} : p));
+			set_props(p => (p.busy ? {is_open: false, title: '', contents: '', yes: '', no: '', handle_yes: () => {}, handle_no: () => {}, disable_yes: false, persistent: false, busy: false, size: 'default'} : p));
 		}
 	};
 

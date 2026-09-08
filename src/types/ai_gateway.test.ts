@@ -185,6 +185,28 @@ describe('AI Gateway validation matrix', () => {
 		expect(issueFields(configuration({kvEngineType: 'sglang', kvHashAlgo: 'sha256_cbor'}))).toContain('kvHashAlgo');
 	});
 
+	it('rejects CHWBL prefix hash settings on a non-CHWBL selector, admits them under sel chwbl (F-CHWBL)', () => {
+		// The gateway silently drops these fields off sel 8/10 (verified live);
+		// the form must refuse instead of losing operator input.
+		expect(issueFields(configuration({chwbl_prefix_hash_level: 2}))).toContain('chwbl_prefix_hash_level');
+		expect(issueFields(configuration({sel: 0, chwbl_prefix_hash_flags: 3}))).toContain('chwbl_prefix_hash_level');
+		expect(validateAIConfiguration(configuration({sel: 8, chwbl_prefix_hash_level: 2, chwbl_prefix_hash_flags: 3}))).toEqual([]);
+		// The level dropdown's "Not set" placeholder ('') is a form artifact,
+		// never operator intent — no issue on any selector.
+		expect(validateAIConfiguration(configuration({chwbl_prefix_hash_level: '' as unknown as number}))).toEqual([]);
+	});
+
+	it('strips unset/placeholder CHWBL fields from the wire and keeps real ones (F-CHWBL)', () => {
+		const stripped = serializeAIConfiguration(configuration({chwbl_prefix_hash_level: '' as unknown as number})).serviceArguments;
+		expect('chwbl_prefix_hash_level' in stripped).toBe(false);
+		expect('chwbl_prefix_hash_flags' in stripped).toBe(false);
+
+		const kept = serializeAIConfiguration(configuration({sel: 8, chwbl_prefix_hash_level: 2, chwbl_prefix_hash_flags: 0})).serviceArguments;
+		expect(kept.chwbl_prefix_hash_level).toBe(2);
+		// Flags 0 is a REAL value (empty bitmask), not "unset".
+		expect(kept.chwbl_prefix_hash_flags).toBe(0);
+	});
+
 	it('enforces Swagger bounds for AI numeric fields that are sent', () => {
 		const fields = issueFields(configuration(
 			{
