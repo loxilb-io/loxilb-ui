@@ -16,6 +16,14 @@ module.exports = {
 		// in the expected-console-message catalogue kept with the release
 		// evidence.
 		'no-console': 'error',
+		// Legacy react-query v3 is still in dependencies next to
+		// @tanstack/react-query v5 — importing the old package compiles, then
+		// hands components a queryClient the app never mounts (no data, no
+		// cache purge on logout). Nothing must import it while it remains.
+		'no-restricted-imports': [
+			'error',
+			{paths: [{name: 'react-query', message: "Use '@tanstack/react-query' — the legacy v3 package is an unmounted dead dependency."}]},
+		],
 		// `_` is this codebase's deliberate throwaway name (destructuring
 		// placeholders); rest-sibling destructuring is the idiom for omitting
 		// keys from an object copy.

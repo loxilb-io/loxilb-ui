@@ -711,5 +711,14 @@
 	"Reference: {{id}}": "참조: {{id}}",
 	"Unavailable while the data on screen is out of date.": "화면의 데이터가 최신이 아니므로 사용할 수 없습니다.",
 	"No instances are registered yet. Add one to start managing a loxilb or inference-gateway deployment.": "등록된 인스턴스가 없습니다. 인스턴스를 추가하면 loxilb 또는 inference-gateway 배포를 관리할 수 있습니다.",
-	"Metrics": "메트릭"
+	"Metrics": "메트릭",
+	"Not applicable to this instance": "이 인스턴스에는 해당되지 않습니다",
+	"This feature is disabled on the instance.": "이 기능은 인스턴스에서 비활성화되어 있습니다.",
+	"You are not authorized to read {{name}}.": "{{name}}을(를) 읽을 권한이 없습니다.",
+	"Unknown value": "알 수 없는 값",
+	"Stale": "오래된 데이터",
+	"Partial data — {{count}} samples skipped": "부분 데이터 — 샘플 {{count}}개 건너뜀",
+	"Stale — received {{seconds}}s ago": "오래됨 — {{seconds}}초 전 수신",
+	"Received {{seconds}}s ago": "{{seconds}}초 전 수신",
+	"Source time: {{time}}": "소스 시각: {{time}}"
 }

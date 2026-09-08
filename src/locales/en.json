@@ -711,5 +711,14 @@
 	"Reference: {{id}}": "Reference: {{id}}",
 	"Unavailable while the data on screen is out of date.": "Unavailable while the data on screen is out of date.",
 	"No instances are registered yet. Add one to start managing a loxilb or inference-gateway deployment.": "No instances are registered yet. Add one to start managing a loxilb or inference-gateway deployment.",
-	"Metrics": "Metrics"
+	"Metrics": "Metrics",
+	"Not applicable to this instance": "Not applicable to this instance",
+	"This feature is disabled on the instance.": "This feature is disabled on the instance.",
+	"You are not authorized to read {{name}}.": "You are not authorized to read {{name}}.",
+	"Unknown value": "Unknown value",
+	"Stale": "Stale",
+	"Partial data — {{count}} samples skipped": "Partial data — {{count}} samples skipped",
+	"Stale — received {{seconds}}s ago": "Stale — received {{seconds}}s ago",
+	"Received {{seconds}}s ago": "Received {{seconds}}s ago",
+	"Source time: {{time}}": "Source time: {{time}}"
 }
