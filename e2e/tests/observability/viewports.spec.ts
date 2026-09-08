@@ -39,10 +39,19 @@ for (const vp of VIEWPORTS) {
 			test(`${p.route} renders without body horizontal scroll`, async ({page, consoleGuard}) => {
 				// Ambient testbed noise: dead registered instances 502 their probes.
 				consoleGuard.allow(/Failed to load resource.*502/);
+				// The deployed testbed gateway may predate GET /diagnostics (the
+				// vendored contract has it); the page degrades in-page — which
+				// this test still asserts via heading+layout — but the browser
+				// logs the 404 resource line unavoidably. Scoped to the one
+				// diagnostics-consuming route so a wrong-URL bug elsewhere
+				// still fails.
+				if (p.route === 'observability/persistence') consoleGuard.allow(/Failed to load resource.*404/);
 				const inst = await activeInstance();
 				await page.goto(`instance/${p.route}?name=${encodeURIComponent(inst.name)}`);
 
-				await expect(page.getByRole('heading', {name: p.heading, exact: true})).toBeVisible({timeout: 20_000});
+				// level 5 = the page's h5 title; drawer menu items render as h6
+				// headings and would otherwise collide on the same name.
+				await expect(page.getByRole('heading', {name: p.heading, exact: true, level: 5})).toBeVisible({timeout: 20_000});
 				// Let the first metrics/REST answers land so tables have real rows
 				// (an empty page trivially fits any viewport).
 				await page.waitForLoadState('networkidle').catch(() => undefined);

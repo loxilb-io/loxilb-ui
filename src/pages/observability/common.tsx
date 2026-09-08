@@ -47,8 +47,10 @@ export function PanelPaper({title, children}: {title: string; children: ReactNod
 				{title}
 			</Typography>
 			{/* Wide content (tables) scrolls inside the panel; the page body
-			    itself must never scroll horizontally on narrow viewports. */}
-			<Box sx={{overflowX: 'auto'}}>{children}</Box>
+			    itself must never scroll horizontally on narrow viewports.
+			    tabIndex: once it scrolls it must stay keyboard-reachable
+			    (read-only tables have no focusable content of their own). */}
+			<Box tabIndex={0} sx={{overflowX: 'auto'}}>{children}</Box>
 		</Paper>
 	);
 }

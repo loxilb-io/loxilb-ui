@@ -218,11 +218,14 @@ export const MENU_LIST: IMenuItem[] = [
 				path: 'pdkv',
 			},
 			{
+				// "Security Metrics"/"QoS Metrics": the bare names already exist
+				// as config surfaces in other drawer groups (Security group,
+				// Traffic → QoS) — the Metrics suffix keeps drawer text unique.
 				name: 'Security Metrics',
 				path: 'security',
 			},
 			{
-				name: 'QoS',
+				name: 'QoS Metrics',
 				path: 'qos',
 			},
 			{

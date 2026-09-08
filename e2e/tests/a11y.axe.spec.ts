@@ -78,7 +78,10 @@ test.describe('axe route pass', () => {
 	// Observability surface (UI-MON-015): each page renders live panels fed
 	// by the shared snapshot; the axe pass must see them with data mounted.
 	for (const route of ['ai', 'workers', 'pdkv', 'security', 'qos', 'persistence']) {
-		test(`observability ${route}`, async ({page}) => {
+		test(`observability ${route}`, async ({page, consoleGuard}) => {
+			// A testbed gateway older than the vendored contract 404s
+			// /diagnostics; the page degrades in-page (see viewports.spec.ts).
+			if (route === 'persistence') consoleGuard.allow(/Failed to load resource.*404/);
 			const inst = await activeInstance();
 			await page.goto(`instance/observability/${route}?name=${encodeURIComponent(inst.name)}`);
 			await page.waitForLoadState('load');
