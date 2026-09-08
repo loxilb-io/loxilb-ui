@@ -15,13 +15,13 @@ import FreshnessBadge from 'components/observability/FreshnessBadge';
 import ObservabilityStateFrame from 'components/observability/ObservabilityStateFrame';
 import {classifyViewState} from 'components/observability/observabilityState';
 import {useInstanceFromURL} from 'hooks/instanceHook';
-import {METRICS_SNAPSHOT_CADENCE_MS, useMetricsSnapshot} from 'hooks/query/observabilityHooks';
+import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
 import {useMemo} from 'react';
 import {useTranslation} from 'react-i18next';
 import {estimateQuantile, mergeHistogramSeries} from 'observability/histogram';
 import {selectSamples, selectScalar} from 'observability/selectors';
-import {familySumRate, groupRates} from 'observability/snapshotRates';
-import {formatRate, PanelPaper, StatRow, useObservabilityApplicable} from './common';
+import {familySumRate, groupRates, rateMaxGapMs} from 'observability/snapshotRates';
+import {CadenceSelector, PanelPaper, StatRow, formatRate, useObservabilityApplicable} from './common';
 
 // Panel-group scopes. Every group is gateway-only today; 'parity-conditional'
 // marks the groups the plan expects to become common once upstream OSS
@@ -48,12 +48,13 @@ export default function SecurityPage() {
 	const {t} = useTranslation();
 	const instance = useInstanceFromURL();
 	const applicable = useObservabilityApplicable('page.security');
-	const {snapshot, history, isLoading, refetch} = useMetricsSnapshot(applicable ? instance : null);
+	const {snapshot, history, isLoading, cadenceMs, refetch} = useMetricsSnapshot(applicable ? instance : null);
+	const maxGap = rateMaxGapMs(cadenceMs);
 
-	const ruleDrops = useMemo(() => (snapshot ? groupRates(history, 'loxilb_fw_rule_drop_packets_total', ['fw_rule']) : []), [snapshot, history]);
-	const l4Errors = useMemo(() => (snapshot ? groupRates(history, 'loxilb_l4_error_events_total', ['proto', 'reason']) : []), [snapshot, history]);
-	const opaSyncs = useMemo(() => (snapshot ? groupRates(history, 'loxilb_opa_watcher_syncs_total', ['status']) : []), [snapshot, history]);
-	const rateLimitHits = useMemo(() => (snapshot ? groupRates(history, 'loxilb_ai_rate_limit_hits_total', ['reason']) : []), [snapshot, history]);
+	const ruleDrops = useMemo(() => (snapshot ? groupRates(history, 'loxilb_fw_rule_drop_packets_total', ['fw_rule'], maxGap) : []), [snapshot, history, maxGap]);
+	const l4Errors = useMemo(() => (snapshot ? groupRates(history, 'loxilb_l4_error_events_total', ['proto', 'reason'], maxGap) : []), [snapshot, history, maxGap]);
+	const opaSyncs = useMemo(() => (snapshot ? groupRates(history, 'loxilb_opa_watcher_syncs_total', ['status'], maxGap) : []), [snapshot, history, maxGap]);
+	const rateLimitHits = useMemo(() => (snapshot ? groupRates(history, 'loxilb_ai_rate_limit_hits_total', ['reason'], maxGap) : []), [snapshot, history, maxGap]);
 	const ipfilterRules = useMemo(() => (snapshot ? selectSamples(snapshot, 'loxilb_ipfilter_rules') : []), [snapshot]);
 
 	const opaSyncDuration = useMemo(() => {
@@ -72,7 +73,7 @@ export default function SecurityPage() {
 		snapshot,
 		hasData,
 		nowMs: Date.now(),
-		cadenceMs: METRICS_SNAPSHOT_CADENCE_MS,
+		cadenceMs,
 	});
 
 	const quantileText = (r: ReturnType<typeof estimateQuantile>) => {
@@ -103,35 +104,36 @@ export default function SecurityPage() {
 		<Box sx={{p: 2}}>
 			<Box display="flex" alignItems="center" gap={2} sx={{mb: 2}}>
 				<Typography variant="h5">{t('Security')}</Typography>
-				{snapshot && !snapshot.failure && <FreshnessBadge receivedAtMs={snapshot.receivedAtMs} cadenceMs={METRICS_SNAPSHOT_CADENCE_MS} />}
+				{snapshot && !snapshot.failure && <FreshnessBadge receivedAtMs={snapshot.receivedAtMs} cadenceMs={cadenceMs} />}
+				<CadenceSelector />
 			</Box>
 
 			<ObservabilityStateFrame state={state} name={t('Security')} onRetry={refetch}>
 				<Grid container spacing={2}>
 					<Grid item xs={12} md={6}>
 						<PanelPaper title={t('Connection protection')}>
-							<StatRow label={t('SYN blocked')} value={formatRate(familySumRate(history, 'loxilb_security_syn_blocked_total'), t)} />
-							<StatRow label={t('SYN passed')} value={formatRate(familySumRate(history, 'loxilb_security_syn_passed_total'), t)} />
-							<StatRow label={t('SYN cookies issued')} value={formatRate(familySumRate(history, 'loxilb_security_syn_cookies_total'), t)} />
-							<StatRow label={t('Connections blocked')} value={formatRate(familySumRate(history, 'loxilb_security_conn_blocked_total'), t)} />
-							<StatRow label={t('Connections passed')} value={formatRate(familySumRate(history, 'loxilb_security_conn_passed_total'), t)} />
+							<StatRow label={t('SYN blocked')} value={formatRate(familySumRate(history, 'loxilb_security_syn_blocked_total', maxGap), t)} />
+							<StatRow label={t('SYN passed')} value={formatRate(familySumRate(history, 'loxilb_security_syn_passed_total', maxGap), t)} />
+							<StatRow label={t('SYN cookies issued')} value={formatRate(familySumRate(history, 'loxilb_security_syn_cookies_total', maxGap), t)} />
+							<StatRow label={t('Connections blocked')} value={formatRate(familySumRate(history, 'loxilb_security_conn_blocked_total', maxGap), t)} />
+							<StatRow label={t('Connections passed')} value={formatRate(familySumRate(history, 'loxilb_security_conn_passed_total', maxGap), t)} />
 							<StatRow label={t('Unique source IPs tracked')} value={gauge('loxilb_security_unique_ips')} />
 						</PanelPaper>
 					</Grid>
 
 					<Grid item xs={12} md={6}>
 						<PanelPaper title={t('UDP protection')}>
-							<StatRow label={t('UDP packets blocked')} value={formatRate(familySumRate(history, 'loxilb_security_udp_blocked_total'), t)} />
-							<StatRow label={t('UDP packets passed')} value={formatRate(familySumRate(history, 'loxilb_security_udp_passed_total'), t)} />
-							<StatRow label={t('UDP bytes blocked')} value={formatRate(familySumRate(history, 'loxilb_security_udp_bytes_blocked_total'), t, ' B/s')} />
-							<StatRow label={t('UDP bytes passed')} value={formatRate(familySumRate(history, 'loxilb_security_udp_bytes_passed_total'), t, ' B/s')} />
+							<StatRow label={t('UDP packets blocked')} value={formatRate(familySumRate(history, 'loxilb_security_udp_blocked_total', maxGap), t)} />
+							<StatRow label={t('UDP packets passed')} value={formatRate(familySumRate(history, 'loxilb_security_udp_passed_total', maxGap), t)} />
+							<StatRow label={t('UDP bytes blocked')} value={formatRate(familySumRate(history, 'loxilb_security_udp_bytes_blocked_total', maxGap), t, ' B/s')} />
+							<StatRow label={t('UDP bytes passed')} value={formatRate(familySumRate(history, 'loxilb_security_udp_bytes_passed_total', maxGap), t, ' B/s')} />
 						</PanelPaper>
 					</Grid>
 
 					<Grid item xs={12} md={6}>
 						<PanelPaper title={t('Firewall')}>
 							<StatRow label={t('Firewall rules active')} value={gauge('loxilb_firewall_rules')} />
-							<StatRow label={t('Packets dropped (all rules)')} value={formatRate(familySumRate(history, 'loxilb_fw_drop_packets_total'), t)} />
+							<StatRow label={t('Packets dropped (all rules)')} value={formatRate(familySumRate(history, 'loxilb_fw_drop_packets_total', maxGap), t)} />
 							{ruleDrops.length > 0 && (
 								<Table size="small" sx={{mt: 1}}>
 									<TableHead>
@@ -158,10 +160,10 @@ export default function SecurityPage() {
 							{ipfilterRules.map(s => (
 								<StatRow key={s.labelKey} label={`${t('Filter rules')} (${s.labels.type ?? t('Unknown value')})`} value={Number.isFinite(s.value) ? s.value : t('N/A')} />
 							))}
-							<StatRow label={t('Blacklist packets')} value={formatRate(familySumRate(history, 'loxilb_ipfilter_blacklist_packets_total'), t)} />
-							<StatRow label={t('Blacklist bytes')} value={formatRate(familySumRate(history, 'loxilb_ipfilter_blacklist_bytes_total'), t, ' B/s')} />
-							<StatRow label={t('Whitelist packets')} value={formatRate(familySumRate(history, 'loxilb_ipfilter_whitelist_packets_total'), t)} />
-							<StatRow label={t('Whitelist bytes')} value={formatRate(familySumRate(history, 'loxilb_ipfilter_whitelist_bytes_total'), t, ' B/s')} />
+							<StatRow label={t('Blacklist packets')} value={formatRate(familySumRate(history, 'loxilb_ipfilter_blacklist_packets_total', maxGap), t)} />
+							<StatRow label={t('Blacklist bytes')} value={formatRate(familySumRate(history, 'loxilb_ipfilter_blacklist_bytes_total', maxGap), t, ' B/s')} />
+							<StatRow label={t('Whitelist packets')} value={formatRate(familySumRate(history, 'loxilb_ipfilter_whitelist_packets_total', maxGap), t)} />
+							<StatRow label={t('Whitelist bytes')} value={formatRate(familySumRate(history, 'loxilb_ipfilter_whitelist_bytes_total', maxGap), t, ' B/s')} />
 						</PanelPaper>
 					</Grid>
 
@@ -182,7 +184,7 @@ export default function SecurityPage() {
 									</TableHead>
 									<TableBody>
 										{l4Errors.map(g => (
-											<TableRow key={`${g.labels.proto ?? ''} ${g.labels.reason ?? ''}`}>
+											<TableRow key={`${g.labels.proto ?? ''} ${g.labels.reason ?? ''}`}>
 												<TableCell>{g.labels.proto ?? t('Unknown value')}</TableCell>
 												<TableCell>{g.labels.reason ?? t('Unknown value')}</TableCell>
 												<TableCell align="right">{formatRate(g.rate, t)}</TableCell>
@@ -212,7 +214,7 @@ export default function SecurityPage() {
 
 					<Grid item xs={12} md={6}>
 						<PanelPaper title={t('AI security events')}>
-							<StatRow label={t('Model not allowed')} value={formatRate(familySumRate(history, 'loxilb_ai_model_not_allowed_total'), t)} />
+							<StatRow label={t('Model not allowed')} value={formatRate(familySumRate(history, 'loxilb_ai_model_not_allowed_total', maxGap), t)} />
 							{rateLimitHits.map(g => (
 								<StatRow
 									key={g.labels.reason ?? ''}
@@ -220,9 +222,9 @@ export default function SecurityPage() {
 									value={formatRate(g.rate, t)}
 								/>
 							))}
-							{rateLimitHits.length === 0 && <StatRow label={t('Rate limited')} value={formatRate(familySumRate(history, 'loxilb_ai_rate_limit_hits_total'), t)} />}
-							<StatRow label={t('Unmetered requests')} value={formatRate(familySumRate(history, 'loxilb_ai_unmetered_requests_total'), t)} />
-							<StatRow label={t('Policy store unavailable')} value={formatRate(familySumRate(history, 'loxilb_ai_policy_store_unavailable_total'), t)} />
+							{rateLimitHits.length === 0 && <StatRow label={t('Rate limited')} value={formatRate(familySumRate(history, 'loxilb_ai_rate_limit_hits_total', maxGap), t)} />}
+							<StatRow label={t('Unmetered requests')} value={formatRate(familySumRate(history, 'loxilb_ai_unmetered_requests_total', maxGap), t)} />
+							<StatRow label={t('Policy store unavailable')} value={formatRate(familySumRate(history, 'loxilb_ai_policy_store_unavailable_total', maxGap), t)} />
 						</PanelPaper>
 					</Grid>
 				</Grid>

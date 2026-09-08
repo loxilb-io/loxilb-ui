@@ -14,44 +14,45 @@ import FreshnessBadge from 'components/observability/FreshnessBadge';
 import ObservabilityStateFrame from 'components/observability/ObservabilityStateFrame';
 import {classifyViewState} from 'components/observability/observabilityState';
 import {useInstanceFromURL} from 'hooks/instanceHook';
-import {METRICS_SNAPSHOT_CADENCE_MS, useMetricsSnapshot} from 'hooks/query/observabilityHooks';
+import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
 import {useMemo} from 'react';
 import {useTranslation} from 'react-i18next';
 import {estimateQuantile, mergeHistogramSeries} from 'observability/histogram';
 import {aggregateSum, selectSamples} from 'observability/selectors';
-import {familySumRate, groupRates} from 'observability/snapshotRates';
-import {formatRate, ModelName, PanelPaper, StatRow, useObservabilityApplicable} from './common';
+import {familySumRate, groupRates, rateMaxGapMs} from 'observability/snapshotRates';
+import {CadenceSelector, ModelName, PanelPaper, StatRow, formatRate, useObservabilityApplicable} from './common';
 
 export default function AITrafficPage() {
 	const {t} = useTranslation();
 	const instance = useInstanceFromURL();
 	const applicable = useObservabilityApplicable('page.aiTraffic');
-	const {snapshot, history, isLoading, refetch} = useMetricsSnapshot(applicable ? instance : null);
+	const {snapshot, history, isLoading, cadenceMs, refetch} = useMetricsSnapshot(applicable ? instance : null);
+	const maxGap = rateMaxGapMs(cadenceMs);
 
-	const completedByStatus = useMemo(() => (snapshot ? groupRates(history, 'loxilb_ai_requests_total', ['status']) : []), [snapshot, history]);
-	const completedTotal = useMemo(() => familySumRate(history, 'loxilb_ai_requests_total'), [history]);
+	const completedByStatus = useMemo(() => (snapshot ? groupRates(history, 'loxilb_ai_requests_total', ['status'], maxGap) : []), [snapshot, history, maxGap]);
+	const completedTotal = useMemo(() => familySumRate(history, 'loxilb_ai_requests_total', maxGap), [history, maxGap]);
 	const denialRates = useMemo(
 		() =>
 			snapshot
 				? [
-						{key: t('Rate limited'), rate: familySumRate(history, 'loxilb_ai_rate_limit_hits_total')},
-						{key: t('Model not allowed'), rate: familySumRate(history, 'loxilb_ai_model_not_allowed_total')},
-						{key: t('Token quota denied'), rate: familySumRate(history, 'loxilb_ai_token_quota_denied_total')},
+						{key: t('Rate limited'), rate: familySumRate(history, 'loxilb_ai_rate_limit_hits_total', maxGap)},
+						{key: t('Model not allowed'), rate: familySumRate(history, 'loxilb_ai_model_not_allowed_total', maxGap)},
+						{key: t('Token quota denied'), rate: familySumRate(history, 'loxilb_ai_token_quota_denied_total', maxGap)},
 					]
 				: [],
-		[snapshot, history, t],
+		[snapshot, history, maxGap, t],
 	);
 	const activeStreams = useMemo(() => (snapshot ? selectSamples(snapshot, 'loxilb_ai_active_streams') : []), [snapshot]);
 	const tokenRates = useMemo(
 		() =>
 			snapshot
 				? {
-						byKind: groupRates(history, 'loxilb_ai_tokens_consumed_total', ['kind']),
-						estimated: familySumRate(history, 'loxilb_ai_tokens_estimated_total'),
-						missing: familySumRate(history, 'loxilb_ai_tokens_missing_total'),
+						byKind: groupRates(history, 'loxilb_ai_tokens_consumed_total', ['kind'], maxGap),
+						estimated: familySumRate(history, 'loxilb_ai_tokens_estimated_total', maxGap),
+						missing: familySumRate(history, 'loxilb_ai_tokens_missing_total', maxGap),
 					}
 				: undefined,
-		[snapshot, history],
+		[snapshot, history, maxGap],
 	);
 	const latency = useMemo(() => {
 		const family = snapshot?.families.get('loxilb_ai_request_duration_seconds');
@@ -69,7 +70,7 @@ export default function AITrafficPage() {
 		snapshot,
 		hasData,
 		nowMs: Date.now(),
-		cadenceMs: METRICS_SNAPSHOT_CADENCE_MS,
+		cadenceMs,
 	});
 
 	const quantileText = (r: ReturnType<typeof estimateQuantile>) => {
@@ -82,7 +83,8 @@ export default function AITrafficPage() {
 		<Box sx={{p: 2}}>
 			<Box display="flex" alignItems="center" gap={2} sx={{mb: 2}}>
 				<Typography variant="h5">{t('AI Traffic')}</Typography>
-				{snapshot && !snapshot.failure && <FreshnessBadge receivedAtMs={snapshot.receivedAtMs} cadenceMs={METRICS_SNAPSHOT_CADENCE_MS} />}
+				{snapshot && !snapshot.failure && <FreshnessBadge receivedAtMs={snapshot.receivedAtMs} cadenceMs={cadenceMs} />}
+				<CadenceSelector />
 			</Box>
 
 			<Alert severity="info" sx={{mb: 2}}>
@@ -178,7 +180,7 @@ export default function AITrafficPage() {
 
 					<Grid item xs={12} md={6}>
 						<PanelPaper title={t('Session affinity')}>
-							<StatRow label={t('Normal session hits')} value={formatRate(familySumRate(history, 'loxilb_ai_normal_session_hits_total'), t)} />
+							<StatRow label={t('Normal session hits')} value={formatRate(familySumRate(history, 'loxilb_ai_normal_session_hits_total', maxGap), t)} />
 							<StatRow
 								label={t('Engines reporting')}
 								value={snapshot ? aggregateSum(selectSamples(snapshot, 'loxilb_ai_engine_info')).finiteSamples : 0}

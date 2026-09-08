@@ -882,5 +882,7 @@
 	"Workers": "워커",
 	"Workers tracked": "추적 중인 워커",
 	"eBPF maps loaded": "eBPF 맵 로드됨",
-	"unknown": "알 수 없음"
+	"unknown": "알 수 없음",
+	"Refresh interval": "새로 고침 간격",
+	"{{seconds}}s": "{{seconds}}초"
 }

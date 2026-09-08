@@ -14,13 +14,13 @@ import FreshnessBadge from 'components/observability/FreshnessBadge';
 import ObservabilityStateFrame from 'components/observability/ObservabilityStateFrame';
 import {classifyViewState} from 'components/observability/observabilityState';
 import {useInstanceFromURL} from 'hooks/instanceHook';
-import {METRICS_SNAPSHOT_CADENCE_MS, useMetricsSnapshot} from 'hooks/query/observabilityHooks';
+import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
 import {useMemo} from 'react';
 import {useTranslation} from 'react-i18next';
 import {IMetricsSnapshot} from 'types/observability';
 import {selectScalar} from 'observability/selectors';
-import {groupRates, IGroupRate} from 'observability/snapshotRates';
-import {formatRate, PanelPaper, useObservabilityApplicable} from './common';
+import {IGroupRate, groupRates, rateMaxGapMs} from 'observability/snapshotRates';
+import {CadenceSelector, PanelPaper, formatRate, useObservabilityApplicable} from './common';
 
 export const QOS_FAMILIES = [
 	'loxilb_proxy_qos_bytes_passed_total',
@@ -56,15 +56,16 @@ export default function QosPage() {
 	const {t} = useTranslation();
 	const instance = useInstanceFromURL();
 	const applicable = useObservabilityApplicable('page.qos');
-	const {snapshot, history, isLoading, refetch} = useMetricsSnapshot(applicable ? instance : null);
+	const {snapshot, history, isLoading, cadenceMs, refetch} = useMetricsSnapshot(applicable ? instance : null);
+	const maxGap = rateMaxGapMs(cadenceMs);
 
 	const presence = useMemo(() => (snapshot && !snapshot.failure ? classifyQosPresence(snapshot) : undefined), [snapshot]);
 
 	// One row per shaped {vip, port, proto, direction} lane, keyed off the
 	// bytes-passed counter (a shaped lane always declares it).
-	const lanes = useMemo(() => (snapshot ? groupRates(history, 'loxilb_proxy_qos_bytes_passed_total', QOS_SERVICE_LABELS) : []), [snapshot, history]);
-	const delayed = useMemo(() => (snapshot ? groupRates(history, 'loxilb_proxy_qos_bytes_delayed_total', QOS_SERVICE_LABELS) : []), [snapshot, history]);
-	const parks = useMemo(() => (snapshot ? groupRates(history, 'loxilb_proxy_qos_parks_total', QOS_SERVICE_LABELS) : []), [snapshot, history]);
+	const lanes = useMemo(() => (snapshot ? groupRates(history, 'loxilb_proxy_qos_bytes_passed_total', QOS_SERVICE_LABELS, maxGap) : []), [snapshot, history, maxGap]);
+	const delayed = useMemo(() => (snapshot ? groupRates(history, 'loxilb_proxy_qos_bytes_delayed_total', QOS_SERVICE_LABELS, maxGap) : []), [snapshot, history, maxGap]);
+	const parks = useMemo(() => (snapshot ? groupRates(history, 'loxilb_proxy_qos_parks_total', QOS_SERVICE_LABELS, maxGap) : []), [snapshot, history, maxGap]);
 
 	const laneKey = (labels: Readonly<Record<string, string>>) => QOS_SERVICE_LABELS.map(k => labels[k] ?? '').join('|');
 	const rateFor = (rows: IGroupRate[], labels: Readonly<Record<string, string>>) => rows.find(r => laneKey(r.labels) === laneKey(labels))?.rate;
@@ -79,7 +80,7 @@ export default function QosPage() {
 		snapshot,
 		hasData,
 		nowMs: Date.now(),
-		cadenceMs: METRICS_SNAPSHOT_CADENCE_MS,
+		cadenceMs,
 	});
 
 	const gaugeFor = (family: string, labels: Readonly<Record<string, string>>) => {
@@ -101,7 +102,8 @@ export default function QosPage() {
 		<Box sx={{p: 2}}>
 			<Box display="flex" alignItems="center" gap={2} sx={{mb: 2}}>
 				<Typography variant="h5">{t('QoS')}</Typography>
-				{snapshot && !snapshot.failure && <FreshnessBadge receivedAtMs={snapshot.receivedAtMs} cadenceMs={METRICS_SNAPSHOT_CADENCE_MS} />}
+				{snapshot && !snapshot.failure && <FreshnessBadge receivedAtMs={snapshot.receivedAtMs} cadenceMs={cadenceMs} />}
+				<CadenceSelector />
 			</Box>
 
 			<ObservabilityStateFrame state={state} name={t('QoS')} onRetry={refetch}>

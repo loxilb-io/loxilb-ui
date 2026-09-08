@@ -18,6 +18,16 @@ import {aggregateSum, selectSamples} from './selectors';
 // reporting a gap instead of averaging over unknown dead time.
 export const RATE_MAX_GAP_MS = 35_000;
 
+/**
+ * Gap tolerance for a given network cadence: 3.5× the interval (the default
+ * 35 s at the 10 s default cadence). A slower operator-selected cadence must
+ * scale this up, or every healthy interval would misreport as a gap; callers
+ * reading the shared snapshot pass `rateMaxGapMs(cadenceMs)` through.
+ */
+export function rateMaxGapMs(cadenceMs: number): number {
+	return Math.round(cadenceMs * 3.5);
+}
+
 export interface IGroupRate {
 	labels: Readonly<Record<string, string>>;
 	rate: RateResult;

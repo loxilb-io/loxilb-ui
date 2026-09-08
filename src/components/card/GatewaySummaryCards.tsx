@@ -16,10 +16,10 @@ import {classifyViewState} from 'components/observability/observabilityState';
 import ObservabilityStateFrame from 'components/observability/ObservabilityStateFrame';
 import FreshnessBadge from 'components/observability/FreshnessBadge';
 import {GPU_STATUS_CADENCE_MS, useDiagnostics, useGpuStatus} from 'hooks/query/gatewayTelemetryHooks';
-import {METRICS_SNAPSHOT_CADENCE_MS, useMetricsSnapshot} from 'hooks/query/observabilityHooks';
+import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
 import {fromThrownError} from 'connector/fetcher/opResultAdapter';
 import {aggregateSum, selectSamples, selectScalar} from 'observability/selectors';
-import {familySumRate} from 'observability/snapshotRates';
+import {familySumRate, rateMaxGapMs} from 'observability/snapshotRates';
 import {formatRate, StatRow} from 'pages/observability/common';
 import {IInstance} from 'types/oam';
 import {ObservabilityViewState} from 'types/observability';
@@ -48,23 +48,24 @@ function useSnapshotCardState(instance: IInstance | null): ReturnType<typeof use
 		snapshot: q.snapshot,
 		hasData: (q.snapshot?.diagnostics.totalSamples ?? 0) > 0,
 		nowMs: Date.now(),
-		cadenceMs: METRICS_SNAPSHOT_CADENCE_MS,
+		cadenceMs: q.cadenceMs,
 	});
 	return {...q, state};
 }
 
 export function GwAiEventsCard({instance}: GwCardProps) {
 	const {t} = useTranslation();
-	const {history, state, refetch} = useSnapshotCardState(instance);
+	const {history, state, cadenceMs, refetch} = useSnapshotCardState(instance);
 
-	const completed = useMemo(() => familySumRate(history, 'loxilb_ai_requests_total'), [history]);
+	const maxGap = rateMaxGapMs(cadenceMs);
+	const completed = useMemo(() => familySumRate(history, 'loxilb_ai_requests_total', maxGap), [history, maxGap]);
 	const denials = useMemo(
 		() => [
-			familySumRate(history, 'loxilb_ai_rate_limit_hits_total'),
-			familySumRate(history, 'loxilb_ai_model_not_allowed_total'),
-			familySumRate(history, 'loxilb_ai_token_quota_denied_total'),
+			familySumRate(history, 'loxilb_ai_rate_limit_hits_total', maxGap),
+			familySumRate(history, 'loxilb_ai_model_not_allowed_total', maxGap),
+			familySumRate(history, 'loxilb_ai_token_quota_denied_total', maxGap),
 		],
-		[history],
+		[history, maxGap],
 	);
 	// Sum only when every constituent has a real rate; a partial sum labeled
 	// as "denials" would understate silently.
@@ -174,7 +175,7 @@ export function GwKvExactCard({instance}: GwCardProps) {
 
 export function GwPersistenceCard({instance}: GwCardProps) {
 	const {t} = useTranslation();
-	const {snapshot, history, state, refetch} = useSnapshotCardState(instance);
+	const {snapshot, history, state, cadenceMs, refetch} = useSnapshotCardState(instance);
 	// There is no last-persist timestamp metric family — that fact comes from
 	// /diagnostics, an independent REST read with its own receive time (never
 	// atomically consistent with the Prometheus rows above it).
@@ -186,7 +187,7 @@ export function GwPersistenceCard({instance}: GwCardProps) {
 		() => (snapshot ? aggregateSum(selectSamples(snapshot, 'loxilb_persist_total', {result: 'error'})).value : undefined),
 		[snapshot],
 	);
-	const persistRate = useMemo(() => familySumRate(history, 'loxilb_persist_total'), [history]);
+	const persistRate = useMemo(() => familySumRate(history, 'loxilb_persist_total', rateMaxGapMs(cadenceMs)), [history, cadenceMs]);
 	const lastPersistAt = diagnostics.data?.data.last_persist?.at;
 
 	return (

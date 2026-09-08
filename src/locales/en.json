@@ -882,5 +882,7 @@
 	"Workers": "Workers",
 	"Workers tracked": "Workers tracked",
 	"eBPF maps loaded": "eBPF maps loaded",
-	"unknown": "unknown"
+	"unknown": "unknown",
+	"Refresh interval": "Refresh interval",
+	"{{seconds}}s": "{{seconds}}s"
 }

@@ -14,19 +14,20 @@ import FreshnessBadge from 'components/observability/FreshnessBadge';
 import ObservabilityStateFrame from 'components/observability/ObservabilityStateFrame';
 import {classifyViewState} from 'components/observability/observabilityState';
 import {useInstanceFromURL} from 'hooks/instanceHook';
-import {METRICS_SNAPSHOT_CADENCE_MS, useMetricsSnapshot} from 'hooks/query/observabilityHooks';
+import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
 import {useMemo} from 'react';
 import {useTranslation} from 'react-i18next';
 import {buildEpJoinIndex, joinEp} from 'observability/pdJoin';
 import {selectSamples, selectScalar} from 'observability/selectors';
-import {familySumRate} from 'observability/snapshotRates';
-import {formatRate, PanelPaper, StatRow, useObservabilityApplicable} from './common';
+import {familySumRate, rateMaxGapMs} from 'observability/snapshotRates';
+import {CadenceSelector, PanelPaper, StatRow, formatRate, useObservabilityApplicable} from './common';
 
 export default function PdKvPage() {
 	const {t} = useTranslation();
 	const instance = useInstanceFromURL();
 	const applicable = useObservabilityApplicable('page.pdKv');
-	const {snapshot, history, isLoading, refetch} = useMetricsSnapshot(applicable ? instance : null);
+	const {snapshot, history, isLoading, cadenceMs, refetch} = useMetricsSnapshot(applicable ? instance : null);
+	const maxGap = rateMaxGapMs(cadenceMs);
 
 	const epJoin = useMemo(() => (snapshot ? buildEpJoinIndex(snapshot) : undefined), [snapshot]);
 
@@ -47,7 +48,7 @@ export default function PdKvPage() {
 		snapshot,
 		hasData,
 		nowMs: Date.now(),
-		cadenceMs: METRICS_SNAPSHOT_CADENCE_MS,
+		cadenceMs,
 	});
 
 	const epCell = (service: string | undefined, epIdx: string | undefined) => {
@@ -62,18 +63,19 @@ export default function PdKvPage() {
 		<Box sx={{p: 2}}>
 			<Box display="flex" alignItems="center" gap={2} sx={{mb: 2}}>
 				<Typography variant="h5">{t('P/D & KV Cache')}</Typography>
-				{snapshot && !snapshot.failure && <FreshnessBadge receivedAtMs={snapshot.receivedAtMs} cadenceMs={METRICS_SNAPSHOT_CADENCE_MS} />}
+				{snapshot && !snapshot.failure && <FreshnessBadge receivedAtMs={snapshot.receivedAtMs} cadenceMs={cadenceMs} />}
+				<CadenceSelector />
 			</Box>
 
 			<ObservabilityStateFrame state={state} name={t('P/D & KV Cache')} onRetry={refetch}>
 				<Grid container spacing={2}>
 					<Grid item xs={12} md={4}>
 						<PanelPaper title={t('Admission and sessions')}>
-							<StatRow label={t('Admission queued')} value={formatRate(familySumRate(history, 'loxilb_pd_admission_queued_total'), t)} />
-							<StatRow label={t('Admission shed')} value={formatRate(familySumRate(history, 'loxilb_pd_admission_shed_total'), t)} />
+							<StatRow label={t('Admission queued')} value={formatRate(familySumRate(history, 'loxilb_pd_admission_queued_total', maxGap), t)} />
+							<StatRow label={t('Admission shed')} value={formatRate(familySumRate(history, 'loxilb_pd_admission_shed_total', maxGap), t)} />
 							<StatRow label={t('P/D sessions active')} value={snapshot ? (selectScalar(snapshot, 'loxilb_pd_sessions_active') ?? t('No data')) : t('No data')} />
-							<StatRow label={t('Fallbacks to normal routing')} value={formatRate(familySumRate(history, 'loxilb_pd_fallback_to_normal_total'), t)} />
-							<StatRow label={t('Connect failovers')} value={formatRate(familySumRate(history, 'loxilb_pd_connect_failover_total'), t)} />
+							<StatRow label={t('Fallbacks to normal routing')} value={formatRate(familySumRate(history, 'loxilb_pd_fallback_to_normal_total', maxGap), t)} />
+							<StatRow label={t('Connect failovers')} value={formatRate(familySumRate(history, 'loxilb_pd_connect_failover_total', maxGap), t)} />
 						</PanelPaper>
 					</Grid>
 
@@ -133,7 +135,7 @@ export default function PdKvPage() {
 								</Table>
 							)}
 							<StatRow label={t('Enforcement faults')} value={snapshot ? selectSamples(snapshot, 'loxilb_ai_kv_enforcement_fault').filter(s => s.value > 0).length : 0} />
-							<StatRow label={t('Attestation probe failures')} value={formatRate(familySumRate(history, 'loxilb_ai_kv_attest_probe_fail_total'), t)} />
+							<StatRow label={t('Attestation probe failures')} value={formatRate(familySumRate(history, 'loxilb_ai_kv_attest_probe_fail_total', maxGap), t)} />
 						</PanelPaper>
 					</Grid>
 

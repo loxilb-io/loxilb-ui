@@ -14,19 +14,20 @@ import ObservabilityStateFrame from 'components/observability/ObservabilityState
 import {classifyViewState} from 'components/observability/observabilityState';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {DIAGNOSTICS_CADENCE_MS, useDiagnostics} from 'hooks/query/gatewayTelemetryHooks';
-import {METRICS_SNAPSHOT_CADENCE_MS, useMetricsSnapshot} from 'hooks/query/observabilityHooks';
+import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
 import {useMemo} from 'react';
 import {useTranslation} from 'react-i18next';
 import {estimateQuantile, mergeHistogramSeries} from 'observability/histogram';
 import {selectSamples, selectScalar} from 'observability/selectors';
-import {familySumRate} from 'observability/snapshotRates';
-import {PanelPaper, StatRow, formatRate, useObservabilityApplicable} from './common';
+import {familySumRate, rateMaxGapMs} from 'observability/snapshotRates';
+import {CadenceSelector, PanelPaper, StatRow, formatRate, useObservabilityApplicable} from './common';
 
 export default function PersistencePage() {
 	const {t} = useTranslation();
 	const instance = useInstanceFromURL();
 	const applicable = useObservabilityApplicable('page.persistence');
-	const {snapshot, history, isLoading, refetch} = useMetricsSnapshot(applicable ? instance : null);
+	const {snapshot, history, isLoading, cadenceMs, refetch} = useMetricsSnapshot(applicable ? instance : null);
+	const maxGap = rateMaxGapMs(cadenceMs);
 	const diagnostics = useDiagnostics(instance, applicable);
 
 	const snapshotsByTrigger = useMemo(() => (snapshot ? selectSamples(snapshot, 'loxilb_snapshot_total') : []), [snapshot]);
@@ -49,7 +50,7 @@ export default function PersistencePage() {
 		snapshot,
 		hasData,
 		nowMs: Date.now(),
-		cadenceMs: METRICS_SNAPSHOT_CADENCE_MS,
+		cadenceMs,
 	});
 
 	const gauge = (family: string) => {
@@ -78,7 +79,8 @@ export default function PersistencePage() {
 		<Box sx={{p: 2}}>
 			<Box display="flex" alignItems="center" gap={2} sx={{mb: 2}}>
 				<Typography variant="h5">{t('Persistence')}</Typography>
-				{snapshot && !snapshot.failure && <FreshnessBadge receivedAtMs={snapshot.receivedAtMs} cadenceMs={METRICS_SNAPSHOT_CADENCE_MS} />}
+				{snapshot && !snapshot.failure && <FreshnessBadge receivedAtMs={snapshot.receivedAtMs} cadenceMs={cadenceMs} />}
+				<CadenceSelector />
 			</Box>
 
 			<ObservabilityStateFrame state={state} name={t('Persistence')} onRetry={refetch}>
@@ -90,7 +92,7 @@ export default function PersistencePage() {
 								value={configDirty === undefined ? t('No data') : configDirty === 0 ? t('No') : t('Yes')}
 							/>
 							<StatRow label={t('Consecutive auto-persist failures')} value={gauge('loxilb_autopersist_consecutive_failures')} />
-							<StatRow label={t('Persist attempts')} value={formatRate(familySumRate(history, 'loxilb_persist_total'), t)} />
+							<StatRow label={t('Persist attempts')} value={formatRate(familySumRate(history, 'loxilb_persist_total', maxGap), t)} />
 							{persistByResult.map(s => (
 								<StatRow
 									key={s.labelKey}
