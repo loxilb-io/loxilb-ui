@@ -102,7 +102,9 @@ test.describe('@gw Snapshots page (admin)', () => {
 		const apiResp = await downloadSnapshot(snap!.id);
 		expect(apiResp.ok).toBeTruthy();
 		expect(doc.checksum).toBe(apiResp.headers.get('X-Snapshot-Checksum'));
-		expect(doc.schema_version).toBe('1.0');
+		// 1.1 since the model-profile contract revision: snapshots now carry
+		// the kv-exact binding identity alongside the 1.0 payload.
+		expect(doc.schema_version).toBe('1.1');
 	});
 
 	test('2. full restore wizard happy path → pre_restore row appears, config restored', async ({page}) => {

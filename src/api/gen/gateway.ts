@@ -879,6 +879,13 @@ export interface paths {
      */
     get: operations["getConfigLoadbalancerStatus"];
   };
+  "/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}/kvexactstatus": {
+    /**
+     * Get the resolved KV-exact composition status of Load balancer rules
+     * @description Returns the resolved KV-exact status (model-profile/engine-contract binding identity, binding generation and digest, hash contract, attestation-ladder desired/enforced states with reason codes) for every KV-exact rule on the composite key. A DEDICATED read model - resolved status never rides the GET/POST-shared LoadbalanceEntry, so an echoed GET body can never replay resolved state back as configuration. Every identity field is a scalar by schema.
+     */
+    get: operations["getConfigLoadbalancerKvExactStatus"];
+  };
   "/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}/stats": {
     /**
      * Get per-service statistics of a Load balancer service
@@ -7821,6 +7828,20 @@ export interface paths {
      */
     get: operations["getConfigAiTenantRatelimitTenantID"];
   };
+  "/config/ai/model-profiles": {
+    /**
+     * List the published model-prompt profiles
+     * @description Returns every profile of the currently PUBLISHED registry generation. Publication is all-or-nothing: a profile that appears here has already passed artifact digest verification, tokenizer load, and (when chat is declared) chat-template compilation - there is no partial or invalid availability state to represent, and disabled/unpublished profiles simply do not appear. Discovery is a CACHE, never an admission authority: a registry reload can change the available set at any time (rule POST admission re-validates against the generation current at POST time); clients detect staleness by comparing registryGeneration and setDigest against the kvexactstatus read-back after create. profiles is deterministically ordered by profileId ascending with no pagination (the registry is a bounded operator-curated set). Artifact locator paths and host filesystem information are deliberately excluded from the response.
+     */
+    get: operations["getConfigAiModelProfiles"];
+  };
+  "/config/ai/model-profiles/{profile_id}": {
+    /**
+     * Get one published model-prompt profile
+     * @description Returns the single profile identified by profile_id in the currently PUBLISHED registry generation (so a client can refresh one profile cheaply). Schema is identical to a list entry. Same cache-not-authority and exclusion rules as the list operation.
+     */
+    get: operations["getConfigAiModelProfilesProfileID"];
+  };
   "/config/opa/watcher": {
     /**
      * Get OPA L4 policy watcher status
@@ -7902,6 +7923,119 @@ export interface components {
        * @description In-memory last-mutation timestamp (RFC3339). Reset-to-now on restart, never persisted.
        */
       lastUpdated?: string;
+    };
+    /** @description Resolved KV-exact composition status of one rule. Every identity field is a scalar by schema - one rule composes exactly one model profile with exactly one engine contract at exactly one generation each; arrays and repeated identity fields are rejected representations. Field presence groups: the required fields are present on EVERY entry (legacy and strict); modelProfileId, modelProfileGen, engineContractId, engineContractGen, bindingGen, bindingDigest, hashContractId, requiredEvidenceLevel and enforcement are present iff the rule is strict (profile-bound); wireSchemaId and pdDialectId are present iff an engine-contract registry serves them. State and reason vocabularies are published in the x-kv-status-states / x-kv-status-reason-codes blocks below as an OPEN vocabulary versioned by x-kv-status-vocabulary-version (new values bump the version; existing values are never renamed or re-used). Forward-compatibility rule, binding on clients: an unrecognized desiredState/enforcedState MUST be treated as "not ready / in transition" and rendered raw; an unrecognized reasonCode MUST be rendered raw and MUST NOT be treated as fatal. */
+    KvExactStatusEntry: {
+      /** @description Stable opaque id of the load-balancer rule. */
+      ruleIdentity: string;
+      /** @description Served model name the rule keys its endpoint pool on. */
+      modelName: string;
+      /** @description Effective KV-event engine family (absent kvEngineType resolves to vllm). */
+      engineFamily: string;
+      /** @description Effective KV-exact API surface declaration (completions/chat/both; an absent kvExactApiMode resolves to the bound profile's declared surfaces, or "both" on a legacy rule). */
+      apiMode: string;
+      /** @description Bound ModelPromptProfile ID (absent on a legacy profile-less rule). */
+      modelProfileId?: string;
+      /**
+       * Format: uint64
+       * @description Registry generation the profile was bound at.
+       */
+      modelProfileGen?: number;
+      /** @description Bound engine-contract ID (absent on a legacy profile-less rule). */
+      engineContractId?: string;
+      /**
+       * Format: uint64
+       * @description Contract generation the binding was composed at.
+       */
+      engineContractGen?: number;
+      /**
+       * Format: uint32
+       * @description Rule-scoped monotonic binding generation (data-plane handle; 0 is reserved and never a valid generation).
+       */
+      bindingGen?: number;
+      /** @description Full digest over the composed binding identity. The digest, never the generation handle, is the identity proof. */
+      bindingDigest?: string;
+      /** @description Block-hash contract the rule's data plane computes with (the effective kvHashAlgo). */
+      hashContractId?: string;
+      /** @description Engine-contract wire-schema identity (absent until an engine-contract registry serves it). */
+      wireSchemaId?: string;
+      /** @description Engine-contract P/D dialect identity (absent until an engine-contract registry serves it). */
+      pdDialectId?: string;
+      /** @description Support-catalog evidence level the binding requires of its engine tuple (absent on legacy rules). */
+      requiredEvidenceLevel?: string;
+      /** @description Desired attestation-ladder state (LEGACY_ACTIVE_UNATTESTED on profile-less rules, PROFILE_VALIDATED and upward on strict rules). */
+      desiredState: string;
+      /** @description State the data plane actually enforces. Honest about pending machinery - a strict rule reports PENDING_DATAPLANE_CONTRACT until the data-plane contract word and attestation controller enforce its binding; a strict rule with missing binding state reports ENFORCEMENT_FAULT, never a silent legacy downgrade. */
+      enforcedState: string;
+      /** @description Typed reasons explaining enforcedState (x-kv-status-reason-codes vocabulary). Always present; MAY be empty - an empty array means "no qualifying reason", not "unknown". */
+      reasonCodes: string[];
+      enforcement?: components["schemas"]["KvExactEnforcement"];
+    };
+    /** @description Data-plane enforcement position of a strict KV-exact rule (absent on legacy rules) - what the control plane wants vs what the data plane provably enforces, per the fence-first contract-word transaction. desired and enforced are always present; lastAckAt is absent before the first full ACK after registration or restart; fault is absent when none. */
+    KvExactEnforcement: {
+      /** @description Desired attestation-ladder state. */
+      desired: string;
+      /** @description State the data plane actually enforces. */
+      enforced: string;
+      /** @description RFC3339 time of the last full contract-word ACK (readback and binding-digest halves both verified). Absent before the first ACK after registration or restart. */
+      lastAckAt?: string;
+      /** @description Last enforcement fault reason (absent when none). */
+      fault?: string;
+      /** @description Whether the authoritative tokenize-bridge deny-set fence currently denies the rule (fail-closed backstop - denied rules produce no tokens, so no hashes, regardless of C-side state). Always serialized - a lifted fence (false) must stay distinguishable from an unreported one. */
+      goFenced?: boolean;
+    };
+    /** @description The currently published model-profile registry generation as a read-only discovery envelope. registryGeneration and profiles are always present; registryGeneration 0 with an empty profiles array is the documented no-registry-published (legacy-mode) state. setDigest is the immutable digest over the generation's profiles AND their verified artifacts - present whenever a generation is published, absent at generation 0. */
+    AiModelProfileRegistry: {
+      /**
+       * Format: uint64
+       * @description Monotonic generation number of the published registry (0 = no registry published).
+       */
+      registryGeneration: number;
+      /** @description Digest over the published generation's profile documents and verified artifact bytes. Compare against later reads (and the kvexactstatus read-back) to detect a reload between discovery and rule creation. */
+      setDigest?: string;
+      /** @description Every published profile, deterministically ordered by profileId ascending. No pagination - the registry is a bounded operator-curated set. Always present; empty array means "no profiles published", never "unknown". */
+      profiles: components["schemas"]["AiModelProfileEntry"][];
+    };
+    /** @description One published model-prompt profile (list and detail representations are identical). Presence conveys validity by construction - publication is all-or-nothing, so every entry has already passed artifact digest verification and tokenizer load; there is no partial or invalid state. tokenizerSha256 is always present (publication requires it); templateSha256/templateContentFormat are present iff a chat template is bound. The sha256 digests are the immutable audit/drift identities of the profile's artifacts. Artifact locator paths, the registry root, and any host filesystem information are deliberately EXCLUDED from this representation. */
+    AiModelProfileEntry: {
+      /** @description Registry key of the profile (a single path-safe segment). */
+      profileId: string;
+      /**
+       * Format: uint64
+       * @description Registry generation this entry was published at (equals the envelope's registryGeneration on the list operation).
+       */
+      gen: number;
+      /** @description Served base-model identity (e.g. "Qwen/Qwen3-32B"). */
+      baseModel: string;
+      /**
+       * @description base_model_only (only the base model name routes to this profile) or list (allowedAliases route additionally). There is no "any".
+       * @enum {string}
+       */
+      aliasPolicy: "base_model_only" | "list";
+      /** @description Additional served model names (present iff aliasPolicy is list). */
+      allowedAliases?: string[];
+      /** @description Request surfaces this profile serves (completions/chat). Always present and non-empty. */
+      supportedApis: string[];
+      /** @description Request features the profile explicitly supports (absent when none declared). */
+      supportedFeatures?: string[];
+      /** @description Request features the profile explicitly refuses (absent when none declared). */
+      excludedFeatures?: string[];
+      /** @description Upstream tokenizer revision the artifact was captured from (informational provenance; absent when not recorded). */
+      tokenizerRevision?: string;
+      /** @description Pinned sha256 of the tokenizer artifact bytes. Always present - the registry refuses to publish a profile without a verified tokenizer. */
+      tokenizerSha256: string;
+      /** @description Pinned sha256 of the chat-template artifact bytes (present iff a chat template is bound). */
+      templateSha256?: string;
+      /** @description Declared message content format of the bound chat template (present iff a chat template is bound and the profile declares it). */
+      templateContentFormat?: string;
+      /** @description Engine that renders the template on the serving path (absent when not declared). */
+      rendererEngine?: string;
+      /** @description Version of the serving-path renderer (absent when not declared). */
+      rendererVersion?: string;
+      /** @description Parity-oracle engine the rendered bytes are attested against (absent when not declared). */
+      oracleEngine?: string;
+      /** @description Version of the parity oracle (absent when not declared). */
+      oracleVersion?: string;
     };
     /** @description Per-LB statistics quad (Octavia). */
     LoadbalanceStats: {
@@ -8159,7 +8293,7 @@ export interface components {
          */
         sse_mode?: boolean;
         /**
-         * @description Declaration of the data-plane X-Api-Key policy for this service. Omission is a first-class state: authentication is not enforced and the Gateway preserves an application-owned X-Api-Key header. Explicit "disabled" also admits keyless requests, but declares the header namespace to the Gateway and strips X-Api-Key before forwarding. "required" validates the header against the API-key store, fails closed when the policy cannot be evaluated, and strips it before forwarding. Read-back and export preserve the declaration exactly; an omitted declaration remains omitted. Independent of sse_mode, pd_disagg_mode, and management auth.
+         * @description Data-plane X-Api-Key enforcement declaration for this service. Three states, and omission is one of them. OMITTED declares nothing: the service is not marked AI-facing, proxying stays byte-identical, and a backend-owned X-Api-Key header passes through untouched. An explicit "disabled" declares the service AI-facing without enforcement: no key is validated, but X-Api-Key is the gateway's credential namespace and the header is stripped before dispatch. "required" makes the data plane validate the X-Api-Key header against the API-key store before the request reaches a backend, fails closed when the policy cannot be evaluated, and likewise strips the header. Reading a service back preserves the declaration exactly: an omitted policy reads back with this field absent, never resolved to a value. On a replace of an existing service, omitting this field leaves the declared policy unchanged — it never silently turns enforcement off; to clear a declared policy, send "disabled" explicitly. Independent of sse_mode and pd_disagg_mode, and independent of the management-plane authentication mode.
          * @enum {string}
          */
         api_key_auth?: "disabled" | "required";
@@ -8210,7 +8344,7 @@ export interface components {
         pd_balance_abs_threshold?: number;
         /**
          * Format: int64
-         * @description KV-cache exact (Tier 1.5) routing mode. Selects the ENDPOINT TOPOLOGY only — the serving framework is chosen independently by kvEngineType, and every mode below works with either engine. 0 = off. 1 = zmq over a P/D role-partitioned pool: requires pd_disagg_mode=true (rejected otherwise) and endpoints tagged ep_role 1/2; only ep_role=1 (prefill) endpoints are subscribed and scored, and Tier 1.5 sits between Tier 1 (trie) and Tier 2 (min-load) in the P/D ladder. 2 = nats (reserved, not implemented). 3 = zmq single-role over a role-less pool: requires mode=4 (fullproxy) and pd_disagg_mode=false (both rejected otherwise); ALL endpoints are subscribed and scored. Mode 3 does NOT reproduce the P/D ladder — there is no Tier-0 session stickiness, no Tier-1 trie and no admission gate on this path; a Tier-1.5 miss falls back to the rule's own sel selector (CHWBL/RR/persist).
+         * @description KV-cache exact (Tier 1.5) routing mode. Selects the ENDPOINT TOPOLOGY only — the serving framework is chosen independently by kvEngineType, and engine support for each mode is bounded by the per-engine capability matrix in the kvEngineType description (NOT every mode works with every engine). 0 = off. 1 = zmq over a P/D role-partitioned pool: requires pd_disagg_mode=true (rejected otherwise) and endpoints tagged ep_role 1/2; only ep_role=1 (prefill) endpoints are subscribed and scored, and Tier 1.5 sits between Tier 1 (trie) and Tier 2 (min-load) in the P/D ladder. 2 = nats (reserved, not implemented). 3 = zmq single-role over a role-less pool: requires mode=4 (fullproxy) and pd_disagg_mode=false (both rejected otherwise); ALL endpoints are subscribed and scored. Mode 3 does NOT reproduce the P/D ladder — there is no Tier-0 session stickiness, no Tier-1 trie and no admission gate on this path; a Tier-1.5 miss falls back to the rule's own sel selector (CHWBL/RR/persist).
          * @default 0
          */
         kvExactMode?: number;
@@ -8238,7 +8372,7 @@ export interface components {
          */
         kvWarmupSec?: number;
         /**
-         * @description KV-event engine behind this rule. One framework per VIP; immutable after create (delete+recreate to change). Drives hash-algo default: sglang => sha256_sglang, trtllm => blockhash_trtllm. trtllm supports plain LB, kvExactMode=3 (single-role Tier 1.5 over HTTP-polled KV events on each endpoint's own serving port — the gateway must be the SOLE consumer of /kv_cache_events per endpoint) and pd_disagg_mode with kvExactMode=1 (sequential P/D dialect); kvZmqPort/kvDpRankCount are meaningless for it (rejected when set — no ZMQ, no client-visible DP ranks). llamacpp supports plain LB with CHWBL/session affinity ONLY — the engine has no KV event plane and no P/D disaggregation, so kvExactMode, pd_disagg_mode, kvHashAlgo and non-default kvZmqPort/kvDpRankCount/kvBlockSize are all rejected. NOTE: LOXILB_KV_* env knobs (unified mode, eps/lambda, cap-sum, max-blocks) are process-global and shared across all KV VIPs (accepted limitation).
+         * @description KV-event engine behind this rule. One framework per load-balancer Rule — different rules (ports) on one VIP IP MAY run different engines (accepted multi-framework coexistence, warned at create); immutable after create (delete+recreate to change). Drives hash-algo default: sglang => sha256_sglang, trtllm => blockhash_trtllm. trtllm supports plain LB, kvExactMode=3 (single-role Tier 1.5 over HTTP-polled KV events on each endpoint's own serving port — the gateway must be the SOLE consumer of /kv_cache_events per endpoint) and pd_disagg_mode with kvExactMode=1 (sequential P/D dialect); kvZmqPort/kvDpRankCount are meaningless for it (rejected when set — no ZMQ, no client-visible DP ranks). llamacpp supports plain LB with CHWBL/session affinity ONLY — the engine has no KV event plane and no P/D disaggregation, so kvExactMode, pd_disagg_mode, kvHashAlgo and non-default kvZmqPort/kvDpRankCount/kvBlockSize are all rejected. NOTE: LOXILB_KV_* env knobs (unified mode, eps/lambda, cap-sum, max-blocks) are process-global and shared across all KV VIPs (accepted limitation).
          * @default vllm
          * @enum {string}
          */
@@ -8249,6 +8383,13 @@ export interface components {
          * @default 1
          */
         kvDpRankCount?: number;
+        /**
+         * @description Request API surfaces this KV-exact rule serves. Absent on a profile-less rule keeps the legacy behavior (both surfaces, unattested); with kvModelProfile bound, the effective surfaces default to the profile's declared supportedApis and an explicit value must be a subset of them. Declaring a chat surface requires a validated chat renderer for the rule's model_name — an unsupported chat declaration is refused at create time, never degraded into a silent runtime fallback. Meaningless without kvExactMode (rejected). Immutable after create with NO exception (delete+recreate to change): even the sanctioned migration attach (see kvModelProfile) must carry the SAME raw declaration as the live rule — the guard compares raw declared strings, so an unset value matches only unset. Scalar by schema — arrays are rejected representations.
+         * @enum {string}
+         */
+        kvExactApiMode?: "completions" | "chat" | "both";
+        /** @description ID of the ModelPromptProfile this rule binds to. Naming a profile makes the rule STRICT: the profile must be published in the gateway's profile registry, its alias policy must admit the rule's model_name, its pinned tokenizer artifacts must load and digest-match, and a composed KV-exact binding (model-profile@generation + engine-contract@generation) is allocated at create time — admission fails closed while no engine-contract registry is available. Absent = legacy profile-less rule (no binding; documented migration behavior). Immutable after create (delete+recreate to change), with ONE sanctioned exception: the migration attach. A replace-POST that names a profile on a live profile-less rule is admitted and re-runs the full strict bring-up (admission checks run BEFORE any mutation, so a refused attach leaves the rule, binding, and data plane untouched; enforcement reports pending until the data-plane contract installs and is acknowledged). The reverse transitions — dropping the profile or changing it to another — stay refused, as does any kvExactApiMode change during the attach (raw-string equality; an undeclared apiMode must stay undeclared in the attach POST). CAVEAT operators must be shown: attaching changes the rule's EFFECTIVE surface from the legacy both-surfaces default to the profile's declared supportedApis — attaching a completions-only profile to a rule that was serving chat traffic narrows the served surface. Scalar by schema — exactly one profile per rule; arrays are rejected representations. */
+        kvModelProfile?: string;
         /**
          * Format: int32
          * @description SGLang disaggregation bootstrap port on every prefill endpoint (the port passed to --disaggregation-bootstrap-port). 0 = SGLang's default 8998. Only meaningful with pd_disagg_mode=true and kvEngineType=sglang; rejected on any other rule shape so dead config fails loudly at create time.
@@ -11611,6 +11752,72 @@ export interface operations {
     };
   };
   /**
+   * Get the resolved KV-exact composition status of Load balancer rules
+   * @description Returns the resolved KV-exact status (model-profile/engine-contract binding identity, binding generation and digest, hash contract, attestation-ladder desired/enforced states with reason codes) for every KV-exact rule on the composite key. A DEDICATED read model - resolved status never rides the GET/POST-shared LoadbalanceEntry, so an echoed GET body can never replay resolved state back as configuration. Every identity field is a scalar by schema.
+   */
+  getConfigLoadbalancerKvExactStatus: {
+    parameters: {
+      query?: {
+        /** @description Restrict to the rule serving this model name (absent = every KV-exact rule on the key) */
+        model_name?: string;
+      };
+      path: {
+        /** @description External (VIP) IP address of the load balancer service */
+        ip_address: string;
+        /** @description Service port of the load balancer service */
+        port: number;
+        /** @description Protocol of the load balancer service (tcp/udp/sctp) */
+        proto: string;
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        content: {
+          "application/json": {
+            kvExactStatusAttr?: components["schemas"]["KvExactStatusEntry"][];
+          };
+        };
+      };
+      /** @description Invalid authentication credentials (unknown, expired or missing token, or a credential that is not a management identity — the cases are deliberately indistinguishable) */
+      401: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Authenticated management identity whose role does not authorize this operation */
+      403: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description No KV-exact status on this key. Deliberately coalesced: no rule exists on the composite key, the rule(s) on the key are not KV-exact, or the model_name filter matched no rule — all three answer 404. A 200 body always carries at least one entry (empty result sets are never emitted as 200). */
+      404: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Malformed path or query parameter (e.g. a non-numeric port). Emitted by request validation before the handler runs; the body code field carries a validation code, not an HTTP status. */
+      422: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Internal service error */
+      500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Credential store unavailable — the credential was never examined; retry after a moment */
+      503: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  /**
    * Get per-service statistics of a Load balancer service
    * @description Returns the per-LB statistics quad (activeConnections, bytesIn, bytesOut, totalConnections) for an unambiguous legacy tuple (Octavia), or 409 when colliding rules require opaque-ID/full-key selection. activeConnections is the same selector-agnostic live concurrent-connection count the connectionLimit gate enforces; bytesIn/bytesOut are the real per-direction CT byte totals; totalConnections is a monotonic cumulative counter reset to zero on restart.
    */
@@ -12646,6 +12853,94 @@ export interface operations {
         };
       };
       /** @description Management credential store or API-key store unavailable */
+      503: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  /**
+   * List the published model-prompt profiles
+   * @description Returns every profile of the currently PUBLISHED registry generation. Publication is all-or-nothing: a profile that appears here has already passed artifact digest verification, tokenizer load, and (when chat is declared) chat-template compilation - there is no partial or invalid availability state to represent, and disabled/unpublished profiles simply do not appear. Discovery is a CACHE, never an admission authority: a registry reload can change the available set at any time (rule POST admission re-validates against the generation current at POST time); clients detect staleness by comparing registryGeneration and setDigest against the kvexactstatus read-back after create. profiles is deterministically ordered by profileId ascending with no pagination (the registry is a bounded operator-curated set). Artifact locator paths and host filesystem information are deliberately excluded from the response.
+   */
+  getConfigAiModelProfiles: {
+    responses: {
+      /** @description OK. When no registry is published the response carries registryGeneration 0 and an empty profiles array - the documented legacy-mode state, not an error. */
+      200: {
+        content: {
+          "application/json": components["schemas"]["AiModelProfileRegistry"];
+        };
+      };
+      /** @description Invalid authentication credentials (unknown, expired or missing token, or a credential that is not a management identity — the cases are deliberately indistinguishable) */
+      401: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Authenticated management identity whose role does not authorize this operation */
+      403: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Internal service error */
+      500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Credential store unavailable — the credential was never examined; retry after a moment */
+      503: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  /**
+   * Get one published model-prompt profile
+   * @description Returns the single profile identified by profile_id in the currently PUBLISHED registry generation (so a client can refresh one profile cheaply). Schema is identical to a list entry. Same cache-not-authority and exclusion rules as the list operation.
+   */
+  getConfigAiModelProfilesProfileID: {
+    parameters: {
+      path: {
+        /** @description Profile identifier (the registry key; a single path-safe segment) */
+        profile_id: string;
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        content: {
+          "application/json": components["schemas"]["AiModelProfileEntry"];
+        };
+      };
+      /** @description Invalid authentication credentials (unknown, expired or missing token, or a credential that is not a management identity — the cases are deliberately indistinguishable) */
+      401: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Authenticated management identity whose role does not authorize this operation */
+      403: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Unknown profile_id in the currently published registry generation - or no registry is published at all (the list operation answers 200/generation 0 for that state; the detail operation has no profile to serve). */
+      404: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Internal service error */
+      500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Credential store unavailable — the credential was never examined; retry after a moment */
       503: {
         content: {
           "application/json": components["schemas"]["Error"];

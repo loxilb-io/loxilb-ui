@@ -1,11 +1,11 @@
 {
-  "vendoredAt": "2026-08-28T02:39:44Z",
+  "vendoredAt": "2026-09-04T22:57:35Z",
   "gateway": {
     "repo": "loxilb-inference-gateway",
     "path": "api/swagger.yml + api/swagger-extras.yml",
-    "commit": "4b0532aff5e6",
+    "commit": "c66ac429fc115bc328651bf91036bea613762b27",
     "dirty": true,
-    "note": "Gateway Swagger baseline at this immutable commit plus UI-required contract corrections validated against the live Gateway; dirty=true records that the vendored contract is not byte-identical to the upstream commit"
+    "note": "3-way merge (git merge-file) of the previous vendored contract onto origin/main c66ac429: upstream base 4b0532aff5e6 -> target c66ac429 (adds /config/ai/model-profiles*, kvexactstatus, KvExactStatusEntry/KvExactEnforcement/AiModelProfileRegistry/AiModelProfileEntry, kvModelProfile/kvExactApiMode) while preserving the UI-required contract corrections recorded since 4b0532aff5e6 (401/403/503 management responses, legacy-tuple 409 docs, UserSummary); the single conflict (api_key_auth description) resolved to the upstream fc769691 wording. dirty=true records that the vendored contract is not byte-identical to the upstream commit. swagger-extras.yml: upstream unchanged between base and target; vendored file (with UI corrections) kept as-is."
   },
   "oam": {
     "repo": "loxilb-oam",

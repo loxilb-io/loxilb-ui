@@ -20,6 +20,11 @@ export interface IMtlsFrontend {
 // X-Api-Key namespace unmanaged, while explicit disabled claims and strips it.
 export type ApiKeyAuthPolicy = 'disabled' | 'required';
 
+// Declared KV-exact API surface of a strict rule. Absent on a profile-less
+// rule keeps the legacy behavior (both surfaces, unattested); with a bound
+// profile an explicit value must be a subset of the profile's supportedApis.
+export type KvExactApiMode = 'completions' | 'chat' | 'both';
+
 export interface IServiceArguments {
 	name: string;
 	id?: string;					// stable opaque Gateway rule identifier when available
@@ -84,6 +89,12 @@ export interface IServiceArguments {
 		kvEngineType?: 'vllm' | 'sglang' | 'trtllm' | 'llamacpp';
 		kvDpRankCount?: number;			// SGLang data-parallel rank count (1-8)
 		pdBootstrapPort?: number;		// SGLang P/D bootstrap port (0 = engine default 8998)
+
+		// --- AI gateway: KV-exact model-profile binding (strict rules) ---
+		// Both are immutable after create (delete+recreate to change) and are
+		// scalars by schema — arrays are rejected representations.
+		kvModelProfile?: string;		// published ModelPromptProfile ID; absent = legacy profile-less rule
+		kvExactApiMode?: KvExactApiMode;	// declared API surface; must be a subset of the bound profile's supportedApis
 	}
 
 export interface IEndpoint {

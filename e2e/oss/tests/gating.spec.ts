@@ -90,7 +90,7 @@ test.describe('@loxilb flavor gating — plain upstream loxilb instance', () => 
 
 	test('route: direct hit on a gated page shows the friendly state, not /404 or an error banner', async ({page, consoleGuard}) => {
 		const guard = await attachContractGuard(page);
-		for (const route of ['ai/apikey', 'ipsec/tunnels', 'security/ipfilter', 'network/ip6', 'maintenance/snapshots', 'traffic/sni-certs']) {
+		for (const route of ['ai/apikey', 'ai/profiles', 'ipsec/tunnels', 'security/ipfilter', 'network/ip6', 'maintenance/snapshots', 'traffic/sni-certs']) {
 			await page.goto(`instance/${route}?name=${instName}`, {waitUntil: 'domcontentloaded'});
 			await waitForLoxilbChip(page);
 			await expect(page.getByText('Not available on this instance'), route).toBeVisible({timeout: 15_000});

@@ -91,7 +91,10 @@ describe('gateway spec contract — models the UI depends on', () => {
 		expect(serviceArguments.security.enum).toEqual([0, 1, 2]);
 		expect(serviceArguments.api_key_auth.enum).toEqual(['disabled', 'required']);
 		expect(serviceArguments.api_key_auth.default, 'omission must not materialize explicit disabled').toBeUndefined();
-		expect(serviceArguments.api_key_auth.description).toContain('Omission is a first-class state');
+		// Upstream fc769691 rewording of the same three-state contract: omission
+		// declares nothing and is preserved on read-back, never resolved to a value.
+		expect(serviceArguments.api_key_auth.description).toContain('omission is one of them');
+		expect(serviceArguments.api_key_auth.description).toContain('never resolved to a value');
 	});
 
 	it('API-key import and create response keep the secret-safe wire contract', () => {
