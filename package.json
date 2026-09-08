@@ -65,6 +65,7 @@
 		"locale:check": "node scripts/check-locales.mjs",
 		"lint": "eslint src --ext .ts,.tsx --max-warnings 0",
 		"a11y:test": "vitest run src/a11y.test.tsx",
+		"bench:observability": "vitest bench --run src/observability/parser.bench.ts",
 		"test:flavor-capabilities": "vitest run src/hooks/query/flavorCapabilities.test.tsx",
 		"test:session": "vitest run src/session && playwright test --project=gw e2e/tests/oam/session.spec.ts",
 		"test:watch": "vitest",

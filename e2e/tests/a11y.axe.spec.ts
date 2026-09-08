@@ -74,4 +74,16 @@ test.describe('axe route pass', () => {
 		await page.waitForTimeout(2000);
 		await expectNoNewViolations(page);
 	});
+
+	// Observability surface (UI-MON-015): each page renders live panels fed
+	// by the shared snapshot; the axe pass must see them with data mounted.
+	for (const route of ['ai', 'workers', 'pdkv', 'security', 'qos', 'persistence']) {
+		test(`observability ${route}`, async ({page}) => {
+			const inst = await activeInstance();
+			await page.goto(`instance/observability/${route}?name=${encodeURIComponent(inst.name)}`);
+			await page.waitForLoadState('load');
+			await page.waitForTimeout(2000);
+			await expectNoNewViolations(page);
+		});
+	}
 });

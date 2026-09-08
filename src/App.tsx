@@ -71,6 +71,9 @@ import SnapshotPage from 'pages/maintenance/SnapshotPage';
 import AITrafficPage from 'pages/observability/AITrafficPage';
 import WorkersPage from 'pages/observability/WorkersPage';
 import PdKvPage from 'pages/observability/PdKvPage';
+import SecurityObservabilityPage from 'pages/observability/SecurityPage';
+import QosPage from 'pages/observability/QosPage';
+import PersistencePage from 'pages/observability/PersistencePage';
 
 import {MAX_DURATION_MS} from 'hooks/query/common';
 import {persister, queryClient} from 'queryClientSingleton';
@@ -205,6 +208,9 @@ export default function App() {
 										<Route path="ai" element={<AITrafficPage />} />
 										<Route path="workers" element={<WorkersPage />} />
 										<Route path="pdkv" element={<PdKvPage />} />
+										<Route path="security" element={<SecurityObservabilityPage />} />
+										<Route path="qos" element={<QosPage />} />
+										<Route path="persistence" element={<PersistencePage />} />
 									</Route>
 									<Route path="settings" element={<InstanceSettingPage />} />
 									<Route path="dashboard" element={<DashboardPage />} />

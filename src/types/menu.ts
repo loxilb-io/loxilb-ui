@@ -217,6 +217,18 @@ export const MENU_LIST: IMenuItem[] = [
 				name: 'P/D & KV Cache',
 				path: 'pdkv',
 			},
+			{
+				name: 'Security Metrics',
+				path: 'security',
+			},
+			{
+				name: 'QoS',
+				path: 'qos',
+			},
+			{
+				name: 'Persistence',
+				path: 'persistence',
+			},
 		],
 	},
 	{

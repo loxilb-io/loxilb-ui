@@ -46,7 +46,9 @@ export function PanelPaper({title, children}: {title: string; children: ReactNod
 			<Typography variant="subtitle1" sx={{mb: 1.5, fontWeight: 600}}>
 				{title}
 			</Typography>
-			{children}
+			{/* Wide content (tables) scrolls inside the panel; the page body
+			    itself must never scroll horizontally on narrow viewports. */}
+			<Box sx={{overflowX: 'auto'}}>{children}</Box>
 		</Paper>
 	);
 }
