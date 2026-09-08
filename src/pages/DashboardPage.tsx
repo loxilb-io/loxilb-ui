@@ -3,7 +3,9 @@
 //---------------------------------------------------------
 import {Box, Button, Paper, Typography} from '@mui/material';
 import {get_local_storage, save_local_storage} from 'common';
-import {PREFERENCE_KEYS} from 'preferences';
+import {useInstanceCapabilities} from 'hooks/query/flavorHook';
+import {dashboardLayoutKey, PREFERENCE_KEYS} from 'preferences';
+import {reconcileDashboardLayout} from './dashboardLayout';
 import RealTimeRateCard from 'components/card/RealTimeRateCard';
 import CriticalMetricCard from 'components/card/CriticalMetricCard';
 import HealthStatusCard from 'components/card/HealthStatusCard';
@@ -25,10 +27,22 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 // column that left dead space on wide NOC displays.
 const ResponsiveGrid = WidthProvider(RGL);
 
-// Versioned so the fix for the compaction-reflow bug (gap-free default + no
-// auto-compaction) supersedes any already-corrupted layout persisted under the
-// old `layout` key — stale saves floated the log card above the rate cards.
-const LAYOUT_STORAGE_KEY = PREFERENCE_KEYS.dashboardLayout;
+// Layout persistence is per-flavor (`dashboard_layout_v3:<flavor>`) with the
+// old global v2 key kept as a READ-ONLY migration source: a saved v2 layout
+// seeds the first v3 open of each flavor, and the old length-equality check
+// is replaced by key-set reconciliation so adding a card amends a saved
+// layout instead of silently resetting it (see `reconcileDashboardLayout`).
+const LEGACY_LAYOUT_KEY = PREFERENCE_KEYS.dashboardLayoutLegacy;
+
+function readStoredLayout(key: string): unknown {
+	const raw = get_local_storage(key);
+	if (!raw) return undefined;
+	try {
+		return JSON.parse(raw);
+	} catch {
+		return undefined;
+	}
+}
 
 //---------------------------------------------------------
 // Functional Component
@@ -89,31 +103,42 @@ export default function DashboardPage() {
 
 	const [layout, set_layout] = useState<Layout[] | null>(null);
 
+	// While the /version probe is unresolved (or no instance is selected) the
+	// layout must be neither read nor persisted — a denied or in-flight probe
+	// must not adopt the wrong flavor's saved geometry, and a save made in
+	// that window would land under a flavor the operator never chose.
+	const capabilities = useInstanceCapabilities();
+	const storageKey = capabilities.resolved && capabilities.flavor ? dashboardLayoutKey(capabilities.flavor) : null;
+
 	const handleLayoutChange = (newLayout: any) => {
 		set_layout(newLayout);
-		save_local_storage(LAYOUT_STORAGE_KEY, JSON.stringify(newLayout));
+		if (storageKey) save_local_storage(storageKey, JSON.stringify(newLayout));
 	};
 
 	const handleClick = () => {
 		set_layout(DEFAULT_LAYOUT);
-		save_local_storage(LAYOUT_STORAGE_KEY, JSON.stringify(DEFAULT_LAYOUT));
+		if (storageKey) save_local_storage(storageKey, JSON.stringify(DEFAULT_LAYOUT));
 	};
 
 	useEffect(() => {
-		try {
-			const saved_layout = get_local_storage(LAYOUT_STORAGE_KEY);
-			if (saved_layout) {
-				const parsed_layout = JSON.parse(saved_layout);
-				if (parsed_layout.length !== DEFAULT_LAYOUT.length) throw new Error('Invalid layout length');
-				set_layout(parsed_layout);
-			} else set_layout(DEFAULT_LAYOUT);
-		} catch (error) {
-			// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
-			console.error('Failed to load layout:', error);
+		if (!storageKey) {
+			// Unresolved flavor: render the in-memory defaults, persist nothing.
 			set_layout(DEFAULT_LAYOUT);
+			return;
 		}
-	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
-	}, []);
+		// v3 for this flavor, else the global v2 as a read-only migration
+		// source, reconciled against the current card key set either way.
+		const stored = readStoredLayout(storageKey) ?? readStoredLayout(LEGACY_LAYOUT_KEY);
+		const {layout: reconciled, changed} = reconcileDashboardLayout(stored, DEFAULT_LAYOUT);
+		set_layout(reconciled);
+		// Persist only when reconciliation amended something or a v2 layout
+		// was migrated — an untouched default needs no stored copy, and the v2
+		// value itself is never rewritten or deleted.
+		if (stored !== undefined && (changed || readStoredLayout(storageKey) === undefined)) {
+			save_local_storage(storageKey, JSON.stringify(reconciled));
+		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- DEFAULT_LAYOUT is a stable per-render literal; re-running on its identity would re-read storage every render
+	}, [storageKey]);
 
 	// Show error state if instance is down
 	if (isInstanceDown) {

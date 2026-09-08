@@ -24,9 +24,28 @@ export const PREFERENCE_KEYS = {
 	sideMenuOpen: 'is_open_side_menu',
 	/** UI language. Written RAW (not JSON) by save_local_storage. */
 	language: 'language',
-	/** Dashboard grid geometry, `_v2` since the react-grid-layout reflow fix. JSON. */
-	dashboardLayout: 'dashboard_layout_v2',
+	/**
+	 * LEGACY dashboard grid geometry (`_v2`, one global key for both
+	 * flavors). READ-ONLY migration source since the per-flavor `_v3` split:
+	 * never written any more, never deleted (an older build may still run
+	 * against the same browser), consulted once per flavor to seed its v3
+	 * layout. JSON.
+	 */
+	dashboardLayoutLegacy: 'dashboard_layout_v2',
+	/**
+	 * Dashboard grid geometry, per flavor. `_v3` replaced the v2
+	 * length-equality validity check with card-key-set reconciliation
+	 * (`reconcileDashboardLayout`) so adding a card amends a saved layout
+	 * instead of silently resetting it, and split the key by flavor so a
+	 * gateway layout is never overwritten by saving the OSS one. JSON.
+	 */
+	dashboardLayoutGateway: 'dashboard_layout_v3:inference-gateway',
+	dashboardLayoutLoxilb: 'dashboard_layout_v3:loxilb',
 } as const;
+
+export function dashboardLayoutKey(flavor: 'inference-gateway' | 'loxilb'): string {
+	return flavor === 'inference-gateway' ? PREFERENCE_KEYS.dashboardLayoutGateway : PREFERENCE_KEYS.dashboardLayoutLoxilb;
+}
 
 export type TableDensity = 'comfortable' | 'compact';
 

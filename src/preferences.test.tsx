@@ -23,7 +23,7 @@ import i18n from 'locales/i18n';
 import LangSelMenu from 'components/menu/LangSelMenu';
 import SideMenuNav from 'components/layout/SideMenuNav';
 import userEvent from '@testing-library/user-event';
-import {DEFAULT_SIDE_MENU_OPEN, DEFAULT_TABLE_DENSITY, PREFERENCE_KEYS} from 'preferences';
+import {dashboardLayoutKey, DEFAULT_SIDE_MENU_OPEN, DEFAULT_TABLE_DENSITY, PREFERENCE_KEYS} from 'preferences';
 import {MemoryRouter} from 'react-router-dom';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {ReactNode} from 'react';
@@ -89,8 +89,15 @@ describe('supported customization: storage keys are what the components actually
 			tableDensity: 'table_density',
 			sideMenuOpen: 'is_open_side_menu',
 			language: 'language',
-			dashboardLayout: 'dashboard_layout_v2',
+			dashboardLayoutLegacy: 'dashboard_layout_v2',
+			dashboardLayoutGateway: 'dashboard_layout_v3:inference-gateway',
+			dashboardLayoutLoxilb: 'dashboard_layout_v3:loxilb',
 		});
+	});
+
+	it('the per-flavor layout key builder resolves to the pinned literals', () => {
+		expect(dashboardLayoutKey('inference-gateway')).toBe('dashboard_layout_v3:inference-gateway');
+		expect(dashboardLayoutKey('loxilb')).toBe('dashboard_layout_v3:loxilb');
 	});
 
 	it('table density is stored under the claimed key, by DataTable itself', async () => {
@@ -167,14 +174,18 @@ describe('supported customization: storage keys are what the components actually
 		await waitFor(() => expect(localStorage.getItem(PREFERENCE_KEYS.language)).toBe('ko'));
 	});
 
-	it('the dashboard layout key matches the one DashboardPage persists', async () => {
+	it('the dashboard layout keys match the ones DashboardPage persists', async () => {
 		// Imported lazily: DashboardPage pulls the whole metric-card tree, and
-		// this assertion only needs the module-level key.
+		// this assertion only needs the module-level keys.
 		const source = await import('pages/DashboardPage');
 		expect(source).toBeTruthy();
-		// The key is not exported; pin it here and in the evidence list so a
-		// rename during has to be a deliberate, reviewed act.
-		expect(PREFERENCE_KEYS.dashboardLayout).toBe('dashboard_layout_v2');
+		// The keys are not exported; pin them here and in the evidence list so
+		// a rename has to be a deliberate, reviewed act. v2 stays pinned too:
+		// it is the read-only migration source and must never drift while an
+		// operator's browser still holds it.
+		expect(PREFERENCE_KEYS.dashboardLayoutLegacy).toBe('dashboard_layout_v2');
+		expect(PREFERENCE_KEYS.dashboardLayoutGateway).toBe('dashboard_layout_v3:inference-gateway');
+		expect(PREFERENCE_KEYS.dashboardLayoutLoxilb).toBe('dashboard_layout_v3:loxilb');
 	});
 });
 
@@ -193,7 +204,7 @@ describe('logout keeps preferences and drops session data', () => {
 		localStorage.setItem(PREFERENCE_KEYS.tableDensity, JSON.stringify('compact'));
 		localStorage.setItem(PREFERENCE_KEYS.sideMenuOpen, JSON.stringify(false));
 		localStorage.setItem(PREFERENCE_KEYS.language, 'ko');
-		localStorage.setItem(PREFERENCE_KEYS.dashboardLayout, JSON.stringify([{i: 'system-log', x: 0, y: 0, w: 12, h: 2}]));
+		localStorage.setItem(PREFERENCE_KEYS.dashboardLayoutGateway, JSON.stringify([{i: 'system-log', x: 0, y: 0, w: 12, h: 2}]));
 	}
 
 	it('every claimed preference survives a logout', async () => {
@@ -206,7 +217,7 @@ describe('logout keeps preferences and drops session data', () => {
 		expect(localStorage.getItem(PREFERENCE_KEYS.tableDensity)).toBe(JSON.stringify('compact'));
 		expect(localStorage.getItem(PREFERENCE_KEYS.sideMenuOpen)).toBe(JSON.stringify(false));
 		expect(localStorage.getItem(PREFERENCE_KEYS.language)).toBe('ko');
-		expect(localStorage.getItem(PREFERENCE_KEYS.dashboardLayout)).not.toBeNull();
+		expect(localStorage.getItem(PREFERENCE_KEYS.dashboardLayoutGateway)).not.toBeNull();
 	});
 
 	it('session data does not survive the same logout', async () => {

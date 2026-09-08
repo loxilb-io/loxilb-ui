@@ -2,10 +2,11 @@
 // Imports
 //---------------------------------------------------------
 import {InstanceFlavor} from 'api/capabilities';
+import {projectFlatSums} from 'observability/selectors';
 import {ILiveMetricsResponse} from 'types/metrics';
+import {IMetricsSnapshot} from 'types/observability';
 import {IInstance} from 'types/oam';
-import {GET_INST_TEXT} from '../fetcher/fetcher_inst';
-import {fromSimpleResponse} from '../fetcher/opResultAdapter';
+import {query_get_metrics_snapshot} from './observability';
 
 //---------------------------------------------------------
 // Live Metrics via Prometheus exposition (gateway: /netlox/v1/metrics)
@@ -14,6 +15,13 @@ import {fromSimpleResponse} from '../fetcher/opResultAdapter';
 // Parses Prometheus text format into a flat {metric_name: value} map.
 // Labeled samples of the same metric are summed, which matches how the
 // dashboard cards consume a flat metric snapshot.
+//
+// LEGACY, retained as a pinned reference: the live path now parses through
+// the label-preserving snapshot (`observability/parser.ts`) and reproduces
+// this flat shape via the `projectFlatSums` selector. The fixtures in
+// `metrics.test.ts` exercise both this function and the projection-backed
+// `query_get_live_metrics`, so a divergence between old and new semantics
+// fails there instead of blanking a card.
 //
 // The value pattern spells out the full Prometheus number grammar, including a
 // SIGNED exponent. The previous `-?[0-9.eE+]+` had no `-` inside the exponent,
@@ -179,31 +187,29 @@ export function normalize_metric_names(metrics: Record<string, number>, flavor: 
  * inform.
  */
 export async function query_get_live_metrics(instance: IInstance, flavor: InstanceFlavor): Promise<ILiveMetricsResponse> {
-	const resp = await GET_INST_TEXT(instance, `/metrics`);
-	// Any non-200 (503 collection disabled, 401 under --userservice, 5xx) is not
-	// an exposition at all.
-	const body = resp.code === 200 && typeof resp.data === 'string' ? resp.data : '';
-	// Reuse the one HTTP→status table rather than re-deciding here. A 2xx maps
-	// to `confirmed`, which is not a failure — including the pre-parity 200
-	// whose body parses to nothing.
-	const outcome = fromSimpleResponse(resp, 'metrics.scrape');
-	const failure = outcome.status === 'confirmed' ? undefined : outcome;
-	const metrics = body ? normalize_metric_names(parse_prometheus_text(body), flavor) : {};
+	return project_live_metrics(await query_get_metrics_snapshot(instance, flavor), flavor);
+}
 
-	// Availability is decided by CONTENT: did the body yield at least one
-	// parseable sample? A pre-parity loxilb answers 200 with a bare JSON string,
-	// which parses to nothing. Deliberately not matched against the literal
-	// sentence "Prometheus option is disabled." — that text is unversioned prose
-	// with no contract behind it, and a reworded release would silently start
-	// reading as a live instance reporting nothing.
-	const available = Object.keys(metrics).length > 0;
-
+/**
+ * The UI-MON-006 compatibility projection: legacy flat card semantics as an
+ * explicit selector over the label-preserving snapshot. Every legacy
+ * guarantee is preserved verbatim:
+ * - flat values are finite-only sums per sample name (`projectFlatSums`);
+ * - alias resolution stays canonical-first per flavor table;
+ * - availability is decided by CONTENT — at least one flat key — never by
+ *   matching the disabled-message prose, so a reworded release cannot read
+ *   as a live instance reporting nothing;
+ * - `critical` and `important` are THE SAME object reference: the split is
+ *   typing-only and consumers may rely on the identity.
+ */
+export function project_live_metrics(snapshot: IMetricsSnapshot, flavor: InstanceFlavor): ILiveMetricsResponse {
+	const metrics = normalize_metric_names(projectFlatSums(snapshot), flavor);
 	return {
-		timestamp: Date.now(),
+		timestamp: snapshot.receivedAtMs,
 		critical: metrics,
 		important: metrics,
 		total_metrics: Object.keys(metrics).length,
-		available,
-		failure,
+		available: Object.keys(metrics).length > 0,
+		failure: snapshot.failure,
 	};
 }

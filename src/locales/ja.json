@@ -711,5 +711,14 @@
 	"Reference: {{id}}": "参照: {{id}}",
 	"Unavailable while the data on screen is out of date.": "画面のデータが最新ではないため使用できません。",
 	"No instances are registered yet. Add one to start managing a loxilb or inference-gateway deployment.": "登録されているインスタンスはありません。インスタンスを追加すると、loxilb または inference-gateway のデプロイを管理できます。",
-	"Metrics": "メトリクス"
+	"Metrics": "メトリクス",
+	"Not applicable to this instance": "このインスタンスには該当しません",
+	"This feature is disabled on the instance.": "この機能はインスタンスで無効になっています。",
+	"You are not authorized to read {{name}}.": "{{name}}を読み取る権限がありません。",
+	"Unknown value": "不明な値",
+	"Stale": "古いデータ",
+	"Partial data — {{count}} samples skipped": "部分データ — {{count}}件のサンプルをスキップ",
+	"Stale — received {{seconds}}s ago": "古いデータ — {{seconds}}秒前に受信",
+	"Received {{seconds}}s ago": "{{seconds}}秒前に受信",
+	"Source time: {{time}}": "ソース時刻: {{time}}"
 }
