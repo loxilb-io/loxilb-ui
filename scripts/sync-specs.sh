@@ -19,14 +19,21 @@
 #                                 # (pin the exact merge SHA with
 #                                 # `git worktree add --detach <dir> <sha>`) so
 #                                 # the recorded commit is immutable truth.
+#   sync-specs.sh --only manifest # gateway metric manifest
+#                                 # (deploy/monitoring/manifest/) + its
+#                                 # SOURCES.json entry only, same immutable-
+#                                 # input gate as --only gateway. Follow with
+#                                 # `npm run gen:api` so the UI envelope in
+#                                 # src/api/gen/ is regenerated from the new
+#                                 # provenance.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 ONLY="${1:-}"
 if [ -n "$ONLY" ]; then
-	[ "$ONLY" = "--only" ] && [ "${2:-}" = "gateway" ] || {
-		echo "usage: $0 [--only gateway]" >&2; exit 2; }
-	ONLY=gateway
+	[ "$ONLY" = "--only" ] && { [ "${2:-}" = "gateway" ] || [ "${2:-}" = "manifest" ]; } || {
+		echo "usage: $0 [--only gateway|--only manifest]" >&2; exit 2; }
+	ONLY="${2}"
 fi
 
 GATEWAY_REPO="${GATEWAY_REPO:-../loxilb-inference-gateway}"
@@ -40,17 +47,54 @@ LOXILB_REPO="${LOXILB_REPO:-../loxilb}"
 
 [ -f "$GATEWAY_REPO/api/swagger.yml" ] || { echo "gateway repo not found at $GATEWAY_REPO (set GATEWAY_REPO=...)"; exit 1; }
 
+MANIFEST_SRC="deploy/monitoring/manifest/metric-manifest.json"
+
 rev() { git -C "$1" rev-parse HEAD 2>/dev/null || echo unknown; }
 dirty() { [ -n "$(git -C "$1" status --porcelain 2>/dev/null)" ] && echo true || echo false; }
 
-if [ "$ONLY" = "gateway" ]; then
-	# Immutable-input gate: a branch head can move and a dirty tree has no
-	# commit at all, so either would record provenance that is not the truth.
+# Immutable-input gate shared by the --only modes: a branch head can move and
+# a dirty tree has no commit at all, so either would record provenance that is
+# not the truth.
+require_pinned_gateway() {
 	[ "$(dirty "$GATEWAY_REPO")" = "false" ] || {
-		echo "refusing --only gateway: $GATEWAY_REPO working tree is dirty" >&2; exit 1; }
+		echo "refusing --only $ONLY: $GATEWAY_REPO working tree is dirty" >&2; exit 1; }
 	git -C "$GATEWAY_REPO" symbolic-ref -q HEAD >/dev/null && {
-		echo "refusing --only gateway: $GATEWAY_REPO is on a branch, not a detached SHA" >&2
+		echo "refusing --only $ONLY: $GATEWAY_REPO is on a branch, not a detached SHA" >&2
 		echo "  pin the input: git -C $GATEWAY_REPO worktree add --detach <dir> <merge-sha>" >&2; exit 1; }
+	return 0
+}
+
+# Rewrites only the metricManifest entry of SOURCES.json; every other entry
+# (including hand-written notes) stays byte-for-byte untouched.
+stamp_manifest_entry() {
+	GW_SHA="$(rev "$GATEWAY_REPO")" GW_DIRTY="$(dirty "$GATEWAY_REPO")" node - <<'EOF'
+const fs = require('fs');
+const p = 'api-spec/SOURCES.json';
+const s = JSON.parse(fs.readFileSync(p, 'utf8'));
+s.metricManifest = {
+	repo: 'loxilb-inference-gateway',
+	path: 'deploy/monitoring/manifest/metric-manifest.json',
+	commit: process.env.GW_SHA,
+	dirty: process.env.GW_DIRTY === 'true',
+	vendoredAt: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
+	note: 'vendored verbatim (byte-for-byte upstream); the UI version envelope is generated into src/api/gen/metric-manifest.json by scripts/gen-metric-manifest.mjs (npm run gen:api)',
+};
+fs.writeFileSync(p, JSON.stringify(s, null, 2) + '\n');
+EOF
+}
+
+if [ "$ONLY" = "manifest" ]; then
+	require_pinned_gateway
+	[ -f "$GATEWAY_REPO/$MANIFEST_SRC" ] || {
+		echo "metric manifest not found at $GATEWAY_REPO/$MANIFEST_SRC" >&2; exit 1; }
+	cp "$GATEWAY_REPO/$MANIFEST_SRC" api-spec/metric-manifest.json
+	stamp_manifest_entry
+	echo "vendored metric manifest from $(rev "$GATEWAY_REPO"); now run: npm run gen:api"
+	exit 0
+fi
+
+if [ "$ONLY" = "gateway" ]; then
+	require_pinned_gateway
 
 	cp "$GATEWAY_REPO/api/swagger.yml" api-spec/gateway-swagger.yml
 	cp "$GATEWAY_REPO/api/swagger-extras.yml" api-spec/gateway-swagger-extras.yml
@@ -81,6 +125,7 @@ fi
 
 cp "$GATEWAY_REPO/api/swagger.yml" api-spec/gateway-swagger.yml
 cp "$GATEWAY_REPO/api/swagger-extras.yml" api-spec/gateway-swagger-extras.yml
+cp "$GATEWAY_REPO/$MANIFEST_SRC" api-spec/metric-manifest.json
 cp "$LOXILB_REPO/api/swagger.yml" api-spec/loxilb-swagger.yml
 
 echo "regenerating OAM swagger (swag init) ..."
@@ -114,6 +159,7 @@ cat > api-spec/SOURCES.json <<EOF
   }
 }
 EOF
+stamp_manifest_entry
 
 echo "vendored specs:"
 cat api-spec/SOURCES.json
