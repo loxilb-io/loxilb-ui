@@ -25,7 +25,8 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import {Alert, Box, Button, Chip, CircularProgress, Divider, Grid2, Stack, Typography} from '@mui/material';
+import {Alert, Box, Button, Chip, CircularProgress, Divider, Grid2, Link, Stack, Typography} from '@mui/material';
+import {Link as RouterLink} from 'react-router-dom';
 import SingleTextBox from 'components/element/SingleTextBox';
 import ValueBunch from 'components/element/ValueBunch';
 import {useInstanceFromURL} from 'hooks/instanceHook';
@@ -171,7 +172,10 @@ export default function KvExactStatusPanel({serviceArguments}: {serviceArguments
 			<Divider />
 			<Typography variant="subtitle1">{t('KV Exact Enforcement Status')}</Typography>
 			<Typography variant="caption" color="text.secondary">
-				{t('Live enforcement position resolved from the gateway — separate from the declared configuration above. A saved rule is not ready until the data plane attests it.')}
+				{t('Live enforcement position resolved from the gateway — separate from the declared configuration above. A saved rule is not ready until the data plane attests it.')}{' '}
+				<Link component={RouterLink} to={`/instance/observability/pdkv${inst?.name ? `?name=${encodeURIComponent(inst.name)}` : ''}`}>
+					{t('Open P/D & KV Cache')}
+				</Link>
 			</Typography>
 
 			{isPending && (

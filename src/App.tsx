@@ -68,6 +68,9 @@ import ProcessPage from 'pages/status/ProcessPage';
 
 import UserManagementPage from 'pages/managers/UserManagementPage';
 import SnapshotPage from 'pages/maintenance/SnapshotPage';
+import AITrafficPage from 'pages/observability/AITrafficPage';
+import WorkersPage from 'pages/observability/WorkersPage';
+import PdKvPage from 'pages/observability/PdKvPage';
 
 import {MAX_DURATION_MS} from 'hooks/query/common';
 import {persister, queryClient} from 'queryClientSingleton';
@@ -193,6 +196,15 @@ export default function App() {
 									</Route>
 									<Route path="maintenance" element={<Outlet />}>
 										<Route path="snapshots" element={<RequireFeature flavor="inference-gateway"><SnapshotPage /></RequireFeature>} />
+									</Route>
+									{/* Observability pages are metric-fed and gateway-only at
+									    launch: the flavor guard answers loading/denied/
+									    unavailable/N-A terminally on direct OSS URLs, and each
+									    page additionally checks its registry entry. */}
+									<Route path="observability" element={<RequireFeature flavor="inference-gateway" />}>
+										<Route path="ai" element={<AITrafficPage />} />
+										<Route path="workers" element={<WorkersPage />} />
+										<Route path="pdkv" element={<PdKvPage />} />
 									</Route>
 									<Route path="settings" element={<InstanceSettingPage />} />
 									<Route path="dashboard" element={<DashboardPage />} />

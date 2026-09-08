@@ -5,6 +5,7 @@ import 'locales/i18n';
 import i18n from 'locales/i18n';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {cleanup, render, screen} from '@testing-library/react';
+import {MemoryRouter} from 'react-router-dom';
 import {ApiError} from 'connector/fetcher/fetcher_base';
 import {IKvExactStatusEntry} from 'types/ai_gateway';
 import {IServiceArguments} from 'types/load_balancer';
@@ -60,7 +61,9 @@ function setQuery(over: Partial<{data: unknown; error: unknown; isPending: boole
 }
 
 function renderPanel(sa: IServiceArguments = args()) {
-	return render(<KvExactStatusPanel serviceArguments={sa} />);
+	// MemoryRouter: the panel carries a router deep-link to the P/D & KV
+	// observability page.
+	return render(<MemoryRouter><KvExactStatusPanel serviceArguments={sa} /></MemoryRouter>);
 }
 
 beforeEach(async () => {

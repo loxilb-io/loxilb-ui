@@ -31,6 +31,7 @@ export type HistogramInvalidReason =
 	| 'missing-inf-bucket'
 	| 'non-monotonic'
 	| 'count-mismatch'
+	| 'ladder-mismatch'
 	| 'non-finite';
 
 export type HistogramResult =
@@ -83,6 +84,48 @@ export function extractHistogramSeries(
 	if (count !== undefined && count !== inf.cumulative) return {kind: 'invalid', reason: 'count-mismatch'};
 
 	return {kind: 'ok', series: {labels: groupLabels, buckets, sum, count: inf.cumulative}};
+}
+
+// Merges every grouping-label series of a histogram family into one series
+// (sums cumulative counts per bucket bound). This is EXPLICIT aggregation —
+// the sanctioned way to show "latency across all models/tenants" — and is
+// only valid when every series shares the identical bucket ladder; a
+// divergent ladder is a typed invalid, never a partial merge.
+export function mergeHistogramSeries(family: IMetricFamily): HistogramResult {
+	// Collect the distinct non-`le` label identities present on the buckets.
+	const groups = new Map<string, Readonly<Record<string, string>>>();
+	for (const s of family.samples) {
+		if (!s.name.endsWith('_bucket')) continue;
+		const rest: Record<string, string> = {};
+		for (const [k, v] of Object.entries(s.labels)) if (k !== 'le') rest[k] = v;
+		groups.set(JSON.stringify(Object.entries(rest).sort()), rest);
+	}
+	if (groups.size === 0) return {kind: 'invalid', reason: 'no-buckets'};
+
+	let ladder: number[] | undefined;
+	const merged = new Map<number, number>();
+	let sum = 0;
+	let sawSum = false;
+	for (const labels of groups.values()) {
+		const r = extractHistogramSeries(family, labels);
+		if (r.kind === 'invalid') return r;
+		const bounds = r.series.buckets.map(b => b.le);
+		if (ladder === undefined) ladder = bounds;
+		else if (ladder.length !== bounds.length || ladder.some((le, i) => le !== bounds[i])) {
+			return {kind: 'invalid', reason: 'ladder-mismatch'};
+		}
+		for (const b of r.series.buckets) merged.set(b.le, (merged.get(b.le) ?? 0) + b.cumulative);
+		if (r.series.sum !== undefined) {
+			sum += r.series.sum;
+			sawSum = true;
+		}
+	}
+
+	const buckets = [...merged.entries()].map(([le, cumulative]) => ({le, cumulative})).sort((a, b) => a.le - b.le);
+	return {
+		kind: 'ok',
+		series: {labels: {}, buckets, sum: sawSum ? sum : undefined, count: buckets[buckets.length - 1].cumulative},
+	};
 }
 
 export type QuantileResult =
