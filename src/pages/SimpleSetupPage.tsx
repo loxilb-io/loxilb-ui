@@ -135,7 +135,6 @@ export default function SimpleSetupPage() {
 
 	return (
 		<Container
-			component="main"
 			maxWidth="xs"
 			sx={{
 				minHeight: '100vh',

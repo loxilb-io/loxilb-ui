@@ -45,7 +45,7 @@ export default function MetricFigure(props: MetricFigureProps) {
 	// the numbers. Cards that can lose *every* figure at once say it in one
 	// place instead — see the unavailable banner in the cards themselves.
 	const figure = (
-		<Typography variant={variant} fontWeight="bold" color={reported ? color : 'text.disabled'}>
+		<Typography component="p" variant={variant} fontWeight="bold" color={reported ? color : 'text.disabled'}>
 			{reported ? `${value.toLocaleString()}${suffix}` : t('N/A')}
 		</Typography>
 	);
