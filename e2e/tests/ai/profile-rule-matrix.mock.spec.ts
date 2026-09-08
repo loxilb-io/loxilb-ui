@@ -7,12 +7,13 @@
 // explicitness on multi-surface profiles, exact-match alias policy edges,
 // the block-size confirmation gate on both strict topologies, stale strict
 // state never leaking into a legacy POST, forward-compat with unknown
-// registry surfaces, and engine × topology interactions. MP-E2E-035..039
+// registry surfaces, and engine × topology interactions. MP-E2E-035..042
 // replay real fleet shapes proven in the gateway's CI/CD campaigns
 // (converged llama.cpp CHWBL, SGLang P/D bootstrap, TRT-LLM role'd P/D,
-// hash-pinned failover, vLLM NIXL P/D) and pin their wire bodies. Every
-// gateway endpoint the flow touches is intercepted; no rule ever reaches
-// the real gateway.
+// hash-pinned failover, vLLM NIXL P/D, the two converged single-role
+// KV-exact fleets, and the TLS'd asymmetric-role production shape) and
+// pin their wire bodies. Every gateway endpoint the flow touches is
+// intercepted; no rule ever reaches the real gateway.
 //---------------------------------------------------------
 import type {Page, Route} from '@playwright/test';
 import {expect, test} from '../../fixtures';
@@ -729,6 +730,132 @@ test.describe('@gw Strict-rule option matrix — mock contract', () => {
 		expect(Object.prototype.hasOwnProperty.call(sa, 'kvModelProfile')).toBe(false);
 		expect(body.endpoints.map((ep: any) => ep.ep_role)).toEqual([1, 2]);
 		expect(body.endpoints.map((ep: any) => ep.nixl_port)).toEqual([5601, 5602]);
+		expect(world.postBodies()).toHaveLength(1);
+	});
+
+	test('MP-E2E-040: SGLang CONVERGED single-role fleet — kvExactMode 3 with rank fan-out on role-less endpoints', async ({page}) => {
+		const world = await mockWorld(page);
+		const {aigw, sec} = await fillRuleScaffold(page, 'e2e-mp-mx-sglconv', {addEndpoints: false});
+		await selectOption(page, 'AI Engine', 'sglang');
+		await selectOption(page, 'Topology', 'Single-role KV exact');
+
+		// Converged means every server prefills AND decodes: the fleet is
+		// role-less by definition, and cache events arrive over one ZMQ base
+		// port fanned out across the data-parallel ranks.
+		for (let i = 0; i < 3; i++) {
+			await sec.getByRole('button', {name: 'Add', exact: true}).click();
+			await field(page, 'IP', sec).nth(i).fill(`198.51.100.9${i + 1}`);
+			await field(page, 'Target Port', sec).nth(i).fill('30000');
+		}
+		await setField(page, 'KV Block Size', '16', aigw);
+		await field(page, 'Block/Page Size Confirmed', aigw).check();
+		await setField(page, 'KV ZMQ Port', '5561', aigw);
+		await setField(page, 'KV DP Rank Count', '3', aigw);
+		await setField(page, 'KV Warmup (s)', '10', aigw);
+
+		const body = await submitAndCapture(page);
+		const sa = body.serviceArguments;
+		expect(sa.kvExactMode).toBe(3);
+		expect(sa.kvEngineType).toBe('sglang');
+		expect(sa.kvZmqPort).toBe(5561);
+		expect(sa.kvDpRankCount).toBe(3);
+		expect(sa.kvBlockSize).toBe(16);
+		expect(sa.kvWarmupSec).toBe(10);
+		// Single-role is NOT disaggregation: no P/D state may ride along —
+		// the bootstrap port is a disaggregation-only knob.
+		for (const key of ['pd_disagg_mode', 'pdBootstrapPort', 'kvModelProfile']) {
+			expect(Object.prototype.hasOwnProperty.call(sa, key), `${key} must be absent`).toBe(false);
+		}
+		expect(body.endpoints).toHaveLength(3);
+		for (const ep of body.endpoints) expect(ep.ep_role ?? 0).toBe(0);
+		expect(world.postBodies()).toHaveLength(1);
+	});
+
+	test('MP-E2E-041: vLLM CONVERGED single-role fleet — mode 3 without disaggregation, rank fan-out stays engine-scoped', async ({page}) => {
+		const world = await mockWorld(page);
+		const {aigw} = await fillRuleScaffold(page, 'e2e-mp-mx-vllmconv');
+		await selectOption(page, 'Topology', 'Single-role KV exact');
+		await setField(page, 'KV Block Size', '16', aigw);
+		await field(page, 'Block/Page Size Confirmed', aigw).check();
+		await setField(page, 'KV ZMQ Port', '5559', aigw);
+
+		// The DP rank fan-out is an SGLang concept — the dialog never offers
+		// it under vLLM, so the converged vLLM rule must ship without it.
+		await expect(field(page, 'KV DP Rank Count', aigw)).toHaveCount(0);
+
+		const body = await submitAndCapture(page);
+		const sa = body.serviceArguments;
+		expect(sa.kvExactMode).toBe(3);
+		expect(sa.kvZmqPort).toBe(5559);
+		expect(sa.kvBlockSize).toBe(16);
+		expect(sa.kvEngineType ?? 'vllm').toBe('vllm');
+		for (const key of ['pd_disagg_mode', 'kvDpRankCount', 'kvModelProfile']) {
+			expect(Object.prototype.hasOwnProperty.call(sa, key), `${key} must be absent`).toBe(false);
+		}
+		for (const ep of body.endpoints) expect(ep.ep_role ?? 0).toBe(0);
+		expect(world.postBodies()).toHaveLength(1);
+	});
+
+	test('MP-E2E-042: TRT-LLM production P/D shape — TLS termination, asymmetric roles, and the full probe block verbatim', async ({page}) => {
+		const world = await mockWorld(page);
+		const {aigw, sec} = await fillRuleScaffold(page, 'e2e-mp-mx-trtprod', {addEndpoints: false});
+		await selectOption(page, 'AI Engine', 'trtllm');
+		await selectOption(page, 'Topology', 'P/D + KV exact');
+
+		// The production drill fleet: two CONTEXT workers feeding one
+		// GENERATION worker — role distribution is per-endpoint state, not
+		// a symmetric 1:1 the dialog might assume.
+		const rows = [
+			{ip: '198.51.100.31', role: 'prefill'},
+			{ip: '198.51.100.32', role: 'prefill'},
+			{ip: '198.51.100.33', role: 'decode'},
+		] as const;
+		for (let i = 0; i < rows.length; i++) {
+			await sec.getByRole('button', {name: 'Add', exact: true}).click();
+			await field(page, 'IP', sec).nth(i).fill(rows[i].ip);
+			await field(page, 'Target Port', sec).nth(i).fill('8355');
+			await selectOption(page, 'EP Role', rows[i].role, i);
+		}
+
+		await field(page, 'Model Name', aigw).fill('Qwen/Qwen2.5-7B-Instruct');
+		await setField(page, 'KV Block Size', '32', aigw);
+		await field(page, 'Block/Page Size Confirmed', aigw).check();
+		await setField(page, 'KV Warmup (s)', '5', aigw);
+		await field(page, 'SSE Mode', aigw).check();
+
+		// TLS terminates at the VIP and the vhost key is the VIP itself.
+		await selectOption(page, 'Security', 'https');
+		await setField(page, 'Host', '192.0.2.80');
+
+		await field(page, 'Enable Monitor').check();
+		await selectOption(page, 'Probe Type', 'HTTP');
+		await setField(page, 'Probe Port', '8355', sec);
+		await setField(page, 'Probe Request', '/health', sec);
+		await setField(page, 'Probe Timeout', '5', sec);
+		await setField(page, 'Probe Retries', '2', sec);
+
+		const body = await submitAndCapture(page);
+		const sa = body.serviceArguments;
+		expect(sa.security).toBe(1);
+		expect(sa.host).toBe('192.0.2.80');
+		expect(sa.model_name).toBe('Qwen/Qwen2.5-7B-Instruct');
+		expect(sa.kvEngineType).toBe('trtllm');
+		expect(sa.pd_disagg_mode).toBe(true);
+		expect(sa.kvExactMode).toBe(1);
+		expect(sa.kvBlockSize).toBe(32);
+		expect(sa.kvWarmupSec).toBe(5);
+		expect(sa.sse_mode).toBe(true);
+		expect(sa.monitor).toBe(true);
+		expect(sa.probetype).toBe('http');
+		expect(sa.probeport).toBe(8355);
+		expect(sa.probereq).toBe('/health');
+		expect(sa.probeTimeout).toBe(5);
+		expect(sa.probeRetries).toBe(2);
+		expect(body.endpoints.map((ep: any) => ep.ep_role)).toEqual([1, 1, 2]);
+		for (const ep of body.endpoints) {
+			expect(ep.weight).toBe(1);
+			expect(ep.targetPort).toBe(8355);
+		}
 		expect(world.postBodies()).toHaveLength(1);
 	});
 });
