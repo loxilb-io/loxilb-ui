@@ -173,13 +173,17 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 		return null;
 	}
 
+	// No height cap and no inner scroll region: the dialog body (PopUp) is the
+	// single scroll container, capped at 90vh with the title and action buttons
+	// fixed. The old 400px inner cap stacked a second scrollbar inside it and
+	// left most of the viewport unused under this six-section form.
 	return (
-		<Stack width="100%" maxHeight="400px" spacing={2}>
+		<Stack width="100%" spacing={2}>
 			<Typography variant="h6">
 				{isEdit ? t('Edit Load Balancer Rule') : t('Add Load Balancer Rule')}
 			</Typography>
 
-			<Stack width="100%" height="100%" padding="15px 5px" spacing={2} sx={{overflowY: 'auto'}}>
+			<Stack width="100%" padding="15px 5px" spacing={2}>
 				<BasicSettingsForm
 					value={formData?.serviceArguments ?? {}}
 					onChange={handleServiceArguments}

@@ -68,6 +68,7 @@ export interface IPopupState {
 	disable_yes?: boolean;
 	persistent?: boolean; // Escape/backdrop do nothing; only for API-key reveal + forced relogin
 	busy?: boolean; // set true while handle_yes runs; disables both buttons + Escape
+	size?: 'default' | 'wide'; // 'wide' for heavy forms (LB rule); confirmations stay 'default'
 }
 
 export interface IPieChartData {

@@ -22,7 +22,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 // The extra opts argument ({persistent, handle_no}) is part of the 
 // contract; the cast keeps typecheck green while the tests run red against
 // the pre-fix signature.
-type OpenArgs = [string, any, string?, string?, (() => void | Promise<void>)?, boolean?, {persistent?: boolean; handle_no?: (reason: string) => void}?];
+type OpenArgs = [string, any, string?, string?, (() => void | Promise<void>)?, boolean?, {persistent?: boolean; handle_no?: (reason: string) => void; size?: 'default' | 'wide'}?];
 
 function Opener({args}: {args: OpenArgs}) {
 	const {openPopUp} = usePopUp();
@@ -313,5 +313,63 @@ describe('PopUp scroll-body layout', () => {
 			return cs.overflowY === 'auto' && cs.minHeight === '0px';
 		});
 		expect(body, 'an internally scrolling body (overflow-y auto, min-height 0) must exist').toBeTruthy();
+	});
+});
+
+//---------------------------------------------------------
+// Size variants (wide opt-in for heavy forms)
+//---------------------------------------------------------
+describe('PopUp size variants', () => {
+	function surfaceWidth(dialog: HTMLElement): string {
+		const surfaces = [dialog, ...Array.from(dialog.querySelectorAll('*'))] as HTMLElement[];
+		const surface = surfaces.find(el => {
+			const cs = getComputedStyle(el);
+			return cs.maxHeight === '90vh' && cs.display === 'flex';
+		});
+		expect(surface, 'the styled dialog surface must exist').toBeTruthy();
+		return getComputedStyle(surface!).width;
+	}
+
+	it('defaults to the 500px confirm width when no size is passed', async () => {
+		const user = userEvent.setup();
+		const dialog = await openDialog(user, ['Confirm', 'sure?', 'Yes', 'Cancel', vi.fn()]);
+		expect(surfaceWidth(dialog)).toBe('500px');
+	});
+
+	it('opts into 880px for size:"wide"', async () => {
+		const user = userEvent.setup();
+		const dialog = await openDialog(user, ['Heavy form', <div>form</div>, 'Create', 'Cancel', vi.fn(), false, {size: 'wide'}]);
+		expect(surfaceWidth(dialog)).toBe('880px');
+	});
+
+	it('a default dialog opened AFTER a wide one is 500px again (no sticky size)', async () => {
+		const user = userEvent.setup();
+		function TwoOpeners() {
+			const {openPopUp} = usePopUp();
+			return (
+				<>
+					<button type="button" onClick={() => (openPopUp as any)('Wide', 'w', 'OK', 'Cancel', vi.fn(), false, {size: 'wide'})}>
+						open-wide
+					</button>
+					<button type="button" onClick={() => (openPopUp as any)('Plain', 'p', 'OK', 'Cancel', vi.fn())}>
+						open-plain
+					</button>
+				</>
+			);
+		}
+		render(
+			<RecoilRoot>
+				<TwoOpeners />
+				<PopUp />
+			</RecoilRoot>,
+		);
+
+		await user.click(screen.getByRole('button', {name: 'open-wide'}));
+		expect(surfaceWidth(screen.getByRole('dialog'))).toBe('880px');
+		await user.keyboard('{Escape}');
+		await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+		await user.click(screen.getByRole('button', {name: 'open-plain'}));
+		expect(surfaceWidth(screen.getByRole('dialog'))).toBe('500px');
 	});
 });

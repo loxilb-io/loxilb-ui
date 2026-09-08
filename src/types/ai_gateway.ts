@@ -181,10 +181,20 @@ export function validateAIConfiguration(configuration: IServiceConfiguration): A
 	if (topology === 'pd' && engine === 'llamacpp') {
 		issues.push({field: 'pd_disagg_mode', message: 'llama.cpp does not support P/D disaggregation.'});
 	}
-	if (args.chwbl_prefix_hash_level !== undefined && ![1, 2, 3].includes(args.chwbl_prefix_hash_level)) {
+	// CHWBL prefix hashing belongs to the CHWBL/WRR-hash selectors (sel 8/10).
+	// The gateway silently DROPS these fields on any other selector (verified
+	// live 2026-09-08: POST carried them, read-back returned None on sel=rr) —
+	// accepting them there loses operator input without a word, so the form
+	// blocks it honestly instead. '' is the level dropdown's "Not set"
+	// placeholder — a form artifact, never operator intent.
+	const chwblSelector = [8, 10].includes(args.sel ?? 0);
+	if ((hasValue(args.chwbl_prefix_hash_level) || hasValue(args.chwbl_prefix_hash_flags)) && !chwblSelector) {
+		issues.push({field: 'chwbl_prefix_hash_level', message: 'CHWBL prefix hash settings require the chwbl load-balancing algorithm (SEL); clear them or switch the algorithm.'});
+	}
+	if (hasValue(args.chwbl_prefix_hash_level) && ![1, 2, 3].includes(Number(args.chwbl_prefix_hash_level))) {
 		issues.push({field: 'chwbl_prefix_hash_level', message: 'CHWBL prefix hash level must be 1, 2, or 3.'});
 	}
-	if (args.chwbl_prefix_hash_flags !== undefined && (!isNonNegativeInteger(args.chwbl_prefix_hash_flags) || args.chwbl_prefix_hash_flags > 255)) {
+	if (hasValue(args.chwbl_prefix_hash_flags) && (!isNonNegativeInteger(args.chwbl_prefix_hash_flags) || Number(args.chwbl_prefix_hash_flags) > 255)) {
 		issues.push({field: 'chwbl_prefix_hash_flags', message: 'CHWBL prefix hash flags must be an integer between 0 and 255.'});
 	}
 	if (args.max_stream_duration_sec !== undefined && !isNonNegativeInteger(args.max_stream_duration_sec)) {
@@ -300,6 +310,11 @@ export function serializeAIConfiguration(configuration: IServiceConfiguration): 
 	if (!serviceArguments.api_key_auth) delete serviceArguments.api_key_auth;
 
 	if (!serviceArguments.kvHashAlgo) delete serviceArguments.kvHashAlgo;
+	// The CHWBL level dropdown's "Not set" placeholder maps to '' — a form
+	// artifact. An untouched or cleared CHWBL field must be ABSENT on the
+	// wire, not empty (and never the old announce-injected level 1).
+	if (!hasValue(serviceArguments.chwbl_prefix_hash_level)) delete serviceArguments.chwbl_prefix_hash_level;
+	if (!hasValue(serviceArguments.chwbl_prefix_hash_flags)) delete serviceArguments.chwbl_prefix_hash_flags;
 	if (topology === 'plain') {
 		serviceArguments = omitFields(serviceArguments, [...KV_FIELDS, 'pd_disagg_mode', ...PD_TUNING_FIELDS, 'pdBootstrapPort']);
 		endpoints = endpoints.map(stripEndpointAI);

@@ -21,7 +21,7 @@ export function usePopUp() {
 			no?: string,
 			handle_yes?: (() => void | Promise<void>) | undefined,
 			disable_yes?: boolean,
-			opts?: {persistent?: boolean; handle_no?: (reason: PopupCloseReason) => void},
+			opts?: {persistent?: boolean; handle_no?: (reason: PopupCloseReason) => void; size?: 'default' | 'wide'},
 		) => {
 			set_props({
 				is_open: true,
@@ -35,6 +35,7 @@ export function usePopUp() {
 				// persistent is reserved for the API-key reveal and forced-relogin
 				// flows; everything else stays Escape/backdrop-dismissible.
 				persistent: opts?.persistent ?? false,
+				size: opts?.size ?? 'default',
 				busy: false,
 			});
 		},
