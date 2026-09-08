@@ -69,10 +69,10 @@ export interface paths {
         405: {
           content: never;
         };
-        /** @description Management credential store unavailable, or KV inventory provider not registered */
+        /** @description KV inventory provider not registered */
         503: {
           content: {
-            "application/json": components["schemas"]["RawError"];
+            "application/json": components["schemas"]["SimpleError"];
           };
         };
       };
@@ -123,10 +123,10 @@ export interface paths {
             "application/json": components["schemas"]["ManagementError"];
           };
         };
-        /** @description Management credential store unavailable, or DPU manager not initialized (filtered path only) */
+        /** @description DPU manager not initialized (filtered path only) */
         503: {
           content: {
-            "application/json": components["schemas"]["RawError"];
+            "application/json": components["schemas"]["SimpleError"];
           };
         };
       };
@@ -185,10 +185,10 @@ export interface paths {
         405: {
           content: never;
         };
-        /** @description Management credential store unavailable, or DPU manager not initialized */
+        /** @description DPU manager not initialized */
         503: {
           content: {
-            "application/json": components["schemas"]["RawError"];
+            "application/json": components["schemas"]["SimpleError"];
           };
         };
       };
@@ -463,22 +463,22 @@ export type webhooks = Record<string, never>;
 
 export interface components {
   schemas: {
-    /** @description Error envelope emitted by management authentication and authorization middleware. */
-    ManagementError: {
-      /** Format: int32 */
-      code?: number;
-      message?: string;
-      result?: string;
-      fields?: string[];
-    };
     /** @description Error returned before or after raw-route dispatch. Authentication errors use code/message/result/fields; raw handlers use error. */
     RawError: {
       /** Format: int32 */
       code?: number;
+      error?: string;
+      fields?: string[];
       message?: string;
       result?: string;
+    };
+    /** @description Error envelope emitted by management authentication and authorization middleware. */
+    ManagementError: {
+      /** Format: int32 */
+      code?: number;
       fields?: string[];
-      error?: string;
+      message?: string;
+      result?: string;
     };
     /** @description Minimal error envelope returned by the raw handlers. */
     SimpleError: {

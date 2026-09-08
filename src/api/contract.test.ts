@@ -98,17 +98,19 @@ describe('gateway spec contract — models the UI depends on', () => {
 	});
 
 	it('API-key import and create response keep the secret-safe wire contract', () => {
+		// The 16..512 printable-ASCII rule lives in the gateway handler, not the
+		// spec (upstreaming the pattern is an open gateway request); the UI form
+		// enforces it independently in ApiKeyInputForm.
 		const imported = gateway.definitions.ApiKeyCreateRequest.properties.api_key;
-		expect(imported).toEqual(expect.objectContaining({
-			type: 'string',
-			minLength: 16,
-			maxLength: 512,
-			pattern: '^[!-~]{16,512}$',
-		}));
+		expect(imported).toEqual(expect.objectContaining({type: 'string'}));
+		expect(imported.pattern).toBeUndefined();
 		const response = gateway.definitions.ApiKeyCreateResponse;
-		expect(response.required).toContain('key_id');
-		expect(response.required ?? []).not.toContain('raw_key');
+		// raw_key is required but deliberately the empty string in import mode —
+		// the caller already holds the secret. Never pin minLength on it.
+		expect(response.required).toContain('raw_key');
+		expect(response.required ?? []).not.toContain('key_id');
 		expect(response.properties.raw_key).toEqual(expect.objectContaining({type: 'string'}));
+		expect(response.properties.key_id).toEqual(expect.objectContaining({type: 'string'}));
 	});
 
 	it('PolicyEntry exposes rule, port-ingress, and port-egress attachments', () => {
@@ -121,9 +123,14 @@ describe('gateway spec contract — models the UI depends on', () => {
 			const modelLimits = gateway.definitions[name].properties.model_limits;
 			expect(modelLimits.type).toBe('array');
 			expect(modelLimits.items.$ref).toBe('#/definitions/TenantModelRateLimit');
-			expect(gateway.definitions[name].properties.burst_pct).toEqual(
-				expect.objectContaining({type: 'integer', minimum: 0, maximum: 1000}),
-			);
+			// No declared bounds: the gateway API path stores and returns burst_pct
+			// verbatim (the 1..1000 clamp exists only in rate-limit enforcement), so
+			// a validating client must tolerate out-of-range read-backs. The UI's own
+			// 1..1000 form rule is pinned in src/types/ai.test.ts.
+			const burst = gateway.definitions[name].properties.burst_pct;
+			expect(burst).toEqual(expect.objectContaining({type: 'integer'}));
+			expect(burst.minimum).toBeUndefined();
+			expect(burst.maximum).toBeUndefined();
 		}
 		expect(propNames(gateway, gateway.definitions.TenantModelRateLimit)).toEqual(
 			expect.arrayContaining(['model', 'tokens_per_min']),
@@ -157,10 +164,15 @@ describe('gateway spec contract — models the UI depends on', () => {
 		}
 	});
 
-	it('Gateway users use password-free summaries for list and create responses', () => {
+	it('Gateway user reads stay password-free summaries', () => {
 		expect(propNames(gateway, gateway.definitions.UserSummary)).not.toContain('password');
 		expect(gateway.paths['/auth/users'].get.responses['200'].schema.items.$ref).toBe('#/definitions/UserSummary');
-		expect(gateway.paths['/auth/users'].post.responses['201'].schema.$ref).toBe('#/definitions/UserSummary');
+		// The create 201 declares the User request model, but the handler actually
+		// writes 200 + {"result":"Success"} and never serializes a user object, so
+		// no password can leak (gateway spec defect reported upstream). The UI has
+		// no consumer of this route; pin the declaration so the next re-vendor
+		// surfaces any change.
+		expect(gateway.paths['/auth/users'].post.responses['201'].schema.$ref).toBe('#/definitions/User');
 	});
 
 	it('/sni/certificates GET keeps certificates/totalCertificates', () => {
@@ -177,25 +189,47 @@ describe('gateway spec contract — models the UI depends on', () => {
 
 describe('gateway management authentication response matrices', () => {
 	it('every protected main operation declares 401, 403, and 503', () => {
+		// The three operator routes new in the maintenance-drain contract break
+		// the convention the same change established everywhere else (reported
+		// upstream). Pinned to their current declared shape so the exemption
+		// self-destructs when the gateway spec catches up.
+		const upstreamGaps: Record<string, string[]> = {
+			'GET /status/ready': ['200', '401', '503'],
+			'GET /maintenance': ['200', '401', '500'],
+			'PUT /maintenance': ['200', '400', '401', '500'],
+			'GET /diagnostics': ['200', '401', '500'],
+		};
 		for (const [pathName, pathItem] of Object.entries<any>(gateway.paths)) {
 			for (const method of ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']) {
 				const operation = pathItem[method];
 				if (!operation) continue;
 				const security = operation.security === undefined ? gateway.security : operation.security;
 				if (!Array.isArray(security) || security.length === 0) continue;
+				const gap = upstreamGaps[`${method.toUpperCase()} ${pathName}`];
+				if (gap) {
+					expect(Object.keys(operation.responses).sort(), `${method.toUpperCase()} ${pathName} (pinned upstream gap)`).toEqual(gap);
+					continue;
+				}
 				expect(operation.responses, `${method.toUpperCase()} ${pathName}`).toEqual(
 					expect.objectContaining({'401': expect.anything(), '403': expect.anything(), '503': expect.anything()}),
 				);
 			}
 		}
-		expect(gateway.paths['/config/ai/apikey'].post.responses['409']).toBeTruthy();
+		// No 409 on API-key create: the store's only unique index is on the key
+		// hash, duplicate names succeed, and no handler path emits Conflict — the
+		// old UI-only 409 overlay described unreachable behavior.
+		expect(gateway.paths['/config/ai/apikey'].post.responses['409']).toBeUndefined();
 	});
 
 	it('every raw extras operation declares bearer auth and 401/403/503', () => {
-		expect(gatewayExtras.securityDefinitions.BearerAuth).toEqual(
-			expect.objectContaining({type: 'apiKey', name: 'Authorization', in: 'header'}),
-		);
-		expect(gatewayExtras.security).toEqual([{BearerAuth: []}]);
+		// The BearerAuth securityDefinitions block was a UI-only overlay the
+		// upstream extras never carried (swagger diff is blind to security
+		// metadata, so it survived earlier reconciliations unnoticed). The raw
+		// routes ARE bearer-authenticated by the server middleware — declaring
+		// it is an open upstream request; until then the per-op 401/403/503
+		// matrix below is the auth signal this contract pins.
+		expect(gatewayExtras.securityDefinitions).toBeUndefined();
+		expect(gatewayExtras.security).toBeUndefined();
 		for (const [pathName, pathItem] of Object.entries<any>(gatewayExtras.paths)) {
 			for (const method of ['get', 'post', 'put', 'patch', 'delete']) {
 				const operation = pathItem[method];

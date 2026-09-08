@@ -60,6 +60,15 @@ describe('fromSimpleResponse status mapping', () => {
 		expect(fromSimpleResponse(resp(205, null), 'op').status).toBe('confirmed');
 	});
 
+	it('200 + {result:"Success"} confirms — the gateway OperationResult success envelope', () => {
+		// Since the gateway re-vendor, config mutations that used to answer a
+		// bodyless 204 answer 200 + {"result":"Success"} (ResultResponse). That
+		// envelope must never trip the false-success trap below.
+		const res = fromSimpleResponse(resp(200, {result: 'Success'}), 'op');
+		expect(res.status).toBe('confirmed');
+		expect(res.code).toBe('op.ok');
+	});
+
 	it.each(['fail', 'FAILED', ' failure ', 'error'])('200 + {result:"%s"} → failed (the false-success trap)', result => {
 		const res = fromSimpleResponse(resp(200, {result}), 'op');
 		expect(res.status).toBe('failed');

@@ -1,11 +1,11 @@
 {
-  "vendoredAt": "2026-09-04T22:57:35Z",
+  "vendoredAt": "2026-09-08T03:13:31Z",
   "gateway": {
     "repo": "loxilb-inference-gateway",
     "path": "api/swagger.yml + api/swagger-extras.yml",
-    "commit": "c66ac429fc115bc328651bf91036bea613762b27",
+    "commit": "3546adc57c9570218e41e5def19cf26018716dcc",
     "dirty": true,
-    "note": "3-way merge (git merge-file) of the previous vendored contract onto origin/main c66ac429: upstream base 4b0532aff5e6 -> target c66ac429 (adds /config/ai/model-profiles*, kvexactstatus, KvExactStatusEntry/KvExactEnforcement/AiModelProfileRegistry/AiModelProfileEntry, kvModelProfile/kvExactApiMode) while preserving the UI-required contract corrections recorded since 4b0532aff5e6 (401/403/503 management responses, legacy-tuple 409 docs, UserSummary); the single conflict (api_key_auth description) resolved to the upstream fc769691 wording. dirty=true records that the vendored contract is not byte-identical to the upstream commit. swagger-extras.yml: upstream unchanged between base and target; vendored file (with UI corrections) kept as-is."
+    "note": "clean re-vendor at the PR #129 merge commit (maintenance drain contract; upstreams the 401/403/503 management responses and the 200 OperationResult mutation bodies), copied from a detached checkout. dirty=true covers exactly three deleted lines: the upstream file carries a stray duplicated '204': mapping key (empty first occurrence) on three operations - GET /config/params, GET /config/bgp/neigh/all, and GET /config/bgp/policy/definedsets/{defineset_type}/{type_name} - introduced by upstream commit 4313de06; go-swagger tolerates the duplicate (swagger diff reports the pair in sync) but the strict YAML parser behind gen:api rejects it, so the vendored copy drops the empty duplicate key and keeps the surviving '204': description: OK value. Reported upstream; returns to dirty=false once the gateway spec removes the duplicates. All prior UI-only contract corrections retired after a handler-source reconciliation of every difference: the 62 stale 204 overlays and 5 409 overlays describe behavior the handlers do not emit, and the schema/constraint overlays (UserSummary, api_key pattern, key_id required, burst_pct bounds, RawError extras envelopes) either moved upstream, were unbacked by handler code, or are tracked as gateway spec issues instead of local patches."
   },
   "oam": {
     "repo": "loxilb-oam",

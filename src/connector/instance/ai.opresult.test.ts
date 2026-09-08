@@ -88,6 +88,14 @@ describe('request_delete_apikey', () => {
 		const res: any = await request_delete_apikey(INST, 'k-1');
 		expect(res.status).toBe('confirmed');
 	});
+
+	it('200 + {result:"Success"} confirms — the current gateway delete envelope', async () => {
+		// The re-vendored contract answers config deletes with 200 + OperationResult
+		// instead of a bodyless 204; both shapes must stay confirmed.
+		mockFetch(JSON.stringify({result: 'Success'}), {status: 200});
+		const res: any = await request_delete_apikey(INST, 'k-1');
+		expect(res.status).toBe('confirmed');
+	});
 });
 
 describe('request_set_tenant_ratelimit', () => {
