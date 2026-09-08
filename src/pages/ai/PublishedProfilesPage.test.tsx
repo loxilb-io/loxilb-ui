@@ -10,7 +10,7 @@ import i18n from 'locales/i18n';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {RecoilRoot} from 'recoil';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
-import {cleanup, render, screen} from '@testing-library/react';
+import {cleanup, fireEvent, render, screen, within} from '@testing-library/react';
 import {ApiError} from 'connector/fetcher/fetcher_base';
 import {IModelProfileRegistry} from 'types/ai_gateway';
 import PublishedProfilesPage from './PublishedProfilesPage';
@@ -138,6 +138,56 @@ describe('failed reads (FR-05 vocabulary)', () => {
 		renderPage();
 		expect(screen.queryByText(LEGACY_EMPTY_COPY)).toBeNull();
 		expect(document.querySelector('.MuiDataGrid-root')).toBeNull();
+	});
+});
+
+describe('search filter', () => {
+	const searchBox = () => screen.getByRole('textbox', {name: /search profile, model, or alias/i});
+
+	it('narrows rows by base-model substring, case-insensitively', () => {
+		setQuery({data: REGISTRY});
+		renderPage();
+
+		fireEvent.change(searchBox(), {target: {value: 'QWEN3-32b'}});
+		expect(screen.getByText('qwen3-chat')).toBeTruthy();
+		expect(screen.queryByText('llama-both')).toBeNull();
+
+		fireEvent.change(searchBox(), {target: {value: ''}});
+		expect(screen.getByText('qwen3-chat')).toBeTruthy();
+		expect(screen.getByText('llama-both')).toBeTruthy();
+	});
+
+	it('matches served aliases, not just the profile and base-model names', () => {
+		setQuery({data: REGISTRY});
+		renderPage();
+
+		fireEvent.change(searchBox(), {target: {value: 'qwen-chat'}});
+		expect(screen.getByText('qwen3-chat')).toBeTruthy();
+		expect(screen.queryByText('llama-both')).toBeNull();
+	});
+
+	it('says the SEARCH matched nothing — never that the registry is empty', () => {
+		setQuery({data: REGISTRY});
+		renderPage();
+
+		fireEvent.change(searchBox(), {target: {value: 'no-such-model'}});
+		expect(screen.getByText('No profiles match the search')).toBeTruthy();
+		// Neither of the two "resource is empty" statements may appear: both
+		// would be claims about the registry, which is populated.
+		expect(screen.queryByText(LEGACY_EMPTY_COPY)).toBeNull();
+		expect(screen.queryByText(/entries yet/)).toBeNull();
+	});
+
+	it('hides the detail panel when the search hides the selected row', () => {
+		setQuery({data: REGISTRY});
+		renderPage();
+
+		const row = screen.getByText('qwen3-chat').closest('[role="row"]') as HTMLElement;
+		fireEvent.click(within(row).getByRole('checkbox'));
+		expect(screen.getByText('Profile Details')).toBeTruthy();
+
+		fireEvent.change(searchBox(), {target: {value: 'llama'}});
+		expect(screen.queryByText('Profile Details')).toBeNull();
 	});
 });
 

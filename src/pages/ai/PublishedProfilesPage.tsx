@@ -2,7 +2,8 @@
 // Imports
 //---------------------------------------------------------
 import {getStableHash} from 'common';
-import {Alert, Chip, Stack, Typography} from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import {Alert, Chip, InputAdornment, Stack, TextField, Tooltip, Typography} from '@mui/material';
 import SingleTextField from 'components/element/SingleTextField';
 import ValueBunch from 'components/element/ValueBunch';
 import LowerSection from 'components/layout/LowerSection';
@@ -72,9 +73,25 @@ export default function PublishedProfilesPage() {
 	const registry = data;
 	const profiles = React.useMemo(() => registry?.profiles ?? [], [registry]);
 
+	// Client-side search over the fields an operator knows a model by: the
+	// profile ID, the base model path, and any served alias. The registry is
+	// fetched whole (no server-side query surface, AC-12 read-only), so
+	// substring matching here is the entire search implementation.
+	const [search, set_search] = useState('');
+	const needle = search.trim().toLowerCase();
+	const visibleProfiles = React.useMemo(() => {
+		if (!needle) return profiles;
+		return profiles.filter(profile =>
+			[profile.profileId ?? '', profile.baseModel ?? '', ...(profile.allowedAliases ?? [])]
+				.some(field => field.toLowerCase().includes(needle)),
+		);
+	}, [profiles, needle]);
+
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
+	// Resolved against the FILTERED list: a selection whose row the search just
+	// hid must not keep a detail panel on screen that matches nothing visible.
 	const selectedProfile = selected_rows.length === 1
-		? profiles.find(profile => getStableHash(profile.profileId ?? '') === selected_rows[0]) ?? null
+		? visibleProfiles.find(profile => getStableHash(profile.profileId ?? '') === selected_rows[0]) ?? null
 		: null;
 
 	const handleRefresh = () => {
@@ -92,8 +109,26 @@ export default function PublishedProfilesPage() {
 				<Typography variant="body2" color="text.secondary">{t('Registry')}</Typography>
 				<Chip size="small" variant="outlined" label={`${t('Generation')} ${registry?.registryGeneration ?? '—'}`} />
 				{registry?.setDigest && (
-					<Chip size="small" variant="outlined" sx={{fontFamily: 'monospace'}} label={`${t('Set Digest')} ${registry.setDigest}`} />
+					/* Truncated by CSS only — the full digest must stay in the DOM:
+					   it is the registry's provenance identity, and E2E (MP-E2E,
+					   live-P7) locates it by its full text. */
+					<Tooltip title={<span style={{fontFamily: 'monospace'}}>{registry.setDigest}</span>}>
+						<Chip size="small" variant="outlined" sx={{fontFamily: 'monospace', maxWidth: 420}} label={`${t('Set Digest')} ${registry.setDigest}`} />
+					</Tooltip>
 				)}
+				<TextField
+					size="small"
+					value={search}
+					onChange={event => set_search(event.target.value)}
+					placeholder={t('Search profile, model, or alias')}
+					inputProps={{'aria-label': t('Search profile, model, or alias')}}
+					InputProps={{startAdornment: (
+						<InputAdornment position="start">
+							<SearchIcon fontSize="small" />
+						</InputAdornment>
+					)}}
+					sx={{ml: 'auto', width: 280}}
+				/>
 			</Stack>
 
 			{isLegacyEmpty && (
@@ -103,11 +138,15 @@ export default function PublishedProfilesPage() {
 			)}
 
 			<ModelProfileTable
-				data={profiles}
+				data={visibleProfiles}
 				selected_rows={selected_rows}
 				onChangeSelectedRows={set_selected_rows}
 				onRefresh={handleRefresh}
+				// isEmpty stays on the UNFILTERED list: a search that matches
+				// nothing is not an empty registry, and must not route the page
+				// into the empty state.
 				state={toPageState(profiles_query, {op: 'ai_model_profiles.list', isEmpty: () => profiles.length === 0})}
+				emptyLabel={needle && profiles.length > 0 ? t('No profiles match the search') : undefined}
 			/>
 
 			{selectedProfile && (

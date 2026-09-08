@@ -84,6 +84,11 @@ export default function DataTable(props: {
 	state?: PageDataState<unknown>;
 	error?: boolean;
 	defaultSort?: {field: string; sort: 'asc' | 'desc'};
+	// Overrides the zero-row overlay copy. Needed when the caller filters the
+	// rows itself (e.g. a page-level search): "No {{name}} entries yet" is a
+	// statement about the resource, and it becomes false the moment the empty
+	// grid is the filter's doing rather than the server's.
+	emptyLabel?: string;
 }) {
 	const {name, columns, rows, selected_rows, onChangeSelectedRows, hideMenuBar, hideCheckbox, hideIdColumn, disableSelect, onRefresh, state, error, defaultSort, deleteConfirm} = props;
 
@@ -391,7 +396,7 @@ export default function DataTable(props: {
 						// Before the first response there is nothing to report about
 						// the resource, so the overlay must not claim it is empty —
 						// that is a statement about the server made before it spoke.
-						emptyLabel={state?.kind === 'loading' ? t('Loading {{name}}...', {name}) : t('No {{name}} entries yet', {name})}
+						emptyLabel={state?.kind === 'loading' ? t('Loading {{name}}...', {name}) : props.emptyLabel ?? t('No {{name}} entries yet', {name})}
 					/>
 				</Box>
 			)}

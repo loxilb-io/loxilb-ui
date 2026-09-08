@@ -26,15 +26,20 @@ export default function ModelProfileTable(props: {
 	onChangeSelectedRows: any;
 	onRefresh?: () => void;
 	state?: PageDataState<unknown>;
+	emptyLabel?: string;
 }) {
-	const {data, selected_rows, onChangeSelectedRows, onRefresh, state} = props;
+	const {data, selected_rows, onChangeSelectedRows, onRefresh, state, emptyLabel} = props;
 
+	// Widths sized to the actual payloads: profile IDs run ~25-30 mono chars
+	// ("exaone35-78b-completions-v1"), base models are the longest field
+	// (HF org/repo paths) so they flex into the leftover viewport, and Gen is
+	// a small integer that must not cost a text column's worth of space.
 	const cols: IDataTableColumnDef[] = [
-		{data_key: 'profileId', header: 'Profile ID', width: 'medium', type: 'mono'},
-		{data_key: 'baseModel', header: 'Base Model', width: 'wide', type: 'mono'},
+		{data_key: 'profileId', header: 'Profile ID', width: 'super_wide', type: 'mono'},
+		{data_key: 'baseModel', header: 'Base Model', width: 'full', type: 'mono'},
 		{data_key: 'aliases', header: 'Aliases', width: 'medium', type: 'mono', tooltip: 'Additional served model names admitted by the alias policy (empty = base model only)'},
 		{data_key: 'apis', header: 'APIs', width: 'medium', tooltip: 'Request surfaces this profile serves'},
-		{data_key: 'gen', header: 'Gen', align: 'right', type: 'mono', tooltip: 'Registry generation this profile was published at'},
+		{data_key: 'gen', header: 'Gen', width: 'narrow', align: 'right', type: 'mono', tooltip: 'Registry generation this profile was published at'},
 		{data_key: 'tokenizer', header: 'Tokenizer', width: 'medium', type: 'mono', tooltip: 'sha256 of the pinned tokenizer artifact (short form; full digest in the detail panel)'},
 		{data_key: 'template', header: 'Chat Template', tooltip: 'Whether a chat template artifact is bound to this profile'},
 	];
@@ -59,6 +64,7 @@ export default function ModelProfileTable(props: {
 			onChangeSelectedRows={onChangeSelectedRows}
 			onRefresh={onRefresh}
 			state={state}
+			emptyLabel={emptyLabel}
 		/>
 	);
 }
