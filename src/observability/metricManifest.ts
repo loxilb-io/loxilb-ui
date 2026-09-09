@@ -13,11 +13,12 @@ import vendored from '../api/gen/metric-manifest.json';
 // upstream ships no version/generated-at field.
 //
 // Two upstream quirks this module normalizes, never leaks:
-// - `type: "desc"` marks HOW the generator found a family (a custom-collector
-//   Desc), not a Prometheus runtime type. Runtime types for those families
-//   are pinned in DESC_RUNTIME_TYPES; the extraction mechanism is kept in a
-//   separate `definitionMechanism` field. `desc` must never enter the runtime
-//   type union.
+// - The extraction mechanism and the Prometheus runtime type are separate
+//   concerns, and the UI keeps them in separate fields. Gateway 27680379
+//   started saying so upstream too (`definition_mechanism` alongside a real
+//   `type`); before it, a custom-collector family arrived as `type: "desc"`
+//   and the type had to be pinned in DESC_RUNTIME_TYPES. Both inputs are
+//   still accepted, and `desc` must never enter the runtime type union.
 // - Applicability is class+packaged, not a flavor field: only
 //   `class == "default" && packaged` families are on the gateway scrape.
 //   Look-alikes (`loxilb_kv_fetch_*` on the standalone KV agent,
@@ -38,7 +39,14 @@ export type ManifestClass =
 // requirement.
 export type RuntimeMetricType = 'counter' | 'gauge' | 'histogram' | 'summary' | 'untyped' | 'unknown';
 
-export type DefinitionMechanism = 'direct' | 'desc';
+// How the upstream generator found a family. Since gateway 27680379 the
+// manifest states this itself; before that it had to be inferred from a
+// `type: "desc"` sentinel, and 'direct' is what that inference produced for
+// everything else. Both vocabularies are kept so a manifest vendored from an
+// older gateway still loads.
+export type DefinitionMechanism = 'promauto' | 'manual' | 'desc' | 'direct';
+
+const DEFINITION_MECHANISMS: ReadonlySet<string> = new Set(['promauto', 'manual', 'desc', 'direct']);
 
 export interface IManifestFamily {
 	name: string;
@@ -83,7 +91,23 @@ const RUNTIME_TYPES: ReadonlySet<string> = new Set(['counter', 'gauge', 'histogr
 
 // Exported for fixture tests: future upstream tokens must degrade to the
 // 'unknown' deny sentinel, never widen the runtime union.
-export function normalizeManifestType(name: string, upstream: string): Pick<IManifestFamily, 'runtimeType' | 'rawType' | 'definitionMechanism'> {
+//
+// `mechanism` is the upstream `definition_mechanism` when the vendored
+// manifest carries one. When it does, `type` is already a real Prometheus
+// type even for custom-collector families, so DESC_RUNTIME_TYPES stops being
+// the source of truth and becomes a cross-check — disagreement means upstream
+// changed a collector's type under us, which is a contract change the UI has
+// to see rather than silently adopt.
+export function normalizeManifestType(name: string, upstream: string, mechanism?: string): Pick<IManifestFamily, 'runtimeType' | 'rawType' | 'definitionMechanism'> {
+	if (mechanism !== undefined) {
+		const declared: DefinitionMechanism = DEFINITION_MECHANISMS.has(mechanism) ? (mechanism as DefinitionMechanism) : 'direct';
+		if (!RUNTIME_TYPES.has(upstream)) return {runtimeType: 'unknown', rawType: upstream, definitionMechanism: declared};
+		const runtimeType = upstream as RuntimeMetricType;
+		const pinned = DESC_RUNTIME_TYPES[name];
+		// Deny on disagreement rather than trusting either side blindly.
+		if (pinned !== undefined && pinned !== runtimeType) return {runtimeType: 'unknown', rawType: upstream, definitionMechanism: declared};
+		return {runtimeType, definitionMechanism: declared};
+	}
 	if (RUNTIME_TYPES.has(upstream)) {
 		return {runtimeType: upstream as RuntimeMetricType, definitionMechanism: 'direct'};
 	}
@@ -102,6 +126,8 @@ interface IVendoredFamily {
 	class: string;
 	packaged: boolean;
 	type: string;
+	// Absent in manifests vendored before gateway 27680379.
+	definition_mechanism?: string;
 	labels: string[];
 	activation: string;
 	priority: string;
@@ -121,7 +147,7 @@ const families: ReadonlyMap<string, IManifestFamily> = new Map(
 		owner: f.owner,
 		class: f.class as ManifestClass,
 		packaged: f.packaged,
-		...normalizeManifestType(f.name, f.type),
+		...normalizeManifestType(f.name, f.type, f.definition_mechanism),
 		labels: f.labels,
 		activation: f.activation,
 		priority: f.priority,

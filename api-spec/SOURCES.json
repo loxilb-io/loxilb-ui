@@ -24,9 +24,9 @@
   "metricManifest": {
     "repo": "loxilb-inference-gateway",
     "path": "deploy/monitoring/manifest/metric-manifest.json",
-    "commit": "7f3520644ba3902d7e646c8ac34d18e8f1a70c74",
+    "commit": "27680379ec35197bfd33e7f51ea18570e70e8bd8",
     "dirty": false,
-    "vendoredAt": "2026-09-08T07:32:16Z",
+    "vendoredAt": "2026-09-09T08:03:28Z",
     "note": "vendored verbatim (byte-for-byte upstream); the UI version envelope is generated into src/api/gen/metric-manifest.json by scripts/gen-metric-manifest.mjs (npm run gen:api)"
   }
 }
