@@ -105,10 +105,11 @@ describe('gateway spec contract — models the UI depends on', () => {
 		expect(imported).toEqual(expect.objectContaining({type: 'string'}));
 		expect(imported.pattern).toBeUndefined();
 		const response = gateway.definitions.ApiKeyCreateResponse;
-		// raw_key is required but deliberately the empty string in import mode —
-		// the caller already holds the secret. Never pin minLength on it.
+		// raw_key is deliberately the empty string in import mode because the
+		// caller already holds the secret. key_id is the always-present management
+		// handle. Never pin minLength on the conditional secret.
 		expect(response.required).toContain('raw_key');
-		expect(response.required ?? []).not.toContain('key_id');
+		expect(response.required).toContain('key_id');
 		expect(response.properties.raw_key).toEqual(expect.objectContaining({type: 'string'}));
 		expect(response.properties.key_id).toEqual(expect.objectContaining({type: 'string'}));
 	});
@@ -167,12 +168,10 @@ describe('gateway spec contract — models the UI depends on', () => {
 	it('Gateway user reads stay password-free summaries', () => {
 		expect(propNames(gateway, gateway.definitions.UserSummary)).not.toContain('password');
 		expect(gateway.paths['/auth/users'].get.responses['200'].schema.items.$ref).toBe('#/definitions/UserSummary');
-		// The create 201 declares the User request model, but the handler actually
-		// writes 200 + {"result":"Success"} and never serializes a user object, so
-		// no password can leak (gateway spec defect reported upstream). The UI has
-		// no consumer of this route; pin the declaration so the next re-vendor
-		// surfaces any change.
-		expect(gateway.paths['/auth/users'].post.responses['201'].schema.$ref).toBe('#/definitions/User');
+		// Creation returns the operation result emitted by the handler, never the
+		// password-bearing request model.
+		expect(gateway.paths['/auth/users'].post.responses['200'].schema.$ref).toBe('#/definitions/OperationResult');
+		expect(gateway.paths['/auth/users'].post.responses['201']).toBeUndefined();
 	});
 
 	it('/sni/certificates GET keeps certificates/totalCertificates', () => {
@@ -189,27 +188,12 @@ describe('gateway spec contract — models the UI depends on', () => {
 
 describe('gateway management authentication response matrices', () => {
 	it('every protected main operation declares 401, 403, and 503', () => {
-		// The three operator routes new in the maintenance-drain contract break
-		// the convention the same change established everywhere else (reported
-		// upstream). Pinned to their current declared shape so the exemption
-		// self-destructs when the gateway spec catches up.
-		const upstreamGaps: Record<string, string[]> = {
-			'GET /status/ready': ['200', '401', '503'],
-			'GET /maintenance': ['200', '401', '500'],
-			'PUT /maintenance': ['200', '400', '401', '500'],
-			'GET /diagnostics': ['200', '401', '500'],
-		};
 		for (const [pathName, pathItem] of Object.entries<any>(gateway.paths)) {
 			for (const method of ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']) {
 				const operation = pathItem[method];
 				if (!operation) continue;
 				const security = operation.security === undefined ? gateway.security : operation.security;
 				if (!Array.isArray(security) || security.length === 0) continue;
-				const gap = upstreamGaps[`${method.toUpperCase()} ${pathName}`];
-				if (gap) {
-					expect(Object.keys(operation.responses).sort(), `${method.toUpperCase()} ${pathName} (pinned upstream gap)`).toEqual(gap);
-					continue;
-				}
 				expect(operation.responses, `${method.toUpperCase()} ${pathName}`).toEqual(
 					expect.objectContaining({'401': expect.anything(), '403': expect.anything(), '503': expect.anything()}),
 				);
@@ -222,14 +206,12 @@ describe('gateway management authentication response matrices', () => {
 	});
 
 	it('every raw extras operation declares bearer auth and 401/403/503', () => {
-		// The BearerAuth securityDefinitions block was a UI-only overlay the
-		// upstream extras never carried (swagger diff is blind to security
-		// metadata, so it survived earlier reconciliations unnoticed). The raw
-		// routes ARE bearer-authenticated by the server middleware — declaring
-		// it is an open upstream request; until then the per-op 401/403/503
-		// matrix below is the auth signal this contract pins.
-		expect(gatewayExtras.securityDefinitions).toBeUndefined();
-		expect(gatewayExtras.security).toBeUndefined();
+		expect(gatewayExtras.securityDefinitions).toEqual(
+			expect.objectContaining({
+				BearerAuth: expect.objectContaining({type: 'apiKey', name: 'Authorization', in: 'header'}),
+			}),
+		);
+		expect(gatewayExtras.security).toEqual([{BearerAuth: []}]);
 		for (const [pathName, pathItem] of Object.entries<any>(gatewayExtras.paths)) {
 			for (const method of ['get', 'post', 'put', 'patch', 'delete']) {
 				const operation = pathItem[method];
@@ -243,11 +225,10 @@ describe('gateway management authentication response matrices', () => {
 });
 
 describe('gateway spec hygiene', () => {
-	it('every operation the UI must not call is still flagged x-not-implemented', () => {
-		// If the gateway implements these later, this test reminds us to unflag
-		// them and (optionally) build the UI — see docs/API_COVERAGE_REPORT.md.
+	it('declares every metrics operation as implemented', () => {
 		for (const p of Object.keys(gateway.paths).filter(p => p.startsWith('/metrics/'))) {
-			expect(gateway.paths[p].get?.['x-not-implemented'], `${p} implemented? update flag + coverage report`).toBe(true);
+			expect(gateway.paths[p].get, `${p} GET disappeared`).toBeTruthy();
+			expect(gateway.paths[p].get?.['x-not-implemented'], `${p} GET regressed to a stub`).not.toBe(true);
 		}
 	});
 });
