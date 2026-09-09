@@ -114,7 +114,8 @@ export default function LoginPage() {
 				/>
 			</BackBoard>
 
-			<Container component="main" maxWidth="xs">
+			{/* The single <main> landmark lives in Layout's #outlet. */}
+			<Container maxWidth="xs">
 				<StyledPaper elevation={24}>
 					<Box component="img" src={Logo} alt="LoxiLB Logo" width="100px" height="100px" />
 

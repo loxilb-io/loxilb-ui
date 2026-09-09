@@ -269,7 +269,7 @@ export default function DataTable(props: {
 			    toolbarButton() locator hook. */}
 			{hideMenuBar === true ? null : (
 				<Box id="table-bar" width="100%" height="44px" display="flex" justifyContent="flex-end" alignItems="center" gap="4px" padding="0 8px" bgcolor="grey.100" borderRadius="8px 8px 0 0">
-					<Tooltip title={is_compact ? t('Switch to comfortable rows') : t('Switch to compact rows')} placement="top" arrow>
+					<Tooltip describeChild title={is_compact ? t('Switch to comfortable rows') : t('Switch to compact rows')} placement="top" arrow>
 						<span>
 							<Button
 								size="small"
@@ -285,7 +285,7 @@ export default function DataTable(props: {
 					</Tooltip>
 
 					{onRefresh && (
-						<Tooltip title={t('Refresh {{name}}', {name})} placement="top" arrow>
+						<Tooltip describeChild title={t('Refresh {{name}}', {name})} placement="top" arrow>
 							<span>
 								<Button size="small" color="inherit" aria-label={t('Refresh {{name}}', {name})} onClick={onRefresh} startIcon={<RefreshIcon />} sx={{color: 'text.secondary'}}>
 									{t('Refresh')}
@@ -295,7 +295,7 @@ export default function DataTable(props: {
 					)}
 
 					{onEdit && (
-						<Tooltip title={row_actions_ok ? t('Edit {{name}}', {name}) : guard_reason} placement="top" arrow>
+						<Tooltip describeChild title={row_actions_ok ? t('Edit {{name}}', {name}) : guard_reason} placement="top" arrow>
 							<span>
 								<Button size="small" color="inherit" aria-label={t('Edit {{name}}', {name})} {...guard_props(!row_actions_ok)} disabled={!row_actions_ok || selected_rows.length !== 1} onClick={onEdit} startIcon={<ModeIcon />} sx={{color: 'text.secondary'}}>
 									{t('Edit')}
@@ -305,7 +305,7 @@ export default function DataTable(props: {
 					)}
 
 					{onDelete && (
-						<Tooltip title={row_actions_ok ? (deleteConfirm?.tooltip ?? t('Delete {{name}}', {name})) : guard_reason} placement="top" arrow>
+						<Tooltip describeChild title={row_actions_ok ? (deleteConfirm?.tooltip ?? t('Delete {{name}}', {name})) : guard_reason} placement="top" arrow>
 							<span>
 								<Button
 									size="small"
@@ -323,7 +323,7 @@ export default function DataTable(props: {
 					)}
 
 					{onAdd && (
-						<Tooltip title={create_ok ? t('Add {{name}}', {name}) : guard_reason} placement="top" arrow>
+						<Tooltip describeChild title={create_ok ? t('Add {{name}}', {name}) : guard_reason} placement="top" arrow>
 							<span>
 								<Button size="small" variant="contained" color="primary" aria-label={t('Add {{name}}', {name})} {...guard_props(!create_ok)} disabled={!create_ok} onClick={onAdd} startIcon={<AddIcon />}>
 									{t('Add')}

@@ -64,7 +64,7 @@ export default function HealthStatusCard(props: HealthStatusCardProps) {
 			<Box display="flex" flexDirection="column" gap={2}>
 				{/* Health Percentage */}
 				<Box textAlign="center">
-					<Typography variant="h2" fontWeight="bold" color={reported ? `${currentStatus.color}.main` : 'text.disabled'}>
+					<Typography component="p" variant="h2" fontWeight="bold" color={reported ? `${currentStatus.color}.main` : 'text.disabled'}>
 						{reported ? `${healthData.healthPercentage}%` : t('N/A')}
 					</Typography>
 					<Chip

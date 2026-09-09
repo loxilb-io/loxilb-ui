@@ -71,9 +71,14 @@ export default function SideMenu(props: {open: boolean}) {
 			}}
 		>
 			{open ? (
+				/* component="nav": the menu tree is ListItemButtons (divs), which are
+				   not valid <ul> children (axe list rule) — and the menu is a
+				   navigation landmark anyway. The subheader follows as "div". */
 				<List
+					component="nav"
+					aria-label={t('Main menu')}
 					subheader={
-						<ListSubheader>
+						<ListSubheader component="div">
 							<Link to={instance_url} style={{textDecoration: 'none'}}>
 								<Box display="flex" alignItems="center" justifyContent="space-between" padding="14px 0" borderBottom="1px solid" borderColor="divider">
 									<Typography variant="h6" color="text.primary" noWrap>
@@ -91,7 +96,7 @@ export default function SideMenu(props: {open: boolean}) {
 					))}
 				</List>
 			) : (
-				<Box display="flex" flexDirection="column" alignItems="center" paddingTop="8px" gap="4px">
+				<Box component="nav" aria-label={t('Main menu')} display="flex" flexDirection="column" alignItems="center" paddingTop="8px" gap="4px">
 					<Tooltip title={t('Dashboard')} placement="right" arrow>
 						<IconButton component={Link} to={instance_url}>
 							<BarChartIcon />

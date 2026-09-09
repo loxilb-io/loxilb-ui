@@ -17,20 +17,20 @@ import {AxeBuilder} from '@axe-core/playwright';
 import {expect, test} from '../fixtures';
 import {activeInstance} from '../helpers/api';
 
+// Burned down 2026-09-08: aria-prohibited-attr, button-name, image-alt,
+// link-name, list, landmark-one-main, region, heading-order — fixed at the
+// source (Tooltip aria placement, icon-button labels, img alts, nav/list
+// structure, header/main/footer landmarks, figure headings demoted to <p>).
+// They must stay removed.
 const BASELINE_RULES = new Set([
-	'aria-prohibited-attr', // MUI Tooltip title on non-interactive elements
-	'button-name', // icon-only buttons in tables/toolbars
-	'color-contrast', // theme palette vs white text
-	'image-alt', // instance-card logo
-	'link-name', // icon-only footer/header links
-	'list', // MUI List renders non-li children
-	'landmark-one-main', // page shell predates landmark structure
-	'page-has-heading-one',
-	'region',
-	'heading-order',
+	'color-contrast', // theme palette vs white text (log-level chips) — needs a palette pass
+	'page-has-heading-one', // pages title with h5; an h1 needs an app-wide heading renumber
 ]);
 
 async function expectNoNewViolations(page: import('@playwright/test').Page) {
+	// The app shell (SetupHandler) briefly renders outside Layout's landmarks;
+	// analyzing that transient state false-fails landmark-one-main/region.
+	await expect(page.getByRole('main')).toBeVisible();
 	const results = await new AxeBuilder({page}).analyze();
 	const fresh = results.violations.filter(v => !BASELINE_RULES.has(v.id));
 	const report = fresh.map(v => `[${v.impact}] ${v.id}: ${v.help} → ${v.nodes.map(n => n.target.join(' ')).join('; ')}`).join('\n');
