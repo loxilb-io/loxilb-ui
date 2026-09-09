@@ -774,6 +774,7 @@
 	"Counter reset": "카운터 리셋",
 	"Denial events": "거부 이벤트",
 	"Denial events (counted at point of denial)": "거부 이벤트 (거부 시점 기준 집계)",
+	"Detecting instance capabilities…": "인스턴스 기능을 감지하는 중…",
 	"Diagnostics are unavailable right now; the metric panels above are still current.": "현재 진단 정보를 가져올 수 없습니다. 위의 메트릭 패널은 여전히 최신입니다.",
 	"Direction": "방향",
 	"Drop rate": "드롭 속도",

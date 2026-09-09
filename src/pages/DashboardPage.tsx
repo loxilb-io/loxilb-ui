@@ -184,7 +184,7 @@ export default function DashboardPage() {
 					variant="outlined"
 					onClick={() => refreshHealth()}
 					disabled={healthLoading}
-					startIcon={healthLoading ? <CircularProgress size={16} /> : <RefreshIcon />}
+					startIcon={healthLoading ? <CircularProgress size={16} aria-label={t('Loading...')} /> : <RefreshIcon />}
 				>
 					{healthLoading ? t('Checking...') : t('Recheck Health')}
 				</Button>
@@ -196,7 +196,7 @@ export default function DashboardPage() {
 	if (inst && health === null && healthLoading) {
 		return (
 			<Box width="100%" height="100%" display="flex" flexDirection="column" alignItems="center" justifyContent="center" padding="40px">
-				<CircularProgress size={48} sx={{ mb: 3 }} />
+				<CircularProgress size={48} sx={{ mb: 3 }} aria-label={t('Checking Instance Status...')} />
 				<Typography variant="h6" gutterBottom>
 					{t('Checking Instance Status...')}
 				</Typography>

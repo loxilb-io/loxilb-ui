@@ -56,7 +56,7 @@ function NotAvailableOnInstance() {
 function DetectingInstanceCapabilities() {
 	return (
 		<Stack data-testid="flavor-loading" alignItems="center" justifyContent="center" spacing={2} sx={{height: '100%', minHeight: 240, p: 4}}>
-			<CircularProgress size={32} />
+			<CircularProgress size={32} aria-label={t('Detecting instance capabilities…')} />
 			<Typography variant="body2" color="text.secondary">{t('Detecting instance capabilities…')}</Typography>
 		</Stack>
 	);

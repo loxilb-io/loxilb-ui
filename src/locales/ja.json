@@ -774,6 +774,7 @@
 	"Counter reset": "カウンターリセット",
 	"Denial events": "拒否イベント",
 	"Denial events (counted at point of denial)": "拒否イベント（拒否時点で集計）",
+	"Detecting instance capabilities…": "インスタンス機能を検出しています…",
 	"Diagnostics are unavailable right now; the metric panels above are still current.": "現在、診断情報を取得できません。上のメトリクスパネルは引き続き最新です。",
 	"Direction": "方向",
 	"Drop rate": "ドロップレート",

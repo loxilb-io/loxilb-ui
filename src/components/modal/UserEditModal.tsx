@@ -131,7 +131,7 @@ export default function UserEditModal(props: UserEditModalProps) {
 								color="secondary"
 								onClick={handleSubmit}
 								disabled={!isFormValid || loading}
-								startIcon={loading ? <CircularProgress size={16} /> : undefined}
+								startIcon={loading ? <CircularProgress size={16} aria-label={t('Loading...')} /> : undefined}
 								sx={{ minWidth: 120 }}
 							>
 								{loading
