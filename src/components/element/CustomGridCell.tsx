@@ -231,28 +231,31 @@ export const LogLevelCell = (params: any) => {
 	const parts = value.split('/');
 	const level = parts.length > 1 ? parts[1] : parts[0]; // If split by /, use second part, otherwise use first part
 	
-	type IconColor = 'success' | 'error' | 'info' | 'warning' | 'secondary' | 'primary' | 'disabled' | 'action' | 'inherit';
-
-	const color = ((): IconColor => {
+	// The level name is body2 — normal-size text, so its color must clear
+	// WCAG AA at 4.5:1. DEBUG used to render in `secondary` (brand orange,
+	// 3.18:1) and failed; it is the lowest severity, so muted gray both reads
+	// correctly and passes. The dot takes the same token as the text: one
+	// color per level, and the text always carries the meaning on its own.
+	const color = ((): string => {
 		switch (level?.toUpperCase()) {
 			case 'INFO':
-				return 'info';
+				return 'info.main';
 			case 'WARNING':
-				return 'warning';
+				return 'warning.main';
 			case 'ERROR':
-				return 'error';
+				return 'error.main';
 			case 'DEBUG':
-				return 'secondary';
+				return 'text.secondary';
 			case 'CRITICAL':
-				return 'error';
+				return 'error.main';
 			default:
-				return 'primary';
+				return 'primary.main';
 		}
 	})();
 
 	return (
 		<Box height="100%" display="flex" alignItems="center" gap="5px">
-			<CircleIcon color={color} sx={{fontSize: '16px'}} />
+			<CircleIcon sx={{color, fontSize: '16px'}} />
 			<Typography variant="body2" color={color}>
 				{level?.toUpperCase() || 'UNKNOWN'}
 			</Typography>

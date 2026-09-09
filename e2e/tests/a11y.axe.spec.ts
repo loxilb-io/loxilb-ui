@@ -21,9 +21,13 @@ import {activeInstance} from '../helpers/api';
 // link-name, list, landmark-one-main, region, heading-order — fixed at the
 // source (Tooltip aria placement, icon-button labels, img alts, nav/list
 // structure, header/main/footer landmarks, figure headings demoted to <p>).
-// They must stay removed.
+// Burned down 2026-09-09: color-contrast — fixed in the design tokens
+// (success/warning darkened to AA, brand orange given a dark label and an
+// AA text step) rather than per node, so pages built later inherit it.
+// src/theme.test.ts pins those ratios arithmetically, which is the check
+// this route pass cannot be: axe only sees the combinations that happen to
+// be on screen. Every rule listed above must stay removed.
 const BASELINE_RULES = new Set([
-	'color-contrast', // theme palette vs white text (log-level chips) — needs a palette pass
 	'page-has-heading-one', // pages title with h5; an h1 needs an app-wide heading renumber
 ]);
 
