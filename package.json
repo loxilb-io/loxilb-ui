@@ -107,6 +107,6 @@
 		"playwright": "^1.61.1",
 		"swagger2openapi": "^7.0.8",
 		"vite-tsconfig-paths": "^6.1.1",
-		"vitest": "^4.1.10"
+		"vitest": "^4.1.11"
 	}
 }
