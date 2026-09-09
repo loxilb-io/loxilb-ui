@@ -232,11 +232,9 @@ export default function LogConsole(props: LogConsoleProps) {
 				)}
 
 				<Tooltip title={t('Refresh Logs')}>
-					<span>
-						<Button onClick={handleRefresh} size="small" variant="outlined" sx={{minWidth: 40, px: 1}}>
-							<RefreshIcon fontSize="small" />
-						</Button>
-					</span>
+					<Button onClick={handleRefresh} aria-label={t('Refresh Logs')} size="small" variant="outlined" sx={{minWidth: 40, px: 1}}>
+						<RefreshIcon fontSize="small" />
+					</Button>
 				</Tooltip>
 
 				{filtersActive && (

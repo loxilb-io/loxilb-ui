@@ -123,7 +123,7 @@ export default function CriticalMetricCard(props: CriticalMetricCardProps) {
 		return (
 			<CardBase title={title}>
 				<Box display="flex" flexDirection="column" gap={0.5}>
-					<Typography variant="h4" fontWeight="bold" color="text.disabled">
+					<Typography component="p" variant="h4" fontWeight="bold" color="text.disabled">
 						{t('N/A')}
 					</Typography>
 					<Typography variant="caption" color="textSecondary">
@@ -144,7 +144,7 @@ export default function CriticalMetricCard(props: CriticalMetricCardProps) {
 				{/* Current Value and Status */}
 				<Box display="flex" justifyContent="space-between" alignItems="center">
 					<Box>
-						<AnimatedValue variant="h4" color={value_color} value={currentValue.toLocaleString()} />
+						<AnimatedValue component="p" variant="h4" color={value_color} value={currentValue.toLocaleString()} />
 						{description && (
 							<Typography variant="caption" color="textSecondary">
 								{description}
