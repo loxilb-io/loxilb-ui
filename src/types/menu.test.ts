@@ -9,9 +9,9 @@ import {MENU_LIST} from './menu';
 describe('Observability menu group', () => {
 	const group = MENU_LIST.find(m => m.path === 'observability');
 
-	it('exists with the three launch pages', () => {
+	it('exists with the six observability pages', () => {
 		expect(group).toBeDefined();
-		expect(group!.items!.map(i => i.path)).toEqual(['ai', 'workers', 'pdkv']);
+		expect(group!.items!.map(i => i.path)).toEqual(['ai', 'workers', 'pdkv', 'security', 'qos', 'persistence']);
 	});
 
 	it('is gated on the gateway flavor at the GROUP level', () => {

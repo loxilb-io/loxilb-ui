@@ -41,6 +41,13 @@ export const PREFERENCE_KEYS = {
 	 */
 	dashboardLayoutGateway: 'dashboard_layout_v3:inference-gateway',
 	dashboardLayoutLoxilb: 'dashboard_layout_v3:loxilb',
+	/**
+	 * Network cadence of the shared observability metrics snapshot, in
+	 * milliseconds. One global preference: every consumer shares ONE query,
+	 * so a per-page cadence cannot exist. Only the pinned option values are
+	 * trusted; anything else falls back to the honest default. JSON.
+	 */
+	observabilityCadence: 'observability_cadence_ms',
 } as const;
 
 export function dashboardLayoutKey(flavor: 'inference-gateway' | 'loxilb'): string {
@@ -68,4 +75,22 @@ export function isTableDensity(value: unknown): value is TableDensity {
 
 export function isBooleanPreference(value: unknown): value is boolean {
 	return typeof value === 'boolean';
+}
+
+//---------------------------------------------------------
+// Observability snapshot cadence
+//---------------------------------------------------------
+// The selectable refresh intervals for the shared metrics snapshot query.
+// Rates and freshness derive from the chosen interval (freshness thresholds
+// are 1.5×/3× of it; the rate gap tolerance is 3.5×), so every value here is
+// honest by construction — a faster DISPLAY tick is presentation smoothing
+// and is not what this preference controls.
+
+export const OBSERVABILITY_CADENCE_OPTIONS_MS = [5_000, 10_000, 30_000, 60_000] as const;
+export type ObservabilityCadenceMs = (typeof OBSERVABILITY_CADENCE_OPTIONS_MS)[number];
+
+export const DEFAULT_OBSERVABILITY_CADENCE_MS: ObservabilityCadenceMs = 10_000;
+
+export function isObservabilityCadence(value: unknown): value is ObservabilityCadenceMs {
+	return typeof value === 'number' && (OBSERVABILITY_CADENCE_OPTIONS_MS as readonly number[]).includes(value);
 }
