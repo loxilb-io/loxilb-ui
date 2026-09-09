@@ -38,7 +38,7 @@ export default function ObservabilityStateFrame({state, name, onRetry, children}
 	switch (state.kind) {
 		case 'loading':
 			return (
-				<Box role="status" aria-label={t('Loading {{name}}', {name})}>
+				<Box role="status" aria-label={t('Loading {{name}}...', {name})}>
 					<Skeleton variant="rounded" width="40%" height={24} sx={{mb: 1}} />
 					<Skeleton variant="rounded" width="100%" height={120} />
 				</Box>

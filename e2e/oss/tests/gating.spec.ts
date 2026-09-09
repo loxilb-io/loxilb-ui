@@ -75,8 +75,9 @@ test.describe('@loxilb flavor gating — plain upstream loxilb instance', () => 
 			await expect(menu.getByText(group, {exact: true}), `${group} group`).toBeVisible();
 		}
 		// Gateway-only groups collapse away entirely (AI Gateway, IPsec VPN,
-		// Security via both children gated, Maintenance via Snapshots).
-		for (const group of ['AI Gateway', 'IPsec VPN', 'Security', 'Maintenance']) {
+		// Security via both children gated, Maintenance via Snapshots,
+		// Observability via its group-level flavor gate).
+		for (const group of ['AI Gateway', 'IPsec VPN', 'Security', 'Maintenance', 'Observability']) {
 			await expect(menu.getByText(group, {exact: true}), `${group} group`).toHaveCount(0);
 		}
 		// Leaves inside mixed groups.
@@ -90,7 +91,7 @@ test.describe('@loxilb flavor gating — plain upstream loxilb instance', () => 
 
 	test('route: direct hit on a gated page shows the friendly state, not /404 or an error banner', async ({page, consoleGuard}) => {
 		const guard = await attachContractGuard(page);
-		for (const route of ['ai/apikey', 'ai/profiles', 'ipsec/tunnels', 'security/ipfilter', 'network/ip6', 'maintenance/snapshots', 'traffic/sni-certs']) {
+		for (const route of ['ai/apikey', 'ai/profiles', 'ipsec/tunnels', 'security/ipfilter', 'network/ip6', 'maintenance/snapshots', 'traffic/sni-certs', 'observability/ai', 'observability/workers', 'observability/pdkv', 'observability/security', 'observability/qos', 'observability/persistence']) {
 			await page.goto(`instance/${route}?name=${instName}`, {waitUntil: 'domcontentloaded'});
 			await waitForLoxilbChip(page);
 			await expect(page.getByText('Not available on this instance'), route).toBeVisible({timeout: 15_000});

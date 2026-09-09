@@ -1,7 +1,55 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
+import {InstanceFlavor} from 'api/capabilities';
 import {Layout} from 'react-grid-layout';
+import {isEntryApplicable, ObservabilityEntryId} from 'observability/capabilityRegistry';
+
+//---------------------------------------------------------
+// Registry-driven dashboard composition (UI-MON-007)
+//---------------------------------------------------------
+// The gateway summary panels exist on the dashboard only when their registry
+// entries are applicable — never because data happened to arrive. Card keys
+// are the layout identity, so they are pinned literals here; the geometry
+// keeps every flavor's default GAP-FREE (the grid runs compaction-off, see
+// DashboardPage).
+
+export interface IGwSummaryCard {
+	key: string;
+	entry: ObservabilityEntryId;
+}
+
+export const GW_SUMMARY_CARDS: readonly IGwSummaryCard[] = [
+	{key: 'gw-ai-events', entry: 'dashboard.gwAiEvents'},
+	{key: 'gw-active-streams', entry: 'dashboard.gwActiveStreams'},
+	{key: 'gw-worker-freshness', entry: 'dashboard.gwWorkerFreshness'},
+	{key: 'gw-kv-exact', entry: 'dashboard.gwKvExactNonReady'},
+	{key: 'gw-persistence', entry: 'dashboard.gwPersistenceFailures'},
+];
+
+// The base layout ends at y 6.3 (system-log: y 4.3 + h 2); the gateway rows
+// continue exactly there so the default stays gap-free by construction.
+const GW_SUMMARY_LAYOUT: readonly Layout[] = [
+	{i: 'gw-ai-events', x: 0, y: 6.3, w: 4, h: 1.3},
+	{i: 'gw-active-streams', x: 4, y: 6.3, w: 4, h: 1.3},
+	{i: 'gw-worker-freshness', x: 8, y: 6.3, w: 4, h: 1.3},
+	{i: 'gw-kv-exact', x: 0, y: 7.6, w: 6, h: 1.3},
+	{i: 'gw-persistence', x: 6, y: 7.6, w: 6, h: 1.3},
+];
+
+export function applicableGwSummaryCards(flavor: InstanceFlavor | undefined): readonly IGwSummaryCard[] {
+	return GW_SUMMARY_CARDS.filter(c => flavor !== undefined && isEntryApplicable(c.entry, flavor));
+}
+
+/**
+ * The flavor's gap-free default layout: the shared base plus one layout item
+ * per applicable gateway summary card. An unresolved flavor gets the base
+ * only — the narrow set, consistent with the fail-narrow capability surface.
+ */
+export function defaultLayoutFor(base: readonly Layout[], flavor: InstanceFlavor | undefined): Layout[] {
+	const applicable = new Set(applicableGwSummaryCards(flavor).map(c => c.key));
+	return [...base, ...GW_SUMMARY_LAYOUT.filter(l => applicable.has(l.i))];
+}
 
 //---------------------------------------------------------
 // Dashboard layout reconciliation (UI-MON-006, layout v2→v3)

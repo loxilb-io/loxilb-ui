@@ -57,6 +57,47 @@ describe('axe: language selector', () => {
 	});
 });
 
+describe('axe: observability building blocks', () => {
+	// The shared blocks every observability page (UI-MON-007..014) renders
+	// through. A violation here would multiply across all six pages.
+	it('state frame terminal states have no violations', async () => {
+		const ObservabilityStateFrame = (await import('components/observability/ObservabilityStateFrame')).default;
+		const states = [
+			{kind: 'loading'} as const,
+			{kind: 'not-applicable'} as const,
+			{kind: 'no-data'} as const,
+			{kind: 'disabled', reasonKey: 'This feature is disabled on the instance.'} as const,
+			{
+				kind: 'denied',
+				failure: {status: 'denied' as const, code: 'observability.metrics.denied', localeKey: 'You are not authorized to read {{name}}.', retryable: false},
+			} as const,
+		];
+		for (const state of states) {
+			cleanup();
+			const {container} = render(
+				<ObservabilityStateFrame state={state} name="Test panel" onRetry={() => undefined}>
+					<div />
+				</ObservabilityStateFrame>,
+			);
+			await expectNoViolations(container);
+		}
+	});
+
+	it('freshness badge and panel scaffolding have no violations', async () => {
+		const FreshnessBadge = (await import('components/observability/FreshnessBadge')).default;
+		const {PanelPaper, StatRow} = await import('pages/observability/common');
+		const {container} = render(
+			<>
+				<FreshnessBadge receivedAtMs={Date.now() - 1000} cadenceMs={10_000} />
+				<PanelPaper title="Connection protection">
+					<StatRow label="SYN blocked" value="1.5/s" />
+				</PanelPaper>
+			</>,
+		);
+		await expectNoViolations(container);
+	});
+});
+
 describe('axe gate self-test', () => {
 	it('detects an injected violation (gate is red-capable)', async () => {
 		// An image without alt text is a bread-and-butter axe finding; if this

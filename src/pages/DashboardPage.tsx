@@ -5,7 +5,14 @@ import {Box, Button, Paper, Typography} from '@mui/material';
 import {get_local_storage, save_local_storage} from 'common';
 import {useInstanceCapabilities} from 'hooks/query/flavorHook';
 import {dashboardLayoutKey, PREFERENCE_KEYS} from 'preferences';
-import {reconcileDashboardLayout} from './dashboardLayout';
+import {applicableGwSummaryCards, defaultLayoutFor, reconcileDashboardLayout} from './dashboardLayout';
+import {
+	GwActiveStreamsCard,
+	GwAiEventsCard,
+	GwKvExactCard,
+	GwPersistenceCard,
+	GwWorkerFreshnessCard,
+} from 'components/card/GatewaySummaryCards';
 import RealTimeRateCard from 'components/card/RealTimeRateCard';
 import CriticalMetricCard from 'components/card/CriticalMetricCard';
 import HealthStatusCard from 'components/card/HealthStatusCard';
@@ -54,7 +61,25 @@ export default function DashboardPage() {
 	const {health, isLoading: healthLoading, refetch: refreshHealth} = useInstanceHealth(inst, true);
 	const isInstanceDown = health?.isHealthy === false;
 
+	// While the /version probe is unresolved (or no instance is selected) the
+	// layout must be neither read nor persisted — a denied or in-flight probe
+	// must not adopt the wrong flavor's saved geometry, and a save made in
+	// that window would land under a flavor the operator never chose. The
+	// same resolution drives the card set: gateway summary panels mount only
+	// on a PROVEN gateway flavor (registry-checked), so no gateway-only
+	// telemetry request can leave for an OSS or unresolved instance.
+	const capabilities = useInstanceCapabilities();
+	const resolvedFlavor = capabilities.resolved ? capabilities.flavor : undefined;
+
 	// RealTimeRateCard components will handle their own metrics fetching and time series accumulation
+
+	const GW_CARD_COMPONENTS: Record<string, JSX.Element> = {
+		'gw-ai-events': <GwAiEventsCard instance={inst} />,
+		'gw-active-streams': <GwActiveStreamsCard instance={inst} />,
+		'gw-worker-freshness': <GwWorkerFreshnessCard instance={inst} />,
+		'gw-kv-exact': <GwKvExactCard instance={inst} />,
+		'gw-persistence': <GwPersistenceCard instance={inst} />,
+	};
 
 	const CARD_CONFIG = [
 		// === SYSTEM OVERVIEW ===
@@ -75,6 +100,9 @@ export default function DashboardPage() {
 
 		// === SYSTEM LOGS AND DIAGNOSTICS ===
 		{key: 'system-log', component: <SystemLogCard />},
+
+		// === GATEWAY SUMMARY (registry-composed, gateway flavor only) ===
+		...applicableGwSummaryCards(resolvedFlavor).map(c => ({key: c.key, component: GW_CARD_COMPONENTS[c.key]})),
 	];
 
 	// Rows are contiguous with NO vertical gaps: row 2 (h 1.3) ends at y 3.3, the
@@ -103,12 +131,10 @@ export default function DashboardPage() {
 
 	const [layout, set_layout] = useState<Layout[] | null>(null);
 
-	// While the /version probe is unresolved (or no instance is selected) the
-	// layout must be neither read nor persisted — a denied or in-flight probe
-	// must not adopt the wrong flavor's saved geometry, and a save made in
-	// that window would land under a flavor the operator never chose.
-	const capabilities = useInstanceCapabilities();
-	const storageKey = capabilities.resolved && capabilities.flavor ? dashboardLayoutKey(capabilities.flavor) : null;
+	const storageKey = resolvedFlavor ? dashboardLayoutKey(resolvedFlavor) : null;
+	// The flavor's gap-free default: shared base plus the registry-applicable
+	// gateway summary rows.
+	const FLAVOR_DEFAULT_LAYOUT = defaultLayoutFor(DEFAULT_LAYOUT, resolvedFlavor);
 
 	const handleLayoutChange = (newLayout: any) => {
 		set_layout(newLayout);
@@ -116,20 +142,23 @@ export default function DashboardPage() {
 	};
 
 	const handleClick = () => {
-		set_layout(DEFAULT_LAYOUT);
-		if (storageKey) save_local_storage(storageKey, JSON.stringify(DEFAULT_LAYOUT));
+		set_layout(FLAVOR_DEFAULT_LAYOUT);
+		if (storageKey) save_local_storage(storageKey, JSON.stringify(FLAVOR_DEFAULT_LAYOUT));
 	};
 
 	useEffect(() => {
 		if (!storageKey) {
-			// Unresolved flavor: render the in-memory defaults, persist nothing.
-			set_layout(DEFAULT_LAYOUT);
+			// Unresolved flavor: render the in-memory base defaults (the narrow
+			// set), persist nothing.
+			set_layout(defaultLayoutFor(DEFAULT_LAYOUT, undefined));
 			return;
 		}
 		// v3 for this flavor, else the global v2 as a read-only migration
-		// source, reconciled against the current card key set either way.
+		// source, reconciled against the current card key set either way (the
+		// key-set reconciliation is also what folds the gateway summary cards
+		// into a layout saved before they existed — amended, never reset).
 		const stored = readStoredLayout(storageKey) ?? readStoredLayout(LEGACY_LAYOUT_KEY);
-		const {layout: reconciled, changed} = reconcileDashboardLayout(stored, DEFAULT_LAYOUT);
+		const {layout: reconciled, changed} = reconcileDashboardLayout(stored, defaultLayoutFor(DEFAULT_LAYOUT, resolvedFlavor));
 		set_layout(reconciled);
 		// Persist only when reconciliation amended something or a v2 layout
 		// was migrated — an untouched default needs no stored copy, and the v2
@@ -138,7 +167,7 @@ export default function DashboardPage() {
 			save_local_storage(storageKey, JSON.stringify(reconciled));
 		}
 	// eslint-disable-next-line react-hooks/exhaustive-deps -- DEFAULT_LAYOUT is a stable per-render literal; re-running on its identity would re-read storage every render
-	}, [storageKey]);
+	}, [storageKey, resolvedFlavor]);
 
 	// Show error state if instance is down
 	if (isInstanceDown) {

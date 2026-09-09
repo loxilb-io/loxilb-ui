@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import {parseExposition} from './parser';
-import {estimateQuantile, extractHistogramSeries, HistogramResult} from './histogram';
+import {estimateQuantile, extractHistogramSeries, HistogramResult, mergeHistogramSeries} from './histogram';
 
 function familyOf(text: string, name: string) {
 	const f = parseExposition(text).families.get(name);
@@ -54,6 +54,57 @@ describe('extractHistogramSeries', () => {
 			'h',
 		);
 		expect(extractHistogramSeries(f)).toEqual({kind: 'invalid', reason: 'count-mismatch'});
+	});
+});
+
+describe('mergeHistogramSeries — explicit cross-series aggregation', () => {
+	it('merges every grouping-label series by summing per-bound counts', () => {
+		const f = familyOf([
+			'# TYPE h histogram',
+			'h_bucket{model="a",le="1"} 2',
+			'h_bucket{model="a",le="+Inf"} 4',
+			'h_sum{model="a"} 3.5',
+			'h_count{model="a"} 4',
+			'h_bucket{model="b",le="1"} 10',
+			'h_bucket{model="b",le="+Inf"} 10',
+			'h_sum{model="b"} 1.5',
+			'h_count{model="b"} 10',
+		].join('\n'), 'h');
+		const r = mergeHistogramSeries(f);
+		expect(r.kind).toBe('ok');
+		const s = (r as Extract<HistogramResult, {kind: 'ok'}>).series;
+		expect(s.buckets).toEqual([
+			{le: 1, cumulative: 12},
+			{le: Infinity, cumulative: 14},
+		]);
+		expect(s.count).toBe(14);
+		expect(s.sum).toBe(5);
+	});
+
+	it('divergent bucket ladders are typed invalid, never a partial merge', () => {
+		const f = familyOf([
+			'# TYPE h histogram',
+			'h_bucket{model="a",le="1"} 2',
+			'h_bucket{model="a",le="+Inf"} 4',
+			'h_bucket{model="b",le="2"} 1',
+			'h_bucket{model="b",le="+Inf"} 1',
+		].join('\n'), 'h');
+		expect(mergeHistogramSeries(f)).toEqual({kind: 'invalid', reason: 'ladder-mismatch'});
+	});
+
+	it('one invalid constituent series invalidates the merge', () => {
+		const f = familyOf([
+			'# TYPE h histogram',
+			'h_bucket{model="a",le="1"} 5',
+			'h_bucket{model="a",le="2"} 3', // non-monotonic
+			'h_bucket{model="a",le="+Inf"} 6',
+		].join('\n'), 'h');
+		expect(mergeHistogramSeries(f)).toEqual({kind: 'invalid', reason: 'non-monotonic'});
+	});
+
+	it('an empty family has no buckets to merge', () => {
+		const f = familyOf('# TYPE h histogram', 'h');
+		expect(mergeHistogramSeries(f)).toEqual({kind: 'invalid', reason: 'no-buckets'});
 	});
 });
 

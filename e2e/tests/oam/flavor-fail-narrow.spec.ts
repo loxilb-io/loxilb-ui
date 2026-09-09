@@ -85,7 +85,7 @@ function allowProbeNoise(consoleGuard: {allow(p: RegExp): void}) {
 // are in the drawer; in every non-resolved situation they must be absent —
 // not disabled, absent — because offering a control that will 404 (or worse,
 // write outside the OSS contract) is the defect.
-const GATEWAY_ONLY_GROUPS = ['AI Gateway', 'IPsec VPN'];
+const GATEWAY_ONLY_GROUPS = ['AI Gateway', 'IPsec VPN', 'Observability'];
 // Shared groups, present on both flavors. They must survive fail-narrow:
 // answering "narrowest set" must not degrade into "no product at all".
 const SHARED_GROUPS = ['Traffic', 'Networks', 'Status'];

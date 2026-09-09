@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import {Layout} from 'react-grid-layout';
-import {reconcileDashboardLayout} from './dashboardLayout';
+import {applicableGwSummaryCards, defaultLayoutFor, GW_SUMMARY_CARDS, reconcileDashboardLayout} from './dashboardLayout';
 
 // The current gap-free default shape in miniature: two rows, then a
 // full-width row — same construction rules as DashboardPage.
@@ -92,5 +92,88 @@ describe('reconcileDashboardLayout', () => {
 		const second = reconcileDashboardLayout(first.layout, DEFAULTS);
 		expect(second.changed).toBe(false);
 		expect(second.layout).toEqual(first.layout);
+	});
+});
+
+//---------------------------------------------------------
+// Registry-driven dashboard composition (UI-MON-007)
+//---------------------------------------------------------
+// Exercised against the REAL registry/manifest: the gateway summary set is
+// applicable exactly on the resolved gateway flavor, and every flavor's
+// default layout is gap-free and collision-free by construction.
+
+function overlapsAny(items: readonly Layout[]): string | null {
+	for (let i = 0; i < items.length; i++) {
+		for (let j = i + 1; j < items.length; j++) {
+			if (overlaps(items[i], items[j])) return `${items[i].i} overlaps ${items[j].i}`;
+		}
+	}
+	return null;
+}
+
+function gapFree(items: readonly Layout[]): boolean {
+	// Contiguous rows: sorted by y, every row's start equals some earlier
+	// row's end (or 0). Fractional heights make exact equality the point.
+	const starts = [...new Set(items.map(l => l.y))].sort((a, b) => a - b);
+	const ends = new Set(items.map(l => l.y + l.h));
+	return starts.every(y => y === 0 || ends.has(y));
+}
+
+describe('gateway summary composition', () => {
+	it('every summary card is registry-applicable on the gateway and absent on loxilb', () => {
+		expect(applicableGwSummaryCards('inference-gateway').map(c => c.key)).toEqual(GW_SUMMARY_CARDS.map(c => c.key));
+		expect(applicableGwSummaryCards('loxilb')).toEqual([]);
+		// Unresolved flavor answers the narrow set — no gateway card may mount
+		// before the /version probe proves the flavor.
+		expect(applicableGwSummaryCards(undefined)).toEqual([]);
+	});
+
+	it('the gateway default layout appends the summary rows gap-free and collision-free', () => {
+		const gw = defaultLayoutFor(DEFAULTS, 'inference-gateway');
+		expect(gw.map(l => l.i)).toEqual([...DEFAULTS.map(l => l.i), ...GW_SUMMARY_CARDS.map(c => c.key)]);
+		expect(overlapsAny(gw)).toBeNull();
+	});
+
+	it('the real base + gateway geometry is gap-free (compaction-off contract)', () => {
+		// The production base rows end at y 6.3 and the summary rows start
+		// exactly there — mirrored here with the real GW row geometry.
+		const base: Layout[] = [
+			{i: 'system-usage', x: 0, y: 0, w: 8, h: 2},
+			{i: 'ha', x: 8, y: 0, w: 4, h: 2},
+			{i: 'connection-flows', x: 0, y: 2, w: 4, h: 1.3},
+			{i: 'health-status', x: 4, y: 2, w: 4, h: 1.3},
+			{i: 'lb-rules', x: 8, y: 2, w: 4, h: 1.3},
+			{i: 'total-traffic-rate', x: 0, y: 3.3, w: 4, h: 1},
+			{i: 'total-packet-rate', x: 4, y: 3.3, w: 4, h: 1},
+			{i: 'total-error-rate', x: 8, y: 3.3, w: 4, h: 1},
+			{i: 'system-log', x: 0, y: 4.3, w: 12, h: 2},
+		];
+		const gw = defaultLayoutFor(base, 'inference-gateway');
+		expect(overlapsAny(gw)).toBeNull();
+		expect(gapFree(gw)).toBe(true);
+	});
+
+	it('the loxilb and unresolved defaults are exactly the base', () => {
+		expect(defaultLayoutFor(DEFAULTS, 'loxilb')).toEqual(DEFAULTS);
+		expect(defaultLayoutFor(DEFAULTS, undefined)).toEqual(DEFAULTS);
+	});
+
+	it('a gateway layout saved before the summary cards existed is amended, not reset', () => {
+		// The composed default is what reconciliation runs against, so an old
+		// base-only save gains the summary cards below its content. The saved
+		// positions differ from the defaults (a and b swapped) to prove they
+		// survive verbatim.
+		const savedNineCards = defaultLayoutFor(DEFAULTS, 'loxilb').map(l =>
+			l.i === 'a' ? {...l, x: 6} : l.i === 'b' ? {...l, x: 0} : l,
+		);
+		const r = reconcileDashboardLayout(savedNineCards, defaultLayoutFor(DEFAULTS, 'inference-gateway'));
+		expect(r.changed).toBe(true);
+		for (const saved of savedNineCards) {
+			expect(r.layout.find(l => l.i === saved.i)).toEqual(saved);
+		}
+		for (const c of GW_SUMMARY_CARDS) {
+			expect(r.layout.some(l => l.i === c.key), c.key).toBe(true);
+		}
+		expect(overlapsAny(r.layout)).toBeNull();
 	});
 });
