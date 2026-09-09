@@ -5,7 +5,7 @@ import {Box, Button, Paper, Typography} from '@mui/material';
 import {get_local_storage, save_local_storage} from 'common';
 import {useInstanceCapabilities} from 'hooks/query/flavorHook';
 import {dashboardLayoutKey, PREFERENCE_KEYS} from 'preferences';
-import {applicableGwSummaryCards, defaultLayoutFor, reconcileDashboardLayout} from './dashboardLayout';
+import {applicableGwSummaryCards, BASE_DASHBOARD_LAYOUT, defaultLayoutFor, reconcileDashboardLayout} from './dashboardLayout';
 import {
 	GwActiveStreamsCard,
 	GwAiEventsCard,
@@ -105,29 +105,10 @@ export default function DashboardPage() {
 		...applicableGwSummaryCards(resolvedFlavor).map(c => ({key: c.key, component: GW_CARD_COMPONENTS[c.key]})),
 	];
 
-	// Rows are contiguous with NO vertical gaps: row 2 (h 1.3) ends at y 3.3, the
-	// rate row (h 1) ends at 4.3, the log row starts there. A gappy layout used to
-	// let react-grid-layout's vertical compaction reflow the full-width log card
-	// above the rate cards; the grid below now runs with compaction OFF, so items
-	// stay exactly where they're placed and this must already be gap-free.
-	const DEFAULT_LAYOUT: Layout[] = [
-		// === ROW 1: SYSTEM OVERVIEW ===
-		{i: 'system-usage', x: 0, y: 0, w: 8, h: 2}, // System usage metrics
-		{i: 'ha', x: 8, y: 0, w: 4, h: 2}, // High Availability status
-
-		// === ROW 2: CRITICAL METRICS ===
-		{i: 'connection-flows', x: 0, y: 2, w: 4, h: 1.3}, // Connection tracking
-		{i: 'health-status', x: 4, y: 2, w: 4, h: 1.3}, // Endpoint health
-		{i: 'lb-rules', x: 8, y: 2, w: 4, h: 1.3}, // Load balancer rules
-
-		// === ROW 3: REAL-TIME TRAFFIC MONITORING ===
-		{i: 'total-traffic-rate', x: 0, y: 3.3, w: 4, h: 1}, // Total traffic rate
-		{i: 'total-packet-rate', x: 4, y: 3.3, w: 4, h: 1}, // Total packet rate
-		{i: 'total-error-rate', x: 8, y: 3.3, w: 4, h: 1}, // Total error rate
-
-		// === ROW 4: SYSTEM LOGS AND DIAGNOSTICS ===
-		{i: 'system-log', x: 0, y: 4.3, w: 12, h: 2}, // System logs
-	];
+	// Rows are contiguous with NO vertical gaps (the geometry, and the reason it
+	// must stay gap-free, live in dashboardLayout.ts next to the gateway rows
+	// that chain off its end).
+	const DEFAULT_LAYOUT = BASE_DASHBOARD_LAYOUT as Layout[];
 
 	const [layout, set_layout] = useState<Layout[] | null>(null);
 

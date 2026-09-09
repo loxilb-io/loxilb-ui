@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import {Layout} from 'react-grid-layout';
-import {applicableGwSummaryCards, defaultLayoutFor, GW_SUMMARY_CARDS, reconcileDashboardLayout} from './dashboardLayout';
+import {applicableGwSummaryCards, BASE_DASHBOARD_LAYOUT, defaultLayoutFor, GW_SUMMARY_CARDS, reconcileDashboardLayout} from './dashboardLayout';
 
 // The current gap-free default shape in miniature: two rows, then a
 // full-width row — same construction rules as DashboardPage.
@@ -135,22 +135,21 @@ describe('gateway summary composition', () => {
 	});
 
 	it('the real base + gateway geometry is gap-free (compaction-off contract)', () => {
-		// The production base rows end at y 6.3 and the summary rows start
-		// exactly there — mirrored here with the real GW row geometry.
-		const base: Layout[] = [
-			{i: 'system-usage', x: 0, y: 0, w: 8, h: 2},
-			{i: 'ha', x: 8, y: 0, w: 4, h: 2},
-			{i: 'connection-flows', x: 0, y: 2, w: 4, h: 1.3},
-			{i: 'health-status', x: 4, y: 2, w: 4, h: 1.3},
-			{i: 'lb-rules', x: 8, y: 2, w: 4, h: 1.3},
-			{i: 'total-traffic-rate', x: 0, y: 3.3, w: 4, h: 1},
-			{i: 'total-packet-rate', x: 4, y: 3.3, w: 4, h: 1},
-			{i: 'total-error-rate', x: 8, y: 3.3, w: 4, h: 1},
-			{i: 'system-log', x: 0, y: 4.3, w: 12, h: 2},
-		];
-		const gw = defaultLayoutFor(base, 'inference-gateway');
+		// The SHIPPED base, not a copy of it. This test previously mirrored the
+		// production rows by hand and therefore only checked that the copy was
+		// self-consistent — it stayed green through a base-geometry change that
+		// left a gap in the real dashboard.
+		const gw = defaultLayoutFor(BASE_DASHBOARD_LAYOUT, 'inference-gateway');
 		expect(overlapsAny(gw)).toBeNull();
 		expect(gapFree(gw)).toBe(true);
+	});
+
+	it('the shipped base is itself gap-free on every flavor', () => {
+		for (const flavor of ['loxilb', 'inference-gateway', undefined] as const) {
+			const layout = defaultLayoutFor(BASE_DASHBOARD_LAYOUT, flavor);
+			expect(overlapsAny(layout), `${flavor} overlap`).toBeNull();
+			expect(gapFree(layout), `${flavor} gap`).toBe(true);
+		}
 	});
 
 	it('the loxilb and unresolved defaults are exactly the base', () => {
