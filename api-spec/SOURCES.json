@@ -1,11 +1,11 @@
 {
-  "vendoredAt": "2026-09-08T03:13:31Z",
+  "vendoredAt": "2026-09-09T04:56:26Z",
   "gateway": {
     "repo": "loxilb-inference-gateway",
     "path": "api/swagger.yml + api/swagger-extras.yml",
-    "commit": "3546adc57c9570218e41e5def19cf26018716dcc",
-    "dirty": true,
-    "note": "clean re-vendor at the PR #129 merge commit (maintenance drain contract; upstreams the 401/403/503 management responses and the 200 OperationResult mutation bodies), copied from a detached checkout. dirty=true covers exactly three deleted lines: the upstream file carries a stray duplicated '204': mapping key (empty first occurrence) on three operations - GET /config/params, GET /config/bgp/neigh/all, and GET /config/bgp/policy/definedsets/{defineset_type}/{type_name} - introduced by upstream commit 4313de06; go-swagger tolerates the duplicate (swagger diff reports the pair in sync) but the strict YAML parser behind gen:api rejects it, so the vendored copy drops the empty duplicate key and keeps the surviving '204': description: OK value. Reported upstream; returns to dirty=false once the gateway spec removes the duplicates. All prior UI-only contract corrections retired after a handler-source reconciliation of every difference: the 62 stale 204 overlays and 5 409 overlays describe behavior the handlers do not emit, and the schema/constraint overlays (UserSummary, api_key pattern, key_id required, burst_pct bounds, RawError extras envelopes) either moved upstream, were unbacked by handler code, or are tracked as gateway spec issues instead of local patches."
+    "commit": "99013277afe3e6c7e9f9685e478a2e304f1f548b",
+    "dirty": false,
+    "note": "clean re-vendor via sync-specs.sh --only gateway; byte-identical to the merged main commit"
   },
   "oam": {
     "repo": "loxilb-oam",
