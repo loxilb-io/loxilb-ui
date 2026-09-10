@@ -1,11 +1,11 @@
 {
-  "vendoredAt": "2026-09-09T04:56:26Z",
+  "vendoredAt": "2026-09-10T21:26:49Z",
   "gateway": {
     "repo": "loxilb-inference-gateway",
     "path": "api/swagger.yml + api/swagger-extras.yml",
-    "commit": "99013277afe3e6c7e9f9685e478a2e304f1f548b",
+    "commit": "b02babd8569356fcd755fe6e4e9e4b5064644366",
     "dirty": false,
-    "note": "clean re-vendor via sync-specs.sh --only gateway; byte-identical to the merged main commit"
+    "note": "clean re-vendor via sync-specs.sh --only gateway from a detached checkout; byte-identical to the recorded commit"
   },
   "oam": {
     "repo": "loxilb-oam",
