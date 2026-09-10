@@ -3,10 +3,15 @@
 	"source": {
 		"repo": "loxilb-inference-gateway",
 		"path": "deploy/monitoring/manifest/metric-manifest.json",
-		"commit": "7f3520644ba3902d7e646c8ac34d18e8f1a70c74",
-		"vendoredAt": "2026-09-08T07:32:16Z"
+		"commit": "27680379ec35197bfd33e7f51ea18570e70e8bd8",
+		"vendoredAt": "2026-09-09T08:03:28Z"
 	},
 	"manifest": {
+		"schema_version": 1,
+		"provenance": {
+			"generated_at": "2026-09-09T00:29:12+00:00",
+			"source_revision": "bb84d8949e5e082f97690d96013c681b4ae9869c"
+		},
 		"contract": {
 			"total": 232,
 			"owners": {
@@ -36,6 +41,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "manual",
 				"labels": [],
 				"activation": "D+E",
 				"priority": "diagnostic",
@@ -50,6 +56,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "histogram",
+				"definition_mechanism": "manual",
 				"labels": [],
 				"activation": "D+E",
 				"priority": "diagnostic",
@@ -64,6 +71,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "manual",
 				"labels": [],
 				"activation": "D+E",
 				"priority": "diagnostic",
@@ -78,6 +86,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "manual",
 				"labels": [
 					"pipe"
 				],
@@ -94,6 +103,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "manual",
 				"labels": [
 					"port"
 				],
@@ -110,6 +120,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "manual",
 				"labels": [
 					"meter_id",
 					"name"
@@ -127,6 +138,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "manual",
 				"labels": [
 					"meter_id",
 					"name"
@@ -144,6 +156,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "manual",
 				"labels": [
 					"meter_id",
 					"name"
@@ -161,6 +174,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "manual",
 				"labels": [],
 				"activation": "D+E",
 				"priority": "diagnostic",
@@ -175,6 +189,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "manual",
 				"labels": [],
 				"activation": "D+E",
 				"priority": "diagnostic",
@@ -189,6 +204,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "manual",
 				"labels": [],
 				"activation": "D+E",
 				"priority": "diagnostic",
@@ -203,6 +219,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "manual",
 				"labels": [
 					"result"
 				],
@@ -219,6 +236,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "manual",
 				"labels": [],
 				"activation": "D+E",
 				"priority": "diagnostic",
@@ -233,6 +251,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "manual",
 				"labels": [
 					"pipe",
 					"reason"
@@ -250,6 +269,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "manual",
 				"labels": [
 					"pipe",
 					"direction"
@@ -267,6 +287,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "manual",
 				"labels": [
 					"pipe",
 					"direction"
@@ -284,6 +305,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "manual",
 				"labels": [],
 				"activation": "D+E",
 				"priority": "diagnostic",
@@ -298,6 +320,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "manual",
 				"labels": [],
 				"activation": "D+E",
 				"priority": "diagnostic",
@@ -312,6 +335,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "manual",
 				"labels": [],
 				"activation": "D+E",
 				"priority": "diagnostic",
@@ -326,6 +350,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "manual",
 				"labels": [],
 				"activation": "D+E",
 				"priority": "diagnostic",
@@ -340,6 +365,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "manual",
 				"labels": [
 					"action"
 				],
@@ -356,6 +382,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -374,6 +401,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -390,6 +418,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -406,6 +435,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -422,6 +452,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"model"
 				],
@@ -432,7 +463,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_metrics.go:134"
+				"source": "api/prometheus/ai_metrics.go:182"
 			},
 			{
 				"name": "loxilb_ai_engine_info",
@@ -440,6 +471,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service",
 					"engine"
@@ -457,6 +489,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -473,6 +506,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"result"
 				],
@@ -492,6 +526,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"reason"
 				],
@@ -511,6 +546,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"rule",
 					"state"
@@ -531,6 +567,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"rule"
 				],
@@ -550,6 +587,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"reason"
 				],
@@ -569,6 +607,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "p0",
@@ -585,6 +624,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service",
 					"kind"
@@ -604,6 +644,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"model",
 					"tenant"
@@ -615,7 +656,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_metrics.go:143"
+				"source": "api/prometheus/ai_metrics.go:191"
 			},
 			{
 				"name": "loxilb_ai_normal_session_hits_total",
@@ -623,6 +664,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"model"
 				],
@@ -633,7 +675,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_metrics.go:279"
+				"source": "api/prometheus/ai_metrics.go:327"
 			},
 			{
 				"name": "loxilb_ai_pd_decode_ttft_seconds",
@@ -641,6 +683,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "histogram",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"model"
 				],
@@ -651,7 +694,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_metrics.go:233"
+				"source": "api/prometheus/ai_metrics.go:281"
 			},
 			{
 				"name": "loxilb_ai_pd_kv_params_found_total",
@@ -659,6 +702,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"model"
 				],
@@ -669,7 +713,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_metrics.go:252"
+				"source": "api/prometheus/ai_metrics.go:300"
 			},
 			{
 				"name": "loxilb_ai_pd_kv_params_missing_total",
@@ -677,6 +721,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"model"
 				],
@@ -687,7 +732,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_metrics.go:261"
+				"source": "api/prometheus/ai_metrics.go:309"
 			},
 			{
 				"name": "loxilb_ai_pd_prefill_duration_seconds",
@@ -695,6 +740,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "histogram",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"model"
 				],
@@ -705,7 +751,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_metrics.go:223"
+				"source": "api/prometheus/ai_metrics.go:271"
 			},
 			{
 				"name": "loxilb_ai_pd_requests_total",
@@ -713,6 +759,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"model",
 					"phase",
@@ -725,7 +772,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_metrics.go:243"
+				"source": "api/prometheus/ai_metrics.go:291"
 			},
 			{
 				"name": "loxilb_ai_pd_session_hits_total",
@@ -733,6 +780,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"model"
 				],
@@ -743,7 +791,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_metrics.go:270"
+				"source": "api/prometheus/ai_metrics.go:318"
 			},
 			{
 				"name": "loxilb_ai_policy_store_unavailable_total",
@@ -751,6 +799,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "p0",
@@ -760,7 +809,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_metrics.go:313"
+				"source": "api/prometheus/ai_metrics.go:361"
 			},
 			{
 				"name": "loxilb_ai_rate_limit_hits_total",
@@ -768,6 +817,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"tenant",
 					"reason"
@@ -780,7 +830,7 @@
 					"loxilb-alerts.yml"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_metrics.go:125"
+				"source": "api/prometheus/ai_metrics.go:173"
 			},
 			{
 				"name": "loxilb_ai_request_duration_seconds",
@@ -788,6 +838,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "histogram",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"model",
 					"tenant"
@@ -799,7 +850,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_metrics.go:115"
+				"source": "api/prometheus/ai_metrics.go:163"
 			},
 			{
 				"name": "loxilb_ai_requests_total",
@@ -807,10 +858,12 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"model",
 					"tenant",
-					"status"
+					"status",
+					"outcome"
 				],
 				"activation": "V",
 				"priority": "diagnostic",
@@ -821,7 +874,7 @@
 					"loxilb-recording.yml"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_metrics.go:104"
+				"source": "api/prometheus/ai_metrics.go:152"
 			},
 			{
 				"name": "loxilb_ai_token_quota_cold_open_total",
@@ -829,6 +882,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -837,7 +891,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_metrics.go:211"
+				"source": "api/prometheus/ai_metrics.go:259"
 			},
 			{
 				"name": "loxilb_ai_token_quota_denied_total",
@@ -845,6 +899,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"tenant"
 				],
@@ -855,14 +910,15 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_metrics.go:198"
+				"source": "api/prometheus/ai_metrics.go:246"
 			},
 			{
 				"name": "loxilb_ai_token_quota_limit_tokens",
 				"owner": "loxilb",
 				"class": "default",
 				"packaged": true,
-				"type": "desc",
+				"type": "gauge",
+				"definition_mechanism": "desc",
 				"labels": [
 					"tenant"
 				],
@@ -873,14 +929,15 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_metrics.go:405"
+				"source": "api/prometheus/ai_metrics.go:453"
 			},
 			{
 				"name": "loxilb_ai_token_quota_model_limit_tokens",
 				"owner": "loxilb",
 				"class": "default",
 				"packaged": true,
-				"type": "desc",
+				"type": "gauge",
+				"definition_mechanism": "desc",
 				"labels": [
 					"tenant",
 					"model"
@@ -890,14 +947,15 @@
 				"privacy": "label-review",
 				"consumers": [],
 				"waiver": "Join denominator behind the dashboarded quota-utilization ratios; displaying raw configured limits duplicates config, utilization panels answer headroom.",
-				"source": "api/prometheus/ai_metrics.go:415"
+				"source": "api/prometheus/ai_metrics.go:463"
 			},
 			{
 				"name": "loxilb_ai_token_quota_model_utilization",
 				"owner": "loxilb",
 				"class": "default",
 				"packaged": true,
-				"type": "desc",
+				"type": "gauge",
+				"definition_mechanism": "desc",
 				"labels": [
 					"tenant",
 					"model"
@@ -909,14 +967,15 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_metrics.go:410"
+				"source": "api/prometheus/ai_metrics.go:458"
 			},
 			{
 				"name": "loxilb_ai_token_quota_utilization",
 				"owner": "loxilb",
 				"class": "default",
 				"packaged": true,
-				"type": "desc",
+				"type": "gauge",
+				"definition_mechanism": "desc",
 				"labels": [
 					"tenant"
 				],
@@ -927,7 +986,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_metrics.go:400"
+				"source": "api/prometheus/ai_metrics.go:448"
 			},
 			{
 				"name": "loxilb_ai_tokens_consumed_total",
@@ -935,6 +994,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"model",
 					"tenant",
@@ -947,7 +1007,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_metrics.go:159"
+				"source": "api/prometheus/ai_metrics.go:207"
 			},
 			{
 				"name": "loxilb_ai_tokens_estimated_total",
@@ -955,6 +1015,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"model",
 					"tenant"
@@ -966,7 +1027,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_metrics.go:172"
+				"source": "api/prometheus/ai_metrics.go:220"
 			},
 			{
 				"name": "loxilb_ai_tokens_missing_total",
@@ -974,6 +1035,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"model",
 					"tenant"
@@ -985,7 +1047,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_metrics.go:184"
+				"source": "api/prometheus/ai_metrics.go:232"
 			},
 			{
 				"name": "loxilb_ai_unmetered_requests_total",
@@ -993,6 +1055,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"vip"
 				],
@@ -1004,7 +1067,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_metrics.go:296"
+				"source": "api/prometheus/ai_metrics.go:344"
 			},
 			{
 				"name": "loxilb_autopersist_consecutive_failures",
@@ -1012,6 +1075,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "p0",
@@ -1026,6 +1090,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service",
 					"endpoint"
@@ -1045,6 +1110,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service",
 					"endpoint"
@@ -1064,6 +1130,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service",
 					"endpoint"
@@ -1083,6 +1150,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "p0",
@@ -1099,6 +1167,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "p0",
@@ -1113,6 +1182,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service",
 					"sip"
@@ -1132,6 +1202,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -1146,6 +1217,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -1162,6 +1234,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "DP",
 				"priority": "diagnostic",
@@ -1179,6 +1252,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -1196,6 +1270,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"api",
 					"reason"
@@ -1213,6 +1288,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"value"
 				],
@@ -1229,6 +1305,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service",
 					"dip"
@@ -1246,6 +1323,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -1260,6 +1338,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -1276,6 +1355,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -1294,6 +1374,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"fw_rule"
 				],
@@ -1313,6 +1394,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -1330,6 +1412,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -1344,6 +1427,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"cidr",
 					"priority",
@@ -1362,6 +1446,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"cidr",
 					"priority",
@@ -1382,6 +1467,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"type"
 				],
@@ -1400,6 +1486,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"cidr",
 					"priority",
@@ -1418,6 +1505,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"cidr",
 					"priority",
@@ -1438,6 +1526,7 @@
 				"class": "dpu-doca",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "manual",
 				"labels": [
 					"bridge"
 				],
@@ -1454,6 +1543,7 @@
 				"class": "kv-agent-health",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "manual",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -1468,6 +1558,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service",
 					"ep"
@@ -1487,6 +1578,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service",
 					"ep"
@@ -1506,6 +1598,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service",
 					"ep"
@@ -1527,6 +1620,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service",
 					"ep"
@@ -1546,6 +1640,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service",
 					"ep"
@@ -1566,6 +1661,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service",
 					"ep"
@@ -1585,6 +1681,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service",
 					"ep",
@@ -1606,6 +1703,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"proto",
 					"reason"
@@ -1627,6 +1725,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "p0",
@@ -1643,6 +1742,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service",
 					"sip",
@@ -1661,6 +1761,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service",
 					"sip",
@@ -1679,6 +1780,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -1697,6 +1799,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -1713,6 +1816,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -1729,6 +1833,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -1745,6 +1850,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -1761,6 +1867,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "histogram",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -1777,6 +1884,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"status"
 				],
@@ -1795,6 +1903,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"protocol"
 				],
@@ -1813,6 +1922,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "histogram",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"protocol"
 				],
@@ -1831,6 +1941,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"protocol",
 					"status"
@@ -1850,6 +1961,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "histogram",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"protocol"
 				],
@@ -1868,6 +1980,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -1884,6 +1997,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -1900,6 +2014,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -1916,6 +2031,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -1932,6 +2048,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -1948,6 +2065,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "p0",
@@ -1965,6 +2083,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "p0",
@@ -1982,6 +2101,7 @@
 				"class": "aictrl-bridge",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "manual",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -1996,6 +2116,7 @@
 				"class": "aictrl-bridge",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "manual",
 				"labels": [
 					"service"
 				],
@@ -2012,6 +2133,7 @@
 				"class": "aictrl-bridge",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "manual",
 				"labels": [
 					"service",
 					"ep_idx"
@@ -2029,6 +2151,7 @@
 				"class": "aictrl-bridge",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "manual",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2043,6 +2166,7 @@
 				"class": "aictrl-bridge",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "manual",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2057,6 +2181,7 @@
 				"class": "aictrl-bridge",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "manual",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2071,6 +2196,7 @@
 				"class": "aictrl-bridge",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "manual",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2085,6 +2211,7 @@
 				"class": "aictrl-bridge",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "manual",
 				"labels": [
 					"service",
 					"ep_idx"
@@ -2102,6 +2229,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2119,6 +2247,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2135,6 +2264,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service",
 					"ep_idx",
@@ -2153,6 +2283,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2169,6 +2300,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service",
 					"ep_idx"
@@ -2188,6 +2320,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"ep_idx"
 				],
@@ -2206,6 +2339,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2222,6 +2356,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"ep_idx"
 				],
@@ -2240,6 +2375,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"reason"
 				],
@@ -2258,6 +2394,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"ep_idx"
 				],
@@ -2276,6 +2413,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service_id"
 				],
@@ -2295,6 +2433,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2312,6 +2451,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2328,6 +2468,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2344,6 +2485,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2360,6 +2502,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2376,6 +2519,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2392,6 +2536,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2408,6 +2553,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2424,6 +2570,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2440,6 +2587,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"result"
 				],
@@ -2456,6 +2604,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2472,6 +2621,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2486,6 +2636,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2500,6 +2651,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2516,6 +2668,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2530,6 +2683,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2546,6 +2700,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2560,6 +2715,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2576,6 +2732,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2593,6 +2750,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2609,6 +2767,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2625,6 +2784,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2641,6 +2801,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2657,6 +2818,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2673,6 +2835,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2689,6 +2852,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2705,6 +2869,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2721,6 +2886,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2737,6 +2903,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2753,6 +2920,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2769,6 +2937,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2785,6 +2954,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2801,6 +2971,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2817,6 +2988,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"status_class"
 				],
@@ -2838,6 +3010,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2854,7 +3027,8 @@
 				"owner": "loxilb",
 				"class": "default",
 				"packaged": true,
-				"type": "desc",
+				"type": "histogram",
+				"definition_mechanism": "desc",
 				"labels": [],
 				"activation": "H",
 				"priority": "diagnostic",
@@ -2872,6 +3046,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -2887,7 +3062,8 @@
 				"owner": "loxilb",
 				"class": "default",
 				"packaged": true,
-				"type": "desc",
+				"type": "counter",
+				"definition_mechanism": "desc",
 				"labels": [
 					"vip",
 					"port",
@@ -2908,7 +3084,8 @@
 				"owner": "loxilb",
 				"class": "default",
 				"packaged": true,
-				"type": "desc",
+				"type": "counter",
+				"definition_mechanism": "desc",
 				"labels": [
 					"vip",
 					"port",
@@ -2929,7 +3106,8 @@
 				"owner": "loxilb",
 				"class": "default",
 				"packaged": true,
-				"type": "desc",
+				"type": "gauge",
+				"definition_mechanism": "desc",
 				"labels": [
 					"vip",
 					"port",
@@ -2950,7 +3128,8 @@
 				"owner": "loxilb",
 				"class": "default",
 				"packaged": true,
-				"type": "desc",
+				"type": "gauge",
+				"definition_mechanism": "desc",
 				"labels": [
 					"vip",
 					"port",
@@ -2971,7 +3150,8 @@
 				"owner": "loxilb",
 				"class": "default",
 				"packaged": true,
-				"type": "desc",
+				"type": "counter",
+				"definition_mechanism": "desc",
 				"labels": [
 					"vip",
 					"port",
@@ -2992,7 +3172,8 @@
 				"owner": "loxilb",
 				"class": "default",
 				"packaged": true,
-				"type": "desc",
+				"type": "gauge",
+				"definition_mechanism": "desc",
 				"labels": [
 					"vip",
 					"port",
@@ -3013,7 +3194,8 @@
 				"owner": "loxilb",
 				"class": "default",
 				"packaged": true,
-				"type": "desc",
+				"type": "counter",
+				"definition_mechanism": "desc",
 				"labels": [
 					"vip",
 					"port",
@@ -3034,7 +3216,8 @@
 				"owner": "loxilb",
 				"class": "default",
 				"packaged": true,
-				"type": "desc",
+				"type": "gauge",
+				"definition_mechanism": "desc",
 				"labels": [
 					"vip",
 					"port",
@@ -3056,6 +3239,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3072,6 +3256,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "histogram",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "p0",
@@ -3088,6 +3273,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"mode",
 					"result"
@@ -3108,6 +3294,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3124,6 +3311,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3140,6 +3328,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3157,6 +3346,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3173,6 +3363,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3189,6 +3380,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3206,6 +3398,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3222,6 +3415,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3236,6 +3430,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3252,6 +3447,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3268,6 +3464,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service"
 				],
@@ -3286,6 +3483,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service"
 				],
@@ -3304,6 +3502,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service"
 				],
@@ -3322,6 +3521,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service"
 				],
@@ -3338,6 +3538,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "p0",
@@ -3352,6 +3553,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"trigger"
 				],
@@ -3370,6 +3572,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3387,6 +3590,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"outcome"
 				],
@@ -3405,6 +3609,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"reason"
 				],
@@ -3423,6 +3628,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"reason"
 				],
@@ -3441,6 +3647,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"peer"
 				],
@@ -3459,6 +3666,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"kind"
 				],
@@ -3477,6 +3685,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"peer"
 				],
@@ -3495,6 +3704,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"peer"
 				],
@@ -3513,6 +3723,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "histogram",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"peer",
 					"rpc"
@@ -3532,6 +3743,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3549,6 +3761,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3566,6 +3779,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3583,6 +3797,7 @@
 				"class": "default",
 				"packaged": true,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3600,6 +3815,7 @@
 				"class": "standalone-controller",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"gateway"
 				],
@@ -3616,6 +3832,7 @@
 				"class": "standalone-controller",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"gateway"
 				],
@@ -3632,6 +3849,7 @@
 				"class": "standalone-controller",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3646,6 +3864,7 @@
 				"class": "standalone-controller",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"service",
 					"ep_idx"
@@ -3663,6 +3882,7 @@
 				"class": "standalone-controller",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"source"
 				],
@@ -3679,6 +3899,7 @@
 				"class": "standalone-controller",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3693,6 +3914,7 @@
 				"class": "standalone-controller",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3707,6 +3929,7 @@
 				"class": "standalone-controller",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3721,6 +3944,7 @@
 				"class": "standalone-controller",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"source"
 				],
@@ -3737,6 +3961,7 @@
 				"class": "standalone-controller",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3751,6 +3976,7 @@
 				"class": "standalone-controller",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"source"
 				],
@@ -3767,6 +3993,7 @@
 				"class": "standalone-controller",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"source"
 				],
@@ -3783,6 +4010,7 @@
 				"class": "standalone-controller",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"model_version"
 				],
@@ -3799,6 +4027,7 @@
 				"class": "standalone-controller",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3813,6 +4042,7 @@
 				"class": "standalone-controller",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3827,6 +4057,7 @@
 				"class": "standalone-controller",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "manual",
 				"labels": [],
 				"activation": "T",
 				"priority": "diagnostic",
@@ -3841,6 +4072,7 @@
 				"class": "standalone-controller",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "manual",
 				"labels": [],
 				"activation": "T",
 				"priority": "diagnostic",
@@ -3855,6 +4087,7 @@
 				"class": "standalone-controller",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [
 					"gateway"
 				],
@@ -3871,6 +4104,7 @@
 				"class": "standalone-controller",
 				"packaged": false,
 				"type": "gauge",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3885,6 +4119,7 @@
 				"class": "standalone-kv-agent",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3899,6 +4134,7 @@
 				"class": "standalone-kv-agent",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3913,6 +4149,7 @@
 				"class": "standalone-kv-agent",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",
@@ -3927,6 +4164,7 @@
 				"class": "standalone-kv-agent",
 				"packaged": false,
 				"type": "counter",
+				"definition_mechanism": "promauto",
 				"labels": [],
 				"activation": "E",
 				"priority": "diagnostic",

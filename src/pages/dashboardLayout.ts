@@ -27,15 +27,76 @@ export const GW_SUMMARY_CARDS: readonly IGwSummaryCard[] = [
 	{key: 'gw-persistence', entry: 'dashboard.gwPersistenceFailures'},
 ];
 
-// The base layout ends at y 6.3 (system-log: y 4.3 + h 2); the gateway rows
-// continue exactly there so the default stays gap-free by construction.
-const GW_SUMMARY_LAYOUT: readonly Layout[] = [
-	{i: 'gw-ai-events', x: 0, y: 6.3, w: 4, h: 1.3},
-	{i: 'gw-active-streams', x: 4, y: 6.3, w: 4, h: 1.3},
-	{i: 'gw-worker-freshness', x: 8, y: 6.3, w: 4, h: 1.3},
-	{i: 'gw-kv-exact', x: 0, y: 7.6, w: 6, h: 1.3},
-	{i: 'gw-persistence', x: 6, y: 7.6, w: 6, h: 1.3},
+// The flavor-independent base rows, in grid units (rowHeight 300). Lives here
+// rather than in DashboardPage so the gap-free contract below is checked
+// against the geometry that actually ships — the test used to keep its own
+// copy of these rows, which silently stopped matching production the first
+// time a row height changed.
+// Rows, not coordinates. The grid runs compaction-off, so a vertical gap is
+// permanent and a fractional height used to have to be balanced by hand in a
+// `y` literal further down — which is not just tedious but unsound: heights
+// like 1.3 and 1.15 are inexact in binary, so `3.3 + 1.15` is NOT `4.45` and a
+// hand-written chain develops sub-ULP seams. Stacking the rows here makes each
+// row's `y` the previous row's exact computed end, so the layout is gap-free
+// by construction at any height.
+interface IRowCard {
+	i: string;
+	x: number;
+	w: number;
+}
+interface IRowSpec {
+	h: number;
+	cards: readonly IRowCard[];
+}
+
+function stackRows(rows: readonly IRowSpec[], startY: number): {layout: Layout[]; endY: number} {
+	const layout: Layout[] = [];
+	let y = startY;
+	for (const row of rows) {
+		for (const c of row.cards) layout.push({i: c.i, x: c.x, y, w: c.w, h: row.h});
+		y += row.h;
+	}
+	return {layout, endY: y};
+}
+
+const BASE_ROWS: readonly IRowSpec[] = [
+	// === ROW 1: SYSTEM OVERVIEW ===
+	{h: 2, cards: [{i: 'system-usage', x: 0, w: 8}, {i: 'ha', x: 8, w: 4}]},
+
+	// === ROW 2: CRITICAL METRICS ===
+	{
+		h: 1.3,
+		cards: [{i: 'connection-flows', x: 0, w: 4}, {i: 'health-status', x: 4, w: 4}, {i: 'lb-rules', x: 8, w: 4}],
+	},
+
+	// === ROW 3: REAL-TIME TRAFFIC MONITORING ===
+	// h 1.15 (345px), not 1: the rate cards render 329px of content once their
+	// series arrives, so at h 1 the Paper's overflow:hidden clipped the graph's
+	// time axis. The row is sized to the card, not the card to a round row.
+	{
+		h: 1.15,
+		cards: [{i: 'total-traffic-rate', x: 0, w: 4}, {i: 'total-packet-rate', x: 4, w: 4}, {i: 'total-error-rate', x: 8, w: 4}],
+	},
+
+	// === ROW 4: SYSTEM LOGS AND DIAGNOSTICS ===
+	{h: 2, cards: [{i: 'system-log', x: 0, w: 12}]},
 ];
+
+const {layout: BASE_LAYOUT, endY: BASE_END_Y} = stackRows(BASE_ROWS, 0);
+
+/** The flavor-independent base rows, in grid units (rowHeight 300). */
+export const BASE_DASHBOARD_LAYOUT: readonly Layout[] = BASE_LAYOUT;
+
+// The gateway rows continue from the base's exact end.
+const GW_SUMMARY_ROWS: readonly IRowSpec[] = [
+	{
+		h: 1.3,
+		cards: [{i: 'gw-ai-events', x: 0, w: 4}, {i: 'gw-active-streams', x: 4, w: 4}, {i: 'gw-worker-freshness', x: 8, w: 4}],
+	},
+	{h: 1.3, cards: [{i: 'gw-kv-exact', x: 0, w: 6}, {i: 'gw-persistence', x: 6, w: 6}]},
+];
+
+const GW_SUMMARY_LAYOUT: readonly Layout[] = stackRows(GW_SUMMARY_ROWS, BASE_END_Y).layout;
 
 export function applicableGwSummaryCards(flavor: InstanceFlavor | undefined): readonly IGwSummaryCard[] {
 	return GW_SUMMARY_CARDS.filter(c => flavor !== undefined && isEntryApplicable(c.entry, flavor));

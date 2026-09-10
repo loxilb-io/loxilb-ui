@@ -19,6 +19,7 @@ import {GPU_STATUS_CADENCE_MS, useDiagnostics, useGpuStatus} from 'hooks/query/g
 import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
 import {fromThrownError} from 'connector/fetcher/opResultAdapter';
 import {aggregateSum, selectSamples, selectScalar} from 'observability/selectors';
+import {completedRequestRate} from 'observability/aiRequests';
 import {familySumRate, rateMaxGapMs} from 'observability/snapshotRates';
 import {formatRate, StatRow} from 'pages/observability/common';
 import {IInstance} from 'types/oam';
@@ -58,7 +59,9 @@ export function GwAiEventsCard({instance}: GwCardProps) {
 	const {history, state, cadenceMs, refetch} = useSnapshotCardState(instance);
 
 	const maxGap = rateMaxGapMs(cadenceMs);
-	const completed = useMemo(() => familySumRate(history, 'loxilb_ai_requests_total', maxGap), [history, maxGap]);
+	// outcome="completed" where the instance reports it — the family also
+	// carries gate denials since gateway 27680379 (see observability/aiRequests).
+	const completed = useMemo(() => completedRequestRate(history, maxGap), [history, maxGap]);
 	const denials = useMemo(
 		() => [
 			familySumRate(history, 'loxilb_ai_rate_limit_hits_total', maxGap),

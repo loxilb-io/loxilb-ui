@@ -128,6 +128,42 @@ describe('desc normalization (definition mechanism vs runtime type)', () => {
 		expect(allManifestFamilies().filter(f => f.runtimeType === 'unknown')).toEqual([]);
 	});
 
+	// Gateway 27680379 began stating the mechanism upstream instead of
+	// smuggling it through `type: "desc"`. These pin that the UI reads it, and
+	// that the two vocabularies coexist — a manifest vendored from an older
+	// gateway must keep loading identically.
+	it('takes the mechanism from upstream when the manifest declares one', () => {
+		expect(normalizeManifestType('loxilb_lb_rules', 'gauge', 'promauto')).toEqual({
+			runtimeType: 'gauge', definitionMechanism: 'promauto',
+		});
+		expect(normalizeManifestType('loxilb_kv_agent_up', 'gauge', 'manual')).toEqual({
+			runtimeType: 'gauge', definitionMechanism: 'manual',
+		});
+		// A declared desc family now carries a real type instead of the sentinel.
+		expect(normalizeManifestType('loxilb_proxy_qos_parks_total', 'counter', 'desc')).toEqual({
+			runtimeType: 'counter', definitionMechanism: 'desc',
+		});
+	});
+
+	it('denies when upstream contradicts a pinned custom-collector type', () => {
+		// The pins were derived from the collector sources independently. If
+		// upstream ever disagrees, one of the two is wrong about the wire —
+		// deny rather than pick a side and compute a wrong rate from it.
+		expect(normalizeManifestType('loxilb_proxy_qos_parks_total', 'gauge', 'desc')).toEqual({
+			runtimeType: 'unknown', rawType: 'gauge', definitionMechanism: 'desc',
+		});
+	});
+
+	it('keeps an unrecognized mechanism from widening the vocabulary', () => {
+		expect(normalizeManifestType('loxilb_x', 'counter', 'someNewMechanism')).toEqual({
+			runtimeType: 'counter', definitionMechanism: 'direct',
+		});
+		// An unusable type is still denied no matter what the mechanism says.
+		expect(normalizeManifestType('loxilb_x', 'info', 'promauto')).toEqual({
+			runtimeType: 'unknown', rawType: 'info', definitionMechanism: 'promauto',
+		});
+	});
+
 	it('degrades unrecognized future tokens to the unknown deny sentinel', () => {
 		// A future desc family the UI has not pinned yet: mechanism recorded,
 		// runtime type denied until explicitly contracted.

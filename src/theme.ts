@@ -32,6 +32,9 @@ export const theme_config: ThemeOptions = {
 		mode: 'light',
 		// The two brand hexes (navy/orange main) are fixed by product decision —
 		// never tune them; the light/dark entries are hover/active derivatives.
+		// Consequence: `secondary.main` only reaches 3.18:1 on white, so it is
+		// usable for large text (>=24px, or >=19px bold), icons and fills, but
+		// NEVER for normal-size text. Reach for `secondary.dark` (4.5:1) there.
 		primary: {
 			main: '#113351',
 			light: '#164E77',
@@ -39,12 +42,28 @@ export const theme_config: ThemeOptions = {
 		},
 		secondary: {
 			main: '#D27B24',
+			// Hover/active fill under `contrastText`. It goes UP, not down: the
+			// label on an orange fill is dark (see below), so brightening raises
+			// its contrast (6.54:1) where darkening would sink it.
 			light: '#DD932C',
-			dark: '#BF591D',
+			// Brand orange at normal-text weight — AA on both surfaces. Nothing
+			// outside this file reads it directly; the MuiButton variants below
+			// are what route unfilled brand buttons to it.
+			dark: '#B6551C',
+			// MUI would derive white here (its threshold is 3:1, and white on the
+			// brand orange is only 3.18:1) — which fails AA for button, chip and
+			// badge labels. Brand navy instead: 5.21:1, and the two brand hexes
+			// end up reinforcing each other rather than pulling in a third color.
+			contrastText: '#0B2032',
 		},
-		// Semantic status colors, AA-compliant as text on white.
-		success: {main: '#1E8E3E'},
-		warning: {main: '#B26A00'},
+		// Semantic status colors. Each is dark enough to clear WCAG AA for
+		// NORMAL-size text (4.5:1) against BOTH surfaces the app paints on —
+		// `background.paper` and the grayer `background.default` — because
+		// they are used as body2/caption text (log levels, outlined button
+		// labels, inline warnings), not only as large figures. theme.test.ts
+		// pins those ratios; re-check it before retuning any of them.
+		success: {main: '#1C8339'},
+		warning: {main: '#A56200'},
 		error: {main: '#C62828'},
 		info: {main: '#0E6BA8'},
 		background: {
@@ -132,6 +151,28 @@ export const theme_config: ThemeOptions = {
 			defaultProps: {
 				disableElevation: true,
 			},
+			variants: [
+				{
+					// Unfilled buttons paint their label in `main`. For the brand
+					// orange that is 3.18:1 — fine for the border, too weak for the
+					// label. `dark` is the same hue at 4.5:1, so the button still
+					// reads as the brand accent while the text clears AA. The border
+					// keeps `main`: it only owes 3:1 (SC 1.4.11).
+					props: {color: 'secondary', variant: 'outlined'},
+					style: ({theme}: any) => ({color: theme.palette.secondary.dark}),
+				},
+				{
+					props: {color: 'secondary', variant: 'text'},
+					style: ({theme}: any) => ({color: theme.palette.secondary.dark}),
+				},
+				{
+					// MUI hovers a contained button toward `dark`. With a dark label
+					// that inverts the intent — navy on `dark` is 3.68:1 — so the
+					// brand button brightens instead.
+					props: {color: 'secondary', variant: 'contained'},
+					style: ({theme}: any) => ({'&:hover': {backgroundColor: theme.palette.secondary.light}}),
+				},
+			],
 		},
 		MuiIconButton: {
 			styleOverrides: {

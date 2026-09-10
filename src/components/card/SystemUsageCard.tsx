@@ -3,7 +3,6 @@
 //---------------------------------------------------------
 import {Box, Stack, Typography} from '@mui/material';
 import PieChartWithTitle from 'components/element/PieChartWithTitle';
-import HorizontalStack from 'components/layout/HorizontalStack';
 import {useLiveMetrics} from 'hooks/query/metricsHook';
 import {useStatus} from 'hooks/query/statusHook';
 import {t} from 'i18next';
@@ -80,7 +79,7 @@ export default function SystemUsageCard(props: {instance: IInstance | null}) {
 
 		if (data) {
 			return (
-				<Box flexGrow={1} display="flex" flexDirection="column" alignItems="center">
+				<Box minWidth={0} display="flex" flexDirection="column" alignItems="center">
 					<PieChartWithTitle title={title} data={data} />
 					{derived && derived.source !== 'metrics' && (
 						<Typography variant="caption" color="text.secondary" textAlign="center">
@@ -94,11 +93,11 @@ export default function SystemUsageCard(props: {instance: IInstance | null}) {
 		}
 
 		return (
-			<Box flexGrow={1} gap={2} display="flex" flexDirection="column" alignItems="center">
+			<Box minWidth={0} gap={2} display="flex" flexDirection="column" alignItems="center">
 				<Typography variant="subtitle2" color="text.secondary">
 					{title}
 				</Typography>
-				<Box width={230} height={200} display="flex" flexDirection="column" alignItems="center" justifyContent="center" gap={1}>
+				<Box width="100%" height={200} display="flex" flexDirection="column" alignItems="center" justifyContent="center" gap={1}>
 					<Typography variant="h6" color="text.disabled">
 						{t('N/A')}
 					</Typography>
@@ -125,15 +124,25 @@ export default function SystemUsageCard(props: {instance: IInstance | null}) {
 		);
 	}
 
+	// One grid cell: label over value. `undefined` means the instance did not
+	// report the field — it used to fall back to the string "Available", which
+	// is the pie's slice label and reads as a claim about the system.
 	const renderTagBox = (label: string, value?: string) => {
+		// The /status payload omits a field as undefined in some builds and as
+		// an empty string in others; both mean "not reported".
+		const reported = value !== undefined && value.trim() !== '';
 		return (
-			<Stack minWidth="120px" gap="10px">
+			<Stack gap="4px" minWidth={0}>
 				<Typography variant="subtitle2" sx={{userSelect: 'text'}}>
 					{label}
 				</Typography>
 
-				<Typography variant="caption" color="text.secondary" sx={{userSelect: 'text'}}>
-					{value ?? t('Available')}
+				<Typography
+					variant="caption"
+					color={reported ? 'text.primary' : 'text.secondary'}
+					sx={{userSelect: 'text', overflowWrap: 'anywhere'}}
+				>
+					{reported ? value : t('N/A')}
 				</Typography>
 			</Stack>
 		);
@@ -141,38 +150,56 @@ export default function SystemUsageCard(props: {instance: IInstance | null}) {
 
 	return (
 		<CardBase title={t('System Usage')}>
-			<Stack height="100%" justifyContent="space-between">
-				<Box display="flex" marginTop="20px">
+			{/* A fixed gap, not space-between: the latter pushed the System
+			    Information block to the very bottom of whatever height the grid
+			    row happened to have, leaving a variable void under the charts
+			    that read as a rendering fault rather than as spacing. */}
+			<Stack gap="24px">
+				{/* Equal columns that shrink together, so all three figures stay
+				    on screen on a narrow dashboard instead of the last one being
+				    pushed out of the card. */}
+				<Box
+					display="grid"
+					gridTemplateColumns="repeat(3, minmax(0, 1fr))"
+					columnGap="8px"
+					marginTop="20px"
+				>
 					{renderUsage(t('CPU Usage'), usage.cpu)}
 					{renderUsage(t('Memory Usage'), usage.memory)}
 					{renderUsage(t('Disk Usage'), usage.disk)}
 				</Box>
 
-				<Stack justifyContent="space-between" gap="40px">
-					<Box width="100%" display="flex" justifyContent="center">
-						<Typography variant="subtitle2" color="text.secondary">
-							{t('System Information')}
-						</Typography>
+				<Stack gap="16px">
+					{/* Left-aligned like the card title above it — it was centered
+					    under the middle pie, which read as a caption for that pie
+					    rather than as a heading for the fields below. */}
+					<Typography variant="subtitle2" color="text.secondary">
+						{t('System Information')}
+					</Typography>
+
+					{/* A real grid, not a row of independent column Stacks. As
+					    columns, a long value (Boot ID and Kernel both wrap) grew
+					    only its own column, so the second row's labels sat at
+					    different heights per column. Grid rows share a baseline
+					    however tall any one cell gets, and auto-fit lets the
+					    four fields per row collapse to two, then one, on narrow
+					    dashboards instead of overflowing. */}
+					<Box
+						data-testid="system-information"
+						display="grid"
+						gridTemplateColumns="repeat(auto-fit, minmax(150px, 1fr))"
+						columnGap="24px"
+						rowGap="20px"
+						alignItems="start"
+					>
+						{renderTagBox(t('Host Name'), systemInfo?.hostName)}
+						{renderTagBox(t('Boot ID'), systemInfo?.bootID)}
+						{renderTagBox(t('Uptime'), systemInfo?.uptime)}
+						{renderTagBox(t('OS'), systemInfo?.OS)}
+						{renderTagBox(t('Machine ID'), systemInfo?.machineID)}
+						{renderTagBox(t('Kernel'), systemInfo?.kernel)}
+						{renderTagBox(t('Architecture'), systemInfo?.architecture)}
 					</Box>
-
-					<HorizontalStack>
-						<Stack gap="30px">
-							{renderTagBox(t('Host Name'), systemInfo?.hostName)}
-							{renderTagBox(t('Machine ID'), systemInfo?.machineID)}
-						</Stack>
-
-						<Stack gap="30px">
-							{renderTagBox(t('Boot ID'), systemInfo?.bootID)}
-							{renderTagBox(t('Kernel'), systemInfo?.kernel)}
-						</Stack>
-
-						<Stack gap="30px">
-							{renderTagBox(t('Uptime'), systemInfo?.uptime)}
-							{renderTagBox(t('Architecture'), systemInfo?.architecture)}
-						</Stack>
-
-						<Stack>{renderTagBox(t('OS'), systemInfo?.OS)}</Stack>
-					</HorizontalStack>
 				</Stack>
 			</Stack>
 		</CardBase>

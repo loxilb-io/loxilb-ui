@@ -39,13 +39,24 @@ function groupKeyOf(labels: Record<string, string>, groupBy: readonly string[]):
 	return groupBy.map(k => `${k}=${labels[k] ?? ''}`).join(String.fromCharCode(0));
 }
 
+/** Label-equality filter. A sample missing the label never matches. */
+export type LabelMatch = Readonly<Record<string, string>>;
+
+function matches(labels: Readonly<Record<string, string>>, where: LabelMatch | undefined): boolean {
+	if (!where) return true;
+	for (const [k, v] of Object.entries(where)) if (labels[k] !== v) return false;
+	return true;
+}
+
 function groupSums(
 	snapshot: IMetricsSnapshot,
 	family: string,
 	groupBy: readonly string[],
+	where?: LabelMatch,
 ): Map<string, {labels: Record<string, string>; value: number | undefined}> {
 	const byGroup = new Map<string, {labels: Record<string, string>; samples: ReturnType<typeof selectSamples>}>();
 	for (const s of selectSamples(snapshot, family)) {
+		if (!matches(s.labels, where)) continue;
 		const key = groupKeyOf({...s.labels}, groupBy);
 		let g = byGroup.get(key);
 		if (!g) {
@@ -65,19 +76,24 @@ function groupSums(
  * Per-group counter rates between the two most recent snapshots of the
  * retention ring. A group present now but absent before (a freshly minted
  * label set) reports insufficient-samples until its second observation.
+ *
+ * `where` restricts which samples are summed. Use it when a family covers
+ * more than the question being asked — a rate over a partition has to select
+ * that partition, not sum the family and relabel the answer.
  */
 export function groupRates(
 	history: readonly IMetricsSnapshot[],
 	family: string,
 	groupBy: readonly string[],
 	maxGapMs: number = RATE_MAX_GAP_MS,
+	where?: LabelMatch,
 ): IGroupRate[] {
 	const current = history[history.length - 1];
 	const previous = history.length >= 2 ? history[history.length - 2] : undefined;
 	if (!current) return [];
 
-	const now = groupSums(current, family, groupBy);
-	const before = previous ? groupSums(previous, family, groupBy) : undefined;
+	const now = groupSums(current, family, groupBy, where);
+	const before = previous ? groupSums(previous, family, groupBy, where) : undefined;
 
 	const out: IGroupRate[] = [];
 	for (const [key, g] of now) {
@@ -93,7 +109,12 @@ export function groupRates(
 }
 
 /** Whole-family sum rate (groupBy nothing): one explicit total. */
-export function familySumRate(history: readonly IMetricsSnapshot[], family: string, maxGapMs: number = RATE_MAX_GAP_MS): RateResult {
-	const rates = groupRates(history, family, [], maxGapMs);
+export function familySumRate(
+	history: readonly IMetricsSnapshot[],
+	family: string,
+	maxGapMs: number = RATE_MAX_GAP_MS,
+	where?: LabelMatch,
+): RateResult {
+	const rates = groupRates(history, family, [], maxGapMs, where);
 	return rates.length === 1 ? rates[0].rate : {kind: 'insufficient-samples'};
 }

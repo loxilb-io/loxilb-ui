@@ -82,7 +82,7 @@ export default function InstancePage() {
 						size="small"
 						onClick={refreshAllHealth}
 						disabled={isLoading}
-						startIcon={isLoading ? <CircularProgress size={16} /> : <RefreshIcon />}
+						startIcon={isLoading ? <CircularProgress size={16} aria-label={t('Loading...')} /> : <RefreshIcon />}
 					>
 						{isLoading ? t('Checking...') : t('Check Health')}
 					</Button>

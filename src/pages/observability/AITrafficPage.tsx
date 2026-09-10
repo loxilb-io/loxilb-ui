@@ -2,12 +2,17 @@
 // AI Traffic observability page (UI-MON-008 — partial by contract)
 //---------------------------------------------------------
 // Two SEPARATE, explicitly-labeled event views and nothing pretending to be
-// a total: `loxilb_ai_requests_total` counts COMPLETED SSE STREAMS only
-// (non-streaming successes are counted nowhere) and denials are counted at
-// the point of denial — no combination yields total request rate or a true
-// error ratio, so those panels do not exist here until the gateway ships a
-// complete denominator (tracked as a gateway handoff). Rendering their sum
-// or ratio under a "total"/"error rate" heading is a contract violation.
+// a total. Historically no combination of families yielded a total request
+// rate or a true error ratio, so those panels were never built: rendering a
+// sum or ratio under a "total"/"error rate" heading is a contract violation.
+//
+// Gateway 27680379 supplies the missing denominator — `loxilb_ai_requests_total`
+// now counts gate denials too, partitioned by `outcome`. The totals/error-ratio
+// panels are therefore unblocked but NOT built here yet; that is its own piece
+// of work, and it needs a testbed on a gateway new enough to validate against.
+// What this page does today is narrower and stays true on both gateway shapes:
+// the completed views select outcome="completed" (observability/aiRequests), so
+// a denial is never counted as a served request.
 
 import {Alert, Box, Grid, Table, TableBody, TableCell, TableHead, TableRow, Typography} from '@mui/material';
 import FreshnessBadge from 'components/observability/FreshnessBadge';
@@ -19,6 +24,7 @@ import {useMemo} from 'react';
 import {useTranslation} from 'react-i18next';
 import {estimateQuantile, mergeHistogramSeries} from 'observability/histogram';
 import {aggregateSum, selectSamples} from 'observability/selectors';
+import {completedRequestRate, completedRequestRatesBy} from 'observability/aiRequests';
 import {familySumRate, groupRates, rateMaxGapMs} from 'observability/snapshotRates';
 import {CadenceSelector, ModelName, PanelPaper, StatRow, formatRate, useObservabilityApplicable} from './common';
 
@@ -29,8 +35,11 @@ export default function AITrafficPage() {
 	const {snapshot, history, isLoading, cadenceMs, refetch} = useMetricsSnapshot(applicable ? instance : null);
 	const maxGap = rateMaxGapMs(cadenceMs);
 
-	const completedByStatus = useMemo(() => (snapshot ? groupRates(history, 'loxilb_ai_requests_total', ['status'], maxGap) : []), [snapshot, history, maxGap]);
-	const completedTotal = useMemo(() => familySumRate(history, 'loxilb_ai_requests_total', maxGap), [history, maxGap]);
+	// Restricted to outcome="completed" where the instance reports it: since
+	// gateway 27680379 the family also carries denials, so summing it whole
+	// would put denied requests under a "completed" heading.
+	const completedByStatus = useMemo(() => (snapshot ? completedRequestRatesBy(history, ['status'], maxGap) : []), [snapshot, history, maxGap]);
+	const completedTotal = useMemo(() => completedRequestRate(history, maxGap), [history, maxGap]);
 	const denialRates = useMemo(
 		() =>
 			snapshot

@@ -148,7 +148,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 							{t('Created at')}
 						</Typography>
 
-						<Typography variant="caption" color="text.disabled">
+						<Typography variant="caption" color="text.primary">
 							{get_date(instance_info.created_at)}
 						</Typography>
 					</Box>
@@ -174,7 +174,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 						<Typography variant="caption" color="text.secondary">
 							{t('Host')}
 						</Typography>
-						<Typography variant="caption" color="text.disabled">
+						<Typography variant="caption" color="text.primary">
 							{`${instance_info.host}:${instance_info.port}`}
 						</Typography>
 					</Box>
@@ -183,7 +183,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 						<Typography variant="caption" color="text.secondary">
 							{t('Version')}
 						</Typography>
-						<Typography variant="caption" color="text.disabled">
+						<Typography variant="caption" color="text.primary">
 							{instance_info.version}
 						</Typography>
 					</Box>
@@ -200,7 +200,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 							{t('HA State')}
 						</Typography>
 
-						<Typography variant="caption" color="text.disabled">
+						<Typography variant="caption" color="text.primary">
 							{ha?.state ?? t('Unknown')}
 						</Typography>
 					</Box>
@@ -239,7 +239,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 						<Typography variant="caption" color="text.secondary">
 							{t('Tag')}
 						</Typography>
-						<Typography variant="caption" color="text.disabled">
+						<Typography variant="caption" color="text.primary">
 							{instance_info.ctag}
 						</Typography>
 					</Box>
@@ -248,7 +248,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 						<Typography variant="caption" color="text.secondary">
 							{t('CImage')}
 						</Typography>
-						<Typography variant="caption" color="text.disabled">
+						<Typography variant="caption" color="text.primary">
 							{instance_info.cimage}
 						</Typography>
 					</Box>
@@ -259,7 +259,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 						</Typography>
 					</Box>
 					<Box display="flex" justifyContent="space-between">
-						<Typography variant="caption" color="text.disabled">
+						<Typography variant="caption" color="text.primary">
 							{instance_info.api_endpoint}
 						</Typography>
 					</Box>
@@ -268,7 +268,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 					<Box width="100%" overflow="hidden">
 						<Typography
 							variant="caption"
-							color="text.disabled"
+							color="text.primary"
 							overflow="hidden"
 							textOverflow="ellipsis"
 							sx={{
