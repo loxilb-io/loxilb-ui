@@ -89,12 +89,29 @@ describe('gateway spec contract — models the UI depends on', () => {
 			expect.objectContaining({type: 'integer', minimum: 0, maximum: 65535}),
 		);
 		expect(serviceArguments.security.enum).toEqual([0, 1, 2]);
-		expect(serviceArguments.api_key_auth.enum).toEqual(['disabled', 'required']);
+		expect(serviceArguments.api_key_auth.enum).toEqual([
+			'disabled',
+			'required',
+			'jwt',
+			'apikey-or-jwt',
+		]);
 		expect(serviceArguments.api_key_auth.default, 'omission must not materialize explicit disabled').toBeUndefined();
-		// Upstream fc769691 rewording of the same three-state contract: omission
-		// declares nothing and is preserved on read-back, never resolved to a value.
-		expect(serviceArguments.api_key_auth.description).toContain('omission is one of them');
+		// The omission contract survives the JWT modes: omission still declares
+		// nothing and is preserved on read-back, never resolved to a value.
+		expect(serviceArguments.api_key_auth.description).toContain('Omission is a state of its own');
 		expect(serviceArguments.api_key_auth.description).toContain('never resolved to a value');
+		// Both JWT arms are profile-bound; a bare mode with no profile is invalid.
+		expect(serviceArguments.api_key_auth.description).toContain(
+			'Both JWT modes require jwt_auth_profile',
+		);
+		// The profile reference rides serviceArguments and shares the
+		// preserve-on-omit replace semantics of the mode it pairs with.
+		expect(serviceArguments.jwt_auth_profile).toEqual(
+			expect.objectContaining({type: 'string', maxLength: 63}),
+		);
+		expect(serviceArguments.jwt_auth_profile.description).toContain(
+			'preserves the existing reference',
+		);
 	});
 
 	it('API-key import and create response keep the secret-safe wire contract', () => {

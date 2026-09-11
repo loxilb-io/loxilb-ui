@@ -829,7 +829,7 @@ export interface paths {
     };
     /**
      * Patch an existing Load balancer service (RFC 7386 JSON merge-patch)
-     * @description Updates an existing L4 rule selected by VIP/port/protocol; does not create a missing rule. FullProxy rules are rejected. The handler overlays name, sel, inactiveTimeOut, monitor, probetype, probeport, probereq, proberesp and adminStateUp when present, and replaces endpoints or allowedSources when their collection key is present. Changes to security, egress, mode or the identifying tuple are guarded as immutable. Empty or null endpoints are rejected; serviceArguments:null does not clear the service configuration. Implementation warning: this is a restricted overlay, not general recursive RFC 7386 support for every LoadbalanceEntry field. Other schema fields are not applied by this handler. Canonical probeTimeout/probeRetries updates miss the handler's incorrectly lowercased presence checks; this is a wiring defect, not an alternate spelling of the API. Existing-member metadata updates also have the limitations documented on endpoints. The L4 path uses in-place reconciliation, but source inspection does not establish runtime connection preservation. Returns 200 on successful apply and 404 when absent; errors, including no-change detection, can prevent a successful apply.
+     * @description Updates an existing L4 rule selected by VIP/port/protocol; does not create a missing rule. FullProxy rules are rejected. The handler overlays name, sel, inactiveTimeOut, monitor, probetype, probeport, probereq, proberesp, adminStateUp, pd_cache_threshold and pd_balance_abs_threshold when present, and replaces endpoints or allowedSources when their collection key is present. For the two P/D thresholds, omission retains the stored declaration, explicit 0 resets to the system default, and explicit null is rejected. Changes to security, egress, mode or the identifying tuple are guarded as immutable. Empty or null endpoints are rejected; serviceArguments:null does not clear the service configuration. Implementation warning: this is a restricted overlay, not general recursive RFC 7386 support for every LoadbalanceEntry field. Other schema fields are not applied by this handler. Canonical probeTimeout/probeRetries updates miss the handler's incorrectly lowercased presence checks; this is a wiring defect, not an alternate spelling of the API. Existing-member metadata updates also have the limitations documented on endpoints. The L4 path uses in-place reconciliation, but source inspection does not establish runtime connection preservation. Returns 200 on successful apply and 404 when absent; errors, including no-change detection, can prevent a successful apply.
      */
     patch: operations["patchConfigLoadbalancerExternalipaddressIPAddressPortPortProtocolProto"];
   };
@@ -6292,7 +6292,7 @@ export interface paths {
   "/metrics": {
     /**
      * Scrape metrics from the cache
-     * @description Public management-authentication-exempt Prometheus scrape, using exposition rather than JSON. Disabled collection/export returns plain-text 503. Series depend on initialization and activity; absence is not measured zero.
+     * @description Prometheus exposition rather than JSON. Whether this route requires a bearer token is a deployment property, not a property of the route, which is why it is declared without a security requirement while still declaring 401, 403 and 503. The --metrics-auth option decides - auto (the default) requires a token only under mgmt-profile remote-tls, require always requires one, and disable never does and is refused under remote-tls. A scraper that gets 401 here is reaching a gateway that expects a credential; configure the scrape job with a bearer token rather than removing the requirement. Collection or export being disabled answers a plain-text 503, decided before the credential is examined. Which series appear depends on initialization and activity; an absent series is not a measured zero.
      */
     get: {
       responses: {
@@ -6301,6 +6301,22 @@ export interface paths {
           content: {
             "application/json": string;
           };
+        };
+        /** @description Authentication is required for this route on this deployment and the credential was missing or invalid */
+        401: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Authenticated principal's role carries no authority for this operation */
+        403: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Metrics collection is disabled (a plain-text body, not JSON), or the credential store could not answer */
+        503: {
+          content: never;
         };
       };
     };
@@ -8143,6 +8159,25 @@ export interface paths {
      */
     delete: operations["deleteConfigOpaWatcher"];
   };
+  "/config/ai/jwtauthprofile": {
+    /**
+     * List JWT auth profiles
+     * @description Returns every configured JWT auth profile. This reports desired configuration only, not issuer reachability or keyset health.
+     */
+    get: operations["getConfigAiJwtauthprofileAll"];
+    /**
+     * Create or replace a JWT auth profile
+     * @description Configures a named issuer profile for data-plane bearer-token admission on LB rules. Posting an existing name replaces the profile and restarts its key lifecycle: the profile answers 503-class on the data plane until the first JWKS fetch against the new configuration succeeds (fail-closed). Only public key material is ever fetched or held; no secrets are stored. Activation does not wait for the first JWKS fetch, so a successful create is not proof the issuer is reachable.
+     */
+    post: operations["postConfigAiJwtauthprofile"];
+  };
+  "/config/ai/jwtauthprofile/{name}": {
+    /**
+     * Delete a JWT auth profile
+     * @description Removes the named profile. A profile referenced by any LB rule is not deletable (409); detach it from every rule first.
+     */
+    delete: operations["deleteConfigAiJwtauthprofileName"];
+  };
 }
 
 export type webhooks = Record<string, never>;
@@ -8834,10 +8869,12 @@ export interface components {
          */
         sse_mode?: boolean;
         /**
-         * @description Data-plane X-Api-Key enforcement declaration for this service. Three states, and omission is one of them. OMITTED declares nothing: the service is not marked AI-facing, proxying stays byte-identical, and a backend-owned X-Api-Key header passes through untouched. An explicit "disabled" declares the service AI-facing without enforcement: no key is validated, but X-Api-Key is the gateway's credential namespace and the header is stripped before dispatch. "required" makes the data plane validate the X-Api-Key header against the API-key store before the request reaches a backend, fails closed when the policy cannot be evaluated, and likewise strips the header. Reading a service back preserves the declaration exactly: an omitted policy reads back with this field absent, never resolved to a value. On a replace of an existing service, omitting this field leaves the declared policy unchanged — it never silently turns enforcement off; to clear a declared policy, send "disabled" explicitly. Independent of sse_mode and pd_disagg_mode, and independent of the management-plane authentication mode.
+         * @description Data-plane credential enforcement declaration for this service. Omission is a state of its own. OMITTED declares nothing: the service is not marked AI-facing, proxying stays byte-identical, and a backend-owned X-Api-Key header passes through untouched. An explicit "disabled" declares the service AI-facing without enforcement: no key is validated, but X-Api-Key is the gateway's credential namespace and the header is stripped before dispatch. "required" makes the data plane validate the X-Api-Key header against the API-key store before the request reaches a backend, fails closed when the policy cannot be evaluated, and likewise strips the header. "jwt" validates an Authorization Bearer JWT against the service's jwt_auth_profile instead; X-Api-Key is not consulted. "apikey-or-jwt" accepts either credential with a fixed precedence: a present X-Api-Key decides alone (its rejection is final, with no JWT fallback), otherwise a Bearer token decides, and a request carrying neither is refused. Both JWT modes require jwt_auth_profile to name a configured profile. Reading a service back preserves the declaration exactly: an omitted policy reads back with this field absent, never resolved to a value. On a replace of an existing service, omitting this field leaves the declared policy unchanged — it never silently turns enforcement off; to clear a declared policy, send "disabled" explicitly. Independent of sse_mode and pd_disagg_mode, and independent of the management-plane authentication mode.
          * @enum {string}
          */
-        api_key_auth?: "disabled" | "required";
+        api_key_auth?: "disabled" | "required" | "jwt" | "apikey-or-jwt";
+        /** @description Name of the JWT auth profile (config/ai/jwtauthprofile) that decides this service's Bearer arm. Required by, and only valid with, api_key_auth "jwt" and "apikey-or-jwt"; a create or replace naming a profile that is not configured is rejected. On a replace, omitting this field preserves the existing reference, in lockstep with api_key_auth's replace semantics. While a service references a profile, deleting that profile is refused. */
+        jwt_auth_profile?: string;
         /**
          * Format: int32
          * @description Duration limit for an active detected SSE response, in seconds. Omission or 0 uses the system cap of 86400 seconds; a positive value uses min(value, 86400). The periodic timeout walk terminates a stream when tracked elapsed time reaches the effective cap. QoS parking currently advances the stream start anchor to exclude parked time, so this is not a strict end-to-end wall-clock SLA. This limit is distinct from backend keepalive, connection idle timeout, and P/D session-affinity TTL.
@@ -8873,13 +8910,13 @@ export interface components {
         pd_session_ttl_sec?: number;
         /**
          * Format: int32
-         * @description Minimum prefix-match percentage for Tier-1 trie affinity when pd_cache_aware_mode=true. Lower positive values allow shorter prefix matches. On creation, omission or 0 resolves to 20, not a literal zero-percent threshold. Current replace behavior retains the previous value when the incoming value is 0. The approved future update contract separates omission (retain) from explicit 0 (reset to 20); that presence-aware change is not implemented yet. UI clients must not assume a zero-valued update resets the current deployment. This field does not set the Tier-0 session TTL.
+         * @description Minimum prefix-match percentage for Tier-1 trie affinity when pd_cache_aware_mode=true. Lower positive values allow shorter prefix matches. On creation, omission or 0 stores the zero declaration and resolves effectively to 20, not a literal zero-percent threshold. On replace POST and supported PATCH, omission retains the stored declaration, explicit 0 resets it to the system default of 20, and a valid positive value replaces it. Explicit JSON null is rejected before rule or data-plane mutation. This field does not set the Tier-0 session TTL.
          * @default 20
          */
         pd_cache_threshold?: number;
         /**
          * Format: int32
-         * @description Absolute active-connection imbalance threshold for P/D cache affinity. Tier-1 trie selection requires max-min to be at most this value; Tier-1.5 uses the check only when the process-level LLB_KV_LOADGUARD is enabled. A Tier-0 session hit returns before these checks. On creation, omission or 0 resolves to 3. Current replace behavior retains the previous value for incoming 0. The approved future contract is omission=retain and explicit 0=reset to 3; this update distinction is not implemented yet.
+         * @description Absolute active-connection imbalance threshold for P/D cache affinity. Tier-1 trie selection requires max-min to be at most this value; Tier-1.5 uses the check only when the process-level LLB_KV_LOADGUARD is enabled. A Tier-0 session hit returns before these checks. On creation, omission or 0 stores the zero declaration and resolves effectively to 3. On replace POST and supported PATCH, omission retains the stored declaration, explicit 0 resets it to the system default of 3, and a valid positive value replaces it. Explicit JSON null is rejected before rule or data-plane mutation.
          * @default 3
          */
         pd_balance_abs_threshold?: number;
@@ -8891,7 +8928,7 @@ export interface components {
         kvExactMode?: number;
         /**
          * Format: int64
-         * @description Token block size for KV hashing. Omission or 0 resolves to 16 in the current implementation; choose the value from the deployed engine tuple, not from the schema default. Must match vLLM block-size, SGLang page-size, or TRT-LLM tokens_per_block. A mismatch can cause hash misses; TRT-LLM server-info validation can instead refuse the endpoint's KV event poller while plain load balancing remains available. Implementation limitation: the schema's uint32 ceiling is not a safe operational range; downstream hashing converts the size to signed int. Use only a qualified engine block size until the numeric contract and C arithmetic are hardened. API acceptance is not geometry validation.
+         * @description Token block size for KV hashing. On create and replace POST, omission or explicit 0 stores the default declaration and resolves effectively to 16; explicit JSON null is rejected. PATCH does not support this field. Positive values are limited to 1..4096, the fixed request-token and CBOR workspace bound used by the hashing data path. Choose the value from the deployed engine tuple, not from the schema default. It must match vLLM block-size, SGLang page-size, or TRT-LLM tokens_per_block. A mismatch can cause hash misses; TRT-LLM server-info validation can instead refuse the endpoint's KV event poller while plain load balancing remains available. API acceptance proves safe representation, not engine-geometry compatibility.
          * @default 16
          */
         kvBlockSize?: number;
@@ -8902,7 +8939,7 @@ export interface components {
         kvHashAlgo?: "sha256_cbor" | "xxhash_cbor" | "sha256_sglang" | "blockhash_trtllm";
         /**
          * Format: int64
-         * @description Base ZMQ event port for vllm/sglang exact routing. Omission or 0 resolves to 5557 in the current implementation. Mode 1 subscribes prefill endpoints only; mode 3 subscribes all endpoints. SGLang rank N uses base+N for N=0..kvDpRankCount-1; the effective base plus effective rank count minus one must not exceed 65535. trtllm uses HTTP on targetPort instead: only omitted/0/default 5557 declarations are accepted there, and no ZMQ connection is made.
+         * @description Base ZMQ event port for vllm/sglang exact routing. On create and replace POST, omission or explicit 0 stores the default declaration and resolves effectively to 5557; explicit JSON null is rejected. PATCH does not support this field. Mode 1 subscribes prefill endpoints only; mode 3 subscribes all endpoints. SGLang rank N uses base+N for N=0..kvDpRankCount-1; the effective base plus effective rank count minus one must not exceed 65535. trtllm uses HTTP on targetPort instead: only omitted/0/default 5557 declarations are accepted there, and no ZMQ connection is made.
          * @default 5557
          */
         kvZmqPort?: number;
@@ -8920,7 +8957,7 @@ export interface components {
         kvEngineType?: "vllm" | "sglang" | "trtllm" | "llamacpp";
         /**
          * Format: int32
-         * @description SGLang event-publisher rank count, not the number of LB endpoints. Omission or 0 resolves to 1; accepted positive values are 1..8. Values above 1 require kvEngineType=sglang. Rank N uses kvZmqPort+N for N=0..count-1; after resolving defaults the highest port must be at most 65535. Inventories are unioned per endpoint. Fan-out support does not by itself qualify every engine/model/DP deployment.
+         * @description SGLang event-publisher rank count, not the number of LB endpoints. On create and replace POST, omission or explicit 0 stores the default declaration and resolves effectively to 1; explicit JSON null is rejected. PATCH does not support this field. Accepted positive values are 1..8. Values above 1 require kvEngineType=sglang. Rank N uses kvZmqPort+N for N=0..count-1; after resolving defaults the highest port must be at most 65535. Inventories are unioned per endpoint. Fan-out support does not by itself qualify every engine/model/DP deployment.
          * @default 1
          */
         kvDpRankCount?: number;
@@ -8933,35 +8970,35 @@ export interface components {
         kvModelProfile?: string;
         /**
          * Format: int32
-         * @description SGLang bootstrap port on every prefill endpoint; must match the engine disaggregation-bootstrap-port. Omitted/0 resolves to 8998 on the SGLang P/D path. A nonzero declaration requires both pd_disagg_mode=true and kvEngineType=sglang; it is rejected on other shapes. Zero is accepted on other shapes but has no effect.
+         * @description SGLang bootstrap port on every prefill endpoint; must match the engine disaggregation-bootstrap-port. On create and replace POST, omitted or explicit 0 resolves to 8998 on the SGLang P/D path; explicit JSON null is rejected. PATCH does not support this field. A nonzero declaration requires both pd_disagg_mode=true and kvEngineType=sglang; it is rejected on other shapes. Zero is accepted on other shapes but has no effect.
          * @default 0
          */
         pdBootstrapPort?: number;
         /** @description Session-key extraction setting for proxy affinity. Use a header name such as X-Session-ID, cookie:NAME for one cookie, query:NAME for one query parameter, or basic-auth for the Basic Authorization username. RR (sel=0) and persistence (sel=3) paths contain handling; a missing usable key follows their RR or IP-based fallback respectively. This setting is not authentication. GET includes it only for those selectors. The server accepts at most 127 UTF-8 bytes and rejects embedded NUL or invalid UTF-8 before changing rule state. This byte limit reserves the terminator in the 128-byte data-plane field; UI validation must count encoded bytes rather than characters. Cross-mode interaction with L7 HTTP_COOKIE remains unresolved. */
         session_header_name?: string;
         /**
-         * @description Intended prefix level for sel=8 (CHWBL) or sel=10 (WRR_HASH), both requiring mode=4: 1=system prompt/model, 2=also session context, 3=also RAG context. Known wiring limitation: the declaration is forwarded to the C configuration for sel=8, but not for sel=10. The WRR_HASH path therefore uses its internal level-1 default. Readback of an explicit value does not prove it affects routing. The option is retained; complete propagation and parser behavior verification are required before claiming all levels are qualified.
+         * @description Maximum hash-input level for mode=4 with sel=8 (CHWBL) or sel=10 (WRR_HASH): 1=system prompt/model and present L1 fields, 2=also session context, 3=also RAG context. Omission on create resolves to 1; omission on replace preserves the current effective value.
          * @default 1
          * @enum {integer}
          */
         chwbl_prefix_hash_level?: 1 | 2 | 3;
         /**
-         * @description Intended optional hash-input flags for sel=8/10: bits 0..7 name LoRA, image, audio, cache_salt, tools, session, RAG template, and RAG documents respectively; 0 declares automatic selection. Known implementation gap: API declarations are stored but are not propagated into the active C configuration, which initializes this field to 0. Per-bit behavior is not an implemented API guarantee. Retained for implementation and behavior verification.
+         * @description Optional hash-input flags for sel=8/10: bits 0..7 name LoRA, image, audio, cache_salt, tools, session, RAG template, and RAG documents respectively. 0 selects all present inputs allowed by chwbl_prefix_hash_level. Explicit flags above that level are rejected. Omission on replace preserves the effective value.
          * @default 0
          */
         chwbl_prefix_hash_flags?: number;
         /**
-         * @description Intended bounded-load factor in percent for sel=8/10, with a nominal bound of average load multiplied by factor/100. The schema declares 125, but current C initialization uses 175 and does not consume this API override. Do not interpret a returned value as the effective bound. The option is retained; the final default and complete configuration propagation require reconciliation.
-         * @default 125
+         * @description Bounded-load factor in percent for sel=8/10. Selection compares the request's future endpoint load with the configured factor of mean load. Omission on create resolves to 175; omission on replace preserves the current effective value.
+         * @default 175
          */
         chwbl_mean_load_factor?: number;
         /**
-         * @description Intended hash-ring replication setting for sel=8/10. CHWBL uses virtual nodes per endpoint; WRR_HASH distributes a ring budget by endpoint weight. The schema declares 100, but current C setup uses 256 and does not consume this API override. Retained for implementation; default, weight interaction, allocation limits, and live ring-rebuild behavior must be reconciled before the UI treats this as an effective tuning control.
-         * @default 100
+         * @description Hash-ring geometry for sel=8/10. CHWBL creates exactly this many virtual nodes per endpoint. WRR_HASH treats it as the exact total vnode budget, assigns only positive-weight active endpoints, and rejects a budget smaller than that endpoint count. Create default is 256; replace omission preserves the effective value.
+         * @default 256
          */
         chwbl_replication?: number;
         /**
-         * @description Intended request cache_salt requirement for sel=8/10. Known implementation gap: this declaration is not wired to active C configuration, which initializes the option disabled. It does not currently enforce salt presence or tenant isolation. Retained for implementation. A client-supplied hash salt is not itself an authenticated tenant-isolation boundary; identity binding and missing-salt behavior need an explicit security contract.
+         * @description Require a non-empty JSON string cache_salt of at most 63 bytes on H1 and H2 requests and include it in the configured hash identity. Missing or malformed salt is rejected locally with HTTP 400 before upstream dispatch. This is cache-key namespacing, not authentication and not an authenticated tenant-isolation boundary.
          * @default false
          */
         chwbl_enable_cache_salt?: boolean;
@@ -11620,6 +11657,52 @@ export interface components {
        */
       timestamp?: string;
     };
+    /** @description Named issuer configuration for data-plane bearer-token (JWT) admission. LB rules reference a profile by name; several rules may share one profile and several profiles (realms/issuers) may be active at once. Claim extraction is fully configurable dot-paths because the identity provider owns the claim schema; defaults are Keycloak-shaped. Zero or absent numeric fields select the documented defaults; there is no field where zero is a meaningful non-default configuration. */
+    JWTAuthProfileEntry: {
+      /** @description Profile name (the identity LB rules reference) */
+      name: string;
+      /** @description Exact string the token iss claim must equal; must be an http(s) URL. When jwks_url is unset it is also the base for OIDC discovery (issuer + /.well-known/openid-configuration). */
+      issuer: string;
+      /** @description Overrides OIDC discovery of the JWKS endpoint when set */
+      jwks_url?: string;
+      /** @description Accept-list matched against the token aud values and azp; at least one must match. Empty skips the audience check (logged at activation). */
+      audiences?: string[];
+      /** @description Signature-algorithm accept-list (RS256/RS384/RS512, ES256/ES384/ ES512, PS256/PS384/PS512). Default RS256+ES256. alg=none and all HMAC algorithms are rejected unconditionally and cannot be configured. */
+      algs?: string[];
+      /**
+       * Format: int64
+       * @description Clock-skew allowance in seconds for exp/nbf/iat (default 30)
+       */
+      leeway_sec?: number;
+      /**
+       * Format: int64
+       * @description Periodic JWKS refresh interval in seconds (default 3600)
+       */
+      refresh_sec?: number;
+      /** @description Dot-path to the tenant identity claim (default tenant_id) */
+      tenant_claim?: string;
+      /** @description Dot-path to the stable user identity claim (default sub) */
+      user_claim?: string;
+      /** @description Dot-path to a string array of allowed models. Unset means models derive from roles via model_role_prefix. When set and present in the token it is authoritative, even when empty. */
+      models_claim?: string;
+      /** @description Dot-path to the roles array (default realm_access.roles) */
+      roles_claim?: string;
+      /** @description Prefix filter turning roles into allowed models (default "model:") */
+      model_role_prefix?: string;
+      /** @description Dot-path to a display-only username (default preferred_username) */
+      username_claim?: string;
+      /**
+       * @description What happens when no model list can be derived from the token. claims-required (default) denies every model; allow-all admits any model for an otherwise-valid token.
+       * @enum {string}
+       */
+      model_authz?: "claims-required" | "allow-all";
+      /** @description Tenant used when the tenant claim is absent. Empty means such tokens are denied (401) — an unattributable request cannot be metered. */
+      default_tenant?: string;
+      /** @description Inject verified X-Auth-Tenant/X-Auth-User headers upstream (client-sent copies are always stripped). Default false. */
+      forward_identity?: boolean;
+      /** @description Leave the client Authorization header on the upstream request instead of stripping it after verification. Default false. */
+      authorization_passthrough?: boolean;
+    };
     /** @description Management creation of a data-plane credential; management authorization and data-plane enforcement are separate. Protection requires a service requiring API-key authentication. Quotas lack complete nonnegative/range validation. Whitespace-only tenant IDs are rejected but surrounding spaces are retained. Empty allowed_models permits all models; otherwise matching is exact. Embedded commas do not round-trip as one model identifier. */
     ApiKeyCreateRequest: {
       /** @description Tenant identifier that owns this key */
@@ -11912,7 +11995,7 @@ export interface operations {
   };
   /**
    * Patch an existing Load balancer service (RFC 7386 JSON merge-patch)
-   * @description Updates an existing L4 rule selected by VIP/port/protocol; does not create a missing rule. FullProxy rules are rejected. The handler overlays name, sel, inactiveTimeOut, monitor, probetype, probeport, probereq, proberesp and adminStateUp when present, and replaces endpoints or allowedSources when their collection key is present. Changes to security, egress, mode or the identifying tuple are guarded as immutable. Empty or null endpoints are rejected; serviceArguments:null does not clear the service configuration. Implementation warning: this is a restricted overlay, not general recursive RFC 7386 support for every LoadbalanceEntry field. Other schema fields are not applied by this handler. Canonical probeTimeout/probeRetries updates miss the handler's incorrectly lowercased presence checks; this is a wiring defect, not an alternate spelling of the API. Existing-member metadata updates also have the limitations documented on endpoints. The L4 path uses in-place reconciliation, but source inspection does not establish runtime connection preservation. Returns 200 on successful apply and 404 when absent; errors, including no-change detection, can prevent a successful apply.
+   * @description Updates an existing L4 rule selected by VIP/port/protocol; does not create a missing rule. FullProxy rules are rejected. The handler overlays name, sel, inactiveTimeOut, monitor, probetype, probeport, probereq, proberesp, adminStateUp, pd_cache_threshold and pd_balance_abs_threshold when present, and replaces endpoints or allowedSources when their collection key is present. For the two P/D thresholds, omission retains the stored declaration, explicit 0 resets to the system default, and explicit null is rejected. Changes to security, egress, mode or the identifying tuple are guarded as immutable. Empty or null endpoints are rejected; serviceArguments:null does not clear the service configuration. Implementation warning: this is a restricted overlay, not general recursive RFC 7386 support for every LoadbalanceEntry field. Other schema fields are not applied by this handler. Canonical probeTimeout/probeRetries updates miss the handler's incorrectly lowercased presence checks; this is a wiring defect, not an alternate spelling of the API. Existing-member metadata updates also have the limitations documented on endpoints. The L4 path uses in-place reconciliation, but source inspection does not establish runtime connection preservation. Returns 200 on successful apply and 404 when absent; errors, including no-change detection, can prevent a successful apply.
    */
   patchConfigLoadbalancerExternalipaddressIPAddressPortPortProtocolProto: {
     parameters: {
@@ -13640,6 +13723,137 @@ export interface operations {
         };
       };
       503: components["responses"]["ManagementStoreUnavailable"];
+    };
+  };
+  /**
+   * List JWT auth profiles
+   * @description Returns every configured JWT auth profile. This reports desired configuration only, not issuer reachability or keyset health.
+   */
+  getConfigAiJwtauthprofileAll: {
+    responses: {
+      /** @description OK */
+      200: {
+        content: {
+          "application/json": {
+            jwtAuthProfileAttr?: components["schemas"]["JWTAuthProfileEntry"][];
+          };
+        };
+      };
+      /** @description Invalid authentication credentials */
+      401: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      403: components["responses"]["ManagementForbidden"];
+      /** @description Internal service error */
+      500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Maintenance mode */
+      503: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  /**
+   * Create or replace a JWT auth profile
+   * @description Configures a named issuer profile for data-plane bearer-token admission on LB rules. Posting an existing name replaces the profile and restarts its key lifecycle: the profile answers 503-class on the data plane until the first JWKS fetch against the new configuration succeeds (fail-closed). Only public key material is ever fetched or held; no secrets are stored. Activation does not wait for the first JWKS fetch, so a successful create is not proof the issuer is reachable.
+   */
+  postConfigAiJwtauthprofile: {
+    /** @description Attributes of the JWT auth profile */
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["JWTAuthProfileEntry"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        content: {
+          "application/json": components["schemas"]["OperationResult"];
+        };
+      };
+      /** @description Malformed arguments for API call */
+      400: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Invalid authentication credentials */
+      401: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      403: components["responses"]["ManagementForbidden"];
+      /** @description Internal service error */
+      500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Maintenance mode */
+      503: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  /**
+   * Delete a JWT auth profile
+   * @description Removes the named profile. A profile referenced by any LB rule is not deletable (409); detach it from every rule first.
+   */
+  deleteConfigAiJwtauthprofileName: {
+    parameters: {
+      path: {
+        /** @description Name of the JWT auth profile */
+        name: string;
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        content: {
+          "application/json": components["schemas"]["OperationResult"];
+        };
+      };
+      /** @description Invalid authentication credentials */
+      401: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      403: components["responses"]["ManagementForbidden"];
+      /** @description Resource not found */
+      404: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Resource Conflict. Profile is referenced by one or more LB rules */
+      409: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Internal service error */
+      500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Maintenance mode */
+      503: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
     };
   };
 }
