@@ -31,7 +31,7 @@ describe('vendored envelope', () => {
 describe('gateway scrape applicability (class + packaged)', () => {
 	it('marks exactly the packaged default class as gateway-applicable', () => {
 		const applicable = allManifestFamilies().filter(f => isGatewayScrapeFamily(f.name));
-		expect(applicable).toHaveLength(176);
+		expect(applicable).toHaveLength(184);
 		for (const f of applicable) {
 			expect(f.class).toBe('default');
 			expect(f.packaged).toBe(true);
@@ -80,13 +80,17 @@ describe('gateway scrape applicability (class + packaged)', () => {
 });
 
 describe('desc normalization (definition mechanism vs runtime type)', () => {
-	it('pins the 13 custom-collector families to 4 counters + 8 gauges + 1 histogram', () => {
+	it('pins the 17 custom-collector families to 4 counters + 12 gauges + 1 histogram', () => {
 		const desc = allManifestFamilies().filter(f => f.definitionMechanism === 'desc');
 		expect(desc.map(f => f.name).sort()).toEqual([
+			'loxilb_ai_jwks_keys',
+			'loxilb_ai_jwks_last_success_timestamp_seconds',
+			'loxilb_ai_jwks_usable',
 			'loxilb_ai_token_quota_limit_tokens',
 			'loxilb_ai_token_quota_model_limit_tokens',
 			'loxilb_ai_token_quota_model_utilization',
 			'loxilb_ai_token_quota_utilization',
+			'loxilb_policer_attached',
 			'loxilb_proxy_http_ttfb_seconds',
 			'loxilb_proxy_qos_bytes_delayed_total',
 			'loxilb_proxy_qos_bytes_passed_total',
@@ -106,10 +110,14 @@ describe('desc normalization (definition mechanism vs runtime type)', () => {
 			'loxilb_proxy_qos_parks_total',
 		]);
 		expect(byType('gauge')).toEqual([
+			'loxilb_ai_jwks_keys',
+			'loxilb_ai_jwks_last_success_timestamp_seconds',
+			'loxilb_ai_jwks_usable',
 			'loxilb_ai_token_quota_limit_tokens',
 			'loxilb_ai_token_quota_model_limit_tokens',
 			'loxilb_ai_token_quota_model_utilization',
 			'loxilb_ai_token_quota_utilization',
+			'loxilb_policer_attached',
 			'loxilb_proxy_qos_cbs_bytes',
 			'loxilb_proxy_qos_cir_bytes_per_second',
 			'loxilb_proxy_qos_parked_connections',
