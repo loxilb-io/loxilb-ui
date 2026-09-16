@@ -895,6 +895,13 @@ export interface paths {
      */
     get: operations["getConfigLoadbalancerStatus"];
   };
+  "/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}/sockmapreset": {
+    /**
+     * Stop sockmap acceleration on this service's live connections
+     * @description Closes the connections of this service that the kernel is currently accelerating, and reports how many were closed. A configuration change applies to new connections only - the sockmap verdict decides on the socket pairing installed when a connection was accepted, so a connection already accelerated keeps redirecting until it closes. This is the operation that stops it on connections that are already running, for instance after finding the kernel affected by the redirect defect documented in docs/sockmap-acceleration.md. It closes rather than unmaps, because removing a socket from the map while traffic flows can drop bytes mid-connection while closing cannot; clients reconnect and the new connections follow the service as it now stands. Connections of the same service that were never accelerated are not touched, which includes every HTTP/2 connection and any connection that has not yet sent a request. The operation is idempotent and answers 200 with zero on a service that has nothing accelerated, including one whose sockMapMode is off. A service that does not exist answers 404. Changing sockMapMode so that it gives up a direction, and deleting the service, already perform this teardown.
+     */
+    post: operations["postConfigLoadbalancerSockmapReset"];
+  };
   "/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}/kvexactstatus": {
     /**
      * Get the resolved KV-exact composition status of Load balancer rules
@@ -8540,6 +8547,11 @@ export interface components {
       code?: number;
       message?: string;
     };
+    /** @description Result of stopping sockmap acceleration on a service's live connections. */
+    SockMapResetResult: {
+      /** @description How many accelerated connections were closed. Zero means the service had none, which is also the answer for a service whose sockMapMode is off. Connections that were never accelerated are not counted because they are not touched. */
+      droppedConnections?: number;
+    };
     /** @description Per-LB lifecycle status (Octavia). */
     LoadbalanceStatus: {
       /** @description Octavia admin_state_up — true = enabled, false = paused. */
@@ -8928,7 +8940,7 @@ export interface components {
         /** @description Enables PROXY protocol v2 on the supported backend path. The domain rejects non-TCP services when this flag is true; configure a backend that accepts the protocol header. */
         proxyprotocolv2?: boolean;
         /**
-         * @description Directional sockmap acceleration for this FullProxy service - off (default), both, request (client->backend only), response (backend->client only). The direction that is not selected stays on the userspace relay and never runs the sockmap verdict. A mode other than off requires a plaintext tcp fullproxy service with an ipv4 external IP and ipv4 endpoints, and the daemon started with --sockmapsupport; a request that does not meet either condition is rejected with 400 before any rule state changes. A snapshot restore on a daemon without --sockmapsupport keeps the mode, logs a warning and runs the rule unaccelerated. An AI gateway service (sse_mode, pd_disagg_mode or api_key_auth, including an api_key_auth kept by a replace that omits it) accepts only off and is rejected with 400 otherwise, because on an accelerated connection the later keep-alive requests skip admission and the responses are not recorded; a snapshot restore of such a service turns the mode off with a warning. Services are told apart by address and port; services pointing at the same endpoint address and port, or host-based services on the same VIP address and port, share a portset entry, but a connection is accelerated only in the directions its own service selects. HTTP/2, including h2c, is never accelerated. Changing the mode or deleting the service applies to new connections; a connection already accelerated keeps redirecting until it closes. Redirect correctness depends on the kernel - see docs/sockmap-acceleration.md before enabling.
+         * @description Directional sockmap acceleration for this FullProxy service - off (default), both, request (client->backend only), response (backend->client only). The direction that is not selected stays on the userspace relay and never runs the sockmap verdict. A mode other than off requires a plaintext tcp fullproxy service with an ipv4 external IP and ipv4 endpoints, and the daemon started with --sockmapsupport; a request that does not meet either condition is rejected with 400 before any rule state changes. A snapshot restore on a daemon without --sockmapsupport keeps the mode, logs a warning and runs the rule unaccelerated. A service whose data plane changes bytes on every request accepts only off and is rejected with 400 otherwise. Those are sse_mode, pd_disagg_mode, ANY api_key_auth declaration - an explicit disabled included, since that value still makes the gateway strip X-Api-Key, as is one kept by a replace that omits the field - and an attached L7 policy. On an accelerated connection the later keep-alive requests skip admission, the request-header rewrites and the X-Api-Key strip, and the responses are not recorded. Attaching an L7 policy to a service that declares a mode is rejected with 400 as well, since a policy can arrive long after the rule. A snapshot restore of such a service turns the mode off with a warning; a restored policy whose rule declares a mode is attached with a warning and the rule stays unaccelerated. Services are told apart by address and port; services pointing at the same endpoint address and port, or host-based services on the same VIP address and port, share a portset entry, but a connection is accelerated only in the directions its own service selects. HTTP/2, including h2c, is never accelerated. Adding a direction applies to new connections; a connection already running is never accelerated retroactively. Taking a direction away, and deleting the service, close the connections that had it accelerated, since the verdict decides on the pairing installed when a connection was accepted and could not otherwise be reached. POST .../sockmapreset does the same without changing the configuration. Connections that were never accelerated are not touched. Redirect correctness depends on the kernel - see docs/sockmap-acceleration.md before enabling.
          * @default off
          * @enum {string}
          */
@@ -12665,6 +12677,50 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["LoadbalanceStatus"];
+        };
+      };
+      /** @description Invalid authentication credentials */
+      401: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      403: components["responses"]["ManagementForbidden"];
+      /** @description Resource not found */
+      404: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Internal service error */
+      500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      503: components["responses"]["ManagementStoreUnavailable"];
+    };
+  };
+  /**
+   * Stop sockmap acceleration on this service's live connections
+   * @description Closes the connections of this service that the kernel is currently accelerating, and reports how many were closed. A configuration change applies to new connections only - the sockmap verdict decides on the socket pairing installed when a connection was accepted, so a connection already accelerated keeps redirecting until it closes. This is the operation that stops it on connections that are already running, for instance after finding the kernel affected by the redirect defect documented in docs/sockmap-acceleration.md. It closes rather than unmaps, because removing a socket from the map while traffic flows can drop bytes mid-connection while closing cannot; clients reconnect and the new connections follow the service as it now stands. Connections of the same service that were never accelerated are not touched, which includes every HTTP/2 connection and any connection that has not yet sent a request. The operation is idempotent and answers 200 with zero on a service that has nothing accelerated, including one whose sockMapMode is off. A service that does not exist answers 404. Changing sockMapMode so that it gives up a direction, and deleting the service, already perform this teardown.
+   */
+  postConfigLoadbalancerSockmapReset: {
+    parameters: {
+      path: {
+        /** @description External (VIP) IP address of the load balancer service */
+        ip_address: string;
+        /** @description Service port of the load balancer service */
+        port: number;
+        /** @description Protocol of the load balancer service (tcp/udp/sctp) */
+        proto: string;
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        content: {
+          "application/json": components["schemas"]["SockMapResetResult"];
         };
       };
       /** @description Invalid authentication credentials */
