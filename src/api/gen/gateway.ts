@@ -8113,6 +8113,11 @@ export interface paths {
      * @description Permanently deletes the specified API key.
      */
     delete: operations["deleteConfigAiApikeyKeyID"];
+    /**
+     * Update an AI gateway API key
+     * @description Updates the allowed model list, the enabled flag, and/or the key's rate-limit fields. A body naming none of the patchable fields is refused 400 rather than accepted as a no-op. This marked stub is intercepted by raw middleware; swagger-extras.yml carries the field set, the presence semantics, and the two distinct 400 classes.
+     */
+    patch: operations["patchConfigAiApikeyKeyID"];
   };
   "/config/ai/tenant/ratelimit": {
     /**
@@ -8127,6 +8132,51 @@ export interface paths {
      * @description Returns the current rate limit configuration for the specified tenant.
      */
     get: operations["getConfigAiTenantRatelimitTenantID"];
+  };
+  "/config/ai/user/ratelimit": {
+    /**
+     * Set or update a user's rate limits
+     * @description Creates or replaces the explicit per-user rate-limit entry inside a tenant (QoS ladder level 1). A zero field constrains nothing and falls through to the configured defaults; an entry whose limit fields are all zero is rejected. Supplied model_limits REPLACE the user's model rows as a set.
+     */
+    post: operations["postConfigAiUserRatelimit"];
+  };
+  "/config/ai/user/ratelimit/{tenant_id}": {
+    /**
+     * List a tenant's explicit user rate limits
+     * @description Returns every explicit per-user rate-limit row for the tenant, without model limits (the per-user GET carries those). Users with no explicit row are governed by the configured defaults and do not appear here.
+     */
+    get: operations["getConfigAiUserRatelimitTenantID"];
+  };
+  "/config/ai/user/ratelimit/{tenant_id}/{user_id}": {
+    /**
+     * Get one user's rate limit configuration
+     * @description Returns the explicit rate-limit entry for the user, including model limits.
+     */
+    get: operations["getConfigAiUserRatelimitTenantIDUserID"];
+    /**
+     * Delete one user's explicit rate limits
+     * @description Removes the user's explicit entry and model rows; the user falls back to the configured defaults, then to unlimited.
+     */
+    delete: operations["deleteConfigAiUserRatelimitTenantIDUserID"];
+  };
+  "/config/ai/ratelimit/defaults": {
+    /**
+     * Set or update rate-limit defaults
+     * @description Creates or replaces one defaults row (QoS ladder level 3). Scope 'global' takes no rule_ident and applies everywhere; scope 'rule' names one service and overrides the global row field-wise on it. A zero field falls through; an entry whose limit fields are all zero is rejected.
+     */
+    post: operations["postConfigAiRatelimitDefaults"];
+  };
+  "/config/ai/ratelimit/defaults/{scope}": {
+    /**
+     * Get one rate-limit defaults row
+     * @description Returns the defaults row for the scope. For scope 'rule' the rule_ident query parameter selects the service; it is ignored for scope 'global'.
+     */
+    get: operations["getConfigAiRatelimitDefaultsScope"];
+    /**
+     * Delete one rate-limit defaults row
+     * @description Removes the defaults row for the scope (rule_ident selects the service for scope 'rule'); identities it governed fall through to the next ladder level.
+     */
+    delete: operations["deleteConfigAiRatelimitDefaultsScope"];
   };
   "/config/ai/model-profiles": {
     /**
@@ -8158,6 +8208,32 @@ export interface paths {
      * @description Cancels polling and removes the in-memory singleton configuration. Previously applied firewall rules and the persisted watcher cache are retained. Repeated deletion succeeds. Cancellation does not join an in-flight polling goroutine. This marked stub is intercepted by raw middleware; swagger-extras.yml describes the actual response envelope.
      */
     delete: operations["deleteConfigOpaWatcher"];
+  };
+  "/config/ai/kv/inventory": {
+    /**
+     * Get the AI KV cache inventory
+     * @description Returns the KV-cache inventory the gateway holds for cache-aware routing. This marked stub is intercepted by raw middleware; swagger-extras.yml describes the actual response envelope.
+     */
+    get: operations["getConfigAiKvInventory"];
+  };
+  "/config/dpu/debug": {
+    /**
+     * Get DPU debug state
+     * @description Returns the current DPU debug configuration and state. This marked stub is intercepted by raw middleware; swagger-extras.yml describes the actual response envelope.
+     */
+    get: operations["getConfigDpuDebug"];
+    /**
+     * Set DPU debug state
+     * @description Updates the DPU debug configuration. This marked stub is intercepted by raw middleware; swagger-extras.yml describes the accepted body and the actual response envelope.
+     */
+    post: operations["postConfigDpuDebug"];
+  };
+  "/config/dpu/hwcounters": {
+    /**
+     * Get DPU hardware counters
+     * @description Returns hardware counter readings from the DPU. This marked stub is intercepted by raw middleware; swagger-extras.yml describes the actual response envelope.
+     */
+    get: operations["getConfigDpuHwcounters"];
   };
   "/config/ai/jwtauthprofile": {
     /**
@@ -8851,6 +8927,12 @@ export interface components {
         path_match_mode?: "disabled" | "prefix" | "exact";
         /** @description Enables PROXY protocol v2 on the supported backend path. The domain rejects non-TCP services when this flag is true; configure a backend that accepts the protocol header. */
         proxyprotocolv2?: boolean;
+        /**
+         * @description Directional sockmap acceleration for this FullProxy service - off (default), both, request (client->backend only), response (backend->client only). The direction that is not selected stays on the userspace relay and never runs the sockmap verdict. A mode other than off requires a plaintext tcp fullproxy service with an ipv4 external IP and ipv4 endpoints, and the daemon started with --sockmapsupport; a request that does not meet either condition is rejected with 400 before any rule state changes. A snapshot restore on a daemon without --sockmapsupport keeps the mode, logs a warning and runs the rule unaccelerated. An AI gateway service (sse_mode, pd_disagg_mode or api_key_auth, including an api_key_auth kept by a replace that omits it) accepts only off and is rejected with 400 otherwise, because on an accelerated connection the later keep-alive requests skip admission and the responses are not recorded; a snapshot restore of such a service turns the mode off with a warning. Services are told apart by address and port; services pointing at the same endpoint address and port, or host-based services on the same VIP address and port, share a portset entry, but a connection is accelerated only in the directions its own service selects. HTTP/2, including h2c, is never accelerated. Changing the mode or deleting the service applies to new connections; a connection already accelerated keeps redirecting until it closes. Redirect correctness depends on the kernel - see docs/sockmap-acceleration.md before enabling.
+         * @default off
+         * @enum {string}
+         */
+        sockMapMode?: "off" | "both" | "request" | "response";
         /** @description Marks an egress rule. The ordinary LB2DP programming path returns early for this marker; do not infer ordinary ingress FullProxy behavior. The existing-rule path rejects changes to this flag. */
         egress?: boolean;
         /** @description Tracing catalog name, for example v1, anthropic or default. The domain resolves and maps it for the FullProxy tracing path when the catalog component is available. A configured name alone does not prove capture or parser execution. */
@@ -8887,11 +8969,8 @@ export interface components {
          * @default 0
          */
         backend_keepalive_interval_sec?: number;
-        /**
-         * @description Enable the per-endpoint circuit breaker for full-proxy rules. Five consecutive backend connect failures open the breaker; an open endpoint is excluded from selection. Recovery uses a 30-second open interval followed by half-open probing. This is independent of the configured health monitor (probetype); one failed request does not by itself meet the opening threshold.
-         * @default false
-         */
-        cb_enable?: boolean;
+        /** @description Enable the per-endpoint circuit breaker for full-proxy rules. Five consecutive backend connect failures open the breaker; an open endpoint is excluded from selection. Recovery uses a 30-second open interval followed by half-open probing. This is independent of the configured health monitor (probetype); one failed request does not by itself meet the opening threshold. Omission is resolved at the API layer: on a rule with pd_disagg_mode=true it resolves to true (P/D services default to breaker protection), otherwise to false. An explicit value is honored as given — including false on a P/D rule — and create and update resolve identically, so updating a rule never silently changes the breaker state. GET reports the resolved value. */
+        cb_enable?: boolean | null;
         /**
          * @description Enable Gateway prefill/decode orchestration. Requires mode=4 and at least one endpoint with ep_role=1 (prefill) and one with ep_role=2 (decode). kvEngineType selects the dialect: vllm and trtllm use sequential prefill-then-decode flows; sglang uses a concurrent bootstrap-based pair. llamacpp is not supported on this path. If KV Exact is also enabled, use kvExactMode=1, not 3. Engine transport, tokenizer, and deployment prerequisites remain necessary; this flag alone does not qualify an engine/model tuple.
          * @default false
@@ -9359,6 +9438,8 @@ export interface components {
     PolicyEntry: {
       /** @description Policy name */
       policyIdent: string;
+      /** @description Read-only on GET: true only when the policer and every one of its attachment points are programmed in the datapath. False means an attachment is still pending re-drive (for example its rule does not exist yet) and the policer currently shapes nothing. */
+      attached?: boolean;
       policyInfo?: {
         /**
          * @description Stored policy type, 0 for trTCM and 1 for srTCM. The current eBPF work item does not propagate this selection, so type 1 does not establish single-rate behavior.
@@ -11840,6 +11921,154 @@ export interface components {
        */
       updated_at?: string;
     };
+    /** @description One model's token quota inside a user's rate-limit entry. A nonempty model name is required; identities and models containing '|' or a reserved scope prefix are rejected (they would alias another bucket). */
+    UserModelRateLimit: {
+      /** @description Model name the quota applies to */
+      model?: string;
+      /**
+       * Format: int64
+       * @description Maximum LLM tokens per minute for this user and model; 0 removes the model quota
+       */
+      tokens_per_min?: number;
+    };
+    /** @description POST replaces the user's explicit entry; a zero field constrains nothing and falls through to the configured defaults. An entry whose limit fields are all zero is rejected — DELETE removes limits. Supplied model_limits replace the user's model rows as a set; omitted/empty model_limits clears them. */
+    UserRateLimitMod: {
+      /** @description Tenant identifier */
+      tenant_id: string;
+      /** @description User identifier (the verified identity's subject) */
+      user_id: string;
+      /**
+       * Format: int64
+       * @description Maximum requests per second for the user
+       */
+      rps?: number;
+      /**
+       * Format: int64
+       * @description Request burst size; 0 defaults to rps
+       */
+      burst_size?: number;
+      /**
+       * Format: int64
+       * @description Maximum LLM tokens per minute for the user
+       */
+      tokens_per_min?: number;
+      /** @description Per-model token quotas for the user */
+      model_limits?: components["schemas"]["UserModelRateLimit"][];
+    };
+    /** @description Stored per-user quotas, not enforcement status. Zero fields fall through the QoS ladder to the configured defaults. Enforcement requires a service whose credential policy attributes users. */
+    UserRateLimitEntry: {
+      /** @description Tenant identifier */
+      tenant_id: string;
+      /** @description User identifier */
+      user_id: string;
+      /**
+       * Format: int64
+       * @description Maximum requests per second for the user
+       */
+      rps?: number;
+      /**
+       * Format: int64
+       * @description Request burst size; 0 defaults to rps
+       */
+      burst_size?: number;
+      /**
+       * Format: int64
+       * @description Maximum LLM tokens per minute for the user
+       */
+      tokens_per_min?: number;
+      /** @description Per-model token quotas for the user */
+      model_limits?: components["schemas"]["UserModelRateLimit"][];
+      /**
+       * Format: date-time
+       * @description Timestamp of the last update
+       */
+      updated_at?: string;
+    };
+    /** @description One defaults row of the QoS ladder (level 3). Scope 'global' takes no rule_ident; scope 'rule' requires one and overrides the global row field-wise for that service. Zero fields fall through; an entry whose limit fields are all zero is rejected. vip_shared_* arm the opt-in per-service shared bucket; see the two fields for which traffic each side of it bounds. */
+    RateLimitDefaultsMod: {
+      /**
+       * @description Defaults scope
+       * @enum {string}
+       */
+      scope: "global" | "rule";
+      /** @description Service identity for scope 'rule'; empty for 'global' */
+      rule_ident?: string;
+      /**
+       * Format: int64
+       * @description Requests per second for users without an explicit entry
+       */
+      default_user_rps?: number;
+      /**
+       * Format: int64
+       * @description LLM tokens per minute for users without an explicit entry
+       */
+      default_user_tpm?: number;
+      /**
+       * Format: int64
+       * @description Requests per second for tenants without an explicit entry
+       */
+      default_tenant_rps?: number;
+      /**
+       * Format: int64
+       * @description LLM tokens per minute for tenants without an explicit entry
+       */
+      default_tenant_tpm?: number;
+      /**
+       * Format: int64
+       * @description Requests per second shared by ALL keyless traffic on the service
+       */
+      vip_shared_rps?: number;
+      /**
+       * Format: int64
+       * @description LLM tokens per minute for the service's shared bucket, charged by every token-metered response on the service — credentialed and keyless alike, with the exact usage extracted at response settle. Keyless requests carry no pre-admission reservation: the bucket's debt denies the NEXT keyless admission once spend crosses the bound
+       */
+      vip_shared_tpm?: number;
+    };
+    /** @description Stored rate-limit defaults for one scope row, with metadata. */
+    RateLimitDefaultsEntry: {
+      /**
+       * @description Defaults scope
+       * @enum {string}
+       */
+      scope: "global" | "rule";
+      /** @description Service identity for scope 'rule'; empty for 'global' */
+      rule_ident?: string;
+      /**
+       * Format: int64
+       * @description Requests per second for users without an explicit entry
+       */
+      default_user_rps?: number;
+      /**
+       * Format: int64
+       * @description LLM tokens per minute for users without an explicit entry
+       */
+      default_user_tpm?: number;
+      /**
+       * Format: int64
+       * @description Requests per second for tenants without an explicit entry
+       */
+      default_tenant_rps?: number;
+      /**
+       * Format: int64
+       * @description LLM tokens per minute for tenants without an explicit entry
+       */
+      default_tenant_tpm?: number;
+      /**
+       * Format: int64
+       * @description Requests per second shared by ALL keyless traffic on the service
+       */
+      vip_shared_rps?: number;
+      /**
+       * Format: int64
+       * @description LLM tokens per minute for the service's shared bucket, charged by every token-metered response on the service — credentialed and keyless alike, with the exact usage extracted at response settle. Keyless requests carry no pre-admission reservation: the bucket's debt denies the NEXT keyless admission once spend crosses the bound
+       */
+      vip_shared_tpm?: number;
+      /**
+       * Format: date-time
+       * @description Timestamp of the last update
+       */
+      updated_at?: string;
+    };
     /** @description Full replacement of the singleton OPA watcher configuration, not a patch. Acceptance starts background polling; it does not prove a successful fetch or firewall application. The current internal applier uses localhost HTTP without a management credential, so authenticated management deployments require implementation reconciliation before enforcement can be claimed. */
     OPAWatcherConfig: {
       /** @description OPA server URL with a hostname. Current admission checks a limited IPv4 blocklist only; it does not provide comprehensive IPv6, redirect, or DNS-rebinding protection. This is an unresolved outbound security limitation, not a qualified SSRF prevention guarantee. */
@@ -13461,6 +13690,51 @@ export interface operations {
     };
   };
   /**
+   * Update an AI gateway API key
+   * @description Updates the allowed model list, the enabled flag, and/or the key's rate-limit fields. A body naming none of the patchable fields is refused 400 rather than accepted as a no-op. This marked stub is intercepted by raw middleware; swagger-extras.yml carries the field set, the presence semantics, and the two distinct 400 classes.
+   */
+  patchConfigAiApikeyKeyID: {
+    parameters: {
+      path: {
+        /** @description API key identifier */
+        key_id: string;
+      };
+    };
+    /** @description Fields to update. The served contract declares these individually; this stub deliberately does not restate them, so the two documents cannot disagree about the field set. */
+    requestBody: {
+      content: {
+        "application/json": Record<string, never>;
+      };
+    };
+    responses: {
+      /** @description Patch applied; no response body */
+      204: {
+        content: never;
+      };
+      /** @description Bad Request */
+      400: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      401: components["responses"]["ManagementUnauthorized"];
+      403: components["responses"]["ManagementForbidden"];
+      /** @description API key not found */
+      404: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Internal service error */
+      500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      503: components["responses"]["ManagementStoreUnavailable"];
+    };
+  };
+  /**
    * Set or update tenant rate limit
    * @description Creates or updates the rate limit configuration for a tenant.
    */
@@ -13532,6 +13806,352 @@ export interface operations {
         };
       };
       /** @description Authenticated principal is not authorized to read tenant quotas */
+      403: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Resource not found */
+      404: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Internal service error */
+      500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Management credential store or API-key store unavailable */
+      503: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  /**
+   * Set or update a user's rate limits
+   * @description Creates or replaces the explicit per-user rate-limit entry inside a tenant (QoS ladder level 1). A zero field constrains nothing and falls through to the configured defaults; an entry whose limit fields are all zero is rejected. Supplied model_limits REPLACE the user's model rows as a set.
+   */
+  postConfigAiUserRatelimit: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UserRateLimitMod"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      204: {
+        content: never;
+      };
+      /** @description Malformed arguments for API call */
+      400: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Invalid authentication credentials */
+      401: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Authenticated principal is not authorized to update user quotas */
+      403: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Internal service error */
+      500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Management credential store or API-key store unavailable */
+      503: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  /**
+   * List a tenant's explicit user rate limits
+   * @description Returns every explicit per-user rate-limit row for the tenant, without model limits (the per-user GET carries those). Users with no explicit row are governed by the configured defaults and do not appear here.
+   */
+  getConfigAiUserRatelimitTenantID: {
+    parameters: {
+      path: {
+        /** @description Tenant identifier */
+        tenant_id: string;
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        content: {
+          "application/json": components["schemas"]["UserRateLimitEntry"][];
+        };
+      };
+      /** @description Invalid authentication credentials */
+      401: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Authenticated principal is not authorized to read user quotas */
+      403: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Internal service error */
+      500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Management credential store or API-key store unavailable */
+      503: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  /**
+   * Get one user's rate limit configuration
+   * @description Returns the explicit rate-limit entry for the user, including model limits.
+   */
+  getConfigAiUserRatelimitTenantIDUserID: {
+    parameters: {
+      path: {
+        /** @description Tenant identifier */
+        tenant_id: string;
+        /** @description User identifier (the verified identity's subject) */
+        user_id: string;
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        content: {
+          "application/json": components["schemas"]["UserRateLimitEntry"];
+        };
+      };
+      /** @description Invalid authentication credentials */
+      401: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Authenticated principal is not authorized to read user quotas */
+      403: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Resource not found */
+      404: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Internal service error */
+      500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Management credential store or API-key store unavailable */
+      503: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  /**
+   * Delete one user's explicit rate limits
+   * @description Removes the user's explicit entry and model rows; the user falls back to the configured defaults, then to unlimited.
+   */
+  deleteConfigAiUserRatelimitTenantIDUserID: {
+    parameters: {
+      path: {
+        /** @description Tenant identifier */
+        tenant_id: string;
+        /** @description User identifier */
+        user_id: string;
+      };
+    };
+    responses: {
+      /** @description OK */
+      204: {
+        content: never;
+      };
+      /** @description Invalid authentication credentials */
+      401: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Authenticated principal is not authorized to update user quotas */
+      403: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Resource not found */
+      404: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Internal service error */
+      500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Management credential store or API-key store unavailable */
+      503: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  /**
+   * Set or update rate-limit defaults
+   * @description Creates or replaces one defaults row (QoS ladder level 3). Scope 'global' takes no rule_ident and applies everywhere; scope 'rule' names one service and overrides the global row field-wise on it. A zero field falls through; an entry whose limit fields are all zero is rejected.
+   */
+  postConfigAiRatelimitDefaults: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RateLimitDefaultsMod"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      204: {
+        content: never;
+      };
+      /** @description Malformed arguments for API call */
+      400: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Invalid authentication credentials */
+      401: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Authenticated principal is not authorized to update rate-limit defaults */
+      403: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Internal service error */
+      500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Management credential store or API-key store unavailable */
+      503: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  /**
+   * Get one rate-limit defaults row
+   * @description Returns the defaults row for the scope. For scope 'rule' the rule_ident query parameter selects the service; it is ignored for scope 'global'.
+   */
+  getConfigAiRatelimitDefaultsScope: {
+    parameters: {
+      query?: {
+        /** @description Service identity for scope 'rule' */
+        rule_ident?: string;
+      };
+      path: {
+        /** @description Defaults scope */
+        scope: "global" | "rule";
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        content: {
+          "application/json": components["schemas"]["RateLimitDefaultsEntry"];
+        };
+      };
+      /** @description Invalid authentication credentials */
+      401: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Authenticated principal is not authorized to read rate-limit defaults */
+      403: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Resource not found */
+      404: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Internal service error */
+      500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Management credential store or API-key store unavailable */
+      503: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  /**
+   * Delete one rate-limit defaults row
+   * @description Removes the defaults row for the scope (rule_ident selects the service for scope 'rule'); identities it governed fall through to the next ladder level.
+   */
+  deleteConfigAiRatelimitDefaultsScope: {
+    parameters: {
+      query?: {
+        /** @description Service identity for scope 'rule' */
+        rule_ident?: string;
+      };
+      path: {
+        /** @description Defaults scope */
+        scope: "global" | "rule";
+      };
+    };
+    responses: {
+      /** @description OK */
+      204: {
+        content: never;
+      };
+      /** @description Invalid authentication credentials */
+      401: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Authenticated principal is not authorized to update rate-limit defaults */
       403: {
         content: {
           "application/json": components["schemas"]["Error"];
@@ -13712,6 +14332,110 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["PostSuccess"];
+        };
+      };
+      401: components["responses"]["ManagementUnauthorized"];
+      403: components["responses"]["ManagementForbidden"];
+      /** @description Internal service error */
+      500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      503: components["responses"]["ManagementStoreUnavailable"];
+    };
+  };
+  /**
+   * Get the AI KV cache inventory
+   * @description Returns the KV-cache inventory the gateway holds for cache-aware routing. This marked stub is intercepted by raw middleware; swagger-extras.yml describes the actual response envelope.
+   */
+  getConfigAiKvInventory: {
+    responses: {
+      /** @description OK */
+      200: {
+        content: {
+          "application/json": Record<string, never>;
+        };
+      };
+      401: components["responses"]["ManagementUnauthorized"];
+      403: components["responses"]["ManagementForbidden"];
+      /** @description Internal service error */
+      500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      503: components["responses"]["ManagementStoreUnavailable"];
+    };
+  };
+  /**
+   * Get DPU debug state
+   * @description Returns the current DPU debug configuration and state. This marked stub is intercepted by raw middleware; swagger-extras.yml describes the actual response envelope.
+   */
+  getConfigDpuDebug: {
+    responses: {
+      /** @description OK */
+      200: {
+        content: {
+          "application/json": Record<string, never>;
+        };
+      };
+      401: components["responses"]["ManagementUnauthorized"];
+      403: components["responses"]["ManagementForbidden"];
+      /** @description Internal service error */
+      500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      503: components["responses"]["ManagementStoreUnavailable"];
+    };
+  };
+  /**
+   * Set DPU debug state
+   * @description Updates the DPU debug configuration. This marked stub is intercepted by raw middleware; swagger-extras.yml describes the accepted body and the actual response envelope.
+   */
+  postConfigDpuDebug: {
+    /** @description Debug settings to apply. The served contract declares these; this stub deliberately does not restate them. */
+    requestBody: {
+      content: {
+        "application/json": Record<string, never>;
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        content: {
+          "application/json": components["schemas"]["PostSuccess"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      401: components["responses"]["ManagementUnauthorized"];
+      403: components["responses"]["ManagementForbidden"];
+      /** @description Internal service error */
+      500: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      503: components["responses"]["ManagementStoreUnavailable"];
+    };
+  };
+  /**
+   * Get DPU hardware counters
+   * @description Returns hardware counter readings from the DPU. This marked stub is intercepted by raw middleware; swagger-extras.yml describes the actual response envelope.
+   */
+  getConfigDpuHwcounters: {
+    responses: {
+      /** @description OK */
+      200: {
+        content: {
+          "application/json": Record<string, never>;
         };
       };
       401: components["responses"]["ManagementUnauthorized"];
