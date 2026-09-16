@@ -66,8 +66,12 @@ export interface IManifestFamily {
 
 // Pinned runtime types for the custom-collector (`desc`) families: the
 // generator cannot see past the Desc, but the collector sources fix them as
-// 4 counters + 8 gauges + 1 histogram. A new upstream `desc` family that is
-// not listed here surfaces as runtimeType 'unknown' (deny) until pinned.
+// 4 counters + 12 gauges + 1 histogram. On a manifest that predates
+// `definition_mechanism` this table IS the type source, and a `desc` family
+// missing from it surfaces as runtimeType 'unknown' (deny) until pinned. On a
+// modern manifest the family carries a real type and this table is the
+// cross-check that denies on disagreement — so an unpinned family would load
+// unchecked rather than denied. Keep it complete for that reason.
 const DESC_RUNTIME_TYPES: Record<string, RuntimeMetricType> = {
 	// QoS shaper collector: 4 counters + 4 gauges
 	loxilb_proxy_qos_bytes_delayed_total: 'counter',
@@ -85,6 +89,12 @@ const DESC_RUNTIME_TYPES: Record<string, RuntimeMetricType> = {
 	loxilb_ai_token_quota_model_limit_tokens: 'gauge',
 	// TTFB ConstHistogram
 	loxilb_proxy_http_ttfb_seconds: 'histogram',
+	// JWKS key-store collector: 3 gauges
+	loxilb_ai_jwks_keys: 'gauge',
+	loxilb_ai_jwks_last_success_timestamp_seconds: 'gauge',
+	loxilb_ai_jwks_usable: 'gauge',
+	// Policer attachment collector: 1 gauge
+	loxilb_policer_attached: 'gauge',
 };
 
 const RUNTIME_TYPES: ReadonlySet<string> = new Set(['counter', 'gauge', 'histogram', 'summary', 'untyped']);
