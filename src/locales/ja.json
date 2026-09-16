@@ -891,5 +891,13 @@
 	"eBPF maps loaded": "eBPFマップ読み込み済み",
 	"unknown": "不明",
 	"Refresh interval": "更新間隔",
-	"{{seconds}}s": "{{seconds}}秒"
+	"{{seconds}}s": "{{seconds}}秒",
+	"Request outcomes (offered load)": "リクエスト結果 (受付負荷)",
+	"Total offered": "受付リクエスト合計",
+	"Completed (answered by a backend)": "完了 (バックエンドが応答)",
+	"Denied at gate": "ゲートで拒否",
+	"Failed responses (4xx/5xx)": "失敗応答 (4xx/5xx)",
+	"Error ratio (denied + failed)": "エラー率 (拒否 + 失敗)",
+	"No traffic": "トラフィックなし",
+	"Total offered load and error ratio are derived from the request outcome partition. The denial events panel breaks the same denials down by reason, so each reason rate is a subset of the gate denial rate.": "受付リクエスト合計とエラー率はリクエスト結果 (outcome) の区分から導出されます。拒否イベントのパネルは同じ拒否を理由別に分けたものなので、各理由の値はゲート拒否レートの部分集合です。"
 }

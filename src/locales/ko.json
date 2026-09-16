@@ -891,5 +891,13 @@
 	"eBPF maps loaded": "eBPF 맵 로드됨",
 	"unknown": "알 수 없음",
 	"Refresh interval": "새로 고침 간격",
-	"{{seconds}}s": "{{seconds}}초"
+	"{{seconds}}s": "{{seconds}}초",
+	"Request outcomes (offered load)": "요청 처리 결과 (유입 요청 기준)",
+	"Total offered": "전체 유입 요청",
+	"Completed (answered by a backend)": "완료 (백엔드가 응답)",
+	"Denied at gate": "게이트에서 거부됨",
+	"Failed responses (4xx/5xx)": "실패 응답 (4xx/5xx)",
+	"Error ratio (denied + failed)": "오류 비율 (거부 + 실패)",
+	"No traffic": "트래픽 없음",
+	"Total offered load and error ratio are derived from the request outcome partition. The denial events panel breaks the same denials down by reason, so each reason rate is a subset of the gate denial rate.": "전체 유입 요청과 오류 비율은 요청 결과(outcome) 구분에서 산출됩니다. 거부 이벤트 패널은 동일한 거부를 사유별로 나눈 것이므로, 각 사유별 비율은 게이트 거부 비율의 부분집합입니다."
 }
