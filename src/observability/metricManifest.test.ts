@@ -1,6 +1,7 @@
 import {describe, expect, it} from 'vitest';
 import envelope from '../api/gen/metric-manifest.json';
 import {
+	DESC_RUNTIME_TYPES,
 	allManifestFamilies,
 	getManifestFamily,
 	isGatewayScrapeFamily,
@@ -31,7 +32,7 @@ describe('vendored envelope', () => {
 describe('gateway scrape applicability (class + packaged)', () => {
 	it('marks exactly the packaged default class as gateway-applicable', () => {
 		const applicable = allManifestFamilies().filter(f => isGatewayScrapeFamily(f.name));
-		expect(applicable).toHaveLength(184);
+		expect(applicable).toHaveLength(193);
 		for (const f of applicable) {
 			expect(f.class).toBe('default');
 			expect(f.packaged).toBe(true);
@@ -80,16 +81,24 @@ describe('gateway scrape applicability (class + packaged)', () => {
 });
 
 describe('desc normalization (definition mechanism vs runtime type)', () => {
-	it('pins the 17 custom-collector families to 4 counters + 12 gauges + 1 histogram', () => {
+	it('pins the 25 custom-collector families to 4 counters + 20 gauges + 1 histogram', () => {
 		const desc = allManifestFamilies().filter(f => f.definitionMechanism === 'desc');
 		expect(desc.map(f => f.name).sort()).toEqual([
 			'loxilb_ai_jwks_keys',
 			'loxilb_ai_jwks_last_success_timestamp_seconds',
 			'loxilb_ai_jwks_usable',
+			'loxilb_ai_key_token_quota_limit_tokens',
+			'loxilb_ai_key_token_quota_utilization',
 			'loxilb_ai_token_quota_limit_tokens',
 			'loxilb_ai_token_quota_model_limit_tokens',
 			'loxilb_ai_token_quota_model_utilization',
 			'loxilb_ai_token_quota_utilization',
+			'loxilb_ai_user_model_token_quota_limit_tokens',
+			'loxilb_ai_user_model_token_quota_utilization',
+			'loxilb_ai_user_token_quota_limit_tokens',
+			'loxilb_ai_user_token_quota_utilization',
+			'loxilb_ai_vip_token_quota_limit_tokens',
+			'loxilb_ai_vip_token_quota_utilization',
 			'loxilb_policer_attached',
 			'loxilb_proxy_http_ttfb_seconds',
 			'loxilb_proxy_qos_bytes_delayed_total',
@@ -113,10 +122,18 @@ describe('desc normalization (definition mechanism vs runtime type)', () => {
 			'loxilb_ai_jwks_keys',
 			'loxilb_ai_jwks_last_success_timestamp_seconds',
 			'loxilb_ai_jwks_usable',
+			'loxilb_ai_key_token_quota_limit_tokens',
+			'loxilb_ai_key_token_quota_utilization',
 			'loxilb_ai_token_quota_limit_tokens',
 			'loxilb_ai_token_quota_model_limit_tokens',
 			'loxilb_ai_token_quota_model_utilization',
 			'loxilb_ai_token_quota_utilization',
+			'loxilb_ai_user_model_token_quota_limit_tokens',
+			'loxilb_ai_user_model_token_quota_utilization',
+			'loxilb_ai_user_token_quota_limit_tokens',
+			'loxilb_ai_user_token_quota_utilization',
+			'loxilb_ai_vip_token_quota_limit_tokens',
+			'loxilb_ai_vip_token_quota_utilization',
 			'loxilb_policer_attached',
 			'loxilb_proxy_qos_cbs_bytes',
 			'loxilb_proxy_qos_cir_bytes_per_second',
@@ -124,6 +141,85 @@ describe('desc normalization (definition mechanism vs runtime type)', () => {
 			'loxilb_proxy_qos_tokens_bytes',
 		]);
 		expect(byType('histogram')).toEqual(['loxilb_proxy_http_ttfb_seconds']);
+	});
+
+	// ---------------------------------------------------------------
+	// The self-policing gate (Stage 0.3).
+	//
+	// Since the manifest started carrying `definition_mechanism`, a `desc`
+	// family arrives with a real Prometheus type, so DESC_RUNTIME_TYPES is a
+	// cross-check rather than the type source. A cross-check only fires where
+	// a pin exists: an UNPINNED desc family is therefore adopted on upstream's
+	// word alone — silently, with no unknown type and no failing assertion to
+	// notice it. The guard goes quiet on precisely the families nobody has
+	// reviewed.
+	//
+	// The list assertions above do catch this, but only because someone
+	// remembered to extend them; two consecutive gateway waves added desc
+	// families and the manual check was missed once already. These two tests
+	// make completeness structural, so the next re-vendor cannot widen the
+	// blind spot by omission.
+	describe('pin-table completeness is enforced, not remembered', () => {
+		it('pins every desc family in the vendored manifest', () => {
+			const unpinned = allManifestFamilies()
+				.filter(f => f.definitionMechanism === 'desc')
+				.map(f => f.name)
+				.filter(name => DESC_RUNTIME_TYPES[name] === undefined)
+				.sort();
+
+			expect(
+				unpinned,
+				`Unpinned custom-collector (desc) families: ${unpinned.join(', ')}.\n` +
+				'A re-vendor introduced these and they are being adopted UNCHECKED — ' +
+				'the manifest type is taken on trust because no pin exists to disagree ' +
+				'with it. For each one, read the prometheus.NewDesc declaration AND the ' +
+				'MustNewConstMetric value type in the gateway collector source, then add ' +
+				'the verified type to DESC_RUNTIME_TYPES. Do not copy the type from the ' +
+				'manifest: a pin copied from the artifact it checks is not a check.',
+			).toEqual([]);
+		});
+
+		it('carries no pin for a family the vendored manifest no longer declares', () => {
+			// A stale pin is the same blind spot wearing the opposite face: if
+			// upstream renames a collector family, the old name keeps a pin that
+			// can never fire while the new name has none. Requiring the table to
+			// describe exactly the vendored manifest turns a rename into a
+			// failure on both halves.
+			const declared = new Set(
+				allManifestFamilies().filter(f => f.definitionMechanism === 'desc').map(f => f.name),
+			);
+			const stale = Object.keys(DESC_RUNTIME_TYPES).filter(name => !declared.has(name)).sort();
+
+			expect(
+				stale,
+				`DESC_RUNTIME_TYPES pins families absent from the vendored manifest: ${stale.join(', ')}.\n` +
+				'Either upstream removed them (drop the pins) or renamed them (pin the ' +
+				'new names after verifying their types at the collector source).',
+			).toEqual([]);
+		});
+
+		it('agrees with the manifest on the type of every family it pins', () => {
+			// Redundant with normalizeManifestType's deny-on-disagreement only in
+			// effect: that path reports a disagreement as runtimeType 'unknown',
+			// which reads as "UI cannot map this type" rather than "upstream
+			// changed a collector's type under us". Assert it where the diagnosis
+			// is unambiguous.
+			const disagreements = allManifestFamilies()
+				.filter(f => f.definitionMechanism === 'desc')
+				.filter(f => {
+					const pinned = DESC_RUNTIME_TYPES[f.name];
+					return pinned !== undefined && pinned !== f.runtimeType;
+				})
+				.map(f => `${f.name}: pinned ${DESC_RUNTIME_TYPES[f.name]}, manifest ${f.rawType ?? f.runtimeType}`);
+
+			expect(
+				disagreements,
+				`Pinned type disagrees with the vendored manifest:\n${disagreements.join('\n')}\n` +
+				'Upstream changed a collector\'s runtime type. Confirm the change at the ' +
+				'collector source and re-pin deliberately — this is a contract change, ' +
+				'not a pin that drifted.',
+			).toEqual([]);
+		});
 	});
 
 	it('never leaks "desc" or any other extractor token into the runtime type union', () => {

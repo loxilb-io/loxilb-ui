@@ -891,5 +891,13 @@
 	"eBPF maps loaded": "eBPF maps loaded",
 	"unknown": "unknown",
 	"Refresh interval": "Refresh interval",
-	"{{seconds}}s": "{{seconds}}s"
+	"{{seconds}}s": "{{seconds}}s",
+	"Request outcomes (offered load)": "Request outcomes (offered load)",
+	"Total offered": "Total offered",
+	"Completed (answered by a backend)": "Completed (answered by a backend)",
+	"Denied at gate": "Denied at gate",
+	"Failed responses (4xx/5xx)": "Failed responses (4xx/5xx)",
+	"Error ratio (denied + failed)": "Error ratio (denied + failed)",
+	"No traffic": "No traffic",
+	"Total offered load and error ratio are derived from the request outcome partition. The denial events panel breaks the same denials down by reason, so each reason rate is a subset of the gate denial rate.": "Total offered load and error ratio are derived from the request outcome partition. The denial events panel breaks the same denials down by reason, so each reason rate is a subset of the gate denial rate."
 }
