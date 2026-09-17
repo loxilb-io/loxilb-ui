@@ -105,7 +105,7 @@ test.describe('@gw Security Rate Limiting page (edit-only)', () => {
 
 	async function openEditDialog(page: Page): Promise<void> {
 		await selectOnlyRow(page);
-		await openToolbarDialog(page, 'Mode', 'New Security Rate Limiting Configuration');
+		await openToolbarDialog(page, 'Edit', 'New Security Rate Limiting Configuration');
 	}
 
 	test('E-edit: changing the SYN threshold POSTs the full config clean and persists', async ({page}) => {

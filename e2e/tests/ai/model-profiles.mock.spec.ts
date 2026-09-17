@@ -106,9 +106,14 @@ test.describe('@gw Published Model Profiles — mock contract', () => {
 		await expect(page.getByRole('textbox', {name: 'Allowed Aliases'})).toHaveValue('qwen-chat');
 
 		// AC-12: no mutation affordance, no mutation HTTP.
-		for (const verb of ['Add', 'Delete', 'Edit', 'Upload', 'Activate']) {
-			await expect(toolbarButton(page, verb), `${verb} must not exist on the read-only inventory`).toHaveCount(0);
+		for (const action of ['Add', 'Delete', 'Edit'] as const) {
+			await expect(toolbarButton(page, action), `${action} must not exist on the read-only inventory`).toHaveCount(0);
 		}
+		// ⚠️ Upload/Activate are not DataTable affordances at ALL, so an icon
+		// locator for them could only ever match nothing and pass regardless of
+		// what the page renders. Assert on the accessible name instead, which is
+		// what would actually appear if such a control were ever added.
+		await expect(page.locator('#table-bar').getByRole('button', {name: /upload|activate/i}), 'no mutation affordance may appear under any name').toHaveCount(0);
 		expect(counter.mutationRequests(), 'mutation HTTP against the profile registry').toEqual([]);
 	});
 

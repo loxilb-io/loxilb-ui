@@ -22,6 +22,15 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Typecheck the e2e tree
+        # `npm run typecheck` and `npm run lint` both cover `src` ONLY, and
+        # Playwright transpiles specs with esbuild without type-checking them.
+        # Until this step existed a spec could pass an argument no helper
+        # accepts and still go green: a toolbar locator was built for an icon
+        # the product never renders, which made every absence assertion using
+        # it vacuous.
+        run: npm run typecheck:e2e
+
       - name: Generated API types are in sync with vendored specs
         run: npm run gen:api:check
 

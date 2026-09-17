@@ -133,7 +133,7 @@ test.describe('@gw AI Tenant Rate Limit page', () => {
 
 			// Re-apply with a changed rps → overwrite (upsert, not a second row).
 			await rowByText(page, tenantId).first().getByRole('checkbox').check();
-			await toolbarButton(page, 'Mode').click();
+			await toolbarButton(page, 'Edit').click();
 			await field(page, 'Rate Limit (req/s)').fill('250');
 			await page.mouse.move(0, 0);
 			const [req2] = await Promise.all([

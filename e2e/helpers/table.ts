@@ -1,17 +1,32 @@
 //---------------------------------------------------------
 // Helpers for the shared DataTable (MUI DataGrid) used by
 // every list page. Toolbar buttons are icon-only inside a
-// Tooltip (no accessible name), so they are located by the
-// MUI icon's data-testid. Edit uses ModeIcon.
+// Tooltip, so they are located by the MUI icon's data-testid.
 //---------------------------------------------------------
 import {expect, Locator, Page} from '@playwright/test';
 
+// The actions DataTable actually renders. Specs name the ACTION, not the icon,
+// because the two differ: Edit is drawn with ModeIcon, and a spec asking for a
+// non-existent "EditIcon" silently matches nothing — `toHaveCount(0)` against
+// it then passes no matter what the page renders.
+//
 // 'Block' is the disable action some singleton-config tables (e.g. Security
 // Rate Limiting) render in place of Delete — reversible disable, not removal.
-export type ToolbarIcon = 'Add' | 'Delete' | 'Refresh' | 'Mode' | 'Block';
+export type ToolbarAction = 'Add' | 'Delete' | 'Refresh' | 'Edit' | 'Block';
 
-export function toolbarButton(page: Page, icon: ToolbarIcon): Locator {
-	return page.locator(`#table-bar button:has([data-testid="${icon}Icon"])`).first();
+// ⚠️ Keep this total over ToolbarAction. It is the ONLY place an action's icon
+// is named, so a locator can never be written for an icon the product has no
+// button for — which is what makes an absence assertion mean something.
+const ACTION_ICON: Readonly<Record<ToolbarAction, string>> = {
+	Add: 'Add',
+	Delete: 'Delete',
+	Refresh: 'Refresh',
+	Edit: 'Mode', // DataTable.tsx draws Edit with <ModeIcon />
+	Block: 'Block',
+};
+
+export function toolbarButton(page: Page, action: ToolbarAction): Locator {
+	return page.locator(`#table-bar button:has([data-testid="${ACTION_ICON[action]}Icon"])`).first();
 }
 
 export function grid(page: Page): Locator {
