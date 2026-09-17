@@ -66,13 +66,26 @@ export interface IManifestFamily {
 
 // Pinned runtime types for the custom-collector (`desc`) families: the
 // generator cannot see past the Desc, but the collector sources fix them as
-// 4 counters + 12 gauges + 1 histogram. On a manifest that predates
+// 4 counters + 20 gauges + 1 histogram. On a manifest that predates
 // `definition_mechanism` this table IS the type source, and a `desc` family
 // missing from it surfaces as runtimeType 'unknown' (deny) until pinned. On a
 // modern manifest the family carries a real type and this table is the
 // cross-check that denies on disagreement — so an unpinned family would load
-// unchecked rather than denied. Keep it complete for that reason.
-const DESC_RUNTIME_TYPES: Record<string, RuntimeMetricType> = {
+// unchecked rather than denied.
+//
+// Completeness is NOT left to discipline: `every desc family is pinned` in
+// metricManifest.test.ts fails the build when a re-vendor introduces a `desc`
+// family this table does not name. That gate exists because the failure it
+// catches is silent — an unpinned family is adopted, not denied, so the
+// cross-check goes quiet on exactly the families nobody has reviewed. Two
+// consecutive gateway waves added `desc` families, and the manual check was
+// missed once; enforce it, do not remember it.
+//
+// Each entry is verified against the collector source (the `prometheus.Desc`
+// declaration and the `MustNewConstMetric` value type), never copied from the
+// manifest's own `type` — a pin copied from the artifact it checks is no
+// check at all.
+export const DESC_RUNTIME_TYPES: Readonly<Record<string, RuntimeMetricType>> = {
 	// QoS shaper collector: 4 counters + 4 gauges
 	loxilb_proxy_qos_bytes_delayed_total: 'counter',
 	loxilb_proxy_qos_bytes_passed_total: 'counter',
@@ -82,11 +95,27 @@ const DESC_RUNTIME_TYPES: Record<string, RuntimeMetricType> = {
 	loxilb_proxy_qos_cir_bytes_per_second: 'gauge',
 	loxilb_proxy_qos_parked_connections: 'gauge',
 	loxilb_proxy_qos_tokens_bytes: 'gauge',
-	// AI token-quota collector: 4 gauges
+	// AI token-quota collector: 12 gauges across five identity scopes. All
+	// emit prometheus.GaugeValue from tokenQuotaCollector.Collect
+	// (api/prometheus/ai_metrics.go) and are computed AT SCRAPE TIME from
+	// live rate-limiter state, so utilization is legitimately > 1.0 while a
+	// bucket is in post-hoc debt — a consumer must not clamp it to 100% nor
+	// read it as an error. A series is also absent until an identity has
+	// both a quota bound and a charge, and is cleaned up after inactivity:
+	// absent never means "no quota configured".
 	loxilb_ai_token_quota_utilization: 'gauge',
 	loxilb_ai_token_quota_limit_tokens: 'gauge',
 	loxilb_ai_token_quota_model_utilization: 'gauge',
 	loxilb_ai_token_quota_model_limit_tokens: 'gauge',
+	loxilb_ai_user_token_quota_utilization: 'gauge',
+	loxilb_ai_user_token_quota_limit_tokens: 'gauge',
+	loxilb_ai_user_model_token_quota_utilization: 'gauge',
+	loxilb_ai_user_model_token_quota_limit_tokens: 'gauge',
+	// `key_id` is the store's opaque identifier, never key material.
+	loxilb_ai_key_token_quota_utilization: 'gauge',
+	loxilb_ai_key_token_quota_limit_tokens: 'gauge',
+	loxilb_ai_vip_token_quota_utilization: 'gauge',
+	loxilb_ai_vip_token_quota_limit_tokens: 'gauge',
 	// TTFB ConstHistogram
 	loxilb_proxy_http_ttfb_seconds: 'histogram',
 	// JWKS key-store collector: 3 gauges
