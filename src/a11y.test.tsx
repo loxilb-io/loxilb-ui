@@ -96,6 +96,45 @@ describe('axe: observability building blocks', () => {
 		);
 		await expectNoViolations(container);
 	});
+
+	// J3 draws two tables of its own rather than going through DataTable, so
+	// neither inherits that component's header/scope structure. Both carry a
+	// status chip whose meaning must not rest on colour alone.
+	it('bearer admission panel has no violations', async () => {
+		const BearerAdmissionPanel = (await import('components/observability/BearerAdmissionPanel')).default;
+		const {container} = render(
+			<BearerAdmissionPanel
+				admission={{
+					kind: 'ok',
+					admitted: {kind: 'ok', perSecond: 10, intervalMs: 10_000},
+					denied: {kind: 'ok', perSecond: 1, intervalMs: 10_000},
+					gatewayFault: {kind: 'ok', perSecond: 0, intervalMs: 10_000},
+					byReason: [
+						{reason: 'allowed', reasonClass: 'admitted', rate: {kind: 'ok', perSecond: 10, intervalMs: 10_000}, tenants: ['-']},
+						{reason: 'policy_store_unavailable', reasonClass: 'gateway-fault', rate: {kind: 'gap'}, tenants: ['acme']},
+					],
+				}}
+			/>,
+		);
+		await expectNoViolations(container);
+	});
+
+	it('JWKS health panel has no violations', async () => {
+		const JWKSHealthPanel = (await import('components/observability/JWKSHealthPanel')).default;
+		const {container} = render(
+			<JWKSHealthPanel
+				hasProfiles
+				report={{
+					kind: 'ok',
+					byProfile: [
+						{profile: 'realm-a', label: 'realm-a', kind: 'healthy', admitting: true, keys: 2, lastSuccess: {kind: 'ok', ageSec: 30}, refreshSuccess: {kind: 'ok', perSecond: 0.01, intervalMs: 10_000}, refreshFailure: {kind: 'ok', perSecond: 0, intervalMs: 10_000}},
+						{profile: 'realm-b', label: 'realm-b', kind: 'never-fetched', admitting: false, keys: 0, lastSuccess: {kind: 'never'}, refreshSuccess: {kind: 'insufficient-samples'}, refreshFailure: {kind: 'ok', perSecond: 0.2, intervalMs: 10_000}},
+					],
+				}}
+			/>,
+		);
+		await expectNoViolations(container);
+	});
 });
 
 describe('axe gate self-test', () => {

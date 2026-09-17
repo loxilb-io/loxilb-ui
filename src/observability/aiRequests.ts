@@ -2,9 +2,9 @@
 // Imports
 //---------------------------------------------------------
 import {IMetricsSnapshot} from 'types/observability';
-import {computeCounterRate, RateResult} from './rates';
-import {aggregateSum, selectSamples} from './selectors';
-import {familySumRate, groupRates, IGroupRate, LabelMatch, LabelPredicate, matchesLabels} from './snapshotRates';
+import {RateResult} from './rates';
+import {selectSamples} from './selectors';
+import {familySumRate, groupRates, IGroupRate, LabelMatch, LabelPredicate, partitionRate} from './snapshotRates';
 
 //---------------------------------------------------------
 // loxilb_ai_requests_total outcome partition
@@ -102,42 +102,12 @@ export function isErrorStatus(status: string | undefined): boolean {
 // appeared.
 const errorFilter: LabelPredicate = labels => labels[OUTCOME] === OUTCOME_DENIED || isErrorStatus(labels['status']);
 
-/**
- * Sum rate over a partition that may legitimately match no sample.
- *
- * `familySumRate` answers insufficient-samples when a filter matches nothing,
- * which is right where absence means "unknown". It is WRONG for a partition of
- * a family that is present: a counter child is only created on its first
- * increment, so a gateway that has never denied a request exports no
- * `outcome="denied"` series at all, and its denial rate is genuinely 0/s. Read
- * as "warming up", a healthy gateway would show no error ratio forever — the
- * absent-series-is-not-zero rule inverted by the fact that the family itself
- * is right there.
- *
- * The family must be present in BOTH observations for that reasoning to hold.
- * If it is absent, nothing is known and the answer stays insufficient-samples.
- */
-function partitionRate(history: readonly IMetricsSnapshot[], maxGapMs: number, where: LabelMatch): RateResult {
-	const current = history[history.length - 1];
-	const previous = history.length >= 2 ? history[history.length - 2] : undefined;
-	if (!current || !previous) return {kind: 'insufficient-samples'};
-	if (!current.families.get(AI_REQUESTS) || !previous.families.get(AI_REQUESTS)) return {kind: 'insufficient-samples'};
-
-	const sumOf = (s: IMetricsSnapshot) => {
-		const matched = selectSamples(s, AI_REQUESTS).filter(x => matchesLabels(x.labels, where));
-		// No match at all is a true zero here; a match whose samples are all
-		// non-finite is not, and aggregateSum already distinguishes them.
-		return matched.length === 0 ? 0 : aggregateSum(matched).value;
-	};
-
-	const before = sumOf(previous);
-	const now = sumOf(current);
-	return computeCounterRate(
-		before === undefined ? undefined : {value: before, receivedAtMs: previous.receivedAtMs},
-		now === undefined ? undefined : {value: now, receivedAtMs: current.receivedAtMs},
-		maxGapMs,
-	);
-}
+// Every quantity below is a partition of `loxilb_ai_requests_total`, so they
+// all go through `partitionRate`: the family is present, and a child that has
+// never been incremented is a genuine 0/s rather than an unknown. See its doc
+// comment for why that inverts the usual absent-series rule.
+const rateOf = (history: readonly IMetricsSnapshot[], maxGapMs: number, where: LabelMatch) =>
+	partitionRate(history, AI_REQUESTS, maxGapMs, where);
 
 /**
  * A ratio of two rates over the same snapshot pair.
@@ -186,11 +156,11 @@ export type RequestOutcomes =
 export function requestOutcomes(history: readonly IMetricsSnapshot[], maxGapMs: number): RequestOutcomes {
 	if (!hasOutcomePartition(history[history.length - 1])) return {kind: 'unpartitioned'};
 
-	const offered = partitionRate(history, maxGapMs, () => true);
-	const completed = partitionRate(history, maxGapMs, {[OUTCOME]: OUTCOME_COMPLETED});
-	const denied = partitionRate(history, maxGapMs, {[OUTCOME]: OUTCOME_DENIED});
-	const failed = partitionRate(history, maxGapMs, l => l[OUTCOME] === OUTCOME_COMPLETED && isErrorStatus(l['status']));
-	const errors = partitionRate(history, maxGapMs, errorFilter);
+	const offered = rateOf(history, maxGapMs, () => true);
+	const completed = rateOf(history, maxGapMs, {[OUTCOME]: OUTCOME_COMPLETED});
+	const denied = rateOf(history, maxGapMs, {[OUTCOME]: OUTCOME_DENIED});
+	const failed = rateOf(history, maxGapMs, l => l[OUTCOME] === OUTCOME_COMPLETED && isErrorStatus(l['status']));
+	const errors = rateOf(history, maxGapMs, errorFilter);
 
 	return {kind: 'partitioned', offered, completed, denied, failed, errorRatio: ratioOf(errors, offered)};
 }

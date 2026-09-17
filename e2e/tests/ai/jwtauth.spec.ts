@@ -32,6 +32,8 @@ import {expect, test} from '../../fixtures';
 import {
 	activeInstance,
 	AIManagementReadiness,
+	E2E_PREFIX,
+	gatewayExportsJwksGauges,
 	gatewayJwtAuthReadiness,
 	gw,
 	JWTPROFILE_PATH,
@@ -118,7 +120,17 @@ test.describe('@gw AI JWT auth profiles', () => {
 		// The list is desired CONFIGURATION. Claiming it reflects issuer health
 		// would be a lie: a profile can list here and still fail closed on the
 		// data plane, which is what the loxilb_ai_jwks_* families answer.
-		await expect(page.getByText(/desired configuration only/i)).toBeVisible();
+		//
+		// ⚠️ Since J3 the notice is CONDITIONAL and both branches are correct —
+		// which is exactly why this asserts the invariant rather than either
+		// wording. Where keyset health IS reported, repeating "does not report
+		// whether an issuer is reachable" would send an operator looking for
+		// information already on screen; where it is NOT, dropping the
+		// disclaimer would leave the table looking like a health view.
+		const disclaims = page.getByText(/does not report whether an issuer is reachable/i);
+		const defers = page.getByText(/reported under Keyset health below/i);
+		expect(await disclaims.count() + await defers.count(), 'exactly one issuer-health notice').toBe(1);
+		await expect((await defers.count()) > 0 ? defers : disclaims).toBeVisible();
 
 		// A 402/401 answers a JSON object rather than an array; mapping that as a
 		// list would throw and white-screen the page.
@@ -355,6 +367,74 @@ test.describe('@gw AI JWT auth profiles', () => {
 		await expect(err, 'the advice must be one the UI can actually carry out').not.toContainText(/detach/i);
 		expect(deleteAttempted, 'the pre-check answers locally; no doomed request is sent').toBe(false);
 		await dialogButton(page, 'OK').click();
+	});
+
+	//---------------------------------------------------------
+	// J3 — keyset health
+	//---------------------------------------------------------
+	test('J3: an unreachable issuer reads as a 503 outage, not as missing data', async ({page}) => {
+		test.skip(!readiness.ready, readiness.reason);
+
+		// ISSUER is a documentation domain the testbed cannot resolve, so the
+		// verdict is DETERMINISTIC rather than timing-dependent: usable=0 from
+		// the first scrape, and no last-success series will ever appear. That
+		// is precisely the "never fetched ⇒ 503" arm, the one of the two JWKS
+		// outage answers that IS a failure.
+		await apiCreateProfile();
+
+		// Probed with the profile in place: the gauges come from a scrape-time
+		// collector over live profile state, so an empty gateway exports none
+		// of them regardless of its build.
+		test.skip(!(await gatewayExportsJwksGauges()), 'Gateway predates the loxilb_ai_jwks_* keyset gauges');
+
+		// Refresh, not reload — the page must converge on its own controls.
+		// The snapshot arrives on the shared metrics cadence, so the first
+		// press can legitimately precede it.
+		await refreshUntilRow(page, PROFILE);
+		const health = page.getByText(/Failing closed — never fetched/);
+		await expect(health).toBeVisible({timeout: 40_000});
+
+		// Absent, never zero: upstream omits the timestamp series before the
+		// first success precisely so nothing reads it as a 1970 date.
+		await expect(page.getByText(/^Never$/)).toBeVisible();
+
+		// ⭐ And the panel must not have replaced the honest disclaimer with
+		// silence: with health on screen the notice defers to it.
+		await expect(page.getByText(/reported under Keyset health below/i)).toBeVisible();
+
+		// A second profile whose name sits exactly on the 63-BYTE cap. Two
+		// things ride on it: the panel must join a maximum-length name to its
+		// metric label (the gateway truncates labels at 64 bytes, so the cap
+		// is one byte below the boundary and the join must not be affected),
+		// and the page must stay laid out with the longest legal name on
+		// screen.
+		const wide = `${E2E_PREFIX}${'w'.repeat(63 - E2E_PREFIX.length)}`;
+		expect(wide.length, 'name must sit exactly on the cap').toBe(63);
+		const seeded = await gw('POST', JWTPROFILE_PATH, {name: wide, issuer: ISSUER});
+		expect(seeded.status, 'API seed wide-name profile').toBeLessThan(300);
+
+		// ⚠️ Seed and refresh at the default width FIRST. At 375px the docked
+		// navigation drawer overlays the toolbar, so the Refresh button cannot
+		// be clicked — a harness constraint, not a product defect. Only the
+		// measurement needs the narrow viewport.
+		await refreshUntilRow(page, wide);
+		await page.setViewportSize({width: 375, height: 812});
+		// The health table renders it as a cell; the profiles DataTable renders
+		// it as text. Targeting the cell asserts the PANEL picked the profile
+		// up, not merely that the grid did.
+		await expect(page.getByRole('cell', {name: wide})).toBeVisible({timeout: 40_000});
+		const overflow = await page.evaluate(() => ({
+			scrollWidth: document.documentElement.scrollWidth,
+			clientWidth: document.documentElement.clientWidth,
+		}));
+		// ⚠️ Honest scope: this is a page-level INVARIANT guard, in the shape
+		// the observability responsive gate uses. It was checked against the
+		// panel with and without its internal overflow container and passes
+		// either way — the page layout already bounds the width here — so it
+		// does NOT prove that container is load-bearing. It guards against a
+		// future change (a minWidth, an added column, an unwrapped issuer URL)
+		// that would widen the document itself.
+		expect(overflow.scrollWidth, 'document body must not scroll horizontally').toBeLessThanOrEqual(overflow.clientWidth + 1);
 	});
 
 	test('the gateway itself refuses with 409 — the contract the UI race branch depends on', async () => {

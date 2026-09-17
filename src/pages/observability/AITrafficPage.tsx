@@ -24,6 +24,7 @@
 
 import {Alert, Box, Grid, Table, TableBody, TableCell, TableHead, TableRow, Typography} from '@mui/material';
 import FreshnessBadge from 'components/observability/FreshnessBadge';
+import BearerAdmissionPanel from 'components/observability/BearerAdmissionPanel';
 import ObservabilityStateFrame from 'components/observability/ObservabilityStateFrame';
 import {classifyViewState} from 'components/observability/observabilityState';
 import {useInstanceFromURL} from 'hooks/instanceHook';
@@ -33,6 +34,7 @@ import {useTranslation} from 'react-i18next';
 import {estimateQuantile, mergeHistogramSeries} from 'observability/histogram';
 import {aggregateSum, selectSamples} from 'observability/selectors';
 import {completedRequestRate, completedRequestRatesBy, requestOutcomes} from 'observability/aiRequests';
+import {bearerAdmission} from 'observability/jwtAuth';
 import {familySumRate, groupRates, rateMaxGapMs} from 'observability/snapshotRates';
 import {CadenceSelector, ModelName, PanelPaper, StatRow, formatRate, formatRatio, useObservabilityApplicable} from './common';
 
@@ -52,6 +54,9 @@ export default function AITrafficPage() {
 	// on a gateway that predates the outcome label. One detection feeds both the
 	// panel and the notice, so they can never disagree about the exposition.
 	const outcomes = useMemo(() => requestOutcomes(history, maxGap), [history, maxGap]);
+	// J3 — the bearer arm's admit/deny breakdown. Traffic, so it lives here;
+	// per-profile keyset health lives on the JWT Auth Profiles page instead.
+	const bearer = useMemo(() => bearerAdmission(snapshot, history, maxGap), [snapshot, history, maxGap]);
 	const denialRates = useMemo(
 		() =>
 			snapshot
@@ -137,6 +142,18 @@ export default function AITrafficPage() {
 							{completedByStatus.map(g => (
 								<StatRow key={g.labels.status ?? ''} label={g.labels.status ?? t('(no status)')} value={formatRate(g.rate, t)} />
 							))}
+						</PanelPaper>
+					</Grid>
+
+					{/* ⚠️ Rendered on BOTH readings, because an absent family is
+					    the expected one here and needs saying. These series are
+					    conditional-with-proven-writer: nothing exports until a
+					    rule selects the bearer arm AND a request carrying an
+					    Authorization header reaches it. Printing 0/s instead
+					    would assert that bearer auth is configured and idle. */}
+					<Grid item xs={12} md={6}>
+						<PanelPaper title={t('Bearer token admission (JWT)')}>
+							<BearerAdmissionPanel admission={bearer} />
 						</PanelPaper>
 					</Grid>
 

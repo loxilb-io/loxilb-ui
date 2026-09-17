@@ -58,7 +58,7 @@ export type LabelMatch = LabelEquality | LabelPredicate;
 /**
  * The one implementation of "does this sample belong to this selection".
  * Exported so a caller that has to do its own summing pass (see
- * aiRequests.partitionRate) selects samples by exactly the same rule these
+ * `partitionRate` below) selects samples by exactly the same rule these
  * rates do, instead of reimplementing it and drifting.
  */
 export function matchesLabels(labels: Readonly<Record<string, string>>, where: LabelMatch | undefined): boolean {
@@ -137,4 +137,47 @@ export function familySumRate(
 ): RateResult {
 	const rates = groupRates(history, family, [], maxGapMs, where);
 	return rates.length === 1 ? rates[0].rate : {kind: 'insufficient-samples'};
+}
+
+/**
+ * Sum rate over a PARTITION of a family that is itself present.
+ *
+ * `familySumRate` answers insufficient-samples when a filter matches nothing,
+ * which is right where absence means "unknown". It is WRONG for a partition
+ * of a family that is present: a counter child is only created on its first
+ * increment, so a gateway that has never taken some branch exports no series
+ * for it at all, and that branch's rate is genuinely 0/s. Read as "warming
+ * up", a healthy gateway would show that quantity as underivable forever —
+ * the absent-series-is-not-zero rule inverted by the fact that the family
+ * itself is right there.
+ *
+ * The family must be present in BOTH observations for that reasoning to hold.
+ * If it is absent from either, nothing is known and the answer stays
+ * insufficient-samples.
+ */
+export function partitionRate(
+	history: readonly IMetricsSnapshot[],
+	family: string,
+	maxGapMs: number,
+	where: LabelMatch,
+): RateResult {
+	const current = history[history.length - 1];
+	const previous = history.length >= 2 ? history[history.length - 2] : undefined;
+	if (!current || !previous) return {kind: 'insufficient-samples'};
+	if (!current.families.get(family) || !previous.families.get(family)) return {kind: 'insufficient-samples'};
+
+	const sumOf = (s: IMetricsSnapshot) => {
+		const matched = selectSamples(s, family).filter(x => matchesLabels(x.labels, where));
+		// No match at all is a true zero here; a match whose samples are all
+		// non-finite is not, and aggregateSum already distinguishes them.
+		return matched.length === 0 ? 0 : aggregateSum(matched).value;
+	};
+
+	const before = sumOf(previous);
+	const now = sumOf(current);
+	return computeCounterRate(
+		before === undefined ? undefined : {value: before, receivedAtMs: previous.receivedAtMs},
+		now === undefined ? undefined : {value: now, receivedAtMs: current.receivedAtMs},
+		maxGapMs,
+	);
 }

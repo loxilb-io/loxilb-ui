@@ -39,7 +39,11 @@ export type ObservabilityEntryId =
 	| 'page.security'
 	| 'page.qos'
 	| 'page.persistence'
-	| 'page.haSync';
+	| 'page.haSync'
+	// Panels embedded in configuration pages, not in the dashboard: an
+	// observability surface that answers a question about the object the page
+	// already manages.
+	| 'panel.jwtKeysetHealth';
 
 export interface ITopologyInput {
 	gatewayCount: number;
@@ -90,6 +94,10 @@ const AI_TRAFFIC_FAMILIES = [
 	'loxilb_ai_token_quota_model_limit_tokens',
 	'loxilb_ai_normal_session_hits_total',
 	'loxilb_ai_engine_info',
+	// The bearer arm's verdict counter (J3). The keyset families are NOT here:
+	// they answer "is this profile working?", which belongs beside the profile
+	// that defines it — see panel.jwtKeysetHealth.
+	'loxilb_ai_jwt_validation_total',
 ] as const;
 
 // P/D & KV page. NOT here despite the prefix: the 8 loxilb_pd_ctrl_*
@@ -233,6 +241,17 @@ const HA_SYNC_FAMILIES = [
 // Registry
 //---------------------------------------------------------
 
+// Keyset health for the JWT Auth Profiles page (J3). All four are
+// `conditional-with-proven-writer`: they appear once a profile exists, so an
+// empty exposition is a precondition and never a failure. The refresh counter
+// is what separates "still admitting on last-known-good keys" from an outage.
+const JWKS_HEALTH_FAMILIES = [
+	'loxilb_ai_jwks_usable',
+	'loxilb_ai_jwks_keys',
+	'loxilb_ai_jwks_last_success_timestamp_seconds',
+	'loxilb_ai_jwks_refresh_total',
+] as const;
+
 const entries: readonly IObservabilityEntry[] = [
 	{
 		// Existing common dashboard cards; served through the UI-MON-006
@@ -268,6 +287,14 @@ const entries: readonly IObservabilityEntry[] = [
 		kind: 'panel', flavor: 'inference-gateway',
 		metricFamilies: ['loxilb_config_dirty', 'loxilb_autopersist_consecutive_failures', 'loxilb_persist_total'],
 		restPaths: ['/diagnostics'],
+	},
+	{
+		// Lives on the JWT Auth Profiles page. `/config/ai/jwtauthprofile` is
+		// declared too: without profiles to configure there is no page to host
+		// this, so the REST surface is a real requirement and not decoration.
+		id: 'panel.jwtKeysetHealth',
+		kind: 'panel', flavor: 'inference-gateway',
+		metricFamilies: JWKS_HEALTH_FAMILIES, restPaths: ['/config/ai/jwtauthprofile'],
 	},
 	{
 		id: 'page.aiTraffic',
