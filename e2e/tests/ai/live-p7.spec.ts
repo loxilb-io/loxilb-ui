@@ -108,9 +108,14 @@ test.describe.serial('@gw Live P7 — model-profile RC qualification (MP-E2E-019
 		await expect(page.getByText(body.setDigest)).toBeVisible();
 
 		// Read-only surface (AC-12) and no server-filesystem leakage.
-		for (const verb of ['Add', 'Delete', 'Edit', 'Upload', 'Activate']) {
-			await expect(toolbarButton(page, verb)).toHaveCount(0);
+		for (const action of ['Add', 'Delete', 'Edit'] as const) {
+			await expect(toolbarButton(page, action), `${action} must not exist on the read-only registry`).toHaveCount(0);
 		}
+		// ⚠️ Upload/Activate are not DataTable affordances at ALL, so an icon
+		// locator for them could only ever match nothing and pass regardless of
+		// what the page renders. Assert on the accessible name instead, which is
+		// what would actually appear if such a control were ever added.
+		await expect(page.locator('#table-bar').getByRole('button', {name: /upload|activate/i}), 'no mutation affordance may appear under any name').toHaveCount(0);
 		const pageText = (await page.locator('body').innerText()) ?? '';
 		expect(pageText, 'no artifact locator paths leak into the UI').not.toMatch(/\/(etc|opt|var|home)\/[\w./-]+/);
 

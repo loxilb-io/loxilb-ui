@@ -236,7 +236,7 @@ test.describe('@loxilb flavor gating — plain upstream loxilb instance', () => 
 			await expect(row).toBeVisible({timeout: 20_000});
 			const box = row.getByRole('checkbox');
 			if (!(await box.isChecked())) await box.check();
-			await openToolbarDialog(page, 'Mode', 'Edit Load Balancer Rule');
+			await openToolbarDialog(page, 'Edit', 'Edit Load Balancer Rule');
 		};
 		const captureMutations = () => {
 			const calls: string[] = [];

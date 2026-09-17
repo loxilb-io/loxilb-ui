@@ -159,7 +159,7 @@ test.describe('User management (admin User List tab)', () => {
 			// First edit — actually change the email.
 			const newEmail = `${username}.edited@e2e.test`;
 			await selectRowByText(page, username);
-			await openToolbarDialog(page, 'Mode', dialog(page).getByText(/Edit User/));
+			await openToolbarDialog(page, 'Edit', dialog(page).getByText(/Edit User/));
 			await f(page, 'Email').fill(newEmail);
 			await dialogButton(page, 'Update User').click();
 			await expectSuccessAndDismiss(page);
@@ -169,7 +169,7 @@ test.describe('User management (admin User List tab)', () => {
 			// Second edit — submit with the SAME value. The server used to
 			// 500 on a no-op PUT; it must now succeed.
 			await selectRowByText(page, username);
-			await openToolbarDialog(page, 'Mode', dialog(page).getByText(/Edit User/));
+			await openToolbarDialog(page, 'Edit', dialog(page).getByText(/Edit User/));
 			await dialogButton(page, 'Update User').click();
 			await expectSuccessAndDismiss(page);
 			expect(puts.at(-1)?.email, 'no-op PUT carries the unchanged email').toBe(newEmail);
@@ -196,7 +196,7 @@ test.describe('User management (admin User List tab)', () => {
 		page.on('request', cap);
 		try {
 			await selectRowByText(page, username);
-			await openToolbarDialog(page, 'Mode', dialog(page).getByText(/Edit User/));
+			await openToolbarDialog(page, 'Edit', dialog(page).getByText(/Edit User/));
 			await dialogButton(page, 'Change Password').click();
 			await f(page, 'New Password').fill('Wm9$kZt4p');
 			await f(page, 'Confirm New Password').fill('Wm9$kZt4p');

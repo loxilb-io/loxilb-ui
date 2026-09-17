@@ -179,7 +179,7 @@ test.describe('@gw IPsec Tunnel page CRUD', () => {
 
 		// Open the edit dialog (Mode toolbar button); the PSK field comes back blank.
 		await selectRowByClick(page, 'e2e-tun-edit', 'name');
-		await openToolbarDialog(page, 'Mode', dialog(page).getByRole('heading', {name: 'Edit IPsec Tunnel'}));
+		await openToolbarDialog(page, 'Edit', dialog(page).getByRole('heading', {name: 'Edit IPsec Tunnel'}));
 		await expect(field(page, 'Pre-Shared Key')).toHaveValue('');
 
 		// Change only the remote subnet, leave the PSK blank, Apply.

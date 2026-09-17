@@ -361,7 +361,7 @@ test.describe('LB Rule page CRUD', () => {
 		// Submitting the read-back form untouched is a true no-op. In particular,
 		// it must not synthesize an api_key_auth change or attempt the L4 PATCH route.
 		await selectRowByText(page, name);
-		await openToolbarDialog(page, 'Mode', 'Edit Load Balancer Rule');
+		await openToolbarDialog(page, 'Edit', 'Edit Load Balancer Rule');
 		await dialogButton(page, 'Update').click();
 		await expect(dialog(page).getByText('No changes to apply.')).toBeVisible();
 		await dialogButton(page, 'OK').click();
@@ -375,7 +375,7 @@ test.describe('LB Rule page CRUD', () => {
 		// delete-and-recreate behind the operator's back.
 		await refreshUntilRow(page, name);
 		await selectRowByText(page, name);
-		await openToolbarDialog(page, 'Mode', 'Edit Load Balancer Rule');
+		await openToolbarDialog(page, 'Edit', 'Edit Load Balancer Rule');
 		await expandSection(page, ADVANCED);
 		await expandSection(page, AIGW);
 		await selectOption(page, 'Data-plane API Key Policy', 'Disabled (strip header)');
@@ -630,7 +630,7 @@ test.describe('LB Rule page CRUD', () => {
 		await refreshUntilRow(page, 'e2e-lb-edit');
 
 		await selectRowByText(page, 'e2e-lb-edit');
-		await openToolbarDialog(page, 'Mode', 'Edit Load Balancer Rule'); // edit (pencil)
+		await openToolbarDialog(page, 'Edit', 'Edit Load Balancer Rule'); // edit (pencil)
 
 		// E-immutable: composite key + name are disabled in edit mode.
 		await expect(field(page, 'Rule Name')).toBeDisabled();

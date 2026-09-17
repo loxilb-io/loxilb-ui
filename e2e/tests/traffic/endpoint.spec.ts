@@ -161,7 +161,7 @@ test.describe('Endpoint page CRUD', () => {
 		await refreshUntilRow(page, 'e2e-ep-edit');
 
 		await selectRowByText(page, 'e2e-ep-edit');
-		await openToolbarDialog(page, 'Mode', 'New Edit Endpoint'); // edit (pencil)
+		await openToolbarDialog(page, 'Edit', 'New Edit Endpoint'); // edit (pencil)
 
 		// Host name is the identity in edit mode → disabled.
 		await expect(field(page, 'Host Name')).toBeDisabled();

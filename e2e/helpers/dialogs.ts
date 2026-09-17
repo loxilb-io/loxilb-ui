@@ -5,7 +5,7 @@
 // popup, so .first() always resolves to the PopUp itself.
 //---------------------------------------------------------
 import {expect, Locator, Page} from '@playwright/test';
-import {toolbarButton, ToolbarIcon} from './table';
+import {toolbarButton, ToolbarAction} from './table';
 
 export function dialog(page: Page): Locator {
 	return page.locator('.MuiModal-root').first();
@@ -88,11 +88,11 @@ export async function openDialog(
 /** `openDialog` for the common case: a DataTable toolbar button opens the modal. */
 export async function openToolbarDialog(
 	page: Page,
-	icon: ToolbarIcon,
+	action: ToolbarAction,
 	title: string | RegExp | Locator,
 	opts?: {attempts?: number; timeout?: number},
 ): Promise<void> {
-	await openDialog(page, title, () => toolbarButton(page, icon).click(), opts);
+	await openDialog(page, title, () => toolbarButton(page, action).click(), opts);
 }
 
 /** The "Success" popup every mutation ends on; dismisses it. */
