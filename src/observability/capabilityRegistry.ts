@@ -140,6 +140,10 @@ const PD_KV_FAMILIES = [
 	'loxilb_ai_pd_decode_ttft_seconds',
 	'loxilb_ai_pd_requests_total',
 	'loxilb_ai_pd_session_hits_total',
+	// The terminal prefill routing-tier decision (Stage 3.2). Its Tier-0 child
+	// must reconcile with loxilb_ai_pd_session_hits_total above, which the tier
+	// mix panel checks in page.
+	'loxilb_ai_pd_tier_selected_total',
 	'loxilb_ai_pd_kv_params_found_total',
 	'loxilb_ai_pd_kv_params_missing_total',
 	// KV attestation / TRT-LLM drain

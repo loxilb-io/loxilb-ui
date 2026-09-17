@@ -55,12 +55,7 @@ export function CadenceSelector() {
 	);
 }
 
-// The gateway collapses model labels past its 64-distinct-model bound to the
-// literal "other" — that row is an overflow bucket, not a model.
-export const MODEL_OVERFLOW_LABEL = 'other';
-
-export function ModelName({model}: {model: string}) {
-	const {t} = useTranslation();
-	if (model !== MODEL_OVERFLOW_LABEL) return <>{model}</>;
-	return <em>{t('Other models (overflow bucket)')}</em>;
-}
+// Moved under components/ when Stage 3.2 put a second `model` column on a
+// panel, which must not import from pages/. Re-exported so page code is
+// unchanged.
+export {MODEL_OVERFLOW_LABEL, ModelName} from 'components/observability/modelLabel';

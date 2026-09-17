@@ -135,6 +135,37 @@ describe('axe: observability building blocks', () => {
 		);
 		await expectNoViolations(container);
 	});
+
+	it('P/D tier mix panel has no violations', async () => {
+		const PDTierMixPanel = (await import('components/observability/PDTierMixPanel')).default;
+		const rate = {kind: 'ok', perSecond: 1, intervalMs: 10_000} as const;
+		const {container} = render(
+			<PDTierMixPanel
+				gates={{pdDisagg: true, cacheAware: true, kvExact: false}}
+				report={{
+					kind: 'ok',
+					tiers: [
+						{tier: 'tier0', rate, share: {kind: 'ok', ratio: 0.25}, total: 9, reachable: true},
+						{tier: 'tier1', rate, share: {kind: 'ok', ratio: 0.25}, total: 4, reachable: true},
+						// An unreachable tier renders a chip inside a tooltip, and a
+						// tooltip on a non-interactive element is the shape most
+						// likely to fail the gate — so the fixture includes one.
+						{tier: 'tier15', rate: {kind: 'ok', perSecond: 0, intervalMs: 10_000}, share: {kind: 'ok', ratio: 0}, total: undefined, reachable: false},
+						{tier: 'tier2', rate, share: {kind: 'ok', ratio: 0.5}, total: 20, reachable: true},
+					],
+					totalRate: rate,
+					affinityShare: {kind: 'ok', ratio: 0.5},
+					verdict: 'reuse-working',
+					byModel: [
+						{model: 'llama-3', total: 30, affinityShare: {kind: 'ok', ratio: 0.5}, fallbackRate: rate},
+						{model: 'other', total: 3, affinityShare: {kind: 'no-traffic'}, fallbackRate: {kind: 'insufficient-samples'}},
+					],
+					reconciliation: {kind: 'disagrees', tierSelections: 9, sessionHits: 7},
+				}}
+			/>,
+		);
+		await expectNoViolations(container);
+	});
 });
 
 describe('axe gate self-test', () => {

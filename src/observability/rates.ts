@@ -54,3 +54,31 @@ export function pushRetained<T extends {receivedAtMs: number}>(ring: readonly T[
 	if (ring.length > 0 && ring[ring.length - 1].receivedAtMs === point.receivedAtMs) return [...ring];
 	return [...ring, point].slice(-capacity);
 }
+
+/**
+ * A ratio of two rates over the same snapshot pair.
+ *
+ * `no-traffic` is its own answer and not zero: with no offered load the ratio
+ * is 0/0, and printing "0% errors" over an idle gateway asserts health that
+ * was never measured.
+ *
+ * Lives here rather than beside its first caller because a second one
+ * arrived: the P/D tier mix expresses every tier as a share of all
+ * selections. The same move `partitionRate` made into `snapshotRates.ts` —
+ * a shared primitive, not an AI-request detail.
+ */
+export type RatioResult =
+	| {kind: 'ok'; ratio: number}
+	| {kind: 'no-traffic'}
+	| {kind: 'not-derivable'; reason: Exclude<RateResult['kind'], 'ok'>};
+
+export function ratioOf(numerator: RateResult, denominator: RateResult): RatioResult {
+	if (numerator.kind !== 'ok') return {kind: 'not-derivable', reason: numerator.kind};
+	if (denominator.kind !== 'ok') return {kind: 'not-derivable', reason: denominator.kind};
+	if (denominator.perSecond <= 0) return {kind: 'no-traffic'};
+	// Deliberately unclamped. The numerator selects a subset of the
+	// denominator's samples, so > 1 is arithmetically impossible; if it ever
+	// shows, the partition assumption has broken and an operator needs to see
+	// that rather than a tidy 100%.
+	return {kind: 'ok', ratio: numerator.perSecond / denominator.perSecond};
+}
