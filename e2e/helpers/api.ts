@@ -590,6 +590,26 @@ export async function gatewayJwtAuthReadiness(): Promise<AIManagementReadiness> 
 }
 
 /**
+ * Whether the gateway exports the scrape-time JWKS keyset gauges (J3).
+ *
+ * ⚠️ Probed on `loxilb_ai_jwks_usable`, NOT on `loxilb_ai_jwks_refresh_total`.
+ * The refresh counter is a promauto vector whose children survive for the
+ * process lifetime, so a gateway with ZERO profiles configured still exports
+ * failure counters for profiles deleted days ago — a live gateway was observed
+ * in exactly that state. The gauges come from a scrape-time collector over
+ * LIVE profile state, which is what "does this gateway report keyset health"
+ * actually asks.
+ *
+ * Call it with the profile already created: with no profile configured the
+ * collector has nothing to report and a modern gateway answers false too.
+ */
+export async function gatewayExportsJwksGauges(): Promise<boolean> {
+	const resp = await gw('GET', '/metrics');
+	if (!resp.ok) return false;
+	return /^loxilb_ai_jwks_usable\{/m.test(await resp.text());
+}
+
+/**
  * Remove every e2e-marked profile.
  *
  * ⚠️ A profile referenced by an LB rule is refused with 409, so LB rules must be

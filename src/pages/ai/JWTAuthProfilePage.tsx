@@ -13,7 +13,7 @@
 //     so the refusal is explained — and warned about — rather than decoded
 //     from a status code after the fact.
 
-import {Alert, Stack} from '@mui/material';
+import {Alert, Box, Stack, Typography} from '@mui/material';
 import {getStableHash} from 'common';
 import SingleTextField from 'components/element/SingleTextField';
 import ValueBunch from 'components/element/ValueBunch';
@@ -21,12 +21,18 @@ import JWTAuthProfileInputForm from 'components/input/JWTAuthProfileInputForm';
 import LowerSection from 'components/layout/LowerSection';
 import SubTitlePannel from 'components/layout/SubTitlePannel';
 import ErrorPopUp from 'components/modal/ErrorPopUp';
+import FreshnessBadge from 'components/observability/FreshnessBadge';
+import JWKSHealthPanel from 'components/observability/JWKSHealthPanel';
 import JWTAuthProfileTable from 'components/table/ai/JWTAuthProfileTable';
 import {toPageState} from 'components/state/pageState';
 import {request_delete_jwtauthprofile, request_upsert_jwtauthprofile} from 'connector/instance/ai_jwt';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useJWTAuthProfiles, useLoadBalancerConfig} from 'hooks/query/queryHooks';
+import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
+import {jwksHealthFor} from 'observability/jwtAuth';
+import {rateMaxGapMs} from 'observability/snapshotRates';
+import {useObservabilityApplicable} from 'pages/observability/common';
 import {fromQueryRefetch} from 'hooks/query/reconcile';
 import {useReconcileReporter} from 'hooks/query/reconcileReport';
 import {useErrorPopup} from 'hooks/useErrorPopup';
@@ -92,6 +98,16 @@ export default function JWTAuthProfilePage() {
 		for (const p of profiles) out[p.name ?? ''] = rulesReferencingProfile(configs, p.name ?? '');
 		return out;
 	}, [profiles, lbData]);
+
+	// J3 — keyset health beside the configuration that defines it.
+	// Deny-by-default: the panel is mounted only where the vendored contract
+	// proves the families exist, never because data happened to show up.
+	const healthApplicable = useObservabilityApplicable('panel.jwtKeysetHealth');
+	const {snapshot, history, cadenceMs, refetch: refetchMetrics} = useMetricsSnapshot(healthApplicable ? inst : null);
+	const jwksHealth = React.useMemo(
+		() => jwksHealthFor(profiles.map(p => p.name ?? ''), snapshot, history, rateMaxGapMs(cadenceMs)),
+		[profiles, snapshot, history, cadenceMs],
+	);
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
 	const {openPopUp, enableYes} = usePopUp();
@@ -197,12 +213,24 @@ export default function JWTAuthProfilePage() {
 		// signal they use to decide whether a delete will be refused.
 		refetch();
 		refetchLb();
+		// Same reasoning one step further: an operator pressing Refresh after
+		// fixing an issuer expects the health verdict to move too, not just
+		// the configuration rows.
+		refetchMetrics();
 	};
 
 	return (
 		<Fragment>
+			{/* ⚠️ CONDITIONAL, not deleted. The original notice exists because
+			    the table alone cannot say whether an issuer works — which is
+			    still the exact truth on an instance that exports no keyset
+			    health, so it must survive there. Where the health panel below
+			    does answer that question, repeating the disclaimer would send
+			    an operator looking for information that is on screen. */}
 			<Alert severity="info" sx={{mb: 2}}>
-				{t('This list is desired configuration only. It does not report whether an issuer is reachable or its keyset healthy.')}
+				{jwksHealth.kind === 'ok'
+					? t('This list is desired configuration. Whether each issuer is reachable and its keyset usable is reported under Keyset health below.')
+					: t('This list is desired configuration only. It does not report whether an issuer is reachable or its keyset healthy.')}
 			</Alert>
 
 			<JWTAuthProfileTable
@@ -216,6 +244,18 @@ export default function JWTAuthProfilePage() {
 				onRefresh={handleRefresh}
 				state={toPageState(profile_query, {op: 'ai_jwtprofile.list'})}
 			/>
+
+			{healthApplicable && (
+				<Box sx={{mt: 2}}>
+					<Box display="flex" alignItems="center" gap={2} sx={{mb: 1}}>
+						<Typography variant="subtitle1" sx={{fontWeight: 600}}>
+							{t('Keyset health')}
+						</Typography>
+						{snapshot && !snapshot.failure && <FreshnessBadge receivedAtMs={snapshot.receivedAtMs} cadenceMs={cadenceMs} />}
+					</Box>
+					<JWKSHealthPanel report={jwksHealth} hasProfiles={profiles.length > 0} />
+				</Box>
+			)}
 
 			{selectedProfile && (
 				<LowerSection>

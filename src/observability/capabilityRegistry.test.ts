@@ -25,6 +25,7 @@ const GATEWAY_IDS: ObservabilityEntryId[] = [
 	'page.security',
 	'page.qos',
 	'page.persistence',
+	'panel.jwtKeysetHealth',
 ];
 
 describe('registry contract against the vendored artifacts', () => {
@@ -64,12 +65,16 @@ describe('registry contract against the vendored artifacts', () => {
 	it('pins the per-page family-set sizes from the verified data-source matrix', () => {
 		const size = (id: ObservabilityEntryId) => getObservabilityEntry(id)!.metricFamilies.length;
 		expect(size('dashboard.gwAiEvents')).toBe(4);
-		expect(size('page.aiTraffic')).toBe(16);
+		// 17 since J3: the bearer arm's verdict counter joined the page.
+		expect(size('page.aiTraffic')).toBe(17);
 		expect(size('page.pdKv')).toBe(47);
 		expect(size('page.security')).toBe(27);
 		expect(size('page.qos')).toBe(8);
 		expect(size('page.persistence')).toBe(10);
 		expect(size('page.haSync')).toBe(13);
+		// The four loxilb_ai_jwks_* families, and only those: the validation
+		// counter is traffic and belongs to page.aiTraffic instead.
+		expect(size('panel.jwtKeysetHealth')).toBe(4);
 	});
 });
 
