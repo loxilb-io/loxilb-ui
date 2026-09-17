@@ -40,10 +40,30 @@ function groupKeyOf(labels: Record<string, string>, groupBy: readonly string[]):
 }
 
 /** Label-equality filter. A sample missing the label never matches. */
-export type LabelMatch = Readonly<Record<string, string>>;
+export type LabelEquality = Readonly<Record<string, string>>;
 
-function matches(labels: Readonly<Record<string, string>>, where: LabelMatch | undefined): boolean {
+/**
+ * Arbitrary sample selection, for questions label equality cannot express —
+ * an HTTP status *class*, say, where the label is a code and the question is
+ * a range. It runs per sample inside the same summing pass as the equality
+ * form, so the group it feeds is still ONE summed series and still yields one
+ * rate; a predicate must never be emulated by summing several group rates,
+ * which would report insufficient-samples for the whole answer the first time
+ * any one label value appeared.
+ */
+export type LabelPredicate = (labels: Readonly<Record<string, string>>) => boolean;
+
+export type LabelMatch = LabelEquality | LabelPredicate;
+
+/**
+ * The one implementation of "does this sample belong to this selection".
+ * Exported so a caller that has to do its own summing pass (see
+ * aiRequests.partitionRate) selects samples by exactly the same rule these
+ * rates do, instead of reimplementing it and drifting.
+ */
+export function matchesLabels(labels: Readonly<Record<string, string>>, where: LabelMatch | undefined): boolean {
 	if (!where) return true;
+	if (typeof where === 'function') return where(labels);
 	for (const [k, v] of Object.entries(where)) if (labels[k] !== v) return false;
 	return true;
 }
@@ -56,7 +76,7 @@ function groupSums(
 ): Map<string, {labels: Record<string, string>; value: number | undefined}> {
 	const byGroup = new Map<string, {labels: Record<string, string>; samples: ReturnType<typeof selectSamples>}>();
 	for (const s of selectSamples(snapshot, family)) {
-		if (!matches(s.labels, where)) continue;
+		if (!matchesLabels(s.labels, where)) continue;
 		const key = groupKeyOf({...s.labels}, groupBy);
 		let g = byGroup.get(key);
 		if (!g) {

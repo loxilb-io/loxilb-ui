@@ -1,18 +1,26 @@
 //---------------------------------------------------------
-// AI Traffic observability page (UI-MON-008 — partial by contract)
+// AI Traffic observability page (UI-MON-008)
 //---------------------------------------------------------
-// Two SEPARATE, explicitly-labeled event views and nothing pretending to be
-// a total. Historically no combination of families yielded a total request
-// rate or a true error ratio, so those panels were never built: rendering a
-// sum or ratio under a "total"/"error rate" heading is a contract violation.
+// Rendering a sum or a ratio under a "total"/"error rate" heading is a contract
+// violation unless the families actually yield one. Historically none did, so
+// those panels did not exist and the page said so on its face.
 //
-// Gateway 27680379 supplies the missing denominator — `loxilb_ai_requests_total`
-// now counts gate denials too, partitioned by `outcome`. The totals/error-ratio
-// panels are therefore unblocked but NOT built here yet; that is its own piece
-// of work, and it needs a testbed on a gateway new enough to validate against.
-// What this page does today is narrower and stays true on both gateway shapes:
-// the completed views select outcome="completed" (observability/aiRequests), so
-// a denial is never counted as a served request.
+// Gateway 27680379 supplied the missing denominator: `loxilb_ai_requests_total`
+// counts gate denials too, partitioned by `outcome`, and the two values are
+// mutually exclusive per request — so the unfiltered family IS offered load and
+// a ratio over it is real. The totals and error-ratio panel is built on that.
+//
+// ⚠️ The page therefore has TWO rendering paths, decided by
+// `requestOutcomes()` from the LIVE exposition rather than from the vendored
+// manifest, because the instance in front of the operator may be older than the
+// UI. Partitioned: the outcomes panel renders and the old notice is gone.
+// Unpartitioned: the panel is absent and the original notice is still the
+// honest answer — on that gateway the unfiltered sum is the completed count, so
+// captioning it "total" would restate the very falsehood the notice prevents.
+// The notice is CONDITIONAL, not deleted.
+//
+// The completed views select outcome="completed" on both shapes, so a denial is
+// never counted as a served request.
 
 import {Alert, Box, Grid, Table, TableBody, TableCell, TableHead, TableRow, Typography} from '@mui/material';
 import FreshnessBadge from 'components/observability/FreshnessBadge';
@@ -24,9 +32,9 @@ import {useMemo} from 'react';
 import {useTranslation} from 'react-i18next';
 import {estimateQuantile, mergeHistogramSeries} from 'observability/histogram';
 import {aggregateSum, selectSamples} from 'observability/selectors';
-import {completedRequestRate, completedRequestRatesBy} from 'observability/aiRequests';
+import {completedRequestRate, completedRequestRatesBy, requestOutcomes} from 'observability/aiRequests';
 import {familySumRate, groupRates, rateMaxGapMs} from 'observability/snapshotRates';
-import {CadenceSelector, ModelName, PanelPaper, StatRow, formatRate, useObservabilityApplicable} from './common';
+import {CadenceSelector, ModelName, PanelPaper, StatRow, formatRate, formatRatio, useObservabilityApplicable} from './common';
 
 export default function AITrafficPage() {
 	const {t} = useTranslation();
@@ -40,6 +48,10 @@ export default function AITrafficPage() {
 	// would put denied requests under a "completed" heading.
 	const completedByStatus = useMemo(() => (snapshot ? completedRequestRatesBy(history, ['status'], maxGap) : []), [snapshot, history, maxGap]);
 	const completedTotal = useMemo(() => completedRequestRate(history, maxGap), [history, maxGap]);
+	// Offered load / denials / error ratio, or the typed refusal to derive them
+	// on a gateway that predates the outcome label. One detection feeds both the
+	// panel and the notice, so they can never disagree about the exposition.
+	const outcomes = useMemo(() => requestOutcomes(history, maxGap), [history, maxGap]);
 	const denialRates = useMemo(
 		() =>
 			snapshot
@@ -97,11 +109,28 @@ export default function AITrafficPage() {
 			</Box>
 
 			<Alert severity="info" sx={{mb: 2}}>
-				{t('Completed SSE streams and denial events are separate, partial views. The gateway does not yet expose a complete request denominator, so no total request rate or error ratio can be shown.')}
+				{outcomes.kind === 'partitioned'
+					? t('Total offered load and error ratio are derived from the request outcome partition. The denial events panel breaks the same denials down by reason, so each reason rate is a subset of the gate denial rate.')
+					: t('Completed SSE streams and denial events are separate, partial views. The gateway does not yet expose a complete request denominator, so no total request rate or error ratio can be shown.')}
 			</Alert>
 
 			<ObservabilityStateFrame state={state} name={t('AI Traffic')} onRetry={refetch}>
 				<Grid container spacing={2}>
+					{/* Absent, not empty, on an unpartitioned gateway: there is no
+					    offered-load denominator to render, and the notice above
+					    carries that answer instead. */}
+					{outcomes.kind === 'partitioned' && (
+						<Grid item xs={12} md={6}>
+							<PanelPaper title={t('Request outcomes (offered load)')}>
+								<StatRow label={t('Total offered')} value={formatRate(outcomes.offered, t)} />
+								<StatRow label={t('Completed (answered by a backend)')} value={formatRate(outcomes.completed, t)} />
+								<StatRow label={t('Denied at gate')} value={formatRate(outcomes.denied, t)} />
+								<StatRow label={t('Failed responses (4xx/5xx)')} value={formatRate(outcomes.failed, t)} />
+								<StatRow label={t('Error ratio (denied + failed)')} value={formatRatio(outcomes.errorRatio, t)} />
+							</PanelPaper>
+						</Grid>
+					)}
+
 					<Grid item xs={12} md={6}>
 						<PanelPaper title={t('Completed SSE streams (not total requests)')}>
 							<StatRow label={t('All statuses')} value={formatRate(completedTotal, t)} />

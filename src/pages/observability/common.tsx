@@ -16,6 +16,7 @@ import {useTranslation} from 'react-i18next';
 import {isObservabilityCadence, OBSERVABILITY_CADENCE_OPTIONS_MS} from 'preferences';
 import {isEntryApplicable, ObservabilityEntryId} from 'observability/capabilityRegistry';
 import {RateResult} from 'observability/rates';
+import {RatioResult} from 'observability/aiRequests';
 
 export function useObservabilityApplicable(id: ObservabilityEntryId): boolean {
 	const caps = useInstanceCapabilities();
@@ -23,13 +24,12 @@ export function useObservabilityApplicable(id: ObservabilityEntryId): boolean {
 	return caps.resolved && caps.flavor !== undefined && isEntryApplicable(id, caps.flavor);
 }
 
-export function formatRate(rate: RateResult, t: TFunction, unit = '/s'): string {
-	switch (rate.kind) {
-		case 'ok': {
-			const v = rate.perSecond;
-			const text = v >= 100 ? v.toFixed(0) : v >= 1 ? v.toFixed(1) : v.toFixed(3);
-			return `${text}${unit}`;
-		}
+// The degenerate vocabulary, shared by every derived quantity. A ratio that
+// cannot be computed because its underlying rate was a reset or a gap has to
+// say the same words a rate does, or the same condition reads as two different
+// problems depending on which cell the operator happens to look at.
+function degenerateText(kind: Exclude<RateResult['kind'], 'ok'>, t: TFunction): string {
+	switch (kind) {
 		case 'insufficient-samples':
 			return t('Warming up…');
 		case 'reset':
@@ -39,6 +39,36 @@ export function formatRate(rate: RateResult, t: TFunction, unit = '/s'): string 
 		case 'invalid-interval':
 		case 'invalid-sample':
 			return t('N/A');
+	}
+}
+
+export function formatRate(rate: RateResult, t: TFunction, unit = '/s'): string {
+	if (rate.kind !== 'ok') return degenerateText(rate.kind, t);
+	const v = rate.perSecond;
+	const text = v >= 100 ? v.toFixed(0) : v >= 1 ? v.toFixed(1) : v.toFixed(3);
+	return `${text}${unit}`;
+}
+
+/**
+ * A derived ratio as a percentage.
+ *
+ * Two cases are deliberately not "0%": `no-traffic`, where the ratio is 0/0
+ * and printing a number would assert health nothing measured; and a small but
+ * nonzero ratio, which reads as an explicit bound rather than rounding down to
+ * 0.0% and telling an operator there were no failures when there were.
+ */
+export function formatRatio(ratio: RatioResult, t: TFunction): string {
+	switch (ratio.kind) {
+		case 'no-traffic':
+			return t('No traffic');
+		case 'not-derivable':
+			return degenerateText(ratio.reason, t);
+		case 'ok': {
+			const pct = ratio.ratio * 100;
+			if (pct === 0) return '0%';
+			if (pct < 0.1) return `<0.1%`;
+			return `${pct >= 10 ? pct.toFixed(1) : pct.toFixed(2)}%`;
+		}
 	}
 }
 
