@@ -210,6 +210,11 @@ const QOS_FAMILIES = [
 	'loxilb_proxy_qos_tokens_bytes',
 	'loxilb_proxy_qos_cbs_bytes',
 	'loxilb_proxy_qos_cir_bytes_per_second',
+	// Stage 3.3. ⚠️ Not a loxilb_proxy_qos_* shaper counter: this one is the
+	// per-policer attachment gauge, and it is joined against REST
+	// /config/policy rather than read on its own. It deliberately stays OUT
+	// of QosPage's own presence list — see the comment there.
+	'loxilb_policer_attached',
 ] as const;
 
 const PERSISTENCE_FAMILIES = [

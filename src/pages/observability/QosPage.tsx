@@ -12,16 +12,26 @@
 import {Box, Table, TableBody, TableCell, TableHead, TableRow, Typography} from '@mui/material';
 import FreshnessBadge from 'components/observability/FreshnessBadge';
 import ObservabilityStateFrame from 'components/observability/ObservabilityStateFrame';
+import PolicerAttachmentPanel from 'components/observability/PolicerAttachmentPanel';
 import {classifyViewState} from 'components/observability/observabilityState';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
-import {useMemo} from 'react';
+import {useQOSPolicies} from 'hooks/query/queryHooks';
+import {policerAttachment} from 'observability/policerAttachment';
+import {useCallback, useMemo} from 'react';
 import {useTranslation} from 'react-i18next';
 import {IMetricsSnapshot} from 'types/observability';
 import {selectScalar} from 'observability/selectors';
 import {IGroupRate, groupRates, rateMaxGapMs} from 'observability/snapshotRates';
 import {CadenceSelector, PanelPaper, formatRate, useObservabilityApplicable} from './common';
 
+// ⚠️ The EIGHT shaper families only, deliberately excluding Stage 3.3's
+// `loxilb_policer_attached` even though the capability registry lists it under
+// page.qos. This list drives `classifyQosPresence`, and a policer that is
+// configured but attached to nothing exports an attachment series while
+// shaping no bytes — folding it in here would flip presence to 'shaped' and
+// render the shaped-services table with zero lanes, reporting traffic that
+// does not exist. Attachment has its own panel and its own presence rules.
 export const QOS_FAMILIES = [
 	'loxilb_proxy_qos_bytes_passed_total',
 	'loxilb_proxy_qos_bytes_delayed_total',
@@ -61,6 +71,22 @@ export default function QosPage() {
 
 	const presence = useMemo(() => (snapshot && !snapshot.failure ? classifyQosPresence(snapshot) : undefined), [snapshot]);
 
+	// Stage 3.3. The policy list is the other half of the attachment answer:
+	// it is what makes an empty gauge readable as "no policer configured"
+	// (correct) rather than "the metric is broken". `undefined` deliberately
+	// reaches the derivation as "configuration unknown" instead of "none".
+	const {data: policyData, refetch: refetchPolicies} = useQOSPolicies(applicable ? instance : null);
+	const policies = useMemo(() => (Array.isArray(policyData) ? policyData : undefined), [policyData]);
+	const attachment = useMemo(() => policerAttachment(snapshot, policies), [snapshot, policies]);
+
+	// ⚠️ Refresh must refetch EVERY query the page reads, not just the
+	// metrics one — the §4.0 half-refresh defect, avoided up front rather
+	// than shipped again.
+	const refetchAll = useCallback(() => {
+		refetch();
+		refetchPolicies();
+	}, [refetch, refetchPolicies]);
+
 	// One row per shaped {vip, port, proto, direction} lane, keyed off the
 	// bytes-passed counter (a shaped lane always declares it).
 	const lanes = useMemo(() => (snapshot ? groupRates(history, 'loxilb_proxy_qos_bytes_passed_total', QOS_SERVICE_LABELS, maxGap) : []), [snapshot, history, maxGap]);
@@ -73,7 +99,16 @@ export default function QosPage() {
 	// The page's hasData is presence-based: a declared-but-empty collector set
 	// still renders (as the explicit no-shaped-service panel), only a scrape
 	// with no QoS families at all falls through to generic no-data.
-	const hasData = presence !== undefined && presence !== 'no-families';
+	//
+	// ⚠️ Stage 3.3 widens this. The attachment answer can be carried entirely
+	// by REST, so a gateway that exports no QoS family at all but DOES report
+	// policers still has something true to show — including the useful
+	// "policers configured, metric not exported" gap. Without this the panel
+	// would be hidden behind the generic no-data frame in exactly the case it
+	// was built for. A report that knows nothing (no rows and no policy list)
+	// adds nothing and correctly leaves the frame alone.
+	const attachmentHasData = attachment.kind === 'ok' && (attachment.rows.length > 0 || attachment.configured !== undefined);
+	const hasData = (presence !== undefined && presence !== 'no-families') || attachmentHasData;
 	const state = classifyViewState({
 		applicable,
 		isLoading,
@@ -106,14 +141,26 @@ export default function QosPage() {
 				<CadenceSelector />
 			</Box>
 
-			<ObservabilityStateFrame state={state} name={t('QoS')} onRetry={refetch}>
-				{presence === 'no-shaped-service' ? (
-					<PanelPaper title={t('Traffic shaping')}>
-						<Typography variant="body2" color="text.secondary">
-							{t('No service is currently shaped. The QoS collectors are present but emit nothing until a rate limit is configured on a service.')}
-						</Typography>
+			<ObservabilityStateFrame state={state} name={t('QoS')} onRetry={refetchAll}>
+				{/* Attachment sits ABOVE the shaping table on purpose: a
+				    policer that is shaping nothing explains an empty or
+				    short table below it, so reading it second would invite
+				    the wrong conclusion first. */}
+				<Box sx={{mb: 2}}>
+					<PanelPaper title={t('Policer attachment')}>
+						<PolicerAttachmentPanel report={attachment} />
 					</PanelPaper>
-				) : (
+				</Box>
+
+				{/* ⚠️ Three presence cases, not two. Since Stage 3.3 the frame
+				    can be open on the strength of the attachment panel alone,
+				    so 'no-families' now reaches this branch — and it must
+				    render NEITHER the table (zero lanes would read as "no
+				    traffic" when the truth is "no collector") nor the
+				    no-shaped-service note (which claims the collectors are
+				    present). It renders nothing, and the attachment panel
+				    above stands as the page. */}
+				{presence === 'shaped' ? (
 					<PanelPaper title={t('Shaped services')}>
 						<Table size="small">
 							<TableHead>
@@ -146,7 +193,13 @@ export default function QosPage() {
 							</TableBody>
 						</Table>
 					</PanelPaper>
-				)}
+				) : presence === 'no-shaped-service' ? (
+					<PanelPaper title={t('Traffic shaping')}>
+						<Typography variant="body2" color="text.secondary">
+							{t('No service is currently shaped. The QoS collectors are present but emit nothing until a rate limit is configured on a service.')}
+						</Typography>
+					</PanelPaper>
+				) : null}
 			</ObservabilityStateFrame>
 		</Box>
 	);

@@ -24,6 +24,22 @@ export interface IPolicyAttribute {
 	policyIdent: string;
 	policyInfo: IPolicyInfo;
 	targetObject: IQoSTargetObject;
+	/**
+	 * Read-only on GET, and absent on request bodies (the gateway rejects it
+	 * as read-only) and on builds older than the field.
+	 *
+	 * `true` only when the policer object AND every one of its attachment
+	 * points are programmed in the datapath. `false` means at least one
+	 * attachment is still pending re-drive — for example its LB rule does not
+	 * exist yet — and **the policer currently shapes nothing**.
+	 *
+	 * ⚠️ This is the SAME `PolEntry.attached()` predicate that backs the
+	 * `loxilb_policer_attached` gauge (pkg/loxinet/qospol.go:175 and :203), so
+	 * it is not an independent second opinion: REST evaluates it live per
+	 * request while the gauge serves a store republished on each mutation and
+	 * each 10s housekeeping tick. See `observability/policerAttachment.ts`.
+	 */
+	attached?: boolean;
 }
 
 export interface IPolicyConfiguration {
