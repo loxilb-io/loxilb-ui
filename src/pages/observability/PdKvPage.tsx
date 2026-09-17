@@ -13,11 +13,14 @@ import {Box, Grid, Table, TableBody, TableCell, TableHead, TableRow, Typography}
 import FreshnessBadge from 'components/observability/FreshnessBadge';
 import ObservabilityStateFrame from 'components/observability/ObservabilityStateFrame';
 import {classifyViewState} from 'components/observability/observabilityState';
+import PDTierMixPanel from 'components/observability/PDTierMixPanel';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
-import {useMemo} from 'react';
+import {useLoadBalancerConfig} from 'hooks/query/queryHooks';
+import {useCallback, useMemo} from 'react';
 import {useTranslation} from 'react-i18next';
 import {buildEpJoinIndex, joinEp} from 'observability/pdJoin';
+import {pdTierGates, pdTierMix} from 'observability/pdTiers';
 import {selectSamples, selectScalar} from 'observability/selectors';
 import {familySumRate, rateMaxGapMs} from 'observability/snapshotRates';
 import {CadenceSelector, PanelPaper, StatRow, formatRate, useObservabilityApplicable} from './common';
@@ -29,7 +32,32 @@ export default function PdKvPage() {
 	const {snapshot, history, isLoading, cadenceMs, refetch} = useMetricsSnapshot(applicable ? instance : null);
 	const maxGap = rateMaxGapMs(cadenceMs);
 
+	// Which routing tiers this gateway's rules can reach. Read defensively:
+	// a rule-list failure must never break the metric panels, and
+	// `pdTierGates(undefined)` answers "configuration unknown" rather than
+	// "nothing configured" — the tier mix then withholds its verdict instead
+	// of calling a correct zero a fault.
+	const {data: lbData, refetch: refetchLb} = useLoadBalancerConfig(applicable ? instance : null);
+	const gates = useMemo(() => pdTierGates(Array.isArray(lbData) ? lbData : undefined), [lbData]);
+
+	// ⚠️ Refresh must refetch EVERY query the page reads, not just the one it
+	// is named after. The sibling defect on the JWT Auth Profiles page (found
+	// live, fixed in J3) was exactly this: a second query left out of the
+	// retry handler made a stale cell permanent, with no operator action able
+	// to correct it.
+	const refetchAll = useCallback(() => {
+		refetch();
+		refetchLb();
+	}, [refetch, refetchLb]);
+
 	const epJoin = useMemo(() => (snapshot ? buildEpJoinIndex(snapshot) : undefined), [snapshot]);
+
+	// The snapshot and the history are passed APART on purpose: the retention
+	// ring is filled in an effect, so this page holds a snapshot while
+	// `history` is still empty, and reading the current values off the history
+	// tail would render "N/A" — "the scrape did not answer" — on a gateway
+	// that had just answered.
+	const tierMix = useMemo(() => pdTierMix(snapshot, history, maxGap, gates), [snapshot, history, maxGap, gates]);
 
 	const kvBlocks = useMemo(() => (snapshot ? selectSamples(snapshot, 'loxilb_pd_kv_blocks') : []), [snapshot]);
 	const attestStates = useMemo(
@@ -67,8 +95,14 @@ export default function PdKvPage() {
 				<CadenceSelector />
 			</Box>
 
-			<ObservabilityStateFrame state={state} name={t('P/D & KV Cache')} onRetry={refetch}>
+			<ObservabilityStateFrame state={state} name={t('P/D & KV Cache')} onRetry={refetchAll}>
 				<Grid container spacing={2}>
+					<Grid item xs={12}>
+						<PanelPaper title={t('Prefill routing tier mix')}>
+							<PDTierMixPanel report={tierMix} gates={gates} />
+						</PanelPaper>
+					</Grid>
+
 					<Grid item xs={12} md={4}>
 						<PanelPaper title={t('Admission and sessions')}>
 							<StatRow label={t('Admission queued')} value={formatRate(familySumRate(history, 'loxilb_pd_admission_queued_total', maxGap), t)} />

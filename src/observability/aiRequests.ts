@@ -2,7 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {IMetricsSnapshot} from 'types/observability';
-import {RateResult} from './rates';
+import {RateResult, RatioResult, ratioOf} from './rates';
 import {selectSamples} from './selectors';
 import {familySumRate, groupRates, IGroupRate, LabelMatch, LabelPredicate, partitionRate} from './snapshotRates';
 
@@ -108,29 +108,6 @@ const errorFilter: LabelPredicate = labels => labels[OUTCOME] === OUTCOME_DENIED
 // comment for why that inverts the usual absent-series rule.
 const rateOf = (history: readonly IMetricsSnapshot[], maxGapMs: number, where: LabelMatch) =>
 	partitionRate(history, AI_REQUESTS, maxGapMs, where);
-
-/**
- * A ratio of two rates over the same snapshot pair.
- *
- * `no-traffic` is its own answer and not zero: with no offered load the ratio
- * is 0/0, and printing "0% errors" over an idle gateway asserts health that
- * was never measured.
- */
-export type RatioResult =
-	| {kind: 'ok'; ratio: number}
-	| {kind: 'no-traffic'}
-	| {kind: 'not-derivable'; reason: Exclude<RateResult['kind'], 'ok'>};
-
-function ratioOf(numerator: RateResult, denominator: RateResult): RatioResult {
-	if (numerator.kind !== 'ok') return {kind: 'not-derivable', reason: numerator.kind};
-	if (denominator.kind !== 'ok') return {kind: 'not-derivable', reason: denominator.kind};
-	if (denominator.perSecond <= 0) return {kind: 'no-traffic'};
-	// Deliberately unclamped. The numerator selects a subset of the
-	// denominator's samples, so > 1 is arithmetically impossible; if it ever
-	// shows, the partition assumption has broken and an operator needs to see
-	// that rather than a tidy 100%.
-	return {kind: 'ok', ratio: numerator.perSecond / denominator.perSecond};
-}
 
 /**
  * Every outcome-derived quantity for the AI traffic page, from ONE partition

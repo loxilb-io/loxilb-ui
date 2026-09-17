@@ -12,8 +12,7 @@
 // pages/observability/common.tsx re-exports it, so page code is unchanged.
 
 import type {TFunction} from 'i18next';
-import {RatioResult} from 'observability/aiRequests';
-import {RateResult} from 'observability/rates';
+import {RateResult, RatioResult} from 'observability/rates';
 
 function degenerateText(kind: Exclude<RateResult['kind'], 'ok'>, t: TFunction): string {
 	switch (kind) {
