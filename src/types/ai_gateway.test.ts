@@ -262,6 +262,45 @@ describe('AI Gateway wire serialization', () => {
 		expect(required.serviceArguments.api_key_auth).toBe('required');
 	});
 
+	// The two JWT modes and their profile reference. Every case below mirrors
+	// a row of the gateway's own pairing matrix in
+	// pkg/loxinet/rules_jwtprofile_test.go, because the failure mode is a 400
+	// on save rather than anything the type system can catch.
+	it('carries the profile with a JWT mode', () => {
+		for (const mode of ['jwt', 'apikey-or-jwt'] as const) {
+			const payload = serializeAIConfiguration(configuration({api_key_auth: mode, jwt_auth_profile: 'realm-a'}));
+			expect(payload.serviceArguments.api_key_auth).toBe(mode);
+			expect(payload.serviceArguments.jwt_auth_profile).toBe('realm-a');
+		}
+	});
+
+	// A non-JWT mode carrying a profile is REFUSED upstream
+	// (ErrJwtProfileNotApplicable) — an unmanaged rule included, because the
+	// dangling reference would block that profile's deletion for a rule that
+	// can never consult it.
+	it('never sends a profile on a mode that cannot consult it', () => {
+		for (const mode of ['disabled', 'required', undefined] as const) {
+			const payload = serializeAIConfiguration(configuration({api_key_auth: mode, jwt_auth_profile: 'realm-a'}));
+			expect(payload.serviceArguments).not.toHaveProperty('jwt_auth_profile');
+		}
+	});
+
+	// "mode change away from jwt drops reference": switching to a non-JWT mode
+	// must OMIT the field, which is what drops the old reference. Sending an
+	// empty string instead would be a present-but-empty profile, and the
+	// gateway refuses a non-JWT mode that carries one.
+	it('drops the reference by omission when the mode moves away from JWT', () => {
+		const payload = serializeAIConfiguration(configuration({api_key_auth: 'required', jwt_auth_profile: ''}));
+		expect(payload.serviceArguments).not.toHaveProperty('jwt_auth_profile');
+		expect(payload.serviceArguments.api_key_auth).toBe('required');
+	});
+
+	it('strips the profile from non-fullproxy rules along with the rest of the AI surface', () => {
+		const payload = serializeAIConfiguration(configuration({mode: 0, api_key_auth: 'jwt', jwt_auth_profile: 'realm-a'}));
+		expect(payload.serviceArguments).not.toHaveProperty('jwt_auth_profile');
+		expect(payload.serviceArguments).not.toHaveProperty('api_key_auth');
+	});
+
 	it('strips API-key policy from non-fullproxy rules independently of streaming and topology', () => {
 		const payload = serializeAIConfiguration(configuration({
 			mode: 0,

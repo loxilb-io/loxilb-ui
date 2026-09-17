@@ -5,7 +5,7 @@ import ParamBox from 'components/element/ParamBox';
 import HorizontalStack from 'components/layout/HorizontalStack';
 import {useInstanceCapabilities} from 'hooks/query/flavorHook';
 import {useInstanceFromURL} from 'hooks/instanceHook';
-import {useModelProfiles} from 'hooks/query/queryHooks';
+import {useJWTAuthProfiles, useModelProfiles} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {useCallback} from 'react';
 import {
@@ -18,15 +18,33 @@ import {
 	resolveAIEngine,
 } from 'types/ai_gateway';
 import {IEnumItem} from 'types/global';
-import {IServiceArguments, KvExactApiMode} from 'types/load_balancer';
+import {IServiceArguments, KvExactApiMode, requiresJwtProfile} from 'types/load_balancer';
 
 type TopologySelection = 'plain' | 'pd' | 'pd-exact' | 'single-role';
 
-const API_KEY_POLICY_ITEMS: IEnumItem[] = [
-	{id: 0, name: 'Preserve / unmanaged', send_value: ''},
-	{id: 1, name: 'Disabled (strip header)', send_value: 'disabled'},
-	{id: 2, name: 'Required (enforce and strip)', send_value: 'required'},
-];
+// ⚠️ The first option means two different things depending on the operation,
+// and saying so is the point.
+//
+// On CREATE it is a real choice: the field is omitted and the service is never
+// marked AI-facing, so a backend-owned X-Api-Key header passes through
+// untouched.
+//
+// On EDIT it is NOT a way back to that state. A replace that omits the field
+// PRESERVES the declared policy — deliberately, so an edit of some unrelated
+// field can never silently turn enforcement off. Labelling it "Preserve /
+// unmanaged" there would offer a transition the wire cannot express: the
+// operator would select it, save, and the old policy would still be in force.
+// So on edit it reads as what it actually does, and the caption says the only
+// way to stop enforcing is to declare "disabled".
+function apiKeyPolicyItems(isEdit: boolean): IEnumItem[] {
+	return [
+		{id: 0, name: isEdit ? 'Leave unchanged' : 'Unmanaged (no policy)', send_value: ''},
+		{id: 1, name: 'Disabled (strip header)', send_value: 'disabled'},
+		{id: 2, name: 'Required (enforce and strip)', send_value: 'required'},
+		{id: 3, name: 'JWT bearer token', send_value: 'jwt'},
+		{id: 4, name: 'API key or JWT', send_value: 'apikey-or-jwt'},
+	];
+}
 
 function currentTopology(value: IServiceArguments): TopologySelection {
 	if (value.pd_disagg_mode) return value.kvExactMode === 1 ? 'pd-exact' : 'pd';
@@ -94,6 +112,24 @@ export default function AIGatewaySettingsForm(props: {
 	// gateway-only endpoint (request-side contract guard).
 	const inst = useInstanceFromURL();
 	const profilesQuery = useModelProfiles(hasProfileFields ? inst : null);
+
+	// Configured JWT auth profiles, for the rule-side selector. Gated on a
+	// POSITIVELY identified gateway exactly like the model-profile registry
+	// above — /config/ai/jwtauthprofile is gateway-only, and a loxilb instance
+	// must never see the request (request-side contract guard).
+	const {data: jwtProfileData} = useJWTAuthProfiles(hasApiKeyPolicy ? inst : null);
+	// Populated from the configured profiles so an unconfigured name — which
+	// the gateway rejects with a 400 — cannot be expressed at all. The leading
+	// blank keeps "none selected" representable, which is what the cross-field
+	// warning keys on.
+	const jwtProfileItems: IEnumItem[] = [
+		{id: 0, name: 'Select a profile…', send_value: ''},
+		...(Array.isArray(jwtProfileData) ? jwtProfileData : [])
+			.map(p => p.name ?? '')
+			.filter(name => name.length > 0)
+			.sort((a, b) => a.localeCompare(b))
+			.map((name, index) => ({id: index + 1, name, send_value: name})),
+	];
 	const registry = profilesQuery.data;
 	const profiles = registry?.profiles ?? [];
 	const modelName = value.model_name?.trim() ?? '';
@@ -198,15 +234,54 @@ export default function AIGatewaySettingsForm(props: {
 				{hasApiKeyPolicy && (
 					<Stack spacing={1}>
 						<DropDownSelectBox
-							label={t('Data-plane API Key Policy')}
+							label={t('Data-plane Credential Policy')}
 							value={value.api_key_auth ?? ''}
-							onChange={newValue => onChange({api_key_auth: newValue || undefined})}
-							item_list={API_KEY_POLICY_ITEMS}
+							onChange={newValue => {
+								const mode = (newValue || undefined) as IServiceArguments['api_key_auth'];
+								// The two fields travel together upstream, so they
+								// change together here: leaving a stale profile on a
+								// mode that cannot consult it is rejected 400
+								// (ErrJwtProfileNotApplicable), and the serializer
+								// drops it by omission, which is what releases the
+								// profile for deletion.
+								onChange(requiresJwtProfile(mode) ? {api_key_auth: mode} : {api_key_auth: mode, jwt_auth_profile: undefined});
+							}}
+							item_list={apiKeyPolicyItems(isEdit)}
 							disabled={!isL7}
 						/>
 						<Typography variant="caption" color="text.secondary">
-							{t('Preserve/unmanaged omits the field and leaves backend X-Api-Key headers untouched. Disabled admits keyless traffic but strips that header. Required validates the key, strips it, and fails closed if the policy store is unavailable.')}
+							{isEdit
+								? t('Leave unchanged omits the field, which preserves the declared policy — it is not a way back to unmanaged. To stop enforcing, declare Disabled. Disabled admits keyless traffic but strips X-Api-Key. Required validates the key, strips it, and fails closed if the policy store is unavailable.')
+								: t('Unmanaged omits the field and leaves backend X-Api-Key headers untouched. Disabled admits keyless traffic but strips that header. Required validates the key, strips it, and fails closed if the policy store is unavailable.')}
 						</Typography>
+
+						{requiresJwtProfile(value.api_key_auth) && (
+							<Stack spacing={1}>
+								<DropDownSelectBox
+									label={t('JWT Auth Profile')}
+									value={value.jwt_auth_profile ?? ''}
+									onChange={newValue => onChange({jwt_auth_profile: newValue || undefined})}
+									// A selector, never free text: the gateway rejects a
+									// name that is not configured, and a dropdown makes
+									// that state unreachable instead of turning it into
+									// a 400 on save.
+									item_list={jwtProfileItems}
+									disabled={!isL7}
+								/>
+								{jwtProfileItems.length <= 1 ? (
+									<Alert severity="warning">
+										{t('No JWT auth profiles are configured on this instance. Create one under AI Gateway → JWT Auth Profiles before selecting a JWT mode.')}
+									</Alert>
+								) : !value.jwt_auth_profile ? (
+									<Alert severity="warning">{t('A JWT mode requires a profile. The rule is rejected without one.')}</Alert>
+								) : null}
+								{value.api_key_auth === 'apikey-or-jwt' && (
+									<Alert severity="info">
+										{t('Fixed precedence, not "try both": a present X-Api-Key decides alone and its rejection is final, with no JWT fallback. Only a request without that header falls through to the bearer token, and one carrying neither is refused.')}
+									</Alert>
+								)}
+							</Stack>
+						)}
 					</Stack>
 				)}
 

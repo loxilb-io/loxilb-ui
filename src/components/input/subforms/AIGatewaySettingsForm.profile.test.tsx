@@ -21,9 +21,18 @@ vi.mock('hooks/instanceHook', () => ({
 	useInstanceFromURL: () => ({id: 1, name: 'gw'}),
 }));
 
+// ⚠️ Every query hook the form calls must be stubbed here, not just the one
+// under test. `importOriginal` passes the rest straight through to react-query,
+// which throws "No QueryClient set" the moment the form calls one — so a hook
+// added to the form later lands as 16 failures in THIS file, whose subject is
+// the model-profile selector and nothing else.
 vi.mock('hooks/query/queryHooks', async importOriginal => {
 	const mod = await importOriginal<typeof import('hooks/query/queryHooks')>();
-	return {...mod, useModelProfiles: () => ({data: registry.current, refetch: vi.fn()})};
+	return {
+		...mod,
+		useModelProfiles: () => ({data: registry.current, refetch: vi.fn()}),
+		useJWTAuthProfiles: () => ({data: undefined, refetch: vi.fn()}),
+	};
 });
 
 vi.mock('hooks/query/flavorHook', () => ({

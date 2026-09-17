@@ -556,6 +556,56 @@ export async function sweepApiKeys(): Promise<number> {
 // ever matching the persistent RBAC fixtures (e2e_operator /
 // e2e_viewer) or the real admin.
 //---------------------------------------------------------
+//---------------------------------------------------------
+// AI JWT auth profiles (/config/ai/jwtauthprofile)
+//---------------------------------------------------------
+// Profiles are keyed by NAME, and DELETE takes that name in the path. The list
+// arrives wrapped as {jwtAuthProfileAttr: [...]}; a licence/auth failure answers
+// a JSON OBJECT instead, so every reader must tolerate a non-array.
+
+export const JWTPROFILE_PATH = '/config/ai/jwtauthprofile';
+
+export async function listJwtAuthProfiles(): Promise<any[]> {
+	const resp = await gw('GET', JWTPROFILE_PATH);
+	if (!resp.ok) return [];
+	const data = await resp.json();
+	const list = data?.jwtAuthProfileAttr;
+	return Array.isArray(list) ? list : [];
+}
+
+export async function gatewayJwtAuthReadiness(): Promise<AIManagementReadiness> {
+	const resp = await gw('GET', JWTPROFILE_PATH);
+	const reasons: Record<number, string> = {
+		401: 'Gateway management service identity is missing or invalid (HTTP 401)',
+		403: 'Gateway management service identity lacks permission (HTTP 403)',
+		404: 'Gateway predates the JWT bearer auth contract (HTTP 404)',
+		501: 'Gateway does not implement the JWT auth profile API (HTTP 501)',
+		503: 'Gateway JWT auth profile store is unconfigured or unavailable (HTTP 503)',
+	};
+	return {
+		ready: resp.ok,
+		status: resp.status,
+		reason: resp.ok ? 'Gateway JWT auth profile API is ready' : (reasons[resp.status] ?? `Unexpected Gateway JWT auth response (HTTP ${resp.status})`),
+	};
+}
+
+/**
+ * Remove every e2e-marked profile.
+ *
+ * ⚠️ A profile referenced by an LB rule is refused with 409, so LB rules must be
+ * swept FIRST or this leaves survivors. zz-cleanup orders them accordingly; a
+ * spec that seeds both must drop its rule before its profile.
+ */
+export async function sweepJwtAuthProfiles(): Promise<number> {
+	let removed = 0;
+	for (const p of await listJwtAuthProfiles()) {
+		if (!isE2eMarked(p.name)) continue;
+		const del = await gw('DELETE', `${JWTPROFILE_PATH}/${encodeURIComponent(p.name)}`);
+		if (del.ok) removed++;
+	}
+	return removed;
+}
+
 export interface OamUser {
 	id: number;
 	username: string;
