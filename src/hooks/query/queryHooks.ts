@@ -2,6 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {query_get_apikey_all} from 'connector/instance/ai';
+import {query_get_jwtauthprofile_all} from 'connector/instance/ai_jwt';
 import {query_get_bfd_all} from 'connector/instance/bfd';
 import {query_get_conntrack_all} from 'connector/instance/conn_track';
 import {query_get_endpoint_all} from 'connector/instance/endpoint';
@@ -133,6 +134,12 @@ export function useSNICertificates(instance: IInstance | null) {
 
 export function useApiKeys(instance: IInstance | null) {
 	return useQueryInstanceData(['ai_apikeys'], query_get_apikey_all, instance);
+}
+
+// Desired configuration only — this says nothing about issuer reachability or
+// keyset health, which the loxilb_ai_jwks_* families answer separately.
+export function useJWTAuthProfiles(instance: IInstance | null) {
+	return useQueryInstanceData(['ai_jwtauthprofiles'], query_get_jwtauthprofile_all, instance);
 }
 
 export function useIPsecConfig(instance: IInstance | null) {

@@ -47,6 +47,7 @@ import VLANPage from 'pages/network/VLANPage';
 import VxLANPage from 'pages/network/VXLANPage';
 
 import AIApiKeyPage from 'pages/ai/AIApiKeyPage';
+import JWTAuthProfilePage from 'pages/ai/JWTAuthProfilePage';
 import AITenantRateLimitPage from 'pages/ai/AITenantRateLimitPage';
 import PublishedProfilesPage from 'pages/ai/PublishedProfilesPage';
 import IPsecTunnelPage from 'pages/ipsec/IPsecTunnelPage';
@@ -179,6 +180,7 @@ export default function App() {
 									</Route>
 									<Route path="ai" element={<RequireFeature feature="ai" />}>
 										<Route path="apikey" element={<AIApiKeyPage />} />
+										<Route path="jwtauth" element={<JWTAuthProfilePage />} />
 										<Route path="ratelimit" element={<AITenantRateLimitPage />} />
 										<Route path="profiles" element={<PublishedProfilesPage />} />
 									</Route>

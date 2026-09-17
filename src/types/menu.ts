@@ -82,6 +82,10 @@ export const MENU_LIST: IMenuItem[] = [
 				path: 'apikey',
 			},
 			{
+				name: 'JWT Auth Profiles',
+				path: 'jwtauth',
+			},
+			{
 				name: 'Model Profiles',
 				path: 'profiles',
 			},

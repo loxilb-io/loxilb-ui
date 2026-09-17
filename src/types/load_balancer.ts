@@ -18,7 +18,22 @@ export interface IMtlsFrontend {
 // Declaration carried on an Inference Gateway fullproxy service. Omission is
 // deliberately distinct from "disabled": omission leaves the backend's
 // X-Api-Key namespace unmanaged, while explicit disabled claims and strips it.
-export type ApiKeyAuthPolicy = 'disabled' | 'required';
+//
+// The two bearer modes arrived with the JWT feature and both REQUIRE
+// jwt_auth_profile to name a configured profile:
+//   jwt            — an Authorization Bearer JWT decides; X-Api-Key is not consulted.
+//   apikey-or-jwt  — fixed precedence, NOT "try both": a present X-Api-Key
+//                    decides ALONE and its rejection is FINAL with no JWT
+//                    fallback; only a request without the header falls through
+//                    to the Bearer arm, and one carrying neither is refused.
+export type ApiKeyAuthPolicy = 'disabled' | 'required' | 'jwt' | 'apikey-or-jwt';
+
+/** The modes whose Bearer arm needs a profile to point at. */
+export const JWT_AUTH_POLICIES: readonly ApiKeyAuthPolicy[] = ['jwt', 'apikey-or-jwt'];
+
+export function requiresJwtProfile(policy: ApiKeyAuthPolicy | undefined): boolean {
+	return policy !== undefined && JWT_AUTH_POLICIES.includes(policy);
+}
 
 // Declared KV-exact API surface of a strict rule. Absent on a profile-less
 // rule keeps the legacy behavior (both surfaces, unattested); with a bound
@@ -64,7 +79,8 @@ export interface IServiceArguments {
 
 	// --- AI gateway: model routing / tracing ---
 	model_name?: string;			// endpoint-pool selector for AI model routing
-	api_key_auth?: ApiKeyAuthPolicy;	// absent = preserve/unmanaged; disabled = strip; required = enforce + strip
+	api_key_auth?: ApiKeyAuthPolicy;	// absent = preserve/unmanaged; disabled = strip; required = enforce + strip; jwt / apikey-or-jwt = bearer arm
+	jwt_auth_profile?: string;		// profile name the bearer arm resolves against; required by and only valid with the two JWT modes
 	trace_type?: string;			// tracing catalog name for deep inspection
 	session_header_name?: string;	// header carrying the session key (sel=persist)
 	chwbl_prefix_hash_level?: number;	// CHWBL prefix hash level (sel=8)

@@ -1,5 +1,5 @@
 import type {GwSchema} from 'api';
-import {IEndpoint, IServiceArguments, IServiceConfiguration, KvExactApiMode} from './load_balancer';
+import {IEndpoint, IServiceArguments, IServiceConfiguration, KvExactApiMode, requiresJwtProfile} from './load_balancer';
 
 export type AIEngine = NonNullable<IServiceArguments['kvEngineType']>;
 export type AIHashAlgorithm = NonNullable<IServiceArguments['kvHashAlgo']>;
@@ -28,6 +28,7 @@ const HASHES_BY_ENGINE: Record<AIEngine, readonly AIHashAlgorithm[]> = {
 const AI_ONLY_FIELDS: readonly (keyof IServiceArguments)[] = [
 	'model_name',
 	'api_key_auth',
+	'jwt_auth_profile',
 	'trace_type',
 	'session_header_name',
 	'chwbl_prefix_hash_level',
@@ -307,7 +308,26 @@ export function serializeAIConfiguration(configuration: IServiceConfiguration): 
 	// Omission is a real third policy state. Never materialize Swagger's
 	// historical "disabled" default: absent preserves an unmanaged backend
 	// X-Api-Key header, whereas explicit disabled strips it.
+	//
+	// ⚠️ On a REPLACE, omitting this PRESERVES the declared policy rather than
+	// clearing it — so "unmanaged" is not a way back once a policy exists.
+	// The form labels that honestly instead of implying otherwise; clearing
+	// enforcement means sending "disabled".
 	if (!serviceArguments.api_key_auth) delete serviceArguments.api_key_auth;
+
+	// jwt_auth_profile travels WITH the mode and is valid only alongside the
+	// two JWT modes. The gateway's own pairing matrix
+	// (pkg/loxinet/rules_jwtprofile_test.go) fixes both directions:
+	//   - a non-JWT mode carrying a profile is REFUSED
+	//     (ErrJwtProfileNotApplicable), an unmanaged rule included, because a
+	//     dangling reference blocks that profile's deletion for a rule that
+	//     can never consult it;
+	//   - a mode change away from JWT that OMITS the profile drops the old
+	//     reference cleanly — which is why this deletes the key rather than
+	//     sending an empty string.
+	if (!requiresJwtProfile(serviceArguments.api_key_auth) || !serviceArguments.jwt_auth_profile) {
+		delete serviceArguments.jwt_auth_profile;
+	}
 
 	if (!serviceArguments.kvHashAlgo) delete serviceArguments.kvHashAlgo;
 	// The CHWBL level dropdown's "Not set" placeholder maps to '' — a form

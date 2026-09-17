@@ -8,13 +8,19 @@ import {ReactNode} from 'react';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function NewBox(props: {item_name: string; children?: ReactNode}) {
-	const {item_name, children} = props;
+// `isEdit` is OPTIONAL and defaults to the historical "New …" heading, because
+// this box is shared by twenty-odd forms that render it in both modes and
+// changing the default would retitle all of them at once. Pass it where the
+// form actually knows which operation it is performing: a dialog headed "New"
+// while it edits an existing item tells the operator they are creating a
+// second one.
+export default function NewBox(props: {item_name: string; isEdit?: boolean; children?: ReactNode}) {
+	const {item_name, isEdit = false, children} = props;
 
 	return (
 		<Box display="flex" flexDirection="column" gap={4}>
 			<Typography variant="h6" color="text.secondary">
-				{t('New {{item_name}}', {item_name})}
+				{isEdit ? t('Edit {{item_name}}', {item_name}) : t('New {{item_name}}', {item_name})}
 			</Typography>
 
 			<Stack spacing={2} width="100%">
