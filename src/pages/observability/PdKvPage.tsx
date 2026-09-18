@@ -13,6 +13,7 @@ import {Box, Grid, Table, TableBody, TableCell, TableHead, TableRow, Typography}
 import FreshnessBadge from 'components/observability/FreshnessBadge';
 import ObservabilityStateFrame from 'components/observability/ObservabilityStateFrame';
 import {classifyViewState} from 'components/observability/observabilityState';
+import PDAdmissionPanel from 'components/observability/PDAdmissionPanel';
 import PDTierMixPanel from 'components/observability/PDTierMixPanel';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
@@ -20,6 +21,7 @@ import {useLoadBalancerConfig} from 'hooks/query/queryHooks';
 import {useCallback, useMemo} from 'react';
 import {useTranslation} from 'react-i18next';
 import {buildEpJoinIndex, joinEp} from 'observability/pdJoin';
+import {pdAdmission} from 'observability/pdAdmission';
 import {pdTierGates, pdTierMix} from 'observability/pdTiers';
 import {selectSamples, selectScalar} from 'observability/selectors';
 import {familySumRate, rateMaxGapMs} from 'observability/snapshotRates';
@@ -58,6 +60,7 @@ export default function PdKvPage() {
 	// tail would render "N/A" — "the scrape did not answer" — on a gateway
 	// that had just answered.
 	const tierMix = useMemo(() => pdTierMix(snapshot, history, maxGap, gates), [snapshot, history, maxGap, gates]);
+	const admission = useMemo(() => pdAdmission(snapshot, history, maxGap), [snapshot, history, maxGap]);
 
 	const kvBlocks = useMemo(() => (snapshot ? selectSamples(snapshot, 'loxilb_pd_kv_blocks') : []), [snapshot]);
 	const attestStates = useMemo(
@@ -103,10 +106,21 @@ export default function PdKvPage() {
 						</PanelPaper>
 					</Grid>
 
+					<Grid item xs={12}>
+						<PanelPaper title={t('Admission pressure')}>
+							{/* ⚠️ This replaced two StatRows, one of which was
+							    actively misleading: "Admission shed" read
+							    `loxilb_pd_admission_shed_total` alone, and that
+							    counter is structurally pinned at zero whenever
+							    queueing is enabled — so the page showed 0/s
+							    while the overflow valve dropped traffic. Drops
+							    now read as ONE quantity across both valves. */}
+							<PDAdmissionPanel report={admission} />
+						</PanelPaper>
+					</Grid>
+
 					<Grid item xs={12} md={4}>
-						<PanelPaper title={t('Admission and sessions')}>
-							<StatRow label={t('Admission queued')} value={formatRate(familySumRate(history, 'loxilb_pd_admission_queued_total', maxGap), t)} />
-							<StatRow label={t('Admission shed')} value={formatRate(familySumRate(history, 'loxilb_pd_admission_shed_total', maxGap), t)} />
+						<PanelPaper title={t('Sessions and routing')}>
 							<StatRow label={t('P/D sessions active')} value={snapshot ? (selectScalar(snapshot, 'loxilb_pd_sessions_active') ?? t('No data')) : t('No data')} />
 							<StatRow label={t('Fallbacks to normal routing')} value={formatRate(familySumRate(history, 'loxilb_pd_fallback_to_normal_total', maxGap), t)} />
 							<StatRow label={t('Connect failovers')} value={formatRate(familySumRate(history, 'loxilb_pd_connect_failover_total', maxGap), t)} />

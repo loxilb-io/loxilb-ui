@@ -107,6 +107,13 @@ const AI_TRAFFIC_FAMILIES = [
 // to the standalone KV agent and loxilb_kv_agent_up to its health probe.
 const PD_KV_FAMILIES = [
 	// sockproxy P/D data path
+	// ⚠️ Stage 3.4. The three admission families are ONE mechanism with a
+	// two-way fork: `LLB_PD_QUEUE_DEPTH_PER_EP` decides whether a capped pool
+	// sheds immediately (`_shed_total`) or parks and then overflows
+	// (`_queued_total` / `_overflow_shed_total`). The fork is process-global
+	// and env-only, so exactly one shed family can ever increment — they must
+	// be registered and read TOGETHER or a drop becomes invisible.
+	'loxilb_pd_admission_overflow_shed_total',
 	'loxilb_pd_admission_queued_total',
 	'loxilb_pd_admission_shed_total',
 	'loxilb_pd_cb_flips_total',

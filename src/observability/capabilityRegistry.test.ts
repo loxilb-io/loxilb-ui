@@ -67,8 +67,9 @@ describe('registry contract against the vendored artifacts', () => {
 		expect(size('dashboard.gwAiEvents')).toBe(4);
 		// 17 since J3: the bearer arm's verdict counter joined the page.
 		expect(size('page.aiTraffic')).toBe(17);
-		// 48 since Stage 3.2: the prefill routing-tier counter joined the page.
-		expect(size('page.pdKv')).toBe(48);
+		// 49 since Stage 3.4: the admission overflow-shed valve joined the
+		// page beside the two families it forks with.
+		expect(size('page.pdKv')).toBe(49);
 		expect(size('page.security')).toBe(27);
 		// 9 since Stage 3.3: the per-policer attachment gauge joined the page.
 		expect(size('page.qos')).toBe(9);
