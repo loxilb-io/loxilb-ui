@@ -161,3 +161,27 @@ export const apiKeyPatchApplied =
 
 		return true;
 	};
+
+//---------------------------------------------------------
+// Per-user rate limits (Stage 4.2)
+//---------------------------------------------------------
+// The list is already scoped to one tenant, so the user id is the whole
+// identity within it. Both predicates are deliberately existence-only: the
+// gateway omits zero-valued fields from its read-back (proven on the API-key
+// path), so comparing VALUES here would make a landed write look absent
+// exactly when the operator set a limit to zero-means-inherit.
+
+/** The user now has an explicit entry. */
+export const userRateLimitAppeared =
+	(userId: string) =>
+	(rows: {user_id?: string}[]): boolean =>
+		rows.some(r => r.user_id === userId);
+
+/**
+ * The user's explicit entry is gone, so they have fallen back to the
+ * configured defaults. Absence IS the confirmation here.
+ */
+export const userRateLimitGone =
+	(userId: string) =>
+	(rows: {user_id?: string}[]): boolean =>
+		!rows.some(r => r.user_id === userId);

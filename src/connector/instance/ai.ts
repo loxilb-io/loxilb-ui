@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {IApiKeyCreateRequest, IApiKeyCreateResponse, IApiKeyPatch, IApiKeySummary, IRateLimitDefaultsEntry, ITenantRateLimitEntry, ITenantRateLimitMod, normalizeTenantRateLimit, validateApiKeyPatch, validateTenantRateLimit} from 'types/ai';
+import {IApiKeyCreateRequest, IApiKeyCreateResponse, IApiKeyPatch, IApiKeySummary, IRateLimitDefaultsEntry, ITenantRateLimitEntry, ITenantRateLimitMod, IUserRateLimitEntry, IUserRateLimitMod, normalizeTenantRateLimit, normalizeUserRateLimit, validateApiKeyPatch, validateTenantRateLimit, validateUserRateLimit} from 'types/ai';
 import {QuotaStoreState, storeStateFromError} from 'observability/tokenQuota';
 import {IInstance} from 'types/oam';
 import {assertOk} from '../fetcher/fetcher_base';
@@ -186,6 +186,89 @@ export async function request_set_tenant_ratelimit(instance: IInstance, data: IT
 	}
 }
 
+
+//---------------------------------------------------------
+// AI per-user rate limits (/config/ai/user/ratelimit) — Stage 4.2
+//---------------------------------------------------------
+// Level 1 of the QoS ladder. ⚠️ There is NO collection GET: the gateway
+// serves a list per TENANT and nothing that enumerates tenants, so this
+// surface is necessarily driven by a tenant selection. That is the same
+// "reachable but not enumerable" shape Stage 3.6 hit on the quota scopes.
+
+/**
+ * List a tenant's explicit per-user rate limits.
+ *
+ * ⚠️ A user with no explicit row DOES NOT APPEAR here — they are governed by
+ * the configured defaults. So an empty list means "everyone inherits", never
+ * "nobody is limited", and the page must word it that way.
+ *
+ * ⚠️ The list rows carry NO model limits; only the per-user GET does.
+ */
+export async function query_get_user_ratelimits(instance: IInstance, tenant_id: string): Promise<IUserRateLimitEntry[]> {
+	const resp = await GET_INST<GwGetResp<'/config/ai/user/ratelimit/{tenant_id}'>>(
+		instance,
+		`/config/ai/user/ratelimit/${encodeURIComponent(tenant_id)}`,
+	);
+	assertOk(resp, 'Get User Rate Limits');
+	return Array.isArray(resp.data) ? (resp.data as IUserRateLimitEntry[]) : [];
+}
+
+/**
+ * Get one user's entry, including the model limits the list omits.
+ * Returns null when the user has no explicit entry (404) — the normal answer
+ * for a user who simply inherits the defaults.
+ */
+export async function query_get_user_ratelimit(instance: IInstance, tenant_id: string, user_id: string): Promise<IUserRateLimitEntry | null> {
+	const resp = await GET_INST<GwGetResp<'/config/ai/user/ratelimit/{tenant_id}/{user_id}'>>(
+		instance,
+		`/config/ai/user/ratelimit/${encodeURIComponent(tenant_id)}/${encodeURIComponent(user_id)}`,
+	);
+	if (resp.code === 404) return null;
+	assertOk(resp, 'Get User Rate Limit');
+	return (resp.data as IUserRateLimitEntry | undefined) ?? null;
+}
+
+/**
+ * Create or replace a user's explicit limits (upsert).
+ *
+ * ⚠️⚠️ THIS IS A REPLACE, NOT A MERGE, and `model_limits` replaces the user's
+ * model rows AS A SET — an omitted or empty list CLEARS them. A caller that
+ * means to keep the existing model quotas must send them back.
+ *
+ * ⚠️ An all-zero entry is refused by the gateway (400) because a zero falls
+ * through the ladder to the defaults, so such a row constrains nothing.
+ * `validateUserRateLimit` refuses it client-side first, with the remedy the
+ * gateway names: delete the entry instead. ⭐ A positive per-model quota
+ * counts as a limit — verified against the running gateway, not inferred.
+ */
+export async function request_set_user_ratelimit(instance: IInstance, data: IUserRateLimitMod): Promise<OpResult> {
+	const payload = normalizeUserRateLimit(data);
+	const errors = validateUserRateLimit(payload);
+	if (errors.length > 0) {
+		return {status: 'invalid', code: 'ai.user_ratelimit.client_invalid', localeKey: STATUS_LOCALE_KEYS.invalid, retryable: false, rawDetail: errors.join(' ')};
+	}
+	try {
+		return fromSimpleResponse(await POST_INST(instance, `/config/ai/user/ratelimit`, payload), 'ai.user_ratelimit.set');
+	} catch (error) {
+		return fromNetworkError('ai.user_ratelimit.set', error);
+	}
+}
+
+/**
+ * Remove a user's explicit entry and model rows. They then fall back to the
+ * configured defaults, and to unlimited if no defaults are set — which is why
+ * this is the sanctioned way to "remove limits" rather than storing zeros.
+ */
+export async function request_delete_user_ratelimit(instance: IInstance, tenant_id: string, user_id: string): Promise<OpResult> {
+	try {
+		return fromSimpleResponse(
+			await DELETE_INST(instance, `/config/ai/user/ratelimit/${encodeURIComponent(tenant_id)}/${encodeURIComponent(user_id)}`),
+			'ai.user_ratelimit.delete',
+		);
+	} catch (error) {
+		return fromNetworkError('ai.user_ratelimit.delete', error);
+	}
+}
 
 //---------------------------------------------------------
 // AI rate-limit defaults (/config/ai/ratelimit/defaults/{scope})

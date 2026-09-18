@@ -221,3 +221,129 @@ export function validateApiKeyPatch(patch: IApiKeyPatch): string[] {
 
 	return errors;
 }
+
+//---------------------------------------------------------
+// Per-user rate limits (/config/ai/user/ratelimit) — Stage 4.2
+//---------------------------------------------------------
+// Level 1 of the gateway's QoS ladder. `DELETE` on a user makes them fall
+// back to the configured defaults, then to unlimited — so an explicit entry
+// is an override, never the only thing standing between a user and no limit.
+
+export type IUserRateLimitMod = GwSchema<'UserRateLimitMod'>;
+export type IUserRateLimitEntry = GwSchema<'UserRateLimitEntry'>;
+export type IUserModelRateLimit = GwSchema<'UserModelRateLimit'>;
+
+// ⚠️⚠️ A THIRD ZERO SEMANTIC IN THIS ONE FEATURE AREA. Keep them apart:
+//
+//   create an API key       0 is expressed BY OMISSION and means "apply the
+//                           gateway default"
+//   PATCH an API key        0 is an EXPLICIT limit of zero, i.e. no limit
+//   POST a user's limits    0 "constrains nothing and falls through to the
+//                           configured defaults" — it is INHERITANCE, not
+//                           "unlimited", and an entry whose limits are all
+//                           zero is REFUSED rather than stored
+//
+// So an operator who types 0 everywhere here has asked for nothing and gets a
+// 400. Verified live: the gateway answers
+// "a user rate-limit entry must set at least one non-zero limit (zero falls
+// through the ladder; use DELETE to remove limits)".
+
+/**
+ * The sync-wire scope prefixes an identity may not begin with, copied from
+ * `ratelimit.ReservedIdentityScopePrefixes` (`pkg/ratelimit/ratelimit_sync.go:132`).
+ *
+ * ⭐ These exist because bucket keys are composed by prefixing a scope: a user
+ * named `uq:x` would round-trip through the wire mapping into ANOTHER scope's
+ * bucket. `ver:` is in the set because it is the scope-version sentinel key.
+ *
+ * ⚠️ Mirrored here only to refuse the value before it is sent; the gateway is
+ * the authority and rejects it too (400 with the offending field named).
+ */
+export const RESERVED_QOS_IDENTITY_PREFIXES = ['k:', 'u:', 't:', 'tm:', 'uq:', 'um:', 'kq:', 'v:', 'ver:'] as const;
+
+/**
+ * Why a QoS identity (tenant, user or model) cannot be used, or undefined.
+ * Returns an English source string, the convention in this file.
+ */
+export function qosIdentityError(id: string | undefined): string | undefined {
+	const value = (id ?? '').trim();
+	if (value.length === 0) return 'An identifier is required.';
+	// '|' is the composite bucket-key delimiter, so an identity containing it
+	// could alias a different bucket entirely.
+	if (value.includes('|')) return 'An identifier cannot contain "|", which the gateway uses to compose bucket keys.';
+	if (RESERVED_QOS_IDENTITY_PREFIXES.some(p => value.startsWith(p))) {
+		return 'An identifier cannot begin with a reserved rate-limit scope prefix (k: u: t: tm: uq: um: kq: v: ver:).';
+	}
+	return undefined;
+}
+
+export function normalizeUserRateLimit(data: IUserRateLimitMod): IUserRateLimitMod {
+	const models = (data.model_limits ?? [])
+		.map(m => ({...m, model: (m.model ?? '').trim()}))
+		.filter(m => m.model.length > 0);
+	return {
+		...data,
+		tenant_id: (data.tenant_id ?? '').trim(),
+		user_id: (data.user_id ?? '').trim(),
+		// ⚠️ `model_limits` is REPLACE-AS-A-SET, and an omitted/empty list
+		// CLEARS the user's model rows. So an empty array is meaningful and is
+		// preserved rather than dropped.
+		model_limits: models,
+	};
+}
+
+/**
+ * Whether this entry constrains nothing, which is the gateway's own rejection
+ * rule rather than a UI preference.
+ *
+ * ⭐⭐ A POSITIVE MODEL QUOTA COUNTS AS A LIMIT. The swagger's "an entry whose
+ * limit fields are all zero is rejected" does not say whether `model_limits`
+ * are limit fields, so it was settled against the running gateway: an entry
+ * with rps/burst/tpm all 0 AND one model row at 100 tokens/min is ACCEPTED
+ * (204). Treating it as empty here would refuse something the gateway stores.
+ */
+export function userRateLimitIsAllZero(data: IUserRateLimitMod): boolean {
+	const normalized = normalizeUserRateLimit(data);
+	const scalarsZero = !(normalized.rps || normalized.burst_size || normalized.tokens_per_min);
+	const anyModelLimit = (normalized.model_limits ?? []).some(m => (m.tokens_per_min ?? 0) > 0);
+	return scalarsZero && !anyModelLimit;
+}
+
+export function validateUserRateLimit(data: IUserRateLimitMod): string[] {
+	const normalized = normalizeUserRateLimit(data);
+	const errors: string[] = [];
+
+	const tenantError = qosIdentityError(normalized.tenant_id);
+	if (tenantError) errors.push(`Tenant: ${tenantError}`);
+	const userError = qosIdentityError(normalized.user_id);
+	if (userError) errors.push(`User: ${userError}`);
+
+	const scalars: [number | undefined, string][] = [
+		[normalized.rps, 'User requests per second must be a non-negative integer.'],
+		[normalized.burst_size, 'User burst size must be a non-negative integer.'],
+		[normalized.tokens_per_min, 'User tokens per minute must be a non-negative integer.'],
+	];
+	for (const [value, message] of scalars) {
+		if (value !== undefined && !isNonNegativeSafeInteger(value)) errors.push(message);
+	}
+
+	const seen = new Set<string>();
+	for (const [index, limit] of (normalized.model_limits ?? []).entries()) {
+		const model = limit.model ?? '';
+		const modelError = qosIdentityError(model);
+		if (modelError) errors.push(`Model quota row ${index + 1}: ${modelError}`);
+		else if (seen.has(model)) errors.push(`Model quota ${model} is duplicated.`);
+		else seen.add(model);
+		if (!isNonNegativeSafeInteger(limit.tokens_per_min)) {
+			errors.push(`Model quota row ${index + 1} tokens per minute must be a non-negative integer.`);
+		}
+	}
+
+	// ⚠️ Checked LAST so a malformed identity is reported as itself rather than
+	// as "nothing to save", and only when nothing else is already wrong.
+	if (errors.length === 0 && userRateLimitIsAllZero(normalized)) {
+		errors.push('Set at least one non-zero limit. A zero falls through to the configured defaults, so an all-zero entry asks for nothing — delete the entry instead to fall back to the defaults.');
+	}
+
+	return errors;
+}
