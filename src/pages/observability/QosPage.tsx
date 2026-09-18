@@ -23,7 +23,7 @@ import {useTranslation} from 'react-i18next';
 import {IMetricsSnapshot} from 'types/observability';
 import {selectScalar} from 'observability/selectors';
 import {IGroupRate, groupRates, rateMaxGapMs} from 'observability/snapshotRates';
-import {CadenceSelector, PanelPaper, formatRate, useObservabilityApplicable} from './common';
+import {CadenceSelector, PanelPaper, formatRate, useAbsenceExplanation, useObservabilityApplicable} from './common';
 
 // ⚠️ The EIGHT shaper families only, deliberately excluding Stage 3.3's
 // `loxilb_policer_attached` even though the capability registry lists it under
@@ -67,6 +67,8 @@ export default function QosPage() {
 	const instance = useInstanceFromURL();
 	const applicable = useObservabilityApplicable('page.qos');
 	const {snapshot, history, isLoading, cadenceMs, refetch} = useMetricsSnapshot(applicable ? instance : null);
+	// Stage 3.5: let the no-data state say WHY, from the manifest contract.
+	const absence = useAbsenceExplanation('page.qos', snapshot);
 	const maxGap = rateMaxGapMs(cadenceMs);
 
 	const presence = useMemo(() => (snapshot && !snapshot.failure ? classifyQosPresence(snapshot) : undefined), [snapshot]);
@@ -141,7 +143,7 @@ export default function QosPage() {
 				<CadenceSelector />
 			</Box>
 
-			<ObservabilityStateFrame state={state} name={t('QoS')} onRetry={refetchAll}>
+			<ObservabilityStateFrame state={state} absence={absence} name={t('QoS')} onRetry={refetchAll}>
 				{/* Attachment sits ABOVE the shaping table on purpose: a
 				    policer that is shaping nothing explains an empty or
 				    short table below it, so reading it second would invite

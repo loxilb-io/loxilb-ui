@@ -1080,5 +1080,10 @@
 	"This gateway queues admission overflow but does not export the overflow-shed counter, which is the only drop counter its configuration can reach. Requests may be being dropped with no metric recording it. Upgrade the gateway to observe admission drops.": "이 게이트웨이는 수용 오버플로를 큐에 적재하지만, 현재 설정에서 유일하게 동작할 수 있는 드롭 카운터인 오버플로 드롭 카운터를 내보내지 않습니다. 요청이 드롭되고 있어도 이를 기록하는 메트릭이 없습니다. 수용 드롭을 관측하려면 게이트웨이를 업그레이드하세요.",
 	"This valve cannot fire under the current queue-depth setting, so its zero is expected and says nothing about whether requests were dropped.": "현재 큐 깊이 설정에서는 이 밸브가 동작할 수 없으므로 0은 정상이며, 요청 드롭 여부에 대해 아무것도 말해주지 않습니다.",
 	"across both valves, of which one is armed": "두 밸브 합계, 그중 하나만 동작 가능",
-	"{{n}} requests have been dropped by the admission layer since this gateway started, each answered with a retriable 429. The prefill pool is running out of capacity — add prefill endpoints, raise the per-endpoint in-flight cap, or enable queueing to absorb bursts.": "이 게이트웨이가 시작된 이후 수용 계층이 요청 {{n}}건을 드롭했으며, 각각 재시도 가능한 429로 응답했습니다. 프리필 풀의 용량이 부족합니다 — 프리필 엔드포인트를 추가하거나, 엔드포인트별 in-flight 상한을 높이거나, 버스트를 흡수하도록 큐잉을 활성화하세요."
+	"{{n}} requests have been dropped by the admission layer since this gateway started, each answered with a retriable 429. The prefill pool is running out of capacity — add prefill endpoints, raise the per-endpoint in-flight cap, or enable queueing to absorb bursts.": "이 게이트웨이가 시작된 이후 수용 계층이 요청 {{n}}건을 드롭했으며, 각각 재시도 가능한 429로 응답했습니다. 프리필 풀의 용량이 부족합니다 — 프리필 엔드포인트를 추가하거나, 엔드포인트별 in-flight 상한을 높이거나, 버스트를 흡수하도록 큐잉을 활성화하세요.",
+	"No data yet — these metrics appear the first time the feature is used.": "아직 데이터가 없습니다 — 이 메트릭은 해당 기능을 처음 사용할 때 나타납니다.",
+	"No data yet: {{precondition}}": "아직 데이터가 없습니다: {{precondition}}",
+	"No data, and these metrics should always be exported — the gateway may be older than them, or not exporting them. This is worth reporting.": "데이터가 없으나 이 메트릭은 항상 내보내져야 합니다 — 게이트웨이가 이 메트릭보다 이전 버전이거나 내보내지 않고 있을 수 있습니다. 보고할 만한 사항입니다.",
+	"No data, and this build cannot tell whether that is expected for these metrics.": "데이터가 없으며, 이 빌드는 그것이 이 메트릭에 대해 정상인지 판단할 수 없습니다.",
+	"No data: these metrics are behind a datapath or hardware gate that is not enabled on this instance.": "데이터가 없습니다: 이 메트릭은 이 인스턴스에서 활성화되지 않은 데이터패스 또는 하드웨어 게이트 뒤에 있습니다."
 }

@@ -36,13 +36,15 @@ import {aggregateSum, selectSamples} from 'observability/selectors';
 import {completedRequestRate, completedRequestRatesBy, requestOutcomes} from 'observability/aiRequests';
 import {bearerAdmission} from 'observability/jwtAuth';
 import {familySumRate, groupRates, rateMaxGapMs} from 'observability/snapshotRates';
-import {CadenceSelector, ModelName, PanelPaper, StatRow, formatRate, formatRatio, useObservabilityApplicable} from './common';
+import {CadenceSelector, ModelName, PanelPaper, StatRow, formatRate, formatRatio, useAbsenceExplanation, useObservabilityApplicable} from './common';
 
 export default function AITrafficPage() {
 	const {t} = useTranslation();
 	const instance = useInstanceFromURL();
 	const applicable = useObservabilityApplicable('page.aiTraffic');
 	const {snapshot, history, isLoading, cadenceMs, refetch} = useMetricsSnapshot(applicable ? instance : null);
+	// Stage 3.5: let the no-data state say WHY, from the manifest contract.
+	const absence = useAbsenceExplanation('page.aiTraffic', snapshot);
 	const maxGap = rateMaxGapMs(cadenceMs);
 
 	// Restricted to outcome="completed" where the instance reports it: since
@@ -119,7 +121,7 @@ export default function AITrafficPage() {
 					: t('Completed SSE streams and denial events are separate, partial views. The gateway does not yet expose a complete request denominator, so no total request rate or error ratio can be shown.')}
 			</Alert>
 
-			<ObservabilityStateFrame state={state} name={t('AI Traffic')} onRetry={refetch}>
+			<ObservabilityStateFrame state={state} absence={absence} name={t('AI Traffic')} onRetry={refetch}>
 				<Grid container spacing={2}>
 					{/* Absent, not empty, on an unpartitioned gateway: there is no
 					    offered-load denominator to render, and the notice above

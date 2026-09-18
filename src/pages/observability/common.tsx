@@ -12,12 +12,36 @@ import {useInstanceCapabilities} from 'hooks/query/flavorHook';
 import {useObservabilityCadence} from 'hooks/query/observabilityHooks';
 import {useTranslation} from 'react-i18next';
 import {isObservabilityCadence, OBSERVABILITY_CADENCE_OPTIONS_MS} from 'preferences';
-import {isEntryApplicable, ObservabilityEntryId} from 'observability/capabilityRegistry';
+import {getObservabilityEntry, isEntryApplicable, ObservabilityEntryId} from 'observability/capabilityRegistry';
+import {explainAbsence, IAbsenceExplanation} from 'observability/familyActivation';
+import {useMemo} from 'react';
+import {IMetricsSnapshot} from 'types/observability';
 
 export function useObservabilityApplicable(id: ObservabilityEntryId): boolean {
 	const caps = useInstanceCapabilities();
 	// Fail-narrow: unresolved/denied/unavailable answers not-applicable.
 	return caps.resolved && caps.flavor !== undefined && isEntryApplicable(id, caps.flavor);
+}
+
+/**
+ * Why this page's metric families are missing from the scrape (Stage 3.5).
+ *
+ * Pass the result to `ObservabilityStateFrame`'s `absence` prop and its
+ * `no-data` state explains itself instead of printing a bare "No data".
+ * `undefined` when every family the page declares IS present — the page's
+ * emptiness is then about samples, not the exposition.
+ *
+ * ⚠️ Scoped to the families the page's REGISTRY ENTRY declares, which is the
+ * honest scope: that list is what the page was built to read, so an eager
+ * family missing from it is a real export gap even if some other panel on the
+ * page is empty for its own reasons.
+ */
+export function useAbsenceExplanation(id: ObservabilityEntryId, snapshot: IMetricsSnapshot | undefined): IAbsenceExplanation | undefined {
+	return useMemo(() => {
+		const entry = getObservabilityEntry(id);
+		if (!entry) return undefined;
+		return explainAbsence(entry.metricFamilies, snapshot);
+	}, [id, snapshot]);
 }
 
 // The rate/ratio vocabulary moved to components/observability/rateText.ts

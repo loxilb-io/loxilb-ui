@@ -20,13 +20,15 @@ import {useTranslation} from 'react-i18next';
 import {estimateQuantile, mergeHistogramSeries} from 'observability/histogram';
 import {selectSamples, selectScalar} from 'observability/selectors';
 import {familySumRate, rateMaxGapMs} from 'observability/snapshotRates';
-import {CadenceSelector, PanelPaper, StatRow, formatRate, useObservabilityApplicable} from './common';
+import {CadenceSelector, PanelPaper, StatRow, formatRate, useAbsenceExplanation, useObservabilityApplicable} from './common';
 
 export default function PersistencePage() {
 	const {t} = useTranslation();
 	const instance = useInstanceFromURL();
 	const applicable = useObservabilityApplicable('page.persistence');
 	const {snapshot, history, isLoading, cadenceMs, refetch} = useMetricsSnapshot(applicable ? instance : null);
+	// Stage 3.5: let the no-data state say WHY, from the manifest contract.
+	const absence = useAbsenceExplanation('page.persistence', snapshot);
 	const maxGap = rateMaxGapMs(cadenceMs);
 	const diagnostics = useDiagnostics(instance, applicable);
 
@@ -83,7 +85,7 @@ export default function PersistencePage() {
 				<CadenceSelector />
 			</Box>
 
-			<ObservabilityStateFrame state={state} name={t('Persistence')} onRetry={refetch}>
+			<ObservabilityStateFrame state={state} absence={absence} name={t('Persistence')} onRetry={refetch}>
 				<Grid container spacing={2}>
 					<Grid item xs={12} md={6}>
 						<PanelPaper title={t('Configuration state')}>
