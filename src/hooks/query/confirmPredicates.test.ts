@@ -22,7 +22,7 @@
 import {describe, expect, it} from 'vitest';
 import {IServiceConfiguration} from 'types/load_balancer';
 import {IEndpointItem} from 'types/endpoint';
-import {endpointAppeared, endpointsGone, lbRuleAppeared, lbRulesGone} from 'hooks/query/confirmPredicates';
+import {endpointAppeared, endpointsGone, lbRuleAppeared, lbRulesGone, rateLimitDefaultsApplied, rateLimitDefaultsGone} from 'hooks/query/confirmPredicates';
 
 const lb = (args: Record<string, unknown>): IServiceConfiguration =>
 	({serviceArguments: {externalIP: '203.0.113.75', port: 8475, protocol: 'tcp', ...args}, endpoints: [], secondaryIPs: [], allowedSources: []}) as unknown as IServiceConfiguration;
@@ -83,5 +83,49 @@ describe('endpoint confirm predicates', () => {
 	it('an endpoint submitted without a name confirms on host alone', () => {
 		// The gateway assigns the name in that case, so it cannot be compared.
 		expect(endpointAppeared({hostName: '203.0.113.10'})([b])).toBe(true);
+	});
+});
+
+describe('rate-limit defaults predicates (Stage 4.2b)', () => {
+	const asked = {
+		scope: 'global',
+		default_user_rps: 0,
+		default_user_tpm: 5000,
+		default_tenant_rps: 0,
+		default_tenant_tpm: 0,
+		vip_shared_rps: 0,
+		vip_shared_tpm: 0,
+	};
+
+	it('confirms a landed write whose zero fields read back ABSENT', () => {
+		// ⚠️⚠️ This is the whole point. Verified live: after posting a row with
+		// one positive field, the GET carried `{default_user_tpm, scope,
+		// updated_at}` and NOT the five zeros. A predicate comparing
+		// `row.default_user_rps === 0` would never confirm any row, because a
+		// row with all six positive is exactly the row the gateway refuses.
+		expect(rateLimitDefaultsApplied(asked)([{scope: 'global', default_user_tpm: 5000}])).toBe(true);
+	});
+
+	it('does not confirm when the served value differs from the asked one', () => {
+		expect(rateLimitDefaultsApplied(asked)([{scope: 'global', default_user_tpm: 4000}])).toBe(false);
+		// A leftover limit the write meant to clear must read as NOT applied:
+		// the POST replaces the row, so a surviving field means it did not land.
+		expect(rateLimitDefaultsApplied(asked)([{scope: 'global', default_user_tpm: 5000, default_tenant_rps: 9}])).toBe(false);
+	});
+
+	it('never lets one scope confirm another, nor one service confirm another', () => {
+		// The global row and a rule row are different rows; so are two rule rows.
+		expect(rateLimitDefaultsApplied(asked)([{scope: 'rule', rule_ident: 'svc-1', default_user_tpm: 5000}])).toBe(false);
+		const ruleAsked = {...asked, scope: 'rule', rule_ident: 'svc-1'};
+		expect(rateLimitDefaultsApplied(ruleAsked)([{scope: 'rule', rule_ident: 'svc-2', default_user_tpm: 5000}])).toBe(false);
+		expect(rateLimitDefaultsApplied(ruleAsked)([{scope: 'rule', rule_ident: 'svc-1', default_user_tpm: 5000}])).toBe(true);
+	});
+
+	it('treats absence as the confirmation of a delete, per scope and service', () => {
+		expect(rateLimitDefaultsGone('global')([{scope: 'rule', rule_ident: 'svc-1'}])).toBe(true);
+		expect(rateLimitDefaultsGone('global')([{scope: 'global'}])).toBe(false);
+		// A surviving sibling service must not confirm this one's removal.
+		expect(rateLimitDefaultsGone('rule', 'svc-1')([{scope: 'rule', rule_ident: 'svc-2'}])).toBe(true);
+		expect(rateLimitDefaultsGone('rule', 'svc-1')([{scope: 'rule', rule_ident: 'svc-1'}])).toBe(false);
 	});
 });

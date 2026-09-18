@@ -185,3 +185,60 @@ export const userRateLimitGone =
 	(userId: string) =>
 	(rows: {user_id?: string}[]): boolean =>
 		!rows.some(r => r.user_id === userId);
+
+//---------------------------------------------------------
+// Rate-limit defaults (Stage 4.2b)
+//---------------------------------------------------------
+// scope+service is the key: the global row and a rule row are different rows,
+// and two rule rows differ only by service.
+
+const sameDefaultsRow = (scope: string, ruleIdent: string | undefined) =>
+	(row: {scope?: string; rule_ident?: string}): boolean =>
+		row.scope === scope && (row.rule_ident ?? '') === (ruleIdent ?? '');
+
+/**
+ * A defaults row was written and now reads back as asked.
+ *
+ * ⚠️⚠️ ABSENT IS COMPARED EQUAL TO ZERO, and on this endpoint that is not a
+ * tolerance but the contract: a zero field FALLS THROUGH, and the gateway
+ * omits it from the read-back entirely. Verified live — after posting a row
+ * with one positive field, the GET carried that field alone and none of the
+ * other five. A predicate demanding `row.default_user_rps === 0` would
+ * therefore never confirm any row, since a row with all six positive is
+ * exactly the row the gateway refuses.
+ *
+ * ⭐ All six fields are compared, not just the changed one, because the POST
+ * REPLACES the row: every field was asserted by this write, so every field is
+ * evidence about whether it landed.
+ */
+export const rateLimitDefaultsApplied =
+	(mod: {
+		scope: string;
+		rule_ident?: string;
+		default_user_rps?: number;
+		default_user_tpm?: number;
+		default_tenant_rps?: number;
+		default_tenant_tpm?: number;
+		vip_shared_rps?: number;
+		vip_shared_tpm?: number;
+	}) =>
+	(rows: {scope?: string; rule_ident?: string; default_user_rps?: number | null; default_user_tpm?: number | null; default_tenant_rps?: number | null; default_tenant_tpm?: number | null; vip_shared_rps?: number | null; vip_shared_tpm?: number | null}[]): boolean => {
+		const row = rows.find(sameDefaultsRow(mod.scope, mod.rule_ident));
+		if (!row) return false;
+		const matches = (asked: number | undefined, served: number | null | undefined): boolean => (asked ?? 0) === (served ?? 0);
+		return matches(mod.default_user_rps, row.default_user_rps)
+			&& matches(mod.default_user_tpm, row.default_user_tpm)
+			&& matches(mod.default_tenant_rps, row.default_tenant_rps)
+			&& matches(mod.default_tenant_tpm, row.default_tenant_tpm)
+			&& matches(mod.vip_shared_rps, row.vip_shared_rps)
+			&& matches(mod.vip_shared_tpm, row.vip_shared_tpm);
+	};
+
+/**
+ * The defaults row is gone, so the identities it governed now fall through to
+ * the next ladder level. Absence IS the confirmation.
+ */
+export const rateLimitDefaultsGone =
+	(scope: string, ruleIdent?: string) =>
+	(rows: {scope?: string; rule_ident?: string}[]): boolean =>
+		!rows.some(sameDefaultsRow(scope, ruleIdent));

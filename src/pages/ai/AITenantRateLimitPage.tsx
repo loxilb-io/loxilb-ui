@@ -9,7 +9,9 @@ import ErrorPopUp from 'components/modal/ErrorPopUp';
 import TenantRateLimitTable from 'components/table/ai/TenantRateLimitTable';
 import UserRateLimitTable from 'components/table/ai/UserRateLimitTable';
 import UserRateLimitInputForm from 'components/input/UserRateLimitInputForm';
-import {query_get_ratelimit_defaults, query_get_tenant_ratelimit, query_get_tenant_ratelimits_for, query_get_user_ratelimit, query_get_user_ratelimits, request_delete_user_ratelimit, request_set_tenant_ratelimit, request_set_user_ratelimit} from 'connector/instance/ai';
+import RateLimitDefaultsInputForm from 'components/input/RateLimitDefaultsInputForm';
+import RateLimitDefaultsTable from 'components/table/ai/RateLimitDefaultsTable';
+import {query_get_ratelimit_defaults, query_get_ratelimit_defaults_for, query_get_tenant_ratelimit, query_get_tenant_ratelimits_for, query_get_user_ratelimit, query_get_user_ratelimits, request_delete_ratelimit_defaults, request_delete_user_ratelimit, request_set_ratelimit_defaults, request_set_tenant_ratelimit, request_set_user_ratelimit} from 'connector/instance/ai';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
 import TokenQuotaPanel from 'components/observability/TokenQuotaPanel';
@@ -29,11 +31,11 @@ import {
 import {useQueryInstanceData} from 'hooks/query/common';
 import {fromQueryRefetch} from 'hooks/query/reconcile';
 import {useReconcileReporter} from 'hooks/query/reconcileReport';
-import {tenantRateLimitAppeared, userRateLimitAppeared, userRateLimitGone} from 'hooks/query/confirmPredicates';
+import {rateLimitDefaultsApplied, rateLimitDefaultsGone, tenantRateLimitAppeared, userRateLimitAppeared, userRateLimitGone} from 'hooks/query/confirmPredicates';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {t} from 'i18next';
 import React, {Fragment, useMemo, useRef, useState} from 'react';
-import {ITenantRateLimitMod, IUserRateLimitMod} from 'types/ai';
+import {IRateLimitDefaultsMod, ITenantRateLimitMod, IUserRateLimitMod} from 'types/ai';
 import {hasRequiredApiKeyPolicy} from 'types/ai_gateway';
 import {toPageState} from 'components/state/pageState';
 
@@ -102,12 +104,61 @@ export default function AITenantRateLimitPage() {
 	// to be told it is not in force.
 	const quotaApplicable = useObservabilityApplicable('panel.tokenQuota');
 	const {snapshot, refetch: refetchMetrics} = useMetricsSnapshot(quotaApplicable ? inst : null);
+	// ⚠️ NOT gated on `quotaApplicable`, which it was until Stage 4.2b. That
+	// gate is a METRICS applicability check, and this read now feeds two
+	// consumers with different needs: the panel below (metrics) and the
+	// defaults EDITOR (configuration). The REST ladder is configurable on any
+	// flavor that serves the endpoint, so gating it on a panel's applicability
+	// left the editor with nothing to show — and an empty editor reads as
+	// "no defaults are configured", which is a claim about the gateway rather
+	// than about which panels apply here.
 	const defaults_query = useQueryInstanceData(
 		['ai_ratelimit_defaults'],
 		instance => query_get_ratelimit_defaults(instance),
-		quotaApplicable ? inst : null,
+		inst,
 	);
 	const {data: jwtProfiles, refetch: refetchJwtProfiles} = useJWTAuthProfiles(quotaApplicable ? inst : null);
+
+	//---------------------------------------------------------
+	// Rate-limit defaults editor (Stage 4.2b)
+	//---------------------------------------------------------
+	// ⚠️ THE RULE ROWS CANNOT BE ENUMERATED. `GET .../defaults/rule` without a
+	// service answers 404 rather than a collection, so the services shown are
+	// exactly those asked about: any row configured in this session, plus any
+	// looked up by name. Same shape as the tenant table above, for the same
+	// reason, and the section says so rather than letting an empty table imply
+	// that no service has an override.
+	const [ruleIdents, setRuleIdents] = useState<string[]>([]);
+	const [lookupRule, setLookupRule] = useState('');
+
+	const defaults_rules_query = useQueryInstanceData(
+		['ai_ratelimit_defaults_rules', ruleIdents.join('|')],
+		instance => query_get_ratelimit_defaults_for(instance, ruleIdents),
+		ruleIdents.length > 0 ? inst : null,
+	);
+
+	const defaultsRows = useMemo(() => {
+		const globalRow = defaults_query.data?.global;
+		return [...(globalRow ? [globalRow] : []), ...(defaults_rules_query.data ?? [])];
+	}, [defaults_query.data, defaults_rules_query.data]);
+
+	const [selected_defaults_rows, set_selected_defaults_rows] = useState<number[]>([]);
+	const selectedDefaults = selected_defaults_rows.length === 1
+		? defaultsRows.find(r => getStableHash(`${r.scope ?? ''}|${r.rule_ident ?? ''}`) === selected_defaults_rows[0]) ?? null
+		: null;
+
+	const rememberRule = (ident: string) => {
+		setRuleIdents(prev => (prev.includes(ident) ? prev : [...prev, ident]));
+	};
+
+	// ⚠️ Both reads, always. The global row lives in one query and the rule
+	// rows in another, so confirming a write against only one of them would
+	// report a landed change as unconfirmed whenever the other held the row.
+	const refetchDefaultsRows = async () => {
+		const [globalRead, ruleRead] = await Promise.all([defaults_query.refetch(), defaults_rules_query.refetch()]);
+		const globalRow = globalRead.data?.global;
+		return [...(globalRow ? [globalRow] : []), ...(ruleRead.data ?? [])];
+	};
 
 	const quota = useMemo(() => {
 		const read = defaults_query.data;
@@ -309,6 +360,95 @@ export default function AITenantRateLimitPage() {
 		} else showAddError('AI user rate limit', t(res.localeKey));
 	};
 
+	const defaultsFormRef = useRef<IRateLimitDefaultsMod | null>(null);
+
+	// `seed` carries the row being edited; its absence means Add.
+	const openDefaultsForm = (seed?: IRateLimitDefaultsMod) => {
+		if (!inst) return;
+		defaultsFormRef.current = null;
+		const editing = seed !== undefined;
+
+		const input_form = (
+			<RateLimitDefaultsInputForm
+				key={`${seed?.scope ?? ''}|${seed?.rule_ident ?? ''}|${Date.now()}`}
+				value={seed}
+				identityLocked={editing}
+				onChange={data => {
+					const {isValid, errors, ...cleanData} = data;
+					defaultsFormRef.current = cleanData;
+					enableYes(!!isValid);
+				}}
+			/>
+		);
+
+		openPopUp(
+			'',
+			input_form,
+			t('Apply'),
+			t('Cancel'),
+			async () => {
+				const payload = defaultsFormRef.current;
+				if (!payload) return;
+				const res = await request_set_ratelimit_defaults(inst, payload);
+				set_selected_defaults_rows([]);
+				if (res.status === 'confirmed') {
+					// A rule row the operator has just written must join the
+					// asked-about set, or their own change would not appear.
+					if (payload.scope === 'rule' && payload.rule_ident) rememberRule(payload.rule_ident);
+					await report({refetch: refetchDefaultsRows, confirm: rateLimitDefaultsApplied(payload)}, t('Applied successfully.'));
+				} else showAddError('AI rate limit defaults', t(res.localeKey));
+			},
+			true,
+		);
+	};
+
+	const handleDefaultsAdd = () => openDefaultsForm();
+
+	// ⚠️⚠️ THE FORM IS SEEDED FROM THE FULL ROW, never from a subset, because
+	// the POST REPLACES the row: a field missing from the seed would be sent as
+	// zero and CLEAR a limit the operator never touched. The list read carries
+	// every field, so the row itself is a complete seed — unlike the per-user
+	// table above, whose list omits model limits and needs a re-read.
+	const handleDefaultsEdit = () => {
+		if (!selectedDefaults) return;
+		openDefaultsForm({
+			scope: selectedDefaults.scope,
+			rule_ident: selectedDefaults.rule_ident,
+			default_user_rps: selectedDefaults.default_user_rps ?? 0,
+			default_user_tpm: selectedDefaults.default_user_tpm ?? 0,
+			default_tenant_rps: selectedDefaults.default_tenant_rps ?? 0,
+			default_tenant_tpm: selectedDefaults.default_tenant_tpm ?? 0,
+			vip_shared_rps: selectedDefaults.vip_shared_rps ?? 0,
+			vip_shared_tpm: selectedDefaults.vip_shared_tpm ?? 0,
+		});
+	};
+
+	const handleDefaultsDelete = async () => {
+		if (!inst || !selectedDefaults) return;
+		const {scope, rule_ident} = selectedDefaults;
+		const res = await request_delete_ratelimit_defaults(inst, scope, rule_ident);
+		set_selected_defaults_rows([]);
+		if (res.status === 'confirmed') {
+			await report({refetch: refetchDefaultsRows, confirm: rateLimitDefaultsGone(scope, rule_ident)}, t('Deleted {{count}} item(s) successfully.', {count: 1}));
+		} else showAddError('AI rate limit defaults', t(res.localeKey));
+	};
+
+	const handleRuleLookup = async () => {
+		if (!inst) return;
+		const ident = lookupRule.trim();
+		if (ident.length === 0) return;
+		const found = await query_get_ratelimit_defaults_for(inst, [ident]);
+		if (found.length > 0) {
+			rememberRule(ident);
+			setLookupRule('');
+			defaults_rules_query.refetch();
+		} else {
+			// ⚠️ Worded as inheritance, not as a missing object: a service with
+			// no row is the normal case and means it uses the global defaults.
+			openPopUp(t('Not Found'), t('No rate-limit defaults row is configured for service "{{service}}". It uses the global defaults.', {service: ident}), t('OK'));
+		}
+	};
+
 	const handleRefresh = () => {
 		set_selected_rows([]);
 		// ⚠️⚠️ EVERY dependency, not just the rate-limit rows. Refreshing only
@@ -341,6 +481,12 @@ export default function AITenantRateLimitPage() {
 		refetchMetrics();
 		// Stage 4.2's section is another read this page paints from.
 		user_query.refetch();
+		// ⭐ And 4.2b's. `defaults_query` above carries only the GLOBAL row;
+		// the per-service rows are a separate read, so refreshing one and not
+		// the other leaves half the ladder stale — the exact half-refresh
+		// defect 4.0 fixed on this page.
+		defaults_rules_query.refetch();
+		set_selected_defaults_rows([]);
 	};
 
 	return (
@@ -442,6 +588,74 @@ export default function AITenantRateLimitPage() {
 						state={toPageState(user_query, {op: 'ai_user_ratelimit.list'})}
 					/>
 				)}
+			</Stack>
+
+			{/* ── Rate-limit defaults (Stage 4.2b) ─────────────────────────
+			    Level 3 of the ladder: what applies to an identity with no entry
+			    of its own. Placed last because it is what the two tables above
+			    fall through TO. */}
+			<Stack spacing={1} sx={{mt: 3}}>
+				<Stack direction="row" spacing={1} alignItems="center">
+					<TextField
+						size="small"
+						label={t('Service lookup')}
+						value={lookupRule}
+						onChange={e => setLookupRule(e.target.value)}
+						onKeyDown={e => {
+							if (e.key === 'Enter') handleRuleLookup();
+						}}
+					/>
+					<Button variant="outlined" size="small" startIcon={<SearchIcon />} onClick={handleRuleLookup} disabled={lookupRule.trim().length === 0}>
+						{t('Lookup')}
+					</Button>
+				</Stack>
+
+				{/* ⚠️⚠️ AN UNREADABLE STORE MUST NOT RENDER AS "NO DEFAULTS". The
+				    ladder lives in the AI key store, and when that store is
+				    unreachable the read returns no rows — indistinguishable, on
+				    screen, from a gateway that simply has none configured. The two
+				    demand opposite actions, so the state is named explicitly and
+				    the difference between "configured but unenforced" and "not
+				    configured" is never left for the operator to guess. */}
+				{defaults_query.data && defaults_query.data.storeState !== 'readable' && (
+					<Alert severity={defaults_query.data.storeState === 'unavailable' ? 'error' : 'warning'}>
+						{defaults_query.data.storeState === 'unavailable'
+							? t('The AI key store is configured but not answering, so the defaults below could not be read and no token quota is being enforced while this lasts. An empty table here is not evidence that no defaults are set.')
+							: defaults_query.data.storeState === 'unconfigured'
+								? t('No AI key store is configured, so rate-limit defaults can be neither stored nor enforced. Configure a key store on the gateway before setting defaults here.')
+								: t('The rate-limit defaults could not be read and the reason is not one this page can classify. An empty table here is not evidence that no defaults are set.')}
+					</Alert>
+				)}
+
+				{/* ⚠️ Said before the table, not after: there is no read that
+				    enumerates per-service rows, so the table's contents are a
+				    function of what was asked for. Without this an operator would
+				    reasonably conclude that no service overrides the global row. */}
+				<Alert severity="info">
+					{t('Per-service rows cannot be listed by the gateway. This table shows the global row and only the services looked up or configured in this session — a service that is absent here may still have its own row.')}
+				</Alert>
+
+				<RateLimitDefaultsTable
+					data={defaultsRows}
+					selected_rows={selected_defaults_rows}
+					onChangeSelectedRows={set_selected_defaults_rows}
+					onAdd={handleDefaultsAdd}
+					onEdit={handleDefaultsEdit}
+					onDelete={handleDefaultsDelete}
+					onRefresh={() => {
+						set_selected_defaults_rows([]);
+						defaults_query.refetch();
+						defaults_rules_query.refetch();
+					}}
+					state={toPageState(defaults_query, {
+						op: 'ai_ratelimit_defaults.list',
+						// ⚠️ The read's DATA is a ladder object, never an array, so
+						// the default emptiness test can never be true and the table
+						// would report `data` while showing nothing. Emptiness here
+						// is a property of the two reads TOGETHER.
+						isEmpty: read => !read.global && (defaults_rules_query.data ?? []).length === 0,
+					})}
+				/>
 			</Stack>
 
 			{/* Error Popup */}
