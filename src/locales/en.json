@@ -1166,5 +1166,6 @@
 	"No rate limit is configured for tenant \"{{tenant}}\".": "No rate limit is configured for tenant \"{{tenant}}\".",
 	"Rate Limit (req/s)": "Rate Limit (req/s)",
 	"Burst Size": "Burst Size",
-	"Tenant quotas are configured, but no loaded service explicitly requires data-plane API keys. Quota enforcement is not proven until a required policy and a live request are verified.": "Tenant quotas are configured, but no loaded service explicitly requires data-plane API keys. Quota enforcement is not proven until a required policy and a live request are verified."
+	"Tenant quotas are configured, but no loaded service explicitly requires data-plane API keys. Quota enforcement is not proven until a required policy and a live request are verified.": "Tenant quotas are configured, but no loaded service explicitly requires data-plane API keys. Quota enforcement is not proven until a required policy and a live request are verified.",
+	"Collecting counter samples to derive a rate — about {{n}}s at the current refresh interval.": "Collecting counter samples to derive a rate — about {{n}}s at the current refresh interval."
 }

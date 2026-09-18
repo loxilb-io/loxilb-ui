@@ -1166,5 +1166,6 @@
 	"No rate limit is configured for tenant \"{{tenant}}\".": "テナント \"{{tenant}}\" に設定されたレート制限はありません。",
 	"Rate Limit (req/s)": "レート制限（リクエスト/秒）",
 	"Burst Size": "バーストサイズ",
-	"Tenant quotas are configured, but no loaded service explicitly requires data-plane API keys. Quota enforcement is not proven until a required policy and a live request are verified.": "テナントクォータは設定されていますが、データプレーン APIキーを明示的に要求するサービスがロードされていません。必須ポリシーと実際のリクエストを確認するまで、クォータの適用は証明されません。"
+	"Tenant quotas are configured, but no loaded service explicitly requires data-plane API keys. Quota enforcement is not proven until a required policy and a live request are verified.": "テナントクォータは設定されていますが、データプレーン APIキーを明示的に要求するサービスがロードされていません。必須ポリシーと実際のリクエストを確認するまで、クォータの適用は証明されません。",
+	"Collecting counter samples to derive a rate — about {{n}}s at the current refresh interval.": "レートを算出するためにカウンターのサンプルを収集しています — 現在の更新間隔でおよそ {{n}} 秒かかります。"
 }

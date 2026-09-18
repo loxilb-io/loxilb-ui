@@ -26,7 +26,7 @@ export default function HealthStatusCard(props: HealthStatusCardProps) {
 	const {title, instance} = props;
 
 	// Get live metrics with polling
-	const {metrics: liveMetrics, isLoading, failure: scrapeFailure, refetch: refetchMetrics} = useLiveMetrics(instance, {keyPrefix: 'health-status-realtime', refetchInterval: 10000});
+	const {metrics: liveMetrics, isLoading, failure: scrapeFailure, refetch: refetchMetrics} = useLiveMetrics(instance);
 
 	// Derivation lives in cardMetricsLogic so the "absent ≠ zero" rule is
 	// unit-testable without a renderer.

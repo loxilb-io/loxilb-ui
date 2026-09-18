@@ -42,12 +42,9 @@ export default function CriticalMetricCard(props: CriticalMetricCardProps) {
 		maxPoints = 60
 	} = props;
 
-	// Get live metrics with polling
-	const {metrics: liveMetrics, failure: scrapeFailure, refetch: refetchMetrics} = useLiveMetrics(instance, {
-		keyPrefix: 'critical-metrics-realtime',
-		refetchInterval: 10000,
-		extraKey: metricField as string,
-	});
+	// Reads the shared snapshot; every metrics card on screen renders the same
+	// observation, so their numbers cannot disagree.
+	const {metrics: liveMetrics, failure: scrapeFailure, refetch: refetchMetrics} = useLiveMetrics(instance);
 
 	// State to accumulate time series data
 	const [metricHistory, setMetricHistory] = useState<ITimeSeriesPoint<number>[]>([]);

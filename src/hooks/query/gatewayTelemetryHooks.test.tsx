@@ -104,10 +104,13 @@ describe('one shared snapshot query per cadence (UI-MON-004)', () => {
 			() => ({
 				a: useMetricsSnapshot(INSTANCE),
 				b: useMetricsSnapshot(INSTANCE),
-				// The legacy compat hook rides the same query — its old per-card
-				// keyPrefix/interval must not mint a second network poll.
-				legacy1: useLiveMetrics(INSTANCE, {keyPrefix: 'card-1', refetchInterval: 1000}),
-				legacy2: useLiveMetrics(INSTANCE, {keyPrefix: 'card-2', refetchInterval: 10000}),
+				// The card-facing hook rides the same query rather than minting
+				// its own poll. It no longer even ACCEPTS a per-card cadence:
+				// two consumers cannot ask for different intervals of one
+				// shared query, so the parameter that used to promise that is
+				// gone. What they get instead is the cadence as a fact.
+				legacy1: useLiveMetrics(INSTANCE),
+				legacy2: useLiveMetrics(INSTANCE),
 			}),
 			{wrapper},
 		);
@@ -123,6 +126,11 @@ describe('one shared snapshot query per cadence (UI-MON-004)', () => {
 		expect(result.current.legacy1.metrics!.timestamp).toBe(result.current.a.snapshot!.receivedAtMs);
 		expect(result.current.legacy2.metrics!.timestamp).toBe(result.current.a.snapshot!.receivedAtMs);
 		expect(textGet.mock.calls.length).toBe(perKeyCalls);
+		// ⭐ And every consumer is told the SAME cadence, because there is only
+		// one interval to be told about. A card that reported its own would be
+		// describing a poll that does not exist.
+		expect(result.current.legacy1.cadenceMs).toBe(result.current.a.cadenceMs);
+		expect(result.current.legacy2.cadenceMs).toBe(result.current.a.cadenceMs);
 	});
 
 	it('an instance switch changes the cache entry instead of reinterpreting it', async () => {

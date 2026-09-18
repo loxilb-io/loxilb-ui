@@ -1166,5 +1166,6 @@
 	"No rate limit is configured for tenant \"{{tenant}}\".": "테넌트 \"{{tenant}}\"에 설정된 속도 제한이 없습니다.",
 	"Rate Limit (req/s)": "속도 제한(요청/초)",
 	"Burst Size": "버스트 크기",
-	"Tenant quotas are configured, but no loaded service explicitly requires data-plane API keys. Quota enforcement is not proven until a required policy and a live request are verified.": "테넌트 쿼터가 설정되어 있지만, 데이터플레인 API 키를 명시적으로 요구하는 서비스가 로드되어 있지 않습니다. 필수 정책과 실제 요청을 확인하기 전까지 쿼터 적용은 입증되지 않습니다."
+	"Tenant quotas are configured, but no loaded service explicitly requires data-plane API keys. Quota enforcement is not proven until a required policy and a live request are verified.": "테넌트 쿼터가 설정되어 있지만, 데이터플레인 API 키를 명시적으로 요구하는 서비스가 로드되어 있지 않습니다. 필수 정책과 실제 요청을 확인하기 전까지 쿼터 적용은 입증되지 않습니다.",
+	"Collecting counter samples to derive a rate — about {{n}}s at the current refresh interval.": "속도를 산출하기 위해 카운터 샘플을 수집하는 중입니다 — 현재 갱신 주기 기준 약 {{n}}초 소요됩니다."
 }

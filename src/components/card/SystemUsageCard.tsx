@@ -20,7 +20,7 @@ export default function SystemUsageCard(props: {instance: IInstance | null}) {
 	const {instance} = props;
 
 	// Get live metrics with polling (same as ConnectionFlowCard)
-	const {metrics: liveMetrics, isLoading, failure: scrapeFailure, refetch: refetchMetrics} = useLiveMetrics(instance, {keyPrefix: 'system-usage-realtime', refetchInterval: 10000});
+	const {metrics: liveMetrics, isLoading, failure: scrapeFailure, refetch: refetchMetrics} = useLiveMetrics(instance);
 
 	// Get system info separately using useStatus hook
 	const {processAttr, systemInfo, filesystemAttr} = useStatus(instance);
