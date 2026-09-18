@@ -1080,5 +1080,10 @@
 	"This gateway queues admission overflow but does not export the overflow-shed counter, which is the only drop counter its configuration can reach. Requests may be being dropped with no metric recording it. Upgrade the gateway to observe admission drops.": "このゲートウェイはアドミッション溢れをキューイングしますが、現在の設定で唯一作動しうるドロップカウンターであるオーバーフロー・ドロップカウンターをエクスポートしません。リクエストがドロップされていても、それを記録するメトリクスがありません。アドミッションのドロップを観測するにはゲートウェイをアップグレードしてください。",
 	"This valve cannot fire under the current queue-depth setting, so its zero is expected and says nothing about whether requests were dropped.": "現在のキュー深度設定ではこのバルブは作動しないため、0は想定どおりであり、リクエストがドロップされたかどうかについては何も示しません。",
 	"across both valves, of which one is armed": "2つのバルブの合計(うち1つのみ有効)",
-	"{{n}} requests have been dropped by the admission layer since this gateway started, each answered with a retriable 429. The prefill pool is running out of capacity — add prefill endpoints, raise the per-endpoint in-flight cap, or enable queueing to absorb bursts.": "このゲートウェイの起動以降、アドミッション層が{{n}}件のリクエストをドロップし、それぞれリトライ可能な429で応答しました。プリフィルプールの容量が不足しています — プリフィルエンドポイントを追加する、エンドポイントごとのin-flight上限を引き上げる、またはバーストを吸収するようキューイングを有効にしてください。"
+	"{{n}} requests have been dropped by the admission layer since this gateway started, each answered with a retriable 429. The prefill pool is running out of capacity — add prefill endpoints, raise the per-endpoint in-flight cap, or enable queueing to absorb bursts.": "このゲートウェイの起動以降、アドミッション層が{{n}}件のリクエストをドロップし、それぞれリトライ可能な429で応答しました。プリフィルプールの容量が不足しています — プリフィルエンドポイントを追加する、エンドポイントごとのin-flight上限を引き上げる、またはバーストを吸収するようキューイングを有効にしてください。",
+	"No data yet — these metrics appear the first time the feature is used.": "まだデータがありません — これらのメトリクスは機能を最初に使用した時点で現れます。",
+	"No data yet: {{precondition}}": "まだデータがありません: {{precondition}}",
+	"No data, and these metrics should always be exported — the gateway may be older than them, or not exporting them. This is worth reporting.": "データがありませんが、これらのメトリクスは常にエクスポートされるべきものです — ゲートウェイがこれらより古いか、エクスポートしていない可能性があります。報告すべき事象です。",
+	"No data, and this build cannot tell whether that is expected for these metrics.": "データがなく、このビルドではそれがこれらのメトリクスにとって想定どおりかを判断できません。",
+	"No data: these metrics are behind a datapath or hardware gate that is not enabled on this instance.": "データがありません: これらのメトリクスは、このインスタンスで有効化されていないデータパスまたはハードウェアのゲートの背後にあります。"
 }

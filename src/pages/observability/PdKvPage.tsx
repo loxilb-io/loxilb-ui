@@ -25,13 +25,15 @@ import {pdAdmission} from 'observability/pdAdmission';
 import {pdTierGates, pdTierMix} from 'observability/pdTiers';
 import {selectSamples, selectScalar} from 'observability/selectors';
 import {familySumRate, rateMaxGapMs} from 'observability/snapshotRates';
-import {CadenceSelector, PanelPaper, StatRow, formatRate, useObservabilityApplicable} from './common';
+import {CadenceSelector, PanelPaper, StatRow, formatRate, useAbsenceExplanation, useObservabilityApplicable} from './common';
 
 export default function PdKvPage() {
 	const {t} = useTranslation();
 	const instance = useInstanceFromURL();
 	const applicable = useObservabilityApplicable('page.pdKv');
 	const {snapshot, history, isLoading, cadenceMs, refetch} = useMetricsSnapshot(applicable ? instance : null);
+	// Stage 3.5: let the no-data state say WHY, from the manifest contract.
+	const absence = useAbsenceExplanation('page.pdKv', snapshot);
 	const maxGap = rateMaxGapMs(cadenceMs);
 
 	// Which routing tiers this gateway's rules can reach. Read defensively:
@@ -98,7 +100,7 @@ export default function PdKvPage() {
 				<CadenceSelector />
 			</Box>
 
-			<ObservabilityStateFrame state={state} name={t('P/D & KV Cache')} onRetry={refetchAll}>
+			<ObservabilityStateFrame state={state} absence={absence} name={t('P/D & KV Cache')} onRetry={refetchAll}>
 				<Grid container spacing={2}>
 					<Grid item xs={12}>
 						<PanelPaper title={t('Prefill routing tier mix')}>

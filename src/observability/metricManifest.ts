@@ -48,6 +48,83 @@ export type DefinitionMechanism = 'promauto' | 'manual' | 'desc' | 'direct';
 
 const DEFINITION_MECHANISMS: ReadonlySet<string> = new Set(['promauto', 'manual', 'desc', 'direct']);
 
+// How confident the gateway's own contract is that a family WORKS. Stage 3.5.
+//
+// ⚠️ This answers a DIFFERENT question from `activation`, and conflating the
+// two is the trap this stage exists to avoid:
+//   `activation` (+ precondition) -> is ABSENCE expected?
+//   `implementationStatus`        -> how much is a PRESENT value worth?
+// A `writer-mapped` family is registered exactly as eagerly as a
+// `verified-runtime` one; the difference is that nothing has ever proven its
+// writer fires. So it informs how to caption a zero, never whether a missing
+// series is a fault.
+export type ImplementationStatus =
+	// Observed incrementing on a live bed.
+	| 'verified-runtime'
+	// Proven by unit test / source reading, not on a bed.
+	| 'verified-static'
+	// Has a proven writer, and needs `activationPrecondition` to hold first.
+	// ⭐ The generator REFUSES this status without a precondition, so the text
+	// is always there for these (69/69 in the vendored manifest).
+	| 'conditional-with-proven-writer'
+	// A writer was located but never verified to fire.
+	| 'writer-mapped'
+	// Deny sentinel for an upstream token this build does not know.
+	| 'unknown';
+
+const IMPLEMENTATION_STATUSES: ReadonlySet<string> = new Set([
+	'verified-runtime',
+	'verified-static',
+	'conditional-with-proven-writer',
+	'writer-mapped',
+]);
+
+/**
+ * What the `activation` code says about when a family reaches the exposition.
+ *
+ * The codes are the gateway overlay's own vocabulary
+ * (`deploy/monitoring/ci/manifest-overlay.json`, `_comment`):
+ * `E` eager scalar · `V` lazy vector children · `P` pre-created children ·
+ * `C` QoS custom collector (sample-lazy) · `H` eager TTFB histogram ·
+ * `Q` quota-lazy collector · `DP` datapath-gated scalar · `D` runtime
+ * DPU-gated · `BD` doca-build-gated · `T` TTFT-window-lazy · `S`
+ * startup-created child. Combined codes (`D+P`) apply both behaviours.
+ */
+export type ActivationKind =
+	// Registered at init: the family is in the exposition from process start,
+	// so its ABSENCE is not laziness. ⚠️ See `activationPrecondition` — an
+	// eager COLLECTOR can still emit no series until its precondition holds.
+	| 'eager'
+	// A child exists only once written, so absence is expected until used.
+	| 'lazy'
+	// Behind a datapath / DPU / build gate the UI cannot see.
+	| 'gated'
+	// Unrecognised code — deny rather than guess.
+	| 'unknown';
+
+const EAGER_CODES: ReadonlySet<string> = new Set(['E', 'H', 'P', 'S']);
+const LAZY_CODES: ReadonlySet<string> = new Set(['V', 'C', 'Q', 'T']);
+const GATED_CODES: ReadonlySet<string> = new Set(['D', 'DP', 'BD']);
+
+/**
+ * Map an `activation` code to its kind.
+ *
+ * ⚠️ Precedence is GATED > LAZY > EAGER for a combined code. A closed gate
+ * makes a family absent no matter how eagerly it would otherwise register, so
+ * reading `D+P` as "pre-created, must be present" would turn a correctly
+ * gated-off family into a reported fault.
+ */
+export function activationKindOf(code: string): ActivationKind {
+	const parts = code.split('+').map(p => p.trim()).filter(p => p.length > 0);
+	if (parts.length === 0) return 'unknown';
+	// An unrecognised part denies the whole code: a code this build cannot
+	// fully read must not be answered from the half it happens to know.
+	if (parts.some(p => !EAGER_CODES.has(p) && !LAZY_CODES.has(p) && !GATED_CODES.has(p))) return 'unknown';
+	if (parts.some(p => GATED_CODES.has(p))) return 'gated';
+	if (parts.some(p => LAZY_CODES.has(p))) return 'lazy';
+	return 'eager';
+}
+
 export interface IManifestFamily {
 	name: string;
 	owner: string;
@@ -59,9 +136,35 @@ export interface IManifestFamily {
 	definitionMechanism: DefinitionMechanism;
 	labels: string[];
 	activation: string;
+	/** Derived from `activation`; see `activationKindOf`. */
+	activationKind: ActivationKind;
+	/**
+	 * What must be true before this family emits anything, verbatim from the
+	 * manifest; `''` when unconditional.
+	 *
+	 * ⚠️⚠️ NOT implied by `activationKind`. 14 gateway-scrape families are
+	 * EAGER and still carry a precondition — `loxilb_ai_jwks_*` is registered
+	 * at init but emits one series per configured JWT profile, so with no
+	 * profile the family is legitimately absent. Any reading of absence must
+	 * therefore check the precondition BEFORE the activation kind.
+	 */
+	activationPrecondition: string;
+	implementationStatus: ImplementationStatus;
+	/** Present when implementationStatus is 'unknown': the raw token. */
+	rawImplementationStatus?: string;
 	priority: string;
 	privacy: string;
 	waiver: string;
+}
+
+/** Normalize the upstream status token, denying anything unrecognised. */
+export function normalizeImplementationStatus(upstream: string | undefined): Pick<IManifestFamily, 'implementationStatus' | 'rawImplementationStatus'> {
+	if (upstream !== undefined && IMPLEMENTATION_STATUSES.has(upstream)) {
+		return {implementationStatus: upstream as ImplementationStatus};
+	}
+	// A manifest vendored before the field existed lands here too, which is
+	// correct: "this build cannot tell" rather than a fabricated status.
+	return {implementationStatus: 'unknown', rawImplementationStatus: upstream ?? ''};
 }
 
 // Pinned runtime types for the custom-collector (`desc`) families: the
@@ -169,6 +272,9 @@ interface IVendoredFamily {
 	definition_mechanism?: string;
 	labels: string[];
 	activation: string;
+	// Both absent in manifests vendored before the writer-status wave.
+	activation_precondition?: string;
+	implementation_status?: string;
 	priority: string;
 	privacy: string;
 	waiver: string;
@@ -189,6 +295,9 @@ const families: ReadonlyMap<string, IManifestFamily> = new Map(
 		...normalizeManifestType(f.name, f.type, f.definition_mechanism),
 		labels: f.labels,
 		activation: f.activation,
+		activationKind: activationKindOf(f.activation),
+		activationPrecondition: f.activation_precondition ?? '',
+		...normalizeImplementationStatus(f.implementation_status),
 		priority: f.priority,
 		privacy: f.privacy,
 		waiver: f.waiver,

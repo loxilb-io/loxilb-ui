@@ -2,10 +2,12 @@ import {describe, expect, it} from 'vitest';
 import envelope from '../api/gen/metric-manifest.json';
 import {
 	DESC_RUNTIME_TYPES,
+	activationKindOf,
 	allManifestFamilies,
 	getManifestFamily,
 	isGatewayScrapeFamily,
 	manifestEnvelope,
+	normalizeImplementationStatus,
 	normalizeManifestType,
 } from './metricManifest';
 
@@ -285,5 +287,109 @@ describe('desc normalization (definition mechanism vs runtime type)', () => {
 		expect(normalizeManifestType('loxilb_x', 'untyped')).toEqual({
 			runtimeType: 'untyped', definitionMechanism: 'direct',
 		});
+	});
+});
+
+//---------------------------------------------------------
+// Stage 3.5 — activation kind and implementation status
+//---------------------------------------------------------
+
+describe('activationKindOf', () => {
+	it('maps the overlay vocabulary to when a family reaches the exposition', () => {
+		// Codes from deploy/monitoring/ci/manifest-overlay.json's own _comment.
+		for (const eager of ['E', 'H', 'P', 'S']) expect(activationKindOf(eager), eager).toBe('eager');
+		for (const lazy of ['V', 'C', 'Q', 'T']) expect(activationKindOf(lazy), lazy).toBe('lazy');
+		for (const gated of ['D', 'DP', 'BD']) expect(activationKindOf(gated), gated).toBe('gated');
+	});
+
+	it('⭐ ranks a gate above eagerness in a combined code', () => {
+		// A closed gate makes a family absent no matter how eagerly it would
+		// register, so reading `D+P` as "pre-created, must be present" would
+		// turn a correctly gated-off family into a reported fault.
+		expect(activationKindOf('D+P')).toBe('gated');
+		expect(activationKindOf('D+E')).toBe('gated');
+		expect(activationKindOf('BD+P')).toBe('gated');
+		expect(activationKindOf('D+V')).toBe('gated');
+	});
+
+	it('⚠️ denies a code containing any part it does not know', () => {
+		// Answering from the half it recognises would adopt an unreviewed
+		// upstream behaviour silently — the same deny-by-default rule the
+		// runtime-type union follows.
+		expect(activationKindOf('E+Z')).toBe('unknown');
+		expect(activationKindOf('Z')).toBe('unknown');
+		expect(activationKindOf('')).toBe('unknown');
+		expect(activationKindOf('+')).toBe('unknown');
+	});
+});
+
+describe('normalizeImplementationStatus', () => {
+	it('accepts the four upstream statuses and denies anything else', () => {
+		for (const ok of ['verified-runtime', 'verified-static', 'conditional-with-proven-writer', 'writer-mapped']) {
+			expect(normalizeImplementationStatus(ok), ok).toEqual({implementationStatus: ok});
+		}
+		expect(normalizeImplementationStatus('provisional')).toEqual({
+			implementationStatus: 'unknown', rawImplementationStatus: 'provisional',
+		});
+	});
+
+	it('reads a manifest that predates the field as unknown, not as verified', () => {
+		// "This build cannot tell" is the honest answer; inventing a status
+		// would let an unverified family caption itself as proven.
+		expect(normalizeImplementationStatus(undefined)).toEqual({
+			implementationStatus: 'unknown', rawImplementationStatus: '',
+		});
+	});
+});
+
+describe('the real vendored manifest carries Stage 3.5 metadata', () => {
+	const gateway = allManifestFamilies().filter(f => isGatewayScrapeFamily(f.name));
+
+	it('classifies the activation of every gateway-scrape family', () => {
+		// An 'unknown' here means a re-vendor introduced an activation code
+		// this build cannot read — which silently degrades every absence
+		// explanation, so it must fail the build instead.
+		const unknown = gateway.filter(f => f.activationKind === 'unknown').map(f => `${f.name}=${f.activation}`);
+		expect(unknown).toEqual([]);
+	});
+
+	it('gives every gateway-scrape family a known implementation status', () => {
+		const unknown = gateway.filter(f => f.implementationStatus === 'unknown').map(f => f.name);
+		expect(unknown).toEqual([]);
+	});
+
+	it('⭐ upholds the generator rule that a conditional status carries a precondition', () => {
+		// gen-metric-manifest.py fails on "conditional status with no
+		// activation precondition", so `absenceReading` can rely on the text
+		// being there for these. Pinned here because the UI depends on it.
+		const missing = gateway
+			.filter(f => f.implementationStatus === 'conditional-with-proven-writer' && f.activationPrecondition.trim() === '')
+			.map(f => f.name);
+		expect(missing).toEqual([]);
+	});
+
+	it('⚠️⚠️ still has EAGER families that carry a precondition', () => {
+		// The ordering trap absenceReading exists for: eager does NOT mean
+		// always-present. If this ever becomes empty, the precondition-first
+		// ordering is no longer load-bearing and the reasoning should be
+		// re-read rather than the test deleted.
+		const eagerConditional = gateway.filter(f => f.activationKind === 'eager' && f.activationPrecondition.trim() !== '');
+		expect(eagerConditional.length).toBeGreaterThan(0);
+		// The JWKS set is the known example, and the one that cost Stage 3.1 a
+		// false-alarm design.
+		expect(eagerConditional.map(f => f.name)).toContain('loxilb_ai_jwks_keys');
+	});
+
+	it('pins the admission families as eager, matching the live gateway', () => {
+		// Observed on the testbed: all three present at 0 from process start.
+		for (const name of [
+			'loxilb_pd_admission_shed_total',
+			'loxilb_pd_admission_queued_total',
+			'loxilb_pd_admission_overflow_shed_total',
+		]) {
+			const f = getManifestFamily(name);
+			expect(f?.activationKind, name).toBe('eager');
+			expect(f?.activationPrecondition, name).toBe('');
+		}
 	});
 });

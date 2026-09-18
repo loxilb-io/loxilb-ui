@@ -21,7 +21,7 @@ import {useTranslation} from 'react-i18next';
 import {estimateQuantile, mergeHistogramSeries} from 'observability/histogram';
 import {selectSamples, selectScalar} from 'observability/selectors';
 import {familySumRate, groupRates, rateMaxGapMs} from 'observability/snapshotRates';
-import {CadenceSelector, PanelPaper, StatRow, formatRate, useObservabilityApplicable} from './common';
+import {CadenceSelector, PanelPaper, StatRow, formatRate, useAbsenceExplanation, useObservabilityApplicable} from './common';
 
 // Panel-group scopes. Every group is gateway-only today; 'parity-conditional'
 // marks the groups the plan expects to become common once upstream OSS
@@ -49,6 +49,8 @@ export default function SecurityPage() {
 	const instance = useInstanceFromURL();
 	const applicable = useObservabilityApplicable('page.security');
 	const {snapshot, history, isLoading, cadenceMs, refetch} = useMetricsSnapshot(applicable ? instance : null);
+	// Stage 3.5: let the no-data state say WHY, from the manifest contract.
+	const absence = useAbsenceExplanation('page.security', snapshot);
 	const maxGap = rateMaxGapMs(cadenceMs);
 
 	const ruleDrops = useMemo(() => (snapshot ? groupRates(history, 'loxilb_fw_rule_drop_packets_total', ['fw_rule'], maxGap) : []), [snapshot, history, maxGap]);
@@ -108,7 +110,7 @@ export default function SecurityPage() {
 				<CadenceSelector />
 			</Box>
 
-			<ObservabilityStateFrame state={state} name={t('Security')} onRetry={refetch}>
+			<ObservabilityStateFrame state={state} absence={absence} name={t('Security')} onRetry={refetch}>
 				<Grid container spacing={2}>
 					<Grid item xs={12} md={6}>
 						<PanelPaper title={t('Connection protection')}>
