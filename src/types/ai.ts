@@ -347,3 +347,121 @@ export function validateUserRateLimit(data: IUserRateLimitMod): string[] {
 
 	return errors;
 }
+
+//---------------------------------------------------------
+// Rate-limit defaults (/config/ai/ratelimit/defaults) — Stage 4.2b
+//---------------------------------------------------------
+// Level 3 of the QoS ladder: the row an identity falls through to when it has
+// no explicit entry of its own. Two scopes, and the `rule` row overrides the
+// `global` row FIELD-WISE for one service (`resolveQoSDefaults`) rather than
+// replacing it.
+//
+// ⚠️⚠️ THE POST IS A WHOLE-ROW REPLACE, NOT A FIELD MERGE — verified against
+// the running gateway, and it is the one mistake here that reports success
+// while destroying configuration. Posting `{scope:'global',
+// default_user_tpm:5000}` over a row holding `default_user_rps:7` left the
+// stored row as `{default_user_tpm:5000}` alone: the request limit was GONE,
+// and the 204 said nothing about it. ⇒ An editor must send all six limit
+// fields every time, seeded from the row it read. `default_user_tpm` merging
+// into the existing row is the intuition to distrust.
+//
+// ⚠️ `rule_ident` PRESENCE IS VALIDATED ON BOTH SIDES, which the read path does
+// not prepare you for: GET ignores a stray `rule_ident` on scope `global`
+// (proven: it served the global row anyway), but POST REFUSES one —
+// 400 `scope 'global' does not take a rule_ident`, `fields:["rule_ident"]`.
+// An EMPTY STRING is accepted on `global` (204), so the projection below
+// omits the field entirely rather than relying on that.
+//
+// ⚠️ An unknown scope is refused by the SWAGGER layer, not the handler: HTTP
+// 422 with `{"code":606}`, not the 400 class every other rejection here uses.
+// The UI constrains the control to the two legal values so that class cannot
+// be reached from the form.
+
+export type IRateLimitDefaultsMod = GwSchema<'RateLimitDefaultsMod'>;
+
+export type RateLimitDefaultsScope = IRateLimitDefaultsMod['scope'];
+
+export const RATE_LIMIT_DEFAULTS_SCOPES: readonly RateLimitDefaultsScope[] = ['global', 'rule'] as const;
+
+/**
+ * The six limit fields of a defaults row, in the contract's own order.
+ *
+ * ⭐ Exported because THREE things must agree about this set and would
+ * otherwise drift: the all-zero check, the whole-row projection the form
+ * sends, and the confirm predicate that reads it back.
+ */
+export const RATE_LIMIT_DEFAULTS_LIMIT_FIELDS = [
+	'default_user_rps',
+	'default_user_tpm',
+	'default_tenant_rps',
+	'default_tenant_tpm',
+	'vip_shared_rps',
+	'vip_shared_tpm',
+] as const;
+
+export type RateLimitDefaultsLimitField = typeof RATE_LIMIT_DEFAULTS_LIMIT_FIELDS[number];
+
+/**
+ * Whether this row constrains nothing. The gateway's own rule, not a UI
+ * preference: it answers 400 "a defaults entry must set at least one non-zero
+ * limit (zero falls through; use DELETE to remove the row)".
+ *
+ * ⚠️ Note the wording differs from the user endpoint's ("...use DELETE to
+ * remove limits"), so the two messages are not interchangeable.
+ */
+export function rateLimitDefaultsIsAllZero(data: IRateLimitDefaultsMod): boolean {
+	return !RATE_LIMIT_DEFAULTS_LIMIT_FIELDS.some(field => (data[field] ?? 0) > 0);
+}
+
+/**
+ * Project a draft onto the wire shape.
+ *
+ * ⚠️ `rule_ident` is carried ONLY for scope `rule`. Sending it on `global` is
+ * refused outright, and an operator who types a service name and then switches
+ * the scope back to global would otherwise post an unsendable body.
+ */
+export function normalizeRateLimitDefaults(data: IRateLimitDefaultsMod): IRateLimitDefaultsMod {
+	const {rule_ident, ...rest} = data;
+	const ident = (rule_ident ?? '').trim();
+	return {
+		...rest,
+		...(data.scope === 'rule' && ident.length > 0 ? {rule_ident: ident} : {}),
+	};
+}
+
+export function validateRateLimitDefaults(data: IRateLimitDefaultsMod): string[] {
+	const normalized = normalizeRateLimitDefaults(data);
+	const errors: string[] = [];
+
+	if (!RATE_LIMIT_DEFAULTS_SCOPES.includes(normalized.scope)) {
+		errors.push('Scope must be either global or rule.');
+	}
+
+	const ident = (data.rule_ident ?? '').trim();
+	if (normalized.scope === 'rule') {
+		// The gateway names the field: 400 with fields:["rule_ident"].
+		const identError = qosIdentityError(ident);
+		if (identError) errors.push(`Service: ${identError}`);
+	} else if (ident.length > 0) {
+		// Caught here rather than let through, because the projection drops it
+		// and the operator would otherwise see their typed service name vanish
+		// from a row that saved "successfully" as a global default.
+		errors.push('A global defaults row applies everywhere and cannot name a service. Choose the rule scope to limit it to one.');
+	}
+
+	for (const field of RATE_LIMIT_DEFAULTS_LIMIT_FIELDS) {
+		const value = normalized[field];
+		if (value !== undefined && !isNonNegativeSafeInteger(value)) {
+			// The gateway refuses the whole body with "rate limit values must
+			// not be negative", so naming the field is the UI's contribution.
+			errors.push(`${field} must be a non-negative integer.`);
+		}
+	}
+
+	// Checked last, so a malformed identity reports as itself.
+	if (errors.length === 0 && rateLimitDefaultsIsAllZero(normalized)) {
+		errors.push('Set at least one non-zero limit. A zero falls through to the next level of the ladder, so an all-zero row asks for nothing — delete the row instead.');
+	}
+
+	return errors;
+}

@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {API_KEY_PATCH_FIELDS, RESERVED_QOS_IDENTITY_PREFIXES, apiKeyPatchIsEmpty, normalizeTenantRateLimit, normalizeUserRateLimit, qosIdentityError, reconcileTenantModelLimits, userRateLimitIsAllZero, validateApiKeyPatch, validateTenantRateLimit, validateUserRateLimit} from './ai';
+import {API_KEY_PATCH_FIELDS, IRateLimitDefaultsMod, RATE_LIMIT_DEFAULTS_LIMIT_FIELDS, RESERVED_QOS_IDENTITY_PREFIXES, apiKeyPatchIsEmpty, normalizeRateLimitDefaults, normalizeTenantRateLimit, normalizeUserRateLimit, qosIdentityError, rateLimitDefaultsIsAllZero, reconcileTenantModelLimits, userRateLimitIsAllZero, validateApiKeyPatch, validateRateLimitDefaults, validateTenantRateLimit, validateUserRateLimit} from './ai';
 
 describe('tenant per-model quota contract', () => {
 	describe('edit reconciliation', () => {
@@ -335,5 +335,61 @@ describe('per-user rate limit contract', () => {
 			expect(validateUserRateLimit(entry({rps: -1}))).not.toEqual([]);
 			expect(validateUserRateLimit(entry({tokens_per_min: 1.5}))).not.toEqual([]);
 		});
+	});
+});
+
+describe('rate-limit defaults contract (Stage 4.2b)', () => {
+	const row = (over: Partial<IRateLimitDefaultsMod> = {}): IRateLimitDefaultsMod => ({
+		scope: 'global',
+		default_user_rps: 0,
+		default_user_tpm: 0,
+		default_tenant_rps: 0,
+		default_tenant_tpm: 0,
+		vip_shared_rps: 0,
+		vip_shared_tpm: 0,
+		...over,
+	});
+
+	it('refuses a global row that names a service', () => {
+		// GET ignores a stray rule_ident on the global scope, so the read path
+		// gives no warning; POST answers 400 `scope 'global' does not take a
+		// rule_ident`. Refused here so the typed service cannot silently vanish.
+		expect(validateRateLimitDefaults(row({rule_ident: 'svc-1', default_user_rps: 5})))
+			.toContainEqual(expect.stringMatching(/cannot name a service/i));
+	});
+
+	it('requires a service on the rule scope', () => {
+		expect(validateRateLimitDefaults(row({scope: 'rule', default_user_rps: 5})))
+			.toContainEqual(expect.stringMatching(/Service:/));
+	});
+
+	it('refuses the identities the gateway refuses, but only as a prefix', () => {
+		// The gateway answers 400 with fields:["rule_ident"] for both of these.
+		expect(validateRateLimitDefaults(row({scope: 'rule', rule_ident: 'uq:x', default_user_rps: 5}))).not.toEqual([]);
+		expect(validateRateLimitDefaults(row({scope: 'rule', rule_ident: 'a|b', default_user_rps: 5}))).not.toEqual([]);
+		// ⭐ A reserved token INSIDE the name is legal — verified live (204).
+		expect(validateRateLimitDefaults(row({scope: 'rule', rule_ident: 'svc-uq:1', default_user_rps: 5}))).toEqual([]);
+	});
+
+	it('refuses an all-zero row and names delete as the remedy', () => {
+		const errors = validateRateLimitDefaults(row());
+		expect(errors).toHaveLength(1);
+		expect(errors[0]).toMatch(/delete the row/i);
+	});
+
+	it('counts any single positive limit as a limit', () => {
+		for (const field of RATE_LIMIT_DEFAULTS_LIMIT_FIELDS) {
+			expect(rateLimitDefaultsIsAllZero(row({[field]: 1}))).toBe(false);
+		}
+		expect(rateLimitDefaultsIsAllZero(row())).toBe(true);
+	});
+
+	it('strips a service from the global scope but keeps it on the rule scope', () => {
+		expect(normalizeRateLimitDefaults(row({rule_ident: 'svc-1', default_user_rps: 5})).rule_ident).toBeUndefined();
+		expect(normalizeRateLimitDefaults(row({scope: 'rule', rule_ident: ' svc-1 ', default_user_rps: 5})).rule_ident).toBe('svc-1');
+	});
+
+	it('refuses a negative limit rather than let the gateway reject the whole body', () => {
+		expect(validateRateLimitDefaults(row({default_user_rps: -1}))).not.toEqual([]);
 	});
 });

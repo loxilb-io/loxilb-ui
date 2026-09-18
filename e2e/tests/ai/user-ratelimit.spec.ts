@@ -7,12 +7,17 @@
 // 503. The readiness probe still gates it, so this skips rather than fails on
 // a gateway without one.
 //
-// ⚠️ THE PAGE NOW HAS TWO GRIDS, and the shared helpers (`grid`,
+// ⚠️ THE PAGE HAS THREE GRIDS, and the shared helpers (`grid`,
 // `toolbarButton`, `rowByText`) all resolve `.first()` — i.e. the TENANT table
-// above. Every locator here is therefore scoped through the toolbar buttons'
-// `aria-label`, which DataTable builds from its `name` ("Add AI User Rate
-// Limits"), and through the user grid's own root. Using the bare helpers in
-// this file would silently drive the wrong table.
+// above. Every locator here is therefore scoped by RESOURCE NAME through
+// `data-table`, which DataTable stamps from its `name` prop. Using the bare
+// helpers in this file would silently drive the wrong table.
+//
+// ⚠️⚠️ THIS FILE USED `.MuiDataGrid-root` `.last()` AND STAGE 4.2b BROKE IT by
+// adding the defaults table BELOW this section — `.last()` then resolved to
+// that grid, and this spec would have driven it while still reporting on
+// "the user table". A positional locator is a claim about page layout that no
+// test states and no reviewer checks; `data-table` cannot drift that way.
 //---------------------------------------------------------
 import type {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
@@ -27,13 +32,14 @@ const RUN_ID = `${Date.now().toString(36)}-${process.pid}`;
 let instName: string;
 let readiness: AIManagementReadiness;
 
-// The user table is the SECOND DataTable on the page. Scope by its name.
-const userToolbar = (page: Page, action: string): Locator =>
-	page.getByRole('button', {name: `${action} AI User Rate Limits`});
+// Everything in this file hangs off the ONE table named "AI User Rate Limits",
+// wherever it sits on the page.
+const userTable = (page: Page): Locator => page.locator('[data-table="AI User Rate Limits"]');
 
-// The user grid: the last grid root on the page, since the section renders
-// below the tenant table.
-const userGrid = (page: Page): Locator => page.locator('.MuiDataGrid-root').last();
+const userToolbar = (page: Page, action: string): Locator =>
+	userTable(page).getByRole('button', {name: `${action} AI User Rate Limits`});
+
+const userGrid = (page: Page): Locator => userTable(page).locator('.MuiDataGrid-root');
 
 const userRow = (page: Page, text: string | RegExp): Locator =>
 	userGrid(page).locator('.MuiDataGrid-row').filter({hasText: text});
