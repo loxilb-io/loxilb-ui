@@ -45,8 +45,8 @@ import {toPageState} from 'components/state/pageState';
 export default function AITenantRateLimitPage() {
 	const inst = useInstanceFromURL();
 
-	const {data: apiKeys} = useApiKeys(inst);
-	const {data: loadBalancers} = useLoadBalancerConfig(inst);
+	const {data: apiKeys, refetch: refetchApiKeys} = useApiKeys(inst);
+	const {data: loadBalancers, refetch: refetchLb} = useLoadBalancerConfig(inst);
 	const [extraTenants, setExtraTenants] = useState<string[]>([]);
 
 	const tenants = React.useMemo(() => {
@@ -74,13 +74,13 @@ export default function AITenantRateLimitPage() {
 	// operator who has just set a limit here is exactly the person who needs
 	// to be told it is not in force.
 	const quotaApplicable = useObservabilityApplicable('panel.tokenQuota');
-	const {snapshot} = useMetricsSnapshot(quotaApplicable ? inst : null);
+	const {snapshot, refetch: refetchMetrics} = useMetricsSnapshot(quotaApplicable ? inst : null);
 	const defaults_query = useQueryInstanceData(
 		['ai_ratelimit_defaults'],
 		instance => query_get_ratelimit_defaults(instance),
 		quotaApplicable ? inst : null,
 	);
-	const {data: jwtProfiles} = useJWTAuthProfiles(quotaApplicable ? inst : null);
+	const {data: jwtProfiles, refetch: refetchJwtProfiles} = useJWTAuthProfiles(quotaApplicable ? inst : null);
 
 	const quota = useMemo(() => {
 		const read = defaults_query.data;
@@ -214,7 +214,34 @@ export default function AITenantRateLimitPage() {
 
 	const handleRefresh = () => {
 		set_selected_rows([]);
+		// ⚠️⚠️ EVERY dependency, not just the rate-limit rows. Refreshing only
+		// `refetch()` is the defect #106 fixed on the JWT page and this page
+		// repeated: the table's rows are the one thing on this page that is
+		// NOT the whole story, and each stale companion read makes the page
+		// assert something false with no operator control able to correct it.
 		refetch();
+		// The tenant set is derived from the tenants seen on API keys (there is
+		// no list-all for tenant rate limits), so a key created elsewhere —
+		// another console, or the API-key page in this session — never joins
+		// the list and its tenant's limit stays invisible.
+		refetchApiKeys();
+		// Gates the "enforcement is not proven" warning below. An operator can
+		// attach a policy that requires data-plane API keys, press Refresh, and
+		// still be told their quotas are inert.
+		refetchLb();
+		// ⭐ Added by Stage 3.6 and NOT in the stage brief, which predates it.
+		// This read carries the quota store's STATE, which is the token-quota
+		// panel's entire finding: leaving it stale means an operator who has
+		// just configured (or lost) the quota store is shown the previous
+		// verdict — including "quotas are not enforced" after they have been.
+		defaults_query.refetch();
+		// Decides whether the user-identity scopes can ever report. Creating a
+		// JWT auth profile is exactly what changes that answer.
+		refetchJwtProfiles();
+		// Same reasoning one step further, matching the JWT page: an operator
+		// pressing Refresh after setting a limit expects the utilization
+		// verdict to move too, not just the configuration rows.
+		refetchMetrics();
 	};
 
 	return (
