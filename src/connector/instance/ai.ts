@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {IApiKeyCreateRequest, IApiKeyCreateResponse, IApiKeyPatch, IApiKeySummary, IRateLimitDefaultsEntry, ITenantRateLimitEntry, ITenantRateLimitMod, IUserRateLimitEntry, IUserRateLimitMod, normalizeTenantRateLimit, normalizeUserRateLimit, validateApiKeyPatch, validateTenantRateLimit, validateUserRateLimit} from 'types/ai';
+import {IApiKeyCreateRequest, IApiKeyCreateResponse, IApiKeyPatch, IApiKeySummary, IRateLimitDefaultsEntry, IRateLimitDefaultsMod, ITenantRateLimitEntry, ITenantRateLimitMod, IUserRateLimitEntry, IUserRateLimitMod, RateLimitDefaultsScope, normalizeRateLimitDefaults, normalizeTenantRateLimit, normalizeUserRateLimit, validateApiKeyPatch, validateRateLimitDefaults, validateTenantRateLimit, validateUserRateLimit} from 'types/ai';
 import {QuotaStoreState, storeStateFromError} from 'observability/tokenQuota';
 import {IInstance} from 'types/oam';
 import {assertOk} from '../fetcher/fetcher_base';
@@ -327,4 +327,101 @@ export async function query_get_ratelimit_defaults(instance: IInstance, rule_ide
 		if (ruleResp.code === 200) ruleRow = (ruleResp.data as IRateLimitDefaultsEntry | undefined) ?? null;
 	}
 	return {storeState: 'readable', global: globalRow, rule: ruleRow};
+}
+
+/**
+ * Read a set of per-rule defaults rows (Stage 4.2b).
+ *
+ * ⚠️ THERE IS NO LIST-ALL for rule rows: `GET /config/ai/ratelimit/defaults/rule`
+ * without a `rule_ident` answers 404, not a collection. So the rows a page can
+ * show are exactly the services it was told to ask about — the same
+ * "reachable but not enumerable" shape as `query_get_tenant_ratelimits_for`,
+ * whose structure this mirrors deliberately.
+ *
+ * A service with no row simply contributes nothing (404 is the normal answer
+ * for "this service uses the global defaults").
+ */
+export async function query_get_ratelimit_defaults_for(instance: IInstance, rule_idents: string[]): Promise<IRateLimitDefaultsEntry[]> {
+	const unique = Array.from(new Set(rule_idents.map(id => id.trim()).filter(id => id.length > 0)));
+	const entries = await Promise.all(
+		unique.map(async ident => {
+			const resp = await GET_INST<GwGetResp<'/config/ai/ratelimit/defaults/{scope}'>>(
+				instance,
+				`/config/ai/ratelimit/defaults/rule`,
+				{rule_ident: ident},
+			);
+			if (resp.code === 404) return null;
+			assertOk(resp, 'Get Rate Limit Defaults');
+			return (resp.data as IRateLimitDefaultsEntry | undefined) ?? null;
+		}),
+	);
+	return entries.filter((e): e is IRateLimitDefaultsEntry => e !== null);
+}
+
+/**
+ * Create or replace one defaults row (Stage 4.2b).
+ *
+ * ⚠️⚠️ THIS REPLACES THE WHOLE ROW. The gateway does not merge the body into
+ * the stored row: a limit the body omits is CLEARED, and the 204 reports
+ * success either way. Verified live — posting only `default_user_tpm` over a
+ * row that held `default_user_rps` left the rps limit gone. ⇒ Callers must
+ * send the complete six-field row they intend to exist, which is why
+ * `RATE_LIMIT_DEFAULTS_LIMIT_FIELDS` is a shared constant rather than a set
+ * each caller assembles.
+ *
+ * ⚠️ An all-zero row is refused (400) because every zero falls through to the
+ * next ladder level, so the row would constrain nothing. The remedy the
+ * gateway names is DELETE, and `validateRateLimitDefaults` says so client-side
+ * before the request is made.
+ */
+export async function request_set_ratelimit_defaults(instance: IInstance, data: IRateLimitDefaultsMod): Promise<OpResult> {
+	// ⚠️⚠️ VALIDATE THE RAW INPUT, NORMALIZE AFTERWARDS — the order is
+	// load-bearing and the opposite order is a silent accept. Normalization
+	// DROPS a `rule_ident` that the global scope may not carry, so validating
+	// the normalized body would destroy the very evidence the check needs: an
+	// operator who typed a service name and then switched the scope back to
+	// global would be told their row saved, with the service silently gone.
+	const errors = validateRateLimitDefaults(data);
+	if (errors.length > 0) {
+		return {status: 'invalid', code: 'ai.ratelimit_defaults.client_invalid', localeKey: STATUS_LOCALE_KEYS.invalid, retryable: false, rawDetail: errors.join(' ')};
+	}
+	const payload = normalizeRateLimitDefaults(data);
+	try {
+		return fromSimpleResponse(await POST_INST(instance, `/config/ai/ratelimit/defaults`, payload), 'ai.ratelimit_defaults.set');
+	} catch (error) {
+		return fromNetworkError('ai.ratelimit_defaults.set', error);
+	}
+}
+
+/**
+ * Remove one defaults row. Identities it governed fall through to the next
+ * ladder level, and to unlimited if nothing else applies — which is why this,
+ * not a row of zeros, is how a default is withdrawn.
+ *
+ * ⚠️ Deleting a row that does not exist answers 404, so "already gone" is
+ * distinguishable from "removed" and is NOT reported as a success here.
+ */
+export async function request_delete_ratelimit_defaults(instance: IInstance, scope: RateLimitDefaultsScope, rule_ident?: string): Promise<OpResult> {
+	const ident = (rule_ident ?? '').trim();
+	if (scope === 'rule' && ident.length === 0) {
+		// Without an ident the request degenerates into the collection URL,
+		// which answers 404 — a confusing "not found" for a row the operator
+		// can see on screen.
+		return {status: 'invalid', code: 'ai.ratelimit_defaults.client_invalid', localeKey: STATUS_LOCALE_KEYS.invalid, retryable: false, rawDetail: 'A service identifier is required to delete a rule defaults row.'};
+	}
+	// ⚠️ `DELETE_INST`'s third argument is a BODY, not a query — the gateway
+	// selects the service from the QUERY STRING, so the ident belongs in the
+	// URL. Passing it as a body would delete the wrong row: the request would
+	// degenerate to the identless URL, which answers 404.
+	const url = scope === 'rule'
+		? `/config/ai/ratelimit/defaults/rule?rule_ident=${encodeURIComponent(ident)}`
+		: `/config/ai/ratelimit/defaults/global`;
+	try {
+		return fromSimpleResponse(
+			await DELETE_INST(instance, url),
+			'ai.ratelimit_defaults.delete',
+		);
+	} catch (error) {
+		return fromNetworkError('ai.ratelimit_defaults.delete', error);
+	}
 }

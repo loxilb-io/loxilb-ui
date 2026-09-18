@@ -261,7 +261,15 @@ export default function DataTable(props: {
 	// viewport turns into visible columns. Column widths stay fixed — on sparse
 	// tables the row striping/hover just extends (AWS idiom).
 	return (
-		<Stack width="100%">
+		// ⭐ `data-table` scopes ONE table on a page that has several. It exists
+		// because the toolbar's `id="table-bar"` is a literal, so a multi-table
+		// page emits duplicate DOM ids and every positional locator
+		// (`.first()`, `.last()`, `.nth(n)`) silently re-aims when a table is
+		// added above or below — which is exactly what happened when the
+		// rate-limit page grew its third grid. Scoping by resource NAME cannot
+		// drift that way. (The duplicate id itself is left alone here: it is
+		// load-bearing for ~8 existing specs and deserves its own change.)
+		<Stack width="100%" data-table={name}>
 			{/* Labeled toolbar (AWS-console idiom): visible text + icon. Each
 			    button's aria-label stays resource-qualified ("Add Load Balancer")
 			    so E2E role queries for bare dialog buttons ("Add", exact) never

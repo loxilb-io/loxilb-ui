@@ -1,7 +1,7 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {IInstance} from 'types/oam';
 import {DELETE_INST, GET_INST, PATCH_INST, POST_INST} from '../fetcher/fetcher_inst';
-import {query_get_ratelimit_defaults, query_get_user_ratelimit, query_get_user_ratelimits, request_create_apikey, request_delete_user_ratelimit, request_patch_apikey, request_set_tenant_ratelimit, request_set_user_ratelimit} from './ai';
+import {query_get_ratelimit_defaults, query_get_ratelimit_defaults_for, query_get_user_ratelimit, query_get_user_ratelimits, request_create_apikey, request_delete_ratelimit_defaults, request_delete_user_ratelimit, request_patch_apikey, request_set_ratelimit_defaults, request_set_tenant_ratelimit, request_set_user_ratelimit} from './ai';
 
 vi.mock('../fetcher/fetcher_inst', () => ({
 	DELETE_INST: vi.fn(),
@@ -453,5 +453,105 @@ describe('user rate-limit wire contract', () => {
 		const result = await request_delete_user_ratelimit(instance, 't/x', 'u x');
 		expect(result.status).toBe('confirmed');
 		expect(del).toHaveBeenCalledWith(instance, '/config/ai/user/ratelimit/t%2Fx/u%20x');
+	});
+});
+
+describe('rate-limit defaults wire contract (Stage 4.2b)', () => {
+	const post = vi.mocked(POST_INST);
+	const get = vi.mocked(GET_INST);
+	const del = vi.mocked(DELETE_INST);
+
+	beforeEach(() => {
+		post.mockReset();
+		get.mockReset();
+		del.mockReset();
+	});
+
+	it('drops rule_ident on the global scope, which the gateway refuses outright', async () => {
+		post.mockResolvedValue({code: 204, data: null, message: ''});
+		// ⚠️ Live behaviour: POST answers 400 `scope 'global' does not take a
+		// rule_ident` with fields:["rule_ident"], even though GET happily
+		// IGNORES the same parameter. A leftover ident from a scope switch must
+		// therefore never reach the wire.
+		const result = await request_set_ratelimit_defaults(instance, {scope: 'global', rule_ident: 'svc-1', default_user_rps: 5} as never);
+		expect(result.status).toBe('invalid');
+		expect(post).not.toHaveBeenCalled();
+	});
+
+	it('sends every limit field, because the POST replaces the row rather than merging', async () => {
+		post.mockResolvedValue({code: 204, data: null, message: ''});
+		// Verified live: posting `{scope:'global', default_user_tpm:5000}` over a
+		// row holding `default_user_rps:7` left the rps limit GONE. A caller that
+		// sends only what changed silently destroys the rest, so the projection
+		// must carry all six — zeros included.
+		const body = {
+			scope: 'global' as const,
+			default_user_rps: 0,
+			default_user_tpm: 5000,
+			default_tenant_rps: 0,
+			default_tenant_tpm: 0,
+			vip_shared_rps: 0,
+			vip_shared_tpm: 0,
+		};
+		await request_set_ratelimit_defaults(instance, body);
+		expect(post).toHaveBeenCalledWith(instance, '/config/ai/ratelimit/defaults', body);
+	});
+
+	it('refuses an all-zero row before the wire, naming delete as the remedy', async () => {
+		const result = await request_set_ratelimit_defaults(instance, {
+			scope: 'global', default_user_rps: 0, default_user_tpm: 0, default_tenant_rps: 0,
+			default_tenant_tpm: 0, vip_shared_rps: 0, vip_shared_tpm: 0,
+		});
+		expect(result.status).toBe('invalid');
+		expect(result.rawDetail).toMatch(/delete the row/i);
+		expect(post).not.toHaveBeenCalled();
+	});
+
+	it('refuses a rule row with no service, which would post an unsendable body', async () => {
+		const result = await request_set_ratelimit_defaults(instance, {scope: 'rule', default_user_rps: 5});
+		expect(result.status).toBe('invalid');
+		expect(post).not.toHaveBeenCalled();
+	});
+
+	it('refuses a reserved-prefix service the gateway would reject', async () => {
+		const result = await request_set_ratelimit_defaults(instance, {scope: 'rule', rule_ident: 'uq:evil', default_user_rps: 5});
+		expect(result.status).toBe('invalid');
+		expect(post).not.toHaveBeenCalled();
+	});
+
+	it('carries the service in the DELETE query string, not in a body', async () => {
+		del.mockResolvedValue({code: 204, data: null, message: ''});
+		const result = await request_delete_ratelimit_defaults(instance, 'rule', 'svc a');
+		expect(result.status).toBe('confirmed');
+		// ⚠️ `DELETE_INST`'s third argument is a BODY. Passing the ident there
+		// would leave the identless URL, which answers 404 — a "not found" for a
+		// row the operator can see on screen.
+		expect(del).toHaveBeenCalledWith(instance, '/config/ai/ratelimit/defaults/rule?rule_ident=svc%20a');
+	});
+
+	it('deletes the global row without a query string', async () => {
+		del.mockResolvedValue({code: 204, data: null, message: ''});
+		await request_delete_ratelimit_defaults(instance, 'global');
+		expect(del).toHaveBeenCalledWith(instance, '/config/ai/ratelimit/defaults/global');
+	});
+
+	it('refuses a rule delete with no service instead of hitting the collection URL', async () => {
+		const result = await request_delete_ratelimit_defaults(instance, 'rule', '  ');
+		expect(result.status).toBe('invalid');
+		expect(del).not.toHaveBeenCalled();
+	});
+
+	it('omits services that have no row and de-duplicates the asked-for set', async () => {
+		get.mockImplementation((async (_i: unknown, _u: string, params?: {rule_ident?: string}) => (
+			params?.rule_ident === 'svc-1'
+				? {code: 200, data: {scope: 'rule', rule_ident: 'svc-1', default_user_rps: 3}, message: ''}
+				: {code: 404, data: undefined, message: 'Not Found'}
+		)) as never);
+
+		// A service with no row is the normal case — it uses the global
+		// defaults — so it contributes nothing rather than failing the read.
+		const rows = await query_get_ratelimit_defaults_for(instance, ['svc-1', ' svc-1 ', '', 'svc-absent']);
+		expect(rows).toEqual([{scope: 'rule', rule_ident: 'svc-1', default_user_rps: 3}]);
+		expect(get).toHaveBeenCalledTimes(2);
 	});
 });
