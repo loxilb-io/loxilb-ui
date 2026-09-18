@@ -70,7 +70,8 @@ describe('registry contract against the vendored artifacts', () => {
 		// 48 since Stage 3.2: the prefill routing-tier counter joined the page.
 		expect(size('page.pdKv')).toBe(48);
 		expect(size('page.security')).toBe(27);
-		expect(size('page.qos')).toBe(8);
+		// 9 since Stage 3.3: the per-policer attachment gauge joined the page.
+		expect(size('page.qos')).toBe(9);
 		expect(size('page.persistence')).toBe(10);
 		expect(size('page.haSync')).toBe(13);
 		// The four loxilb_ai_jwks_* families, and only those: the validation
