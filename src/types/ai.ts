@@ -24,6 +24,14 @@ export type ITenantModelRateLimit = GwSchema<'TenantModelRateLimit'>;
 // GET /config/ai/tenant/ratelimit/{tenant_id} body
 export type ITenantRateLimitEntry = GwSchema<'TenantRateLimitEntry'>;
 
+// GET /config/ai/ratelimit/defaults/{scope} body — one row of the QoS ladder.
+//
+// ⚠️ A 'rule' row OVERRIDES the 'global' row FIELD-WISE and only where its
+// value is positive (`resolveQoSDefaults`, ai_gateway_dp.go:107), so it is not
+// a replacement record. Resolve the pair with `resolveQuotaDefaults` rather
+// than reading either row alone.
+export type IRateLimitDefaultsEntry = GwSchema<'RateLimitDefaultsEntry'>;
+
 function isNonNegativeSafeInteger(value: unknown): value is number {
 	return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 }

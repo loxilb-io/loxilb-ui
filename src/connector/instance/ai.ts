@@ -1,7 +1,8 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {IApiKeyCreateRequest, IApiKeyCreateResponse, IApiKeySummary, ITenantRateLimitEntry, ITenantRateLimitMod, normalizeTenantRateLimit, validateTenantRateLimit} from 'types/ai';
+import {IApiKeyCreateRequest, IApiKeyCreateResponse, IApiKeySummary, IRateLimitDefaultsEntry, ITenantRateLimitEntry, ITenantRateLimitMod, normalizeTenantRateLimit, validateTenantRateLimit} from 'types/ai';
+import {QuotaStoreState, storeStateFromError} from 'observability/tokenQuota';
 import {IInstance} from 'types/oam';
 import {assertOk} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
@@ -114,4 +115,64 @@ export async function request_set_tenant_ratelimit(instance: IInstance, data: IT
 	} catch (error) {
 		return fromNetworkError('ai.ratelimit.set', error);
 	}
+}
+
+
+//---------------------------------------------------------
+// AI rate-limit defaults (/config/ai/ratelimit/defaults/{scope})
+//---------------------------------------------------------
+
+export interface IQuotaDefaultsRead {
+	// ⭐⭐ The reachability of the store BEHIND the configuration, which is the
+	// one thing that separates "no quotas configured" from "quotas silently
+	// not being enforced". See `observability/tokenQuota.ts`.
+	storeState: QuotaStoreState;
+	global: IRateLimitDefaultsEntry | null;
+	rule: IRateLimitDefaultsEntry | null;
+}
+
+/**
+ * Read the QoS defaults ladder: the global row, and optionally one rule row.
+ *
+ * ⚠️⚠️ THIS READ DELIBERATELY DOES NOT `assertOk`, which is the opposite of
+ * the house rule for list reads, so it needs its reason stated. Everywhere
+ * else a failed read must surface as a banner because "failed" and "empty"
+ * would otherwise be indistinguishable to the operator. Here the failure IS
+ * the content: a 503 `ai_key_store_unavailable` means the gateway has stopped
+ * enforcing every token quota, and throwing it away as a generic error would
+ * discard the only signal that distinguishes that from a gateway with nothing
+ * configured. The store state is returned as data and classified by
+ * `storeStateFromError`; an unrecognised failure becomes `unknown`, which the
+ * panel renders as "cannot know" rather than as either answer.
+ *
+ * ⚠️ 404 is a normal answer — a ladder level that has no row — and is
+ * distinct from a store failure: it means the store ANSWERED and holds no
+ * defaults for that scope.
+ */
+export async function query_get_ratelimit_defaults(instance: IInstance, rule_ident?: string): Promise<IQuotaDefaultsRead> {
+	const read = async (scope: 'global' | 'rule', ident?: string) => {
+		const resp = await GET_INST<GwGetResp<'/config/ai/ratelimit/defaults/{scope}'>>(
+			instance,
+			`/config/ai/ratelimit/defaults/${scope}`,
+			ident ? {rule_ident: ident} : undefined,
+		);
+		return resp;
+	};
+
+	const globalResp = await read('global');
+	// ⚠️ The store state is taken from the GLOBAL read alone. The rule read is
+	// optional and its absence is routine, so letting it downgrade the state
+	// would report an outage on a gateway that simply has no per-rule row.
+	if (globalResp.code !== 200 && globalResp.code !== 404) {
+		const body = globalResp.data as {result?: string; message?: string} | undefined;
+		return {storeState: storeStateFromError(globalResp.code, body?.result ?? body?.message), global: null, rule: null};
+	}
+	const globalRow = globalResp.code === 404 ? null : (globalResp.data as IRateLimitDefaultsEntry | undefined) ?? null;
+
+	let ruleRow: IRateLimitDefaultsEntry | null = null;
+	if (rule_ident) {
+		const ruleResp = await read('rule', rule_ident);
+		if (ruleResp.code === 200) ruleRow = (ruleResp.data as IRateLimitDefaultsEntry | undefined) ?? null;
+	}
+	return {storeState: 'readable', global: globalRow, rule: ruleRow};
 }

@@ -4,6 +4,7 @@
 import capabilityMap from '../api/gen/loxilb-capability-map.json';
 import {InstanceFlavor} from '../api/capabilities';
 import {isGatewayScrapeFamily} from './metricManifest';
+import {TOKEN_QUOTA_FAMILIES} from './tokenQuota';
 
 //---------------------------------------------------------
 // Observability capability registry (UI-MON-001, UI-MON-011a)
@@ -43,7 +44,8 @@ export type ObservabilityEntryId =
 	// Panels embedded in configuration pages, not in the dashboard: an
 	// observability surface that answers a question about the object the page
 	// already manages.
-	| 'panel.jwtKeysetHealth';
+	| 'panel.jwtKeysetHealth'
+	| 'panel.tokenQuota';
 
 export interface ITopologyInput {
 	gatewayCount: number;
@@ -311,6 +313,18 @@ const entries: readonly IObservabilityEntry[] = [
 		id: 'panel.jwtKeysetHealth',
 		kind: 'panel', flavor: 'inference-gateway',
 		metricFamilies: JWKS_HEALTH_FAMILIES, restPaths: ['/config/ai/jwtauthprofile'],
+	},
+	{
+		// Lives on the AI Tenant Rate Limits page (Stage 3.6). ⭐ The REST path
+		// is a REAL requirement and not decoration: this panel's whole finding
+		// is whether the quota STORE is answering, and only
+		// `/config/ai/ratelimit/defaults/{scope}` can say. Without it the panel
+		// could report bucket utilization but never distinguish "no quotas
+		// configured" from "quotas silently not being enforced", which is the
+		// only reason it exists.
+		id: 'panel.tokenQuota',
+		kind: 'panel', flavor: 'inference-gateway',
+		metricFamilies: TOKEN_QUOTA_FAMILIES, restPaths: ['/config/ai/ratelimit/defaults/{scope}'],
 	},
 	{
 		id: 'page.aiTraffic',

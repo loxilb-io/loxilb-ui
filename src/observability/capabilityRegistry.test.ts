@@ -26,6 +26,7 @@ const GATEWAY_IDS: ObservabilityEntryId[] = [
 	'page.qos',
 	'page.persistence',
 	'panel.jwtKeysetHealth',
+	'panel.tokenQuota',
 ];
 
 describe('registry contract against the vendored artifacts', () => {
@@ -78,6 +79,11 @@ describe('registry contract against the vendored artifacts', () => {
 		// The four loxilb_ai_jwks_* families, and only those: the validation
 		// counter is traffic and belongs to page.aiTraffic instead.
 		expect(size('panel.jwtKeysetHealth')).toBe(4);
+		// ⭐ 14 since Stage 3.6: twelve quota gauges over SIX identity scopes —
+		// not the eight over five the stage brief carried — plus the denial
+		// counter and the cold-open counter. A scope dropped here would take
+		// its panel section with it silently.
+		expect(size('panel.tokenQuota')).toBe(14);
 	});
 });
 
