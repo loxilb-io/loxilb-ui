@@ -160,3 +160,57 @@ describe('api key patch confirmation', () => {
 		expect(apiKeyPatchApplied('key-1', {enabled: false})([])).toBe(false);
 	});
 });
+
+//---------------------------------------------------------
+// The live read-back shape (verified on the gateway, 2026-09-18)
+//---------------------------------------------------------
+// ⭐⭐ This is the empirical proof behind the absent-equals-zero rule, and it
+// is stronger than the swagger's "optional zero metadata can be absent".
+// Against a gateway with a configured PostgreSQL key store: a key was created
+// with rate_limit_rps 10 and tokens_per_min 500, then patched with
+// {"rate_limit_rps": 0} (HTTP 204). The key then read back as exactly this —
+// `rate_limit_rps` and `burst_size` GONE, the nonzero `tokens_per_min` still
+// present, and `allowed_models` serialized as null rather than [].
+//
+// ⇒ A confirm predicate comparing `row.rate_limit_rps === 0` could never
+// confirm the edit most likely to be made. That is not a hypothetical.
+
+describe('the gateway read-back after a zero patch (live-observed)', () => {
+	const LIVE_READ_BACK = {
+		allowed_models: null,
+		created_at: '2026-09-18T05:47:43.617Z',
+		enabled: true,
+		expires_at: '0001-01-01T00:00:00.000Z',
+		key_id: 'probe-key',
+		name: 'ui-4-1-probe',
+		tenant_id: 'ui-4-1-probe',
+		tokens_per_min: 500,
+		// NOTE: rate_limit_rps and burst_size are deliberately NOT here — the
+		// gateway dropped them once they were zero.
+	};
+
+	it('confirms the zero patch that the gateway answered 204 to', () => {
+		expect(apiKeyPatchApplied('probe-key', {rate_limit_rps: 0})([LIVE_READ_BACK])).toBe(true);
+	});
+
+	it('still reads the untouched nonzero field as itself', () => {
+		expect(apiKeyPatchApplied('probe-key', {tokens_per_min: 500})([LIVE_READ_BACK])).toBe(true);
+		expect(apiKeyPatchApplied('probe-key', {tokens_per_min: 499})([LIVE_READ_BACK])).toBe(false);
+	});
+
+	it('treats the null model list as the empty list it means', () => {
+		expect(apiKeyPatchApplied('probe-key', {allowed_models: []})([LIVE_READ_BACK])).toBe(true);
+	});
+
+	it('initializes the edit form from it without inventing zeros', () => {
+		// The dropped fields must show as BLANK (= unchanged), not as "0",
+		// because the UI cannot know the gateway dropped a zero rather than
+		// never having had a value.
+		const form = apiKeyPatchFormInitialState(LIVE_READ_BACK as never);
+		expect(form.rate_limit_rps).toBe('');
+		expect(form.burst_size).toBe('');
+		expect(form.tokens_per_min).toBe('500');
+		expect(form.allowed_models).toBe('');
+		expect(form.enabled).toBe(true);
+	});
+});
