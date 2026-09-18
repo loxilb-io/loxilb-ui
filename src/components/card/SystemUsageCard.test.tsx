@@ -14,7 +14,9 @@ import SystemUsageCard from './SystemUsageCard';
 const status = vi.hoisted(() => ({current: {} as any}));
 
 vi.mock('hooks/query/metricsHook', () => ({
-	useLiveMetrics: () => ({metrics: undefined, isLoading: false, failure: undefined, refetch: vi.fn()}),
+	// Shape-complete on purpose: a mock that omits a field the real hook
+	// returns hides the day a component starts depending on it.
+	useLiveMetrics: () => ({metrics: undefined, isLoading: false, failure: undefined, cadenceMs: 10_000, refetch: vi.fn()}),
 }));
 
 vi.mock('hooks/query/statusHook', () => ({

@@ -27,7 +27,7 @@ export default function ConnectionFlowCard(props: ConnectionFlowCardProps) {
 	const {title, instance, showBreakdown = true} = props;
 
 	// Get live metrics with polling
-	const {metrics: liveMetrics, isLoading, failure: scrapeFailure, refetch: refetchMetrics} = useLiveMetrics(instance, {keyPrefix: 'connection-flow-realtime', refetchInterval: 10000});
+	const {metrics: liveMetrics, isLoading, failure: scrapeFailure, refetch: refetchMetrics} = useLiveMetrics(instance);
 
 	// `available === false` means the instance served no exposition at all
 	// (collection disabled, or the scrape was refused). Every figure below is

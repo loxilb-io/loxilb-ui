@@ -41,13 +41,38 @@ const RATE_SERIES_LABEL: Record<RealTimeRateCardProps['unit'], () => string> = {
 };
 
 //---------------------------------------------------------
+// Warm-up
+//---------------------------------------------------------
+// ⚠️⚠️ A RATE IS A DELTA, SO THIS CARD CANNOT DRAW ANYTHING UNTIL SAMPLES HAVE
+// ACCUMULATED — two samples make one rate point, and this card plots a series,
+// so it needs three. That wait is a function of the SHARED SNAPSHOT CADENCE
+// and of nothing this card controls.
+//
+// It used to be an unexplained one. The card asked `useLiveMetrics` for a
+// 1000 ms interval, the hook ignored it, and the operator got a bare skeleton
+// for two ticks of the real cadence — 20 s at the default, and a full TWO
+// MINUTES at the 60 s option, with nothing on screen to distinguish "warming
+// up" from "hung". Saying how long, derived from the cadence actually in
+// force, is the honest version of what the ignored parameter was reaching for.
+export const RATE_SAMPLES_REQUIRED = 3;
+
+/** Seconds still to wait before a rate series can be plotted. */
+export function rateWarmUpSeconds(samplesSoFar: number, cadenceMs: number): number {
+	const remaining = Math.max(RATE_SAMPLES_REQUIRED - samplesSoFar, 1);
+	return Math.ceil((remaining * cadenceMs) / 1000);
+}
+
+//---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
 export default function RealTimeRateCard(props: RealTimeRateCardProps) {
 	const {title, instance, counterField, unit, maxPoints = 300} = props;
 
-	// Get live metrics with polling (shared query key → one poll for all rate cards)
-	const {metrics: liveMetrics, failure: scrapeFailure, refetch: refetchMetrics} = useLiveMetrics(instance, {keyPrefix: 'live-metrics-realtime', refetchInterval: 1000});
+	// Reads the shared snapshot — one poll for every metrics card on screen.
+	// ⭐ `cadenceMs` is the operator's chosen interval, and this card needs it:
+	// a rate is a delta, so nothing can be plotted until samples have
+	// accumulated, and how long that takes is a function of the cadence alone.
+	const {metrics: liveMetrics, failure: scrapeFailure, cadenceMs, refetch: refetchMetrics} = useLiveMetrics(instance);
 
 	// Accumulate raw cumulative-counter samples; the rate is the delta between
 	// consecutive samples divided by the elapsed time.
@@ -95,13 +120,18 @@ export default function RealTimeRateCard(props: RealTimeRateCardProps) {
 	// the second sample it is waiting for can never arrive.
 	if (scrapeFailure) return <MetricScrapeState title={title} failure={scrapeFailure} onRetry={refetchMetrics} />;
 
-	// Rates are deltas between samples — until the second poll lands there
-	// is nothing to plot, so show a skeleton instead of an empty chart.
+	// Rates are deltas between samples, so until enough polls have landed there
+	// is nothing to plot. Show a skeleton — and say what it is waiting for, at
+	// the cadence actually in force, rather than leaving a silent placeholder
+	// that is indistinguishable from a stuck card.
 	if (rateHistory.length < 2) {
 		return (
 			<CardBase title={title}>
 				<Skeleton variant="rounded" width="40%" height={24} sx={{mb: 1}} />
 				<Skeleton variant="rounded" width="100%" height={170} />
+				<Typography variant="caption" color="textSecondary" sx={{display: 'block', mt: 1}}>
+					{t('Collecting counter samples to derive a rate — about {{n}}s at the current refresh interval.', {n: rateWarmUpSeconds(counterHistory.length, cadenceMs)})}
+				</Typography>
 			</CardBase>
 		);
 	}
