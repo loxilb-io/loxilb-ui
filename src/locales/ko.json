@@ -1124,5 +1124,18 @@
 	"Limit (tokens/min)": "한도(토큰/분)",
 	"Headroom (tokens)": "여유(토큰)",
 	"Whether this scope should have a bucket could not be checked: the gateway offers no way to list the identities configured for it.": "이 범위에 버킷이 있어야 하는지 확인할 수 없습니다: 게이트웨이가 이 범위에 설정된 신원 목록을 조회할 수단을 제공하지 않습니다.",
-	"Token-quota utilization": "토큰 쿼터 사용률"
+	"Token-quota utilization": "토큰 쿼터 사용률",
+	"AI API Key": "AI API 키",
+	"Key": "키",
+	"Applied successfully.": "적용되었습니다.",
+	"Tokens per Minute": "분당 토큰 수",
+	"Leave blank to keep the stored value.": "비워 두면 저장된 값을 그대로 유지합니다.",
+	"Will be sent: {{fields}}": "전송될 항목: {{fields}}",
+	"Nothing has changed yet, so there is nothing to send.": "변경된 항목이 없어 전송할 내용이 없습니다.",
+	"Allowed models": "허용 모델",
+	"Requests per second": "초당 요청 수",
+	"Burst size": "버스트 크기",
+	"Tokens per minute": "분당 토큰 수",
+	"Only the fields you change are sent. The gateway applies the model and enabled fields separately from the rate limits and does not wrap them in a transaction, so a rejected value can leave an earlier change already saved.": "변경한 항목만 전송됩니다. 게이트웨이는 모델 및 사용 여부 항목을 속도 제한과 별도로 적용하며 트랜잭션으로 묶지 않으므로, 어떤 값이 거부되어도 앞서 변경된 항목은 이미 저장되어 있을 수 있습니다.",
+	"The gateway rejected one of these values. Fields are written in separate steps without a transaction, so an earlier field may already be saved — the list has been re-read.": "게이트웨이가 이 값 중 하나를 거부했습니다. 항목은 트랜잭션 없이 여러 단계로 기록되므로 앞선 항목은 이미 저장되어 있을 수 있습니다 — 목록을 다시 읽었습니다."
 }

@@ -110,3 +110,114 @@ export function validateTenantRateLimit(data: ITenantRateLimitMod): string[] {
 	}
 	return errors;
 }
+
+//---------------------------------------------------------
+// PATCH /config/ai/apikey/{key_id} body (Stage 4.1)
+//---------------------------------------------------------
+// ⚠️⚠️ NOT a `GwSchema`, and deliberately so. The generated swagger's PATCH
+// entry is a marked stub (`x-raw-middleware: true`) whose body is declared as
+// a bare `type: object` precisely so the two documents cannot disagree about
+// the field set — the served contract lives in
+// `api-spec/gateway-swagger-extras.yml`. So this interface IS the UI's copy of
+// that contract; when the extras file moves, move this with it.
+//
+// ⭐⭐ THE FIELD SET IS FIVE, not the three rate-limit fields the task brief
+// names. `allowed_models` and `enabled` are patchable on the same call and
+// share the same presence rules, which matters because they are written by a
+// SEPARATE, non-transactional statement (see below).
+//
+// ⭐⭐ PRESENCE IS THE INTENT, AND IT INVERTS THE CREATE FORM'S CONVENTION.
+// On create (`apiKeyFormToRequest`) a rate field of 0 is expressed BY
+// OMISSION, because omitted means "apply the gateway default". On PATCH the
+// same two states mean opposite things:
+//
+//   omitted / null  leave the stored value UNCHANGED
+//   0               an explicit limit of zero — "no per-key request limit"
+//                   for `rate_limit_rps`, "no per-key token quota" for
+//                   `tokens_per_min`, and for `burst_size` a fall back to
+//                   `rate_limit_rps` as the bucket capacity
+//
+// ⇒ A cleared input must send NOTHING and a typed 0 must send 0. Reusing the
+// create projection here would silently turn "set this key to unlimited" into
+// "change nothing", which is the one mistake that looks like success.
+//
+// ⚠️ At least one of the five must be present. A body naming none of them is
+// refused 400 BEFORE the key is looked up — so that 400 does not mean the key
+// exists. `apiKeyPatchIsEmpty` exists to keep that request off the wire
+// entirely; see the connector for why that narrowing is worth having.
+export interface IApiKeyPatch {
+	allowed_models?: string[];
+	enabled?: boolean;
+	rate_limit_rps?: number;
+	burst_size?: number;
+	tokens_per_min?: number;
+}
+
+// The five patchable field names, in the contract's own order. Exported so the
+// emptiness check and its tests cannot drift apart from the interface.
+export const API_KEY_PATCH_FIELDS = ['allowed_models', 'enabled', 'rate_limit_rps', 'burst_size', 'tokens_per_min'] as const;
+
+/**
+ * Whether this body asks for nothing, by the gateway's own definition of the
+ * class: an empty object, and a body whose every patchable member is
+ * explicitly null/undefined.
+ *
+ * ⚠️ An explicit EMPTY ARRAY on `allowed_models` is NOT in this class — it is a
+ * present field that clears the model restriction, which is a real change and
+ * must reach the gateway.
+ */
+export function apiKeyPatchIsEmpty(patch: IApiKeyPatch | null | undefined): boolean {
+	if (!patch) return true;
+	return !API_KEY_PATCH_FIELDS.some(field => patch[field] !== undefined && patch[field] !== null);
+}
+
+/**
+ * Client-side validation of a patch body. Returns English source strings, the
+ * same convention as `validateTenantRateLimit`.
+ *
+ * ⚠️ The gateway performs NO model-name validation on this path — it stores the
+ * list as comma-separated text, so `["a,b"]` becomes two names and `[""]`
+ * becomes an unrestricted list. Those are lossy storage cases, not supported
+ * semantics, so the UI refuses them here rather than letting an operator
+ * discover the corruption later.
+ */
+export function validateApiKeyPatch(patch: IApiKeyPatch): string[] {
+	const errors: string[] = [];
+
+	if (apiKeyPatchIsEmpty(patch)) {
+		errors.push('Change at least one field before applying.');
+		return errors;
+	}
+
+	const rateFields: [keyof IApiKeyPatch, string][] = [
+		['rate_limit_rps', 'Requests per second must be a non-negative integer.'],
+		['burst_size', 'Burst size must be a non-negative integer.'],
+		['tokens_per_min', 'Tokens per minute must be a non-negative integer.'],
+	];
+	for (const [field, message] of rateFields) {
+		const value = patch[field];
+		if (value !== undefined && !isNonNegativeSafeInteger(value)) errors.push(message);
+	}
+
+	const models = patch.allowed_models;
+	if (models !== undefined) {
+		// An empty array is legal (it clears the restriction); an array with
+		// unusable ITEMS is not.
+		const seen = new Set<string>();
+		for (const model of models) {
+			if (typeof model !== 'string' || model.trim().length === 0) {
+				errors.push('A model name cannot be empty.');
+			} else if (model.includes(',')) {
+				// The gateway joins the list with commas and splits on them, so
+				// a comma inside a name silently becomes two names.
+				errors.push('A model name cannot contain a comma.');
+			} else if (seen.has(model)) {
+				errors.push(`Model ${model} is duplicated.`);
+			} else {
+				seen.add(model);
+			}
+		}
+	}
+
+	return errors;
+}

@@ -235,7 +235,7 @@ export default function ApiKeyInputForm(props: ApiKeyInputFormProps) {
 						raw
 						error={!evaluateNumericField(form.burst_size, RATE_FIELD_SPEC).valid}
 						helperText={evaluateNumericField(form.burst_size, RATE_FIELD_SPEC).error}
-						param_desc={{type: 'integer', description: 'Burst capacity above the steady-state RPS limit (0 = default)'}}
+						param_desc={{type: 'integer', description: 'Total request-bucket capacity for the per-second limit, NOT additional capacity above it. 0 makes the enforcement path fall back to the requests-per-second value, so burst equals one second of allowance.'}}
 					/>
 					<ParamBox
 						label={t('Tokens / Minute')}

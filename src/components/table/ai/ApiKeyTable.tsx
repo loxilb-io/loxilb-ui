@@ -15,12 +15,13 @@ export default function ApiKeyTable(props: {
 	selected_rows: number[];
 	onChangeSelectedRows: any;
 	onAdd?: () => void;
+	onEdit?: () => void;
 	onDelete?: () => void;
 	onRefresh?: () => void;
 	state?: PageDataState<unknown>;
 	error?: boolean;
 }) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, state, error} = props;
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onEdit, onDelete, onRefresh, state, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'key_id', header: 'Key ID', width: 'wide', type: 'mono'},
@@ -53,6 +54,7 @@ export default function ApiKeyTable(props: {
 			selected_rows={selected_rows}
 			onChangeSelectedRows={onChangeSelectedRows}
 			onAdd={onAdd}
+				onEdit={onEdit}
 				onDelete={onDelete}
 				onRefresh={onRefresh}
 				state={state}
