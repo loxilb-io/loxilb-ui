@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {API_KEY_PATCH_FIELDS, apiKeyPatchIsEmpty, normalizeTenantRateLimit, reconcileTenantModelLimits, validateApiKeyPatch, validateTenantRateLimit} from './ai';
+import {API_KEY_PATCH_FIELDS, RESERVED_QOS_IDENTITY_PREFIXES, apiKeyPatchIsEmpty, normalizeTenantRateLimit, normalizeUserRateLimit, qosIdentityError, reconcileTenantModelLimits, userRateLimitIsAllZero, validateApiKeyPatch, validateTenantRateLimit, validateUserRateLimit} from './ai';
 
 describe('tenant per-model quota contract', () => {
 	describe('edit reconciliation', () => {
@@ -215,6 +215,125 @@ describe('API key patch contract', () => {
 
 		it('accepts an empty list, which is how the restriction is cleared', () => {
 			expect(validateApiKeyPatch({allowed_models: []})).toEqual([]);
+		});
+	});
+});
+
+//---------------------------------------------------------
+// Per-user rate limits (Stage 4.2)
+//---------------------------------------------------------
+
+describe('per-user rate limit contract', () => {
+	const entry = (over: Partial<Parameters<typeof validateUserRateLimit>[0]> = {}) => ({
+		tenant_id: 'tenant-a',
+		user_id: 'user-1',
+		tokens_per_min: 1000,
+		...over,
+	});
+
+	describe('the all-zero rejection', () => {
+		it('refuses an entry whose every limit is zero, and names delete as the remedy', () => {
+			// A zero here means "fall through to the configured defaults", so
+			// such a row constrains nothing. The gateway refuses it 400.
+			const errors = validateUserRateLimit(entry({rps: 0, burst_size: 0, tokens_per_min: 0}));
+			expect(errors.some(e => /delete the entry/i.test(e))).toBe(true);
+		});
+
+		it('treats an absent limit the same as a zero', () => {
+			expect(userRateLimitIsAllZero({tenant_id: 't', user_id: 'u'})).toBe(true);
+		});
+
+		it('⭐ does NOT refuse it when a per-model quota carries the limit', () => {
+			// Settled against the running gateway, which the prose left open:
+			// zero scalars plus one model row at 100 tokens/min answers 204.
+			expect(userRateLimitIsAllZero({
+				tenant_id: 't', user_id: 'u', rps: 0, burst_size: 0, tokens_per_min: 0,
+				model_limits: [{model: 'org/m', tokens_per_min: 100}],
+			})).toBe(false);
+			expect(validateUserRateLimit({
+				tenant_id: 't', user_id: 'u', rps: 0, burst_size: 0, tokens_per_min: 0,
+				model_limits: [{model: 'org/m', tokens_per_min: 100}],
+			})).toEqual([]);
+		});
+
+		it('still refuses it when the only model row is itself zero', () => {
+			expect(userRateLimitIsAllZero({
+				tenant_id: 't', user_id: 'u',
+				model_limits: [{model: 'org/m', tokens_per_min: 0}],
+			})).toBe(true);
+		});
+
+		it('accepts any single non-zero scalar', () => {
+			expect(validateUserRateLimit(entry({rps: 1, tokens_per_min: 0}))).toEqual([]);
+			expect(validateUserRateLimit(entry({burst_size: 1, tokens_per_min: 0}))).toEqual([]);
+			expect(validateUserRateLimit(entry({tokens_per_min: 1}))).toEqual([]);
+		});
+	});
+
+	describe('QoS identity validation', () => {
+		it('refuses the composite bucket-key delimiter', () => {
+			// '|' joins scope and identity into a bucket key, so an identity
+			// containing it could alias a different bucket entirely.
+			expect(qosIdentityError('a|b')).toMatch(/\|/);
+			expect(validateUserRateLimit(entry({user_id: 'u|1'}))).not.toEqual([]);
+			expect(validateUserRateLimit(entry({tenant_id: 't|1'}))).not.toEqual([]);
+		});
+
+		it('refuses every reserved sync-wire scope prefix', () => {
+			// Mirrors ratelimit.ReservedIdentityScopePrefixes. `ver:` is in the
+			// set because it is the scope-version sentinel key prefix.
+			for (const prefix of RESERVED_QOS_IDENTITY_PREFIXES) {
+				expect(qosIdentityError(`${prefix}x`), prefix).toBeDefined();
+			}
+			expect(RESERVED_QOS_IDENTITY_PREFIXES).toHaveLength(9);
+			expect([...RESERVED_QOS_IDENTITY_PREFIXES]).toEqual(['k:', 'u:', 't:', 'tm:', 'uq:', 'um:', 'kq:', 'v:', 'ver:']);
+		});
+
+		it('allows a reserved prefix that is not at the START', () => {
+			// Only a prefix aliases a scope; the same text later in the name is
+			// harmless and refusing it would reject legitimate identities.
+			expect(qosIdentityError('team-u:1')).toBeUndefined();
+			expect(qosIdentityError('subject-ver:2')).toBeUndefined();
+		});
+
+		it('refuses an empty or whitespace-only identity', () => {
+			expect(qosIdentityError('')).toBeDefined();
+			expect(qosIdentityError('   ')).toBeDefined();
+		});
+
+		it('validates model names by the same rule', () => {
+			expect(validateUserRateLimit(entry({model_limits: [{model: 'uq:m', tokens_per_min: 5}]}))).not.toEqual([]);
+			expect(validateUserRateLimit(entry({model_limits: [{model: 'a|b', tokens_per_min: 5}]}))).not.toEqual([]);
+		});
+	});
+
+	describe('normalization', () => {
+		it('trims identities and drops nameless model rows', () => {
+			expect(normalizeUserRateLimit({
+				tenant_id: ' t ', user_id: ' u ',
+				model_limits: [{model: '  ', tokens_per_min: 1}, {model: ' org/m ', tokens_per_min: 2}],
+			})).toEqual({
+				tenant_id: 't', user_id: 'u',
+				model_limits: [{model: 'org/m', tokens_per_min: 2}],
+			});
+		});
+
+		it('preserves an empty model list, because that is how the set is cleared', () => {
+			// ⚠️ Unlike the TENANT upsert, this endpoint REPLACES the model set:
+			// an empty list clears the user's model rows, so it must survive
+			// normalization rather than being dropped as "nothing".
+			expect(normalizeUserRateLimit({tenant_id: 't', user_id: 'u', model_limits: []}).model_limits).toEqual([]);
+		});
+
+		it('rejects a duplicated model', () => {
+			expect(validateUserRateLimit(entry({
+				model_limits: [{model: 'org/m', tokens_per_min: 1}, {model: 'org/m', tokens_per_min: 2}],
+			}))).not.toEqual([]);
+		});
+
+		it('rejects a negative or fractional limit', () => {
+			expect(validateUserRateLimit(entry({rps: -1}))).not.toEqual([]);
+			expect(validateUserRateLimit(entry({tokens_per_min: 1.5}))).not.toEqual([]);
 		});
 	});
 });

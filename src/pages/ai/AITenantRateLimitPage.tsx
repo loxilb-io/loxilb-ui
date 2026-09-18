@@ -3,11 +3,13 @@
 //---------------------------------------------------------
 import {getStableHash} from 'common';
 import SearchIcon from '@mui/icons-material/Search';
-import {Alert, Button, Stack, TextField} from '@mui/material';
+import {Alert, Button, MenuItem, Stack, TextField, Typography} from '@mui/material';
 import TenantRateLimitInputForm from 'components/input/TenantRateLimitInputForm';
 import ErrorPopUp from 'components/modal/ErrorPopUp';
 import TenantRateLimitTable from 'components/table/ai/TenantRateLimitTable';
-import {query_get_ratelimit_defaults, query_get_tenant_ratelimit, query_get_tenant_ratelimits_for, request_set_tenant_ratelimit} from 'connector/instance/ai';
+import UserRateLimitTable from 'components/table/ai/UserRateLimitTable';
+import UserRateLimitInputForm from 'components/input/UserRateLimitInputForm';
+import {query_get_ratelimit_defaults, query_get_tenant_ratelimit, query_get_tenant_ratelimits_for, query_get_user_ratelimit, query_get_user_ratelimits, request_delete_user_ratelimit, request_set_tenant_ratelimit, request_set_user_ratelimit} from 'connector/instance/ai';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
 import TokenQuotaPanel from 'components/observability/TokenQuotaPanel';
@@ -27,11 +29,11 @@ import {
 import {useQueryInstanceData} from 'hooks/query/common';
 import {fromQueryRefetch} from 'hooks/query/reconcile';
 import {useReconcileReporter} from 'hooks/query/reconcileReport';
-import {tenantRateLimitAppeared} from 'hooks/query/confirmPredicates';
+import {tenantRateLimitAppeared, userRateLimitAppeared, userRateLimitGone} from 'hooks/query/confirmPredicates';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {t} from 'i18next';
 import React, {Fragment, useMemo, useRef, useState} from 'react';
-import {ITenantRateLimitMod} from 'types/ai';
+import {ITenantRateLimitMod, IUserRateLimitMod} from 'types/ai';
 import {hasRequiredApiKeyPolicy} from 'types/ai_gateway';
 import {toPageState} from 'components/state/pageState';
 
@@ -63,6 +65,31 @@ export default function AITenantRateLimitPage() {
 	);
 	const {data: entries, refetch} = ratelimit_query;
 	const rows = useMemo(() => entries ?? [], [entries]);
+
+	//---------------------------------------------------------
+	// Per-user rate limits (Stage 4.2)
+	//---------------------------------------------------------
+	// ⚠️ TENANT-DRIVEN BY NECESSITY, not by preference. The gateway serves a
+	// user list per TENANT and exposes nothing that enumerates tenants, so
+	// there is no "all user limits" read to build a flat table from — the same
+	// "reachable but not enumerable" shape Stage 3.6 hit. The tenant set here
+	// is the same one the table above uses: tenants seen on API keys, plus any
+	// looked up in this session.
+	const [userTenant, setUserTenant] = useState('');
+	// Fall back to the first known tenant rather than leaving the section
+	// blank, but never overwrite an explicit choice.
+	const effectiveUserTenant = userTenant || tenants[0] || '';
+
+	const user_query = useQueryInstanceData(
+		['ai_user_ratelimits', effectiveUserTenant],
+		instance => query_get_user_ratelimits(instance, effectiveUserTenant),
+		effectiveUserTenant ? inst : null,
+	);
+	const userRows = useMemo(() => user_query.data ?? [], [user_query.data]);
+	const [selected_user_rows, set_selected_user_rows] = useState<number[]>([]);
+	const selectedUser = selected_user_rows.length === 1
+		? userRows.find(r => getStableHash(`${r.tenant_id ?? ''}|${r.user_id ?? ''}`) === selected_user_rows[0]) ?? null
+		: null;
 
 	//---------------------------------------------------------
 	// Token-quota utilization (Stage 3.6)
@@ -212,6 +239,76 @@ export default function AITenantRateLimitPage() {
 		});
 	};
 
+	const userFormRef = useRef<IUserRateLimitMod | null>(null);
+
+	// `seed` carries the entry being edited; its absence means Add.
+	const openUserForm = (seed?: IUserRateLimitMod) => {
+		if (!inst) return;
+		userFormRef.current = null;
+		const editing = seed?.user_id !== undefined && seed.user_id.length > 0;
+
+		const input_form = (
+			<UserRateLimitInputForm
+				key={`${seed?.tenant_id ?? ''}|${seed?.user_id ?? ''}|${Date.now()}`}
+				value={seed}
+				identityLocked={editing}
+				onChange={data => {
+					const {isValid, errors, ...cleanData} = data;
+					userFormRef.current = cleanData;
+					enableYes(!!isValid);
+				}}
+			/>
+		);
+
+		openPopUp(
+			'',
+			input_form,
+			t('Apply'),
+			t('Cancel'),
+			async () => {
+				const payload = userFormRef.current;
+				if (!payload) return;
+				const res = await request_set_user_ratelimit(inst, payload);
+				set_selected_user_rows([]);
+				if (res.status === 'confirmed') {
+					rememberTenant(payload.tenant_id);
+					await report({refetch: fromQueryRefetch(user_query.refetch), confirm: userRateLimitAppeared(payload.user_id)}, t('Applied successfully.'));
+				} else showAddError('AI user rate limit', t(res.localeKey));
+			},
+			true,
+		);
+	};
+
+	const handleUserAdd = () => openUserForm({tenant_id: effectiveUserTenant, user_id: ''});
+
+	// ⚠️⚠️ THE EDIT PATH MUST RE-READ THE USER, never open on the list row.
+	// The list omits model limits and the upsert REPLACES the model set, so
+	// saving a form seeded from the list row would delete every per-model
+	// quota the user has. Verified on the gateway: re-posting without a model
+	// row removes it.
+	const handleUserEdit = async () => {
+		if (!inst || !selectedUser?.user_id) return;
+		const full = await query_get_user_ratelimit(inst, selectedUser.tenant_id ?? effectiveUserTenant, selectedUser.user_id);
+		if (!full) {
+			// Gone between the list read and now — say so rather than opening a
+			// form that would recreate it as a new entry.
+			openPopUp(t('Not Found'), t('This user no longer has an explicit rate-limit entry. Refresh the list.'), t('OK'));
+			return;
+		}
+		openUserForm(full);
+	};
+
+	const handleUserDelete = async () => {
+		if (!inst || !selectedUser?.user_id) return;
+		const tenantId = selectedUser.tenant_id ?? effectiveUserTenant;
+		const userId = selectedUser.user_id;
+		const res = await request_delete_user_ratelimit(inst, tenantId, userId);
+		set_selected_user_rows([]);
+		if (res.status === 'confirmed') {
+			await report({refetch: fromQueryRefetch(user_query.refetch), confirm: userRateLimitGone(userId)}, t('Deleted {{count}} item(s) successfully.', {count: 1}));
+		} else showAddError('AI user rate limit', t(res.localeKey));
+	};
+
 	const handleRefresh = () => {
 		set_selected_rows([]);
 		// ⚠️⚠️ EVERY dependency, not just the rate-limit rows. Refreshing only
@@ -242,6 +339,8 @@ export default function AITenantRateLimitPage() {
 		// pressing Refresh after setting a limit expects the utilization
 		// verdict to move too, not just the configuration rows.
 		refetchMetrics();
+		// Stage 4.2's section is another read this page paints from.
+		user_query.refetch();
 	};
 
 	return (
@@ -285,6 +384,65 @@ export default function AITenantRateLimitPage() {
 				onRefresh={handleRefresh}
 				state={toPageState(ratelimit_query, {op: 'ai_ratelimit.list'})}
 			/>
+
+			{/* ── Per-user overrides (Stage 4.2) ───────────────────────────
+			    Scoped to one tenant because the gateway has no read that
+			    enumerates them: there is a list per tenant and nothing above
+			    it. */}
+			<Stack spacing={1} sx={{mt: 3}}>
+				<Stack direction="row" spacing={1} alignItems="center">
+					<TextField
+						select
+						size="small"
+						label={t('Per-user limits for tenant')}
+						value={effectiveUserTenant}
+						onChange={e => {
+							setUserTenant(e.target.value);
+							set_selected_user_rows([]);
+						}}
+						sx={{minWidth: 240}}
+						disabled={tenants.length === 0}
+					>
+						{tenants.map(tenant => (
+							<MenuItem value={tenant} key={tenant}>
+								{tenant}
+							</MenuItem>
+						))}
+					</TextField>
+					{tenants.length === 0 && (
+						<Typography variant="body2" color="text.secondary">
+							{t('No tenant is known yet. Look one up above, or create an API key for it.')}
+						</Typography>
+					)}
+				</Stack>
+
+				{/* ⚠️ An empty list is not "nobody is limited". The gateway omits
+				    users who have no explicit entry, and those users are governed
+				    by the configured defaults — so absence here means inheritance,
+				    and leaving the table's bare "No rows" to speak would imply the
+				    opposite of the truth. */}
+				{effectiveUserTenant && userRows.length === 0 && user_query.isSuccess && (
+					<Alert severity="info">
+						{t('No user in this tenant has an explicit override. Every user is governed by the configured rate-limit defaults, and by nothing if none are set.')}
+					</Alert>
+				)}
+
+				{effectiveUserTenant && (
+					<UserRateLimitTable
+						data={userRows}
+						selected_rows={selected_user_rows}
+						onChangeSelectedRows={set_selected_user_rows}
+						onAdd={handleUserAdd}
+						onEdit={handleUserEdit}
+						onDelete={handleUserDelete}
+						onRefresh={() => {
+							set_selected_user_rows([]);
+							user_query.refetch();
+						}}
+						state={toPageState(user_query, {op: 'ai_user_ratelimit.list'})}
+					/>
+				)}
+			</Stack>
 
 			{/* Error Popup */}
 			<ErrorPopUp
