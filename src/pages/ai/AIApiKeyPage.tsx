@@ -7,21 +7,22 @@ import {Alert, IconButton, Stack, Tooltip, Typography} from '@mui/material';
 import SingleTextField from 'components/element/SingleTextField';
 import ValueBunch from 'components/element/ValueBunch';
 import ApiKeyInputForm from 'components/input/ApiKeyInputForm';
+import ApiKeyPatchForm from 'components/input/ApiKeyPatchForm';
 import LowerSection from 'components/layout/LowerSection';
 import SubTitlePannel from 'components/layout/SubTitlePannel';
 import ErrorPopUp from 'components/modal/ErrorPopUp';
 import ApiKeyTable from 'components/table/ai/ApiKeyTable';
-import {request_create_apikey, request_delete_apikey} from 'connector/instance/ai';
+import {request_create_apikey, request_delete_apikey, request_patch_apikey} from 'connector/instance/ai';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useApiKeys} from 'hooks/query/queryHooks';
 import {fromQueryRefetch} from 'hooks/query/reconcile';
 import {useReconcileReporter} from 'hooks/query/reconcileReport';
-import {apiKeyAppeared, apiKeysGone} from 'hooks/query/confirmPredicates';
+import {apiKeyAppeared, apiKeyPatchApplied, apiKeysGone} from 'hooks/query/confirmPredicates';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {t} from 'i18next';
 import React, {Fragment, useRef, useState} from 'react';
-import {IApiKeyCreateRequest, IApiKeyCreateResponse, IApiKeySummary} from 'types/ai';
+import {IApiKeyCreateRequest, IApiKeyCreateResponse, IApiKeyPatch, IApiKeySummary, apiKeyPatchIsEmpty} from 'types/ai';
 import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
@@ -163,6 +164,56 @@ export default function AIApiKeyPage() {
 		);
 	};
 
+	// ⭐⭐ Editing exists so that changing a limit no longer means DESTROYING a
+	// credential clients are still holding, which is what the create/delete-only
+	// surface forced. See `request_patch_apikey` for the two 400 classes and why
+	// the empty-patch guard lives in the connector.
+	const patchRef = useRef<IApiKeyPatch | null>(null);
+	const handleEdit = () => {
+		if (!inst || !selectedKey?.key_id) return;
+		const target = selectedKey;
+		patchRef.current = null;
+
+		const edit_form = (
+			<ApiKeyPatchForm
+				key={target.key_id}
+				current={target}
+				onChange={data => {
+					const {isValid, ...patch} = data;
+					patchRef.current = patch;
+					enableYes(!!isValid);
+				}}
+			/>
+		);
+
+		openPopUp(
+			'',
+			edit_form,
+			t('Apply'),
+			t('Cancel'),
+			async () => {
+				const patch = patchRef.current;
+				if (!patch || apiKeyPatchIsEmpty(patch)) return;
+
+				const res = await request_patch_apikey(inst, target.key_id!, patch);
+				set_selected_rows([]);
+				if (res.status === 'confirmed') {
+					await report({refetch: fromQueryRefetch(refetch), confirm: apiKeyPatchApplied(target.key_id!, patch)}, t('Applied successfully.'));
+					return;
+				}
+				// ⚠️ RE-READ ON FAILURE TOO, and this is not tidiness. The model
+				// and enabled fields are written by a different statement from
+				// the rate limits with no transaction between them, so a
+				// rejection can follow a committed first write — the contract
+				// says explicitly not to infer rollback. Showing the operator
+				// the stored state is the only honest answer.
+				showAddError('AI API key', t(res.localeKey));
+				await reconcile({refetch: fromQueryRefetch(refetch)});
+			},
+			true,
+		);
+	};
+
 	const handleDelete = async () => {
 		if (!inst || selected_rows.length === 0) return;
 
@@ -203,6 +254,7 @@ export default function AIApiKeyPage() {
 				selected_rows={selected_rows}
 				onChangeSelectedRows={set_selected_rows}
 				onAdd={handleAdd}
+				onEdit={handleEdit}
 				onDelete={handleDelete}
 				onRefresh={handleRefresh}
 				state={toPageState(apikey_query, {op: 'ai_apikey.list'})}

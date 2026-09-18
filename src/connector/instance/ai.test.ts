@@ -1,11 +1,12 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {IInstance} from 'types/oam';
-import {GET_INST, POST_INST} from '../fetcher/fetcher_inst';
-import {query_get_ratelimit_defaults, request_create_apikey, request_set_tenant_ratelimit} from './ai';
+import {GET_INST, PATCH_INST, POST_INST} from '../fetcher/fetcher_inst';
+import {query_get_ratelimit_defaults, request_create_apikey, request_patch_apikey, request_set_tenant_ratelimit} from './ai';
 
 vi.mock('../fetcher/fetcher_inst', () => ({
 	DELETE_INST: vi.fn(),
 	GET_INST: vi.fn(),
+	PATCH_INST: vi.fn(),
 	POST_INST: vi.fn(),
 }));
 
@@ -173,5 +174,172 @@ describe('query_get_ratelimit_defaults', () => {
 		const read = await query_get_ratelimit_defaults(instance, 'svc-1');
 		expect(read.storeState).toBe('readable');
 		expect(read.rule).toBeNull();
+	});
+});
+
+//---------------------------------------------------------
+// PATCH /config/ai/apikey/{key_id} — Stage 4.1
+//---------------------------------------------------------
+// The contract's presence semantics are the opposite of the create path's, and
+// the two 400 classes mean opposite things. Both are pinned here.
+
+describe('API key patch wire contract', () => {
+	const patch = vi.mocked(PATCH_INST);
+
+	beforeEach(() => {
+		patch.mockReset();
+	});
+
+	//---------------------------------------------------------
+	// ⭐⭐ The inversion: 0 is a VALUE here, not a sentinel for "unset"
+	//---------------------------------------------------------
+
+	it('sends an explicit 0 rather than omitting it — on PATCH, 0 means "no limit" and omission means "unchanged"', async () => {
+		patch.mockResolvedValue({code: 204, data: null, message: ''});
+
+		const result = await request_patch_apikey(instance, 'key-1', {rate_limit_rps: 0});
+
+		expect(result.status).toBe('confirmed');
+		// The create projection drops a 0 (`rps > 0 &&`). Doing that here would
+		// turn "make this key unlimited" into "change nothing" and still report
+		// success — the one failure mode that looks exactly like a win.
+		expect(patch).toHaveBeenCalledWith(instance, '/config/ai/apikey/key-1', {rate_limit_rps: 0});
+	});
+
+	it('sends every one of the five patchable fields, zeros included', async () => {
+		patch.mockResolvedValue({code: 204, data: null, message: ''});
+
+		await request_patch_apikey(instance, 'key-1', {
+			allowed_models: ['org/a'],
+			enabled: false,
+			rate_limit_rps: 0,
+			burst_size: 0,
+			tokens_per_min: 0,
+		});
+
+		expect(patch).toHaveBeenCalledWith(instance, '/config/ai/apikey/key-1', {
+			allowed_models: ['org/a'],
+			enabled: false,
+			rate_limit_rps: 0,
+			burst_size: 0,
+			tokens_per_min: 0,
+		});
+	});
+
+	it('sends enabled:false, which must not be dropped as falsy', async () => {
+		patch.mockResolvedValue({code: 204, data: null, message: ''});
+		await request_patch_apikey(instance, 'key-1', {enabled: false});
+		expect(patch).toHaveBeenCalledWith(instance, '/config/ai/apikey/key-1', {enabled: false});
+	});
+
+	it('sends an explicit empty allowed_models, which CLEARS the restriction and is not "nothing asked"', async () => {
+		patch.mockResolvedValue({code: 204, data: null, message: ''});
+
+		const result = await request_patch_apikey(instance, 'key-1', {allowed_models: []});
+
+		expect(result.status).toBe('confirmed');
+		expect(patch).toHaveBeenCalledWith(instance, '/config/ai/apikey/key-1', {allowed_models: []});
+	});
+
+	//---------------------------------------------------------
+	// The pre-lookup 400 class, kept off the wire
+	//---------------------------------------------------------
+
+	it('refuses a body naming no patchable field WITHOUT sending it', async () => {
+		const result = await request_patch_apikey(instance, 'key-1', {});
+
+		expect(result.status).toBe('invalid');
+		expect(result.code).toBe('ai.apikey.patch.client_invalid');
+		// The gateway would answer 400 before looking the key up, which is
+		// indistinguishable on the wire from the post-lookup 400 that CAN follow
+		// a committed write. Not sending it is what keeps the two apart.
+		expect(patch).not.toHaveBeenCalled();
+	});
+
+	it('treats an all-null body as naming nothing, exactly as the gateway does', async () => {
+		const result = await request_patch_apikey(instance, 'key-1', {
+			rate_limit_rps: undefined,
+			burst_size: undefined,
+			tokens_per_min: undefined,
+			enabled: undefined,
+			allowed_models: undefined,
+		});
+
+		expect(result.status).toBe('invalid');
+		expect(patch).not.toHaveBeenCalled();
+	});
+
+	it('refuses a whitespace-only key id without sending it', async () => {
+		const result = await request_patch_apikey(instance, '   ', {rate_limit_rps: 5});
+
+		expect(result.status).toBe('invalid');
+		expect(result.code).toBe('ai.apikey.patch.client_invalid');
+		expect(patch).not.toHaveBeenCalled();
+	});
+
+	it('refuses a negative rate before sending it', async () => {
+		const result = await request_patch_apikey(instance, 'key-1', {rate_limit_rps: -1});
+		expect(result.status).toBe('invalid');
+		expect(patch).not.toHaveBeenCalled();
+	});
+
+	it('refuses a model name containing a comma, which the store would split into two names', async () => {
+		const result = await request_patch_apikey(instance, 'key-1', {allowed_models: ['org/a,org/b']});
+		expect(result.status).toBe('invalid');
+		expect(patch).not.toHaveBeenCalled();
+	});
+
+	it('refuses an empty model name, which the store would read as "allow all"', async () => {
+		const result = await request_patch_apikey(instance, 'key-1', {allowed_models: ['']});
+		expect(result.status).toBe('invalid');
+		expect(patch).not.toHaveBeenCalled();
+	});
+
+	//---------------------------------------------------------
+	// The post-lookup 400, and why it is not 404
+	//---------------------------------------------------------
+
+	it('reports a 400 as a POSSIBLY PARTIAL update rather than a plain rejection', async () => {
+		patch.mockResolvedValue({code: 400, data: {error: 'invalid value'}, message: 'Bad Request'});
+
+		const result = await request_patch_apikey(instance, 'key-1', {tokens_per_min: 1000});
+
+		expect(result.status).toBe('invalid');
+		// ⚠️ The distinct code is the point: the model/enabled write and the
+		// rate-limit write are separate statements with no transaction, so a
+		// rejection here can follow a COMMITTED first write. "Rejected" alone
+		// would invite the operator to assume nothing changed.
+		expect(result.code).toBe('ai.apikey.patch.partial_rejected');
+		expect(result.localeKey).toMatch(/an earlier field may already be saved/i);
+	});
+
+	it('keeps 404 distinct from 400 — a 400 never means the key exists', async () => {
+		patch.mockResolvedValue({code: 404, data: {error: 'not found'}, message: 'Not Found'});
+
+		const result = await request_patch_apikey(instance, 'missing-key', {rate_limit_rps: 5});
+
+		expect(result.code).not.toBe('ai.apikey.patch.partial_rejected');
+		expect(result.httpStatus).toBe(404);
+	});
+
+	it('reports an unconfigured key store as its own condition, not as a bad request', async () => {
+		patch.mockResolvedValue({code: 503, data: {error: 'ai_key_store_unconfigured'}, message: 'Service Unavailable'});
+
+		const result = await request_patch_apikey(instance, 'key-1', {rate_limit_rps: 5});
+
+		expect(result.httpStatus).toBe(503);
+		expect(result.code).not.toBe('ai.apikey.patch.partial_rejected');
+	});
+
+	it('percent-encodes the key id into the path', async () => {
+		patch.mockResolvedValue({code: 204, data: null, message: ''});
+		await request_patch_apikey(instance, 'key/../evil id', {rate_limit_rps: 1});
+		expect(patch).toHaveBeenCalledWith(instance, '/config/ai/apikey/key%2F..%2Fevil%20id', {rate_limit_rps: 1});
+	});
+
+	it('degrades a thrown transport error instead of escaping', async () => {
+		patch.mockRejectedValue(new Error('boom'));
+		const result = await request_patch_apikey(instance, 'key-1', {rate_limit_rps: 1});
+		expect(result.status).not.toBe('confirmed');
 	});
 });

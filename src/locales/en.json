@@ -1124,5 +1124,18 @@
 	"Limit (tokens/min)": "Limit (tokens/min)",
 	"Headroom (tokens)": "Headroom (tokens)",
 	"Whether this scope should have a bucket could not be checked: the gateway offers no way to list the identities configured for it.": "Whether this scope should have a bucket could not be checked: the gateway offers no way to list the identities configured for it.",
-	"Token-quota utilization": "Token-quota utilization"
+	"Token-quota utilization": "Token-quota utilization",
+	"AI API Key": "AI API Key",
+	"Key": "Key",
+	"Applied successfully.": "Applied successfully.",
+	"Tokens per Minute": "Tokens per Minute",
+	"Leave blank to keep the stored value.": "Leave blank to keep the stored value.",
+	"Will be sent: {{fields}}": "Will be sent: {{fields}}",
+	"Nothing has changed yet, so there is nothing to send.": "Nothing has changed yet, so there is nothing to send.",
+	"Allowed models": "Allowed models",
+	"Requests per second": "Requests per second",
+	"Burst size": "Burst size",
+	"Tokens per minute": "Tokens per minute",
+	"Only the fields you change are sent. The gateway applies the model and enabled fields separately from the rate limits and does not wrap them in a transaction, so a rejected value can leave an earlier change already saved.": "Only the fields you change are sent. The gateway applies the model and enabled fields separately from the rate limits and does not wrap them in a transaction, so a rejected value can leave an earlier change already saved.",
+	"The gateway rejected one of these values. Fields are written in separate steps without a transaction, so an earlier field may already be saved — the list has been re-read.": "The gateway rejected one of these values. Fields are written in separate steps without a transaction, so an earlier field may already be saved — the list has been re-read."
 }

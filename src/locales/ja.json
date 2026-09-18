@@ -1124,5 +1124,18 @@
 	"Limit (tokens/min)": "上限（トークン/分）",
 	"Headroom (tokens)": "余裕（トークン）",
 	"Whether this scope should have a bucket could not be checked: the gateway offers no way to list the identities configured for it.": "この範囲にバケットがあるべきかどうかを確認できませんでした。ゲートウェイはこの範囲に設定された識別子を一覧する手段を提供していません。",
-	"Token-quota utilization": "トークンクォータ使用率"
+	"Token-quota utilization": "トークンクォータ使用率",
+	"AI API Key": "AI APIキー",
+	"Key": "キー",
+	"Applied successfully.": "適用しました。",
+	"Tokens per Minute": "1分あたりのトークン数",
+	"Leave blank to keep the stored value.": "空欄のままにすると保存済みの値を維持します。",
+	"Will be sent: {{fields}}": "送信される項目: {{fields}}",
+	"Nothing has changed yet, so there is nothing to send.": "変更された項目がないため、送信する内容はありません。",
+	"Allowed models": "許可モデル",
+	"Requests per second": "1秒あたりのリクエスト数",
+	"Burst size": "バーストサイズ",
+	"Tokens per minute": "1分あたりのトークン数",
+	"Only the fields you change are sent. The gateway applies the model and enabled fields separately from the rate limits and does not wrap them in a transaction, so a rejected value can leave an earlier change already saved.": "変更した項目のみ送信されます。ゲートウェイはモデルと有効フラグをレート制限とは別に適用し、トランザクションで囲まないため、ある値が拒否されても先に変更した項目は既に保存されている場合があります。",
+	"The gateway rejected one of these values. Fields are written in separate steps without a transaction, so an earlier field may already be saved — the list has been re-read.": "ゲートウェイがこれらの値のいずれかを拒否しました。項目はトランザクションなしで複数の手順に分けて書き込まれるため、先の項目は既に保存されている可能性があります — 一覧を再読み込みしました。"
 }

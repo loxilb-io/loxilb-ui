@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {normalizeTenantRateLimit, reconcileTenantModelLimits, validateTenantRateLimit} from './ai';
+import {API_KEY_PATCH_FIELDS, apiKeyPatchIsEmpty, normalizeTenantRateLimit, reconcileTenantModelLimits, validateApiKeyPatch, validateTenantRateLimit} from './ai';
 
 describe('tenant per-model quota contract', () => {
 	describe('edit reconciliation', () => {
@@ -136,5 +136,85 @@ describe('tenant per-model quota contract', () => {
 			],
 		});
 		expect(errors).toHaveLength(4);
+	});
+});
+
+//---------------------------------------------------------
+// API key PATCH contract (Stage 4.1)
+//---------------------------------------------------------
+
+describe('API key patch contract', () => {
+	it('carries FIVE patchable fields, not the three rate-limit ones the brief names', () => {
+		// `allowed_models` and `enabled` patch on the same call and share the
+		// same presence rules. Dropping either from this list would make
+		// `apiKeyPatchIsEmpty` answer "nothing asked" for a real change and the
+		// connector would refuse a legitimate patch client-side.
+		//
+		// ⭐ The set AND this order are the gateway's own, proven at runtime
+		// rather than read off prose: an empty-body PATCH answers 400 with
+		// "no patchable field supplied: name at least one of allowed_models,
+		// enabled, rate_limit_rps, burst_size, tokens_per_min".
+		//
+		// ⭐ That 400 also arrives on a gateway whose key store is UNCONFIGURED
+		// (which would otherwise answer 503), which is the live proof that the
+		// nonempty-patch check runs BEFORE the store and key are consulted —
+		// i.e. that such a 400 really does not mean the key exists.
+		expect(API_KEY_PATCH_FIELDS).toHaveLength(5);
+		expect([...API_KEY_PATCH_FIELDS]).toEqual(['allowed_models', 'enabled', 'rate_limit_rps', 'burst_size', 'tokens_per_min']);
+	});
+
+	describe('the "nothing asked" class', () => {
+		it('counts an empty object and an all-undefined body', () => {
+			expect(apiKeyPatchIsEmpty({})).toBe(true);
+			expect(apiKeyPatchIsEmpty({rate_limit_rps: undefined, enabled: undefined})).toBe(true);
+			expect(apiKeyPatchIsEmpty(null)).toBe(true);
+			expect(apiKeyPatchIsEmpty(undefined)).toBe(true);
+		});
+
+		it('does NOT count a zero — 0 is an explicit limit, the whole point of the field', () => {
+			expect(apiKeyPatchIsEmpty({rate_limit_rps: 0})).toBe(false);
+			expect(apiKeyPatchIsEmpty({burst_size: 0})).toBe(false);
+			expect(apiKeyPatchIsEmpty({tokens_per_min: 0})).toBe(false);
+		});
+
+		it('does NOT count enabled:false', () => {
+			expect(apiKeyPatchIsEmpty({enabled: false})).toBe(false);
+		});
+
+		it('does NOT count an empty allowed_models — a present field that clears the restriction', () => {
+			expect(apiKeyPatchIsEmpty({allowed_models: []})).toBe(false);
+		});
+	});
+
+	describe('validation', () => {
+		it('accepts a patch of zeros', () => {
+			expect(validateApiKeyPatch({rate_limit_rps: 0, burst_size: 0, tokens_per_min: 0})).toEqual([]);
+		});
+
+		it('rejects a patch that asks for nothing, and says so once', () => {
+			expect(validateApiKeyPatch({})).toEqual(['Change at least one field before applying.']);
+		});
+
+		it('rejects negative and fractional rates', () => {
+			expect(validateApiKeyPatch({rate_limit_rps: -1})).not.toEqual([]);
+			expect(validateApiKeyPatch({tokens_per_min: 1.5})).not.toEqual([]);
+		});
+
+		it('rejects model names the store would silently mangle', () => {
+			// The gateway joins/splits the list on commas without lossless
+			// encoding, so a comma inside a name becomes two names...
+			expect(validateApiKeyPatch({allowed_models: ['a,b']})).not.toEqual([]);
+			// ...and an empty item makes the list unrestricted.
+			expect(validateApiKeyPatch({allowed_models: ['']})).not.toEqual([]);
+			expect(validateApiKeyPatch({allowed_models: ['   ']})).not.toEqual([]);
+		});
+
+		it('rejects a duplicated model', () => {
+			expect(validateApiKeyPatch({allowed_models: ['org/a', 'org/a']})).not.toEqual([]);
+		});
+
+		it('accepts an empty list, which is how the restriction is cleared', () => {
+			expect(validateApiKeyPatch({allowed_models: []})).toEqual([]);
+		});
 	});
 });

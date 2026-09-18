@@ -120,3 +120,44 @@ export const tenantRateLimitAppeared =
 	(tenantId: string) =>
 	(rows: {tenant_id?: string}[]): boolean =>
 		rows.some(r => r.tenant_id === tenantId);
+
+/**
+ * A patch landed on an API key: every field the operator actually CHANGED now
+ * reads back that way (Stage 4.1).
+ *
+ * ⚠️⚠️ THE CANONICALIZATION IS THE WHOLE POINT HERE, and it is the "too tight"
+ * failure this file's header warns about, in its sharpest form. `ApiKeySummary`
+ * says outright that "optional zero metadata can be absent" — so setting a
+ * rate field to 0, which is an explicit and meaningful limit on this endpoint,
+ * can read back as a MISSING FIELD. A predicate comparing `row.rate_limit_rps
+ * === 0` would therefore never confirm the one edit most likely to be made
+ * (lifting a limit), and the operator would be told a completed change had not
+ * landed. Absent and 0 are compared as equal for exactly that reason.
+ *
+ * ⚠️ `allowed_models: []` can likewise come back as `null`, and `enabled` is
+ * the only field guaranteed to serialize.
+ *
+ * ⭐ Only the fields the patch NAMED are compared — the rest were explicitly
+ * left unchanged, so comparing them would test someone else's state.
+ */
+export const apiKeyPatchApplied =
+	(keyId: string, patch: {allowed_models?: string[]; enabled?: boolean; rate_limit_rps?: number; burst_size?: number; tokens_per_min?: number}) =>
+	(rows: {key_id?: string; allowed_models?: string[] | null; enabled?: boolean; rate_limit_rps?: number | null; burst_size?: number | null; tokens_per_min?: number | null}[]): boolean => {
+		const row = rows.find(r => r.key_id === keyId);
+		if (!row) return false;
+
+		const numericMatches = (asked: number | undefined, served: number | null | undefined): boolean =>
+			asked === undefined || asked === (served ?? 0);
+
+		if (!numericMatches(patch.rate_limit_rps, row.rate_limit_rps)) return false;
+		if (!numericMatches(patch.burst_size, row.burst_size)) return false;
+		if (!numericMatches(patch.tokens_per_min, row.tokens_per_min)) return false;
+
+		if (patch.enabled !== undefined && patch.enabled !== (row.enabled !== false)) return false;
+
+		if (patch.allowed_models !== undefined) {
+			if (patch.allowed_models.join(',') !== (row.allowed_models ?? []).join(',')) return false;
+		}
+
+		return true;
+	};
