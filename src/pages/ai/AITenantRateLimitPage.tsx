@@ -7,17 +7,30 @@ import {Alert, Button, Stack, TextField} from '@mui/material';
 import TenantRateLimitInputForm from 'components/input/TenantRateLimitInputForm';
 import ErrorPopUp from 'components/modal/ErrorPopUp';
 import TenantRateLimitTable from 'components/table/ai/TenantRateLimitTable';
-import {query_get_tenant_ratelimit, query_get_tenant_ratelimits_for, request_set_tenant_ratelimit} from 'connector/instance/ai';
+import {query_get_ratelimit_defaults, query_get_tenant_ratelimit, query_get_tenant_ratelimits_for, request_set_tenant_ratelimit} from 'connector/instance/ai';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
-import {useApiKeys, useLoadBalancerConfig} from 'hooks/query/queryHooks';
+import TokenQuotaPanel from 'components/observability/TokenQuotaPanel';
+import {PanelPaper, useObservabilityApplicable} from 'pages/observability/common';
+import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
+import {useApiKeys, useJWTAuthProfiles, useLoadBalancerConfig} from 'hooks/query/queryHooks';
+import {
+	NO_QUOTA_DEFAULTS,
+	QUOTA_SCOPES,
+	QuotaScope,
+	ScopeAbsence,
+	effectiveLimit,
+	resolveQuotaDefaults,
+	scopeAbsence,
+	tokenQuotaReport,
+} from 'observability/tokenQuota';
 import {useQueryInstanceData} from 'hooks/query/common';
 import {fromQueryRefetch} from 'hooks/query/reconcile';
 import {useReconcileReporter} from 'hooks/query/reconcileReport';
 import {tenantRateLimitAppeared} from 'hooks/query/confirmPredicates';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {t} from 'i18next';
-import React, {Fragment, useRef, useState} from 'react';
+import React, {Fragment, useMemo, useRef, useState} from 'react';
 import {ITenantRateLimitMod} from 'types/ai';
 import {hasRequiredApiKeyPolicy} from 'types/ai_gateway';
 import {toPageState} from 'components/state/pageState';
@@ -49,7 +62,79 @@ export default function AITenantRateLimitPage() {
 		inst,
 	);
 	const {data: entries, refetch} = ratelimit_query;
-	const rows = entries ?? [];
+	const rows = useMemo(() => entries ?? [], [entries]);
+
+	//---------------------------------------------------------
+	// Token-quota utilization (Stage 3.6)
+	//---------------------------------------------------------
+	// ⭐⭐ This panel sits on the CONFIGURATION page on purpose. Its finding is
+	// not "how full is the bucket" but "is any of this being enforced?", and
+	// the only thing that can answer it is the quota store's own reachability
+	// — which is a property of the configuration read, not of the metric. An
+	// operator who has just set a limit here is exactly the person who needs
+	// to be told it is not in force.
+	const quotaApplicable = useObservabilityApplicable('panel.tokenQuota');
+	const {snapshot} = useMetricsSnapshot(quotaApplicable ? inst : null);
+	const defaults_query = useQueryInstanceData(
+		['ai_ratelimit_defaults'],
+		instance => query_get_ratelimit_defaults(instance),
+		quotaApplicable ? inst : null,
+	);
+	const {data: jwtProfiles} = useJWTAuthProfiles(quotaApplicable ? inst : null);
+
+	const quota = useMemo(() => {
+		const read = defaults_query.data;
+		const defaults = read ? resolveQuotaDefaults(
+			read.global ? {
+				defaultTenantTpm: read.global.default_tenant_tpm,
+				defaultUserTpm: read.global.default_user_tpm,
+				vipSharedTpm: read.global.vip_shared_tpm,
+			} : undefined,
+			// ⚠️ No rule row is read here. A rule row overrides per SERVICE,
+			// and this page is not scoped to one service — asking for one
+			// arbitrary rule's row would report the wrong expected limit for
+			// every other service on the gateway.
+			undefined,
+		) : NO_QUOTA_DEFAULTS;
+
+		// ⚠️⚠️ A scope is listed here only when the page could actually CHECK
+		// it. The gateway's rate-limit collection endpoints are POST-only, so
+		// there is no way to enumerate users, keys or services — and a scope
+		// left out of this map renders as "not checked", never as "no limit".
+		// Reporting an unchecked scope as unconfigured would be a claim the
+		// page has no evidence for.
+		const limitResolvesByScope: Partial<Record<QuotaScope, boolean>> = {
+			tenant: rows.some(r => effectiveLimit('tenant', r.tokens_per_min, defaults) !== undefined)
+				// With no tenant row read yet, a positive tenant default alone
+				// already means every attributed tenant gets a bucket.
+				|| effectiveLimit('tenant', undefined, defaults) !== undefined,
+			'tenant-model': rows.some(r => (r.model_limits ?? []).some(m => effectiveLimit('tenant-model', m.tokens_per_min, defaults) !== undefined)),
+			vip: effectiveLimit('vip', undefined, defaults) !== undefined,
+		};
+
+		// ⚠️ "A profile exists" is the most this page can honestly claim. It
+		// rules user identity OUT when there is no JWT auth profile at all —
+		// the gateway then never validates a bearer and no user can be
+		// attributed — but it cannot rule it IN, since a profile still has to
+		// be bound to the service the traffic arrives on.
+		const userIdentityAvailable = (jwtProfiles ?? []).length > 0;
+
+		const report = tokenQuotaReport({
+			snapshot,
+			storeState: read?.storeState ?? 'unknown',
+			anyLimitResolves: Object.values(limitResolvesByScope).some(Boolean),
+			userIdentityAvailable,
+		});
+
+		const absenceByScope: Partial<Record<QuotaScope, ScopeAbsence>> = {};
+		for (const spec of QUOTA_SCOPES) {
+			const resolves = limitResolvesByScope[spec.scope];
+			// Unchecked stays unchecked: no entry, so the panel says so.
+			if (resolves === undefined) continue;
+			absenceByScope[spec.scope] = scopeAbsence(spec.scope, report, resolves);
+		}
+		return {report, limitResolvesByScope, absenceByScope};
+	}, [snapshot, defaults_query.data, jwtProfiles, rows]);
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
 	const [lookupTenant, setLookupTenant] = useState('');
@@ -153,6 +238,16 @@ export default function AITenantRateLimitPage() {
 					{t('Lookup')}
 				</Button>
 			</Stack>
+
+			{quotaApplicable && (
+				<PanelPaper title={t('Token-quota utilization')}>
+					<TokenQuotaPanel
+						report={quota.report}
+						limitResolvesByScope={quota.limitResolvesByScope}
+						absenceByScope={quota.absenceByScope}
+					/>
+				</PanelPaper>
+			)}
 
 			<TenantRateLimitTable
 				data={rows}
