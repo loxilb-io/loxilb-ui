@@ -1,0 +1,519 @@
+# HELP go_gc_duration_seconds A summary of the pause duration of garbage collection cycles.
+# TYPE go_gc_duration_seconds summary
+go_gc_duration_seconds{quantile="0"} 0.000151945
+go_gc_duration_seconds{quantile="0.25"} 0.000859368
+go_gc_duration_seconds{quantile="0.5"} 0.001383652
+go_gc_duration_seconds{quantile="0.75"} 0.001529361
+go_gc_duration_seconds{quantile="1"} 0.002396013
+go_gc_duration_seconds_sum 0.927309289
+go_gc_duration_seconds_count 756
+# HELP go_goroutines Number of goroutines that currently exist.
+# TYPE go_goroutines gauge
+go_goroutines 45
+# HELP go_info Information about the Go environment.
+# TYPE go_info gauge
+go_info{version="go1.25.12"} 1
+# HELP go_memstats_alloc_bytes Number of bytes allocated and still in use.
+# TYPE go_memstats_alloc_bytes gauge
+go_memstats_alloc_bytes 8.9084512e+07
+# HELP go_memstats_alloc_bytes_total Total number of bytes allocated, even if freed.
+# TYPE go_memstats_alloc_bytes_total counter
+go_memstats_alloc_bytes_total 6.743388392e+09
+# HELP go_memstats_buck_hash_sys_bytes Number of bytes used by the profiling bucket hash table.
+# TYPE go_memstats_buck_hash_sys_bytes gauge
+go_memstats_buck_hash_sys_bytes 1.448286e+06
+# HELP go_memstats_frees_total Total number of frees.
+# TYPE go_memstats_frees_total counter
+go_memstats_frees_total 4.9358839e+07
+# HELP go_memstats_gc_sys_bytes Number of bytes used for garbage collection system metadata.
+# TYPE go_memstats_gc_sys_bytes gauge
+go_memstats_gc_sys_bytes 4.879664e+06
+# HELP go_memstats_heap_alloc_bytes Number of heap bytes allocated and still in use.
+# TYPE go_memstats_heap_alloc_bytes gauge
+go_memstats_heap_alloc_bytes 8.9084512e+07
+# HELP go_memstats_heap_idle_bytes Number of heap bytes waiting to be used.
+# TYPE go_memstats_heap_idle_bytes gauge
+go_memstats_heap_idle_bytes 5.0970624e+07
+# HELP go_memstats_heap_inuse_bytes Number of heap bytes that are in use.
+# TYPE go_memstats_heap_inuse_bytes gauge
+go_memstats_heap_inuse_bytes 1.10051328e+08
+# HELP go_memstats_heap_objects Number of allocated objects.
+# TYPE go_memstats_heap_objects gauge
+go_memstats_heap_objects 121255
+# HELP go_memstats_heap_released_bytes Number of heap bytes released to OS.
+# TYPE go_memstats_heap_released_bytes gauge
+go_memstats_heap_released_bytes 3.5979264e+07
+# HELP go_memstats_heap_sys_bytes Number of heap bytes obtained from system.
+# TYPE go_memstats_heap_sys_bytes gauge
+go_memstats_heap_sys_bytes 1.61021952e+08
+# HELP go_memstats_last_gc_time_seconds Number of seconds since 1970 of last garbage collection.
+# TYPE go_memstats_last_gc_time_seconds gauge
+go_memstats_last_gc_time_seconds 1.789697825159877e+09
+# HELP go_memstats_lookups_total Total number of pointer lookups.
+# TYPE go_memstats_lookups_total counter
+go_memstats_lookups_total 0
+# HELP go_memstats_mallocs_total Total number of mallocs.
+# TYPE go_memstats_mallocs_total counter
+go_memstats_mallocs_total 4.9480094e+07
+# HELP go_memstats_mcache_inuse_bytes Number of bytes in use by mcache structures.
+# TYPE go_memstats_mcache_inuse_bytes gauge
+go_memstats_mcache_inuse_bytes 4832
+# HELP go_memstats_mcache_sys_bytes Number of bytes used for mcache structures obtained from system.
+# TYPE go_memstats_mcache_sys_bytes gauge
+go_memstats_mcache_sys_bytes 15704
+# HELP go_memstats_mspan_inuse_bytes Number of bytes in use by mspan structures.
+# TYPE go_memstats_mspan_inuse_bytes gauge
+go_memstats_mspan_inuse_bytes 714400
+# HELP go_memstats_mspan_sys_bytes Number of bytes used for mspan structures obtained from system.
+# TYPE go_memstats_mspan_sys_bytes gauge
+go_memstats_mspan_sys_bytes 1.40352e+06
+# HELP go_memstats_next_gc_bytes Number of heap bytes when next garbage collection will take place.
+# TYPE go_memstats_next_gc_bytes gauge
+go_memstats_next_gc_bytes 1.73633786e+08
+# HELP go_memstats_other_sys_bytes Number of bytes used for other system allocations.
+# TYPE go_memstats_other_sys_bytes gauge
+go_memstats_other_sys_bytes 1.828554e+06
+# HELP go_memstats_stack_inuse_bytes Number of bytes in use by the stack allocator.
+# TYPE go_memstats_stack_inuse_bytes gauge
+go_memstats_stack_inuse_bytes 2.555904e+06
+# HELP go_memstats_stack_sys_bytes Number of bytes obtained from system for stack allocator.
+# TYPE go_memstats_stack_sys_bytes gauge
+go_memstats_stack_sys_bytes 2.555904e+06
+# HELP go_memstats_sys_bytes Number of bytes obtained from system.
+# TYPE go_memstats_sys_bytes gauge
+go_memstats_sys_bytes 1.73153584e+08
+# HELP go_threads Number of OS threads created.
+# TYPE go_threads gauge
+go_threads 24
+# HELP loxilb_active_conntrack_entries Number of active established connections from clients to targets.
+# TYPE loxilb_active_conntrack_entries gauge
+loxilb_active_conntrack_entries 0
+# HELP loxilb_active_flow_count_sctp Number of concurrent SCTP flows (or connections) from clients to targets.
+# TYPE loxilb_active_flow_count_sctp gauge
+loxilb_active_flow_count_sctp 0
+# HELP loxilb_active_flow_count_tcp Number of concurrent TCP flows (or connections) from clients to targets.
+# TYPE loxilb_active_flow_count_tcp gauge
+loxilb_active_flow_count_tcp 0
+# HELP loxilb_active_flow_count_udp Number of concurrent UDP flows (or connections) from clients to targets.
+# TYPE loxilb_active_flow_count_udp gauge
+loxilb_active_flow_count_udp 0
+# HELP loxilb_ai_jwks_refresh_total Total JWKS fetch attempts per bearer profile, by outcome. A failure keeps the last-known-good keyset, so failures are not immediately visible in request outcomes -- which is why they are counted here.
+# TYPE loxilb_ai_jwks_refresh_total counter
+loxilb_ai_jwks_refresh_total{outcome="failure",profile="e2e-jwt-realm"} 219
+loxilb_ai_jwks_refresh_total{outcome="failure",profile="e2e-wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww"} 22
+loxilb_ai_jwks_refresh_total{outcome="failure",profile="j3-live-probe"} 8
+loxilb_ai_jwks_refresh_total{outcome="failure",profile="probe-jwt-realm"} 7
+loxilb_ai_jwks_refresh_total{outcome="failure",profile="realm-a"} 18
+# HELP loxilb_ai_keyed_services Number of LB services declaring api_key_auth=required. 0 means no service expects X-Api-Key enforcement — unmetered AI traffic is then the deployment's designed posture, not an anomaly (the unmetered-traffic alert guards on this gauge).
+# TYPE loxilb_ai_keyed_services gauge
+loxilb_ai_keyed_services 0
+# HELP loxilb_ai_kv_trtllm_drain_ownership_heal_total TRT-LLM drain ownership fault clears (fresh engine cache announcement or stream re-acquire).
+# TYPE loxilb_ai_kv_trtllm_drain_ownership_heal_total counter
+loxilb_ai_kv_trtllm_drain_ownership_heal_total 0
+# HELP loxilb_ai_policy_store_unavailable_total Total AI gateway requests refused with 503 because the service's api_key_auth policy requires a key and the API-key store is unconfigured or unreachable. Non-zero means the gateway is failing closed and legitimate traffic is being refused.
+# TYPE loxilb_ai_policy_store_unavailable_total counter
+loxilb_ai_policy_store_unavailable_total 0
+# HELP loxilb_ai_token_quota_cold_open_total Total times this node started serving token-quota traffic fail-open with cold (empty) quota state, without peer warm-up.
+# TYPE loxilb_ai_token_quota_cold_open_total counter
+loxilb_ai_token_quota_cold_open_total 0
+# HELP loxilb_ai_worker_scrape_total Total vLLM worker /metrics scrape attempts by outcome (ok, unreachable, http_error, body_error, unparseable, bad_request). Anything other than ok means P/D load-aware selection is scoring on a stale or substituted signal for that endpoint.
+# TYPE loxilb_ai_worker_scrape_total counter
+loxilb_ai_worker_scrape_total{result="bad_request"} 0
+loxilb_ai_worker_scrape_total{result="body_error"} 0
+loxilb_ai_worker_scrape_total{result="http_error"} 0
+loxilb_ai_worker_scrape_total{result="ok"} 0
+loxilb_ai_worker_scrape_total{result="unknown"} 0
+loxilb_ai_worker_scrape_total{result="unparseable"} 0
+loxilb_ai_worker_scrape_total{result="unreachable"} 0
+# HELP loxilb_autopersist_consecutive_failures Consecutive auto-persist failures; 0 when the last persist succeeded. Nonzero means recent config changes may not survive a restart.
+# TYPE loxilb_autopersist_consecutive_failures gauge
+loxilb_autopersist_consecutive_failures 0
+# HELP loxilb_boot_config_conflict_total Boots that found BOTH snapshot.json and legacy *.txt config artifacts and had to arbitrate newest-wins (§6.2).
+# TYPE loxilb_boot_config_conflict_total counter
+loxilb_boot_config_conflict_total 0
+# HELP loxilb_boot_legacy_fallback_total Boots that fell back to legacy *.txt config replay after the snapshot path failed (compat profile only); the gateway is running degraded desired state.
+# TYPE loxilb_boot_legacy_fallback_total counter
+loxilb_boot_legacy_fallback_total 0
+# HELP loxilb_closed_connections_processed_total Total number of closed connections with final metrics captured
+# TYPE loxilb_closed_connections_processed_total counter
+loxilb_closed_connections_processed_total 1096
+# HELP loxilb_config_dirty 1 when the running config carries mutations not yet persisted to snapshot.json; 0 once a write-through has covered every recorded mutation. Tracks the mutating config REST surface (same eligibility as auto-persist), so a sustained 1 means recent config changes would not survive a restart.
+# TYPE loxilb_config_dirty gauge
+loxilb_config_dirty 0
+# HELP loxilb_conntrack_max_entries Capacity of the datapath conntrack table (maximum concurrently tracked sessions).
+# TYPE loxilb_conntrack_max_entries gauge
+loxilb_conntrack_max_entries 524288
+# HELP loxilb_conntrack_stat_resets_total Total number of conntrack statistics reset events detected
+# TYPE loxilb_conntrack_stat_resets_total counter
+loxilb_conntrack_stat_resets_total 0
+# HELP loxilb_errors_total Total number of errors
+# TYPE loxilb_errors_total counter
+loxilb_errors_total 0
+# HELP loxilb_firewall_rules Number of active firewall rules
+# TYPE loxilb_firewall_rules gauge
+loxilb_firewall_rules 1
+# HELP loxilb_fw_drop_packets_total Total number of packets dropped by firewall rules
+# TYPE loxilb_fw_drop_packets_total counter
+loxilb_fw_drop_packets_total 0
+# HELP loxilb_healthy_endpoints Distinct endpoint hosts known to the health prober (deduplicated across LB rules) in state ok. Hosts without an activated probe report ok unless forced down.
+# TYPE loxilb_healthy_endpoints gauge
+loxilb_healthy_endpoints 3
+# HELP loxilb_host_cpu_utilization_percent Whole-machine CPU utilization percentage [0-100], including processes outside this container
+# TYPE loxilb_host_cpu_utilization_percent gauge
+loxilb_host_cpu_utilization_percent 1.8227848101265876
+# HELP loxilb_ipfilter_rules Total number of active IP filter rules
+# TYPE loxilb_ipfilter_rules gauge
+loxilb_ipfilter_rules{type="blacklist"} 0
+loxilb_ipfilter_rules{type="whitelist"} 1
+# HELP loxilb_ipfilter_whitelist_bytes_total Total number of bytes allowed by IP whitelist rules
+# TYPE loxilb_ipfilter_whitelist_bytes_total counter
+loxilb_ipfilter_whitelist_bytes_total{cidr="10.0.0.0/24",priority="100",zone="0"} 0
+# HELP loxilb_ipfilter_whitelist_packets_total Total number of packets allowed by IP whitelist rules
+# TYPE loxilb_ipfilter_whitelist_packets_total counter
+loxilb_ipfilter_whitelist_packets_total{cidr="10.0.0.0/24",priority="100",zone="0"} 0
+# HELP loxilb_l4_error_events_total L4 connection error events by protocol and reason (event-driven, unsampled; RST/abort/protocol-error). Source of truth for LoxilbL4ErrorBurst.
+# TYPE loxilb_l4_error_events_total counter
+loxilb_l4_error_events_total{proto="sctp",reason="abort"} 0
+loxilb_l4_error_events_total{proto="sctp",reason="error"} 0
+loxilb_l4_error_events_total{proto="tcp",reason="error"} 0
+loxilb_l4_error_events_total{proto="tcp",reason="rst_client"} 1
+loxilb_l4_error_events_total{proto="tcp",reason="rst_server"} 0
+# HELP loxilb_last_restore_timestamp_seconds Unix time of the last successfully committed restore (commit or boot mode; dry-runs excluded).
+# TYPE loxilb_last_restore_timestamp_seconds gauge
+loxilb_last_restore_timestamp_seconds 0
+# HELP loxilb_lb_rules Total number of load balancing rules.
+# TYPE loxilb_lb_rules gauge
+loxilb_lb_rules 4
+# HELP loxilb_lb_select_failure_shutdown_total Full-proxy client connections shut down raw (TCP reset, no HTTP error body) because backend selection or connect failed on a non-P/D path. Nonzero means clients are seeing connection resets instead of 502/503 during endpoint outages.
+# TYPE loxilb_lb_select_failure_shutdown_total counter
+loxilb_lb_select_failure_shutdown_total 0
+# HELP loxilb_new_flows The number of new TCP connections from clients to targets.
+# TYPE loxilb_new_flows gauge
+loxilb_new_flows 0
+# HELP loxilb_opa_circuit_breaker_state OPA circuit breaker state (0=CLOSED, 1=OPEN, 2=HALF_OPEN).
+# TYPE loxilb_opa_circuit_breaker_state gauge
+loxilb_opa_circuit_breaker_state 0
+# HELP loxilb_opa_firewall_rules Current number of OPA-managed firewall rules.
+# TYPE loxilb_opa_firewall_rules gauge
+loxilb_opa_firewall_rules 0
+# HELP loxilb_opa_sync_duration_seconds OPA L4 watcher sync duration in seconds.
+# TYPE loxilb_opa_sync_duration_seconds histogram
+loxilb_opa_sync_duration_seconds_bucket{le="0.1"} 0
+loxilb_opa_sync_duration_seconds_bucket{le="0.5"} 0
+loxilb_opa_sync_duration_seconds_bucket{le="1"} 0
+loxilb_opa_sync_duration_seconds_bucket{le="5"} 0
+loxilb_opa_sync_duration_seconds_bucket{le="10"} 0
+loxilb_opa_sync_duration_seconds_bucket{le="+Inf"} 0
+loxilb_opa_sync_duration_seconds_sum 0
+loxilb_opa_sync_duration_seconds_count 0
+# HELP loxilb_pd_admission_overflow_shed_total Total requests shed (retriable 429) by the per-EP admission layer because every healthy prefill EP was at the in-flight cap AND its parked FIFO was full (overflow valve; the only reachable shed when queueing is enabled). Distinct from loxilb_pd_admission_shed_total, which counts sheds with queueing disabled.
+# TYPE loxilb_pd_admission_overflow_shed_total counter
+loxilb_pd_admission_overflow_shed_total 0
+# HELP loxilb_pd_admission_queued_total Total requests PARKED (held, not shed) on a per-EP FIFO by the per-EP admission layer (hold-don't-drop). Distinct from global total-inflight valve.
+# TYPE loxilb_pd_admission_queued_total counter
+loxilb_pd_admission_queued_total 0
+# HELP loxilb_pd_admission_shed_total Total requests shed (retriable 429) by the per-EP admission layer : every healthy prefill EP at the in-flight cap with no parked-FIFO room. Distinct from global total-inflight valve.
+# TYPE loxilb_pd_admission_shed_total counter
+loxilb_pd_admission_shed_total 0
+# HELP loxilb_pd_cb_flips_total Total circuit breaker state transitions (CLOSED->OPEN, HALF_OPEN->OPEN, HALF_OPEN->CLOSED, OPEN->HALF_OPEN).
+# TYPE loxilb_pd_cb_flips_total counter
+loxilb_pd_cb_flips_total 0
+# HELP loxilb_pd_cb_proactive_heal_total Total circuit-breaker OPEN->HALF_OPEN transitions driven proactively by the 1Hz health pass (self-heal) without organic traffic. Sibling of loxilb_pd_cb_flips_total (which counts ALL CB state transitions).
+# TYPE loxilb_pd_cb_proactive_heal_total counter
+loxilb_pd_cb_proactive_heal_total 0
+# HELP loxilb_pd_connect_failover_total Successful prefill connect failovers: the initially selected endpoint's TCP connect failed mid-health-cycle and a retry against another healthy prefill endpoint succeeded (client saw no error).
+# TYPE loxilb_pd_connect_failover_total counter
+loxilb_pd_connect_failover_total 0
+# HELP loxilb_pd_connect_retry_same_ep_ok_total Same-endpoint reconnect attempts that succeeded: the originally selected (cache-owner) endpoint accepted on retry, preserving KV affinity instead of falling through to Tier-2 selection.
+# TYPE loxilb_pd_connect_retry_same_ep_ok_total counter
+loxilb_pd_connect_retry_same_ep_ok_total 0
+# HELP loxilb_pd_connect_retry_same_ep_total Same-endpoint reconnect attempts after a transient backend connect failure on an affinity-bearing service (P/D disaggregation or KV-exact). Bounded by LLB_PD_CONNECT_RETRY_SAME_EP (default 1).
+# TYPE loxilb_pd_connect_retry_same_ep_total counter
+loxilb_pd_connect_retry_same_ep_total 0
+# HELP loxilb_pd_decode_ep_died_total Decode endpoint failures detected: connect failure at decode initiation (after prefill completed) or backend EOF before any response byte was relayed.
+# TYPE loxilb_pd_decode_ep_died_total counter
+loxilb_pd_decode_ep_died_total 0
+# HELP loxilb_pd_decode_zero_byte_eof_total Decode backend EOF with ZERO response bytes relayed to the client (client received 502). Subset of loxilb_pd_decode_ep_died_total; the signature of an async connect to a dead decode endpoint.
+# TYPE loxilb_pd_decode_zero_byte_eof_total counter
+loxilb_pd_decode_zero_byte_eof_total 0
+# HELP loxilb_pd_fallback_to_normal_total Total requests that fell back from P/D to normal inference mode due to unhealthy prefill/decode EPs.
+# TYPE loxilb_pd_fallback_to_normal_total counter
+loxilb_pd_fallback_to_normal_total 0
+# HELP loxilb_pd_kv_tier15_fallthrough_total Total requests that skipped Tier 1.5 KV-exact routing entirely and fell through to Tier 2 (round-robin / next-tier).
+# TYPE loxilb_pd_kv_tier15_fallthrough_total counter
+loxilb_pd_kv_tier15_fallthrough_total 0
+# HELP loxilb_pd_kv_tier15_miss_reason_total Total Tier-1.5 KV-exact routing misses by guard reason (mode_off,warmup,text_empty,model_empty,tokenize,hashes,no_worker,excluded,shallow).
+# TYPE loxilb_pd_kv_tier15_miss_reason_total counter
+loxilb_pd_kv_tier15_miss_reason_total{reason="api_mode"} 0
+loxilb_pd_kv_tier15_miss_reason_total{reason="excluded"} 0
+loxilb_pd_kv_tier15_miss_reason_total{reason="hashes"} 0
+loxilb_pd_kv_tier15_miss_reason_total{reason="mode_off"} 0
+loxilb_pd_kv_tier15_miss_reason_total{reason="model_empty"} 0
+loxilb_pd_kv_tier15_miss_reason_total{reason="no_worker"} 0
+loxilb_pd_kv_tier15_miss_reason_total{reason="not_ready"} 0
+loxilb_pd_kv_tier15_miss_reason_total{reason="runtime_fault"} 0
+loxilb_pd_kv_tier15_miss_reason_total{reason="shallow"} 0
+loxilb_pd_kv_tier15_miss_reason_total{reason="text_empty"} 0
+loxilb_pd_kv_tier15_miss_reason_total{reason="tokenize"} 0
+loxilb_pd_kv_tier15_miss_reason_total{reason="unsupported_feature"} 0
+loxilb_pd_kv_tier15_miss_reason_total{reason="warmup"} 0
+# HELP loxilb_pd_prefill_ep_died_total Prefill backend connections that died mid-request (client received 503). Counts endpoint-death EVENTS as detected per connection, complementing the request-outcome view in loxilb_ai_pd_requests_total.
+# TYPE loxilb_pd_prefill_ep_died_total counter
+loxilb_pd_prefill_ep_died_total 0
+# HELP loxilb_pd_sessions_active Number of active P/D disaggregation sessions.
+# TYPE loxilb_pd_sessions_active gauge
+loxilb_pd_sessions_active 0
+# HELP loxilb_pd_sg_decode_close_drain_total SGLang P/D dual dispatch: a decode-leg failure closed the still-open prefill drain leg so it is not orphaned at the engine until the disaggregation timeout.
+# TYPE loxilb_pd_sg_decode_close_drain_total counter
+loxilb_pd_sg_decode_close_drain_total 0
+# HELP loxilb_pd_sg_oversize_reject_total SGLang P/D: a streamable request (body above the gateway JSON inspection window) on a disaggregation rule was refused fail-closed with a 503 before contacting any engine, because bootstrap injection is impossible for an unbuffered body and disaggregation-mode engines cannot serve a bootstrap-less relay.
+# TYPE loxilb_pd_sg_oversize_reject_total counter
+loxilb_pd_sg_oversize_reject_total 0
+# HELP loxilb_pd_sg_prefill_abort_decode_total SGLang P/D dual dispatch: prefill drain-leg failure (error status, transport death, or rendezvous timeout) forced an abort of the in-flight decode leg (client received 502/504). A storm here means prefill endpoints or the bootstrap rendezvous are unhealthy.
+# TYPE loxilb_pd_sg_prefill_abort_decode_total counter
+loxilb_pd_sg_prefill_abort_decode_total 0
+# HELP loxilb_pd_sg_prefill_reject_relay_total SGLang P/D dual dispatch: the prefill engine answered a complete 4xx before decode produced output; the origin response was relayed to the client verbatim and the decode leg aborted. A client error, not an endpoint fault — a storm here means clients are sending unservable requests (for example prompts over the model context window).
+# TYPE loxilb_pd_sg_prefill_reject_relay_total counter
+loxilb_pd_sg_prefill_reject_relay_total 0
+# HELP loxilb_pd_sg_room_retry_total SGLang P/D dual dispatch: the whole (prefill, decode) pair was re-dispatched with a fresh bootstrap room after a retriable failure.
+# TYPE loxilb_pd_sg_room_retry_total counter
+loxilb_pd_sg_room_retry_total 0
+# HELP loxilb_pd_trie_nodes Number of prefix trie nodes for P/D routing.
+# TYPE loxilb_pd_trie_nodes gauge
+loxilb_pd_trie_nodes 0
+# HELP loxilb_pd_trt_ctx_early_exit_total TRT-LLM P/D: the context response finished the request in one step (finish_reason neither length nor not_finished) — the buffered response was relayed to the client and the generation leg skipped. A success outcome, not an error; a sustained high rate means prompts are completing within the context token cap.
+# TYPE loxilb_pd_trt_ctx_early_exit_total counter
+loxilb_pd_trt_ctx_early_exit_total 0
+# HELP loxilb_persist_total snapshot.json persist attempts (write-through, manual, auto-persist), partitioned by result (ok, error).
+# TYPE loxilb_persist_total counter
+loxilb_persist_total{result="error"} 0
+loxilb_persist_total{result="ok"} 71
+# HELP loxilb_processed_bytes_total The total number of bytes processed by the load balancer, including protocol and IP headers. Fed from the cumulative data-plane rule counters (exact, includes flows of any lifetime).
+# TYPE loxilb_processed_bytes_total counter
+loxilb_processed_bytes_total 0
+# HELP loxilb_processed_packets_total The total number of packets processed by the load balancer. Fed from the cumulative data-plane rule counters (exact, includes flows of any lifetime).
+# TYPE loxilb_processed_packets_total counter
+loxilb_processed_packets_total 0
+# HELP loxilb_processed_sctp_bytes_total The total number of SCTP bytes processed by the load balancer, including SCTP/IP headers.
+# TYPE loxilb_processed_sctp_bytes_total counter
+loxilb_processed_sctp_bytes_total 0
+# HELP loxilb_processed_sctp_packets_total The total number of SCTP packets processed by the load balancer.
+# TYPE loxilb_processed_sctp_packets_total counter
+loxilb_processed_sctp_packets_total 0
+# HELP loxilb_processed_tcp_bytes_total The total number of TCP bytes processed by the load balancer, including TCP/IP headers.
+# TYPE loxilb_processed_tcp_bytes_total counter
+loxilb_processed_tcp_bytes_total 0
+# HELP loxilb_processed_tcp_packets_total The total number of TCP packets processed by the load balancer.
+# TYPE loxilb_processed_tcp_packets_total counter
+loxilb_processed_tcp_packets_total 0
+# HELP loxilb_processed_udp_bytes_total The total number of UDP bytes processed by the load balancer, including UDP/IP headers.
+# TYPE loxilb_processed_udp_bytes_total counter
+loxilb_processed_udp_bytes_total 0
+# HELP loxilb_processed_udp_packets_total The total number of UDP packets processed by the load balancer.
+# TYPE loxilb_processed_udp_packets_total counter
+loxilb_processed_udp_packets_total 0
+# HELP loxilb_proxy_active_connections Current number of active proxy connections (all types).
+# TYPE loxilb_proxy_active_connections gauge
+loxilb_proxy_active_connections 0
+# HELP loxilb_proxy_active_ssl_connections Current number of active SSL/TLS connections.
+# TYPE loxilb_proxy_active_ssl_connections gauge
+loxilb_proxy_active_ssl_connections 0
+# HELP loxilb_proxy_cache_backpressure_ratio Ratio of connections with active cache backpressure (0.0-1.0). High values indicate sustained cache pressure.
+# TYPE loxilb_proxy_cache_backpressure_ratio gauge
+loxilb_proxy_cache_backpressure_ratio 0
+# HELP loxilb_proxy_cache_bytes Relay payload currently cached across all proxy connections, in bytes. Scales with concurrent in-flight body volume against slow backends; bounded per connection but not in aggregate.
+# TYPE loxilb_proxy_cache_bytes gauge
+loxilb_proxy_cache_bytes 0
+# HELP loxilb_proxy_cache_bytes_max_conn Largest relay cache held by any single connection, in bytes. Approaching the 12MB watermark (768KB chunked) means backpressure is about to engage on that connection.
+# TYPE loxilb_proxy_cache_bytes_max_conn gauge
+loxilb_proxy_cache_bytes_max_conn 0
+# HELP loxilb_proxy_cache_conns_queued Connections currently holding cached relay payload. Denominator for mean bytes per queued connection.
+# TYPE loxilb_proxy_cache_conns_queued gauge
+loxilb_proxy_cache_conns_queued 0
+# HELP loxilb_proxy_cache_drain_partial_total Total partial cache drain events (EAGAIN/EWOULDBLOCK during flush). Indicates socket flow control.
+# TYPE loxilb_proxy_cache_drain_partial_total counter
+loxilb_proxy_cache_drain_partial_total 0
+# HELP loxilb_proxy_cache_high_water_events_total Total cache backpressure activations. Monotonic counter tracking adaptive backpressure triggers.
+# TYPE loxilb_proxy_cache_high_water_events_total counter
+loxilb_proxy_cache_high_water_events_total 0
+# HELP loxilb_proxy_chunked_responses_total Total number of chunked transfer encoding responses detected. Indicates streaming AI workloads.
+# TYPE loxilb_proxy_chunked_responses_total counter
+loxilb_proxy_chunked_responses_total 0
+# HELP loxilb_proxy_conversation_hits_total Total conversation mapping lookups that hit an existing session affinity entry.
+# TYPE loxilb_proxy_conversation_hits_total counter
+loxilb_proxy_conversation_hits_total 0
+# HELP loxilb_proxy_conversation_misses_total Total conversation mapping lookups that missed (no session affinity entry).
+# TYPE loxilb_proxy_conversation_misses_total counter
+loxilb_proxy_conversation_misses_total 0
+# HELP loxilb_proxy_conversation_sessions Current number of active conversation mappings (session affinity state).
+# TYPE loxilb_proxy_conversation_sessions gauge
+loxilb_proxy_conversation_sessions 0
+# HELP loxilb_proxy_conversation_ttl_expired_total Total conversation mappings expired due to TTL timeout. Helps tune session affinity TTL settings.
+# TYPE loxilb_proxy_conversation_ttl_expired_total counter
+loxilb_proxy_conversation_ttl_expired_total 0
+# HELP loxilb_proxy_graceful_close_total Total graceful connection closes with pending cache drain. Tracks proper shutdown preventing data loss.
+# TYPE loxilb_proxy_graceful_close_total counter
+loxilb_proxy_graceful_close_total 0
+# HELP loxilb_proxy_http2_sessions_total Total HTTP/2 sessions created.
+# TYPE loxilb_proxy_http2_sessions_total counter
+loxilb_proxy_http2_sessions_total 0
+# HELP loxilb_proxy_http_responses_by_status_total Total HTTP responses by status code class (2xx, 3xx, 4xx, 5xx).
+# TYPE loxilb_proxy_http_responses_by_status_total counter
+loxilb_proxy_http_responses_by_status_total{status_class="2xx"} 0
+loxilb_proxy_http_responses_by_status_total{status_class="3xx"} 0
+loxilb_proxy_http_responses_by_status_total{status_class="4xx"} 0
+loxilb_proxy_http_responses_by_status_total{status_class="5xx"} 0
+# HELP loxilb_proxy_http_responses_total Total HTTP responses processed. Use rate() for RPS calculation.
+# TYPE loxilb_proxy_http_responses_total counter
+loxilb_proxy_http_responses_total 0
+# HELP loxilb_proxy_http_ttfb_seconds HTTP Time-To-First-Byte latency in seconds.
+# TYPE loxilb_proxy_http_ttfb_seconds histogram
+loxilb_proxy_http_ttfb_seconds_bucket{le="0.001"} 0
+loxilb_proxy_http_ttfb_seconds_bucket{le="0.005"} 0
+loxilb_proxy_http_ttfb_seconds_bucket{le="0.01"} 0
+loxilb_proxy_http_ttfb_seconds_bucket{le="0.025"} 0
+loxilb_proxy_http_ttfb_seconds_bucket{le="0.05"} 0
+loxilb_proxy_http_ttfb_seconds_bucket{le="0.1"} 0
+loxilb_proxy_http_ttfb_seconds_bucket{le="0.25"} 0
+loxilb_proxy_http_ttfb_seconds_bucket{le="0.5"} 0
+loxilb_proxy_http_ttfb_seconds_bucket{le="1"} 0
+loxilb_proxy_http_ttfb_seconds_bucket{le="2.5"} 0
+loxilb_proxy_http_ttfb_seconds_bucket{le="5"} 0
+loxilb_proxy_http_ttfb_seconds_bucket{le="10"} 0
+loxilb_proxy_http_ttfb_seconds_bucket{le="+Inf"} 0
+loxilb_proxy_http_ttfb_seconds_sum 0
+loxilb_proxy_http_ttfb_seconds_count 0
+# HELP loxilb_proxy_pd_kv_params_overflow_total Total kv_transfer_params extraction buffer overflow events. Alert on sustained non-zero rate.
+# TYPE loxilb_proxy_pd_kv_params_overflow_total counter
+loxilb_proxy_pd_kv_params_overflow_total 0
+# HELP loxilb_requests_total Sampled new sessions observed by the 10s conntrack sweep. Sessions born and closed within one sweep are not counted - treat as a trend indicator, not an exact request count.
+# TYPE loxilb_requests_total counter
+loxilb_requests_total 16
+# HELP loxilb_restore_duration_seconds Wall-clock duration of restore pipeline runs, all modes.
+# TYPE loxilb_restore_duration_seconds histogram
+loxilb_restore_duration_seconds_bucket{le="0.005"} 0
+loxilb_restore_duration_seconds_bucket{le="0.01"} 0
+loxilb_restore_duration_seconds_bucket{le="0.02"} 0
+loxilb_restore_duration_seconds_bucket{le="0.04"} 0
+loxilb_restore_duration_seconds_bucket{le="0.08"} 0
+loxilb_restore_duration_seconds_bucket{le="0.16"} 0
+loxilb_restore_duration_seconds_bucket{le="0.32"} 0
+loxilb_restore_duration_seconds_bucket{le="0.64"} 0
+loxilb_restore_duration_seconds_bucket{le="1.28"} 0
+loxilb_restore_duration_seconds_bucket{le="2.56"} 0
+loxilb_restore_duration_seconds_bucket{le="5.12"} 0
+loxilb_restore_duration_seconds_bucket{le="10.24"} 0
+loxilb_restore_duration_seconds_bucket{le="20.48"} 0
+loxilb_restore_duration_seconds_bucket{le="40.96"} 0
+loxilb_restore_duration_seconds_bucket{le="+Inf"} 0
+loxilb_restore_duration_seconds_sum 0
+loxilb_restore_duration_seconds_count 0
+# HELP loxilb_restore_total Restore pipeline runs, partitioned by mode (dry-run, commit, boot) and result (ok, rolled-back, ROLLBACK-FAILED, rejected, error).
+# TYPE loxilb_restore_total counter
+loxilb_restore_total{mode="boot",result="ROLLBACK-FAILED"} 0
+loxilb_restore_total{mode="boot",result="error"} 0
+loxilb_restore_total{mode="boot",result="ok"} 0
+loxilb_restore_total{mode="boot",result="rejected"} 0
+loxilb_restore_total{mode="boot",result="rolled-back"} 0
+loxilb_restore_total{mode="commit",result="ROLLBACK-FAILED"} 0
+loxilb_restore_total{mode="commit",result="error"} 0
+loxilb_restore_total{mode="commit",result="ok"} 0
+loxilb_restore_total{mode="commit",result="rejected"} 0
+loxilb_restore_total{mode="commit",result="rolled-back"} 0
+loxilb_restore_total{mode="dry-run",result="ROLLBACK-FAILED"} 0
+loxilb_restore_total{mode="dry-run",result="error"} 0
+loxilb_restore_total{mode="dry-run",result="ok"} 0
+loxilb_restore_total{mode="dry-run",result="rejected"} 0
+loxilb_restore_total{mode="dry-run",result="rolled-back"} 0
+# HELP loxilb_security_conn_blocked_total Total number of connections blocked by rate limiting
+# TYPE loxilb_security_conn_blocked_total counter
+loxilb_security_conn_blocked_total 0
+# HELP loxilb_security_conn_passed_total Total number of connections passed by rate limiting
+# TYPE loxilb_security_conn_passed_total counter
+loxilb_security_conn_passed_total 932
+# HELP loxilb_security_syn_blocked_total Total number of SYN packets blocked by SYN flood protection
+# TYPE loxilb_security_syn_blocked_total counter
+loxilb_security_syn_blocked_total 0
+# HELP loxilb_security_syn_cookies_total Total number of SYN cookie activations
+# TYPE loxilb_security_syn_cookies_total counter
+loxilb_security_syn_cookies_total 0
+# HELP loxilb_security_syn_passed_total Total number of SYN packets passed by SYN flood protection
+# TYPE loxilb_security_syn_passed_total counter
+loxilb_security_syn_passed_total 932
+# HELP loxilb_security_udp_blocked_total Total number of UDP packets blocked by UDP flood protection
+# TYPE loxilb_security_udp_blocked_total counter
+loxilb_security_udp_blocked_total 0
+# HELP loxilb_security_udp_bytes_blocked_total Total number of UDP bytes blocked by UDP flood protection
+# TYPE loxilb_security_udp_bytes_blocked_total counter
+loxilb_security_udp_bytes_blocked_total 0
+# HELP loxilb_security_udp_bytes_passed_total Total number of UDP bytes passed by UDP flood protection
+# TYPE loxilb_security_udp_bytes_passed_total counter
+loxilb_security_udp_bytes_passed_total 0
+# HELP loxilb_security_udp_passed_total Total number of UDP packets passed by UDP flood protection
+# TYPE loxilb_security_udp_passed_total counter
+loxilb_security_udp_passed_total 0
+# HELP loxilb_security_unique_ips Number of unique IPs being tracked for security rate limiting
+# TYPE loxilb_security_unique_ips gauge
+loxilb_security_unique_ips 13
+# HELP loxilb_service_traffic_bytes_total Total bytes per NAMED service, from the exact data-plane rule counters. Unnamed LB rules have no per-service series.
+# TYPE loxilb_service_traffic_bytes_total counter
+loxilb_service_traffic_bytes_total{service="jwt-probe"} 0
+loxilb_service_traffic_bytes_total{service="probe-named"} 0
+# HELP loxilb_service_traffic_packets_total Total packets per NAMED service, from the exact data-plane rule counters. Unnamed LB rules have no per-service series.
+# TYPE loxilb_service_traffic_packets_total counter
+loxilb_service_traffic_packets_total{service="jwt-probe"} 0
+loxilb_service_traffic_packets_total{service="probe-named"} 0
+# HELP loxilb_snapshot_quarantine_total snapshot.json files quarantined (renamed to .failed-<ts>) after a failed boot restore; each one is a boot that could not replay its persisted config.
+# TYPE loxilb_snapshot_quarantine_total counter
+loxilb_snapshot_quarantine_total 0
+# HELP loxilb_snapshot_total Snapshot documents captured, partitioned by trigger (manual, write-through, pre-restore, scheduled, pre-upgrade).
+# TYPE loxilb_snapshot_total counter
+loxilb_snapshot_total{trigger="manual"} 0
+loxilb_snapshot_total{trigger="pre-restore"} 0
+loxilb_snapshot_total{trigger="pre-upgrade"} 0
+loxilb_snapshot_total{trigger="scheduled"} 0
+loxilb_snapshot_total{trigger="write-through"} 71
+# HELP loxilb_sockproxy_sync_apply_errors_total Synced session entries whose receiver-side apply failed outright (negative C applier outcome).
+# TYPE loxilb_sockproxy_sync_apply_errors_total counter
+loxilb_sockproxy_sync_apply_errors_total 0
+# HELP loxilb_system_cpu_utilization_percent CPU utilization percentage [0-100] of the scope loxilb runs in: this container's share of its CPU allowance when containerized, the whole machine otherwise
+# TYPE loxilb_system_cpu_utilization_percent gauge
+loxilb_system_cpu_utilization_percent 1.8712181442141758
+# HELP loxilb_system_disk_utilization_percent Total system disk utilization percentage [0-100] (root filesystem)
+# TYPE loxilb_system_disk_utilization_percent gauge
+loxilb_system_disk_utilization_percent 80.60906712998684
+# HELP loxilb_system_memory_utilization_percent Total system memory utilization percentage [0-100]
+# TYPE loxilb_system_memory_utilization_percent gauge
+loxilb_system_memory_utilization_percent 14.17816426745068
+# HELP loxilb_unhealthy_endpoints Distinct endpoint hosts known to the health prober (deduplicated across LB rules) in any state other than ok (probe-inactive or forced down).
+# TYPE loxilb_unhealthy_endpoints gauge
+loxilb_unhealthy_endpoints 0
+# HELP process_cpu_seconds_total Total user and system CPU time spent in seconds.
+# TYPE process_cpu_seconds_total counter
+process_cpu_seconds_total 6512.47
+# HELP process_max_fds Maximum number of open file descriptors.
+# TYPE process_max_fds gauge
+process_max_fds 524287
+# HELP process_open_fds Number of open file descriptors.
+# TYPE process_open_fds gauge
+process_open_fds 1492
+# HELP process_resident_memory_bytes Resident memory size in bytes.
+# TYPE process_resident_memory_bytes gauge
+process_resident_memory_bytes 1.33464064e+08
+# HELP process_start_time_seconds Start time of the process since unix epoch in seconds.
+# TYPE process_start_time_seconds gauge
+process_start_time_seconds 1.78960774672e+09
+# HELP process_virtual_memory_bytes Virtual memory size in bytes.
+# TYPE process_virtual_memory_bytes gauge
+process_virtual_memory_bytes 3.637850112e+09
+# HELP process_virtual_memory_max_bytes Maximum amount of virtual memory available in bytes.
+# TYPE process_virtual_memory_max_bytes gauge
+process_virtual_memory_max_bytes 1.8446744073709552e+19
+# HELP promhttp_metric_handler_requests_in_flight Current number of scrapes being served.
+# TYPE promhttp_metric_handler_requests_in_flight gauge
+promhttp_metric_handler_requests_in_flight 1
+# HELP promhttp_metric_handler_requests_total Total number of scrapes by HTTP status code.
+# TYPE promhttp_metric_handler_requests_total counter
+promhttp_metric_handler_requests_total{code="200"} 193
+promhttp_metric_handler_requests_total{code="500"} 0
+promhttp_metric_handler_requests_total{code="503"} 0
