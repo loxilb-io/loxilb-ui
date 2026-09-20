@@ -81,7 +81,10 @@ export default function SideMenu(props: {open: boolean}) {
 						<ListSubheader component="div">
 							<Link to={instance_url} style={{textDecoration: 'none'}}>
 								<Box display="flex" alignItems="center" justifyContent="space-between" padding="14px 0" borderBottom="1px solid" borderColor="divider">
-									<Typography variant="h6" color="text.primary" noWrap>
+									{/* A label for the nav group, not a document heading —
+									    see SlideMenuItem. `component` keeps it out of the
+									    heading outline while the variant keeps its size. */}
+									<Typography variant="h6" component="div" color="text.primary" noWrap>
 										{inst_name}
 									</Typography>
 

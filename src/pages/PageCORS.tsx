@@ -17,7 +17,7 @@ export default function PageCORS() {
 			<Stack width="100%" maxWidth="400px" alignItems="center" spacing={2}>
 				<Box component="img" src={Image503} alt="500" width="100%" maxWidth="250px" />
 
-				<Typography variant="h6">{t('Blocked by CORS')}</Typography>
+				<Typography variant="h6" component="h2">{t('Blocked by CORS')}</Typography>
 
 				<Typography variant="body2" whiteSpace="pre-wrap" textAlign="center" width="100%">
 					{t("Response to preflight request doesn't pass access control check.")}

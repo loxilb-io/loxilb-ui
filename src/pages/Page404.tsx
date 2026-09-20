@@ -17,7 +17,7 @@ export default function Page404() {
 			<Stack width="400px" alignItems="center" spacing={2}>
 				<Box component="img" src={Image404} alt="404" width="100%" maxWidth="250px" />
 
-				<Typography variant="h6">{t('Page not found')}</Typography>
+				<Typography variant="h6" component="h2">{t('Page not found')}</Typography>
 
 				<Typography variant="body2" whiteSpace="pre-wrap" textAlign="center" width="100%" maxWidth="400px">
 					{t('Sorry, but the page you’re looking for doesn’t exist.')}

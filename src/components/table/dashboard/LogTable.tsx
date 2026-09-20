@@ -47,7 +47,7 @@ export default function LogTable(props: {data: ILog[]; selected_rows: number[]; 
 	return (
 		<Stack spacing={2}>
 			<Box display="flex" alignItems="center" gap="20px">
-				<Typography variant="h6">{t('Logging Period')}</Typography>
+				<Typography variant="h6" component="h2">{t('Logging Period')}</Typography>
 				<DateTimeRangeSelector
 					startLabel="Start Date"
 					endLabel="End Date"

@@ -55,7 +55,7 @@ export default function WorkersPage() {
 	return (
 		<Box sx={{p: 2}}>
 			<Box display="flex" alignItems="center" gap={2} sx={{mb: 2}}>
-				<Typography variant="h5">{t('Workers')}</Typography>
+				<Typography variant="h5" component="h2">{t('Workers')}</Typography>
 				{gpu.data && <FreshnessBadge receivedAtMs={gpu.data.receivedAtMs} cadenceMs={GPU_STATUS_CADENCE_MS} />}
 			</Box>
 

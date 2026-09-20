@@ -110,7 +110,7 @@ export default function AITrafficPage() {
 	return (
 		<Box sx={{p: 2}}>
 			<Box display="flex" alignItems="center" gap={2} sx={{mb: 2}}>
-				<Typography variant="h5">{t('AI Traffic')}</Typography>
+				<Typography variant="h5" component="h2">{t('AI Traffic')}</Typography>
 				{snapshot && !snapshot.failure && <FreshnessBadge receivedAtMs={snapshot.receivedAtMs} cadenceMs={cadenceMs} />}
 				<CadenceSelector />
 			</Box>

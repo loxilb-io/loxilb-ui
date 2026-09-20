@@ -12,7 +12,9 @@ export default function ValueBunch(props: {name?: string; children?: ReactNode})
 
 	return (
 		<Stack spacing={1}>
-			{name && <Typography variant="subtitle2">{name}</Typography>}
+			{/* A section title, so it stays a heading: `subtitle2` is a SIZE and no
+			    longer implies one (see theme.ts). h2 sits under the layout h1. */}
+			{name && <Typography variant="subtitle2" component="h2">{name}</Typography>}
 
 			<Box display="flex" gap="20px">
 				{children}

@@ -67,7 +67,7 @@ export default function BGPGlobalPage() {
 	if (!form) return null;
 	return (
 		<Stack spacing={4} maxWidth={600} padding={2}>
-			<Typography variant="h6">{t('BGP Global Configuration')}</Typography>
+			<Typography variant="h6" component="h2">{t('BGP Global Configuration')}</Typography>
 
 			<ParamBox label={t('Router ID')} value={form.routerId ?? ''} onChange={handleChange('routerId')} param_desc={{...params?.routerId, type: 'ipaddress'}} />
 			<ParamBox

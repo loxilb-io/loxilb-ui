@@ -136,3 +136,35 @@ describe('palette contrast', () => {
 		}
 	});
 });
+
+//---------------------------------------------------------
+// Variant mapping: a text SIZE must not decide a heading LEVEL (Stage 5.2)
+//---------------------------------------------------------
+// MUI maps `subtitle1`/`subtitle2` onto <h6> by default, so every card
+// subtitle, stat label, menu entry and version string that reached for one as
+// a size silently entered the document outline as a heading. The route-level
+// axe pass caught four of them — a footer version, an instance name, a "Sel"
+// column label, a "Requests dropped" stat — but it only ever sees the nodes
+// that happen to be on screen, which is exactly why this is pinned here
+// instead: the mapping is one value, and checking it covers every page,
+// including ones the axe pass does not visit and ones not yet written.
+describe('Typography variant mapping', () => {
+	const mapping = (createTheme(theme_config).components?.MuiTypography?.defaultProps as
+		{variantMapping?: Record<string, string>} | undefined)?.variantMapping;
+
+	it('does not render the subtitle variants as headings', () => {
+		expect(mapping?.subtitle1).toBe('p');
+		expect(mapping?.subtitle2).toBe('p');
+		expect(mapping?.subtitle1).not.toMatch(/^h[1-6]$/);
+		expect(mapping?.subtitle2).not.toMatch(/^h[1-6]$/);
+	});
+
+	it('leaves the real heading variants alone', () => {
+		// MUI falls back to its own mapping for any variant this object omits,
+		// so overriding the two subtitles must not disturb h1-h6 — a page title
+		// asking for `variant="h5"` still needs to be able to get an <h5>.
+		for (const variant of ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'body1', 'body2']) {
+			expect(mapping).not.toHaveProperty(variant);
+		}
+	});
+});

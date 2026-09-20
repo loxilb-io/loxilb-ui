@@ -256,7 +256,7 @@ test.describe('@gw AI JWT auth profiles', () => {
 		await openToolbarDialog(page, 'Add', 'Add Load Balancer Rule');
 
 		async function expand(title: RegExp): Promise<void> {
-			const sec = dialog(page).locator('.MuiAccordion-root').filter({has: page.locator('h6', {hasText: title})});
+			const sec = dialog(page).locator('.MuiAccordion-root').filter({has: page.locator('.MuiAccordionSummary-content', {hasText: title})});
 			const summary = sec.locator('.MuiAccordionSummary-root').first();
 			if ((await summary.getAttribute('aria-expanded')) !== 'true') await summary.click();
 		}

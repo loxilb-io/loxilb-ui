@@ -19,7 +19,11 @@ export default function NewBox(props: {item_name: string; isEdit?: boolean; chil
 
 	return (
 		<Box display="flex" flexDirection="column" gap={4}>
-			<Typography variant="h6" color="text.secondary">
+			{/* ⚠️ `component` is load-bearing: this is the heading ten e2e specs
+			    locate a dialog by (`getByRole('heading', {name: 'New …'})`), so it must
+			    stay a heading. h2 rather than the variant's implied h6 — it sits
+			    directly under the layout's h1 (see RouteTitle PageHeading). */}
+			<Typography variant="h6" component="h2" color="text.secondary">
 				{isEdit ? t('Edit {{item_name}}', {item_name}) : t('New {{item_name}}', {item_name})}
 			</Typography>
 

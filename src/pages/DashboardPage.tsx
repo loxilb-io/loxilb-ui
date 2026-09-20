@@ -178,7 +178,7 @@ export default function DashboardPage() {
 		return (
 			<Box width="100%" height="100%" display="flex" flexDirection="column" alignItems="center" justifyContent="center" padding="40px">
 				<CircularProgress size={48} sx={{ mb: 3 }} aria-label={t('Checking Instance Status...')} />
-				<Typography variant="h6" gutterBottom>
+				<Typography variant="h6" component="p" gutterBottom>
 					{t('Checking Instance Status...')}
 				</Typography>
 				<Typography variant="body2" color="text.secondary" textAlign="center">
@@ -191,7 +191,7 @@ export default function DashboardPage() {
 	return (
 		<Box width="100%" height="100%">
 			<Box display="flex" gap="20px" marginLeft="10px">
-				<Typography variant="h5">{t('Dashboard')}</Typography>
+				<Typography variant="h5" component="h2">{t('Dashboard')}</Typography>
 				<Button color="secondary" variant="outlined" size="small" onClick={handleClick}>
 					{t('Reset Layout')}
 				</Button>

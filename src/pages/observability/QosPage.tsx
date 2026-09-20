@@ -138,7 +138,7 @@ export default function QosPage() {
 	return (
 		<Box sx={{p: 2}}>
 			<Box display="flex" alignItems="center" gap={2} sx={{mb: 2}}>
-				<Typography variant="h5">{t('QoS')}</Typography>
+				<Typography variant="h5" component="h2">{t('QoS')}</Typography>
 				{snapshot && !snapshot.failure && <FreshnessBadge receivedAtMs={snapshot.receivedAtMs} cadenceMs={cadenceMs} />}
 				<CadenceSelector />
 			</Box>

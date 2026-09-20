@@ -98,7 +98,7 @@ export default function SystemUsageCard(props: {instance: IInstance | null}) {
 					{title}
 				</Typography>
 				<Box width="100%" height={200} display="flex" flexDirection="column" alignItems="center" justifyContent="center" gap={1}>
-					<Typography variant="h6" color="text.disabled">
+					<Typography variant="h6" component="p" color="text.disabled">
 						{t('N/A')}
 					</Typography>
 					<Typography variant="caption" color="text.secondary" textAlign="center">

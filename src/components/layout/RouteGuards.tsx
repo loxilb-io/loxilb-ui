@@ -45,7 +45,7 @@ function NotAvailableOnInstance() {
 	return (
 		<Stack alignItems="center" justifyContent="center" spacing={1} sx={{height: '100%', minHeight: 240, p: 4}}>
 			<BlockIcon color="disabled" sx={{fontSize: 48}} />
-			<Typography variant="h6">{t('Not available on this instance')}</Typography>
+			<Typography variant="h6" component="h2">{t('Not available on this instance')}</Typography>
 			<Typography variant="body2" color="text.secondary" sx={{maxWidth: 480, textAlign: 'center'}}>
 				{t('This page manages a feature of loxilb-inference-gateway. The selected instance runs plain loxilb, which does not serve this API family.')}
 			</Typography>
@@ -71,7 +71,7 @@ function CapabilityDenied() {
 	return (
 		<Stack data-testid="flavor-denied" alignItems="center" justifyContent="center" spacing={1} sx={{height: '100%', minHeight: 240, p: 4}}>
 			<BlockIcon color="error" sx={{fontSize: 48}} />
-			<Typography variant="h6">{t('Permission denied')}</Typography>
+			<Typography variant="h6" component="h2">{t('Permission denied')}</Typography>
 			<Typography variant="body2" color="text.secondary" sx={{maxWidth: 480, textAlign: 'center'}}>
 				{t('Your session is not authorized to read this instance. Sign in again or contact an administrator.')}
 			</Typography>
@@ -85,7 +85,7 @@ function CapabilityUnavailable() {
 	return (
 		<Stack data-testid="flavor-unavailable" alignItems="center" justifyContent="center" spacing={1} sx={{height: '100%', minHeight: 240, p: 4}}>
 			<BlockIcon color="disabled" sx={{fontSize: 48}} />
-			<Typography variant="h6">{t('Instance unreachable')}</Typography>
+			<Typography variant="h6" component="h2">{t('Instance unreachable')}</Typography>
 			<Typography variant="body2" color="text.secondary" sx={{maxWidth: 480, textAlign: 'center'}}>
 				{t('The instance did not answer the capability probe. Check that it is running and reachable, then reload.')}
 			</Typography>

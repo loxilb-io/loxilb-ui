@@ -27,7 +27,7 @@ function FirmwareAvailablePannel(props: {handleUpdate: () => void}) {
 
 	return (
 		<Stack id="firmware" spacing={2}>
-			<Typography variant="h6">{t('Firmware Update')}</Typography>
+			<Typography variant="h6" component="h2">{t('Firmware Update')}</Typography>
 
 			<Stack>
 				<ValueBunch>
@@ -66,7 +66,7 @@ function FirmwareAvailablePannel(props: {handleUpdate: () => void}) {
 function FirmwareUpdatingPannel() {
 	return (
 		<Stack width="100%" height="100%">
-			<Typography variant="h6">{t('Firmware Update')}</Typography>
+			<Typography variant="h6" component="h2">{t('Firmware Update')}</Typography>
 
 			<Stack width="100%" height="100%" justifyContent="center" alignItems="center" spacing={2}>
 				<Box height="60px">
@@ -94,12 +94,12 @@ function FirmwareResultPannel(props: {is_success: boolean}) {
 
 	return (
 		<Stack width="100%" height="100%">
-			<Typography variant="h6">{t('Firmware Update')}</Typography>
+			<Typography variant="h6" component="h2">{t('Firmware Update')}</Typography>
 
 			<Stack width="100%" height="100%" justifyContent="center" alignItems="center" spacing={2}>
 				<Stack alignItems="center">
 					{is_success ? <CheckCircleIcon color={is_success ? 'success' : 'error'} sx={{fontSize: 24}} /> : <ErrorIcon color="error" sx={{fontSize: 24}} />}
-					<Typography variant="h6" color={is_success ? 'success' : 'error'}>
+					<Typography variant="h6" component="p" color={is_success ? 'success' : 'error'}>
 						{is_success ? t('Update Successful') : t('Update Failed')}
 					</Typography>
 				</Stack>
@@ -151,7 +151,7 @@ function LogLevelSelector() {
 
 	return (
 		<Stack id="log-level" spacing={2}>
-			<Typography variant="h6">{t('Log Level')}</Typography>
+			<Typography variant="h6" component="h2">{t('Log Level')}</Typography>
 
 			<FormControl>
 				<RadioGroup row aria-labelledby="row-radio-buttons-group-label" name="row-radio-buttons-group" value={selected_level} onChange={handleChange}>

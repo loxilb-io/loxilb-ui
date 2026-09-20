@@ -80,7 +80,7 @@ export default function PersistencePage() {
 	return (
 		<Box sx={{p: 2}}>
 			<Box display="flex" alignItems="center" gap={2} sx={{mb: 2}}>
-				<Typography variant="h5">{t('Persistence')}</Typography>
+				<Typography variant="h5" component="h2">{t('Persistence')}</Typography>
 				{snapshot && !snapshot.failure && <FreshnessBadge receivedAtMs={snapshot.receivedAtMs} cadenceMs={cadenceMs} />}
 				<CadenceSelector />
 			</Box>

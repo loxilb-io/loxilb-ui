@@ -57,9 +57,11 @@ function field(page: Page, label: string, root?: Locator) {
 
 // AccordionBox wraps its summary in a Tooltip, and the tooltip text hijacks
 // the button's accessible name — so accordions are located by the visible
-// h6 title inside the summary, not by button name.
+// title inside the summary box, not by button name. ⚠️ Match the summary BOX,
+// never a tag: this filtered on `h6` until the theme stopped mapping
+// `subtitle2` onto one (src/theme.ts), which turned the whole LB tree red.
 function section(page: Page, title: string | RegExp): Locator {
-	return dialog(page).locator('.MuiAccordion-root').filter({has: page.locator('h6', {hasText: title})});
+	return dialog(page).locator('.MuiAccordion-root').filter({has: page.locator('.MuiAccordionSummary-content', {hasText: title})});
 }
 
 async function expandSection(page: Page, title: string | RegExp): Promise<Locator> {
