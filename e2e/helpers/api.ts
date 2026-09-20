@@ -534,6 +534,65 @@ export async function gatewayAIManagementReadiness(): Promise<AIManagementReadin
 	};
 }
 
+export interface KvExactReadiness {
+	ready: boolean;
+	reason: string;
+}
+
+/**
+ * Probe whether this Gateway can accept a KV-exact rule at all.
+ *
+ * ⚠️⚠️ `kvExactMode` has RUNTIME preconditions that live in the Gateway's
+ * launch environment, not in its API contract, and the swagger says nothing
+ * about them. On a box started without them, every KV-exact create is refused:
+ *
+ *     400 {"message":"Malformed arguments for API call",
+ *          "result":"vllm kvExactMode requires non-empty Gateway
+ *                    LLB_KV_NONE_HASH_SEED matching engine PYTHONHASHSEED"}
+ *
+ * A UI spec cannot make that true, and a red test that no code change can fix
+ * teaches the suite's readers to ignore red. So the KV cases skip with the
+ * Gateway's OWN sentence as the reason.
+ *
+ * ⭐ THE SAFETY PROPERTY: only a refusal that names a launch-environment
+ * precondition yields `ready: false`. Anything else — any other 400, any other
+ * status, a transport failure — returns `ready: true` so the spec RUNS and
+ * fails loudly. A readiness gate that swallowed unrecognized errors would hide
+ * exactly the UI regressions it sits in front of.
+ */
+export async function gatewayKvExactReadiness(): Promise<KvExactReadiness> {
+	const probe = {
+		serviceArguments: {
+			name: 'e2e-kv-readiness-probe', externalIP: '203.0.113.250', port: 8250,
+			protocol: 'tcp', sel: 0, mode: 4, model_name: 'Qwen/Qwen3-0.6B', kvExactMode: 3,
+		},
+		endpoints: [{endpointIP: '198.51.100.250', targetPort: 8250, weight: 1}],
+	};
+	let resp: Response;
+	try {
+		resp = await gw('POST', '/config/loadbalancer', probe);
+	} catch {
+		return {ready: true, reason: 'KV-exact readiness probe could not reach the Gateway'};
+	}
+	if (resp.ok) {
+		// Accepted — tear the probe back down and let the real cases run.
+		await gw('DELETE', `/config/loadbalancer/name/${encodeURIComponent(probe.serviceArguments.name)}`).catch(() => undefined);
+		return {ready: true, reason: 'Gateway accepts KV-exact rules'};
+	}
+	const body = await resp.text().catch(() => '');
+	const blocked = /LLB_KV_NONE_HASH_SEED|PYTHONHASHSEED|tokenizer/i.test(body);
+	if (resp.status === 400 && blocked) {
+		let detail = body;
+		try {
+			detail = (JSON.parse(body) as {result?: string}).result ?? body;
+		} catch {
+			/* keep the raw text */
+		}
+		return {ready: false, reason: `Gateway is not launched for KV-exact routing: ${detail}`};
+	}
+	return {ready: true, reason: `KV-exact readiness probe answered HTTP ${resp.status}`};
+}
+
 /** Deletes every AI API key owned by an e2e- tenant (no-op unless the store is ready). */
 export async function sweepApiKeys(): Promise<number> {
 	const resp = await gw('GET', '/config/ai/apikey');

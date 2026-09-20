@@ -18,7 +18,7 @@
 //---------------------------------------------------------
 import {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {activeInstance, gw, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
+import {activeInstance, gatewayKvExactReadiness, gw, KvExactReadiness, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
 import {confirmDelete, dialog, dialogButton, expectErrorAndDismiss, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 import {refreshUntilGone, refreshUntilRow, rowByText, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 import {lbRuleRowId} from '../../../src/types/lb_identity';
@@ -161,10 +161,14 @@ function rowByStableId(page: Page, id: string): Locator {
 // Suite
 //---------------------------------------------------------
 let instName: string;
+// Whether this Gateway is launched for KV-exact routing at all — see
+// gatewayKvExactReadiness. Probed once, consulted by the KV case only.
+let kvReadiness: KvExactReadiness;
 
 test.describe('LB Rule page CRUD', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
+		kvReadiness = await gatewayKvExactReadiness();
 		await sweepLbRules();
 		await sweepFirewallRules();
 	});
@@ -314,8 +318,13 @@ test.describe('LB Rule page CRUD', () => {
 	});
 
 	test('@gw C-aigw-auth-policy: omission, disabled, and required remain distinct', async ({page}) => {
+		// ⚠️ The control is "Data-plane CREDENTIAL Policy", not "API Key Policy",
+		// and its first option is "Unmanaged (no policy)". Both were renamed when
+		// the JWT arc widened the enum past API keys; this spec kept the old
+		// names and had been red on main ever since, which is also why the read-
+		// only AIGatewayPanel was still using them (now aligned).
 		const cases = [
-			{label: 'Preserve / unmanaged', name: 'e2e-lb-auth-absent', vip: '203.0.113.71', expected: undefined},
+			{label: 'Unmanaged (no policy)', name: 'e2e-lb-auth-absent', vip: '203.0.113.71', expected: undefined},
 			{label: 'Disabled (strip header)', name: 'e2e-lb-auth-disabled', vip: '203.0.113.72', expected: 'disabled'},
 			{label: 'Required (enforce and strip)', name: 'e2e-lb-auth-required', vip: '203.0.113.73', expected: 'required'},
 		] as const;
@@ -326,7 +335,7 @@ test.describe('LB Rule page CRUD', () => {
 			await expandSection(page, ADVANCED);
 			await selectOption(page, 'Mode', 'fullproxy');
 			await expandSection(page, AIGW);
-			await selectOption(page, 'Data-plane API Key Policy', policy.label);
+			await selectOption(page, 'Data-plane Credential Policy', policy.label);
 			await addEndpoint(page, 0, `198.51.100.${71 + index}`, String(8471 + index));
 			const body = await submitCreate(page);
 			expect(body.serviceArguments.api_key_auth).toBe(policy.expected);
@@ -380,7 +389,7 @@ test.describe('LB Rule page CRUD', () => {
 		await openToolbarDialog(page, 'Edit', 'Edit Load Balancer Rule');
 		await expandSection(page, ADVANCED);
 		await expandSection(page, AIGW);
-		await selectOption(page, 'Data-plane API Key Policy', 'Disabled (strip header)');
+		await selectOption(page, 'Data-plane Credential Policy', 'Disabled (strip header)');
 		await dialogButton(page, 'Update').click();
 		await expect(dialog(page).getByText(/Fullproxy \(mode 4\) rules cannot be updated in place/)).toBeVisible();
 		await expectErrorAndDismiss(page);
@@ -427,6 +436,10 @@ test.describe('LB Rule page CRUD', () => {
 	});
 
 	test('@gw C-aigw-kv: CHWBL sel + KV-cache routing fields (boundary values)', async ({page}) => {
+		// See gatewayKvExactReadiness: a Gateway launched without
+		// LLB_KV_NONE_HASH_SEED refuses every KV-exact create regardless of what
+		// the UI sends, so this reports that rather than standing red.
+		test.skip(!kvReadiness.ready, kvReadiness.reason);
 		await openAddDialog(page);
 		await fillBasics(page, 'e2e-lb-kv', '203.0.113.53', '8446');
 		await expandSection(page, ADVANCED);

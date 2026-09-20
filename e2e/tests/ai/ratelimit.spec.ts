@@ -10,11 +10,18 @@
 // only) and NO delete — the UI must not offer a Delete affordance. The
 // table shows only tenants seen on API keys plus session lookups.
 //---------------------------------------------------------
+import {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {activeInstance, AIManagementReadiness, gatewayAIManagementReadiness, gw} from '../../helpers/api';
 import {dialog, dialogButton, dialogTitle, expectSuccessAndDismiss, openToolbarDialog} from '../../helpers/dialogs';
 import {field} from '../../helpers/form';
 import {grid, rowByText, toolbarButton} from '../../helpers/table';
+
+// This page renders three DataTables and every one of them stamps the same
+// `id="table-bar"`. Anything asserting about ONE table's toolbar must say
+// which — `data-table` carries DataTable's `name` prop and cannot drift the
+// way an ordinal can.
+const tenantTable = (page: Page): Locator => page.locator('[data-table="AI Tenant Rate Limits"]');
 
 const RL_PATH = '/config/ai/tenant/ratelimit';
 const RATE_LIMIT_RUN_ID = `${Date.now().toString(36)}-${process.pid}`;
@@ -52,8 +59,13 @@ test.describe('@gw AI Tenant Rate Limit page', () => {
 	test('render: empty table + NO delete affordance (gateway has no DELETE), no crash', async ({page}) => {
 		await expect(grid(page)).toBeVisible();
 		await expect(grid(page).getByText(/No .* entries yet|No rows/)).toBeVisible();
-		// The API exposes no delete — the toolbar must not offer one.
-		await expect(page.locator('#table-bar button:has([data-testid="DeleteIcon"])')).toHaveCount(0);
+		// The API exposes no delete — the TENANT toolbar must not offer one.
+		// ⚠️ Scoped by `data-table`, not by the bare `#table-bar` id: this page
+		// grew a second and third table (per-user, then the defaults ladder),
+		// every DataTable stamps the SAME id, and the defaults table DOES offer
+		// Delete. Unscoped, this absence assertion was reading another table's
+		// toolbar and had been red on main since that table landed.
+		await expect(tenantTable(page).locator('#table-bar button:has([data-testid="DeleteIcon"])')).toHaveCount(0);
 		// Upsert (Add) + Edit are offered.
 		await expect(toolbarButton(page, 'Add')).toBeEnabled();
 	});
@@ -65,7 +77,9 @@ test.describe('@gw AI Tenant Rate Limit page', () => {
 		// as upsert; observed live on a gateway without --aikey-db-host).
 		test.skip(!readiness.ready, readiness.reason);
 		await page.getByLabel('Tenant ID lookup').fill('e2e-nonexistent-tenant');
-		await page.getByRole('button', {name: 'Lookup'}).click();
+		// Both lookup panels render a button reading "Lookup"; the accessible
+		// names disambiguate them (see AITenantRateLimitPage).
+		await page.getByRole('button', {name: 'Lookup tenant', exact: true}).click();
 		await expect(dialogTitle(page, 'Not Found')).toBeVisible({timeout: 10_000});
 		await dialogButton(page, 'OK').click();
 		await expect(dialog(page)).toBeHidden();

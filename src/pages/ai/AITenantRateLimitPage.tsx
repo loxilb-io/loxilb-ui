@@ -506,7 +506,20 @@ export default function AITenantRateLimitPage() {
 						if (e.key === 'Enter') handleLookup();
 					}}
 				/>
-				<Button variant="outlined" size="small" startIcon={<SearchIcon />} onClick={handleLookup} disabled={lookupTenant.trim().length === 0}>
+				{/* ⚠️ The page carries TWO buttons reading "Lookup" — this one and
+				    the service-defaults one below — so the visible word alone names
+				    neither. `aria-label` keeps the compact label on screen while
+				    giving each its own accessible name; it CONTAINS the visible
+				    text on purpose (WCAG 2.5.3 Label in Name), so speech control
+				    still reaches it by saying "Lookup". */}
+				<Button
+					variant="outlined"
+					size="small"
+					aria-label={t('Lookup tenant')}
+					startIcon={<SearchIcon />}
+					onClick={handleLookup}
+					disabled={lookupTenant.trim().length === 0}
+				>
 					{t('Lookup')}
 				</Button>
 			</Stack>
@@ -605,7 +618,15 @@ export default function AITenantRateLimitPage() {
 							if (e.key === 'Enter') handleRuleLookup();
 						}}
 					/>
-					<Button variant="outlined" size="small" startIcon={<SearchIcon />} onClick={handleRuleLookup} disabled={lookupRule.trim().length === 0}>
+					{/* The second "Lookup" — see the tenant one above. */}
+					<Button
+						variant="outlined"
+						size="small"
+						aria-label={t('Lookup service')}
+						startIcon={<SearchIcon />}
+						onClick={handleRuleLookup}
+						disabled={lookupRule.trim().length === 0}
+					>
 						{t('Lookup')}
 					</Button>
 				</Stack>
