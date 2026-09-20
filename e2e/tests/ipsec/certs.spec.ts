@@ -26,27 +26,35 @@ const CA_PATH = '/config/ipsec/ca-certificates';
 let instName: string;
 
 //--- per-table scoping (two DataTables share the page) ----------------
-function nthGrid(page: Page, idx: number): Locator {
-	return page.locator('.MuiDataGrid-root').nth(idx);
+// ⚠️ BY NAME, never by ordinal. Both grids and both toolbars are structurally
+// identical, so `.nth(0)` / `.nth(1)` re-aim silently if the page ever reorders
+// them or grows a third — and a *delete* would then land on the wrong table.
+// These are DataTable's `name` props (IPsecCertTable.tsx).
+const ENDPOINT = 'IPsec Certificates';
+const CA = 'CA Certificates';
+type CertTable = typeof ENDPOINT | typeof CA;
+
+function tableGrid(page: Page, table: CertTable): Locator {
+	return page.locator(`[data-table="${table}"] .MuiDataGrid-root`).first();
 }
-function nthToolbarBtn(page: Page, idx: number, icon: 'Add' | 'Delete' | 'Refresh'): Locator {
-	return page.locator('#table-bar').nth(idx).locator(`button:has([data-testid="${icon}Icon"])`).first();
+function toolbarBtn(page: Page, table: CertTable, icon: 'Add' | 'Delete' | 'Refresh'): Locator {
+	return page.locator(`[data-table-bar="${table}"] button:has([data-testid="${icon}Icon"])`).first();
 }
-async function selectRowIn(page: Page, idx: number, text: string): Promise<void> {
-	const row = nthGrid(page, idx).locator('.MuiDataGrid-row').filter({hasText: text});
+async function selectRowIn(page: Page, table: CertTable, text: string): Promise<void> {
+	const row = tableGrid(page, table).locator('.MuiDataGrid-row').filter({hasText: text});
 	await expect(row).toHaveCount(1);
 	await row.locator('[data-field="name"]').first().click();
 }
 /** Refresh the given table until a row matching `text` is present / absent. */
-async function refreshUntil(page: Page, idx: number, text: string, present: boolean): Promise<void> {
+async function refreshUntil(page: Page, table: CertTable, text: string, present: boolean): Promise<void> {
 	for (let i = 0; i < 6; i++) {
-		const count = await nthGrid(page, idx).locator('.MuiDataGrid-row').filter({hasText: text}).count();
+		const count = await tableGrid(page, table).locator('.MuiDataGrid-row').filter({hasText: text}).count();
 		if (present ? count > 0 : count === 0) return;
-		await nthToolbarBtn(page, idx, 'Refresh').click();
+		await toolbarBtn(page, table, 'Refresh').click();
 		await page.waitForTimeout(1200);
 	}
-	const finalCount = await nthGrid(page, idx).locator('.MuiDataGrid-row').filter({hasText: text}).count();
-	base(present ? finalCount > 0 : finalCount === 0, `row "${text}" ${present ? 'present' : 'gone'} in grid ${idx}`).toBeTruthy();
+	const finalCount = await tableGrid(page, table).locator('.MuiDataGrid-row').filter({hasText: text}).count();
+	base(present ? finalCount > 0 : finalCount === 0, `row "${text}" ${present ? 'present' : 'gone'} in the ${table} grid`).toBeTruthy();
 }
 
 test.describe('@gw IPsec Certificate page CRUD', () => {
@@ -61,11 +69,11 @@ test.describe('@gw IPsec Certificate page CRUD', () => {
 
 	test.beforeEach(async ({page}) => {
 		await page.goto(`instance/ipsec/certs?name=${instName}`); // relative — see baseURL note
-		await expect(nthToolbarBtn(page, 0, 'Add')).toBeVisible({timeout: 20_000});
+		await expect(toolbarBtn(page, ENDPOINT, 'Add')).toBeVisible({timeout: 20_000});
 	});
 
 	test('C-cert: endpoint cert PEM upload POSTs clean payload, lists, then D-single', async ({page}) => {
-		await openDialog(page, dialog(page).getByRole('heading', {name: 'Upload IPsec Certificate'}), () => nthToolbarBtn(page, 0, 'Add').click());
+		await openDialog(page, dialog(page).getByRole('heading', {name: 'Upload IPsec Certificate'}), () => toolbarBtn(page, ENDPOINT, 'Add').click());
 
 		await field(page, 'Name').fill('e2e-cert');
 		await field(page, 'Description').fill('e2e disposable');
@@ -86,19 +94,19 @@ test.describe('@gw IPsec Certificate page CRUD', () => {
 		expect((await req.response())?.status(), 'gateway accepted the cert').toBeLessThan(300);
 		await expectSuccessAndDismiss(page);
 
-		await refreshUntil(page, 0, 'e2e-cert', true);
+		await refreshUntil(page, ENDPOINT, 'e2e-cert', true);
 		// Parsed subject surfaces in the row.
-		await expect(nthGrid(page, 0).locator('.MuiDataGrid-row', {hasText: 'e2e-cert'}).first()).toContainText('e2e-ipsec-endpoint');
+		await expect(tableGrid(page, ENDPOINT).locator('.MuiDataGrid-row', {hasText: 'e2e-cert'}).first()).toContainText('e2e-ipsec-endpoint');
 
-		await selectRowIn(page, 0, 'e2e-cert');
-		await nthToolbarBtn(page, 0, 'Delete').click();
+		await selectRowIn(page, ENDPOINT, 'e2e-cert');
+		await toolbarBtn(page, ENDPOINT, 'Delete').click();
 		await confirmDelete(page);
 		await expectSuccessAndDismiss(page);
-		await refreshUntil(page, 0, 'e2e-cert', false);
+		await refreshUntil(page, ENDPOINT, 'e2e-cert', false);
 	});
 
 	test('V-garbage: non-PEM cert / key keeps Upload disabled (never hits the wire)', async ({page}) => {
-		await openDialog(page, dialog(page).getByRole('heading', {name: 'Upload IPsec Certificate'}), () => nthToolbarBtn(page, 0, 'Add').click());
+		await openDialog(page, dialog(page).getByRole('heading', {name: 'Upload IPsec Certificate'}), () => toolbarBtn(page, ENDPOINT, 'Add').click());
 
 		await field(page, 'Name').fill('e2e-garbage');
 		await field(page, 'Certificate (PEM)').fill('this is not a certificate');
@@ -115,7 +123,7 @@ test.describe('@gw IPsec Certificate page CRUD', () => {
 	});
 
 	test('Validate-on-gateway: parses the PEM and shows the subject without installing it', async ({page}) => {
-		await nthToolbarBtn(page, 0, 'Add').click();
+		await toolbarBtn(page, ENDPOINT, 'Add').click();
 		await field(page, 'Name').fill('e2e-valcheck');
 		await field(page, 'Certificate (PEM)').fill(EP_CERT_PEM);
 		await field(page, 'Private Key (PEM)').fill(EP_KEY_PEM);
@@ -133,7 +141,7 @@ test.describe('@gw IPsec Certificate page CRUD', () => {
 	});
 
 	test('C-ca: CA cert upload POSTs clean payload, lists, then D-single', async ({page}) => {
-		await openDialog(page, dialog(page).getByRole('heading', {name: 'Upload CA Certificate'}), () => nthToolbarBtn(page, 1, 'Add').click());
+		await openDialog(page, dialog(page).getByRole('heading', {name: 'Upload CA Certificate'}), () => toolbarBtn(page, CA, 'Add').click());
 
 		await field(page, 'Name').fill('e2e-ca');
 		await field(page, 'CA Certificate (PEM)').fill(CA_CERT_PEM);
@@ -151,11 +159,11 @@ test.describe('@gw IPsec Certificate page CRUD', () => {
 		expect((await req.response())?.status(), 'gateway accepted the CA cert').toBeLessThan(300);
 		await expectSuccessAndDismiss(page);
 
-		await refreshUntil(page, 1, 'e2e-ca', true);
-		await selectRowIn(page, 1, 'e2e-ca');
-		await nthToolbarBtn(page, 1, 'Delete').click();
+		await refreshUntil(page, CA, 'e2e-ca', true);
+		await selectRowIn(page, CA, 'e2e-ca');
+		await toolbarBtn(page, CA, 'Delete').click();
 		await confirmDelete(page);
 		await expectSuccessAndDismiss(page);
-		await refreshUntil(page, 1, 'e2e-ca', false);
+		await refreshUntil(page, CA, 'e2e-ca', false);
 	});
 });

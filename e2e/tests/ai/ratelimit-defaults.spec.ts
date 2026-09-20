@@ -58,7 +58,14 @@ test.describe('@gw AI rate-limit defaults', () => {
 			// A service with no row INHERITS — it is not "missing"
 			//---------------------------------------------------------
 			await page.getByLabel(/service lookup/i).fill(service);
-			await page.getByRole('button', {name: /^lookup$/i}).last().click();
+			// ⚠️ BY ITS OWN NAME, and with no `.last()`. The page carries two
+			// buttons whose visible word is "Lookup"; each was given a distinct
+			// `aria-label` ("Lookup tenant" / "Lookup service") so neither is
+			// reachable as plain "Lookup" any more — this line asked for the
+			// old name and matched nothing, which is why it timed out rather
+			// than clicking the wrong control. An ordinal would have re-aimed
+			// silently instead; the name cannot.
+			await page.getByRole('button', {name: /^lookup service$/i}).click();
 			// ⭐ The wording is the assertion. A service with no row is the normal
 			// case and uses the global defaults; calling it "not found" full stop
 			// would invite an operator to create a row they do not need.

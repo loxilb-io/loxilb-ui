@@ -25,12 +25,20 @@ const ACTION_ICON: Readonly<Record<ToolbarAction, string>> = {
 	Block: 'Block',
 };
 
-export function toolbarButton(page: Page, action: ToolbarAction): Locator {
-	return page.locator(`#table-bar button:has([data-testid="${ACTION_ICON[action]}Icon"])`).first();
+// ⚠️ `table` is REQUIRED reading on any page with more than one DataTable.
+// Omitted, both helpers take the FIRST match, so adding a grid above the one a
+// spec meant silently re-aims it — the defect that left two `ai/ratelimit`
+// assertions red on `main` for two stages. `table` is DataTable's `name` prop
+// (an untranslated English literal, so it survives a language switch), stamped
+// on the wrapper as `data-table` and on the toolbar as `data-table-bar`.
+export function toolbarButton(page: Page, action: ToolbarAction, table?: string): Locator {
+	const bar = table === undefined ? '[data-table-bar]' : `[data-table-bar="${table}"]`;
+	return page.locator(`${bar} button:has([data-testid="${ACTION_ICON[action]}Icon"])`).first();
 }
 
-export function grid(page: Page): Locator {
-	return page.locator('.MuiDataGrid-root').first();
+export function grid(page: Page, table?: string): Locator {
+	const root = table === undefined ? page : page.locator(`[data-table="${table}"]`);
+	return root.locator('.MuiDataGrid-root').first();
 }
 
 export function rowByText(page: Page, text: string | RegExp): Locator {

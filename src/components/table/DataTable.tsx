@@ -261,14 +261,15 @@ export default function DataTable(props: {
 	// viewport turns into visible columns. Column widths stay fixed — on sparse
 	// tables the row striping/hover just extends (AWS idiom).
 	return (
-		// ⭐ `data-table` scopes ONE table on a page that has several. It exists
-		// because the toolbar's `id="table-bar"` is a literal, so a multi-table
-		// page emits duplicate DOM ids and every positional locator
-		// (`.first()`, `.last()`, `.nth(n)`) silently re-aims when a table is
-		// added above or below — which is exactly what happened when the
-		// rate-limit page grew its third grid. Scoping by resource NAME cannot
-		// drift that way. (The duplicate id itself is left alone here: it is
-		// load-bearing for ~8 existing specs and deserves its own change.)
+		// ⭐ `data-table` scopes ONE table on a page that has several, and the
+		// toolbar below carries the same name in `data-table-bar`. Both exist
+		// because the toolbar used to be a literal `id="table-bar"`: a
+		// multi-table page then emitted duplicate DOM ids (invalid HTML) and
+		// every positional locator (`.first()`, `.last()`, `.nth(n)`) silently
+		// re-aimed when a table was added above or below — which is exactly
+		// what happened when the rate-limit page grew its third grid.
+		// ⚠️ Keep the two names identical: specs reach a toolbar either as
+		// `[data-table-bar="X"]` or as `[data-table="X"] [data-table-bar]`.
 		<Stack width="100%" data-table={name}>
 			{/* Labeled toolbar (AWS-console idiom): visible text + icon. Each
 			    button's aria-label stays resource-qualified ("Add Load Balancer")
@@ -276,7 +277,7 @@ export default function DataTable(props: {
 			    collide with the toolbar; the icon data-testids remain the
 			    toolbarButton() locator hook. */}
 			{hideMenuBar === true ? null : (
-				<Box id="table-bar" width="100%" height="44px" display="flex" justifyContent="flex-end" alignItems="center" gap="4px" padding="0 8px" bgcolor="grey.100" borderRadius="8px 8px 0 0">
+				<Box data-table-bar={name} width="100%" height="44px" display="flex" justifyContent="flex-end" alignItems="center" gap="4px" padding="0 8px" bgcolor="grey.100" borderRadius="8px 8px 0 0">
 					<Tooltip describeChild title={is_compact ? t('Switch to comfortable rows') : t('Switch to compact rows')} placement="top" arrow>
 						<span>
 							<Button

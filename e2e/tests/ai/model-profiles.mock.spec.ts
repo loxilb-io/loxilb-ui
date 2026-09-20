@@ -113,7 +113,7 @@ test.describe('@gw Published Model Profiles — mock contract', () => {
 		// locator for them could only ever match nothing and pass regardless of
 		// what the page renders. Assert on the accessible name instead, which is
 		// what would actually appear if such a control were ever added.
-		await expect(page.locator('#table-bar').getByRole('button', {name: /upload|activate/i}), 'no mutation affordance may appear under any name').toHaveCount(0);
+		await expect(page.locator('[data-table-bar]').getByRole('button', {name: /upload|activate/i}), 'no mutation affordance may appear under any name').toHaveCount(0);
 		expect(counter.mutationRequests(), 'mutation HTTP against the profile registry').toEqual([]);
 	});
 
