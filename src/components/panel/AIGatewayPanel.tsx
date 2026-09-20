@@ -71,11 +71,18 @@ export default function AIGatewayPanel({serviceArguments}: {serviceArguments: IS
 
 	return (
 		<Stack spacing={2}>
-			<ValueBunch name={t('Data-plane API Key Policy')}>
+			{/* ⚠️ The NAMES here must track AIGatewaySettingsForm's, which is where
+			    this value is set. They drifted when the JWT arc widened the enum:
+			    the form became "Credential Policy" / "Unmanaged (no policy)" while
+			    this panel still read "API Key Policy" / "Preserve / unmanaged" —
+			    two names for one field, and the older one is wrong outright once
+			    the value is `jwt`. (Neither old string was a locale key either, so
+			    they rendered untranslated.) */}
+			<ValueBunch name={t('Data-plane Credential Policy')}>
 				<Grid2 container spacing={2}>
 					<SingleTextBox
 						label={t('Declared Policy')}
-						value={serviceArguments.api_key_auth ?? t('Preserve / unmanaged')}
+						value={serviceArguments.api_key_auth ?? t('Unmanaged (no policy)')}
 						tooltip={t('This is the declaration returned by the Gateway. Omission is distinct from explicit disabled.')}
 					/>
 				</Grid2>
