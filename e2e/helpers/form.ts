@@ -24,9 +24,20 @@ export function field(page: Page, label: string, root?: Locator): Locator {
 	return (root ?? dialog(page)).getByLabel(new RegExp(`^${escapeRe(label)}( \\*)?$`));
 }
 
-/** An AccordionBox section located by its visible h6 title. */
+// ⚠️ MATCHED ON THE SUMMARY BOX, NOT ON A TAG. This filtered on `h6` for a
+// long time, which worked by accident: AccordionBox titles its sections with
+// `variant="subtitle2"`, and MUI used to map that variant onto <h6>. Stage 5.2
+// stopped it doing that (a text SIZE must not decide a heading LEVEL — see
+// src/theme.ts), and 93 specs across the LB, profile, JWT and cicd trees went
+// red in one run against a UI that was behaving correctly.
+//
+// The title stays a non-heading on purpose: it lives INSIDE the summary's
+// button, where a heading's semantics are flattened anyway and the button
+// already carries the name. So locate the summary box and let it hold whatever
+// element the theme decides.
+/** An AccordionBox section located by its visible summary title. */
 export function section(page: Page, title: string | RegExp): Locator {
-	return dialog(page).locator('.MuiAccordion-root').filter({has: page.locator('h6', {hasText: title})});
+	return dialog(page).locator('.MuiAccordion-root').filter({has: page.locator('.MuiAccordionSummary-content', {hasText: title})});
 }
 
 /** Expands (idempotently) an AccordionBox section and returns its root. */

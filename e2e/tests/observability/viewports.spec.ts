@@ -49,9 +49,20 @@ for (const vp of VIEWPORTS) {
 				const inst = await activeInstance();
 				await page.goto(`instance/${p.route}?name=${encodeURIComponent(inst.name)}`);
 
-				// level 5 = the page's h5 title; drawer menu items render as h6
-				// headings and would otherwise collide on the same name.
-				await expect(page.getByRole('heading', {name: p.heading, exact: true, level: 5})).toBeVisible({timeout: 20_000});
+				// ⚠️ This waits for the PAGE'S OWN title, and it must keep doing
+				// so: the assertion's job is to prove the page content mounted
+				// before the overflow below is measured. Stage 5.2 moved the
+				// route's <h1> into the LAYOUT, so matching a level-1 heading
+				// here would pass on a page that rendered nothing at all.
+				//
+				// The level is gone rather than renumbered: scoping to
+				// #content-area replaces what it was really guarding against —
+				// the same name appearing in the drawer menu — because that box
+				// is a sibling of the menu and holds only page content. Not
+				// pinning a level also stops this spec from failing the next
+				// time the outline is adjusted, which is a thing it should not
+				// have an opinion about.
+				await expect(page.locator('#content-area').getByRole('heading', {name: p.heading, exact: true})).toBeVisible({timeout: 20_000});
 				// Let the first metrics/REST answers land so tables have real rows
 				// (an empty page trivially fits any viewport).
 				await page.waitForLoadState('networkidle').catch(() => undefined);

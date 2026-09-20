@@ -1,8 +1,18 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {ThemeProvider} from '@emotion/react';
-import {createTheme, CssBaseline} from '@mui/material';
+// ⚠️⚠️ THE PROVIDER MUST BE MUI'S, NOT EMOTION'S. This imported
+// `ThemeProvider` from '@emotion/react' for a long time, and the difference is
+// invisible until you look for it: emotion's provider feeds the theme to
+// `styled`, so the palette, `styleOverrides` and `variants` all worked — but
+// MUI reads `components.*.defaultProps` from its OWN theme context, which
+// emotion's provider never populates. Every defaultProps block in theme.ts was
+// therefore dead on arrival, silently: `MuiButton.disableElevation` had never
+// once applied, and the Typography variantMapping added for the heading work
+// would not have either. Found while chasing why `subtitle1` still rendered as
+// <h6> on a freshly built page when the same theme mapped it to <p> in a unit
+// test.
+import {createTheme, CssBaseline, ThemeProvider} from '@mui/material';
 import {QueryClientProvider} from '@tanstack/react-query';
 import {persistQueryClient, persistQueryClientRestore} from '@tanstack/react-query-persist-client';
 import {useEffect, useState} from 'react';

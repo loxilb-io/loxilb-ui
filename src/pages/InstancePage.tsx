@@ -73,7 +73,7 @@ export default function InstancePage() {
 	return (
 		<Stack position="relative" id="fixed-container" width="100%" height="100%" padding="16px 0px 16px 16px">
 			<Box display="flex" alignItems="center" gap="16px" marginBottom="20px">
-				<Typography id="title" variant="h5">
+				<Typography id="title" variant="h5" component="h2">
 					{t('Instances')}
 				</Typography>
 				<Tooltip title={t('Refresh instance health status')}>

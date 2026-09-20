@@ -179,7 +179,7 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 	// left most of the viewport unused under this six-section form.
 	return (
 		<Stack width="100%" spacing={2}>
-			<Typography variant="h6">
+			<Typography variant="h6" component="h2">
 				{isEdit ? t('Edit Load Balancer Rule') : t('Add Load Balancer Rule')}
 			</Typography>
 

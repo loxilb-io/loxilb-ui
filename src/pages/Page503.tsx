@@ -25,7 +25,7 @@ export default function Page503() {
 			<Stack width="100%" maxWidth="800px" alignItems="center" spacing={2}>
 				<Box component="img" src={Image503} alt="500" width="100%" maxWidth="250px" />
 
-				<Typography variant="h6">{t("LoxiLB's Optional Services(BFD, BGP, etc)  are not enabled")}</Typography>
+				<Typography variant="h6" component="h2">{t("LoxiLB's Optional Services(BFD, BGP, etc)  are not enabled")}</Typography>
 
 				<Typography variant="body2" whiteSpace="pre-wrap" textAlign="center" width="100%">
 					{t('This can happen when the LoxiLB\'s Service is not available. Please enable service first and try again.')}

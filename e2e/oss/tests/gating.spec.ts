@@ -26,7 +26,7 @@ function field(page: Page, label: string, root?: Locator) {
 }
 
 function section(page: Page, title: string | RegExp): Locator {
-	return dialog(page).locator('.MuiAccordion-root').filter({has: page.locator('h6', {hasText: title})});
+	return dialog(page).locator('.MuiAccordion-root').filter({has: page.locator('.MuiAccordionSummary-content', {hasText: title})});
 }
 
 async function expandSection(page: Page, title: string | RegExp): Promise<Locator> {

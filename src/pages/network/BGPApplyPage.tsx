@@ -59,7 +59,7 @@ export default function BGPApplyPage() {
 	if (!form) return null;
 	return (
 		<Stack spacing={4} maxWidth={600} padding={2}>
-			<Typography variant="h6">{t('Apply BGP Policy to Neighbor')}</Typography>
+			<Typography variant="h6" component="h2">{t('Apply BGP Policy to Neighbor')}</Typography>
 
 			<ParamBox label={t('BGP Neighbor IP')} value={form.ipAddress} onChange={handleChange('ipAddress')} param_desc={{...params?.ipAddress, enum: neighbor_list}} />
 

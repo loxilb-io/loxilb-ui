@@ -112,6 +112,29 @@ export const theme_config: ThemeOptions = {
 	},
 
 	components: {
+		// ⚠️⚠️ `subtitle1`/`subtitle2` ARE NOT HEADINGS, and MUI's default
+		// variantMapping says they are: it renders both as <h6>. Every card
+		// subtitle, stat label, menu entry and version string reached for them
+		// as a SIZE and silently entered the document outline as a heading —
+		// the footer's "v.0.9.8.9", an instance name, a "Sel" column label and
+		// a "Requests dropped" stat were each reported by axe as an invalid
+		// heading level, and they are only the ones that happened to be on
+		// screen during the route pass.
+		//
+		// Remapping once here fixes the whole class, including pages the axe
+		// pass does not visit and pages not yet written — the same reasoning
+		// the color-contrast burn-down used. A site that genuinely wants a
+		// heading now has to say so with `component="h2"`, which is the point:
+		// the visual variant and the semantic level are separate decisions and
+		// should not be made by one prop.
+		//
+		// `p` rather than `span`: both variants were block-level as <h6>, and
+		// MUI's Typography root zeroes margins, so nothing moves on screen.
+		MuiTypography: {
+			defaultProps: {
+				variantMapping: {subtitle1: 'p', subtitle2: 'p'},
+			},
+		},
 		MuiCssBaseline: {
 			styleOverrides: {
 				a: {textDecorationLine: 'none'},

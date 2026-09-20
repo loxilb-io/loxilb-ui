@@ -145,7 +145,7 @@ export default function RealTimeRateCard(props: RealTimeRateCardProps) {
 						{t('Current Rate')}
 					</Typography>
 					<RateTooltip rate={currentRate} unit={unit} title={title}>
-						<AnimatedValue variant="h6" sx={{cursor: 'help', fontVariantNumeric: 'tabular-nums'}} value={formatRate(currentRate, unit)} />
+						<AnimatedValue variant="h6" component="p" sx={{cursor: 'help', fontVariantNumeric: 'tabular-nums'}} value={formatRate(currentRate, unit)} />
 					</RateTooltip>
 				</Box>
 

@@ -12,7 +12,9 @@ import {ReactNode} from 'react';
 export function PanelPaper({title, children}: {title: string; children: ReactNode}) {
 	return (
 		<Paper elevation={0} sx={{border: '1px solid', borderColor: 'divider', p: 2, height: '100%'}}>
-			<Typography variant="subtitle1" sx={{mb: 1.5, fontWeight: 600}}>
+			{/* h2 for the same reason as SubTitleBar: MUI maps `subtitle1` onto
+			    <h6>, which would skip four levels below the page's h1. */}
+			<Typography variant="subtitle1" component="h2" sx={{mb: 1.5, fontWeight: 600}}>
 				{title}
 			</Typography>
 			{/* Wide content (tables) scrolls inside the panel; the page body

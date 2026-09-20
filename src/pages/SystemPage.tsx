@@ -71,11 +71,11 @@ export default function SystemPage() {
 	return (
 		<ScrollableBox>
 			<Stack position="relative" id="fixed-container" width="100%" height="100%" spacing={3} padding="16px">
-				<Typography variant="h5">{t('System')}</Typography>
+				<Typography variant="h5" component="h2">{t('System')}</Typography>
 
 				<Box width="100%" display="flex" alignItems="center" justifyContent="space-between" gap="20px">
 					<Box display="flex" alignItems="center" gap="20px">
-						<Typography variant="h6">{t('Health Status')}</Typography>
+						<Typography variant="h6" component="h2">{t('Health Status')}</Typography>
 						{is_online !== undefined && renderServerState(is_online)}
 					</Box>
 

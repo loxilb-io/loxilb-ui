@@ -68,7 +68,7 @@ function UserProfilePanel(props: {onEditProfile: () => void}) {
 	return (
 		<Stack spacing={3}>
 			<Box display="flex" justifyContent="space-between" alignItems="center">
-				<Typography variant="h6" display="flex" alignItems="center" gap={1}>
+				<Typography variant="h6" component="h2" display="flex" alignItems="center" gap={1}>
 					<PersonIcon />
 					{t('Profile Information')}
 				</Typography>
@@ -101,7 +101,7 @@ function UserProfilePanel(props: {onEditProfile: () => void}) {
 function PasswordManagementPanel() {
 	return (
 		<Stack spacing={3}>
-			<Typography variant="h6" display="flex" alignItems="center" gap={1}>
+			<Typography variant="h6" component="h2" display="flex" alignItems="center" gap={1}>
 				<LockIcon />
 				{t('Password Management')}
 			</Typography>
@@ -207,7 +207,7 @@ function AdminUserManagementPanel(props: {
 	if (isLoading) {
 		return (
 			<Stack spacing={3}>
-				<Typography variant="h6" display="flex" alignItems="center" gap={1}>
+				<Typography variant="h6" component="h2" display="flex" alignItems="center" gap={1}>
 					<AdminPanelSettingsIcon />
 					{t('User Management')}
 				</Typography>
@@ -220,7 +220,7 @@ function AdminUserManagementPanel(props: {
 
 	return (
 		<Stack spacing={3}>
-			<Typography variant="h6" display="flex" alignItems="center" gap={1}>
+			<Typography variant="h6" component="h2" display="flex" alignItems="center" gap={1}>
 				<AdminPanelSettingsIcon />
 				{t('User Management')}
 			</Typography>

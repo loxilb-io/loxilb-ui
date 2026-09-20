@@ -176,7 +176,7 @@ export default function UserEditForm(props: UserEditFormProps) {
 	return (
 		<Box sx={{ width: '100%' }}>
 			<Stack spacing={3}>
-				<Typography variant="h6" display="flex" alignItems="center" gap={1}>
+				<Typography variant="h6" component="h2" display="flex" alignItems="center" gap={1}>
 					<PersonIcon />
 					{isCreateMode ? t('Create New User') : `${t('Edit User')} - ${user?.username}`}
 				</Typography>

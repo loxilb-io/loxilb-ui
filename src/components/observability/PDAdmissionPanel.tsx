@@ -211,7 +211,7 @@ export default function PDAdmissionPanel({report}: PDAdmissionPanelProps) {
 			    which is precisely the defect this panel removes. */}
 			<Box display="flex" alignItems="baseline" gap={1}>
 				<Typography variant="subtitle2">{t('Requests dropped')}</Typography>
-				<Typography variant="h6">{formatRate(report.dropRate, t)}</Typography>
+				<Typography variant="h6" component="p">{formatRate(report.dropRate, t)}</Typography>
 				<Typography variant="caption" color="text.secondary">
 					{t('across both valves, of which one is armed')}
 				</Typography>
