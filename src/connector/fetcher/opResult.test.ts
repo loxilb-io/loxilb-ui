@@ -103,6 +103,38 @@ describe('fromSimpleResponse status mapping', () => {
 		expect(res.localeKey).not.toContain('node-3');
 	});
 
+	// ⚠️ loxilb answers a rejection as BOTH halves: `message` is the generic
+	// class ("Malformed arguments for API call") and `result` carries the only
+	// sentence that says what was actually wrong. Preferring `message` kept the
+	// useless half and dropped the reason — so even the diagnostics, the
+	// correlation-id trail and the E2E failure text said nothing. Probed live
+	// against loxilb-igw on 2026-09-20:
+	//   400 {"message":"Malformed arguments for API call",
+	//        "result":"vllm kvExactMode requires non-empty Gateway
+	//                  LLB_KV_NONE_HASH_SEED matching engine PYTHONHASHSEED"}
+	// ⚠️ This is a DIAGNOSTICS change only. `rawDetail` still reaches no
+	// screen outside the SNI-cert and snapshot families — see PageStateBanner.
+	it('keeps loxilb\'s specific reason, not just its generic class', () => {
+		const res = fromSimpleResponse(resp(400, {message: 'Malformed arguments for API call', result: 'vllm kvExactMode requires non-empty Gateway LLB_KV_NONE_HASH_SEED'}), 'op');
+		expect(res.rawDetail).toContain('LLB_KV_NONE_HASH_SEED');
+		// The class is worth keeping too — it is what the gateway's own logs
+		// are indexed by — so this must be a UNION, not a swap.
+		expect(res.rawDetail).toContain('Malformed arguments for API call');
+	});
+
+	it('does not repeat itself when the two halves agree', () => {
+		const res = fromSimpleResponse(resp(400, {message: 'same text', result: 'same text'}), 'op');
+		expect(res.rawDetail).toBe('same text');
+	});
+
+	it('either half alone is still passed through unchanged', () => {
+		expect(fromSimpleResponse(resp(400, {message: 'only the class'}), 'op').rawDetail).toBe('only the class');
+		expect(fromSimpleResponse(resp(400, {result: 'only the reason'}), 'op').rawDetail).toBe('only the reason');
+		// `error` still wins outright: OAM and the gateway use it as the single
+		// authoritative field, and it is never a paired generic/specific split.
+		expect(fromSimpleResponse(resp(500, {error: 'authoritative', message: 'generic', result: 'reason'}), 'op').rawDetail).toBe('authoritative');
+	});
+
 	it('reads the correlation header when present, stays undefined when absent', () => {
 		const withHeader = {...resp(500), headers: new Headers({'X-Correlation-Id': 'abc-123'})};
 		expect(fromSimpleResponse(withHeader, 'op').correlationId).toBe('abc-123');

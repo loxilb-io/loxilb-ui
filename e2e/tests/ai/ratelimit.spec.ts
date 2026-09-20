@@ -17,11 +17,14 @@ import {dialog, dialogButton, dialogTitle, expectSuccessAndDismiss, openToolbarD
 import {field} from '../../helpers/form';
 import {grid, rowByText, toolbarButton} from '../../helpers/table';
 
-// This page renders three DataTables and every one of them stamps the same
-// `id="table-bar"`. Anything asserting about ONE table's toolbar must say
-// which — `data-table` carries DataTable's `name` prop and cannot drift the
-// way an ordinal can.
-const tenantTable = (page: Page): Locator => page.locator('[data-table="AI Tenant Rate Limits"]');
+// This page renders three DataTables, and every toolbar and grid on it looks
+// alike. Anything asserting about ONE of them must say which — `data-table` /
+// `data-table-bar` carry DataTable's `name` prop and cannot drift the way an
+// ordinal can. `TENANT` is passed to every helper below for that reason: the
+// tenant table happens to be first today, and that is not a fact worth
+// depending on.
+const TENANT = 'AI Tenant Rate Limits';
+const tenantTable = (page: Page): Locator => page.locator(`[data-table="${TENANT}"]`);
 
 const RL_PATH = '/config/ai/tenant/ratelimit';
 const RATE_LIMIT_RUN_ID = `${Date.now().toString(36)}-${process.pid}`;
@@ -53,21 +56,21 @@ test.describe('@gw AI Tenant Rate Limit page', () => {
 		consoleGuard.allow(/status of (401|403|503)/i);
 		consoleGuard.allow(/Failed to load resource/i);
 		await page.goto(`instance/ai/ratelimit?name=${instName}`); // relative — see baseURL note
-		await expect(toolbarButton(page, 'Add')).toBeVisible({timeout: 20_000});
+		await expect(toolbarButton(page, 'Add', TENANT)).toBeVisible({timeout: 20_000});
 	});
 
 	test('render: empty table + NO delete affordance (gateway has no DELETE), no crash', async ({page}) => {
-		await expect(grid(page)).toBeVisible();
-		await expect(grid(page).getByText(/No .* entries yet|No rows/)).toBeVisible();
+		await expect(grid(page, TENANT)).toBeVisible();
+		await expect(grid(page, TENANT).getByText(/No .* entries yet|No rows/)).toBeVisible();
 		// The API exposes no delete — the TENANT toolbar must not offer one.
-		// ⚠️ Scoped by `data-table`, not by the bare `#table-bar` id: this page
-		// grew a second and third table (per-user, then the defaults ladder),
-		// every DataTable stamps the SAME id, and the defaults table DOES offer
-		// Delete. Unscoped, this absence assertion was reading another table's
-		// toolbar and had been red on main since that table landed.
-		await expect(tenantTable(page).locator('#table-bar button:has([data-testid="DeleteIcon"])')).toHaveCount(0);
+		// ⚠️ Scoped by name, never by position: this page grew a second and
+		// third table (per-user, then the defaults ladder), and the defaults
+		// table DOES offer Delete. Unscoped, this absence assertion was reading
+		// another table's toolbar and had been red on main since that table
+		// landed.
+		await expect(tenantTable(page).locator('[data-table-bar] button:has([data-testid="DeleteIcon"])')).toHaveCount(0);
 		// Upsert (Add) + Edit are offered.
-		await expect(toolbarButton(page, 'Add')).toBeEnabled();
+		await expect(toolbarButton(page, 'Add', TENANT)).toBeEnabled();
 	});
 
 	test('lookup of an unknown tenant surfaces a Not Found popup, no crash', async ({page}) => {
@@ -86,7 +89,7 @@ test.describe('@gw AI Tenant Rate Limit page', () => {
 	});
 
 	test('client validation: invalid numbers and duplicate model quotas block Apply', async ({page}) => {
-		await openToolbarDialog(page, 'Add', dialog(page).getByRole('heading', {name: 'New AI Tenant Rate Limit'}));
+		await openToolbarDialog(page, 'Add', dialog(page).getByRole('heading', {name: 'New AI Tenant Rate Limit'}), {table: TENANT});
 
 		const apply = dialogButton(page, 'Apply');
 		await expect(apply).toBeDisabled();
@@ -122,7 +125,7 @@ test.describe('@gw AI Tenant Rate Limit page', () => {
 
 		try {
 			// First upsert.
-			await openToolbarDialog(page, 'Add', dialog(page).getByRole('heading', {name: 'New AI Tenant Rate Limit'}));
+			await openToolbarDialog(page, 'Add', dialog(page).getByRole('heading', {name: 'New AI Tenant Rate Limit'}), {table: TENANT});
 			await field(page, 'Tenant ID').fill(tenantId);
 			await field(page, 'Rate Limit (req/s)').fill('100');
 			await field(page, 'Burst Percentage').fill('175');
@@ -142,12 +145,12 @@ test.describe('@gw AI Tenant Rate Limit page', () => {
 			});
 			expect(req1.postDataJSON().isValid).toBeUndefined();
 			await expectSuccessAndDismiss(page);
-			await toolbarButton(page, 'Refresh').click();
+			await toolbarButton(page, 'Refresh', TENANT).click();
 			await expect(rowByText(page, tenantId).first()).toBeVisible({timeout: 10_000});
 
 			// Re-apply with a changed rps → overwrite (upsert, not a second row).
 			await rowByText(page, tenantId).first().getByRole('checkbox').check();
-			await toolbarButton(page, 'Edit').click();
+			await toolbarButton(page, 'Edit', TENANT).click();
 			await field(page, 'Rate Limit (req/s)').fill('250');
 			await page.mouse.move(0, 0);
 			const [req2] = await Promise.all([

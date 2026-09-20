@@ -58,7 +58,7 @@ async function signIn(page: import('@playwright/test').Page) {
  */
 function densityToggle(page: import('@playwright/test').Page, current: 'comfortable' | 'compact') {
 	const icon = current === 'compact' ? 'DensitySmallIcon' : 'DensityMediumIcon';
-	return page.locator(`#table-bar button:has([data-testid="${icon}"])`).first();
+	return page.locator(`[data-table-bar] button:has([data-testid="${icon}"])`).first();
 }
 
 /** The three claimed preferences, exactly as stored. */

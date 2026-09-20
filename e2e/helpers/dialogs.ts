@@ -90,9 +90,9 @@ export async function openToolbarDialog(
 	page: Page,
 	action: ToolbarAction,
 	title: string | RegExp | Locator,
-	opts?: {attempts?: number; timeout?: number},
+	opts?: {attempts?: number; timeout?: number; table?: string},
 ): Promise<void> {
-	await openDialog(page, title, () => toolbarButton(page, action).click(), opts);
+	await openDialog(page, title, () => toolbarButton(page, action, opts?.table).click(), opts);
 }
 
 /** The "Success" popup every mutation ends on; dismisses it. */

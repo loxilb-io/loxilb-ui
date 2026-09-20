@@ -335,3 +335,55 @@ describe('the legacy error prop keeps working for non-query callers', () => {
 		expect(screen.getByText(/no widget entries yet/i)).toBeDefined();
 	});
 });
+
+//---------------------------------------------------------
+// 6. The toolbar is addressable per table, and emits no duplicate id
+//
+// Two DataTables on one page is the ordinary case (VLAN + its members, the
+// two IPsec certificate tables, the three AI rate-limit grids). A literal
+// `id="table-bar"` made that emit duplicate DOM ids — invalid HTML, and it
+// silently re-aimed every positional toolbar locator the moment a table was
+// added above or below. The hook is `data-table-bar`, carrying the same
+// `name` the wrapper's `data-table` carries, so a caller can always say WHICH
+// toolbar it means.
+//---------------------------------------------------------
+describe('the toolbar names the table it belongs to', () => {
+	function renderTwo() {
+		const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
+		const props = {columns: COLS, rows: ROWS, selected_rows: [], onChangeSelectedRows: () => {}, onAdd: () => {}, onDelete: () => {}, onRefresh: () => {}};
+		return render(
+			<QueryClientProvider client={client}>
+				<RecoilRoot>
+					<DataTable name="VLAN" {...props} />
+					<DataTable name="VLAN Member" {...props} />
+				</RecoilRoot>
+			</QueryClientProvider>,
+		);
+	}
+
+	it('two tables on one page emit no duplicate DOM id', () => {
+		renderTwo();
+		const ids = Array.from(document.querySelectorAll('[id]'), el => el.id).filter(id => id.length > 0);
+		const duplicated = ids.filter((id, i) => ids.indexOf(id) !== i);
+		expect(duplicated).toEqual([]);
+	});
+
+	it('each toolbar is reachable by its own table name', () => {
+		renderTwo();
+		expect(document.querySelectorAll('[data-table-bar]')).toHaveLength(2);
+		// The scoped form is what a spec must be able to write: one toolbar,
+		// named, no position involved.
+		const member = document.querySelectorAll('[data-table-bar="VLAN Member"]');
+		expect(member).toHaveLength(1);
+		expect(member[0].querySelectorAll('button').length).toBeGreaterThan(0);
+	});
+
+	it('the toolbar sits inside the wrapper that carries the same name', () => {
+		renderTwo();
+		// `[data-table="X"] [data-table-bar]` must resolve — specs that already
+		// scope by `data-table` (the AI rate-limit suites) reach the toolbar
+		// that way, and a toolbar hoisted out of its wrapper would break them
+		// with no other symptom.
+		expect(document.querySelectorAll('[data-table="VLAN Member"] [data-table-bar]')).toHaveLength(1);
+	});
+});

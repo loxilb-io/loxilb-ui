@@ -13,10 +13,29 @@ import {CONFLICT_KEY, NOT_ENABLED_KEY, RATE_LIMITED_KEY, STATUS_LOCALE_KEYS} fro
 // dependency); absent headers simply leave correlationId undefined.
 const CORRELATION_HEADER = 'X-Correlation-Id';
 
+function text(v: unknown): string | undefined {
+	return typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined;
+}
+
 function rawDetailOf(resp: SimpleResponse): string | undefined {
 	const d = resp.data as any;
-	const detail = d?.error || d?.message || d?.result || resp.message;
-	return typeof detail === 'string' && detail.trim() !== '' ? detail : undefined;
+	// `error` is authoritative where it appears (OAM, and the gateway's own
+	// envelope) — one field, never split.
+	const authoritative = text(d?.error);
+	if (authoritative) return authoritative;
+
+	// ⚠️ loxilb splits a rejection in two: `message` is the generic CLASS
+	// ("Malformed arguments for API call") and `result` carries the only
+	// sentence that names the actual cause. Taking `message` first kept the
+	// half that says nothing, so the reason never reached the diagnostics,
+	// the correlation trail, or an E2E failure message. Take BOTH — the class
+	// is what the gateway's logs are indexed by, the reason is what a human
+	// needs — and de-duplicate, because most backends set only one of them.
+	const cls = text(d?.message);
+	const reason = text(d?.result);
+	if (cls && reason && cls !== reason) return `${cls}: ${reason}`;
+
+	return cls || reason || text(resp.message);
 }
 
 export function fromSimpleResponse<T = unknown>(resp: SimpleResponse<T> | null | undefined, op: string): OpResult<T> {
