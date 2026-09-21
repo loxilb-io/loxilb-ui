@@ -161,8 +161,9 @@ function rowByStableId(page: Page, id: string): Locator {
 // Suite
 //---------------------------------------------------------
 let instName: string;
-// Whether this Gateway is launched for KV-exact routing at all — see
-// gatewayKvExactReadiness. Probed once, consulted by the KV case only.
+// Whether this Gateway is launched for KV-exact routing at all — asked once via
+// GET /status/capabilities (see gatewayKvExactReadiness), consulted by the KV
+// case only.
 let kvReadiness: KvExactReadiness;
 
 test.describe('LB Rule page CRUD', () => {
@@ -438,7 +439,9 @@ test.describe('LB Rule page CRUD', () => {
 	test('@gw C-aigw-kv: CHWBL sel + KV-cache routing fields (boundary values)', async ({page}) => {
 		// See gatewayKvExactReadiness: a Gateway launched without
 		// LLB_KV_NONE_HASH_SEED refuses every KV-exact create regardless of what
-		// the UI sends, so this reports that rather than standing red.
+		// the UI sends, so this reports the Gateway's own verdict rather than
+		// standing red. The verdict is now read from the capability surface, so
+		// the skip reason is a contract field rather than a parsed error string.
 		test.skip(!kvReadiness.ready, kvReadiness.reason);
 		await openAddDialog(page);
 		await fillBasics(page, 'e2e-lb-kv', '203.0.113.53', '8446');
