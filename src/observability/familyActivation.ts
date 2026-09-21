@@ -12,7 +12,7 @@ import {getManifestFamily} from './metricManifest';
 // a precondition that has not been met, or a gateway failing to export
 // something it always should? Each panel re-derived it, and a wrong guess
 // reaches an operator as either a false alarm or a hidden fault. The manifest
-// answers it for all 193 gateway-scrape families, so this module reads the
+// answers it for all 194 gateway-scrape families, so this module reads the
 // answer instead of guessing it.
 //
 // ⭐⭐ THE DISTINCTION THIS MODULE IS BUILT ON, and the reason the stage brief
@@ -30,7 +30,7 @@ import {getManifestFamily} from './metricManifest';
 //
 // ⚠️⚠️ AND THE ORDERING TRAP, which is why `activationPrecondition` is checked
 // BEFORE `activationKind`: **eager does not mean always-present.** 14 of the
-// 193 gateway-scrape families are eager AND carry a precondition — the
+// 194 gateway-scrape families are eager AND carry a precondition — the
 // `loxilb_ai_jwks_*` set is registered at init but emits one series per
 // configured JWT auth profile, so with no profile configured the family is
 // legitimately absent. Reading the activation code first would call that a

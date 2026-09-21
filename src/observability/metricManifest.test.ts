@@ -17,6 +17,25 @@ import {
 // pinned to the manifest generation this code was verified against; a
 // re-vendor that changes them must re-verify the per-page family sets before
 // bumping the numbers.
+//
+// 194 (was 193) since the re-vendor to gateway 662c5ca2. The one added family
+// is `loxilb_ai_worker_scrape_total` — the vLLM worker scraper's per-outcome
+// counter. What the bump was re-verified against, because a count is the one
+// assertion that can be made green by editing a digit:
+//   - it is class `default` + packaged, so `isGatewayScrapeFamily` admits it
+//     for the right reason and not by accident (asserted just below);
+//   - activation `P` with an EMPTY precondition, so `absenceReading` calls it
+//     `unexpected` when missing. That is correct rather than incidental: the
+//     family exists to report "the scraper produced no sample at all", and the
+//     gateway pre-creates its children at init precisely so that state is a
+//     zero rather than an absence;
+//   - no registry entry references it, which `capabilityRegistry.test.ts`
+//     ("a manifest family no entry references has no effect on applicability")
+//     already holds as a property rather than as a list — so the per-page
+//     family sets are unchanged, and their own pins below stay put.
+// It is `priority: diagnostic` and no panel surfaces it. That is a decision,
+// not an oversight: surfacing worker-scrape health is new UI work, and it is
+// recorded as a follow-up rather than smuggled into a re-vendor.
 
 describe('vendored envelope', () => {
 	it('carries UI-owned provenance the upstream artifact lacks', () => {
@@ -34,7 +53,7 @@ describe('vendored envelope', () => {
 describe('gateway scrape applicability (class + packaged)', () => {
 	it('marks exactly the packaged default class as gateway-applicable', () => {
 		const applicable = allManifestFamilies().filter(f => isGatewayScrapeFamily(f.name));
-		expect(applicable).toHaveLength(193);
+		expect(applicable).toHaveLength(194);
 		for (const f of applicable) {
 			expect(f.class).toBe('default');
 			expect(f.packaged).toBe(true);

@@ -1,9 +1,9 @@
 {
-  "vendoredAt": "2026-09-16T11:27:32Z",
+  "vendoredAt": "2026-09-21T23:27:03Z",
   "gateway": {
     "repo": "loxilb-inference-gateway",
     "path": "api/swagger.yml + api/swagger-extras.yml",
-    "commit": "540a588baed209f1fd9307018c03e7e720fedce4",
+    "commit": "662c5ca229b5dec489eb48fa4661f88eb7fad9ac",
     "dirty": false,
     "note": "clean re-vendor via sync-specs.sh --only gateway from a detached checkout; byte-identical to the recorded commit"
   },
@@ -24,9 +24,9 @@
   "metricManifest": {
     "repo": "loxilb-inference-gateway",
     "path": "deploy/monitoring/manifest/metric-manifest.json",
-    "commit": "540a588baed209f1fd9307018c03e7e720fedce4",
+    "commit": "662c5ca229b5dec489eb48fa4661f88eb7fad9ac",
     "dirty": false,
-    "vendoredAt": "2026-09-16T11:27:32Z",
+    "vendoredAt": "2026-09-21T23:27:21Z",
     "note": "vendored verbatim (byte-for-byte upstream); the UI version envelope is generated into src/api/gen/metric-manifest.json by scripts/gen-metric-manifest.mjs (npm run gen:api)"
   }
 }
