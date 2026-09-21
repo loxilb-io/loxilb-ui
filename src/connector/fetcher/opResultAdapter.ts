@@ -7,7 +7,7 @@
 
 import {ApiError, isMutationFailure, SimpleResponse} from './fetcher_base';
 import {OpResult} from './opResult';
-import {CONFLICT_KEY, NOT_ENABLED_KEY, RATE_LIMITED_KEY, STATUS_LOCALE_KEYS} from './opResultCodes';
+import {CONFLICT_KEY, NOT_ENABLED_KEY, PRECONDITION_KEY, RATE_LIMITED_KEY, STATUS_LOCALE_KEYS} from './opResultCodes';
 
 // Optional until the frozen error-code contract lands ( external
 // dependency); absent headers simply leave correlationId undefined.
@@ -68,6 +68,23 @@ export function fromSimpleResponse<T = unknown>(resp: SimpleResponse<T> | null |
 	// a distinct code so pages and E2E can branch on it.
 	if (resp.code === 402) {
 		return {status: 'denied', code: `${op}.payment_required`, localeKey: STATUS_LOCALE_KEYS.denied, retryable: false, ...common};
+	}
+	// ⭐⭐ 412: a refusal whose cause is the GATEWAY'S launch environment, not
+	// the request. The gateway added this status precisely so a client can tell
+	// the two apart — rendered as the 400 it used to be, the response said
+	// "Malformed arguments for API call" about a body that was valid, and a UI
+	// could not decide whether to tell the operator to fix their input or fix
+	// their gateway.
+	//
+	// ⚠️ `failed`, deliberately NOT `invalid`. `invalid` is the bucket whose
+	// whole message is "fix what you submitted", and the defining property of a
+	// precondition refusal is that no submission can satisfy it. And NOT
+	// retryable: the same request will be refused identically until someone
+	// changes the deployment, so offering a retry would be a lie with a button
+	// on it. `rawDetail` carries the gateway's sentence, which is the only part
+	// that tells an operator what to change.
+	if (resp.code === 412) {
+		return {status: 'failed', code: `${op}.precondition_failed`, localeKey: PRECONDITION_KEY, retryable: false, ...common};
 	}
 	// 501: the feature is not compiled/enabled in this gateway launch config
 	// (e.g. /config/ai/* answers 501 until --userservice is on). Still `failed`
