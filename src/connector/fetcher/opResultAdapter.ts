@@ -83,6 +83,14 @@ export function fromSimpleResponse<T = unknown>(resp: SimpleResponse<T> | null |
 	// changes the deployment, so offering a retry would be a lie with a button
 	// on it. `rawDetail` carries the gateway's sentence, which is the only part
 	// that tells an operator what to change.
+	//
+	// ⚠️ This handling is AHEAD OF THE VENDORED CONTRACT, on purpose. The gateway
+	// emits 412 from its error mapper, but declares it on no operation: at the
+	// vendored revision there is no `412` response in the gateway specification,
+	// its extras, or its embedded copy. So a spec-driven reader will not find this
+	// status documented — do not "correct" the branch away on that basis. Raised
+	// as a one-line follow-up; until it lands, the behaviour is real and the
+	// declaration is not.
 	if (resp.code === 412) {
 		return {status: 'failed', code: `${op}.precondition_failed`, localeKey: PRECONDITION_KEY, retryable: false, ...common};
 	}
