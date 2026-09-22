@@ -129,8 +129,20 @@ test.describe('@gw AI JWT auth profiles', () => {
 		// disclaimer would leave the table looking like a health view.
 		const disclaims = page.getByText(/does not report whether an issuer is reachable/i);
 		const defers = page.getByText(/reported under Keyset health below/i);
-		expect(await disclaims.count() + await defers.count(), 'exactly one issuer-health notice').toBe(1);
-		await expect((await defers.count()) > 0 ? defers : disclaims).toBeVisible();
+		// ⚠️ POLLED, not sampled. Exactly one of the two notices is correct, but
+		// WHICH one legitimately changes once keyset health lands: the panel
+		// defers to health when health is on screen. Health arrives on the
+		// metrics cadence AFTER load — strictly so since the snapshot stopped
+		// being restored from localStorage — so reading `count()` once and then
+		// asserting on the branch it chose races the swap, and the locator
+		// picked a moment ago resolves to nothing. Assert the INVARIANT (one
+		// notice, never two, never none) against the settled page instead.
+		await expect
+			.poll(async () => (await disclaims.count()) + (await defers.count()), {
+				message: 'exactly one issuer-health notice',
+				timeout: 15_000,
+			})
+			.toBe(1);
 
 		// A 402/401 answers a JSON object rather than an array; mapping that as a
 		// list would throw and white-screen the page.
@@ -391,12 +403,24 @@ test.describe('@gw AI JWT auth profiles', () => {
 		// The snapshot arrives on the shared metrics cadence, so the first
 		// press can legitimately precede it.
 		await refreshUntilRow(page, PROFILE);
-		const health = page.getByText(/Failing closed — never fetched/);
-		await expect(health).toBeVisible({timeout: 40_000});
+
+		// ⚠️ Scoped to OUR profile's row, and that is not politeness. The page
+		// carries two row-bearing regions — the profiles DataGrid (role=grid)
+		// and the keyset health panel (role=table) — and the testbed holds
+		// profiles this spec did not create. One of them, `kc-blackhole`, is
+		// itself an unreachable issuer, so it renders the identical chip and a
+		// page-global getByText matched two elements and failed on strict mode.
+		// `.first()` would have "fixed" that by asserting whichever row came
+		// first, which passes even when OUR row is missing entirely. There is
+		// exactly one role=table on the page; its row for PROFILE is the thing
+		// under test.
+		const healthRow = page.getByRole('table').getByRole('row').filter({hasText: PROFILE});
+		await expect(healthRow.getByText(/Failing closed — never fetched/)).toBeVisible({timeout: 40_000});
 
 		// Absent, never zero: upstream omits the timestamp series before the
-		// first success precisely so nothing reads it as a 1970 date.
-		await expect(page.getByText(/^Never$/)).toBeVisible();
+		// first success precisely so nothing reads it as a 1970 date. Same
+		// scoping for the same reason — `kc-blackhole` also reads "Never".
+		await expect(healthRow.getByText(/^Never$/)).toBeVisible();
 
 		// ⭐ And the panel must not have replaced the honest disclaimer with
 		// silence: with health on screen the notice defers to it.
@@ -468,6 +492,13 @@ test.describe('@gw AI JWT auth profiles', () => {
 		await selectRowByText(page, PROFILE);
 		await openToolbarDialog(page, 'Delete', dialogTitle(page, 'WARNING!! Delete Item'));
 		await confirmDelete(page);
+
+		// ⚠️ Wait for the UI to settle BEFORE reading the gateway. Asserting the
+		// gateway the instant the dialog closes races the DELETE still in
+		// flight, and the failure reads as "the profile is gone from the
+		// gateway: false" — which looks like the delete did not work rather
+		// than like the test asked too early.
+		await expect(rowByText(page, PROFILE)).toHaveCount(0, {timeout: 15_000});
 		expect((await listJwtAuthProfiles()).some(p => p.name === PROFILE), 'the profile is gone from the gateway').toBe(false);
 	});
 });
