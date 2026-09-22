@@ -87,7 +87,7 @@ import QosPage from 'pages/observability/QosPage';
 import PersistencePage from 'pages/observability/PersistencePage';
 
 import {MAX_DURATION_MS} from 'hooks/query/common';
-import {persister, queryClient} from 'queryClientSingleton';
+import {persister, PERSIST_BUSTER, queryClient, shouldPersistQuery} from 'queryClientSingleton';
 import {registerSessionPurge} from 'session/session';
 import {useSessionWatch} from 'session/useSessionWatch';
 import LogPage from 'pages/status/LogPage';
@@ -117,11 +117,19 @@ export default function App() {
 	useSessionWatch();
 
 	useEffect(() => {
-		persistQueryClientRestore({queryClient, persister}).then(() => {
+		// ⚠️ `buster` and `maxAge` must match on BOTH calls. The restore runs
+		// first and decides what to hydrate; if only the save knew the buster,
+		// the poisoned cache would be read back once before being replaced —
+		// and reading it once is all it takes to crash the page.
+		persistQueryClientRestore({queryClient, persister, maxAge: MAX_DURATION_MS, buster: PERSIST_BUSTER}).then(() => {
 			persistQueryClient({
 				queryClient,
 				persister,
 				maxAge: MAX_DURATION_MS,
+				buster: PERSIST_BUSTER,
+				// Live telemetry is re-read, never remembered — see
+				// queryClientSingleton.ts for why this is load-bearing.
+				dehydrateOptions: {shouldDehydrateQuery: shouldPersistQuery},
 			});
 			setIsReady(true);
 		});
