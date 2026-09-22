@@ -154,6 +154,24 @@ async function topologyOptionNames(page: Page): Promise<string[]> {
 	return names.map(n => n.trim());
 }
 
+/**
+ * Dismiss the Error popup WITHOUT asserting the form behind it is gone.
+ *
+ * `expectErrorAndDismiss` ends with `expect(dialog(page)).toBeHidden()`, which
+ * is correct everywhere a failure sends the operator back to the list. A
+ * precondition refusal deliberately does not, so that helper would assert the
+ * opposite of what this case is for. Anchored on the Error popup's own heading
+ * rather than on modal order, because with the form reopened underneath there
+ * are two modal roots mounted at once.
+ */
+async function dismissErrorKeepingForm(page: Page): Promise<void> {
+	const errorHeading = page.getByRole('heading', {name: 'Error'});
+	await expect(errorHeading).toBeVisible();
+	const errorModal = page.locator('.MuiModal-root').filter({has: errorHeading}).last();
+	await errorModal.getByRole('button', {name: 'OK', exact: true}).click();
+	await expect(errorHeading).toHaveCount(0);
+}
+
 test.describe('@gw KV-exact readiness — mock contract', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
@@ -383,18 +401,100 @@ test.describe('@gw KV-exact readiness — mock contract', () => {
 		// nothing they can type here will change the answer.
 		await expect(page.getByText(/its deployment must change/)).toBeVisible({timeout: 20_000});
 		await expect(page.getByText('The request was rejected as invalid.')).toHaveCount(0);
-		await expectErrorAndDismiss(page);
+
+		// ⭐ "Its deployment must change" is only half an answer — it does not
+		// say WHICH setting, and the UI cannot know. The gateway's own sentence
+		// does, and it is the only actionable content in the response, so a 412
+		// renders it verbatim after the mapped headline (opResultText.ts). Same
+		// deliberate brittleness as B-02: a paraphrase here is a regression.
+		await expect(page.getByText(GW_SENTENCE, {exact: false})).toBeVisible();
+		// NOT expectErrorAndDismiss: a 412 now leaves the operator's form
+		// standing behind the popup (C-02), so that helper's closing
+		// "the dialog is hidden" would assert the bug back in.
+		await dismissErrorKeepingForm(page);
 	});
 
-	// ⚠️ A case for "the draft must survive a 412" is NOT here on purpose. It
-	// was written, run, and it FAILED against a real gap rather than a test
-	// bug: LBRulePage re-seeds the dialog only when the rejected rule carried
-	// a `kvModelProfile` (`if (profileId) preserveStrictDraft(submitted)`), so
-	// a KV-exact rule without a profile loses the entire six-section form to
-	// the one refusal where nothing the operator typed is wrong. Note
-	// `preserveStrictDraft` has no coverage at any level today.
-	//
-	// Restoring the draft for every failed create is a one-line change with
-	// blast radius over all of them, so it is a product decision rather than
-	// a test edit. Add the case here once that is settled.
+	test('C-02: ⭐ a 412 does NOT cost the operator the form they filled in', async ({page, consoleGuard}) => {
+		consoleGuard.allow(/status of 412/i);
+		consoleGuard.allow(/Failed to load resource/i);
+		// Same shape as C-01 — and deliberately WITHOUT a model profile. A
+		// profile-carrying rule always kept its draft (AC-06); this is the case
+		// that did not, and it is the one where losing it is least defensible.
+		await mockCapabilities(page, {status: 404});
+		await page.route(LB_POST_RE, (route: Route) => {
+			if (route.request().method() !== 'POST') return route.fallback();
+			return route.fulfill({status: 412, contentType: 'application/json', body: JSON.stringify({result: GW_SENTENCE})});
+		});
+
+		await openAddToTopology(page);
+		await selectOption(page, 'Topology', 'Single-role KV exact');
+		const aigw = await expandSection(page, /^AI Gateway/);
+		await setField(page, 'KV Block Size', '16', aigw);
+		await field(page, 'Block/Page Size Confirmed', aigw).check();
+
+		const eps = await expandSection(page, /^Endpoints$/);
+		await eps.getByRole('button', {name: 'Add', exact: true}).click();
+		await field(page, 'IP', eps).first().fill('198.51.100.79');
+		await field(page, 'Target Port', eps).first().fill('8000');
+
+		await dialogButton(page, 'Create').click();
+		await expect(page.getByText(/its deployment must change/)).toBeVisible({timeout: 20_000});
+		await dismissErrorKeepingForm(page);
+
+		// ⭐ THE ASSERTION. The refusal is about the gateway's launch
+		// environment; every value below is one the operator had no reason to
+		// change, spread over four of the form's six sections. Before the fix
+		// the dialog was simply GONE here (`element(s) not found`) and all of
+		// it had to be retyped.
+		await expect(field(page, 'Rule Name')).toHaveValue('e2e-kv-readiness');
+
+		const basic = await expandSection(page, /^Basic Settings/);
+		await expect(field(page, 'External IP', basic)).toHaveValue('192.0.2.77');
+		await expect(field(page, 'Port Min', basic)).toHaveValue('18077');
+
+		const aigw2 = await expandSection(page, /^AI Gateway/);
+		await expect(field(page, 'Model Name', aigw2)).toHaveValue('Qwen/Qwen3-32B');
+		await expect(field(page, 'KV Block Size', aigw2)).toHaveValue('16');
+		// ⚠️ Topology is a control OF the AI Gateway section, so it is only
+		// queryable once that section is expanded — asserting it earlier finds
+		// nothing and reads as a lost value rather than a collapsed panel.
+		// ⚠️ And its ACCESSIBLE NAME is only the label; the selected value lives
+		// in its TEXT. Asserting on the name would pass against whatever option
+		// the control fell back to — the silent misreport B-07 exists to catch.
+		await expect(topologyBox(page)).toHaveText(/Single-role KV exact/);
+
+		const eps2 = await expandSection(page, /^Endpoints$/);
+		await expect(field(page, 'IP', eps2).first()).toHaveValue('198.51.100.79');
+		await expect(field(page, 'Target Port', eps2).first()).toHaveValue('8000');
+	});
+
+	test('C-03: an INVALID create still clears the form — the 412 carve-out is not a blanket change', async ({page, consoleGuard}) => {
+		consoleGuard.allow(/status of 400/i);
+		consoleGuard.allow(/Failed to load resource/i);
+		// The other half of the decision, and the half a careless "preserve on
+		// any failure" would erase. A 400 IS about what was typed, so the
+		// existing behaviour must be untouched by the precondition carve-out.
+		await mockCapabilities(page, {status: 404});
+		await page.route(LB_POST_RE, (route: Route) => {
+			if (route.request().method() !== 'POST') return route.fallback();
+			return route.fulfill({status: 400, contentType: 'application/json', body: JSON.stringify({result: 'Malformed arguments for API call'})});
+		});
+
+		await openAddToTopology(page);
+		await selectOption(page, 'Topology', 'Single-role KV exact');
+		const aigw = await expandSection(page, /^AI Gateway/);
+		await setField(page, 'KV Block Size', '16', aigw);
+		await field(page, 'Block/Page Size Confirmed', aigw).check();
+
+		const eps = await expandSection(page, /^Endpoints$/);
+		await eps.getByRole('button', {name: 'Add', exact: true}).click();
+		await field(page, 'IP', eps).first().fill('198.51.100.79');
+		await field(page, 'Target Port', eps).first().fill('8000');
+
+		await dialogButton(page, 'Create').click();
+		await expectErrorAndDismiss(page);
+		// No reopened form: a 400 sends the operator back to the list, as it
+		// always has. If this ever goes red, the carve-out widened.
+		await expect(dialog(page).getByLabel('Rule Name')).toHaveCount(0);
+	});
 });
