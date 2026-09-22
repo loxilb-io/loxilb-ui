@@ -83,6 +83,26 @@ describe('shouldPersistQuery', () => {
 		expect(shouldPersistQuery(queryOf(['instance', 'diagnostics', 1]))).toBe(false);
 	});
 
+	it('refuses the capability verdict, because a FAILED read must read as unknown', () => {
+		// `useCapabilityVerdict` states: an unread query — including a read that
+		// FAILED — yields `unknown`, never `not-ready`, because `not-ready`
+		// withdraws controls. React Query keeps the last successful data when a
+		// refetch fails, so a persisted verdict made a failed read answer with
+		// the PREVIOUS SESSION's verdict. A gateway relaunched without its seed
+		// could still report `ready`, and every rule built on that is 412'd.
+		expect(shouldPersistQuery(queryOf(['status', 'capabilities', '1', '1']))).toBe(false);
+	});
+
+	it('refuses the instance flavor, which persisted would NEVER be re-probed', () => {
+		// The one that does not self-correct. `useInstanceFlavorResolution`
+		// documents "re-detected on reconnect/refresh" but sets
+		// `staleTime: Infinity` / `gcTime: Infinity`. Restored from storage the
+		// data is present and never stale, so no refetch is ever issued and an
+		// instance redeployed OSS -> inference-gateway keeps the wrong flavor
+		// until browser storage is cleared.
+		expect(shouldPersistQuery(queryOf(['instance', 'flavor', 1]))).toBe(false);
+	});
+
 	it('still persists ordinary configuration reads', () => {
 		// The persister earns its keep on these; the fix must not disable it.
 		expect(shouldPersistQuery(queryOf(['instance', 'lb', 1]))).toBe(true);
