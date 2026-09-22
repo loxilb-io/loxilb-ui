@@ -2,7 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {useQuery, useQueryClient} from '@tanstack/react-query';
-import {get_local_storage, save_local_storage} from 'common';
+import {get_local_storage, remove_local_storage, save_local_storage} from 'common';
 import {useEffect, useState} from 'react';
 import {ITimeSeriesPoint} from 'types/global';
 import {IInstance} from 'types/oam';
@@ -24,6 +24,50 @@ function pruneOld<T>(arr: ITimeSeriesPoint<T>[]): ITimeSeriesPoint<T>[] {
 	}
 	
 	return timeFiltered;
+}
+
+/**
+ * Read a persisted series, or `[]` when what is stored cannot be trusted.
+ *
+ * ⚠️ localStorage is durable, origin-wide and survives upgrades, so what comes
+ * back is not necessarily what THIS build wrote: an older shape, a key left
+ * half-cleaned by `clearOldTimeSeriesData`, or a hand-edited value all arrive
+ * here. Both callers run on the render path — the `useState` initializer
+ * literally during render — so a throw unmounts the page instead of degrading
+ * it. That is the same failure class as the persisted metrics snapshot that
+ * crashed the observability pages, and the same reason
+ * `DashboardPage.readStoredLayout` guards its own parse. This path did not,
+ * and `pruneOld` additionally assumed an array, so a stored `{}` answered
+ * `filter is not a function`.
+ *
+ * Bad data is DROPPED rather than kept: keeping it means meeting it again on
+ * the next mount, and a series re-accumulates from polling within seconds.
+ */
+export function readStoredSeries<T>(storageKey: string): ITimeSeriesPoint<T>[] {
+	const rawJson = get_local_storage(storageKey);
+	if (!rawJson) return [];
+
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(rawJson);
+	} catch {
+		remove_local_storage(storageKey);
+		return [];
+	}
+
+	if (!Array.isArray(parsed)) {
+		remove_local_storage(storageKey);
+		return [];
+	}
+
+	// Drop individual malformed points rather than the whole series: a string
+	// timestamp coerces cleanly through pruneOld's arithmetic and would survive
+	// as a real point, carrying an unusable `data` to every chart downstream.
+	const points = parsed.filter(
+		(p): p is ITimeSeriesPoint<T> =>
+			!!p && typeof p === 'object' && typeof (p as {timestamp?: unknown}).timestamp === 'number',
+	);
+	return pruneOld(points);
 }
 
 function appendSeries<T>(prev: ITimeSeriesPoint<T>[], newPoint: {timestamp: number; data: T}): ITimeSeriesPoint<T>[] {
@@ -50,13 +94,7 @@ export function createTimeSeriesHook<TRaw, TWrapped extends {}>(
 			const cached = queryClient.getQueryData<ITimeSeriesPoint<TWrapped>[]>(['series', storageKey]);
 			if (cached && cached.length > 0) return pruneOld(cached);
 
-			const rawJson = get_local_storage(storageKey);
-			if (rawJson) {
-				const parsed = JSON.parse(rawJson) as ITimeSeriesPoint<TWrapped>[];
-				return pruneOld(parsed);
-			}
-
-			return [];
+			return readStoredSeries<TWrapped>(storageKey);
 		});
 
 		const fetchQuery = useQuery<TRaw>({
@@ -97,14 +135,7 @@ export function createTimeSeriesHook<TRaw, TWrapped extends {}>(
 				return;
 			}
 
-			const rawJson = get_local_storage(storageKey);
-			if (rawJson) {
-				const parsed = JSON.parse(rawJson) as ITimeSeriesPoint<TWrapped>[];
-				setSeriesData(pruneOld(parsed));
-				return;
-			}
-
-			setSeriesData([]);
+			setSeriesData(readStoredSeries<TWrapped>(storageKey));
 		// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 		}, [instance?.id, storageKey, queryClient]);
 

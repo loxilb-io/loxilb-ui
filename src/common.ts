@@ -57,7 +57,17 @@ export function save_local_storage(name: string, value: string) {
 	}
 }
 
-function clearOldTimeSeriesData() {
+/**
+ * Trim or drop the time-series keys, freeing space under quota pressure.
+ *
+ * Exported for tests: the only production caller is `save_local_storage`'s
+ * quota branch, and simulating a genuine QuotaExceededError means spying on
+ * the `localStorage` object — which intercepts under the plain-object shim in
+ * `vitest.setup.ts` but NOT against a real Storage-backed `localStorage`, so
+ * the branch silently never runs and the test passes for the wrong reason.
+ * Calling this directly tests the decision itself on either implementation.
+ */
+export function clearOldTimeSeriesData() {
 	const keysToRemove: string[] = [];
 	
 	// Find all time series keys (they contain '-series_' or end with specific patterns)
@@ -83,6 +93,14 @@ function clearOldTimeSeriesData() {
 					// Keep only the last 50 data points to reduce storage
 					const trimmed = parsed.slice(-50);
 					localStorage.setItem(key, JSON.stringify(trimmed));
+				} else {
+					// Parsed, but not a series. This used to fall through and
+					// LEAVE the value in place, which is the worst of both: it
+					// frees nothing on a pass whose whole purpose is freeing
+					// space, and it preserves exactly the shape the reader
+					// chokes on. Unparseable values are already removed below;
+					// this is the same decision for the same reason.
+					localStorage.removeItem(key);
 				}
 			}
 		} catch (error) {
