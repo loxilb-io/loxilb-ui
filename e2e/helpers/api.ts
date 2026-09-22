@@ -7,6 +7,12 @@
 import fs from 'fs';
 import path from 'path';
 import {buildLBDeleteKey, buildLBDeletePath} from '../../src/types/lb_identity';
+import {KvExactReadiness, kvExactVerdictFromCapabilities, kvExactVerdictFromRefusal} from './kvExactVerdict';
+
+// Re-exported so the specs keep importing the readiness type from the helper
+// they already use; the decision itself lives in ./kvExactVerdict so the
+// selftest project can drive it with no environment.
+export type {KvExactReadiness};
 
 // No default on purpose: the suite runs against a live OAM/gateway stack the
 // operator owns, so the address must come from the environment
@@ -534,14 +540,6 @@ export async function gatewayAIManagementReadiness(): Promise<AIManagementReadin
 	};
 }
 
-export interface KvExactReadiness {
-	ready: boolean;
-	reason: string;
-}
-
-/** `kv_exact_vllm` — the capability name the gateway publishes for vLLM KV-exact admission. */
-const CAP_KV_EXACT_VLLM = 'kv_exact_vllm';
-
 /**
  * Ask the gateway, on the record, whether it can admit vLLM KV-exact rules.
  *
@@ -557,20 +555,8 @@ async function kvExactReadinessFromCapabilities(): Promise<KvExactReadiness | nu
 	} catch {
 		return null;
 	}
-	if (!resp.ok) return null;
-	let body: {capabilities?: Array<{name?: string; ready?: boolean; reason?: string; reason_code?: string}>};
-	try {
-		body = (await resp.json()) as typeof body;
-	} catch {
-		return null;
-	}
-	const entry = (body.capabilities ?? []).find(c => c?.name === CAP_KV_EXACT_VLLM);
-	// `ready` is required upstream, so a non-boolean is a malformed body rather
-	// than a verdict — fall through rather than invent a refusal.
-	if (!entry || typeof entry.ready !== 'boolean') return null;
-	if (entry.ready) return {ready: true, reason: 'Gateway reports KV-exact readiness'};
-	const reason = (entry.reason ?? '').trim() || `reason_code=${entry.reason_code ?? 'unspecified'}`;
-	return {ready: false, reason: `Gateway reports KV-exact not ready: ${reason}`};
+	const bodyText = await resp.text().catch(() => '');
+	return kvExactVerdictFromCapabilities(resp.status, bodyText);
 }
 
 /**
@@ -611,23 +597,7 @@ async function kvExactReadinessFromWriteProbe(): Promise<KvExactReadiness> {
 		await gw('DELETE', `/config/loadbalancer/name/${encodeURIComponent(probe.serviceArguments.name)}`).catch(() => undefined);
 		return {ready: true, reason: 'Gateway accepts KV-exact rules'};
 	}
-	const body = await resp.text().catch(() => '');
-	let detail = body;
-	try {
-		detail = (JSON.parse(body) as {result?: string}).result ?? body;
-	} catch {
-		/* keep the raw text */
-	}
-	// 412 Precondition Failed: the gateway itself classified this as being about
-	// its own launch environment. No string matching needed or wanted.
-	if (resp.status === 412) {
-		return {ready: false, reason: `Gateway refused a KV-exact rule as a server precondition: ${detail}`};
-	}
-	const namesPrecondition = /LLB_KV_NONE_HASH_SEED|PYTHONHASHSEED|tokenizer/i.test(body);
-	if (resp.status === 400 && namesPrecondition) {
-		return {ready: false, reason: `Gateway is not launched for KV-exact routing: ${detail}`};
-	}
-	return {ready: true, reason: `KV-exact readiness probe answered HTTP ${resp.status}`};
+	return kvExactVerdictFromRefusal(resp.status, await resp.text().catch(() => ''));
 }
 
 /**
