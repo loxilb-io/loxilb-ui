@@ -69,6 +69,34 @@ function PlanTable(props: {plan: IGatewayRestoreResult['plan']}) {
 	);
 }
 
+/**
+ * The gateway's non-fatal findings. Rendered wherever a result or a dry-run is
+ * shown — INCLUDING a success, which is the case that used to drop them: a
+ * restore that re-encrypted inbound secrets, could not verify an optional
+ * recovery dependency, or skipped duplicate items still returns result "ok",
+ * and saying only "succeeded" reports a cleaner outcome than the gateway did.
+ */
+function WarningList(props: {warnings?: string[]}) {
+	const warnings = props.warnings ?? [];
+	if (warnings.length === 0) return null;
+	return (
+		<Box sx={{mt: 1}}>
+			<Typography variant="body2" sx={{fontWeight: 600}}>
+				{t('Warnings')}
+			</Typography>
+			<Box component="ul" sx={{mt: 0.5, mb: 0, pl: 3}}>
+				{warnings.map((w, i) => (
+					<li key={i}>
+						<Typography variant="body2" sx={{wordBreak: 'break-word'}}>
+							{w}
+						</Typography>
+					</li>
+				))}
+			</Box>
+		</Box>
+	);
+}
+
 function ErrorList(props: {errors?: string[]}) {
 	const errors = props.errors ?? [];
 	if (errors.length === 0) return null;
@@ -86,7 +114,9 @@ function ErrorList(props: {errors?: string[]}) {
 }
 
 // Renders the commit outcome verbatim — the three-way branch of §5.2.
-function CommitResult(props: {outcome: IRestoreOutcomeParsed | null; oamError: string | null; instanceName: string}) {
+/** Exported for tests: the commit/dry-run outcome rendering is the honesty
+ *  surface, so it is asserted directly rather than through the whole wizard. */
+export function CommitResult(props: {outcome: IRestoreOutcomeParsed | null; oamError: string | null; instanceName: string}) {
 	const {outcome, oamError, instanceName} = props;
 	const branch = classifyCommitResult(outcome, oamError);
 
@@ -106,11 +136,12 @@ function CommitResult(props: {outcome: IRestoreOutcomeParsed | null; oamError: s
 	if (branch === 'ok') {
 		return (
 			<Alert severity="success">
-				<AlertTitle>{t('Restore succeeded')}</AlertTitle>
+				<AlertTitle>{gw?.warnings?.length ? t('Restore succeeded with warnings') : t('Restore succeeded')}</AlertTitle>
 				<Typography variant="body2">
 					{t('Snapshot applied to {{name}} and verified by the gateway.', {name: instanceName})}
 				</Typography>
 				<PlanTable plan={gw?.plan} />
+				<WarningList warnings={gw?.warnings} />
 			</Alert>
 		);
 	}
@@ -123,6 +154,7 @@ function CommitResult(props: {outcome: IRestoreOutcomeParsed | null; oamError: s
 					{t('The gateway could not apply the snapshot and restored the original configuration. The instance is running its previous config.')}
 				</Typography>
 				<ErrorList errors={gw?.errors} />
+				<WarningList warnings={gw?.warnings} />
 			</Alert>
 		);
 	}
@@ -140,6 +172,7 @@ function CommitResult(props: {outcome: IRestoreOutcomeParsed | null; oamError: s
 					</Typography>
 				)}
 				<ErrorList errors={gw?.errors} />
+				<WarningList warnings={gw?.warnings} />
 			</Alert>
 		);
 	}
@@ -151,6 +184,7 @@ function CommitResult(props: {outcome: IRestoreOutcomeParsed | null; oamError: s
 		<Alert severity="error">
 			<AlertTitle>{t('Restore did not complete (gateway HTTP {{code}})', {code: outcome?.gateway_status ?? '?'})}</AlertTitle>
 			<ErrorList errors={gw?.errors} />
+			<WarningList warnings={gw?.warnings} />
 			{!gw?.errors?.length && (
 				<Typography variant="body2" sx={{whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace'}}>
 					{JSON.stringify(outcome?.gateway_response ?? {}, null, 1)}
@@ -284,6 +318,7 @@ export default function RestoreWizard(props: RestoreWizardProps) {
 										</Typography>
 									)}
 									<ErrorList errors={gw?.errors} />
+									<WarningList warnings={gw?.warnings} />
 								</Alert>
 								<PlanTable plan={gw?.plan} />
 							</Stack>
