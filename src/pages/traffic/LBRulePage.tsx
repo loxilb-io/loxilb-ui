@@ -35,6 +35,7 @@ import {lbRuleRowId} from 'types/lb_identity';
 import {IMirrorConfiguration} from 'types/mirror';
 import {buildQoSRuleTarget, IPolicyConfiguration} from 'types/qos';
 import {toPageState} from 'components/state/pageState';
+import {isPreconditionFailure, opErrorText} from 'connector/fetcher/opResultText';
 
 export type LBEditStrategy = 'create' | 'merge-patch' | 'reconcile' | 'block-fullproxy';
 
@@ -211,12 +212,23 @@ export default function LBRulePage() {
 				if (res.status === 'confirmed') {
 					await report({refetch: fromQueryRefetch(refetch), confirm: lbRuleAppeared(submitted)}, t('Added successfully.'));
 				} else {
-					// Localized mapped message; raw prose stays in diagnostics.
-					showAddError('load balancer rule', t(res.localeKey));
+					// Localized mapped message; raw prose stays in diagnostics —
+					// except on a 412, where the gateway's sentence is the only
+					// half that names the setting to change (see opResultText.ts).
+					showAddError('load balancer rule', opErrorText(res));
 					// A rejected strict create (stale-generation admission included)
 					// keeps the operator's draft on screen — never a success, never
 					// a lost form.
-					if (profileId) preserveStrictDraft(submitted);
+					//
+					// ⭐ A precondition refusal keeps it too, whether or not the rule
+					// carried a profile. It is the one rejection that is definitionally
+					// NOT about the form: the gateway is telling the operator its own
+					// deployment is wrong, so discarding six sections of input they
+					// have no reason to change would punish them for someone else's
+					// configuration. Deliberately narrower than "preserve on any
+					// failure" — an invalid or conflicting create still behaves as it
+					// always has.
+					if (profileId || isPreconditionFailure(res)) preserveStrictDraft(submitted);
 				}
 			},
 			true,
