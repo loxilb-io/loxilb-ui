@@ -46,6 +46,35 @@ export const persister = createSyncStoragePersister({storage: window.localStorag
 /** Query-key segments that mark a live-telemetry read. Never persisted. */
 const LIVE_TELEMETRY_KEYS: readonly string[] = ['metrics-snapshot', 'worker-metrics', 'gpu-status', 'diagnostics'];
 
+//---------------------------------------------------------
+// Deployment state — a second reason, not a second instance of the first
+//---------------------------------------------------------
+// These do not describe numbers that go stale; they describe WHAT THE REMOTE
+// GATEWAY IS. Each gates whether a control or a whole field set is offered, so
+// remembering one across sessions does not merely show an old value — it makes
+// the UI act on a deployment that may no longer exist. Both entries below were
+// persisted, and in both cases persistence broke an invariant the consuming
+// code states in its own comments.
+//
+// `capabilities` — `useCapabilityVerdict` documents: "an UNREAD query (no
+// instance yet, still loading, or A READ THAT FAILED) yields `unknown`, never
+// `not-ready`", because `not-ready` withdraws controls. React Query keeps the
+// last successful data when a refetch fails, so a restored verdict meant a
+// FAILED read answered with the previous session's verdict instead of
+// `unknown`. A gateway relaunched without its seed could still read `ready`,
+// and every rule built on that answer is refused with 412.
+//
+// `flavor` — the worse of the two, because it does not self-correct.
+// `useInstanceFlavorResolution` documents "a session sees one probe per
+// instance, re-detected on reconnect/refresh", and sets `staleTime: Infinity`
+// with `gcTime: Infinity`. Restored from storage the data is already present
+// and never stale, so NO refetch is ever issued: the documented re-detection
+// simply does not happen. An instance redeployed from loxilb OSS to
+// inference-gateway keeps the old flavor until someone clears browser storage
+// — which is how AI-gateway fields would appear on an OSS form, the one thing
+// `AIGatewaySettingsForm` says must never happen.
+const DEPLOYMENT_STATE_KEYS: readonly string[] = ['capabilities', 'flavor'];
+
 /**
  * Persist predicate. Composes with the library default rather than replacing
  * it — dropping `defaultShouldDehydrateQuery` would start persisting pending
@@ -53,7 +82,9 @@ const LIVE_TELEMETRY_KEYS: readonly string[] = ['metrics-snapshot', 'worker-metr
  */
 export function shouldPersistQuery(query: Query): boolean {
 	if (!defaultShouldDehydrateQuery(query)) return false;
-	return !query.queryKey.some(segment => typeof segment === 'string' && LIVE_TELEMETRY_KEYS.includes(segment));
+	return !query.queryKey.some(
+		segment => typeof segment === 'string' && (LIVE_TELEMETRY_KEYS.includes(segment) || DEPLOYMENT_STATE_KEYS.includes(segment)),
+	);
 }
 
 /**
