@@ -20,13 +20,20 @@ import {QUOTA_SCOPES, TOKEN_QUOTA_COLD_OPEN, tokenQuotaReport} from './tokenQuot
 // a capture of the loxilb-igw testbed, which runs no KV-tier traffic, and it
 // was untracked, so there is no copy to restore.
 //
-// ⚠️ Re-capturing it is blocked on the GATEWAY, not on anyone's diligence:
+// ⚠️ Re-capturing it needs a gateway that is actually SERVING KV-exact traffic:
 // re-probed 2026-09-20, llb1 emits none of `loxilb_pd_kv_tier15_hits_total`,
 // `loxilb_pd_kv_blocks`, `loxilb_kv_subscriber_connected` or
-// `loxilb_ai_requests_total`. KV-exact traffic cannot be generated there while
-// the gateway refuses every KV-exact rule for want of `LLB_KV_NONE_HASH_SEED`
-// in its launch environment — see GW-KV-1 in the gateway hand-off. Close that
-// and this block comes back on its own.
+// `loxilb_ai_requests_total`, because it refuses every KV-exact rule for want of
+// `LLB_KV_NONE_HASH_SEED` in its launch environment.
+//
+// ⭐ UPDATE 2026-09-22: the API side of this is CLOSED — the gateway now
+// classifies that refusal as 412, publishes the verdict on
+// GET /status/capabilities, and states the precondition on the kvExactMode field
+// of the specification. What remains is not a missing signal but a missing
+// DEPLOYMENT: a gateway launched with the seed, and traffic run through it. The
+// work is now ours (or the testbed's), not another team's — so this comment is
+// no longer waiting on anyone. Drop a capture at `live-metrics-cicd.txt` and the
+// block comes back on its own.
 //
 // ⭐ The block below is therefore SKIPPED, VISIBLY, rather than deleted: the
 // assertions are the specification of what parity means for the KV families,

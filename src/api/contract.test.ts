@@ -204,17 +204,58 @@ describe('gateway spec contract — models the UI depends on', () => {
 });
 
 describe('gateway management authentication response matrices', () => {
-	it('every protected main operation declares 401, 403, and 503', () => {
+	// ⭐ Operations that deliberately declare NO 503, keyed `METHOD path`.
+	//
+	// The 401/403 half of the rule below is universal — every secured operation
+	// must say how it refuses an unauthenticated or unauthorized caller. The
+	// 503 half is not: it asks whether the operation participates in the
+	// gateway's availability envelope, and an operation that cannot emit 503
+	// should not claim it. Declaring an unreachable response is the same defect
+	// as omitting a reachable one, pointing the other way.
+	//
+	// An entry here is earned by reading the gateway, not by a failing test:
+	//   - GET /status/capabilities: the handler answers 200 unconditionally and
+	//     puts the verdict in the body — deliberately, so that a gateway with
+	//     an unready OPTIONAL capability does not report itself unhealthy. Nor
+	//     can the write-freeze envelope reach it: SnapshotFreezeMiddleware
+	//     returns early for GET/HEAD/OPTIONS before any of its three 503 gates
+	//     (boot replay unsettled, restore in progress, operator maintenance).
+	//     Its /status siblings declare 503 because their handlers really emit
+	//     one; this one has no such path.
+	//
+	// ⚠️ A 503 still reaches the UI for these paths from OUTSIDE the gateway —
+	// the OAM proxy answers for an instance that is down — which is why the
+	// fetcher maps 502/503/504 generically for every call rather than from this
+	// matrix. The exemption is about what the GATEWAY's contract claims, not
+	// about which statuses the UI must survive.
+	const NO_503_BY_DESIGN = new Set(['GET /status/capabilities']);
+
+	it('every protected main operation declares 401 and 403, and 503 unless exempt', () => {
 		for (const [pathName, pathItem] of Object.entries<any>(gateway.paths)) {
 			for (const method of ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']) {
 				const operation = pathItem[method];
 				if (!operation) continue;
 				const security = operation.security === undefined ? gateway.security : operation.security;
 				if (!Array.isArray(security) || security.length === 0) continue;
-				expect(operation.responses, `${method.toUpperCase()} ${pathName}`).toEqual(
-					expect.objectContaining({'401': expect.anything(), '403': expect.anything(), '503': expect.anything()}),
+				const label = `${method.toUpperCase()} ${pathName}`;
+				expect(operation.responses, label).toEqual(
+					expect.objectContaining({'401': expect.anything(), '403': expect.anything()}),
 				);
+				if (NO_503_BY_DESIGN.has(label)) {
+					// Pin the exemption in both directions: if the gateway ever
+					// does declare 503 here, the reasoning above is stale and
+					// the entry must go, not quietly widen.
+					expect(operation.responses['503'], `${label} is exempt from 503 — remove the exemption`).toBeUndefined();
+					continue;
+				}
+				expect(operation.responses, label).toEqual(expect.objectContaining({'503': expect.anything()}));
 			}
+		}
+		// Every exemption must name an operation that exists, or a rename
+		// leaves a dead entry silently excusing nothing.
+		for (const label of NO_503_BY_DESIGN) {
+			const [method, pathName] = label.split(' ');
+			expect(gateway.paths[pathName]?.[method.toLowerCase()], `${label} (exempt) is not in the spec`).toBeTruthy();
 		}
 		// No 409 on API-key create: the store's only unique index is on the key
 		// hash, duplicate names succeed, and no handler path emits Conflict — the

@@ -28,6 +28,16 @@ export const CONFLICT_KEY = 'The request conflicts with an existing item.';
 /** 501 — the gateway build/launch config does not enable this feature (e.g. --userservice off). */
 export const NOT_ENABLED_KEY = 'This feature is not enabled on this instance.';
 
+/**
+ * 412 — the request was well-formed and valid, and THIS gateway is not
+ * provisioned to serve it. A sibling of 501 rather than of 400: nothing the
+ * operator can change in the form will help, so the message must not send them
+ * back to the fields. The gateway's own sentence — which names the setting and
+ * the required relationship — arrives separately in `rawDetail`, and that is
+ * the actionable half; this string exists to say whose problem it is.
+ */
+export const PRECONDITION_KEY = 'This gateway is not configured to accept this request. The request is valid; its deployment must change.';
+
 // Login-specific keys. The lockout text deliberately does NOT
 // disclose attempt counts or the retry-after countdown — conservative
 // default until SECURITY_PROFILE.md decides otherwise.

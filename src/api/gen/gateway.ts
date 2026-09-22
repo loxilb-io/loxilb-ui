@@ -4471,6 +4471,34 @@ export interface paths {
       };
     };
   };
+  "/status/capabilities": {
+    /**
+     * Optional capabilities this gateway can serve, and why not
+     * @description Reports per-capability readiness for features whose availability is decided by the Gateway's launch environment rather than by anything in a request. A capability reported not ready refuses every attempt to use it with 412 and the reason carried here, whatever the client sends, so a client can disable a control truthfully instead of learning by submitting and being refused. Each verdict is produced by the same check that admission performs, not a second copy of it. This is NOT overall gateway health and does not gate /status/ready: a Gateway with an unready OPTIONAL capability is healthy for everything else, and reporting it 503 would be wrong. Absence of a capability from this list means this build does not know it, which is not the same as not ready.
+     */
+    get: {
+      responses: {
+        /** @description OK */
+        200: {
+          content: {
+            "application/json": components["schemas"]["CapabilityStatusList"];
+          };
+        };
+        /** @description Invalid authentication credentials */
+        401: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+        /** @description Authenticated principal's role carries no authority for this operation */
+        403: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
+      };
+    };
+  };
   "/maintenance": {
     /**
      * Operator maintenance state with drain read-back
@@ -8305,6 +8333,28 @@ export interface components {
       /** @description On-disk path of the pre-restore snapshot captured before APPLY (commit mode only). */
       pre_restore_snapshot_persisted?: string;
     };
+    /** @description Per-capability readiness for features gated by the Gateway's launch environment. */
+    CapabilityStatusList: {
+      /** @description One entry per optional capability this build knows about. An empty array means this build gates no capability on its environment. */
+      capabilities: components["schemas"]["CapabilityStatus"][];
+    };
+    /** @description Whether one optional capability can be served, and when it cannot, a stable code and the operator-facing reason. */
+    CapabilityStatus: {
+      /**
+       * @description Stable capability identifier. Deliberately not an enum: a build that gains a capability must not become unparseable to an older client. Known value - "kv_exact_vllm": admission of vLLM KV-exact (Tier 1.5) rules, kvExactMode 1 or 3 with kvEngineType vllm.
+       * @example kv_exact_vllm
+       */
+      name: string;
+      /** @description True when this Gateway can currently admit use of the capability. False means every attempt is refused with 412 until the deployment is changed - no request body can satisfy it. */
+      ready: boolean;
+      /**
+       * @description Stable machine-readable code for why the capability is not ready, for clients that must branch without matching prose. Absent when ready. Known values - "KV_EXACT_SEED_UNSET": the Gateway was launched without a non-empty LLB_KV_NONE_HASH_SEED; "KV_EXACT_SEED_TOO_LONG": the seed exceeds the 23-byte representable bound.
+       * @example KV_EXACT_SEED_UNSET
+       */
+      reason_code?: string;
+      /** @description The operator-facing sentence, identical to the one the 412 refusal carries. It names the setting and the required relationship, and is what an operator needs to fix the deployment. Absent when ready. */
+      reason?: string;
+    };
     /** @description Configuration readiness verdict with the evidence behind it - the boot replay outcome, live external-dependency probes, and the most recent successful persist/restore identities. */
     ReadyStatus: {
       ready: boolean;
@@ -9013,7 +9063,7 @@ export interface components {
         pd_balance_abs_threshold?: number;
         /**
          * Format: int64
-         * @description KV-cache exact (Tier 1.5) routing mode. Selects the ENDPOINT TOPOLOGY only — the serving framework is chosen independently by kvEngineType, and engine support for each mode is bounded by the per-engine capability matrix in the kvEngineType description (NOT every mode works with every engine). 0 = off. 1 = exact routing over a P/D role-partitioned pool: requires pd_disagg_mode=true (rejected otherwise) and endpoints tagged ep_role 1/2; only ep_role=1 (prefill) endpoints are subscribed and scored, and Tier 1.5 sits between Tier 1 (trie) and Tier 2 (min-load) in the P/D ladder. 2 = reserved and rejected; no NATS implementation is available. 3 = single-pool exact routing: requires mode=4 (fullproxy) and pd_disagg_mode=false (both rejected otherwise); ALL endpoints are subscribed and scored. Mode 3 does NOT reproduce the P/D ladder — there is no Tier-0 P/D session-affinity stage, no Tier-1 P/D trie and no P/D backpressure admission stage on this path; management admission and strict binding enforcement still apply. A Tier-1.5 miss falls back to the rule's own sel selector. vllm/sglang consume ZMQ events; trtllm consumes HTTP-polled events. All enabled exact modes require model_name and a loadable tokenizer. Profile/API-surface constraints apply independently; see kvModelProfile and kvExactApiMode.
+         * @description KV-cache exact (Tier 1.5) routing mode. Selects the ENDPOINT TOPOLOGY only — the serving framework is chosen independently by kvEngineType, and engine support for each mode is bounded by the per-engine capability matrix in the kvEngineType description (NOT every mode works with every engine). 0 = off. 1 = exact routing over a P/D role-partitioned pool: requires pd_disagg_mode=true (rejected otherwise) and endpoints tagged ep_role 1/2; only ep_role=1 (prefill) endpoints are subscribed and scored, and Tier 1.5 sits between Tier 1 (trie) and Tier 2 (min-load) in the P/D ladder. 2 = reserved and rejected; no NATS implementation is available. 3 = single-pool exact routing: requires mode=4 (fullproxy) and pd_disagg_mode=false (both rejected otherwise); ALL endpoints are subscribed and scored. Mode 3 does NOT reproduce the P/D ladder — there is no Tier-0 P/D session-affinity stage, no Tier-1 P/D trie and no P/D backpressure admission stage on this path; management admission and strict binding enforcement still apply. A Tier-1.5 miss falls back to the rule's own sel selector. vllm/sglang consume ZMQ events; trtllm consumes HTTP-polled events. All enabled exact modes require model_name and a loadable tokenizer. vLLM Exact additionally requires the Gateway process to have been launched with a non-empty LLB_KV_NONE_HASH_SEED of at most 23 bytes, matching the engine's PYTHONHASHSEED: it is a property of the Gateway's deployment, not of this request, so on a Gateway launched without it EVERY vLLM Exact rule is refused and no request body can succeed. Query the Gateway's readiness rather than discovering this by submitting. See kvHashAlgo for what the seed governs. Profile/API-surface constraints apply independently; see kvModelProfile and kvExactApiMode.
          * @default 0
          */
         kvExactMode?: number;

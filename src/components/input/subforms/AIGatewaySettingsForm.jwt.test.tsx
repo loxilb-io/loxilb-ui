@@ -35,6 +35,14 @@ vi.mock('hooks/query/queryHooks', async importOriginal => {
 	};
 });
 
+// Capability readiness: `ready`, because this file's subject is the credential
+// policy and a not-ready verdict withdraws the KV-exact topologies. The
+// readiness behaviour is pinned in AIGatewaySettingsForm.kvreadiness.test.tsx.
+vi.mock('hooks/query/statusHook', async importOriginal => {
+	const mod = await importOriginal<typeof import('hooks/query/statusHook')>();
+	return {...mod, useCapabilityVerdict: () => ({kind: 'ready'})};
+});
+
 vi.mock('hooks/query/flavorHook', () => ({
 	useInstanceCapabilities: () => ({
 		resolved: true,

@@ -539,28 +539,60 @@ export interface KvExactReadiness {
 	reason: string;
 }
 
+/** `kv_exact_vllm` — the capability name the gateway publishes for vLLM KV-exact admission. */
+const CAP_KV_EXACT_VLLM = 'kv_exact_vllm';
+
 /**
- * Probe whether this Gateway can accept a KV-exact rule at all.
+ * Ask the gateway, on the record, whether it can admit vLLM KV-exact rules.
  *
- * ⚠️⚠️ `kvExactMode` has RUNTIME preconditions that live in the Gateway's
- * launch environment, not in its API contract, and the swagger says nothing
- * about them. On a box started without them, every KV-exact create is refused:
- *
- *     400 {"message":"Malformed arguments for API call",
- *          "result":"vllm kvExactMode requires non-empty Gateway
- *                    LLB_KV_NONE_HASH_SEED matching engine PYTHONHASHSEED"}
- *
- * A UI spec cannot make that true, and a red test that no code change can fix
- * teaches the suite's readers to ignore red. So the KV cases skip with the
- * Gateway's OWN sentence as the reason.
- *
- * ⭐ THE SAFETY PROPERTY: only a refusal that names a launch-environment
- * precondition yields `ready: false`. Anything else — any other 400, any other
- * status, a transport failure — returns `ready: true` so the spec RUNS and
- * fails loudly. A readiness gate that swallowed unrecognized errors would hide
- * exactly the UI regressions it sits in front of.
+ * Returns `null` when this gateway cannot answer — the endpoint is absent (an
+ * older build) or the capability is not in its list, which the contract defines
+ * as "this build does not know it", NOT as "not ready". Both send the caller to
+ * the legacy probe below.
  */
-export async function gatewayKvExactReadiness(): Promise<KvExactReadiness> {
+async function kvExactReadinessFromCapabilities(): Promise<KvExactReadiness | null> {
+	let resp: Response;
+	try {
+		resp = await gw('GET', '/status/capabilities');
+	} catch {
+		return null;
+	}
+	if (!resp.ok) return null;
+	let body: {capabilities?: Array<{name?: string; ready?: boolean; reason?: string; reason_code?: string}>};
+	try {
+		body = (await resp.json()) as typeof body;
+	} catch {
+		return null;
+	}
+	const entry = (body.capabilities ?? []).find(c => c?.name === CAP_KV_EXACT_VLLM);
+	// `ready` is required upstream, so a non-boolean is a malformed body rather
+	// than a verdict — fall through rather than invent a refusal.
+	if (!entry || typeof entry.ready !== 'boolean') return null;
+	if (entry.ready) return {ready: true, reason: 'Gateway reports KV-exact readiness'};
+	const reason = (entry.reason ?? '').trim() || `reason_code=${entry.reason_code ?? 'unspecified'}`;
+	return {ready: false, reason: `Gateway reports KV-exact not ready: ${reason}`};
+}
+
+/**
+ * LEGACY fallback: learn readiness by attempting a write.
+ *
+ * ⚠️ Only reached on a gateway with no capability surface. Kept, rather than
+ * deleted with the string matching it contains, for one reason: the suite must
+ * stay honest against BOTH builds during the rollout. Deleting it would make
+ * the KV specs stand red on every not-yet-upgraded gateway for a reason no UI
+ * change can fix — which teaches the suite's readers to ignore red, the exact
+ * failure the gate exists to prevent. It is dead the day the fleet is on a build
+ * with `/status/capabilities`, and deleting it then is a one-function change.
+ *
+ * ⭐ THE SAFETY PROPERTY, unchanged: only a refusal that is positively about the
+ * server's launch environment yields `ready: false`. A 412 says so structurally.
+ * A 400 whose text names a launch-environment precondition says so by string
+ * match — the old, fragile road, now confined to old builds. Anything else — any
+ * other 400, any other status, a transport failure — returns `ready: true` so
+ * the spec RUNS and fails loudly, because a gate that swallowed unrecognised
+ * errors would hide the UI regressions it sits in front of.
+ */
+async function kvExactReadinessFromWriteProbe(): Promise<KvExactReadiness> {
 	const probe = {
 		serviceArguments: {
 			name: 'e2e-kv-readiness-probe', externalIP: '203.0.113.250', port: 8250,
@@ -580,17 +612,45 @@ export async function gatewayKvExactReadiness(): Promise<KvExactReadiness> {
 		return {ready: true, reason: 'Gateway accepts KV-exact rules'};
 	}
 	const body = await resp.text().catch(() => '');
-	const blocked = /LLB_KV_NONE_HASH_SEED|PYTHONHASHSEED|tokenizer/i.test(body);
-	if (resp.status === 400 && blocked) {
-		let detail = body;
-		try {
-			detail = (JSON.parse(body) as {result?: string}).result ?? body;
-		} catch {
-			/* keep the raw text */
-		}
+	let detail = body;
+	try {
+		detail = (JSON.parse(body) as {result?: string}).result ?? body;
+	} catch {
+		/* keep the raw text */
+	}
+	// 412 Precondition Failed: the gateway itself classified this as being about
+	// its own launch environment. No string matching needed or wanted.
+	if (resp.status === 412) {
+		return {ready: false, reason: `Gateway refused a KV-exact rule as a server precondition: ${detail}`};
+	}
+	const namesPrecondition = /LLB_KV_NONE_HASH_SEED|PYTHONHASHSEED|tokenizer/i.test(body);
+	if (resp.status === 400 && namesPrecondition) {
 		return {ready: false, reason: `Gateway is not launched for KV-exact routing: ${detail}`};
 	}
 	return {ready: true, reason: `KV-exact readiness probe answered HTTP ${resp.status}`};
+}
+
+/**
+ * Whether this Gateway can accept a KV-exact rule at all.
+ *
+ * ⭐⭐ ASKS THE CONTRACT FIRST. `kvExactMode` has a runtime precondition that
+ * lives in the gateway's launch environment (`LLB_KV_NONE_HASH_SEED`, matching
+ * the engine's `PYTHONHASHSEED`), so on a gateway started without it every
+ * KV-exact create is refused whatever the client sends. That is now
+ * discoverable: `GET /status/capabilities` reports `kv_exact_vllm` with a
+ * boolean, a stable `reason_code` and the operator-facing sentence, produced by
+ * the same check admission performs.
+ *
+ * A UI spec cannot make an unprovisioned gateway serve KV-exact, and a red test
+ * that no code change can fix teaches the suite's readers to ignore red — so the
+ * KV cases skip, with the gateway's OWN words as the reason.
+ *
+ * ⚠️ The skip reason is now a QUOTE OF A CONTRACT FIELD rather than a guess
+ * derived from an error message. The write probe survives only for gateways with
+ * no capability surface; see kvExactReadinessFromWriteProbe.
+ */
+export async function gatewayKvExactReadiness(): Promise<KvExactReadiness> {
+	return (await kvExactReadinessFromCapabilities()) ?? (await kvExactReadinessFromWriteProbe());
 }
 
 /** Deletes every AI API key owned by an e2e- tenant (no-op unless the store is ready). */

@@ -11,7 +11,7 @@ import jaJSON from 'locales/ja.json';
 import koJSON from 'locales/ko.json';
 import {SimpleResponse} from './fetcher_base';
 import {fromNetworkError, fromSimpleResponse} from './opResultAdapter';
-import {CONFLICT_KEY, LOGIN_FAILED_KEY, LOGIN_INVALID_KEY, LOGIN_LOCKED_KEY, NOT_ENABLED_KEY, RATE_LIMITED_KEY, STATUS_LOCALE_KEYS} from './opResultCodes';
+import {CONFLICT_KEY, LOGIN_FAILED_KEY, LOGIN_INVALID_KEY, LOGIN_LOCKED_KEY, NOT_ENABLED_KEY, PRECONDITION_KEY, RATE_LIMITED_KEY, STATUS_LOCALE_KEYS} from './opResultCodes';
 
 function resp(code: number, data: any = {}, message = ''): SimpleResponse {
 	return {code, data, message};
@@ -26,6 +26,7 @@ describe('fromSimpleResponse status mapping', () => {
 		[409, 'invalid', '.conflict', false],
 		[429, 'denied', '.rate_limited', true],
 		[402, 'denied', '.payment_required', false],
+		[412, 'failed', '.precondition_failed', false],
 		[501, 'failed', '.not_implemented', false],
 		[502, 'unavailable', '.unavailable', true],
 		[503, 'unavailable', '.unavailable', true],
@@ -122,6 +123,42 @@ describe('fromSimpleResponse status mapping', () => {
 		expect(res.rawDetail).toContain('Malformed arguments for API call');
 	});
 
+	// ⭐⭐ The same refusal, before and after the gateway learned to classify it.
+	// This pair is the whole point of the 412 work: the BODY is unchanged — the
+	// gateway kept its sentence verbatim, as we asked it to — and the status is
+	// the only thing that tells a client whose problem it is.
+	it('412 says the deployment is wrong, where 400 said the operator was', () => {
+		const sentence = 'vllm kvExactMode requires non-empty Gateway LLB_KV_NONE_HASH_SEED matching engine PYTHONHASHSEED';
+		const asRejection = fromSimpleResponse(resp(400, {message: 'Malformed arguments for API call', result: sentence}), 'lb.create');
+		const asPrecondition = fromSimpleResponse(resp(412, {message: 'Server precondition not met for API call', result: sentence}), 'lb.create');
+
+		// Then: "fix what you submitted", about a body that was valid.
+		expect(asRejection.status).toBe('invalid');
+		expect(asRejection.localeKey).toBe(STATUS_LOCALE_KEYS.invalid);
+
+		// Now: not the operator's input. NOT `invalid`, so no message sends them
+		// back to the form, and NOT retryable, because the identical request
+		// will be refused identically until the deployment changes.
+		expect(asPrecondition.status).toBe('failed');
+		expect(asPrecondition.localeKey).toBe(PRECONDITION_KEY);
+		expect(asPrecondition.retryable).toBe(false);
+
+		// And the actionable half survives either way: the operator still gets
+		// the variable name and the relationship it must satisfy.
+		expect(asPrecondition.rawDetail).toContain('LLB_KV_NONE_HASH_SEED');
+		expect(asPrecondition.rawDetail).toContain('PYTHONHASHSEED');
+	});
+
+	// ⚠️ 412 must not be mistaken for an availability blip. `unavailable` is the
+	// retryable bucket, and a precondition refusal is the opposite of transient:
+	// a retry loop against it would spin forever and report "temporarily
+	// unavailable" about a gateway that is answering perfectly.
+	it('412 is not unavailable and not retryable', () => {
+		const res = fromSimpleResponse(resp(412, {result: 'precondition'}), 'op');
+		expect(res.status).not.toBe('unavailable');
+		expect(res.retryable).toBe(false);
+	});
+
 	it('does not repeat itself when the two halves agree', () => {
 		const res = fromSimpleResponse(resp(400, {message: 'same text', result: 'same text'}), 'op');
 		expect(res.rawDetail).toBe('same text');
@@ -152,7 +189,7 @@ describe('fromNetworkError', () => {
 });
 
 describe('locale catalogue coverage for dynamically-selected keys', () => {
-	const allKeys = [...Object.values(STATUS_LOCALE_KEYS), RATE_LIMITED_KEY, CONFLICT_KEY, NOT_ENABLED_KEY, LOGIN_LOCKED_KEY, LOGIN_INVALID_KEY, LOGIN_FAILED_KEY];
+	const allKeys = [...Object.values(STATUS_LOCALE_KEYS), RATE_LIMITED_KEY, CONFLICT_KEY, NOT_ENABLED_KEY, PRECONDITION_KEY, LOGIN_LOCKED_KEY, LOGIN_INVALID_KEY, LOGIN_FAILED_KEY];
 	it.each([
 		['en', enJSON],
 		['ko', koJSON],

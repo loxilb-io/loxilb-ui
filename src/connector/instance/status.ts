@@ -2,7 +2,15 @@
 // Imports
 //---------------------------------------------------------
 import {clean_string, format_uptime, parse_log_lines} from 'common';
-import {assertOk, DOWNLOAD_FILE_STREAM, DownloadProgress} from 'connector/fetcher/fetcher_base';
+// ⚠️ RELATIVE, like every sibling connector — not the 'connector/fetcher/...'
+// alias this line used to carry. The alias and the relative path can resolve to
+// two SEPARATE module instances (they do under vitest), and then `error
+// instanceof ApiError` below compares against a different class object than the
+// one the thrown error was built from: the 404 branch silently stops matching
+// and an older gateway's missing endpoint starts propagating as an error
+// instead of `null`. Nothing else in this file depended on module identity, so
+// the inconsistency was harmless until the moment it wasn't.
+import {ApiError, assertOk, DOWNLOAD_FILE_STREAM, DownloadProgress} from '../fetcher/fetcher_base';
 import {t} from 'i18next';
 import {ISystemInfo} from 'types/device';
 import {IFilesystemAttribute} from 'types/filesystem';
@@ -10,6 +18,7 @@ import {IVipAttribute} from 'types/ha';
 import {ILog, ILogArchiveList, LevelType} from 'types/log';
 import {IInstance} from 'types/oam';
 import {IProcessAttribute} from 'types/process';
+import {ICapabilityStatus} from 'types/capability_status';
 import {GET_INST, POST_INST} from '../fetcher/fetcher_inst';
 import {OpResult} from '../fetcher/opResult';
 import {runOp} from '../fetcher/opResultAdapter';
@@ -68,6 +77,38 @@ export async function query_get_device_status(instance: IInstance): Promise<ISys
 			bootTime: t('Unknown'),
 			OS: t('Unknown'),
 		};
+	}
+}
+
+/**
+ * Runtime capability readiness: which optional features THIS deployment can
+ * serve, and the gateway's own reason when it cannot.
+ *
+ * ⭐⭐ RETURNS `null` FOR 404 RATHER THAN THROWING, and that is the contract,
+ * not leniency. The endpoint is newer than the gateways we support, so a 404
+ * means "this build has no capability surface" — a fact about the build, the
+ * same class of answer as an empty list. Letting it throw would turn every
+ * form that consults readiness into an error state on an older gateway, which
+ * is strictly worse than the submit-and-be-refused behaviour that predates the
+ * endpoint. `capabilityVerdict(null, …)` maps it to `unknown`, and `unknown`
+ * offers the control.
+ *
+ * ⚠️ Every OTHER failure still throws. A 401/403/503 is not evidence about
+ * capabilities, and swallowing it here would report "unknown" for a gateway
+ * that is merely unreachable — hiding a session or availability problem the
+ * page needs to show.
+ */
+export async function query_get_capability_status(instance: IInstance): Promise<ICapabilityStatus[] | null> {
+	try {
+		const resp = await GET_INST<GwGetResp<'/status/capabilities'>>(instance, `/status/capabilities`);
+		assertOk(resp, 'Get Capability Status');
+		// `capabilities` is required and non-null upstream ("a null here would
+		// make a client distinguish 'no capabilities gated' from a malformed
+		// body"); defaulting to [] keeps a truncated body from throwing.
+		return (resp.data?.capabilities ?? []) as ICapabilityStatus[];
+	} catch (error) {
+		if (error instanceof ApiError && error.status === 404) return null;
+		throw error;
 	}
 }
 

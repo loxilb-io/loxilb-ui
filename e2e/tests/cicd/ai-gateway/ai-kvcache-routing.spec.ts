@@ -39,12 +39,16 @@ const recipe: LbRecipe = {
 };
 
 let instName: string;
-// ⚠️ kvExactMode has launch-environment preconditions the API contract does not
-// mention (LLB_KV_NONE_HASH_SEED / a staged tokenizer). A Gateway started
-// without them refuses EVERY KV-exact create, which no UI change can fix —
-// so this reports the Gateway's own sentence instead of standing red. The
-// probe only skips on a refusal that names such a precondition; see
-// gatewayKvExactReadiness.
+// ⚠️ kvExactMode has launch-environment preconditions (LLB_KV_NONE_HASH_SEED /
+// a staged tokenizer). A Gateway started without them refuses EVERY KV-exact
+// create, which no UI change can fix — so this reports the Gateway's own verdict
+// instead of standing red.
+//
+// ⭐ Both halves of that are now contract, not inference: the seed requirement
+// is stated on the kvExactMode field in the vendored specification, and
+// readiness is readable from GET /status/capabilities before anything is
+// submitted. A skip here quotes the Gateway; it no longer guesses from the
+// wording of a 400. See gatewayKvExactReadiness.
 let kvReadiness: KvExactReadiness;
 
 test.describe('@gw cicd/vllm-kvcache-routing-cpu — KV-cache routing config round-trips', () => {

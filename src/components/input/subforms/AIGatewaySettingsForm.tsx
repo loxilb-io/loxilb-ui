@@ -4,6 +4,7 @@ import DropDownSelectBox from 'components/element/DropDownSelectBox';
 import ParamBox from 'components/element/ParamBox';
 import HorizontalStack from 'components/layout/HorizontalStack';
 import {useInstanceCapabilities} from 'hooks/query/flavorHook';
+import {useCapabilityVerdict} from 'hooks/query/statusHook';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useJWTAuthProfiles, useModelProfiles} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
@@ -17,6 +18,7 @@ import {
 	profileAcceptsModel,
 	resolveAIEngine,
 } from 'types/ai_gateway';
+import {CAP_KV_EXACT_VLLM, kvExactAdmissible} from 'types/capability_status';
 import {IEnumItem} from 'types/global';
 import {IServiceArguments, KvExactApiMode, requiresJwtProfile} from 'types/load_balancer';
 
@@ -52,12 +54,37 @@ function currentTopology(value: IServiceArguments): TopologySelection {
 	return 'plain';
 }
 
-function topologyOptions(engine: AIEngine): IEnumItem[] {
+const EXACT_TOPOLOGIES: TopologySelection[] = ['pd-exact', 'single-role'];
+
+/**
+ * @param offerExact false only when the gateway has POSITIVELY reported that it
+ *                   will refuse KV-exact rules (readiness `not-ready`). Unknown
+ *                   readiness still offers them — see capability_status.ts.
+ * @param current    the topology the form currently holds. An exact topology
+ *                   that is already selected is ALWAYS offered, even when the
+ *                   gateway would refuse it.
+ *
+ * ⚠️⚠️ WHY `current` IS NOT OPTIONAL POLITENESS. DropDownSelectBox falls back
+ * to index 0 when no item matches the value, and it only calls onChange for an
+ * empty value — so dropping the selected item from the list leaves the control
+ * DISPLAYING "Plain routing" while the form still holds kvExactMode 3. Editing
+ * an existing KV-exact rule on a gateway that lost its seed would then show the
+ * operator a rule shape that is not the rule, and a save of any unrelated field
+ * would look like it was preserving what is on screen. Withdrawing an option is
+ * only honest when nothing is standing on it.
+ */
+function topologyOptions(engine: AIEngine, offerExact: boolean, current: TopologySelection): IEnumItem[] {
 	const options: IEnumItem[] = [{id: 0, name: 'Plain routing', send_value: 'plain'}];
 	if (engine === 'llamacpp') return options;
 	if (engine !== 'trtllm') options.push({id: 1, name: 'P/D disaggregation', send_value: 'pd'});
-	options.push({id: 2, name: 'P/D + KV exact', send_value: 'pd-exact'});
-	options.push({id: 3, name: 'Single-role KV exact', send_value: 'single-role'});
+	for (const topology of EXACT_TOPOLOGIES) {
+		if (!offerExact && topology !== current) continue;
+		options.push(
+			topology === 'pd-exact'
+				? {id: 2, name: 'P/D + KV exact', send_value: 'pd-exact'}
+				: {id: 3, name: 'Single-role KV exact', send_value: 'single-role'},
+		);
+	}
 	return options;
 }
 
@@ -112,6 +139,22 @@ export default function AIGatewaySettingsForm(props: {
 	// gateway-only endpoint (request-side contract guard).
 	const inst = useInstanceFromURL();
 	const profilesQuery = useModelProfiles(hasProfileFields ? inst : null);
+
+	// ⭐ Can this GATEWAY admit a vLLM KV-exact rule at all? The precondition is
+	// `LLB_KV_NONE_HASH_SEED` in the gateway's launch environment, so no request
+	// body can satisfy it: on a gateway started without it, every KV-exact rule
+	// is refused with 412 whatever this form sends. Asking before offering the
+	// control is the difference between an honest "not available on this
+	// deployment, here is why" and letting an operator fill in a form that
+	// cannot succeed.
+	//
+	// ⚠️ Read only for vllm, because the capability is only about vllm
+	// (`kv_exact_vllm` — kvExactMode 1 or 3 with kvEngineType vllm). sglang and
+	// trtllm have their own admission rules (a loadable tokenizer, engine/mode
+	// support) which this surface does not report, so their exact topologies
+	// stay offered and the gateway stays the authority on them.
+	const kvExactVerdict = useCapabilityVerdict(hasAiFields && engine === 'vllm' ? inst : null, CAP_KV_EXACT_VLLM);
+	const offerExactTopologies = kvExactAdmissible(kvExactVerdict);
 
 	// Configured JWT auth profiles, for the rule-side selector. Gated on a
 	// POSITIVELY identified gateway exactly like the model-profile registry
@@ -287,8 +330,37 @@ export default function AIGatewaySettingsForm(props: {
 
 				<HorizontalStack>
 					<DropDownSelectBox label={t('AI Engine')} value={engine} onChange={handleEngineChange} item_list={engineItems} disabled={!isL7 || isEdit} />
-					<DropDownSelectBox label={t('Topology')} value={topology} onChange={handleTopologyChange} item_list={topologyOptions(engine)} disabled={!isL7} />
+					<DropDownSelectBox label={t('Topology')} value={topology} onChange={handleTopologyChange} item_list={topologyOptions(engine, offerExactTopologies, topology)} disabled={!isL7} />
 				</HorizontalStack>
+				{kvExactVerdict.kind === 'not-ready' && (
+					// The gateway's OWN sentence, verbatim, and nothing of ours in
+					// front of it: it names the variable, the byte bound and the
+					// engine setting it must match, which is everything an operator
+					// needs and more than we could restate without drifting from it.
+					// We add only what the sentence cannot know — that this is the
+					// deployment's doing rather than the form's, and whether the
+					// option is still on screen because the rule already uses it.
+					<Alert severity={exactRouting ? 'error' : 'info'}>
+						<Typography variant="body2">
+							{exactRouting
+								? t('This gateway will refuse this rule: KV-exact routing is not available on this deployment, and no field on this form can change that.')
+								: t('KV-exact topologies are not offered: this gateway cannot serve them until its launch environment is changed.')}
+						</Typography>
+						{kvExactVerdict.reason ? (
+							<Typography variant="body2" sx={{mt: 1, fontFamily: 'monospace', whiteSpace: 'pre-wrap'}}>
+								{kvExactVerdict.reason}
+							</Typography>
+						) : (
+							// `reason` is optional in the contract. If the gateway
+							// omitted it we say so rather than inventing a cause —
+							// the operator needs to know the refusal is real and
+							// that the explanation is missing, not be handed a guess.
+							<Typography variant="body2" sx={{mt: 1}}>
+								{t('The gateway reported no reason for this refusal. Check its launch environment and logs.')}
+							</Typography>
+						)}
+					</Alert>
+				)}
 				{isEdit && (
 					<Typography variant="caption" color="warning.main">
 						{t('The AI engine is immutable. Delete and recreate the rule to change it.')}
