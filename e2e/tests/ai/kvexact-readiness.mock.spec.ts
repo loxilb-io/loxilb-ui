@@ -19,45 +19,22 @@ import {activeInstance} from '../../helpers/api';
 import {dialog, dialogButton, expectErrorAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 import {expandSection, field, setField} from '../../helpers/form';
 import {selectRowByText} from '../../helpers/table';
+import {CAP_KV_EXACT_VLLM, capsBody, CapsHarness, KV_EXACT_SEED_SENTENCE, mockCapabilities} from '../../helpers/capabilities';
 
-const CAPS_RE = /\/netlox\/v1\/status\/capabilities(\?.*)?$/;
 const LB_ALL_RE = /\/netlox\/v1\/config\/loadbalancer\/all(\?.*)?$/;
 const LB_POST_RE = /\/netlox\/v1\/config\/loadbalancer(\?.*)?$/;
 
-/** The capability name the gateway publishes for vLLM KV-exact admission. */
-const CAP = 'kv_exact_vllm';
-
-/** The gateway's real sentence, read off the live testbed gateway 2026-09-22
- *  (`v0.9.8.9-rc.1-738-g144118b5`, which reports ready:false / KV_EXACT_SEED_UNSET). */
-const GW_SENTENCE = 'vllm kvExactMode requires non-empty Gateway LLB_KV_NONE_HASH_SEED matching engine PYTHONHASHSEED';
+// Both now live in helpers/capabilities.ts: this file and the option-matrix
+// specs must intercept the SAME endpoint with the SAME sentence, and a private
+// copy per file is precisely how profile-rule-matrix ended up with no stub at
+// all. Aliased rather than renamed throughout to keep this diff reviewable.
+const CAP = CAP_KV_EXACT_VLLM;
+const GW_SENTENCE = KV_EXACT_SEED_SENTENCE;
 
 const EXACT_OPTIONS = ['P/D + KV exact', 'Single-role KV exact'];
 
 let instName: string;
 
-interface CapsHarness {
-	/** How many times the page has asked for capabilities. */
-	count: () => number;
-}
-
-/** Intercept the capability read. `body` undefined ⇒ an empty 404 envelope. */
-async function mockCapabilities(page: Page, opts: {status?: number; body?: unknown}): Promise<CapsHarness> {
-	let calls = 0;
-	await page.route(CAPS_RE, (route: Route) => {
-		calls += 1;
-		return route.fulfill({
-			status: opts.status ?? 200,
-			contentType: 'application/json',
-			body: JSON.stringify(opts.body ?? {message: 'not found'}),
-		});
-	});
-	return {count: () => calls};
-}
-
-/** A capability list carrying exactly one entry for `kv_exact_vllm`. */
-function capsBody(entry: Record<string, unknown>) {
-	return {capabilities: [entry]};
-}
 
 /**
  * Open the LB Add dialog and wait until it is GENUINELY ready, reloading past

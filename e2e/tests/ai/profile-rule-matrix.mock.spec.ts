@@ -20,6 +20,7 @@ import {expect, test} from '../../fixtures';
 import {activeInstance} from '../../helpers/api';
 import {dialog, dialogButton, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 import {expandSection, field, section, setField} from '../../helpers/form';
+import {mockKvExactReady} from '../../helpers/capabilities';
 
 const LIST_RE = /\/netlox\/v1\/config\/ai\/model-profiles(\?.*)?$/;
 const DETAIL_RE = /\/netlox\/v1\/config\/ai\/model-profiles\/[^/?]+(\?.*)?$/;
@@ -130,6 +131,15 @@ test.describe('@gw Strict-rule option matrix — mock contract', () => {
 	});
 
 	test.beforeEach(async ({page}) => {
+		// ⚠️ STATE the deployment; do not inherit it. The form asks
+		// `/status/capabilities` whether this gateway can serve KV-exact and
+		// WITHDRAWS the exact topology options on a positive `ready:false`.
+		// Without this stub the file mocked the LB endpoints but took readiness
+		// from the live testbed — which reports KV_EXACT_SEED_UNSET — so the
+		// options under test were correctly absent and the specs timed out on a
+		// control the UI had every reason to remove. This spec is about the
+		// option matrix, so it fixes readiness rather than discovering it.
+		await mockKvExactReady(page);
 		await page.goto(`instance/traffic/lb?name=${instName}`);
 	});
 

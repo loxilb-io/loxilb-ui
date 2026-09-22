@@ -102,9 +102,28 @@ test.describe('@gw Snapshots page (admin)', () => {
 		const apiResp = await downloadSnapshot(snap!.id);
 		expect(apiResp.ok).toBeTruthy();
 		expect(doc.checksum).toBe(apiResp.headers.get('X-Snapshot-Checksum'));
-		// 1.1 since the model-profile contract revision: snapshots now carry
-		// the kv-exact binding identity alongside the 1.0 payload.
-		expect(doc.schema_version).toBe('1.1');
+		// ⚠️ A VERSION PIN IS RE-VERIFICATION, NOT A DIGIT EDIT.
+		// Re-verified 2026-09-22 against gateway `pkg/snapshot/doc.go`
+		// (`SchemaVersion = "1.6"`), whose own history documents every step:
+		//   1.2 included_domains (CHANGES RESTORE SEMANTICS: selection derives
+		//       from it, so a partial document no longer wipes what it does not
+		//       cover) + BGP neighbour transport fidelity
+		//   1.3 l7policy / cors / tracing / cert domains
+		//   1.4 recovery_dependencies manifest, with a REQUIRED flag
+		//   1.5 generation — monotonic lineage, so "which state is newer" does
+		//       not depend on file mtimes
+		//   1.6 current
+		// All additive behind the gateway's minor-version gate, which refuses a
+		// newer-minor document rather than silently dropping fields — so the UI
+		// stays correct by leaving that verdict to the gateway (it only
+		// DISPLAYS the version, in RestoreWizard).
+		//
+		// Kept as an exact pin deliberately: it is what surfaced this drift at
+		// all, and loosening it to a major-version match would have hidden the
+		// gaps the re-verification found — the UI models neither
+		// `included_domains` nor `recovery_dependencies`, and its restore
+		// result type dropped `warnings` entirely (fixed separately).
+		expect(doc.schema_version).toBe('1.6');
 	});
 
 	test('2. full restore wizard happy path → pre_restore row appears, config restored', async ({page}) => {
