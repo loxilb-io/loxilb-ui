@@ -20,7 +20,7 @@
 // preference (which is restored at the end of the case that changes it).
 //---------------------------------------------------------
 import {expect, test} from '../../fixtures';
-import {activeInstance} from '../../helpers/api';
+import {activeInstance, DEAD_INSTANCE_PROBE} from '../../helpers/api';
 
 let instName = '';
 
@@ -33,7 +33,8 @@ test.beforeAll(async () => {
 //---------------------------------------------------------
 
 test('every route carries its own title — history and tabs can tell pages apart', async ({page, consoleGuard}) => {
-	consoleGuard.allow(/Failed to load resource/i);
+	// The instance list probes every registered instance; which are dead is testbed state.
+	for (const a of DEAD_INSTANCE_PROBE) consoleGuard.allowRequest(a);
 
 	// A representative spread: an OAM route, a dashboard, a deep instance
 	// sub-route, and an admin route. Titles come from MENU_LIST, so a page
@@ -63,7 +64,8 @@ test('every route carries its own title — history and tabs can tell pages apar
 //---------------------------------------------------------
 
 test('the language selector is announced as a menu button and carries a name', async ({page, consoleGuard}) => {
-	consoleGuard.allow(/Failed to load resource/i);
+	// The instance list probes every registered instance; which are dead is testbed state.
+	for (const a of DEAD_INSTANCE_PROBE) consoleGuard.allowRequest(a);
 	await page.goto('instance', {waitUntil: 'domcontentloaded'});
 
 	const trigger = page.getByRole('button', {name: 'Select a language'});
@@ -73,7 +75,8 @@ test('the language selector is announced as a menu button and carries a name', a
 });
 
 test('a keyboard-only operator can open the menu, choose Korean, and see it applied', async ({page, consoleGuard}) => {
-	consoleGuard.allow(/Failed to load resource/i);
+	// The instance list probes every registered instance; which are dead is testbed state.
+	for (const a of DEAD_INSTANCE_PROBE) consoleGuard.allowRequest(a);
 	await page.goto('instance', {waitUntil: 'domcontentloaded'});
 
 	const trigger = page.getByRole('button', {name: 'Select a language'});
@@ -119,7 +122,8 @@ test('a keyboard-only operator can open the menu, choose Korean, and see it appl
 });
 
 test('Escape closes the language menu without changing anything', async ({page, consoleGuard}) => {
-	consoleGuard.allow(/Failed to load resource/i);
+	// The instance list probes every registered instance; which are dead is testbed state.
+	for (const a of DEAD_INSTANCE_PROBE) consoleGuard.allowRequest(a);
 	await page.goto('instance', {waitUntil: 'domcontentloaded'});
 
 	const trigger = page.getByRole('button', {name: 'Select a language'});

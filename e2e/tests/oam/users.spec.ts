@@ -111,8 +111,7 @@ test.describe('User management (admin User List tab)', () => {
 	});
 
 	test('V-dup: duplicate username is rejected and surfaced in-modal', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/Failed to load resource/i);
-		consoleGuard.allow(/status of 4\d\d/i);
+		consoleGuard.allowRequest({status: 409, path: /\/oam\/users$/});
 		consoleGuard.allow(/User update failed/i);
 
 		await openToolbarDialog(page, 'Add', 'Create New User');

@@ -20,7 +20,7 @@
 //     all — which is the one case a status code cannot express.
 //---------------------------------------------------------
 import {Route} from '@playwright/test';
-import {expect, test} from '../../fixtures';
+import {ConsoleGuard, expect, test} from '../../fixtures';
 import {activeInstance} from '../../helpers/api';
 
 let instName = '';
@@ -67,10 +67,22 @@ function readAborts() {
 	};
 }
 
-/** A deliberately broken read is loud in the console; that noise is the point, not a defect. */
-function allowFailedReadNoise(consoleGuard: {allow(p: RegExp): void}) {
-	consoleGuard.allow(/Failed to load resource/i);
-	consoleGuard.allow(/status of (4\d\d|5\d\d)/i);
+/** A mock's `**`-glob as the pathname pattern the console guard matches. */
+function pathOf(glob: string): RegExp {
+	const rest = glob.replace(/^\*\*/, '');
+	// Only a leading `**` is translated; an inner wildcard would become a regex
+	// quantifier and the allowance would silently match nothing.
+	if (rest.includes('*')) throw new Error(`pathOf: only a leading ** is supported, got ${glob}`);
+	return new RegExp(rest.replace(/[.+?^${}()|[\]\\]/g, '\\$&') + '$');
+}
+
+/**
+ * A deliberately broken read is loud in the console; that noise is the point,
+ * not a defect — for exactly the read the test breaks, with the status its
+ * mock serves. A transport death has no status, so it passes none.
+ */
+function allowFailedReadNoise(consoleGuard: ConsoleGuard, route?: string, status?: number) {
+	if (route !== undefined && status !== undefined) consoleGuard.allowRequest({status, path: pathOf(route)});
 	consoleGuard.allow(/net::ERR_FAILED/);
 	consoleGuard.allow(/Failed to fetch/i);
 	consoleGuard.allow(/Network request failed/i);
@@ -112,7 +124,7 @@ test.describe('the four states, end to end on the Load Balancer page', () => {
 	});
 
 	test('500 — the failure is stated and the empty table is NOT drawn', async ({page, consoleGuard}) => {
-		allowFailedReadNoise(consoleGuard);
+		allowFailedReadNoise(consoleGuard, LB_URL, 500);
 		await page.route(LB_URL, readAnswers(500, JSON.stringify({message: 'boom on node-3'})));
 		await page.goto(lbPage());
 
@@ -124,7 +136,7 @@ test.describe('the four states, end to end on the Load Balancer page', () => {
 	});
 
 	test('500 — the row-targeted actions are held, but creating is still possible', async ({page, consoleGuard}) => {
-		allowFailedReadNoise(consoleGuard);
+		allowFailedReadNoise(consoleGuard, LB_URL, 500);
 		await page.route(LB_URL, readAnswers(500, JSON.stringify({message: 'boom'})));
 		await page.goto(lbPage());
 
@@ -144,7 +156,7 @@ test.describe('the four states, end to end on the Load Balancer page', () => {
 	});
 
 	test('403 — reads as a permission problem, not as a server error or an empty table', async ({page, consoleGuard}) => {
-		allowFailedReadNoise(consoleGuard);
+		allowFailedReadNoise(consoleGuard, LB_URL, 403);
 		await page.route(LB_URL, readAnswers(403, JSON.stringify({message: 'no'})));
 		await page.goto(lbPage());
 
@@ -155,7 +167,7 @@ test.describe('the four states, end to end on the Load Balancer page', () => {
 	});
 
 	test('a gateway-origin 401 renders denied in the page and does NOT end the OAM session', async ({page, consoleGuard}) => {
-		allowFailedReadNoise(consoleGuard);
+		allowFailedReadNoise(consoleGuard, LB_URL, 401);
 		// The marker settles it without asking anyone (fetcher_base
 		// `classifyUnauthorized`). The header has to be EXPOSED too, or the
 		// browser hides it from the page on a cross-origin response and the app
@@ -187,7 +199,7 @@ test.describe('the four states, end to end on the Load Balancer page', () => {
 	// after every login whenever the Gateway refused OAM's management
 	// credential. A bare pass-through 401 is now settled by asking OAM.
 	test('a bare pass-through 401 does NOT end a session that OAM still honours', async ({page, consoleGuard}) => {
-		allowFailedReadNoise(consoleGuard);
+		allowFailedReadNoise(consoleGuard, LB_URL, 401);
 		await page.route(LB_URL, readAnswers(401, JSON.stringify({message: 'Missing or invalid credentials'})));
 		const probe = page.waitForRequest(req => /\/oam\/users\/me$/.test(req.url()) && req.method() === 'GET');
 		await page.goto(lbPage());
@@ -199,11 +211,12 @@ test.describe('the four states, end to end on the Load Balancer page', () => {
 	});
 
 	test('a bare pass-through 401 ends the session when OAM confirms it', async ({page, consoleGuard}) => {
-		allowFailedReadNoise(consoleGuard);
+		allowFailedReadNoise(consoleGuard, LB_URL, 401);
 		await page.route(LB_URL, readAnswers(401, JSON.stringify({message: 'expired'})));
 		await page.goto(lbPage());
 		// Arm OAM's answer only once the page has rendered, so the refusal is
 		// the probe's and not the role lookup's during boot.
+		consoleGuard.allowRequest({status: 401, path: /\/oam\/users\/me$/});
 		await page.route(/\/oam\/users\/me$/, readAnswers(401, JSON.stringify({message: 'expired'})));
 
 		await expect(page).toHaveURL(/\/login/, {timeout: AFTER_RETRIES});
@@ -221,7 +234,7 @@ test.describe('the four states, end to end on the Load Balancer page', () => {
 	});
 
 	test('stale — rows survive a failed refresh, are labelled out of date, and cannot be acted on', async ({page, consoleGuard}) => {
-		allowFailedReadNoise(consoleGuard);
+		allowFailedReadNoise(consoleGuard, LB_URL, 503);
 
 		// Both phases are served by interception, so the case does not depend on
 		// the testbed happening to hold LB rules. It did, on the first run: the
@@ -265,7 +278,7 @@ test.describe('the four states, end to end on the Load Balancer page', () => {
 	});
 
 	test('recovering — a retry that succeeds clears the banner', async ({page, consoleGuard}) => {
-		allowFailedReadNoise(consoleGuard);
+		allowFailedReadNoise(consoleGuard, LB_URL, 503);
 		let failNext = true;
 		// Fail every read until the operator presses Retry, then serve a real
 		// list. `failNext` flips on the click, not on the first response: the
@@ -315,7 +328,7 @@ const FAMILIES: {family: string; route: string; url: string; empty: RegExp}[] = 
 
 for (const {family, route, url, empty} of FAMILIES) {
 	test(`sweep: ${family} — a 500 is never rendered as an empty table`, async ({page, consoleGuard}) => {
-		allowFailedReadNoise(consoleGuard);
+		allowFailedReadNoise(consoleGuard, route, 500);
 		await page.route(route, readAnswers(500, JSON.stringify({message: 'boom'})));
 		await page.goto(`${url}?name=${instName}`);
 
@@ -328,7 +341,7 @@ for (const {family, route, url, empty} of FAMILIES) {
 // 3. The instance landing page — the one screen with nothing to contradict it
 //---------------------------------------------------------
 test('instance list: a failed read does not render as "you have registered nothing"', async ({page, consoleGuard}) => {
-	allowFailedReadNoise(consoleGuard);
+	allowFailedReadNoise(consoleGuard, '**/oam/loxilbs', 403);
 	// 403, not 401: on an OAM route a 401 ends the session for the whole run.
 	await page.route('**/oam/loxilbs', readAnswers(403, JSON.stringify({message: 'nope'})));
 	await page.goto('instance');
@@ -357,7 +370,7 @@ test('instance list: a genuinely empty list still invites the operator to add on
 // context. (The fixtures assert the same thing globally; this states it
 // deliberately, so the guarantee has a test that is ABOUT it.)
 test('a failing read leaves the operator on the page they were reading', async ({page, consoleGuard}) => {
-	allowFailedReadNoise(consoleGuard);
+	allowFailedReadNoise(consoleGuard, '**/oam/logs', 503);
 	await page.route('**/oam/logs', readAnswers(503, JSON.stringify({message: 'maintenance'})));
 	await page.goto('system');
 

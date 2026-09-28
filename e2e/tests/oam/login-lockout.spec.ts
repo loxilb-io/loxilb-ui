@@ -54,8 +54,7 @@ test.describe('login result mapping (logged-out context)', () => {
 	test.use({storageState: {cookies: [], origins: []}});
 
 	test('lockout 429 → localized locked-out message, no raw prose, no retry-after detail', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/Failed to load resource/i);
-		consoleGuard.allow(/status of 429/i);
+		consoleGuard.allowRequest({status: 429, path: /\/oam\/login$/});
 		await page.route('**/oam/login', r => fulfillLogin(r, 429, LOCKOUT_BODY));
 
 		await submitLogin(page, 'operator', 'WrongPw!nope9');
@@ -72,8 +71,7 @@ test.describe('login result mapping (logged-out context)', () => {
 	});
 
 	test('lockout message is Korean when the persisted language is ko', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/Failed to load resource/i);
-		consoleGuard.allow(/status of 429/i);
+		consoleGuard.allowRequest({status: 429, path: /\/oam\/login$/});
 		await page.addInitScript(() => localStorage.setItem('language', 'ko'));
 		await page.route('**/oam/login', r => fulfillLogin(r, 429, LOCKOUT_BODY));
 
@@ -89,8 +87,7 @@ test.describe('login result mapping (logged-out context)', () => {
 	test('plain bad password (401, one live attempt) → localized invalid-credentials message', async ({page, consoleGuard}) => {
 		// ONE live attempt against a nonexistent user — never hammer the live
 		// lockout (see header comment).
-		consoleGuard.allow(/Failed to load resource/i);
-		consoleGuard.allow(/status of 401/i);
+		consoleGuard.allowRequest({status: 401, path: /\/oam\/login$/});
 
 		// Underscores only — AuthForm's client-side username validation
 		// rejects hyphens before the request would even fire.
@@ -104,8 +101,8 @@ test.describe('login result mapping (logged-out context)', () => {
 
 	test('LIVE lockout: 6 wrong passwords → locked-out message from the real OAM', async ({page, consoleGuard}) => {
 		test.skip(!process.env.E2E_LIVE_LOCKOUT, 'evidence-run only: consumes the per-IP login burst and trips a 1-minute lockout (set E2E_LIVE_LOCKOUT=1)');
-		consoleGuard.allow(/Failed to load resource/i);
-		consoleGuard.allow(/status of (401|429)/i);
+		consoleGuard.allowRequest({status: 401, path: /\/oam\/login$/});
+		consoleGuard.allowRequest({status: 429, path: /\/oam\/login$/});
 
 		const victim = `e2e_lockout_probe_${Date.now()}`;
 		for (let i = 0; i < 5; i++) {

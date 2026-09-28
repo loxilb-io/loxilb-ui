@@ -16,8 +16,8 @@
 // request, so nothing reaches the testbed either.
 //---------------------------------------------------------
 import {Route} from '@playwright/test';
-import {expect, test} from '../../fixtures';
-import {activeInstance} from '../../helpers/api';
+import {ConsoleGuard, expect, test} from '../../fixtures';
+import {activeInstance, BGP_DISABLED} from '../../helpers/api';
 import {dialog, dialogButton, openDialog} from '../../helpers/dialogs';
 import {field} from '../../helpers/form';
 import {toolbarButton} from '../../helpers/table';
@@ -28,11 +28,10 @@ test.beforeAll(async () => {
 	instName = (await activeInstance()).name;
 });
 
-function allowBgpDisabled(consoleGuard: {allow(p: RegExp): void}) {
-	consoleGuard.allow(/Failed to load resource/i);
+function allowBgpDisabled(consoleGuard: ConsoleGuard) {
+	consoleGuard.allowRequest(BGP_DISABLED);
 	consoleGuard.allow(/BGP mode is disabled/i);
 	consoleGuard.allow(/Capacity insufficient/i);
-	consoleGuard.allow(/403/);
 }
 
 //---------------------------------------------------------
@@ -139,8 +138,7 @@ test.describe('the shared confirmation dialog', () => {
 // re-submitted the same mutation.
 
 test('while the action is in flight the dialog stays up, locked, and Escape is inert', async ({page, consoleGuard}) => {
-	consoleGuard.allow(/Failed to load resource/i);
-	consoleGuard.allow(/status of 5\d\d/i);
+	consoleGuard.allowRequest({status: 500, path: /\/config\/ai\/apikey$/});
 
 	// The create is answered slowly and then refused, so the gateway is never
 	// asked to make anything: the assertions below all happen inside the delay.

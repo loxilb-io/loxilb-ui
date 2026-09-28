@@ -14,8 +14,8 @@
 // and tells the evaluator to record a missing feature as unavailable, so they
 // are reported rather than claimed.
 //---------------------------------------------------------
-import {expect, test} from '../../fixtures';
-import {activeInstance} from '../../helpers/api';
+import {ConsoleGuard, expect, test} from '../../fixtures';
+import {activeInstance, SIGNED_OUT_READ_401} from '../../helpers/api';
 import fs from 'fs';
 import path from 'path';
 
@@ -123,9 +123,8 @@ async function signOut(page: import('@playwright/test').Page) {
  * and whether it happens depends on timing — settle it deliberately rather
  * than leave it to luck. Same allowance session.spec.ts makes.
  */
-function allowLogoutFetchNoise(consoleGuard: {allow(p: RegExp): void}) {
-	consoleGuard.allow(/Failed to load resource/i);
-	consoleGuard.allow(/status of 401/i);
+function allowLogoutFetchNoise(consoleGuard: ConsoleGuard) {
+	consoleGuard.allowRequest(SIGNED_OUT_READ_401);
 }
 
 let instName: string;

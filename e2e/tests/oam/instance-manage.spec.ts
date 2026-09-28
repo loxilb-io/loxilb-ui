@@ -11,8 +11,8 @@
 // the console guard allows those failures.
 //---------------------------------------------------------
 import {Page} from '@playwright/test';
-import {expect, test} from '../../fixtures';
-import {createInstanceApi, deleteInstanceApi, findInstanceByName, listInstances} from '../../helpers/api';
+import {ConsoleGuard, expect, test} from '../../fixtures';
+import {createInstanceApi, DEAD_INSTANCE_PROBE, deleteInstanceApi, findInstanceByName, listInstances} from '../../helpers/api';
 import {dialog, dialogButton, dialogTitle, expectSuccessAndDismiss, selectOption} from '../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../helpers/form';
 
@@ -23,9 +23,8 @@ const HOST_B = '203.0.113.42';
 const PORT = '18091';
 
 // Probing an unroutable documentation address is the point of using one.
-function allowDeadHostNoise(consoleGuard: {allow: (p: RegExp) => void}): void {
-	consoleGuard.allow(/Failed to load resource/i);
-	consoleGuard.allow(/status of \d{3}/i);
+function allowDeadHostNoise(consoleGuard: ConsoleGuard): void {
+	for (const a of DEAD_INSTANCE_PROBE) consoleGuard.allowRequest(a);
 	consoleGuard.allow(/ERR_(CONNECTION|ADDRESS|NETWORK|TIMED_OUT|NAME_NOT_RESOLVED)/i);
 	consoleGuard.allow(/Failed to fetch/i);
 	consoleGuard.allow(/AxiosError/i);
