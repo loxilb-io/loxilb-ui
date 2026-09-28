@@ -1,5 +1,6 @@
 import {afterEach, beforeEach, describe, expect, it, vi, type Mock} from 'vitest';
-import {__resetSessionProbe, classifyUnauthorized, createDetailedErrorMessage, DOWNLOAD_FILE_STREAM, GET, GET_TEXT, isMutationFailure, POST} from './fetcher_base';
+import {__resetSessionProbe, ApiError, assertOk, classifyUnauthorized, createDetailedErrorMessage, DOWNLOAD_FILE_STREAM, GET, GET_TEXT, isMutationFailure, POST} from './fetcher_base';
+import {query_get_neighbor_all} from 'connector/instance/device_neghbors';
 
 // routed the 401 branch through terminateSession, which navigates via
 // move_forced. The contract under test is unchanged — an OAM-origin 401 ends
@@ -267,6 +268,59 @@ describe('GET', () => {
 		expect(classifyUnauthorized(unauthorized(), 'http://oam/oam/instances/1/snapshots')).toBe('verify');
 		expect(classifyUnauthorized(unauthorized(), 'http://oam/oam/users/me')).toBe('expire');
 		expect(classifyUnauthorized(unauthorized(), '/api/oam/users/me?fresh=1')).toBe('expire');
+	});
+});
+
+//---------------------------------------------------------
+// A 2xx whose body never arrived is not an empty answer
+//---------------------------------------------------------
+// `fetch` resolves as soon as the HEADERS arrive, so a status of 200 says
+// nothing about the body. When the body then fails — truncated JSON, an HTML
+// page served with a 2xx, or a stream cut off mid-read (seen live: a reload
+// aborting the snapshot-schedule read, `200` + `net::ERR_ABORTED`) —
+// SimpleResponse's own contract says it "must never look like success".
+// assertOk is the gate every read passes, and it looked only at the code: the
+// read returned `data: null`, and `resp.data?.neighborAttr ?? []` turned a
+// read that FAILED into a page that says there are no neighbors.
+describe('a 2xx whose body could not be used', () => {
+	function unreadableBody(): Response {
+		const body = new ReadableStream({
+			start(controller) {
+				controller.enqueue(new TextEncoder().encode('{"neighborAttr":['));
+				controller.error(new TypeError('network error'));
+			},
+		});
+		return new Response(body, {status: 200, headers: {'Content-Type': 'application/json'}});
+	}
+
+	it('flags a body that was cut off mid-read, exactly like one that failed to parse', async () => {
+		(global.fetch as Mock).mockResolvedValue(unreadableBody());
+		const resp = await GET('http://oam/oam/instances/1/snapshot-schedule');
+		expect(resp.code).toBe(200);
+		expect(resp.data).toBeNull();
+		expect(resp.parse_failed).toBe(true);
+	});
+
+	it('assertOk refuses it, so a read cannot pass it off as an empty answer', () => {
+		expect(() => assertOk({code: 200, data: null, message: 'OK', parse_failed: true}, 'Get Neighbor')).toThrow(ApiError);
+	});
+
+	it('says what went wrong — an error that opens with the status text "OK" says nothing', () => {
+		const msg = createDetailedErrorMessage({code: 200, data: null, message: 'OK', parse_failed: true}, 'Get Neighbor');
+		expect(msg).toMatch(/^The response body could not be read\./);
+		expect(msg).toContain('Operation is [Get Neighbor]');
+	});
+
+	it('assertOk still accepts a genuinely empty 2xx body', () => {
+		// 204 and bodyless-200 upserts are legitimate; handle_response leaves
+		// parse_failed unset for them, and that must stay a success.
+		expect(() => assertOk({code: 204, data: null, message: 'No Content'}, 'Delete Rule')).not.toThrow();
+		expect(() => assertOk({code: 200, data: null, message: 'OK'}, 'Upsert Rule')).not.toThrow();
+	});
+
+	it('a truncated neighbor list is a failed read, not "no neighbors"', async () => {
+		mockFetch('{"neighborAttr":[{"ipAddress":"10.0.0.1"');
+		await expect(query_get_neighbor_all({name: 'gw'} as any)).rejects.toThrow(ApiError);
 	});
 });
 
