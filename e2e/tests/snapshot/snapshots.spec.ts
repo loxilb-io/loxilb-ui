@@ -169,8 +169,10 @@ test.describe('@gw Snapshots page (admin)', () => {
 	});
 
 	test('3. break it: OAM unreachable mid-wizard → error surfaced, no fake success, state consistent after reload', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/Failed to load resource/i);
-		consoleGuard.allow(/net::ERR_FAILED|ERR_INTERNET_DISCONNECTED/i);
+		// The one failure this test causes: the commit it aborts below with
+		// `connectionfailed`. Chrome logs that with no status and no URL, so it
+		// can only be allowed by its exact text.
+		consoleGuard.allow(/^Failed to load resource: net::ERR_CONNECTION_FAILED$/);
 
 		await openPage(page);
 		await takeSnapshotViaUI(page, 'e2e-spec-outage');
@@ -277,7 +279,6 @@ test.describe('@gw Snapshots page (admin)', () => {
 	});
 
 	test('9. stale row (deleted by another session): action surfaces the verbatim 404 inline — never the global /404 page', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/Failed to load resource/i);
 		await openPage(page);
 		await takeSnapshotViaUI(page, 'e2e-spec-stale');
 		await selectSnapRow(page, 'e2e-spec-stale');
@@ -286,6 +287,10 @@ test.describe('@gw Snapshots page (admin)', () => {
 		const snap = (await listSnapshots()).find(s => s.name === 'e2e-spec-stale');
 		expect(snap).toBeTruthy();
 		expect(await deleteSnapshotById(snap!.id)).toBeTruthy();
+		// The 404s this test provokes — the Pin and the dry-run on THIS deleted
+		// snapshot — and nothing else: a 404 on any other snapshot, or any other
+		// path, still fails.
+		consoleGuard.allowRequest({status: 404, path: new RegExp(`/snapshots/${snap!.id}(/restore)?$`)});
 
 		// Acting on the stale selection must surface the server's 404 verbatim
 		// in the error popup, with the user still ON the snapshots page.
@@ -326,8 +331,9 @@ test.describe('@gw Snapshots page (admin)', () => {
 		await wizard.getByRole('button', {name: 'Close'}).click();
 	});
 
-	test('7. legacy config-management page stays dead', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/Failed to load resource/i);
+	test('7. legacy config-management page stays dead', async ({page}) => {
+		// No allowance: an unknown route is the SPA's own 404 page, and no
+		// request fails to render it.
 		await page.goto('config-management');
 		await expect(page.getByText(/404|not found/i).first()).toBeVisible();
 	});
@@ -356,8 +362,9 @@ test.describe('@gw Snapshots page (admin)', () => {
 test.describe('@gw Snapshots page (viewer)', () => {
 	test.use({storageState: '.auth/viewer.json'});
 
-	test('6. viewer: list loads, zero mutating controls, no mutation requests', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/Failed to load resource/i);
+	test('6. viewer: list loads, zero mutating controls, no mutation requests', async ({page}) => {
+		// No allowance: every read on this page is one a viewer may make, so a
+		// failed read here (a 403 included) is a defect, not noise.
 		const mutations: string[] = [];
 		page.on('request', r => {
 			if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(r.method()) && !/\/(login|logout)\b/.test(r.url())) {

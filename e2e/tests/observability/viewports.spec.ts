@@ -37,15 +37,19 @@ for (const vp of VIEWPORTS) {
 
 		for (const p of PAGES) {
 			test(`${p.route} renders without body horizontal scroll`, async ({page, consoleGuard}) => {
-				// Ambient testbed noise: dead registered instances 502 their probes.
-				consoleGuard.allow(/Failed to load resource.*502/);
-				// The deployed testbed gateway may predate GET /diagnostics (the
-				// vendored contract has it); the page degrades in-page — which
-				// this test still asserts via heading+layout — but the browser
-				// logs the 404 resource line unavoidably. Scoped to the one
-				// diagnostics-consuming route so a wrong-URL bug elsewhere
-				// still fails.
-				if (p.route === 'observability/persistence') consoleGuard.allow(/Failed to load resource.*404/);
+				// ⚠️ No 502 allowance. Dead registered instances 502 their health
+				// probes, but only the instance list and the dashboard probe other
+				// instances; these pages read the ACTIVE instance alone, so a 502
+				// here means the instance under test is down — a real failure.
+				//
+				// A gateway that predates GET /diagnostics answers 404 there; the
+				// page degrades in-page — which this test still asserts via
+				// heading+layout — but the browser logs the 404 unavoidably.
+				// Exactly that request, on the one route in this list that reads
+				// it (the dashboard's persistence card also does, but the
+				// dashboard is not tested here), so a wrong-URL 404 anywhere
+				// else still fails.
+				if (p.route === 'observability/persistence') consoleGuard.allowRequest({status: 404, path: /\/netlox\/v1\/diagnostics$/});
 				const inst = await activeInstance();
 				await page.goto(`instance/${p.route}?name=${encodeURIComponent(inst.name)}`);
 
