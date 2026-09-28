@@ -178,8 +178,9 @@ test.describe('@gw Model Profile selector — mock contract', () => {
 	});
 
 	test('MP-E2E-010: a stale selection blocks the POST, keeps the draft, refreshes the registry', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/status of 404/i);
-		consoleGuard.allow(/Failed to load resource/i);
+		// The submit-time freshness read of the selected profile answers 404 —
+		// the stale selection under test — and nothing else may fail.
+		consoleGuard.allowRequest({status: 404, path: /\/config\/ai\/model-profiles\/qwen3-chat$/});
 		const world = await mockWorld(page);
 		await fillStrictRule(page, 'e2e-mp-stale');
 		await selectOption(page, 'Model Profile', /^qwen3-chat — /);

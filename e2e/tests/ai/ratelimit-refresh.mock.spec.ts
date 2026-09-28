@@ -101,11 +101,9 @@ test.describe('@gw AI Tenant Rate Limits — Refresh convergence', () => {
 	});
 
 	test('RL-E2E-R1: Refresh alone converges the tenant list, the enforcement warning and the quota store state', async ({page, consoleGuard}) => {
-		// The unconfigured-store arm of this test IS a 503, deliberately — it is
-		// the answer every gateway on this testbed really gives. The same two
-		// allowances the live spec carries.
-		consoleGuard.allow(/status of (401|403|503)/i);
-		consoleGuard.allow(/Failed to load resource/i);
+		// The unconfigured-store arm of this test IS a 503, deliberately, served
+		// by the mock on the defaults read — that read and only that one.
+		consoleGuard.allowRequest({status: 503, path: /\/config\/ai\/ratelimit\/defaults\/global$/});
 
 		const state: IMockState = {tenants: [TENANT_SEEDED], apiKeyRequired: false, quotaStoreConfigured: false};
 		await mockPage(page, state);

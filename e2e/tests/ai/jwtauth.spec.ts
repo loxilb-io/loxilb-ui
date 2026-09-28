@@ -104,8 +104,9 @@ test.describe('@gw AI JWT auth profiles', () => {
 	});
 
 	test.beforeEach(async ({page, consoleGuard}) => {
-		consoleGuard.allow(/status of (401|403|404|501|503)/i);
-		consoleGuard.allow(/Failed to load resource/i);
+		// On a gateway without the JWT profile API (or its identity/store), the
+		// page's list read answers what the readiness probe got — and only then.
+		if (!readiness.ready) consoleGuard.allowRequest({status: readiness.status, path: /\/config\/ai\/jwtauthprofile$/});
 		await page.goto(`instance/ai/jwtauth?name=${instName}`);
 		await expect(toolbarButton(page, 'Add')).toBeVisible({timeout: 20_000});
 	});
