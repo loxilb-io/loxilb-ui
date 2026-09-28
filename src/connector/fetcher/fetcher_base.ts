@@ -3,6 +3,7 @@
 //---------------------------------------------------------
 import {get_local_storage, move_404, move_402, move_500, move_cors, remove_local_storage} from 'common';
 import {terminateSession} from 'session/session';
+import {getApiBaseUrl} from 'utils/apiProxy';
 
 //---------------------------------------------------------
 // Interfaces
@@ -98,19 +99,67 @@ export function remove_token() {
 	remove_local_storage('access_token');
 }
 
+const GATEWAY_PASSTHROUGH = /\/loxilbs\/\d+\/netlox\//;
+
+export type UnauthorizedVerdict = 'inline' | 'expire' | 'verify';
+
+/** OAM's own view of the session: the route the confirmation probe asks. */
+const SESSION_PROBE_PATH = '/users/me';
+
 /**
- * Decide whether a 401 invalidates the human's OAM browser session.
+ * Decide what a 401 means for the human's OAM browser session.
  *
  * X-Loxi-Error-Origin is trusted only as a response provenance marker added at
  * the OAM boundary. A Gateway-origin failure belongs to the management hop and
- * must remain inline. Missing or unknown markers retain the conservative
- * legacy behavior so older OAM versions do not leave an expired browser token
- * installed. Login failures are always inline.
+ * stays inline; an OAM-origin one ends the session. Login failures are always
+ * inline.
+ *
+ * Without a trusted marker a 401 cannot be attributed. OAM relays Gateway
+ * statuses on more than the pass-through (a snapshot taken while the Gateway
+ * refuses OAM's management credential answers 401 on an OAM route), and OAMs
+ * that predate the marker relay them bare. Ending the session on that guess
+ * signed operators out a second after every login — so it is 'verify': ask
+ * OAM, which is the authority on its own session. Only a 401 from the probe
+ * route itself needs no second opinion.
  */
-export function shouldExpireOAMSession(response: Response, url: string): boolean {
-	if (/\/login(?:\b|\/)/.test(url)) return false;
+export function classifyUnauthorized(response: Response, url: string): UnauthorizedVerdict {
+	if (/\/login(?:\b|\/)/.test(url)) return 'inline';
 	const origin = response.headers.get('X-Loxi-Error-Origin')?.trim().toLowerCase();
-	return origin !== 'gateway';
+	if (origin === 'gateway') return 'inline';
+	if (origin === 'oam') return 'expire';
+	return new URL(url, window.location.href).pathname.endsWith(SESSION_PROBE_PATH) ? 'expire' : 'verify';
+}
+
+// One probe per token: a page's parallel pass-through reads all answer 401 at
+// once, and they share the one answer.
+let sessionProbe: {token: string; answer: Promise<boolean>} | null = null;
+
+/**
+ * Asks OAM whether `token` is still a live session. Only an explicit 401 from
+ * OAM counts as "ended": a probe that cannot complete proves nothing, and the
+ * token's own expiry timer and the next OAM-native request remain in force.
+ */
+function oamSessionEnded(token: string): Promise<boolean> {
+	if (sessionProbe?.token === token) return sessionProbe.answer;
+	const answer = fetch(`${getApiBaseUrl()}${SESSION_PROBE_PATH}`, {method: 'GET', headers: {Accept: 'application/json', Authorization: `Bearer ${token}`}})
+		.then(resp => resp.status === 401)
+		.catch(() => false);
+	sessionProbe = {token, answer};
+	return answer;
+}
+
+/** Test seam only — forgets the cached probe so cases cannot leak into each other. */
+export function __resetSessionProbe(): void {
+	sessionProbe = null;
+}
+
+async function endSessionIfOAMConfirms(token: string): Promise<void> {
+	// A request sent without a token has no session to ask about.
+	if (token && !(await oamSessionEnded(token))) return;
+	// A new login while the probe was in flight is a different session; the
+	// verdict was about the token that was sent.
+	if (load_token() !== token) return;
+	await terminateSession('revoked');
 }
 
 async function fetch_data(url: string, options?: RequestOptions): Promise<Response> {
@@ -152,7 +201,7 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 		// (e.g. 501 Not Implemented, or 404) would otherwise take down the whole
 		// UI instead of letting the feature page degrade to an empty / inline
 		// error state. OAM control-plane failures still redirect as before.
-		const isGatewayPassthrough = typeof url === 'string' && /\/loxilbs\/\d+\/netlox\//.test(url);
+		const isGatewayPassthrough = typeof url === 'string' && GATEWAY_PASSTHROUGH.test(url);
 		// Mutations must fail INLINE: their non-2xx flows through the
 		// OpResult adapter into a localized dialog. The legacy full-app
 		// redirects here discarded the operator's open form (proven live: a 500
@@ -173,9 +222,11 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 			// relocation helper once per response and leaned on a
 			// "already on /login?" guard to hide the duplicates, while the
 			// persisted query cache survived either way.
-			// The gateway-origin carve-out below is unchanged: a management-hop
-			// 401 is not the human's OAM session ending.
-			if (shouldExpireOAMSession(resp, url)) void terminateSession('revoked');
+			// A management-hop 401 is not the human's OAM session ending; an
+			// unattributed one is settled by asking OAM (classifyUnauthorized).
+			const verdict = classifyUnauthorized(resp, url);
+			if (verdict === 'expire') void terminateSession('revoked');
+			else if (verdict === 'verify') void endSessionIfOAMConfirms(access_token);
 			return resp;
 		} else if (resp.status === 403) {
 			// Forbidden - user is authenticated but lacks permission or action is forbidden

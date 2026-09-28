@@ -156,12 +156,10 @@ test.describe('the four states, end to end on the Load Balancer page', () => {
 
 	test('a gateway-origin 401 renders denied in the page and does NOT end the OAM session', async ({page, consoleGuard}) => {
 		allowFailedReadNoise(consoleGuard);
-		// The carve-out is header-based, not URL-based (fetcher_base
-		// `shouldExpireOAMSession`): a 401 is the operator's OAM session ending
-		// UNLESS the OAM marks it as relayed from the gateway. The first cut of
-		// this case sent a bare 401 on a pass-through URL and was signed out —
-		// correctly. The header has to be EXPOSED too, or the browser hides it
-		// from the page on a cross-origin response and the app sees a bare 401.
+		// The marker settles it without asking anyone (fetcher_base
+		// `classifyUnauthorized`). The header has to be EXPOSED too, or the
+		// browser hides it from the page on a cross-origin response and the app
+		// sees a bare 401 — which it then has to settle by asking OAM (below).
 		await page.route(LB_URL, async route => {
 			if (route.request().method() === 'OPTIONS') return route.fulfill({status: 204, headers: CORS});
 			if (route.request().method() !== 'GET') return route.continue();
@@ -182,6 +180,34 @@ test.describe('the four states, end to end on the Load Balancer page', () => {
 		// The management hop refusing us is not the human's session ending.
 		await expect(page.getByText(/Your session ended/i)).toHaveCount(0);
 		expect(page.url()).not.toMatch(/\/login/);
+	});
+
+	// An OAM without the origin marker relays the Gateway's own 401 bare. It
+	// used to end the session outright, which signed the operator out a second
+	// after every login whenever the Gateway refused OAM's management
+	// credential. A bare pass-through 401 is now settled by asking OAM.
+	test('a bare pass-through 401 does NOT end a session that OAM still honours', async ({page, consoleGuard}) => {
+		allowFailedReadNoise(consoleGuard);
+		await page.route(LB_URL, readAnswers(401, JSON.stringify({message: 'Missing or invalid credentials'})));
+		const probe = page.waitForRequest(req => /\/oam\/users\/me$/.test(req.url()) && req.method() === 'GET');
+		await page.goto(lbPage());
+
+		await expect(page.getByText(/permission to view/i)).toBeVisible({timeout: AFTER_RETRIES});
+		await probe;
+		await expect(page.getByText(/Your session ended/i)).toHaveCount(0);
+		expect(page.url()).not.toMatch(/\/login/);
+	});
+
+	test('a bare pass-through 401 ends the session when OAM confirms it', async ({page, consoleGuard}) => {
+		allowFailedReadNoise(consoleGuard);
+		await page.route(LB_URL, readAnswers(401, JSON.stringify({message: 'expired'})));
+		await page.goto(lbPage());
+		// Arm OAM's answer only once the page has rendered, so the refusal is
+		// the probe's and not the role lookup's during boot.
+		await page.route(/\/oam\/users\/me$/, readAnswers(401, JSON.stringify({message: 'expired'})));
+
+		await expect(page).toHaveURL(/\/login/, {timeout: AFTER_RETRIES});
+		await expect(page.getByText(/Your session ended/i)).toBeVisible();
 	});
 
 	test('transport aborted — reads as temporarily unavailable, and offers a retry', async ({page, consoleGuard}) => {
