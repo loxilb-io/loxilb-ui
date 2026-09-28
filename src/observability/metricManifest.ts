@@ -169,7 +169,7 @@ export function normalizeImplementationStatus(upstream: string | undefined): Pic
 
 // Pinned runtime types for the custom-collector (`desc`) families: the
 // generator cannot see past the Desc, but the collector sources fix them as
-// 4 counters + 20 gauges + 1 histogram. On a manifest that predates
+// 20 counters + 28 gauges + 2 histograms. On a manifest that predates
 // `definition_mechanism` this table IS the type source, and a `desc` family
 // missing from it surfaces as runtimeType 'unknown' (deny) until pinned. On a
 // modern manifest the family carries a real type and this table is the
@@ -227,6 +227,36 @@ export const DESC_RUNTIME_TYPES: Readonly<Record<string, RuntimeMetricType>> = {
 	loxilb_ai_jwks_usable: 'gauge',
 	// Policer attachment collector: 1 gauge
 	loxilb_policer_attached: 'gauge',
+	// AI admission collector (api/prometheus/ai_admission_metrics.go):
+	// 4 gauges + 1 ConstHistogram + 2 counters.
+	loxilb_ai_admission_mode: 'gauge',
+	loxilb_ai_admission_inflight: 'gauge',
+	loxilb_ai_admission_limit: 'gauge',
+	loxilb_ai_admission_queued: 'gauge',
+	loxilb_ai_admission_queue_wait_seconds: 'histogram',
+	loxilb_ai_admission_decisions_total: 'counter',
+	loxilb_ai_admission_anomalies_total: 'counter',
+	// Audit writer collector (api/restapi/handler/audit_metrics.go):
+	// 4 gauges + 14 counters. The two timestamps are Unix seconds, and
+	// `reserve_breached` / `writer_up` are 0/1 states — gauges, not counters.
+	loxilb_audit_writer_up: 'gauge',
+	loxilb_audit_last_write_timestamp_seconds: 'gauge',
+	loxilb_audit_last_heartbeat_timestamp_seconds: 'gauge',
+	loxilb_audit_reserve_breached: 'gauge',
+	loxilb_audit_records_written_total: 'counter',
+	loxilb_audit_records_dropped_total: 'counter',
+	loxilb_audit_result_write_failures_total: 'counter',
+	loxilb_audit_write_failures_total: 'counter',
+	loxilb_audit_sync_failures_total: 'counter',
+	loxilb_audit_mgmt_timeouts_total: 'counter',
+	loxilb_audit_writer_panics_total: 'counter',
+	loxilb_audit_writer_restarts_total: 'counter',
+	loxilb_audit_records_unattributed_total: 'counter',
+	loxilb_audit_orphaned_intents_total: 'counter',
+	loxilb_audit_segment_seal_failures_total: 'counter',
+	loxilb_audit_segments_pruned_total: 'counter',
+	loxilb_audit_originator_dropped_total: 'counter',
+	loxilb_audit_delegation_lookups_total: 'counter',
 };
 
 const RUNTIME_TYPES: ReadonlySet<string> = new Set(['counter', 'gauge', 'histogram', 'summary', 'untyped']);

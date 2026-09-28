@@ -121,9 +121,16 @@ describe('gateway scrape applicability (class + packaged)', () => {
 });
 
 describe('desc normalization (definition mechanism vs runtime type)', () => {
-	it('pins the 25 custom-collector families to 4 counters + 20 gauges + 1 histogram', () => {
+	it('pins the 50 custom-collector families to 20 counters + 28 gauges + 2 histograms', () => {
 		const desc = allManifestFamilies().filter(f => f.definitionMechanism === 'desc');
 		expect(desc.map(f => f.name).sort()).toEqual([
+			'loxilb_ai_admission_anomalies_total',
+			'loxilb_ai_admission_decisions_total',
+			'loxilb_ai_admission_inflight',
+			'loxilb_ai_admission_limit',
+			'loxilb_ai_admission_mode',
+			'loxilb_ai_admission_queue_wait_seconds',
+			'loxilb_ai_admission_queued',
 			'loxilb_ai_jwks_keys',
 			'loxilb_ai_jwks_last_success_timestamp_seconds',
 			'loxilb_ai_jwks_usable',
@@ -139,6 +146,24 @@ describe('desc normalization (definition mechanism vs runtime type)', () => {
 			'loxilb_ai_user_token_quota_utilization',
 			'loxilb_ai_vip_token_quota_limit_tokens',
 			'loxilb_ai_vip_token_quota_utilization',
+			'loxilb_audit_delegation_lookups_total',
+			'loxilb_audit_last_heartbeat_timestamp_seconds',
+			'loxilb_audit_last_write_timestamp_seconds',
+			'loxilb_audit_mgmt_timeouts_total',
+			'loxilb_audit_originator_dropped_total',
+			'loxilb_audit_orphaned_intents_total',
+			'loxilb_audit_records_dropped_total',
+			'loxilb_audit_records_unattributed_total',
+			'loxilb_audit_records_written_total',
+			'loxilb_audit_reserve_breached',
+			'loxilb_audit_result_write_failures_total',
+			'loxilb_audit_segment_seal_failures_total',
+			'loxilb_audit_segments_pruned_total',
+			'loxilb_audit_sync_failures_total',
+			'loxilb_audit_write_failures_total',
+			'loxilb_audit_writer_panics_total',
+			'loxilb_audit_writer_restarts_total',
+			'loxilb_audit_writer_up',
 			'loxilb_policer_attached',
 			'loxilb_proxy_http_ttfb_seconds',
 			'loxilb_proxy_qos_bytes_delayed_total',
@@ -153,12 +178,32 @@ describe('desc normalization (definition mechanism vs runtime type)', () => {
 
 		const byType = (t: string) => desc.filter(f => f.runtimeType === t).map(f => f.name).sort();
 		expect(byType('counter')).toEqual([
+			'loxilb_ai_admission_anomalies_total',
+			'loxilb_ai_admission_decisions_total',
+			'loxilb_audit_delegation_lookups_total',
+			'loxilb_audit_mgmt_timeouts_total',
+			'loxilb_audit_originator_dropped_total',
+			'loxilb_audit_orphaned_intents_total',
+			'loxilb_audit_records_dropped_total',
+			'loxilb_audit_records_unattributed_total',
+			'loxilb_audit_records_written_total',
+			'loxilb_audit_result_write_failures_total',
+			'loxilb_audit_segment_seal_failures_total',
+			'loxilb_audit_segments_pruned_total',
+			'loxilb_audit_sync_failures_total',
+			'loxilb_audit_write_failures_total',
+			'loxilb_audit_writer_panics_total',
+			'loxilb_audit_writer_restarts_total',
 			'loxilb_proxy_qos_bytes_delayed_total',
 			'loxilb_proxy_qos_bytes_passed_total',
 			'loxilb_proxy_qos_park_seconds_total',
 			'loxilb_proxy_qos_parks_total',
 		]);
 		expect(byType('gauge')).toEqual([
+			'loxilb_ai_admission_inflight',
+			'loxilb_ai_admission_limit',
+			'loxilb_ai_admission_mode',
+			'loxilb_ai_admission_queued',
 			'loxilb_ai_jwks_keys',
 			'loxilb_ai_jwks_last_success_timestamp_seconds',
 			'loxilb_ai_jwks_usable',
@@ -174,13 +219,17 @@ describe('desc normalization (definition mechanism vs runtime type)', () => {
 			'loxilb_ai_user_token_quota_utilization',
 			'loxilb_ai_vip_token_quota_limit_tokens',
 			'loxilb_ai_vip_token_quota_utilization',
+			'loxilb_audit_last_heartbeat_timestamp_seconds',
+			'loxilb_audit_last_write_timestamp_seconds',
+			'loxilb_audit_reserve_breached',
+			'loxilb_audit_writer_up',
 			'loxilb_policer_attached',
 			'loxilb_proxy_qos_cbs_bytes',
 			'loxilb_proxy_qos_cir_bytes_per_second',
 			'loxilb_proxy_qos_parked_connections',
 			'loxilb_proxy_qos_tokens_bytes',
 		]);
-		expect(byType('histogram')).toEqual(['loxilb_proxy_http_ttfb_seconds']);
+		expect(byType('histogram')).toEqual(['loxilb_ai_admission_queue_wait_seconds', 'loxilb_proxy_http_ttfb_seconds']);
 	});
 
 	// ---------------------------------------------------------------
