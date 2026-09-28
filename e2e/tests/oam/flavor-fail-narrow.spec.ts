@@ -21,7 +21,7 @@
 // Nothing is mutated: every case answers one GET and touches no other route.
 //---------------------------------------------------------
 import {Route} from '@playwright/test';
-import {expect, test} from '../../fixtures';
+import {ConsoleGuard, expect, test} from '../../fixtures';
 import {activeInstance} from '../../helpers/api';
 import {toolbarButton} from '../../helpers/table';
 
@@ -70,9 +70,10 @@ function probeHangs(counter: {n: number}) {
 }
 
 /** A deliberately broken probe is loud in the console; that noise is the point. */
-function allowProbeNoise(consoleGuard: {allow(p: RegExp): void}) {
-	consoleGuard.allow(/Failed to load resource/i);
-	consoleGuard.allow(/status of (4\d\d|5\d\d)/i);
+function allowProbeNoise(consoleGuard: ConsoleGuard, status?: number) {
+	// Exactly the probe the test breaks, with the status its mock serves; a
+	// hanging probe has no status.
+	if (status !== undefined) consoleGuard.allowRequest({status, path: /\/netlox\/v1\/version$/});
 	consoleGuard.allow(/net::ERR_FAILED/);
 	consoleGuard.allow(/Failed to fetch/i);
 	consoleGuard.allow(/Network request failed/i);
@@ -110,7 +111,7 @@ async function expectNarrowNav(page: import('@playwright/test').Page): Promise<v
 // tells the operator the product lacks a feature it actually has.
 
 test('denied (403) — gateway-only nav is withdrawn and the page says permission, not absence', async ({page, consoleGuard}) => {
-	allowProbeNoise(consoleGuard);
+	allowProbeNoise(consoleGuard, 403);
 	const probes = {n: 0};
 	await page.route(VERSION_URL, probeAnswers(403, probes));
 
@@ -129,7 +130,7 @@ test('denied (403) — gateway-only nav is withdrawn and the page says permissio
 });
 
 test('denied is never retried — a refused probe must not hammer the instance', async ({page, consoleGuard}) => {
-	allowProbeNoise(consoleGuard);
+	allowProbeNoise(consoleGuard, 403);
 	const probes = {n: 0};
 	await page.route(VERSION_URL, probeAnswers(403, probes));
 
@@ -147,7 +148,7 @@ test('denied is never retried — a refused probe must not hammer the instance',
 });
 
 test('unavailable (5xx, retries exhausted) — reads as unreachable, not as a narrower product', async ({page, consoleGuard}) => {
-	allowProbeNoise(consoleGuard);
+	allowProbeNoise(consoleGuard, 503);
 	const probes = {n: 0};
 	await page.route(VERSION_URL, probeAnswers(503, probes));
 
@@ -190,9 +191,9 @@ test('loading — the broad surface is withheld WHILE the probe is in flight', a
 // Without this, every assertion above could be satisfied by a UI that simply
 // never shows the AI menu. This is the case that makes the file honest.
 
-test('control: the SAME assertions invert on a resolved gateway — the surface is really there', async ({page, consoleGuard}) => {
-	consoleGuard.allow(/Failed to load resource/i);
-
+test('control: the SAME assertions invert on a resolved gateway — the surface is really there', async ({page}) => {
+	// No allowance: the dashboard probes only the instance under test, so any
+	// failed request here is real.
 	await page.goto(`instance/dashboard?name=${instName}`, {waitUntil: 'domcontentloaded'});
 	for (const group of [...SHARED_GROUPS, ...GATEWAY_ONLY_GROUPS]) {
 		await expect(drawer(page).getByText(group, {exact: true}), `${group} must be offered on a resolved gateway`).toBeVisible({timeout: 30_000});

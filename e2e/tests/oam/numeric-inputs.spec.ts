@@ -15,8 +15,8 @@
 // Nothing is written: the BGP cases never press Apply, and the API-key case
 // asserts the dialog's Add button is DISABLED — the request is never made.
 //---------------------------------------------------------
-import {expect, test} from '../../fixtures';
-import {activeInstance} from '../../helpers/api';
+import {ConsoleGuard, expect, test} from '../../fixtures';
+import {activeInstance, AIManagementReadiness, aiNotReadyAllowance, BGP_DISABLED, gatewayAIManagementReadiness} from '../../helpers/api';
 import {dialog, dialogButton, openDialog} from '../../helpers/dialogs';
 import {field} from '../../helpers/form';
 import {toolbarButton} from '../../helpers/table';
@@ -30,11 +30,10 @@ test.beforeAll(async () => {
 // BGP data calls answer 403 on this testbed (BGP mode is disabled) — see
 // network/bgp.spec.ts. The FORM still renders, and these assertions are
 // purely client-side, so the 403 is irrelevant here beyond its console noise.
-function allowBgpDisabled(consoleGuard: {allow(p: RegExp): void}) {
-	consoleGuard.allow(/Failed to load resource/i);
+function allowBgpDisabled(consoleGuard: ConsoleGuard) {
+	consoleGuard.allowRequest(BGP_DISABLED);
 	consoleGuard.allow(/BGP mode is disabled/i);
 	consoleGuard.allow(/Capacity insufficient/i);
-	consoleGuard.allow(/403/);
 }
 
 //---------------------------------------------------------
@@ -117,6 +116,11 @@ test.describe('BGP Local AS — raw text is the field, not a number the app gues
 // value that turns the control off.
 
 test.describe('AI API key rate limits — 0 means unlimited, so garbage must never become 0', () => {
+	let readiness: AIManagementReadiness;
+	test.beforeAll(async () => {
+		readiness = await gatewayAIManagementReadiness();
+	});
+
 	const apiKeyPage = () => `instance/ai/apikey?name=${instName}`;
 
 	async function openAddDialog(page: import('@playwright/test').Page): Promise<void> {
@@ -126,7 +130,9 @@ test.describe('AI API key rate limits — 0 means unlimited, so garbage must nev
 	}
 
 	test('garbage in Rate Limit is kept, flagged, and BLOCKS the create', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/Failed to load resource/i);
+		// The page's list read fails only on an unready gateway, with the probe's status.
+		const notReady = aiNotReadyAllowance(readiness);
+		if (notReady) consoleGuard.allowRequest(notReady);
 		await openAddDialog(page);
 
 		await field(page, 'Rate Limit (req/s)').fill('abc');
@@ -142,7 +148,9 @@ test.describe('AI API key rate limits — 0 means unlimited, so garbage must nev
 	});
 
 	test('a deliberate 0 is still accepted — the sentinel survives the fix', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/Failed to load resource/i);
+		// The page's list read fails only on an unready gateway, with the probe's status.
+		const notReady = aiNotReadyAllowance(readiness);
+		if (notReady) consoleGuard.allowRequest(notReady);
 		await openAddDialog(page);
 
 		// Parity guard. A fix that made every 0 invalid would pass every
@@ -156,7 +164,9 @@ test.describe('AI API key rate limits — 0 means unlimited, so garbage must nev
 	});
 
 	test('every rate field behaves the same way — the fix is not one-off', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/Failed to load resource/i);
+		// The page's list read fails only on an unready gateway, with the probe's status.
+		const notReady = aiNotReadyAllowance(readiness);
+		if (notReady) consoleGuard.allowRequest(notReady);
 		await openAddDialog(page);
 
 		for (const label of ['Burst Size', 'Tokens / Minute']) {

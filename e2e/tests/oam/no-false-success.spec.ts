@@ -55,13 +55,11 @@ function failWith(status: number, body: string, contentType = 'application/json'
 	};
 }
 
-function allowFetchNoise(consoleGuard: {allow(p: RegExp): void}) {
-	consoleGuard.allow(/Failed to load resource/i);
-	consoleGuard.allow(/status of (4\d\d|500)/i);
-}
 
 test('batch 1 — instance update answered 500 shows the localized error, never success', async ({page, consoleGuard}) => {
-	allowFetchNoise(consoleGuard);
+	// The one injected failure that is a STATUS; the others fail in a 200 body,
+	// which the browser does not log.
+	consoleGuard.allowRequest({status: 500, path: new RegExp(`/oam/loxilbs/${instId}$`)});
 	await page.route(`**/oam/loxilbs/${instId}`, failWith(500, JSON.stringify({error: RAW_MARKER}), 'application/json', 'PUT'));
 
 	await page.goto('instance');
@@ -77,8 +75,7 @@ test('batch 1 — instance update answered 500 shows the localized error, never 
 	await expect(dialogTitle(page, 'Success')).toBeHidden();
 });
 
-test('batch 2 — API key create answered 200 {result:"fail"} never renders the reveal dialog', async ({page, consoleGuard}) => {
-	allowFetchNoise(consoleGuard);
+test('batch 2 — API key create answered 200 {result:"fail"} never renders the reveal dialog', async ({page}) => {
 	await page.route('**/netlox/v1/config/ai/apikey', failWith(200, JSON.stringify({result: 'fail'})));
 
 	await page.goto(`instance/ai/apikey?name=${instName}`);
@@ -93,8 +90,7 @@ test('batch 2 — API key create answered 200 {result:"fail"} never renders the 
 	await expect(dialogTitle(page, 'API Key Imported')).toBeHidden();
 });
 
-test('batch 3 — endpoint create answered 200 {result:"fail"} shows the localized error', async ({page, consoleGuard}) => {
-	allowFetchNoise(consoleGuard);
+test('batch 3 — endpoint create answered 200 {result:"fail"} shows the localized error', async ({page}) => {
 	await page.route('**/netlox/v1/config/endpoint', failWith(200, JSON.stringify({result: 'fail'})));
 
 	await page.goto(`instance/traffic/endpoint?name=${instName}`);
@@ -108,8 +104,7 @@ test('batch 3 — endpoint create answered 200 {result:"fail"} shows the localiz
 	await expect(dialogTitle(page, 'Success')).toBeHidden();
 });
 
-test('batch 4 — snapshot take answered 200 with an HTML body (parse trap) shows the localized error', async ({page, consoleGuard}) => {
-	allowFetchNoise(consoleGuard);
+test('batch 4 — snapshot take answered 200 with an HTML body (parse trap) shows the localized error', async ({page}) => {
 	await page.route(`**/oam/instances/${instId}/snapshots`, failWith(200, '<html>proxy interstitial</html>', 'text/html'));
 
 	await page.goto(`instance/maintenance/snapshots?name=${instName}`);
@@ -124,8 +119,7 @@ test('batch 4 — snapshot take answered 200 with an HTML body (parse trap) show
 	await expect(dialogTitle(page, 'Success')).toBeHidden();
 });
 
-test('batch 5 — VLAN create answered 200 {result:"fail"} shows the localized error', async ({page, consoleGuard}) => {
-	allowFetchNoise(consoleGuard);
+test('batch 5 — VLAN create answered 200 {result:"fail"} shows the localized error', async ({page}) => {
 	await page.route('**/netlox/v1/config/vlan', failWith(200, JSON.stringify({result: 'fail'})));
 
 	await page.goto(`instance/network/vlan?name=${instName}`);

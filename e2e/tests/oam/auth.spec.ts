@@ -30,8 +30,7 @@ test.describe('OAM auth — login & logout (logged-out context)', () => {
 
 	test('wrong password surfaces an error and never leaves /login', async ({page, consoleGuard}) => {
 		// Chrome logs failed fetches to the console; the 401 is the point of the test.
-		consoleGuard.allow(/Failed to load resource/i);
-		consoleGuard.allow(/status of 40[13]/i);
+		consoleGuard.allowRequest({status: 401, path: /\/oam\/login$/});
 
 		await page.goto('login');
 		await page.locator('#username').fill(ADMIN_USER);
@@ -46,8 +45,7 @@ test.describe('OAM auth — login & logout (logged-out context)', () => {
 	test('login ok, logout confirm clears the session, replayed token is revoked', async ({page, consoleGuard}) => {
 		// Logout clears the token then redirects; an in-flight /users/me poll can
 		// land a benign 401 as React Query settles.
-		consoleGuard.allow(/Failed to load resource/i);
-		consoleGuard.allow(/status of 401/i);
+		consoleGuard.allowRequest({status: 401, path: /\/oam\/users\/me$/});
 
 		await page.goto('login');
 		await page.locator('#username').fill(ADMIN_USER);

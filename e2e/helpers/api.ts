@@ -532,6 +532,34 @@ export function aiNotReadyAllowance(readiness: AIManagementReadiness): RequestAl
 	return readiness.ready ? null : {status: readiness.status, path: /\/config\/ai\//};
 }
 
+/**
+ * The instance list health-probes EVERY registered instance (`GET /version`
+ * per instance, `query_instance_health`), and OAM answers 502 for an instance
+ * it cannot reach (504 on its timeout path). Which instances are dead is
+ * testbed state, so a page that probes them all needs this; a page that reads
+ * only the active instance must not.
+ */
+export const DEAD_INSTANCE_PROBE: RequestAllowance[] = [502, 504].map(status => ({status, path: /\/loxilbs\/\d+\/netlox\/v1\/version$/}));
+
+/** BGP reads answer 403 "loxilb BGP mode is disabled" on a gateway without BGP (measured live). */
+export const BGP_DISABLED: RequestAllowance = {status: 403, path: /\/netlox\/v1\/config\/bgp\//};
+
+/**
+ * ⚠️ A GATEWAY DEFECT, not a contract: with no BFD session running,
+ * `NetBFDGet` returns "bfd session not running" and the handler serves the
+ * empty list as `500 Internal service error`, not `200 {Attr: []}`. Remove
+ * this once the gateway answers an empty list.
+ */
+export const BFD_NONE_RUNNING_500: RequestAllowance = {status: 500, path: /\/netlox\/v1\/config\/bfd\/all$/};
+
+/**
+ * Signing out clears the token before it navigates away (`terminateSession`);
+ * a read scheduled in that window goes out without one and answers 401 — on
+ * whatever path was in flight, which is timing. The status is known; the
+ * path is not.
+ */
+export const SIGNED_OUT_READ_401: RequestAllowance = {status: 401, path: /./};
+
 export interface AIManagementReadiness {
 	ready: boolean;
 	status: number;

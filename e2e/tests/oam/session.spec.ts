@@ -10,7 +10,8 @@
 // endpoints, API-key metadata, user lists — stayed in localStorage for the
 // next person at a shared operator terminal.
 //---------------------------------------------------------
-import {expect, test} from '../../fixtures';
+import {ConsoleGuard, expect, test} from '../../fixtures';
+import {SIGNED_OUT_READ_401} from '../../helpers/api';
 
 // ⚠ This file signs out, and `request_logout()` REVOKES the token server-side.
 // The rest of the suite shares one admin token from `.auth/admin.json`, so
@@ -72,9 +73,8 @@ async function storageScan(page: import('@playwright/test').Page) {
  * must be settled deliberately rather than left to luck. Same allowance the
  * no-false-success spec makes for its injected failures.
  */
-function allowLogoutFetchNoise(consoleGuard: {allow(p: RegExp): void}) {
-	consoleGuard.allow(/Failed to load resource/i);
-	consoleGuard.allow(/status of 401/i);
+function allowLogoutFetchNoise(consoleGuard: ConsoleGuard) {
+	consoleGuard.allowRequest(SIGNED_OUT_READ_401);
 }
 
 test('signing out leaves no token, no persisted query cache and no series data', async ({page, consoleGuard}) => {
