@@ -204,10 +204,12 @@ test.describe('@gw IPsec Tunnel page CRUD', () => {
 	});
 
 	test('A-initiate: initiating against a dead peer surfaces an Error popup, no crash', async ({page, consoleGuard}) => {
-		// A dead-peer initiate returns a gateway 502; the browser logs the failed
-		// resource — expected, not a regression.
-		consoleGuard.allow(/Failed to load resource/);
-		consoleGuard.allow(/502/);
+		// A dead-peer initiate blocks in `ipsec up` until the gateway's own 10s
+		// deadline, and the OAM proxy's default budget is also 10s, so the two
+		// race: the gateway's error answers 500 (ConfigPostIPsecTunnelsNameAction
+		// maps every strongSwan error to it), the OAM giving up first answers
+		// 504. Both, on this tunnel's action, and nowhere else.
+		for (const status of [500, 504]) consoleGuard.allowRequest({status, path: /\/config\/ipsec\/tunnels\/e2e-tun-init\/action$/});
 
 		const seed = await gw('POST', TUN_PATH, {
 			name: 'e2e-tun-init',
