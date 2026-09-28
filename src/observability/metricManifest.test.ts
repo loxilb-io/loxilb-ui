@@ -36,6 +36,25 @@ import {
 // It is `priority: diagnostic` and no panel surfaces it. That is a decision,
 // not an oversight: surfacing worker-scrape health is new UI work, and it is
 // recorded as a follow-up rather than smuggled into a re-vendor.
+//
+// 222 (was 194) since the re-vendor to gateway 2313d051. The 28 added families
+// are the admission gate (`loxilb_ai_admission_*`, 7), the audit writer
+// (`loxilb_audit_*`, 18) and the proxy accept/header drops
+// (`loxilb_proxy_{listen_drops,listen_overflows,header_deadline_drops}_total`).
+// Re-verified the same way:
+//   - all 28 are class `default` + packaged, so they are admitted for the
+//     right reason (asserted just below);
+//   - the three proxy drop counters are activation `E` with an EMPTY
+//     precondition, so `absenceReading` calls them `unexpected` when missing —
+//     correct, they are registered at init. The other 25 are `C` (lazy); the
+//     admission set carries a precondition (an AI-gateway service with a
+//     model), the audit set none;
+//   - none of the 250 families already vendored changed type, labels,
+//     activation, precondition or implementation status — only source line
+//     references moved — so the absence reading of every existing panel is
+//     unchanged;
+//   - no registry entry references the new families, so the per-page family
+//     sets below stay put. Surfacing them is the follow-up UI work.
 
 describe('vendored envelope', () => {
 	it('carries UI-owned provenance the upstream artifact lacks', () => {
@@ -53,7 +72,7 @@ describe('vendored envelope', () => {
 describe('gateway scrape applicability (class + packaged)', () => {
 	it('marks exactly the packaged default class as gateway-applicable', () => {
 		const applicable = allManifestFamilies().filter(f => isGatewayScrapeFamily(f.name));
-		expect(applicable).toHaveLength(194);
+		expect(applicable).toHaveLength(222);
 		for (const f of applicable) {
 			expect(f.class).toBe('default');
 			expect(f.packaged).toBe(true);
