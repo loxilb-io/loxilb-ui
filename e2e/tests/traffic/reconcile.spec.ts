@@ -71,8 +71,9 @@ async function submitEndpoint(page: import('@playwright/test').Page) {
 	await dialog(page).getByRole('button', {name: /^(Add|Create)$/}).click();
 }
 
-test('a write that converges late is reported only once the list really shows it', async ({page, consoleGuard}) => {
-	consoleGuard.allow(/Failed to load resource/i);
+test('a write that converges late is reported only once the list really shows it', async ({page}) => {
+	// No allowance: every request this test makes is answered by its own
+	// mocks, all 2xx.
 	const counter = {reads: 0};
 	await page.route('**/netlox/v1/config/endpoint/all', listConvergingAfter(2, counter));
 	await page.route('**/netlox/v1/config/endpoint', acceptCreate);
@@ -87,8 +88,8 @@ test('a write that converges late is reported only once the list really shows it
 	expect(counter.reads).toBeGreaterThan(2);
 });
 
-test('a write that never appears is Submitted — never a success, never an error', async ({page, consoleGuard}) => {
-	consoleGuard.allow(/Failed to load resource/i);
+test('a write that never appears is Submitted — never a success, never an error', async ({page}) => {
+	// No allowance — see the test above.
 	const counter = {reads: 0};
 	await page.route('**/netlox/v1/config/endpoint/all', listConvergingAfter(Number.MAX_SAFE_INTEGER, counter));
 	await page.route('**/netlox/v1/config/endpoint', acceptCreate);
