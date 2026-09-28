@@ -166,8 +166,7 @@ test.describe('@gw KV-exact enforcement status — mock contract', () => {
 	});
 
 	test('MP-E2E-015: status 404/422/503 render distinct inline UX with no redirect', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/status of (404|422|503)/i);
-		consoleGuard.allow(/Failed to load resource/i);
+		for (const status of [404, 422, 503]) consoleGuard.allowRequest({status, path: /\/kvexactstatus$/});
 		await mockLbList(page, strictRule());
 
 		// 404 — coalesced "no KV-exact status": data, not an error, no redirect.

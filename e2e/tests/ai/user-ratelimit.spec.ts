@@ -21,7 +21,7 @@
 //---------------------------------------------------------
 import type {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {activeInstance, AIManagementReadiness, gatewayAIManagementReadiness, gw} from '../../helpers/api';
+import {activeInstance, AIManagementReadiness, gatewayAIManagementReadiness, gw, RATELIMIT_DEFAULTS_ABSENT} from '../../helpers/api';
 import {dialog, dialogButton, expectSuccessAndDismiss} from '../../helpers/dialogs';
 import {field} from '../../helpers/form';
 
@@ -52,10 +52,12 @@ test.describe('@gw AI per-user rate limits', () => {
 
 	test('UR-E2E-1: a user override is added, listed and deleted, and absence reads as inheritance', async ({page, consoleGuard}, testInfo) => {
 		test.skip(!readiness.ready, readiness.reason);
-		consoleGuard.allow(/status of (401|403|404|503)/i);
-		consoleGuard.allow(/Failed to load resource/i);
+		consoleGuard.allowRequest(RATELIMIT_DEFAULTS_ABSENT);
 
 		const tenantId = `e2e-userrl-${RUN_ID}-${testInfo.workerIndex}-${testInfo.retry}`;
+		// This fresh tenant has no tenant row: its 404 is the "absence reads as
+		// inheritance" the test asserts.
+		consoleGuard.allowRequest({status: 404, path: new RegExp(`/config/ai/tenant/ratelimit/${tenantId}$`)});
 		const userId = `subject-${testInfo.workerIndex}`;
 		testInfo.annotations.push({type: 'tenant', description: tenantId});
 

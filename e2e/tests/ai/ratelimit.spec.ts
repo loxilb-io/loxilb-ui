@@ -12,7 +12,7 @@
 //---------------------------------------------------------
 import {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {activeInstance, AIManagementReadiness, gatewayAIManagementReadiness, gw} from '../../helpers/api';
+import {activeInstance, AIManagementReadiness, gatewayAIManagementReadiness, aiNotReadyAllowance, gw, RATELIMIT_DEFAULTS_ABSENT} from '../../helpers/api';
 import {dialog, dialogButton, dialogTitle, expectSuccessAndDismiss, openToolbarDialog} from '../../helpers/dialogs';
 import {field} from '../../helpers/form';
 import {grid, rowByText, toolbarButton} from '../../helpers/table';
@@ -53,8 +53,9 @@ test.describe('@gw AI Tenant Rate Limit page', () => {
 	});
 
 	test.beforeEach(async ({page, consoleGuard}) => {
-		consoleGuard.allow(/status of (401|403|503)/i);
-		consoleGuard.allow(/Failed to load resource/i);
+		consoleGuard.allowRequest(RATELIMIT_DEFAULTS_ABSENT);
+		const notReady = aiNotReadyAllowance(readiness);
+		if (notReady) consoleGuard.allowRequest(notReady);
 		await page.goto(`instance/ai/ratelimit?name=${instName}`); // relative — see baseURL note
 		await expect(toolbarButton(page, 'Add', TENANT)).toBeVisible({timeout: 20_000});
 	});
@@ -73,12 +74,14 @@ test.describe('@gw AI Tenant Rate Limit page', () => {
 		await expect(toolbarButton(page, 'Add', TENANT)).toBeEnabled();
 	});
 
-	test('lookup of an unknown tenant surfaces a Not Found popup, no crash', async ({page}) => {
+	test('lookup of an unknown tenant surfaces a Not Found popup, no crash', async ({page, consoleGuard}) => {
 		// The lookup needs a configured key store: an unconfigured store
 		// answers 503 ai_key_store_unconfigured for EVERY tenant, so the
 		// 404→Not-Found path under test is unreachable (same readiness gate
 		// as upsert; observed live on a gateway without --aikey-db-host).
 		test.skip(!readiness.ready, readiness.reason);
+		// The 404 IS the answer under test.
+		consoleGuard.allowRequest({status: 404, path: /\/config\/ai\/tenant\/ratelimit\/e2e-nonexistent-tenant$/});
 		await page.getByLabel('Tenant ID lookup').fill('e2e-nonexistent-tenant');
 		// Both lookup panels render a button reading "Lookup"; the accessible
 		// names disambiguate them (see AITenantRateLimitPage).

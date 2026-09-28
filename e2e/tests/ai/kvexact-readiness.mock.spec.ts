@@ -159,13 +159,13 @@ test.describe('@gw KV-exact readiness — mock contract', () => {
 		// Every endpoint any assertion in this file depends on is intercepted
 		// with page.route and fulfilled locally, so it can never return 5xx.
 		// The only live reads left are /meta, /version and the OAM's own
-		// calls — and /meta fails ~1 read in 10 on this testbed's OAM→gateway
+		// calls — and ONLY /meta is allowed to fail: it fails ~1 read in 10 on this testbed's OAM→gateway
 		// hop (measured: 2/20 at HTTP 500, 10.04s each; see the resume doc).
 		// openAddDialogWithBody already reloads past the FUNCTIONAL effect;
 		// this allows the console line the dropped request leaves behind.
 		// The repo deliberately does not allow 5xx globally — do not lift
 		// this into fixtures.ts.
-		consoleGuard.allow(/Failed to load resource: the server responded with a status of (500|502|504)/);
+		for (const status of [500, 502, 504]) consoleGuard.allowRequest({status, path: /\/netlox\/v1\/meta$/});
 		await page.goto(`instance/traffic/lb?name=${instName}`);
 	});
 
@@ -195,12 +195,12 @@ test.describe('@gw KV-exact readiness — mock contract', () => {
 		await expect(dialog(page).getByText(/KV-exact topologies are not offered/)).toBeVisible();
 	});
 
-	test('B-03: an older gateway with no capability endpoint still offers them, silently', async ({page, consoleGuard}) => {
+	test('B-03: an older gateway with no capability endpoint still offers them, silently', async ({page}) => {
 		// THE FAIL-OPEN CASE. 404 means "this build predates the surface", not
 		// "refused" — withdrawing here would take the feature away from every
 		// gateway that has not been upgraded yet, on no evidence at all.
-		consoleGuard.allow(/status of 404/i);
-		consoleGuard.allow(/Failed to load resource/i);
+		// No allowance: the capabilities 404 is the one global request allowance
+		// (consoleGuard.ts), and nothing else may fail here.
 		await mockCapabilities(page, {status: 404});
 		await openAddToTopology(page);
 
@@ -349,8 +349,7 @@ test.describe('@gw KV-exact readiness — mock contract', () => {
 	// opened) still submits and is refused on the wire.
 
 	test('C-01: a 412 is reported as a deployment precondition, not as an invalid request', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/status of 412/i);
-		consoleGuard.allow(/Failed to load resource/i);
+		consoleGuard.allowRequest({status: 412, path: /\/config\/loadbalancer$/});
 		// Unknown readiness, so the form offers the topology and lets the
 		// submit reach the gateway — which is what produces the 412.
 		await mockCapabilities(page, {status: 404});
@@ -392,8 +391,7 @@ test.describe('@gw KV-exact readiness — mock contract', () => {
 	});
 
 	test('C-02: ⭐ a 412 does NOT cost the operator the form they filled in', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/status of 412/i);
-		consoleGuard.allow(/Failed to load resource/i);
+		consoleGuard.allowRequest({status: 412, path: /\/config\/loadbalancer$/});
 		// Same shape as C-01 — and deliberately WITHOUT a model profile. A
 		// profile-carrying rule always kept its draft (AC-06); this is the case
 		// that did not, and it is the one where losing it is least defensible.
@@ -446,8 +444,7 @@ test.describe('@gw KV-exact readiness — mock contract', () => {
 	});
 
 	test('C-03: an INVALID create still clears the form — the 412 carve-out is not a blanket change', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/status of 400/i);
-		consoleGuard.allow(/Failed to load resource/i);
+		consoleGuard.allowRequest({status: 400, path: /\/config\/loadbalancer$/});
 		// The other half of the decision, and the half a careless "preserve on
 		// any failure" would erase. A 400 IS about what was typed, so the
 		// existing behaviour must be untouched by the precondition carve-out.

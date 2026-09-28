@@ -130,8 +130,7 @@ test.describe('@gw Published Model Profiles — mock contract', () => {
 	});
 
 	test('MP-E2E-003: 401/403/500/503 render as four distinct inline states', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/status of (401|403|500|503)/i);
-		consoleGuard.allow(/Failed to load resource/i);
+		for (const status of [401, 403, 500, 503]) consoleGuard.allowRequest({status, path: /\/config\/ai\/model-profiles$/});
 
 		// 403 → denied (permission vocabulary).
 		await mockList(page, {message: 'forbidden'}, 403);

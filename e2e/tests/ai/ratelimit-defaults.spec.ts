@@ -18,7 +18,7 @@
 //---------------------------------------------------------
 import type {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {activeInstance, AIManagementReadiness, gatewayAIManagementReadiness, gw} from '../../helpers/api';
+import {activeInstance, AIManagementReadiness, gatewayAIManagementReadiness, gw, RATELIMIT_DEFAULTS_ABSENT} from '../../helpers/api';
 import {dialog, dialogButton, expectSuccessAndDismiss} from '../../helpers/dialogs';
 import {field} from '../../helpers/form';
 
@@ -44,8 +44,7 @@ test.describe('@gw AI rate-limit defaults', () => {
 
 	test('RD-E2E-1: a per-service defaults row is added, edited whole, and deleted', async ({page, consoleGuard}, testInfo) => {
 		test.skip(!readiness.ready, readiness.reason);
-		consoleGuard.allow(/status of (401|403|404|503)/i);
-		consoleGuard.allow(/Failed to load resource/i);
+		consoleGuard.allowRequest(RATELIMIT_DEFAULTS_ABSENT);
 
 		const service = `e2e-rldef-${RUN_ID}-${testInfo.workerIndex}-${testInfo.retry}`;
 		testInfo.annotations.push({type: 'service', description: service});

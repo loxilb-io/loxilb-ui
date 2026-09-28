@@ -18,7 +18,7 @@
 //           error, so a regression re-breaks this test immediately.
 //---------------------------------------------------------
 import {expect, test} from '../../fixtures';
-import {activeInstance, AIManagementReadiness, gatewayAIManagementReadiness, gw, sweepApiKeys} from '../../helpers/api';
+import {activeInstance, AIManagementReadiness, gatewayAIManagementReadiness, aiNotReadyAllowance, gw, sweepApiKeys} from '../../helpers/api';
 import {dialog, dialogButton, dialogTitle, openToolbarDialog} from '../../helpers/dialogs';
 import {field} from '../../helpers/form';
 import {grid, rowByText, showAllRows, toolbarButton} from '../../helpers/table';
@@ -40,8 +40,10 @@ test.describe('@gw AI API Key page', () => {
 	});
 
 	test.beforeEach(async ({page, consoleGuard}) => {
-		consoleGuard.allow(/status of (401|403|503)/i);
-		consoleGuard.allow(/Failed to load resource/i);
+		// Render and validation run on an unready gateway too; there the page's
+		// reads answer what the readiness probe got — and only then.
+		const notReady = aiNotReadyAllowance(readiness);
+		if (notReady) consoleGuard.allowRequest(notReady);
 		await page.goto(`instance/ai/apikey?name=${instName}`); // relative — see baseURL note
 		await expect(toolbarButton(page, 'Add')).toBeVisible({timeout: 20_000});
 	});

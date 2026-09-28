@@ -7,6 +7,7 @@
 import fs from 'fs';
 import path from 'path';
 import {buildLBDeleteKey, buildLBDeletePath} from '../../src/types/lb_identity';
+import type {RequestAllowance} from './consoleGuard';
 import {KvExactReadiness, kvExactVerdictFromCapabilities, kvExactVerdictFromRefusal} from './kvExactVerdict';
 
 // Re-exported so the specs keep importing the readiness type from the helper
@@ -510,6 +511,25 @@ export async function sweepIpsecCerts(): Promise<number> {
 		}
 	}
 	return removed;
+}
+
+/**
+ * A rate-limit defaults ladder level with no row answers 404. That is the
+ * store ANSWERING, not failing — `query_get_ratelimit_defaults` and
+ * `query_get_ratelimit_defaults_for` both read it as "no row" — but the
+ * browser still logs it, on every visit to a page that reads the ladder of a
+ * gateway with no defaults configured.
+ */
+export const RATELIMIT_DEFAULTS_ABSENT: RequestAllowance = {status: 404, path: /\/config\/ai\/ratelimit\/defaults\/(global|rule)$/};
+
+/**
+ * What the AI management reads answer on a gateway that is NOT ready: the
+ * status the readiness probe itself got (401/403/503 identity or store), on
+ * the AI config family only. `null` when ready — a ready gateway gets no
+ * allowance, so a failure there is a defect.
+ */
+export function aiNotReadyAllowance(readiness: AIManagementReadiness): RequestAllowance | null {
+	return readiness.ready ? null : {status: readiness.status, path: /\/config\/ai\//};
 }
 
 export interface AIManagementReadiness {
