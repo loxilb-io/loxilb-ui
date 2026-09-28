@@ -15,7 +15,7 @@
 //---------------------------------------------------------
 import 'locales/i18n';
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {cleanup, render, screen} from '@testing-library/react';
+import {cleanup, fireEvent, render, screen} from '@testing-library/react';
 import {useState} from 'react';
 import DropDownSelectBox from './DropDownSelectBox';
 import {IEnumItem} from 'types/global';
@@ -31,6 +31,12 @@ const PORTS: IEnumItem[] = [
 
 function combobox() {
 	return screen.getByRole('combobox');
+}
+
+/** Opens the menu and returns the option labels, in order. */
+function openOptions(): string[] {
+	fireEvent.mouseDown(combobox());
+	return screen.getAllByRole('option').map(o => o.textContent ?? '');
 }
 
 describe('a held value that the option list does not contain', () => {
@@ -53,8 +59,37 @@ describe('a held value that the option list does not contain', () => {
 	it('still offers every real option alongside it', () => {
 		render(<DropDownSelectBox label="Port" item_list={PORTS} value="eth7" onChange={vi.fn()} />);
 		// The unmatched value is added, never substituted for the list.
-		expect(screen.getByRole('combobox')).toBeTruthy();
-		expect(PORTS.every(p => p.name)).toBe(true);
+		expect(openOptions()).toEqual(['ellb1l3ep2', 'eth0', 'eth7']);
+	});
+
+	it('sends the real option the operator picks instead', () => {
+		const onChange = vi.fn();
+		render(<DropDownSelectBox label="Port" item_list={PORTS} value="eth7" onChange={onChange} />);
+		openOptions();
+		fireEvent.click(screen.getByRole('option', {name: 'eth0'}));
+		expect(onChange).toHaveBeenCalledWith('eth0');
+	});
+});
+
+//---------------------------------------------------------
+// The same value in another type is the SAME option
+//---------------------------------------------------------
+// `ParamBox` keeps a numeric gateway enum numeric (`send_value: 6`), but the
+// free-text box it renders until that enum arrives hands back the string "6".
+// Matched with `===` that is "not in the list", so the held value was appended
+// as a second, identical-looking `6` — two entries, one of them a string the
+// server never listed. The path that makes a value unlisted is also the path
+// that makes its type differ, so it has to be matched by what it displays as.
+describe('a held value that differs from its option only in type', () => {
+	const PORT_NUMBERS: IEnumItem[] = [
+		{id: 0, name: '6', send_value: 6},
+		{id: 1, name: '17', send_value: 17},
+	];
+
+	it('is shown as that option, not appended as a duplicate', () => {
+		render(<DropDownSelectBox label="Protocol" item_list={PORT_NUMBERS} value="17" onChange={vi.fn()} />);
+		expect(combobox().textContent).toBe('17');
+		expect(openOptions()).toEqual(['6', '17']);
 	});
 });
 

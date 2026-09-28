@@ -6,6 +6,8 @@ import {t} from 'i18next';
 import {useEffect, useId, useMemo, useState} from 'react';
 import {IEnumItem} from 'types/global';
 
+const sameValue = (a: unknown, b: unknown) => a === b || String(a) === String(b);
+
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
@@ -37,14 +39,19 @@ export default function DropDownSelectBox(props: {label: string; item_list: IEnu
 	// gives for the one field that had been fixed individually: withdrawing an
 	// option something is standing on is only honest when nothing is standing
 	// on it. This generalises that rule to every enum in the app.
+	//
+	// Matched by what the value DISPLAYS as, not by `===`: a numeric enum keeps
+	// `send_value: 6`, while the free-text box ParamBox shows before the enum
+	// arrives hands back "6". Strictly, that is unlisted — and appending it put
+	// a second, identical-looking `6` in the menu.
 	const display_list: IEnumItem[] = useMemo(() => {
 		if (isEmptyValue) return item_list;
-		if (item_list.some(item => item.send_value === value)) return item_list;
+		if (item_list.some(item => sameValue(item.send_value, value))) return item_list;
 		return [...item_list, {id: -1, name: String(value), send_value: value as string | number}];
 	}, [isEmptyValue, item_list, value]);
 
 	useEffect(() => {
-		const foundIndex = display_list.findIndex(item => item.send_value === value);
+		const foundIndex = display_list.findIndex(item => sameValue(item.send_value, value));
 		if (foundIndex !== -1) {
 			set_cur_idx(foundIndex);
 		} else {
