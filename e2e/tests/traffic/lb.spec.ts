@@ -589,8 +589,9 @@ test.describe('LB Rule page CRUD', () => {
 	});
 
 	test('V-n3-proto: sel=n3 is UDP-only in the datapath — a TCP rule is refused and the refusal is surfaced', async ({page, consoleGuard}) => {
-		// The 400 is the subject of the test, not a defect.
-		consoleGuard.allow(/Failed to load resource.*400/);
+		// The 400 on the create is the subject of the test, not a defect —
+		// and the only failed request it may leave.
+		consoleGuard.allowRequest({status: 400, path: /\/netlox\/v1\/config\/loadbalancer$/});
 		// n3 is the 5G N3 (GTP-U) selector. sel=6 passes swagger validation and
 		// is then rejected by the datapath unless the rule is UDP:
 		//   400 {"result":"non-udp-n3-args error"}

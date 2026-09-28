@@ -84,9 +84,12 @@ test.describe('@gw SNI Certificates page CRUD', () => {
 		await showAllRows(page);
 	});
 
-	test('C-min: register a bare hostname — payload carries no client-side keys', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/Failed to load resource/);
-		consoleGuard.allow(/status of 4\d\d/);
+	test('C-min: register a bare hostname — payload carries no client-side keys', async ({page}) => {
+		// No allowance. This page makes two requests, the list read and the
+		// register POST on /sni/certificates. The gateway answers the register
+		// with 200 on every generation — a cert failure arrives INSIDE the 200
+		// body (V-soft-fail asserts the status) — and a failed list read is a
+		// defect the page must show. Neither is noise.
 
 		await openAddDialog(page);
 		await field(page, 'Hostname').fill('e2e-sni.example.com');
@@ -122,9 +125,8 @@ test.describe('@gw SNI Certificates page CRUD', () => {
 		}
 	});
 
-	test('C-full: hostname + explicit certPath both land in the POST body', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/Failed to load resource/);
-		consoleGuard.allow(/status of 4\d\d/);
+	test('C-full: hostname + explicit certPath both land in the POST body', async ({page}) => {
+		// No allowance — see C-min.
 
 		await openAddDialog(page);
 		await field(page, 'Hostname').fill('e2e-sni-full.example.com');
@@ -142,9 +144,8 @@ test.describe('@gw SNI Certificates page CRUD', () => {
 		await dismissResult(page, ok);
 	});
 
-	test('V-soft-fail: the UI verdict tracks the result body, not the HTTP status', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/Failed to load resource/);
-		consoleGuard.allow(/status of 4\d\d/);
+	test('V-soft-fail: the UI verdict tracks the result body, not the HTTP status', async ({page}) => {
+		// No allowance — see C-min.
 
 		// A certPath that cannot exist. Gateway generations differ here: older
 		// builds load the cert eagerly and answer HTTP 200 with
