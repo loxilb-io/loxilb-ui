@@ -312,9 +312,11 @@ export async function query_get_ratelimit_defaults(instance: IInstance, rule_ide
 	};
 
 	const globalResp = await read('global');
-	// ⚠️ The store state is taken from the GLOBAL read alone. The rule read is
-	// optional and its absence is routine, so letting it downgrade the state
-	// would report an outage on a gateway that simply has no per-rule row.
+	// ⚠️⚠️ A 200 whose body could not be read (`parse_failed`) is a failed read.
+	// It carries no row and no store code, so `unknown` is the only honest
+	// state; reading it as `readable` with no row would claim that no defaults
+	// are configured.
+	if (globalResp.parse_failed) return {storeState: 'unknown', global: null, rule: null};
 	if (globalResp.code !== 200 && globalResp.code !== 404) {
 		const body = globalResp.data as {result?: string; message?: string} | undefined;
 		return {storeState: storeStateFromError(globalResp.code, body?.result ?? body?.message), global: null, rule: null};
@@ -324,6 +326,14 @@ export async function query_get_ratelimit_defaults(instance: IInstance, rule_ide
 	let ruleRow: IRateLimitDefaultsEntry | null = null;
 	if (rule_ident) {
 		const ruleResp = await read('rule', rule_ident);
+		// ⚠️ A MISSING rule row (404) is routine and must not downgrade the state
+		// the global read established — that would report an outage on a
+		// gateway that simply has no per-rule row. A FAILED rule read is
+		// different: it says nothing about whether the row exists, so the
+		// ladder as a whole cannot be known.
+		if (ruleResp.parse_failed || (ruleResp.code !== 200 && ruleResp.code !== 404)) {
+			return {storeState: 'unknown', global: globalRow, rule: null};
+		}
 		if (ruleResp.code === 200) ruleRow = (ruleResp.data as IRateLimitDefaultsEntry | undefined) ?? null;
 	}
 	return {storeState: 'readable', global: globalRow, rule: ruleRow};

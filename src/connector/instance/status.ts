@@ -104,7 +104,11 @@ export async function query_get_capability_status(instance: IInstance): Promise<
 		assertOk(resp, 'Get Capability Status');
 		// `capabilities` is required and non-null upstream ("a null here would
 		// make a client distinguish 'no capabilities gated' from a malformed
-		// body"); defaulting to [] keeps a truncated body from throwing.
+		// body"), so a readable body without it is still read as "none listed".
+		// ⚠️ A body that could not be read at all no longer reaches this line:
+		// assertOk throws on `parse_failed`, the query errors, and
+		// `capabilityVerdict` reads `unknown`/`unreadable` — never the
+		// "nothing is gated" that `[]` would claim.
 		return (resp.data?.capabilities ?? []) as ICapabilityStatus[];
 	} catch (error) {
 		if (error instanceof ApiError && error.status === 404) return null;

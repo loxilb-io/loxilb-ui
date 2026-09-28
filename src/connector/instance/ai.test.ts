@@ -175,6 +175,33 @@ describe('query_get_ratelimit_defaults', () => {
 		expect(read.storeState).toBe('readable');
 		expect(read.rule).toBeNull();
 	});
+
+	// ⚠️⚠️ A 200 whose body never arrived (cut off mid-read, or unparseable) is
+	// a FAILED read. Reported as `readable` with no row, the page would state
+	// that no defaults are configured — the one reading this read exists to
+	// keep apart from "could not tell".
+	it('reads a 200 whose body could not be read as unknown, not as no defaults', async () => {
+		get.mockResolvedValue({code: 200, data: null, message: 'OK', parse_failed: true} as never);
+		await expect(query_get_ratelimit_defaults(instance)).resolves.toEqual({
+			storeState: 'unknown', global: null, rule: null,
+		});
+	});
+
+	// ⚠️ Missing (404) is routine for a rule row; FAILING is not. A rule read
+	// that failed says nothing about whether the service has its own row.
+	it.each([
+		['whose body could not be read', {code: 200, data: null, message: 'OK', parse_failed: true}],
+		['that the server failed', {code: 500, data: {result: 'internal error'}, message: 'Internal Server Error'}],
+	])('does not report a rule row read %s as a readable absence', async (_label, ruleResp) => {
+		get.mockImplementation((async (_i: unknown, path: string) => (
+			path.endsWith('/global')
+				? {code: 200, data: {scope: 'global', default_tenant_tpm: 100}, message: 'OK'}
+				: ruleResp
+		)) as never);
+		const read = await query_get_ratelimit_defaults(instance, 'svc-1');
+		expect(read.storeState).toBe('unknown');
+		expect(read.rule).toBeNull();
+	});
 });
 
 //---------------------------------------------------------

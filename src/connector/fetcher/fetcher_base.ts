@@ -44,7 +44,10 @@ export class ApiError extends Error {
 // Common Error Formatting Function
 //---------------------------------------------------------
 export function createDetailedErrorMessage(resp: any, operation: string): string {
-	const primaryMessage = resp.data?.result || resp.data?.message || resp.data?.error || resp.message || 'Unknown error';
+	// A 2xx with an unusable body has only its status text ("OK") to offer.
+	const primaryMessage = resp.parse_failed
+		? 'The response body could not be read'
+		: resp.data?.result || resp.data?.message || resp.data?.error || resp.message || 'Unknown error';
 
 	let message = primaryMessage + '.\n\n';
 	message += `Operation is [${operation}].\n\n`;
@@ -72,7 +75,11 @@ export function createDetailedErrorMessage(resp: any, operation: string): string
 // state and the page can show a "Couldn't load …" banner instead of "No rows"
 // 2xx (incl. 204 no-content) passes through untouched.
 export function assertOk(resp: SimpleResponse, operation: string): void {
-	if (resp.code >= 200 && resp.code < 300) return;
+	// A 2xx whose body could not be used is NOT success: every read maps
+	// `data: null` to "nothing there" (`resp.data?.xAttr ?? []`), so letting
+	// it through turns a failed read into an empty page. The status code is
+	// kept — the server did answer 2xx; it is the body that never arrived.
+	if (resp.code >= 200 && resp.code < 300 && !resp.parse_failed) return;
 	throw new ApiError(createDetailedErrorMessage(resp, operation), resp.code);
 }
 
@@ -304,12 +311,16 @@ async function handle_response<T = any>(response: any): Promise<SimpleResponse<T
 			};
 		}
 	} catch (error) {
-		// The body stream itself could not be read — keep the legacy shape.
+		// The body stream itself could not be read (cut off mid-transfer, e.g.
+		// a reload aborting it after the headers arrived). For the caller that
+		// is the same as a body that would not parse: flag it, or it reads as
+		// an empty success.
 		return {
 			code: response.status,
 			data: null,
 			message: response.statusText,
-			headers: response.headers
+			headers: response.headers,
+			parse_failed: true
 		};
 	}
 }
