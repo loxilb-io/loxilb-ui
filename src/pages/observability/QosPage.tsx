@@ -17,6 +17,7 @@ import {classifyViewState} from 'components/observability/observabilityState';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
 import {useQOSPolicies} from 'hooks/query/queryHooks';
+import {absenceReading} from 'observability/familyActivation';
 import {policerAttachment} from 'observability/policerAttachment';
 import {useCallback, useMemo} from 'react';
 import {useTranslation} from 'react-i18next';
@@ -47,19 +48,23 @@ export const QOS_SERVICE_LABELS = ['vip', 'port', 'proto', 'direction'] as const
 
 export type QosPresence = 'no-families' | 'no-shaped-service' | 'shaped';
 
-// Presence classification for the custom collectors. Zero samples across all
-// eight declared families means no service is currently shaped; families
-// absent from the scrape entirely is a different (older-build) situation the
-// generic no-data state covers.
+// Presence classification for the custom collectors.
+//
+// ⚠️ An unshaped gateway does NOT declare these families empty. The shaper is
+// a custom collector that emits nothing until a service is shaped, and the
+// text exposition writes no HELP/TYPE line for a family with no samples — so
+// "no shaped service" arrives as the families being ABSENT. Classifying on a
+// declared-but-empty family made the no-shaped-service note unreachable.
+// Absence is read from the manifest instead: while it describes every QoS
+// family as lazy with no precondition, an absent family is one no shaped
+// service has written yet. A declared-but-empty family (a parser that ever
+// preserves one) still means the same thing.
 export function classifyQosPresence(snapshot: IMetricsSnapshot): QosPresence {
-	let declared = 0;
 	for (const name of QOS_FAMILIES) {
-		const family = snapshot.families.get(name);
-		if (!family) continue;
-		declared++;
-		if (family.samples.length > 0) return 'shaped';
+		if ((snapshot.families.get(name)?.samples.length ?? 0) > 0) return 'shaped';
 	}
-	return declared > 0 ? 'no-shaped-service' : 'no-families';
+	const unexplained = QOS_FAMILIES.some(name => !snapshot.families.get(name) && absenceReading(name).kind !== 'until-used');
+	return unexplained ? 'no-families' : 'no-shaped-service';
 }
 
 export default function QosPage() {
@@ -198,7 +203,7 @@ export default function QosPage() {
 				) : presence === 'no-shaped-service' ? (
 					<PanelPaper title={t('Traffic shaping')}>
 						<Typography variant="body2" color="text.secondary">
-							{t('No service is currently shaped. The QoS collectors are present but emit nothing until a rate limit is configured on a service.')}
+							{t('No service is currently shaped. The QoS collectors report nothing until a rate limit is configured on a service.')}
 						</Typography>
 					</PanelPaper>
 				) : null}

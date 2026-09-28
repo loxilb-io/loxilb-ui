@@ -137,3 +137,30 @@ describe('AITrafficPage — partitioned gateway', () => {
 		expect(screen.getByText('No traffic')).toBeTruthy();
 	});
 });
+
+// ⭐ The defect this pins: the denial, token and session counters are labelled
+// vecs that emit nothing until their first increment, and each needs
+// configuration first (an API-key store, a token quota, a session header).
+// On an idle gateway they are absent for the life of the process, and every
+// such row printed "Warming up…" — a transient state that never ended.
+describe('AITrafficPage — families an idle gateway never exports', () => {
+	const rowText = (label: string) => screen.getByText(label).parentElement?.textContent ?? '';
+
+	it('says nothing was reported instead of warming up forever', () => {
+		renderWith([snapshotOf(PARTITIONED(100, 5, 10), T0), snapshotOf(PARTITIONED(200, 105, 20), T0 + 10_000)]);
+		for (const label of ['Model not allowed', 'Token quota denied', 'Normal session hits']) {
+			expect(rowText(label)).toContain('None reported');
+			expect(rowText(label)).not.toContain('Warming up…');
+		}
+	});
+
+	it('keeps the token-consumed quantity on screen when its family is absent', () => {
+		renderWith([snapshotOf(PARTITIONED(100, 5, 10), T0), snapshotOf(PARTITIONED(200, 105, 20), T0 + 10_000)]);
+		expect(rowText('Consumed')).toContain('None reported');
+	});
+
+	it('never counts engines it was not told about as zero', () => {
+		renderWith([snapshotOf(PARTITIONED(100, 5, 10), T0), snapshotOf(PARTITIONED(200, 105, 20), T0 + 10_000)]);
+		expect(rowText('Engines reporting')).toContain('None reported');
+	});
+});

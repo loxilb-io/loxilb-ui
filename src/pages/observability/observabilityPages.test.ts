@@ -17,9 +17,16 @@ function snapshotOf(text: string): IMetricsSnapshot {
 }
 
 describe('classifyQosPresence', () => {
-	// The shaper's collectors are declared with TYPE lines but emit no
-	// samples until a service is shaped — that build state must read as the
-	// deliberate no-shaped-service message, never as a data failure.
+	// ⭐ The defect this pins: an unshaped gateway's scrape carries NO QoS
+	// family at all — the shaper's custom collector emits nothing, and the
+	// exposition writes no HELP/TYPE for a family with no samples. The live
+	// gateway proves it. The old rule waited for declared-but-empty families
+	// that never arrive, so the no-shaped-service note could never render.
+	it('an unshaped gateway (every QoS family absent) classifies as no-shaped-service', () => {
+		expect(classifyQosPresence(snapshotOf('loxilb_ai_requests_total 5'))).toBe('no-shaped-service');
+	});
+
+	// Kept for a parser that ever preserves an empty family: it means the same.
 	it('declared-but-empty families classify as no-shaped-service', () => {
 		const text = QOS_FAMILIES.map(f => `# TYPE ${f} counter`).join('\n');
 		expect(classifyQosPresence(snapshotOf(text))).toBe('no-shaped-service');
@@ -33,11 +40,9 @@ describe('classifyQosPresence', () => {
 		expect(classifyQosPresence(snapshotOf(text))).toBe('shaped');
 	});
 
-	// A scrape with no QoS family at all (an older gateway build) is a
-	// different situation: the page falls through to the generic no-data
-	// state instead of claiming there is no shaped service.
-	it('a scrape without any QoS family classifies as no-families', () => {
-		expect(classifyQosPresence(snapshotOf('loxilb_ai_requests_total 5'))).toBe('no-families');
+	it('a partially present shaper still reads as unshaped until a sample appears', () => {
+		const text = `# TYPE ${QOS_FAMILIES[0]} counter`;
+		expect(classifyQosPresence(snapshotOf(text))).toBe('no-shaped-service');
 	});
 });
 

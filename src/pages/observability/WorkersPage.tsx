@@ -65,7 +65,8 @@ export default function WorkersPage() {
 						<PanelPaper title={t('GPU monitoring status')}>
 							<StatRow label={t('Enabled')} value={status?.enabled === true ? t('Yes') : t('No')} />
 							<StatRow label={t('Routing mode')} value={status?.routing_mode ?? t('N/A')} />
-							<StatRow label={t('Workers tracked')} value={status?.worker_count ?? t('N/A')} />
+							{/* `worker_count` is omitempty on the gateway: omitted IS zero. */}
+							<StatRow label={t('Workers tracked')} value={status ? (status.worker_count ?? 0) : t('N/A')} />
 							<StatRow label={t('eBPF maps loaded')} value={status?.ebpf_map_loaded === true ? t('Yes') : t('No')} />
 							<StatRow
 								label={t('Last metrics update')}

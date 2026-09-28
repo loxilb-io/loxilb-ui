@@ -12,6 +12,8 @@
 // on 10-second boundaries, and display ticks in between must not synthesize
 // intermediate values.
 
+import type {AbsenceReading} from './familyActivation';
+
 export interface ICounterPoint {
 	value: number;
 	receivedAtMs: number;
@@ -23,7 +25,13 @@ export type RateResult =
 	| {kind: 'invalid-sample'}   // non-finite counter value
 	| {kind: 'invalid-interval'} // reversed or zero elapsed time
 	| {kind: 'reset'}            // counter decreased — restart, not negative traffic
-	| {kind: 'gap'};             // elapsed time beyond tolerance (hidden tab, missed polls)
+	| {kind: 'gap'}              // elapsed time beyond tolerance (hidden tab, missed polls)
+	// The family is not in a healthy exposition at all. A steady state, not a
+	// transient one: a labelled counter vec emits nothing until its first
+	// increment, so on an idle gateway it stays absent for the life of the
+	// process. `reading` is the manifest's account of why (see
+	// familyActivation.ts), and is all a widget may claim about it.
+	| {kind: 'absent'; reading: AbsenceReading};
 
 export function computeCounterRate(
 	previous: ICounterPoint | undefined,
@@ -70,11 +78,15 @@ export function pushRetained<T extends {receivedAtMs: number}>(ring: readonly T[
 export type RatioResult =
 	| {kind: 'ok'; ratio: number}
 	| {kind: 'no-traffic'}
-	| {kind: 'not-derivable'; reason: Exclude<RateResult['kind'], 'ok'>};
+	| {kind: 'not-derivable'; reason: Exclude<RateResult['kind'], 'ok'>; reading?: AbsenceReading};
+
+function notDerivable(rate: Exclude<RateResult, {kind: 'ok'}>): RatioResult {
+	return rate.kind === 'absent' ? {kind: 'not-derivable', reason: 'absent', reading: rate.reading} : {kind: 'not-derivable', reason: rate.kind};
+}
 
 export function ratioOf(numerator: RateResult, denominator: RateResult): RatioResult {
-	if (numerator.kind !== 'ok') return {kind: 'not-derivable', reason: numerator.kind};
-	if (denominator.kind !== 'ok') return {kind: 'not-derivable', reason: denominator.kind};
+	if (numerator.kind !== 'ok') return notDerivable(numerator);
+	if (denominator.kind !== 'ok') return notDerivable(denominator);
 	if (denominator.perSecond <= 0) return {kind: 'no-traffic'};
 	// Deliberately unclamped. The numerator selects a subset of the
 	// denominator's samples, so > 1 is arithmetically impossible; if it ever
