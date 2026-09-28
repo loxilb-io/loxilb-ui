@@ -15,7 +15,7 @@
 //---------------------------------------------------------
 import {AxeBuilder} from '@axe-core/playwright';
 import {expect, test} from '../fixtures';
-import {activeInstance} from '../helpers/api';
+import {activeInstance, BGP_DISABLED, DEAD_INSTANCE_PROBE} from '../helpers/api';
 import {openToolbarDialog} from '../helpers/dialogs';
 
 // Burned down 2026-09-08: aria-prohibited-attr, button-name, image-alt,
@@ -63,9 +63,9 @@ test.describe('axe route pass (unauthenticated)', () => {
 
 test.describe('axe route pass', () => {
 	test('instance list', async ({page, consoleGuard}) => {
-		// The testbed OAM's registration list includes dead instances whose
-		// status probes 502 — ambient environment state, not an app defect.
-		consoleGuard.allow(/Failed to load resource.*502/);
+		// The instance list health-probes every registered instance; which are
+		// dead is testbed state, not an app defect.
+		for (const a of DEAD_INSTANCE_PROBE) consoleGuard.allowRequest(a);
 		await page.goto('instance');
 		await page.waitForLoadState('networkidle');
 		await expectNoNewViolations(page);
@@ -90,10 +90,7 @@ test.describe('axe route pass', () => {
 	// Observability surface (UI-MON-015): each page renders live panels fed
 	// by the shared snapshot; the axe pass must see them with data mounted.
 	for (const route of ['ai', 'workers', 'pdkv', 'security', 'qos', 'persistence']) {
-		test(`observability ${route}`, async ({page, consoleGuard}) => {
-			// A testbed gateway older than the vendored contract 404s
-			// /diagnostics; the page degrades in-page (see viewports.spec.ts).
-			if (route === 'persistence') consoleGuard.allow(/Failed to load resource.*404/);
+		test(`observability ${route}`, async ({page}) => {
 			const inst = await activeInstance();
 			await page.goto(`instance/observability/${route}?name=${encodeURIComponent(inst.name)}`);
 			await page.waitForLoadState('load');
@@ -118,13 +115,13 @@ test.describe('axe route pass', () => {
 // the page's h2, a dialog title that stopped being a heading at all.
 const HEADING_RULES = ['page-has-heading-one', 'heading-order', 'empty-heading'];
 
-// This sweep visits pages the rest of the suite never loads, so it meets every
-// way the testbed is narrower than the contract: a gateway with no BGP
-// configured answers its policy reads 403, /diagnostics is 404 on one older
-// than the vendored spec, an unreachable box 502s. Those are environment, not
-// app defects — and a page that degraded on a failed read still owes the
-// visitor a sane heading outline, which is the only thing asserted here.
-const ROUTE_NOISE = /Failed to load resource.*(40[34]|50[023])/;
+// This sweep visits pages the rest of the suite never loads, so it meets the
+// ways the testbed is narrower than the contract: the instance list probes
+// every registered instance (some are dead), and a gateway with BGP disabled
+// answers every BGP read 403. Those are environment, not app defects — and a
+// page that degraded on a failed read still owes the visitor a sane heading
+// outline, which is the only thing asserted here. Any OTHER failed read is a
+// finding.
 
 // ⚠️ `ready` is a parameter because the modal case has no `main` to wait for:
 // MUI marks the rest of the document aria-hidden while a dialog is open, so the
@@ -143,7 +140,7 @@ test.describe('heading outline', () => {
 	// Routes outside an instance take no ?name=.
 	for (const route of ['instance', 'system', 'user']) {
 		test(`/${route}`, async ({page, consoleGuard}) => {
-			consoleGuard.allow(ROUTE_NOISE);
+			if (route === 'instance') for (const a of DEAD_INSTANCE_PROBE) consoleGuard.allowRequest(a);
 			await page.goto(route);
 			await page.waitForLoadState('networkidle');
 			await expectSaneOutline(page);
@@ -174,7 +171,7 @@ test.describe('heading outline', () => {
 	];
 	for (const route of INSTANCE_ROUTES) {
 		test(`/instance/${route}`, async ({page, consoleGuard}) => {
-			consoleGuard.allow(ROUTE_NOISE);
+			if (route.startsWith('network/bgp/')) consoleGuard.allowRequest(BGP_DISABLED);
 			const inst = await activeInstance();
 			await page.goto(`instance/${route}?name=${encodeURIComponent(inst.name)}`);
 			await page.waitForLoadState('load');

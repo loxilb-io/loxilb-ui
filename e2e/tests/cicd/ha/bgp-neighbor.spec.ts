@@ -20,7 +20,7 @@
 //---------------------------------------------------------
 import {Page} from '@playwright/test';
 import {ConsoleGuard, expect, test} from '../../../fixtures';
-import {activeInstance, sweepFirewallRules, sweepLbRules, sweepNeighbors} from '../../../helpers/api';
+import {activeInstance, BGP_DISABLED, sweepFirewallRules, sweepLbRules, sweepNeighbors} from '../../../helpers/api';
 import {dialog, dialogButton, expectErrorAndDismiss, openToolbarDialog} from '../../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../../helpers/form';
 import {grid, toolbarButton} from '../../../helpers/table';
@@ -49,10 +49,9 @@ const REMOTE_AS = '64512';
 
 // The disabled-BGP 403 (and its failed-fetch console line) are expected here.
 function allowBgpDisabled(guard: ConsoleGuard): void {
-	guard.allow(/Failed to load resource/i);
+	guard.allowRequest(BGP_DISABLED);
 	guard.allow(/BGP mode is disabled/i);
 	guard.allow(/Capacity insufficient/i);
-	guard.allow(/403/);
 }
 
 async function gotoBgp(page: Page, path: string): Promise<void> {

@@ -33,10 +33,10 @@ test.describe('@gw cicd/ai-apikey — AI API-key management contract', () => {
 		expect([200, 401, 403, 503], 'response must identify management auth/RBAC/store readiness').toContain(resp.status);
 	});
 
-	test('C → one-time raw_key; D (needs management/store readiness)', async ({page, consoleGuard}) => {
+	test('C → one-time raw_key; D (needs management/store readiness)', async ({page}) => {
 		test.skip(!readiness.ready, readiness.reason);
+		// No allowance: on a ready gateway nothing this test does fails.
 
-		consoleGuard.allow(/Failed to load resource/i);
 		await page.goto(`instance/ai/apikey?name=${instName}`); // relative — baseURL carries /netlox
 		await expect(toolbarButton(page, 'Add')).toBeVisible({timeout: 20_000});
 

@@ -11,14 +11,13 @@
 //---------------------------------------------------------
 import {ConsoleGuard, expect, test} from '../../fixtures';
 import {Page} from '@playwright/test';
-import {activeInstance} from '../../helpers/api';
+import {activeInstance, BGP_DISABLED} from '../../helpers/api';
 
 // The disabled-BGP 403 (and its failed-fetch console line) are expected here.
 function allowBgpDisabled(guard: ConsoleGuard): void {
-	guard.allow(/Failed to load resource/i);
+	guard.allowRequest(BGP_DISABLED);
 	guard.allow(/BGP mode is disabled/i);
 	guard.allow(/Capacity insufficient/i);
-	guard.allow(/403/);
 }
 
 let instName: string;
