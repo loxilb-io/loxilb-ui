@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {describe, expect, it} from 'vitest';
 import YAML from 'yaml';
+import {FC_FIELDS, FC_NUMERIC_MAX, READ_ONLY_SERVICE_ARGUMENTS} from 'types/ai_gateway';
 
 // Backward-compatibility contract between this UI and the vendored backend
 // specs (api-spec/*). When a new loxilb-inference-gateway or oam-loxilb
@@ -220,10 +221,23 @@ describe('gateway spec contract — models the UI depends on', () => {
 		expect(description).not.toMatch(/\bfc_/);
 	});
 
-	it('fc_effective is the only readOnly serviceArguments field', () => {
+	// The serializer never sends these. A new readOnly field fails here until it
+	// is added to READ_ONLY_SERVICE_ARGUMENTS, instead of being posted back.
+	it('READ_ONLY_SERVICE_ARGUMENTS is exactly the spec readOnly serviceArguments', () => {
 		const serviceArguments = gateway.definitions.LoadbalanceEntry.properties.serviceArguments.properties;
 		const readOnly = Object.entries<any>(serviceArguments).filter(([, schema]) => schema.readOnly).map(([name]) => name);
-		expect(readOnly).toEqual(['fc_effective']);
+		expect([...READ_ONLY_SERVICE_ARGUMENTS].sort()).toEqual(readOnly.sort());
+	});
+
+	// The admission form and serializer know these fields by name. A new fc_*
+	// field fails here until it is handled (a bound, a P/D-only flag, a control).
+	it('FC_FIELDS is exactly the spec writable fc_* serviceArguments', () => {
+		const serviceArguments = gateway.definitions.LoadbalanceEntry.properties.serviceArguments.properties;
+		const writable = Object.entries<any>(serviceArguments).filter(([name, schema]) => name.startsWith('fc_') && !schema.readOnly).map(([name]) => name);
+		expect([...FC_FIELDS].sort()).toEqual(writable.sort());
+		for (const [name, max] of Object.entries(FC_NUMERIC_MAX)) {
+			expect(serviceArguments[name].maximum, `${name} maximum`).toBe(max);
+		}
 	});
 });
 

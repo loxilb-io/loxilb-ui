@@ -79,6 +79,20 @@ describe('lbServiceArgumentsPatch', () => {
 		expect(lbServiceArgumentsPatch({...readBack, mtls_frontend: required}, readBack)).toEqual({mtls_frontend: required});
 	});
 
+	// A mode-4 edit that keeps the key is blocked, and the block message names
+	// every changed field from this diff — so an fc_* change must appear in it,
+	// and the read-back's fc_effective (live counters) must not.
+	it('names an admission change on a fullproxy rule, and never the read-only fc_effective', () => {
+		const ai = {...readBack, mode: 4, sse_mode: true, fc_mode: 'observe', fc_max_outstanding: 64};
+		expect(lbServiceArgumentsPatch({...ai, fc_effective: {...readBack.fc_effective}, fc_max_outstanding: 32}, ai)).toEqual({fc_max_outstanding: 32});
+		expect(selectLBEditStrategy({keyChanged: false, hasCompositeKey: true, mode: 4, canMergePatch: true})).toBe('block-fullproxy');
+	});
+
+	it('does not count a cleared admission field over an absent read-back as a change', () => {
+		const ai = {...readBack, mode: 4, sse_mode: true};
+		expect(lbServiceArgumentsPatch({...ai, fc_max_outstanding: undefined, fc_mode: undefined}, ai)).toEqual({});
+	});
+
 	it('sends a form default when the read-back holds a different value', () => {
 		expect(lbServiceArgumentsPatch({...readBack, probeTimeout: 1800}, {...readBack, probeTimeout: 60})).toEqual({probeTimeout: 1800});
 	});

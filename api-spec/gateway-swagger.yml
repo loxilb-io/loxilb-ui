@@ -10530,6 +10530,25 @@ definitions:
               response's first byte comes with the whole completion. 0 or omitted
               leaves the process default (LLB_FC_TTFT_TARGET_MS, else TTFT unused)
               in force. Replace and null semantics as fc_max_outstanding.
+          fc_tenant_max_share_pct:
+            type: integer
+            format: int32
+            x-nullable: false
+            minimum: 0
+            maximum: 100
+            default: 0
+            description: >-
+              The most of the service ceiling in force, and of the queue depth,
+              one tenant may hold, in percent (rounded up, at least one). A tenant
+              is the tenant id the request's credential resolved to; requests
+              without one are one tenant. A tenant at its share waits for one of
+              its own units when the pool queues (within its share of the queue),
+              or is refused with 429 admission_tenant_share, while other tenants
+              still admit; waiters held back by their share never make another
+              tenant wait. Inert without fc_max_outstanding. 100 is no share; 0 or
+              omitted leaves the process default (LLB_FC_TENANT_MAX_SHARE_PCT,
+              else no share) in force. Replace and null semantics as
+              fc_max_outstanding.
           fc_effective:
             type: object
             readOnly: true
@@ -10621,6 +10640,14 @@ definitions:
                 type: integer
                 format: int32
                 description: Endpoints inside their warm-up window.
+              tenant_max_share_pct:
+                type: integer
+                format: int32
+                description: The tenant share in force, in percent; 0 or 100 is no share.
+              tenants_active:
+                type: integer
+                format: int32
+                description: Tenants holding a unit or waiting on the pool now, while it holds tenants to a share.
               source:
                 type: object
                 description: >-
@@ -10659,6 +10686,9 @@ definitions:
                     type: string
                     enum: [rule, env, default]
                   ttft_target_ms:
+                    type: string
+                    enum: [rule, env, default]
+                  tenant_max_share_pct:
                     type: string
                     enum: [rule, env, default]
           kvExactMode:
