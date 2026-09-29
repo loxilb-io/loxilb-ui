@@ -170,3 +170,35 @@ describe('PersistencePage — auto_persist sent only while failing', () => {
 		expect(valueOf('Auto-persist last error')).toBe('disk full');
 	});
 });
+
+// `succeeded` is set only for a fully applied snapshot restore. With no
+// snapshot found nothing was restored and nothing failed, yet the row read
+// "Boot restore succeeded: No".
+describe('PersistencePage — boot with no snapshot', () => {
+	const boot = (b: Record<string, unknown>) => ({receivedAtMs: T0, data: {ready: true, maintenance_state: 'active', uptime_seconds: 1, version: 'v', boot: {profile: 'strict', legacy_fallback: false, degraded: false, ...b}}});
+
+	it('says there was nothing to restore instead of reporting a failure', () => {
+		state.history = [snapshotOf('loxilb_config_dirty 0', T0)];
+		state.diagnostics = boot({snapshot_found: false, succeeded: false});
+		renderPage(<PersistencePage />);
+		expect(valueOf('Boot restore succeeded')).toBe('Nothing to restore');
+	});
+
+	it('still reports a failed restore of a snapshot that was found', () => {
+		state.history = [snapshotOf('loxilb_config_dirty 0', T0)];
+		state.diagnostics = boot({snapshot_found: true, succeeded: false, degraded: true});
+		renderPage(<PersistencePage />);
+		expect(valueOf('Boot restore succeeded')).toBe('No');
+	});
+});
+
+// loxilb_pd_kv_blocks is "KV cache blocks currently stored": occupancy. Titled
+// "capacity", a live 4 read as a tiny cache limit.
+describe('PdKvPage — KV blocks are occupancy', () => {
+	it('does not call blocks stored a capacity', () => {
+		state.history = [snapshotOf('loxilb_pd_kv_blocks{service="s",ep_idx="0"} 4', T0)];
+		renderPage(<PdKvPage />);
+		expect(screen.getByText('KV blocks stored by endpoint (strict join)')).toBeTruthy();
+		expect(screen.queryByText(/capacity/i)).toBeNull();
+	});
+});

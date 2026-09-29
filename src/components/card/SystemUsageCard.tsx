@@ -9,7 +9,7 @@ import {t} from 'i18next';
 import {useMemo} from 'react';
 import {IInstance} from 'types/oam';
 import {IPieChartData} from 'types/global';
-import {derive_cpu_usage, derive_disk_usage, derive_memory_usage, IDerivedUsage} from 'utils/systemUsage';
+import {cpu_usage_from_metrics, derive_cpu_usage, derive_disk_usage, derive_memory_usage, IDerivedUsage} from 'utils/systemUsage';
 import CardBase from './CardBase';
 import MetricScrapeState from './MetricScrapeState';
 
@@ -50,9 +50,10 @@ export default function SystemUsageCard(props: {instance: IInstance | null}) {
 	};
 
 	// Two possible sources per figure, in preference order:
-	//   1. the `loxilb_system_*_utilization_percent` Prometheus gauge, which
-	//      measures the whole system directly — but which upstream loxilb does
-	//      not publish at all;
+	//   1. the Prometheus gauges, which measure directly — but which upstream
+	//      loxilb does not publish at all. For CPU the whole-machine gauge is
+	//      preferred: the `loxilb_system_*` one is only loxilb's container
+	//      share when containerized (see `cpu_usage_from_metrics`);
 	//   2. the /status/* endpoints (top, df) that both backends serve and this
 	//      card already fetches for the System Information block.
 	// Falling back to (2) is what puts real numbers on a loxilb dashboard. The
@@ -65,7 +66,9 @@ export default function SystemUsageCard(props: {instance: IInstance | null}) {
 
 		const metrics = liveMetrics?.critical;
 		return {
-			cpu: fromMetric(metrics?.loxilb_system_cpu_utilization_percent) ?? derive_cpu_usage(processAttr),
+			cpu:
+				cpu_usage_from_metrics(metrics?.loxilb_host_cpu_utilization_percent, metrics?.loxilb_system_cpu_utilization_percent) ??
+				derive_cpu_usage(processAttr),
 			memory: fromMetric(metrics?.loxilb_system_memory_utilization_percent) ?? derive_memory_usage(processAttr),
 			disk: fromMetric(metrics?.loxilb_system_disk_utilization_percent) ?? derive_disk_usage(filesystemAttr),
 		};
@@ -85,7 +88,9 @@ export default function SystemUsageCard(props: {instance: IInstance | null}) {
 						<Typography variant="caption" color="text.secondary" textAlign="center">
 							{derived.source === 'df'
 								? t('From df ({{mount}})', {mount: derived.detail ?? '/'})
-								: t('From top ({{processes}} processes)', {processes: derived.detail ?? '0'})}
+								: derived.source === 'metrics-loxilb-scope'
+									? t('loxilb’s own share (its container’s allowance when containerized)')
+									: t('From top ({{processes}} processes)', {processes: derived.detail ?? '0'})}
 						</Typography>
 					)}
 				</Box>

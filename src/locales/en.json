@@ -801,8 +801,8 @@
 	"IP filter": "IP filter",
 	"KV Exact Enforcement": "KV Exact Enforcement",
 	"KV attestation": "KV attestation",
-	"KV block capacity by endpoint (strict join)": "KV block capacity by endpoint (strict join)",
-	"KV blocks": "KV blocks",
+	"KV blocks stored by endpoint (strict join)": "KV blocks stored by endpoint (strict join)",
+	"KV blocks stored": "KV blocks stored",
 	"KV cache used": "KV cache used",
 	"KV subscriber freshness": "KV subscriber freshness",
 	"L4 errors": "L4 errors",
@@ -1207,5 +1207,9 @@
 	"None since start": "None since start",
 	"Missing": "Missing",
 	"Not available": "Not available",
-	"Consumed": "Consumed"
+	"Consumed": "Consumed",
+	"Nothing to restore": "Nothing to restore",
+	"loxilb’s own share (its container’s allowance when containerized)": "loxilb’s own share (its container’s allowance when containerized)",
+	"The QoS policy list could not be read, so the metric is the only source for this policer.": "The QoS policy list could not be read, so the metric is the only source for this policer.",
+	"Hosts without an active health probe count as healthy.": "Hosts without an active health probe count as healthy."
 }

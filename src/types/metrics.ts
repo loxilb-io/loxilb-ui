@@ -203,7 +203,8 @@ export interface ITypedLiveMetricsResponse {
 		loxilb_unhealthy_endpoints?: number;
 
 		// System utilization (percent)
-		loxilb_system_cpu_utilization_percent?: number;
+		loxilb_system_cpu_utilization_percent?: number; // loxilb's scope: its container's CPU allowance when containerized
+		loxilb_host_cpu_utilization_percent?: number; // the whole machine, processes outside the container included
 		loxilb_system_memory_utilization_percent?: number;
 		loxilb_system_disk_utilization_percent?: number;
 	};

@@ -1,7 +1,7 @@
 import {describe, expect, it} from 'vitest';
 import {IFilesystemAttribute} from 'types/filesystem';
 import {IProcessAttribute} from 'types/process';
-import {derive_cpu_usage, derive_disk_usage, derive_memory_usage} from './systemUsage';
+import {cpu_usage_from_metrics, derive_cpu_usage, derive_disk_usage, derive_memory_usage} from './systemUsage';
 
 // Fixtures are the real payloads from the live loxilb testbed (v0.9.8-dev),
 // including its quirks: a process row with no CPUUsage/MemoryUsage at all, and
@@ -81,5 +81,24 @@ describe('derive_disk_usage', () => {
 		expect(derive_disk_usage([])).toBeUndefined();
 		expect(derive_disk_usage(undefined)).toBeUndefined();
 		expect(derive_disk_usage([{mountedOn: '/', usePercent: '-'}] as IFilesystemAttribute[])).toBeUndefined();
+	});
+});
+
+// loxilb_system_cpu_utilization_percent is loxilb's own scope — its
+// container's share of its allowance when containerized — not the machine.
+// Live: 1.1% beside a 28% host, under a card titled "System Usage".
+describe('cpu_usage_from_metrics', () => {
+	it('prefers the whole-machine gauge', () => {
+		expect(cpu_usage_from_metrics(28, 1.1)).toEqual({percent: 28, source: 'metrics'});
+	});
+
+	it('falls back to the scope gauge, tagged as loxilb’s own share', () => {
+		expect(cpu_usage_from_metrics(undefined, 1.1)).toEqual({percent: 1.1, source: 'metrics-loxilb-scope'});
+		expect(cpu_usage_from_metrics(Number.NaN, 1.1)).toEqual({percent: 1.1, source: 'metrics-loxilb-scope'});
+	});
+
+	it('reports nothing when neither gauge is finite', () => {
+		expect(cpu_usage_from_metrics(undefined, undefined)).toBeUndefined();
+		expect(cpu_usage_from_metrics(undefined, Number.NaN)).toBeUndefined();
 	});
 });

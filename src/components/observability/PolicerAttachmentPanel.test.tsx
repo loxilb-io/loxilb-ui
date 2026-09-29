@@ -16,7 +16,8 @@ import 'locales/i18n';
 import i18n from 'locales/i18n';
 import {afterEach, beforeEach, describe, expect, it} from 'vitest';
 import {cleanup, render, screen} from '@testing-library/react';
-import {IPolicerAttachmentRow, PolicerAttachmentReport} from 'observability/policerAttachment';
+import {IPolicerAttachmentRow, POLICER_ATTACHED, PolicerAttachmentReport, policerAttachment} from 'observability/policerAttachment';
+import {parseExposition} from 'observability/parser';
 import PolicerAttachmentPanel from './PolicerAttachmentPanel';
 
 const row = (ident: string, over: Partial<IPolicerAttachmentRow> = {}): IPolicerAttachmentRow => ({
@@ -116,7 +117,7 @@ describe('the finding, and the things that are not it', () => {
 	});
 
 	it('withholds the verdict rather than guessing when the policy list is unavailable', () => {
-		render(<PolicerAttachmentPanel report={ok({verdict: 'unknown-configuration', configured: undefined, rows: [row('p1', {attached: false, corroboration: 'metric-only', listedInRest: false, restAttached: undefined, metricAttached: false})]})} />);
+		render(<PolicerAttachmentPanel report={ok({verdict: 'unknown-configuration', configured: undefined, rows: [row('p1', {attached: false, corroboration: 'metric-only', listedInRest: undefined, restAttached: undefined, metricAttached: false})]})} />);
 		expect(screen.getByText(/policy list is unavailable/i)).toBeTruthy();
 		// The rows the gauge DID report are still shown — the missing half is
 		// the judgement, not the data.
@@ -161,5 +162,20 @@ describe('translated builds', () => {
 		render(<PolicerAttachmentPanel report={ok()} />);
 		expect(screen.getByRole('alert').className).toMatch(/Success/);
 		await i18n.changeLanguage('en');
+	});
+});
+
+// ⚠️ The derivation straight into the panel, with the REST list unread. The
+// row set used to mark every gauge-only policer "Deleted" / "No longer
+// configured" here — asserting a delete when the API was simply not read.
+describe('policy list unavailable', () => {
+	it('does not call a policer deleted because the list was not read', () => {
+		const parsed = parseExposition(`${POLICER_ATTACHED}{ident="p1"} 1`);
+		const snapshot = {instanceId: 1, flavor: 'inference-gateway' as const, receivedAtMs: 1, available: true, families: parsed.families, diagnostics: parsed.diagnostics};
+		render(<PolicerAttachmentPanel report={policerAttachment(snapshot, undefined)} />);
+		expect(screen.getByText('p1')).toBeTruthy();
+		expect(screen.getByText('Metric only')).toBeTruthy();
+		expect(screen.queryByText('Deleted')).toBeNull();
+		expect(screen.queryByText(/No longer configured/i)).toBeNull();
 	});
 });

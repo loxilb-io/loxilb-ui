@@ -12,11 +12,12 @@ import {cleanup, render, screen, within} from '@testing-library/react';
 import SystemUsageCard from './SystemUsageCard';
 
 const status = vi.hoisted(() => ({current: {} as any}));
+const live = vi.hoisted(() => ({current: undefined as any}));
 
 vi.mock('hooks/query/metricsHook', () => ({
 	// Shape-complete on purpose: a mock that omits a field the real hook
 	// returns hides the day a component starts depending on it.
-	useLiveMetrics: () => ({metrics: undefined, isLoading: false, failure: undefined, cadenceMs: 10_000, refetch: vi.fn()}),
+	useLiveMetrics: () => ({metrics: live.current, isLoading: false, failure: undefined, cadenceMs: 10_000, refetch: vi.fn()}),
 }));
 
 vi.mock('hooks/query/statusHook', () => ({
@@ -32,6 +33,7 @@ function renderCard(systemInfo: Record<string, string | undefined> | undefined) 
 
 afterEach(() => {
 	cleanup();
+	live.current = undefined;
 });
 
 describe('System Information block', () => {
@@ -68,5 +70,24 @@ describe('System Information block', () => {
 		renderCard({hostName: '', bootID: '   ', uptime: 'u', OS: 'o', machineID: 'm', kernel: 'k', architecture: 'a'});
 
 		expect(within(infoGrid()).getAllByText('N/A')).toHaveLength(2);
+	});
+});
+
+// The scope gauge is loxilb's container share, not the system: shown bare
+// under "CPU Usage" on a "System Usage" card it read as the machine's load.
+describe('CPU pie source', () => {
+	const metrics = (m: Record<string, number>) => ({timestamp: 1, critical: m, important: m, total_metrics: 1, available: true});
+	const cpuCell = () => screen.getByText('CPU Usage').closest('div')!.parentElement!;
+
+	it('says whose CPU it is when only loxilb’s own scope is exported', () => {
+		live.current = metrics({loxilb_system_cpu_utilization_percent: 1.1});
+		renderCard({});
+		expect(within(cpuCell()).getByText(/loxilb’s own share/)).toBeTruthy();
+	});
+
+	it('shows the whole machine uncaptioned when the host gauge exists', () => {
+		live.current = metrics({loxilb_host_cpu_utilization_percent: 28, loxilb_system_cpu_utilization_percent: 1.1});
+		renderCard({});
+		expect(screen.queryByText(/loxilb’s own share/)).toBeNull();
 	});
 });
