@@ -13,7 +13,7 @@ import {cleanup, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
 import {IMetricsSnapshot} from 'types/observability';
 import {parseExposition} from 'observability/parser';
-import {GwKvExactCard, GwPersistenceCard, GwWorkerFreshnessCard} from './GatewaySummaryCards';
+import {GwAiEventsCard, GwKvExactCard, GwPersistenceCard, GwWorkerFreshnessCard} from './GatewaySummaryCards';
 
 const state = vi.hoisted(() => ({
 	history: [] as IMetricsSnapshot[],
@@ -105,5 +105,33 @@ describe('GwWorkerFreshnessCard — omitempty worker_count', () => {
 		state.gpu = {data: {enabled: true, routing_mode: 'least-kv', worker_count: 3}, receivedAtMs: T0};
 		renderCard(<GwWorkerFreshnessCard instance={INSTANCE} />);
 		expect(rowText('Workers tracked')).toBe('Workers tracked3');
+	});
+});
+
+// Upstream records every token-quota refusal in BOTH rate_limit_hits and
+// token_quota_denied. The card summed the two, so each one counted twice.
+describe('GwAiEventsCard — denial events', () => {
+	const valueOf = (label: string) => screen.getByText(label).nextElementSibling?.textContent;
+	const exposition = (quota: number, rate: number) =>
+		[
+			`loxilb_ai_rate_limit_hits_total{tenant="t",reason="token_quota_exceeded"} ${quota}`,
+			`loxilb_ai_rate_limit_hits_total{tenant="t",reason="rate_limit_exceeded"} ${rate}`,
+			`loxilb_ai_token_quota_denied_total{tenant="t"} ${quota}`,
+			`loxilb_ai_requests_total{model="m",tenant="t",status="200",outcome="completed"} 100`,
+			`loxilb_ai_requests_total{model="m",tenant="t",status="429",outcome="denied"} ${quota + rate}`,
+		].join('\n');
+
+	it('counts each refused request once, not once per family that recorded it', () => {
+		// 5 quota + 3 rate-limit refusals in 10 s = 0.8/s. The old sum read 1.3/s.
+		state.history = [snapshotOf(exposition(10, 20), T0), snapshotOf(exposition(15, 23), T0 + 10_000)];
+		renderCard(<GwAiEventsCard instance={INSTANCE} />);
+		expect(valueOf('Denial events')).toBe('0.800/s');
+	});
+
+	it('is not hidden by a reason family that has never been written', () => {
+		// model_not_allowed absent: before, one absent term replaced the whole total.
+		state.history = [snapshotOf(exposition(10, 20), T0), snapshotOf(exposition(10, 20), T0 + 10_000)];
+		renderCard(<GwAiEventsCard instance={INSTANCE} />);
+		expect(valueOf('Denial events')).toBe('0.000/s');
 	});
 });
