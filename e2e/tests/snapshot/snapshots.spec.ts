@@ -19,11 +19,12 @@ import {
 	deleteSnapshotById,
 	disableSnapshotSchedule,
 	downloadSnapshot,
-	gw,
 	gwJson,
+	gwPersisted,
 	listSnapshots,
 	sweepLbRules,
 	sweepSnapshots,
+	waitForAutoPersistIdle,
 } from '../../helpers/api';
 import {dialog, dialogButton, dialogTitle, openDialog} from '../../helpers/dialogs';
 import {grid, refreshUntilGone, refreshUntilRow} from '../../helpers/table';
@@ -35,6 +36,9 @@ test.beforeAll(async () => {
 	// Leftovers from a FAILED prior run (e.g. an orphaned pinned pre-upgrade
 	// row) would collide with this run's exact-name assertions — sweep first.
 	await sweepSnapshots();
+	// The previous spec file's last config write may still be waiting to be
+	// auto-persisted; a capture landing in that write is refused with 409.
+	await waitForAutoPersistIdle();
 });
 
 test.afterAll(async () => {
@@ -129,15 +133,18 @@ test.describe('@gw Snapshots page (admin)', () => {
 	test('2. full restore wizard happy path → pre_restore row appears, config restored', async ({page}) => {
 		test.slow();
 		// Seed an LB, snapshot it, delete it — the restore must resurrect it.
+		// Each raw write waits for the auto-persist it arms: the gateway holds
+		// the snapshot gate while writing, so a capture or restore — or the
+		// next test's capture — landing in that write is refused with 409.
 		const lb = {
 			serviceArguments: {externalIP: '198.51.100.21', port: 18021, protocol: 'tcp', name: 'e2e-snap-restore-lb'},
 			endpoints: [{endpointIP: '198.51.100.13', targetPort: 18021, weight: 1}],
 		};
-		expect((await gw('POST', '/config/loadbalancer', lb)).ok).toBeTruthy();
+		expect((await gwPersisted('POST', '/config/loadbalancer', lb)).ok).toBeTruthy();
 
 		await openPage(page);
 		await takeSnapshotViaUI(page, 'e2e-spec-restore');
-		expect((await gw('DELETE', '/config/loadbalancer/name/e2e-snap-restore-lb')).ok).toBeTruthy();
+		expect((await gwPersisted('DELETE', '/config/loadbalancer/name/e2e-snap-restore-lb')).ok).toBeTruthy();
 
 		await selectSnapRow(page, 'e2e-spec-restore');
 		await page.getByRole('button', {name: 'Restore…'}).click();
@@ -165,7 +172,7 @@ test.describe('@gw Snapshots page (admin)', () => {
 		await refreshUntilRow(page, /pre-restore-/);
 		const lbs = await gwJson<any>('/config/loadbalancer/all');
 		expect((lbs.lbAttr ?? []).some((r: any) => r.serviceArguments?.name === 'e2e-snap-restore-lb')).toBeTruthy();
-		expect((await gw('DELETE', '/config/loadbalancer/name/e2e-snap-restore-lb')).ok).toBeTruthy();
+		expect((await gwPersisted('DELETE', '/config/loadbalancer/name/e2e-snap-restore-lb')).ok).toBeTruthy();
 	});
 
 	test('3. break it: OAM unreachable mid-wizard → error surfaced, no fake success, state consistent after reload', async ({page, consoleGuard}) => {

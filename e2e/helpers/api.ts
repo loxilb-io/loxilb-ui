@@ -163,6 +163,63 @@ export async function gwJson<T = any>(apiPath: string): Promise<T> {
 	return (await resp.json()) as T;
 }
 
+//---------------------------------------------------------
+// Gateway auto-persist vs. the snapshot gate
+//---------------------------------------------------------
+// Every successful config mutation arms the gateway's auto-persist debounce
+// (pkg/snapshot/autopersist.go, 3 s quiet period). When it fires, the gateway
+// writes its running config to disk while holding the snapshot gate, and a
+// snapshot capture or restore arriving in that write is answered 409 "another
+// snapshot or restore operation is in progress" — by design, not a fault. A
+// spec that mutates config over the raw API and then captures or restores
+// must let that write land first, or it races it.
+const AUTO_PERSIST_QUIET_MS = 3000;
+
+/** Generation of the gateway's last persisted config (0 before the first). */
+export async function lastPersistGeneration(): Promise<number> {
+	// A not-ready gateway answers 503 with the same body.
+	const resp = await gw('GET', '/status/ready');
+	const body = await resp.json().catch(() => ({}));
+	return Number(body?.last_persist?.generation ?? 0);
+}
+
+/**
+ * `gw()` for a config mutation, returning only once the auto-persist it armed
+ * has written (the persist generation moved past its value before the call).
+ */
+export async function gwPersisted(method: string, apiPath: string, body?: unknown): Promise<Response> {
+	const before = await lastPersistGeneration();
+	const resp = await gw(method, apiPath, body);
+	if (resp.ok) {
+		const deadline = Date.now() + 20_000;
+		while ((await lastPersistGeneration()) <= before) {
+			if (Date.now() > deadline) {
+				throw new Error(`${method} ${apiPath}: no auto-persist within 20s (generation stuck at ${before}; is --config-auto-persist off?)`);
+			}
+			await new Promise(r => setTimeout(r, 250));
+		}
+	}
+	return resp;
+}
+
+/**
+ * Returns once no auto-persist is pending: the persist generation held still
+ * for longer than the debounce's quiet period, so nothing armed before this
+ * call is still waiting to write. For a spec's beforeAll, where the previous
+ * spec file's last mutation may still be in flight.
+ */
+export async function waitForAutoPersistIdle(): Promise<void> {
+	const deadline = Date.now() + 30_000;
+	let generation = await lastPersistGeneration();
+	for (;;) {
+		await new Promise(r => setTimeout(r, AUTO_PERSIST_QUIET_MS + 1500));
+		const now = await lastPersistGeneration();
+		if (now === generation) return;
+		if (Date.now() > deadline) throw new Error('gateway auto-persist never went idle within 30s');
+		generation = now;
+	}
+}
+
 /**
  * Resolve a real data-plane interface from the selected live instance.
  * Container and VM deployments are not required to call it `eth0`; preferring
