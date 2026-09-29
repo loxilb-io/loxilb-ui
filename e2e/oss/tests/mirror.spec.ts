@@ -27,6 +27,12 @@ let srcPort: string; // mirrored source port (distinct from destination)
 async function openAddDialog(page: Page): Promise<void> {
 	await openToolbarDialog(page, 'Add', 'New Mirror');
 	await expect(field(page, 'Mirror Identifier')).toBeVisible();
+	// Port is free text until the port list loads, then a select. setField
+	// picks its method from the role it reads, so reading it before the list
+	// lands races the swap: the fill can hit the text box just as it is
+	// replaced, the input is dropped, and the select keeps its auto-picked
+	// first port. Wait for the select the operator actually works with.
+	await expect(field(page, 'Port')).toHaveAttribute('role', 'combobox', {timeout: 20_000});
 }
 
 /** Attaches the mirror source to a Port (distinct from the SPAN destination). */
