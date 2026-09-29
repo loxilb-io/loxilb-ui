@@ -20,6 +20,7 @@ import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
 import {fromThrownError} from 'connector/fetcher/opResultAdapter';
 import {familyAbsence} from 'observability/familyActivation';
 import {aggregateSum, selectSamples, selectScalar} from 'observability/selectors';
+import {formatReportedAt, reportedAtFromIso} from 'observability/reportedAt';
 import {completedRequestRate, denialTotalRate} from 'observability/aiRequests';
 import {familySumRate, rateMaxGapMs} from 'observability/snapshotRates';
 import {countOrAbsence, formatAbsence, formatRate, StatRow} from 'pages/observability/common';
@@ -126,7 +127,7 @@ export function GwWorkerFreshnessCard({instance}: GwCardProps) {
 				<StatRow label={t('Routing mode')} value={status?.routing_mode ?? t('N/A')} />
 				<StatRow
 					label={t('Last metrics update')}
-					value={status?.last_metrics_update ? new Date(status.last_metrics_update).toLocaleTimeString() : t('N/A')}
+					value={formatReportedAt(reportedAtFromIso(status?.last_metrics_update), Date.now(), t)}
 				/>
 				{gpu.data && (
 					<Box sx={{mt: 1}} display="flex" gap={1} alignItems="center">
@@ -189,7 +190,7 @@ export function GwPersistenceCard({instance}: GwCardProps) {
 	const persistAbsence = familyAbsence(snapshot, 'loxilb_persist_total');
 	const persistErrorsText = !snapshot ? t('No data') : persistAbsence ? formatAbsence(persistAbsence, t) : (persistErrors ?? 0);
 	const persistRate = useMemo(() => familySumRate(history, 'loxilb_persist_total', rateMaxGapMs(cadenceMs)), [history, cadenceMs]);
-	const lastPersistAt = diagnostics.data?.data.last_persist?.at;
+	const lastPersistAt = reportedAtFromIso(diagnostics.data?.data.last_persist?.at);
 
 	return (
 		<CardBase title={t('Config Persistence')}>
@@ -200,7 +201,7 @@ export function GwPersistenceCard({instance}: GwCardProps) {
 				<StatRow label={t('Persist operations')} value={formatRate(persistRate, t)} />
 				<StatRow
 					label={t('Last persist')}
-					value={lastPersistAt ? new Date(lastPersistAt).toLocaleTimeString() : t('No data')}
+					value={formatReportedAt(lastPersistAt, Date.now(), t, t('No data'))}
 				/>
 			</ObservabilityStateFrame>
 		</CardBase>

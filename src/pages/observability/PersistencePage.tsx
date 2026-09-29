@@ -18,6 +18,7 @@ import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
 import {useMemo} from 'react';
 import {useTranslation} from 'react-i18next';
 import {estimateQuantile, mergeHistogramSeries} from 'observability/histogram';
+import {formatReportedAt, reportedAtFromIso, reportedAtFromSeconds} from 'observability/reportedAt';
 import {selectSamples, selectScalar} from 'observability/selectors';
 import {familySumRate, rateMaxGapMs} from 'observability/snapshotRates';
 import {CadenceSelector, PanelPaper, StatRow, formatRate, useAbsenceExplanation, useObservabilityApplicable} from './common';
@@ -66,11 +67,8 @@ export default function PersistencePage() {
 		return t('N/A');
 	};
 
-	const timeText = (iso: string | undefined) => {
-		if (!iso) return t('N/A');
-		const ms = Date.parse(iso);
-		return Number.isFinite(ms) ? new Date(ms).toLocaleString() : t('N/A');
-	};
+	const nowMs = Date.now();
+	const timeText = (iso: string | undefined) => formatReportedAt(reportedAtFromIso(iso), nowMs, t);
 
 	const configDirty = snapshot ? selectScalar(snapshot, 'loxilb_config_dirty') : undefined;
 	const lastRestoreTs = snapshot ? selectScalar(snapshot, 'loxilb_last_restore_timestamp_seconds') : undefined;
@@ -152,11 +150,7 @@ export default function PersistencePage() {
 							)}
 							<StatRow
 								label={t('Last restore finished')}
-								value={
-									lastRestoreTs !== undefined && Number.isFinite(lastRestoreTs) && lastRestoreTs > 0
-										? new Date(lastRestoreTs * 1000).toLocaleString()
-										: t('N/A')
-								}
+								value={formatReportedAt(reportedAtFromSeconds(lastRestoreTs), nowMs, t)}
 							/>
 							{restoreDuration && !('invalid' in restoreDuration) && (
 								<>
