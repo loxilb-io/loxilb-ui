@@ -1,3 +1,4 @@
+import type {GwSchema} from '../api';
 //---------------------------------------------------------
 // Interfaces
 //---------------------------------------------------------
@@ -111,7 +112,29 @@ export interface IServiceArguments {
 		// scalars by schema — arrays are rejected representations.
 		kvModelProfile?: string;		// published ModelPromptProfile ID; absent = legacy profile-less rule
 		kvExactApiMode?: KvExactApiMode;	// declared API surface; must be a subset of the bound profile's supportedApis
+
+		// --- AI gateway: capacity admission gate (create / replace-POST only) ---
+		// Blank is OMITTED (the gateway's environment or product default applies);
+		// an explicit 0 resets to that default; null is refused. PATCH does not
+		// reach fullproxy rules, so these change only by creating a rule.
+		fc_mode?: GwServiceArguments['fc_mode'];
+		fc_max_outstanding?: number;
+		fc_ep_max_inflight?: number;
+		fc_prefill_max_inflight?: number;	// P/D only
+		fc_decode_max_inflight?: number;	// P/D only
+		fc_max_queue_depth?: number;
+		fc_max_queue_wait_ms?: number;		// required (> 0) whenever a depth is set
+		fc_telemetry_stale_ms?: number;		// P/D only
+		fc_adaptive?: GwServiceArguments['fc_adaptive'];
+		fc_warmup_ms?: number;
+		fc_ttft_target_ms?: number;
+		fc_tenant_max_share_pct?: number;
+		fc_effective?: IFcEffective;		// read-only: the gate's resolved state, never sent
 	}
+
+type GwServiceArguments = NonNullable<GwSchema<'LoadbalanceEntry'>['serviceArguments']>;
+/** The admission gate's resolved state on an AI rule's model pool (read-back only). */
+export type IFcEffective = NonNullable<GwServiceArguments['fc_effective']>;
 
 export interface IEndpoint {
 	endpointIP: string;

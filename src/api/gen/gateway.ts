@@ -9194,6 +9194,12 @@ export interface components {
          * @default 0
          */
         fc_ttft_target_ms?: number;
+        /**
+         * Format: int32
+         * @description The most of the service ceiling in force, and of the queue depth, one tenant may hold, in percent (rounded up, at least one). A tenant is the tenant id the request's credential resolved to; requests without one are one tenant. A tenant at its share waits for one of its own units when the pool queues (within its share of the queue), or is refused with 429 admission_tenant_share, while other tenants still admit; waiters held back by their share never make another tenant wait. Inert without fc_max_outstanding. 100 is no share; 0 or omitted leaves the process default (LLB_FC_TENANT_MAX_SHARE_PCT, else no share) in force. Replace and null semantics as fc_max_outstanding.
+         * @default 0
+         */
+        fc_tenant_max_share_pct?: number;
         /** @description The capacity admission gate's resolved state on this rule's model pool, read from the data plane. Present on GET for AI-gateway services (sse_mode, pd_disagg_mode or an api-key policy); ignored on input. mode is off, observe or enforce; the ceilings are the values in force, the process defaults where the rule declared nothing; inflight and queued are live counts; queue_memory_bound_mib is the memory the full queue may park (queue_depth x 1 MiB); telemetry_stale_ms is the P/D scorers' trust window; source names where each value in force came from (rule, env or default); effective_max_outstanding is the service ceiling in force now (the adaptive one while the pool adapts), adapt_state and adapt_reason say where it stands and why, warming_endpoints counts endpoints inside their warm-up window. */
         fc_effective?: {
           /** @description The gate mode in force on the pool (off, observe or enforce). */
@@ -9274,6 +9280,16 @@ export interface components {
            * @description Endpoints inside their warm-up window.
            */
           readonly warming_endpoints?: number;
+          /**
+           * Format: int32
+           * @description The tenant share in force, in percent; 0 or 100 is no share.
+           */
+          readonly tenant_max_share_pct?: number;
+          /**
+           * Format: int32
+           * @description Tenants holding a unit or waiting on the pool now, while it holds tenants to a share.
+           */
+          readonly tenants_active?: number;
           /** @description Where each value in force came from: rule (the rule's own declaration), env (the process environment, LLB_FC_*) or default (the product default). */
           readonly source?: {
             /** @enum {string} */
@@ -9298,6 +9314,8 @@ export interface components {
             warmup_ms?: "rule" | "env" | "default";
             /** @enum {string} */
             ttft_target_ms?: "rule" | "env" | "default";
+            /** @enum {string} */
+            tenant_max_share_pct?: "rule" | "env" | "default";
           };
         };
         /**

@@ -3,24 +3,24 @@
 	"source": {
 		"repo": "loxilb-inference-gateway",
 		"path": "deploy/monitoring/manifest/metric-manifest.json",
-		"commit": "64d95c2e509a5396196ff6838666ca13198cfacd",
-		"vendoredAt": "2026-09-29T10:38:14Z"
+		"commit": "314fd6e80c77437a6c3f707076e45ba56cccd458",
+		"vendoredAt": "2026-09-29T13:04:35Z"
 	},
 	"manifest": {
 		"schema_version": 1,
 		"provenance": {
-			"generated_at": "2026-09-29T06:51:01+00:00",
-			"source_revision": "15f0957befc53c4a711eabb128c1bcaee1ee92da"
+			"generated_at": "2026-09-29T07:19:36+00:00",
+			"source_revision": "5d7b0619c2715cde2809e7910ff87799d244fc0b"
 		},
 		"contract": {
-			"total": 286,
+			"total": 287,
 			"owners": {
-				"loxilb": 263,
+				"loxilb": 264,
 				"loxilb-ai-controller": 19,
 				"loxilb-kv-agent": 4
 			},
 			"classes": {
-				"default": 230,
+				"default": 231,
 				"dpu-doca": 24,
 				"aictrl-bridge": 8,
 				"kv-agent-health": 1,
@@ -29,11 +29,11 @@
 			}
 		},
 		"coverage": {
-			"default_families": 230,
+			"default_families": 231,
 			"default_referenced": 169,
 			"default_waived": 21,
-			"default_unreferenced": 40,
-			"writer_classified": 230,
+			"default_unreferenced": 41,
+			"writer_classified": 231,
 			"writer_unclassified": 0,
 			"writer_unverified": 64
 		},
@@ -927,7 +927,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:250",
+				"source": "api/prometheus/ai_admission_metrics.go:258",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -938,7 +938,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 289,
+						"def_line": 303,
 						"writes": "admissionAdaptMovesDesc",
 						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; each Desc is named at its own MustNewConstMetric call because the extractor resolves the runtime type by reading that call and cannot follow an identifier"
 					},
@@ -946,8 +946,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 329,
-						"call_line": 330,
+						"def_line": 344,
+						"call_line": 345,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -972,7 +972,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:245",
+				"source": "api/prometheus/ai_admission_metrics.go:253",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -983,7 +983,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 289,
+						"def_line": 303,
 						"writes": "admissionAdaptReasonDesc",
 						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; each Desc is named at its own MustNewConstMetric call because the extractor resolves the runtime type by reading that call and cannot follow an identifier"
 					},
@@ -991,8 +991,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 329,
-						"call_line": 330,
+						"def_line": 344,
+						"call_line": 345,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -1020,7 +1020,7 @@
 					"loxilb-alerts.yml"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:240",
+				"source": "api/prometheus/ai_admission_metrics.go:248",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -1031,7 +1031,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 289,
+						"def_line": 303,
 						"writes": "admissionAdaptStateDesc",
 						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; each Desc is named at its own MustNewConstMetric call because the extractor resolves the runtime type by reading that call and cannot follow an identifier"
 					},
@@ -1039,8 +1039,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 329,
-						"call_line": 330,
+						"def_line": 344,
+						"call_line": 345,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -1066,7 +1066,7 @@
 					"loxilb-alerts.yml"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:260",
+				"source": "api/prometheus/ai_admission_metrics.go:273",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -1077,7 +1077,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 289,
+						"def_line": 303,
 						"writes": "admissionAnomaliesDesc",
 						"note": "read from the process-wide fc_anomaly_total counters through proxy_get_fc_anomaly on the same 10s cycle; emitted whether or not any AI service exists"
 					},
@@ -1085,8 +1085,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 329,
-						"call_line": 330,
+						"def_line": 344,
+						"call_line": 345,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -1114,7 +1114,7 @@
 					"loxilb-alerts.yml"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:230",
+				"source": "api/prometheus/ai_admission_metrics.go:238",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -1125,7 +1125,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 289,
+						"def_line": 303,
 						"writes": "admissionDecisionsDesc",
 						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; each Desc is named at its own MustNewConstMetric call because the extractor resolves the runtime type by reading that call and cannot follow an identifier"
 					},
@@ -1133,8 +1133,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 329,
-						"call_line": 330,
+						"def_line": 344,
+						"call_line": 345,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -1160,7 +1160,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:235",
+				"source": "api/prometheus/ai_admission_metrics.go:243",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -1171,7 +1171,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 289,
+						"def_line": 303,
 						"writes": "admissionEffectiveLimitDesc",
 						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; each Desc is named at its own MustNewConstMetric call because the extractor resolves the runtime type by reading that call and cannot follow an identifier"
 					},
@@ -1179,8 +1179,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 329,
-						"call_line": 330,
+						"def_line": 344,
+						"call_line": 345,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -1207,7 +1207,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:210",
+				"source": "api/prometheus/ai_admission_metrics.go:218",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -1218,7 +1218,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 289,
+						"def_line": 303,
 						"writes": "admissionInflightDesc",
 						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; each Desc is named at its own MustNewConstMetric call because the extractor resolves the runtime type by reading that call and cannot follow an identifier"
 					},
@@ -1226,8 +1226,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 329,
-						"call_line": 330,
+						"def_line": 344,
+						"call_line": 345,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -1255,7 +1255,7 @@
 					"loxilb-alerts.yml"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:215",
+				"source": "api/prometheus/ai_admission_metrics.go:223",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -1266,7 +1266,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 289,
+						"def_line": 303,
 						"writes": "admissionLimitDesc",
 						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; each Desc is named at its own MustNewConstMetric call because the extractor resolves the runtime type by reading that call and cannot follow an identifier"
 					},
@@ -1274,8 +1274,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 329,
-						"call_line": 330,
+						"def_line": 344,
+						"call_line": 345,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -1301,7 +1301,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:205",
+				"source": "api/prometheus/ai_admission_metrics.go:213",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -1312,7 +1312,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 289,
+						"def_line": 303,
 						"writes": "admissionModeDesc",
 						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; each Desc is named at its own MustNewConstMetric call because the extractor resolves the runtime type by reading that call and cannot follow an identifier"
 					},
@@ -1320,8 +1320,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 329,
-						"call_line": 330,
+						"def_line": 344,
+						"call_line": 345,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -1347,7 +1347,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:225",
+				"source": "api/prometheus/ai_admission_metrics.go:233",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -1358,7 +1358,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 289,
+						"def_line": 303,
 						"writes": "admissionQueueWaitDesc",
 						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; the C side keeps one count per bucket (fc_qwait_bounds_ms) and Collect converts them to the cumulative form at its MustNewConstHistogram call, which is where the extractor resolves the histogram type"
 					},
@@ -1366,8 +1366,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 329,
-						"call_line": 330,
+						"def_line": 344,
+						"call_line": 345,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -1394,7 +1394,7 @@
 					"loxilb-alerts.yml"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:220",
+				"source": "api/prometheus/ai_admission_metrics.go:228",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -1405,7 +1405,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 289,
+						"def_line": 303,
 						"writes": "admissionQueuedDesc",
 						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; each Desc is named at its own MustNewConstMetric call because the extractor resolves the runtime type by reading that call and cannot follow an identifier"
 					},
@@ -1413,14 +1413,58 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 329,
-						"call_line": 330,
+						"def_line": 344,
+						"call_line": 345,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
 					}
 				],
 				"verification_evidence": "api/prometheus/ai_admission_metrics_test.go TestAdmissionCollectorEmitsLabelledSeries compares the queued gauge and the role=queue limit of one pool against the store (per-label oracle); TestAdmissionCollectorEmptyStore asserts nothing but the anomaly counters remains with no pool. The C side (sp_fc_fill_queue_stat on every ai_gw_mode pool) reads the queue that loxilb-ebpf/common/test_fc_queue.c drives; runtime proof belongs to cicd/ai-admission (rows Q, T, X, D, M)."
+			},
+			{
+				"name": "loxilb_ai_admission_tenants_active",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "gauge",
+				"definition_mechanism": "desc",
+				"labels": [
+					"service",
+					"pool"
+				],
+				"activation": "C",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/prometheus/ai_admission_metrics.go:268",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-static",
+				"activation_precondition": "an AI-gateway service with at least one model pool; emitted for every pool at zero, non-zero only while the pool holds tenants to a share (fc_tenant_max_share_pct or LLB_FC_TENANT_MAX_SHARE_PCT) and a tenant holds a unit or waits.",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "admissionCollector",
+						"file": "api/prometheus/ai_admission_metrics.go",
+						"def_line": 303,
+						"writes": "admissionTenantsDesc",
+						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; each Desc is named at its own MustNewConstMetric call because the extractor resolves the runtime type by reading that call and cannot follow an identifier"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/prometheus/ai_admission_metrics.go",
+						"def_line": 344,
+						"call_line": 345,
+						"calls": "admissionCollector",
+						"entry_point": "registry-collector",
+						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
+					}
+				],
+				"verification_evidence": "api/prometheus/ai_admission_metrics_test.go TestAdmissionCollectorEmitsLabelledSeries compares the gauge against the store; loxilb-ebpf/common/test_fc_tenant.c counts tenants as they take units and evicts them at zero; runtime proof belongs to cicd/ai-admission (rows TS)."
 			},
 			{
 				"name": "loxilb_ai_admission_warming_endpoints",
@@ -1438,7 +1482,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:255",
+				"source": "api/prometheus/ai_admission_metrics.go:263",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -1449,7 +1493,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 289,
+						"def_line": 303,
 						"writes": "admissionWarmingDesc",
 						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; each Desc is named at its own MustNewConstMetric call because the extractor resolves the runtime type by reading that call and cannot follow an identifier"
 					},
@@ -1457,8 +1501,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 329,
-						"call_line": 330,
+						"def_line": 344,
+						"call_line": 345,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -4264,8 +4308,8 @@
 						"kind": "method",
 						"receiver": "ruleEnt",
 						"file": "pkg/loxinet/fc_rule.go",
-						"def_line": 141,
-						"call_line": 177,
+						"def_line": 149,
+						"call_line": 185,
 						"calls": "Run",
 						"note": "the scraper goroutine runs while something reads what it scrapes: a rule with pdDisaggMode (the P/D scorers) or an AI-gateway rule whose admission ceiling adapts (fc_adaptive, else LLB_FC_ADAPTIVE); at a hard-coded 10s interval, against each endpoint's own xIP:xPort -- the same port the data connect uses. Restarted when a replace moves the endpoints, stopped when neither reader remains"
 					},

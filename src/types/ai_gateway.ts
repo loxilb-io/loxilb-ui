@@ -25,6 +25,61 @@ const HASHES_BY_ENGINE: Record<AIEngine, readonly AIHashAlgorithm[]> = {
 	llamacpp: [],
 };
 
+//---------------------------------------------------------
+// Capacity admission gate (fc_*)
+//---------------------------------------------------------
+// Bounds mirror the gateway's validateFcGateFields / validateFcQueueFields
+// (every numeric field is 0..max; 0 or omission leaves the process default in
+// force). The gateway is the authority; these only keep a request that is
+// certain to be refused inside the browser.
+export const FC_NUMERIC_MAX = {
+	fc_max_outstanding: 100000,
+	fc_ep_max_inflight: 100000,
+	fc_prefill_max_inflight: 100000,
+	fc_decode_max_inflight: 100000,
+	fc_max_queue_depth: 65536,
+	fc_max_queue_wait_ms: 3600000,
+	fc_telemetry_stale_ms: 3600000,
+	fc_warmup_ms: 3600000,
+	fc_ttft_target_ms: 3600000,
+	fc_tenant_max_share_pct: 100,
+} as const;
+export type FcNumericField = keyof typeof FC_NUMERIC_MAX;
+const FC_NUMERIC_FIELDS = Object.keys(FC_NUMERIC_MAX) as FcNumericField[];
+
+const FC_MODES = ['off', 'observe', 'enforce', 'inherit'] as const;
+const FC_ADAPTIVE = ['on', 'off', 'inherit'] as const;
+
+/** Writable admission fields. fc_effective is read-only and not among them. */
+export const FC_FIELDS: readonly (keyof IServiceArguments)[] = ['fc_mode', 'fc_adaptive', ...FC_NUMERIC_FIELDS];
+
+/** Fields that act only on a P/D pool (prefill/decode legs, the P/D scorers). */
+export const FC_PD_ONLY_FIELDS: readonly FcNumericField[] = ['fc_prefill_max_inflight', 'fc_decode_max_inflight', 'fc_telemetry_stale_ms'];
+
+/**
+ * serviceArguments the gateway declares `readOnly`: returned on GET, ignored on
+ * input, so never sent. Pinned against the vendored spec in
+ * src/api/contract.test.ts — a new readOnly field fails that test until it is
+ * listed here.
+ */
+export const READ_ONLY_SERVICE_ARGUMENTS: readonly (keyof IServiceArguments)[] = ['fc_effective'];
+
+/**
+ * Whether the gateway runs AI-gateway accounting — and so an admission pool —
+ * for this rule. The gateway's one definition (aiGwModeFor): a fullproxy rule
+ * with sse_mode, pd_disagg_mode, or a credential policy other than disabled.
+ * An explicit `disabled` does not count; neither does an unset policy.
+ */
+export function isAIService(args: Pick<IServiceArguments, 'mode' | 'sse_mode' | 'pd_disagg_mode' | 'api_key_auth'>): boolean {
+	if (args.mode !== 4) return false;
+	return Boolean(args.sse_mode) || Boolean(args.pd_disagg_mode) || (!!args.api_key_auth && args.api_key_auth !== 'disabled');
+}
+
+/** A form value that stands for "nothing declared": omitted on the wire. */
+function isFcBlank(value: unknown): boolean {
+	return value === undefined || value === null || value === '';
+}
+
 const AI_ONLY_FIELDS: readonly (keyof IServiceArguments)[] = [
 	'model_name',
 	'api_key_auth',
@@ -51,6 +106,7 @@ const AI_ONLY_FIELDS: readonly (keyof IServiceArguments)[] = [
 	'pdBootstrapPort',
 	'kvModelProfile',
 	'kvExactApiMode',
+	...FC_FIELDS,
 ];
 
 const KV_FIELDS: readonly (keyof IServiceArguments)[] = [
@@ -161,7 +217,8 @@ export function validateAIConfiguration(configuration: IServiceConfiguration): A
 				!(field === 'kvEngineType' && value === 'vllm') &&
 				!(field === 'kvBlockSize' && value === 16) &&
 				!(field === 'kvZmqPort' && value === 5557) &&
-				!(field === 'kvDpRankCount' && value === 1);
+				!(field === 'kvDpRankCount' && value === 1) &&
+				!((field === 'fc_mode' || field === 'fc_adaptive') && value === 'inherit');
 		});
 		if (active) issues.push({field: 'mode', message: 'AI Gateway routing requires full-proxy mode.'});
 		return issues;
@@ -278,13 +335,59 @@ export function validateAIConfiguration(configuration: IServiceConfiguration): A
 		}
 	}
 
+	validateAdmissionFields(args, topology, issues);
+
 	validateEndpointTopology(engine, topology, endpoints, issues);
 	return issues;
+}
+
+// Only what the gateway would refuse. Fields the form hides (P/D-only fields on
+// a non-P/D rule, any fc_* on a rule with no admission pool) are dropped by the
+// serializer instead: blocking submit on a value the operator cannot see or
+// clear would be worse than dropping a setting that has no effect there.
+function validateAdmissionFields(args: IServiceArguments, topology: AITopology, issues: AIValidationIssue[]): void {
+	if (!isAIService(args)) return;
+	if (!isFcBlank(args.fc_mode) && !(FC_MODES as readonly unknown[]).includes(args.fc_mode)) {
+		issues.push({field: 'fc_mode', message: 'Admission mode must be off, observe, enforce, or the gateway default.'});
+	}
+	if (!isFcBlank(args.fc_adaptive) && !(FC_ADAPTIVE as readonly unknown[]).includes(args.fc_adaptive)) {
+		issues.push({field: 'fc_adaptive', message: 'Adaptive ceiling must be on, off, or the gateway default.'});
+	}
+	for (const field of FC_NUMERIC_FIELDS) {
+		if (topology !== 'pd' && FC_PD_ONLY_FIELDS.includes(field)) continue;
+		const value = args[field];
+		if (isFcBlank(value)) continue;
+		// A value the form could not parse arrives as its raw text, so it is
+		// refused here rather than dropped on the way to the wire.
+		if (!isNonNegativeInteger(value) || value > FC_NUMERIC_MAX[field]) {
+			issues.push({field, message: `${field} must be a whole number from 0 to ${FC_NUMERIC_MAX[field]}.`});
+		}
+	}
+	// The gateway judges the pair on the stored values; a create stores exactly
+	// what it sends, so the rule is the same here.
+	if (isNonNegativeInteger(args.fc_max_queue_depth) && args.fc_max_queue_depth > 0 && !isPositiveInteger(args.fc_max_queue_wait_ms)) {
+		issues.push({field: 'fc_max_queue_wait_ms', message: 'A queue depth needs a queue wait greater than 0 ms.'});
+	}
 }
 
 function omitFields(args: IServiceArguments, fields: readonly (keyof IServiceArguments)[]): IServiceArguments {
 	const result = {...args};
 	for (const field of fields) delete result[field];
+	return result;
+}
+
+// Blank means OMITTED, never 0: on these fields an explicit 0 resets to the
+// process default and null is refused, so a blank form field must not reach
+// the wire as either.
+function serializeAdmissionFields(args: IServiceArguments, topology: AITopology): IServiceArguments {
+	// No admission pool, no effect: the gateway stores the fields but no gate
+	// reads them. Sending them would make a rule look configured when it is not.
+	if (!isAIService(args)) return omitFields(args, FC_FIELDS);
+	let result = {...args};
+	for (const field of FC_FIELDS) {
+		if (isFcBlank(result[field])) delete result[field];
+	}
+	if (topology !== 'pd') result = omitFields(result, FC_PD_ONLY_FIELDS);
 	return result;
 }
 
@@ -296,7 +399,10 @@ function stripEndpointAI(endpoint: IEndpoint): IEndpoint {
 export function serializeAIConfiguration(configuration: IServiceConfiguration): IServiceConfiguration {
 	const engine = resolveAIEngine(configuration.serviceArguments.kvEngineType);
 	const topology = resolveAITopology(configuration.serviceArguments);
-	let serviceArguments = {...configuration.serviceArguments};
+	// Read-only fields arrive through a form seeded from a read-back (the
+	// key-changed "create" edit and the reconcile upsert both copy it). The
+	// gateway ignores them on input; they never go on the wire.
+	let serviceArguments = omitFields({...configuration.serviceArguments}, READ_ONLY_SERVICE_ARGUMENTS);
 	let endpoints = configuration.endpoints.map(endpoint => ({...endpoint}));
 
 	if (serviceArguments.mode !== 4) {
@@ -354,6 +460,8 @@ export function serializeAIConfiguration(configuration: IServiceConfiguration): 
 	if (!usesSGLangRankFanOut) delete serviceArguments.kvDpRankCount;
 	if (engine === 'trtllm' || engine === 'llamacpp') delete serviceArguments.kvZmqPort;
 	if (engine === 'llamacpp') serviceArguments = omitFields(serviceArguments, KV_FIELDS);
+
+	serviceArguments = serializeAdmissionFields(serviceArguments, topology);
 
 	// Last: the topology/engine rules above may have stripped kvExactMode, and
 	// the profile fields must never outlive the exact routing they qualify.

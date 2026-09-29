@@ -1,5 +1,6 @@
 import {Alert, Stack, Typography} from '@mui/material';
 import AccordionBox from 'components/element/AccordionBox';
+import AdmissionControlForm from 'components/input/subforms/AdmissionControlForm';
 import DropDownSelectBox from 'components/element/DropDownSelectBox';
 import ParamBox from 'components/element/ParamBox';
 import HorizontalStack from 'components/layout/HorizontalStack';
@@ -15,6 +16,7 @@ import {
 	allowedAIHashes,
 	allowedProfileApiModes,
 	effectiveAIHash,
+	isAIService,
 	profileAcceptsModel,
 	resolveAIEngine,
 } from 'types/ai_gateway';
@@ -401,6 +403,13 @@ export default function AIGatewaySettingsForm(props: {
 							<ParamBox label={t('P/D Bootstrap Port')} value={value.pdBootstrapPort ?? 0} onChange={handleChange('pdBootstrapPort')} param_desc={{...params?.pdBootstrapPort, type: 'integer', description: t("Must match SGLang's disaggregation bootstrap port. 0 uses 8998.")}} />
 						)}
 					</>
+				)}
+
+				{/* Only where the gateway keeps an admission pool (its aiGwModeFor):
+				    elsewhere the fields are stored but no gate reads them, and the
+				    serializer drops them. */}
+				{isL7 && isAIService(value) && (
+					<AdmissionControlForm value={value} onChange={onChange} pdTopology={pdTopology} isEdit={isEdit} />
 				)}
 
 				{exactRouting && (

@@ -73,6 +73,11 @@ import {
 //     references and consumer lists moved;
 //   - no registry entry references the new families. Whether an urgent signal
 //     needs any of them is decided with the admission read-back work.
+//
+// 231 (was 230) since the re-vendor to gateway 314fd6e8: the per-pool tenant
+// count `loxilb_ai_admission_tenants_active` (class `default`, packaged,
+// activation `C`, a `desc` gauge pinned from Collect). No existing family
+// changed beyond source line references.
 
 describe('vendored envelope', () => {
 	it('carries UI-owned provenance the upstream artifact lacks', () => {
@@ -90,7 +95,7 @@ describe('vendored envelope', () => {
 describe('gateway scrape applicability (class + packaged)', () => {
 	it('marks exactly the packaged default class as gateway-applicable', () => {
 		const applicable = allManifestFamilies().filter(f => isGatewayScrapeFamily(f.name));
-		expect(applicable).toHaveLength(230);
+		expect(applicable).toHaveLength(231);
 		for (const f of applicable) {
 			expect(f.class).toBe('default');
 			expect(f.packaged).toBe(true);
@@ -139,7 +144,7 @@ describe('gateway scrape applicability (class + packaged)', () => {
 });
 
 describe('desc normalization (definition mechanism vs runtime type)', () => {
-	it('pins the 55 custom-collector families to 21 counters + 32 gauges + 2 histograms', () => {
+	it('pins the 56 custom-collector families to 21 counters + 33 gauges + 2 histograms', () => {
 		const desc = allManifestFamilies().filter(f => f.definitionMechanism === 'desc');
 		expect(desc.map(f => f.name).sort()).toEqual([
 			'loxilb_ai_admission_adapt_moves_total',
@@ -153,6 +158,7 @@ describe('desc normalization (definition mechanism vs runtime type)', () => {
 			'loxilb_ai_admission_mode',
 			'loxilb_ai_admission_queue_wait_seconds',
 			'loxilb_ai_admission_queued',
+			'loxilb_ai_admission_tenants_active',
 			'loxilb_ai_admission_warming_endpoints',
 			'loxilb_ai_jwks_keys',
 			'loxilb_ai_jwks_last_success_timestamp_seconds',
@@ -231,6 +237,7 @@ describe('desc normalization (definition mechanism vs runtime type)', () => {
 			'loxilb_ai_admission_limit',
 			'loxilb_ai_admission_mode',
 			'loxilb_ai_admission_queued',
+			'loxilb_ai_admission_tenants_active',
 			'loxilb_ai_admission_warming_endpoints',
 			'loxilb_ai_jwks_keys',
 			'loxilb_ai_jwks_last_success_timestamp_seconds',
