@@ -79,7 +79,8 @@ describe('registry contract against the vendored artifacts', () => {
 		expect(size('page.security')).toBe(27);
 		// 9 since Stage 3.3: the per-policer attachment gauge joined the page.
 		expect(size('page.qos')).toBe(9);
-		expect(size('page.persistence')).toBe(10);
+		// 4 since the compact trim: the breakdowns moved to Grafana.
+		expect(size('page.persistence')).toBe(4);
 		expect(size('page.haSync')).toBe(13);
 		// The four loxilb_ai_jwks_* families, and only those: the validation
 		// counter is traffic and belongs to page.aiTraffic instead.

@@ -199,17 +199,14 @@ const QOS_FAMILIES = [
 	'loxilb_policer_attached',
 ] as const;
 
+// Only what the page still reads. Persist/restore/snapshot breakdowns and
+// restore durations are in Grafana's overview "Persistence" row; the last
+// persist and restore times come from /diagnostics.
 const PERSISTENCE_FAMILIES = [
-	'loxilb_snapshot_total',
-	'loxilb_restore_total',
-	'loxilb_restore_duration_seconds',
-	'loxilb_last_restore_timestamp_seconds',
-	'loxilb_persist_total',
 	'loxilb_autopersist_consecutive_failures',
 	'loxilb_config_dirty',
 	'loxilb_snapshot_quarantine_total',
 	'loxilb_boot_config_conflict_total',
-	'loxilb_boot_legacy_fallback_total',
 ] as const;
 
 const HA_SYNC_FAMILIES = [

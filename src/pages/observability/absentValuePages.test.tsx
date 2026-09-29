@@ -9,8 +9,8 @@
 //     verdict line that says "not reported" instead;
 //   - Workers "Workers tracked" printed N/A for `worker_count`, which the
 //     gateway omits (omitempty) precisely when it is 0;
-//   - Persistence "Auto-persist failures (reported)" printed N/A for
-//     `auto_persist`, which /diagnostics only sends while failures > 0.
+//   - Persistence "Last persist" / "Last restore" printed N/A for records
+//     /diagnostics omits until the first successful persist or restore.
 
 import 'locales/i18n';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -256,45 +256,98 @@ describe('WorkersPage — engine-metrics scrape verdict', () => {
 describe('PersistencePage — auto_persist sent only while failing', () => {
 	const diagnostics = (data: Record<string, unknown>) => ({receivedAtMs: T0, data: {ready: true, maintenance_state: 'active', uptime_seconds: 1, version: 'v', ...data}});
 
-	it('reads an omitted auto_persist as zero failures, not N/A', () => {
+	it('shows no last-error row while auto-persist is healthy (the gateway omits the record)', () => {
 		state.history = [snapshotOf('loxilb_config_dirty 0', T0)];
 		state.diagnostics = diagnostics({});
 		renderPage(<PersistencePage />);
-		expect(valueOf('Auto-persist failures (reported)')).toBe('0');
+		expect(screen.queryByText('Auto-persist last error')).toBeNull();
 	});
 
-	it('shows the failure count while the gateway reports one', () => {
-		state.history = [snapshotOf('loxilb_config_dirty 0', T0)];
+	it('shows the last error while the gateway reports failures, and warns from the gauge', () => {
+		state.history = [snapshotOf('loxilb_autopersist_consecutive_failures 4', T0)];
 		state.diagnostics = diagnostics({auto_persist: {consecutive_failures: 4, last_error: 'disk full'}});
 		renderPage(<PersistencePage />);
-		expect(valueOf('Auto-persist failures (reported)')).toBe('4');
 		expect(valueOf('Auto-persist last error')).toBe('disk full');
+		const alert = screen.getByText(/Auto-persist has failed 4 times in a row/);
+		expect(alert.closest('[role="alert"]')?.className).toMatch(/Warning/);
+	});
+});
+
+describe('PersistencePage — compact', () => {
+	it('drops the breakdowns that moved to Grafana', () => {
+		state.history = [
+			snapshotOf(
+				[
+					'loxilb_config_dirty 0',
+					'loxilb_persist_total{result="ok"} 9',
+					'loxilb_snapshot_total{trigger="manual"} 3',
+					'loxilb_restore_total{mode="commit",result="ok"} 2',
+				].join('\n'),
+				T0,
+			),
+		];
+		state.diagnostics = {receivedAtMs: T0, data: {ready: true, maintenance_state: 'active', uptime_seconds: 1, version: 'v', last_persist: {generation: 7, mode: 'manual', at: new Date(T0).toISOString()}}};
+		renderPage(<PersistencePage />);
+		for (const gone of ['Persist attempts', 'Snapshots by trigger', 'Restores', 'Last persist generation', 'Last persist trigger', 'Legacy boot fallbacks']) {
+			expect(screen.queryByText(gone)).toBeNull();
+		}
+		expect(screen.queryByText(/^Persists/)).toBeNull();
+		expect(screen.queryByRole('table')).toBeNull();
+		expect(screen.queryByText('7')).toBeNull();
+	});
+
+	it('warns on quarantined snapshots only above zero', () => {
+		state.history = [snapshotOf('loxilb_snapshot_quarantine_total 1', T0)];
+		renderPage(<PersistencePage />);
+		expect(screen.getByText(/1 saved snapshots were quarantined/)).toBeTruthy();
+		cleanup();
+		state.history = [snapshotOf('loxilb_snapshot_quarantine_total 0', T0)];
+		renderPage(<PersistencePage />);
+		expect(screen.queryByText(/quarantined after/)).toBeNull();
 	});
 });
 
 // `succeeded` is set only for a fully applied snapshot restore. With no
-// snapshot found nothing was restored and nothing failed, yet the row read
-// "Boot restore succeeded: No".
-describe('PersistencePage — boot with no snapshot', () => {
+// snapshot found nothing was restored and nothing failed, yet the old row
+// read "Boot restore succeeded: No". Now one verdict line.
+describe('PersistencePage — boot verdict', () => {
 	const boot = (b: Record<string, unknown>) => ({receivedAtMs: T0, data: {ready: true, maintenance_state: 'active', uptime_seconds: 1, version: 'v', boot: {profile: 'strict', legacy_fallback: false, degraded: false, ...b}}});
+	const severity = (re: RegExp) => screen.getByText(re).closest('[role="alert"]')?.className;
 
-	it('says there was nothing to restore instead of reporting a failure', () => {
-		state.history = [snapshotOf('loxilb_config_dirty 0', T0)];
+	it('⭐ no snapshot found is information, not a failure', () => {
+		state.history = [snapshotOf('loxilb_boot_config_conflict_total 0', T0)];
 		state.diagnostics = boot({snapshot_found: false, succeeded: false});
 		renderPage(<PersistencePage />);
-		expect(valueOf('Boot restore succeeded')).toBe('Nothing to restore');
+		expect(severity(/Booted under the strict profile; no saved snapshot was applied/)).toMatch(/Info/);
+		expect(screen.queryByText(/degraded/i)).toBeNull();
 	});
 
-	it('still reports a failed restore of a snapshot that was found', () => {
-		state.history = [snapshotOf('loxilb_config_dirty 0', T0)];
-		state.diagnostics = boot({snapshot_found: true, succeeded: false, degraded: true});
+	it('a fully applied snapshot is a success line', () => {
+		state.history = [snapshotOf('loxilb_boot_config_conflict_total 0', T0)];
+		state.diagnostics = boot({snapshot_found: true, succeeded: true});
 		renderPage(<PersistencePage />);
-		expect(valueOf('Boot restore succeeded')).toBe('No');
+		expect(severity(/Booted from the saved snapshot \(strict profile\)/)).toMatch(/Success/);
+	});
+
+	it('a failed restore is an error that names the fallback and the quarantined copy', () => {
+		state.history = [snapshotOf('loxilb_boot_config_conflict_total 1', T0)];
+		state.diagnostics = boot({profile: 'compat', snapshot_found: true, succeeded: false, degraded: true, legacy_fallback: true, quarantine_path: '/etc/loxilb/snapshot.json.failed-9'});
+		renderPage(<PersistencePage />);
+		const cls = severity(/Running degraded: the boot snapshot did not apply, and the gateway replayed its older legacy/);
+		expect(cls).toMatch(/Error/);
+		expect(screen.getByText(/snapshot.json.failed-9/)).toBeTruthy();
+		// Degraded outranks the conflict warning.
+		expect(screen.queryByText(/had to choose one/)).toBeNull();
+	});
+
+	it('a boot config conflict warns', () => {
+		state.history = [snapshotOf('loxilb_boot_config_conflict_total 1', T0)];
+		state.diagnostics = boot({snapshot_found: true, succeeded: true});
+		renderPage(<PersistencePage />);
+		expect(severity(/had to choose one/)).toMatch(/Warning/);
 	});
 });
 
-// The compact trim: the per-endpoint breakdowns are Grafana's. A family the
-// dashboard KV card still reads must not bring its page table back.
 describe('PdKvPage — compact', () => {
 	it('renders no KV blocks table, tier table or admission table', () => {
 		state.history = [
@@ -421,14 +474,26 @@ describe('reported-at times on the observability pages', () => {
 		expect(screen.queryByRole('table')).toBeNull();
 	});
 
-	it('Persistence: a restore gauge still at 0 and a zero-time persist read "none since start"', () => {
-		state.history = [snapshotOf(['loxilb_config_dirty 0', 'loxilb_last_restore_timestamp_seconds 0'].join('\n'), NOW)];
+	// Both records are omitempty and nil until the first successful persist or
+	// restore of this process: an omitted record printed "N/A".
+	it('Persistence: an omitted restore record and a zero-time persist read "none since start"', () => {
+		state.history = [snapshotOf('loxilb_config_dirty 0', NOW)];
 		state.diagnostics = {
 			receivedAtMs: NOW,
 			data: {ready: true, maintenance_state: 'active', uptime_seconds: 1, version: 'v', last_persist: {generation: 1, mode: 'manual', at: GO_ZERO_TIME}},
 		};
 		renderPage(<PersistencePage />);
-		expect(valueOf('Last restore finished')).toBe('None since start');
-		expect(valueOf('Last persist at')).toBe('None since start');
+		expect(valueOf('Last restore')).toBe('None since start');
+		expect(valueOf('Last persist')).toBe('None since start');
+	});
+
+	it('Persistence: a day-old restore carries its date', () => {
+		state.history = [snapshotOf('loxilb_config_dirty 0', NOW)];
+		state.diagnostics = {
+			receivedAtMs: NOW,
+			data: {ready: true, maintenance_state: 'active', uptime_seconds: 1, version: 'v', last_restore: {generation: 2, mode: 'commit', at: new Date(NOW - DAY).toISOString()}},
+		};
+		renderPage(<PersistencePage />);
+		expect(valueOf('Last restore')).toBe(new Date(NOW - DAY).toLocaleString());
 	});
 });
