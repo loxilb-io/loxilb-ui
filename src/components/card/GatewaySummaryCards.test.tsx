@@ -94,6 +94,12 @@ describe('GwPersistenceCard — persist errors', () => {
 		renderCard(<GwPersistenceCard instance={INSTANCE} />);
 		expect(rowText('Persist errors (cumulative)')).not.toMatch(/\d/);
 	});
+
+	it('drops the persist rate: a rate with no action attached', () => {
+		state.history = [snapshotOf('loxilb_persist_total{result="ok"} 4', T0)];
+		renderCard(<GwPersistenceCard instance={INSTANCE} />);
+		expect(screen.queryByText('Persist operations')).toBeNull();
+	});
 });
 
 describe('GwWorkerFreshnessCard — omitempty worker_count', () => {
@@ -221,5 +227,19 @@ describe('reported-at times on the dashboard cards', () => {
 	it("GwPersistenceCard: today's persist is a bare clock time", () => {
 		persistAt(NOW - 5_000);
 		expect(valueOf('Last persist')).toBe(new Date(NOW - 5_000).toLocaleTimeString());
+	});
+
+	// `last_persist` is omitempty and nil until the first successful persist
+	// of this process: omitted is "none since start", not "no data". Only a
+	// missing diagnostics read is "no data".
+	it('GwPersistenceCard: an omitted last_persist is "none since start"; no diagnostics read is "no data"', () => {
+		state.history = [snapshotOf('loxilb_config_dirty 0', NOW)];
+		state.diagnostics = {receivedAtMs: NOW, data: {ready: true, maintenance_state: 'active', uptime_seconds: 1, version: 'v'}};
+		renderCard(<GwPersistenceCard instance={INSTANCE} />);
+		expect(valueOf('Last persist')).toBe('None since start');
+		cleanup();
+		state.diagnostics = undefined;
+		renderCard(<GwPersistenceCard instance={INSTANCE} />);
+		expect(valueOf('Last persist')).toBe('No data');
 	});
 });

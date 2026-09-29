@@ -24,7 +24,7 @@ import {familyAbsence} from 'observability/familyActivation';
 import {aggregateSum, selectSamples, selectScalar} from 'observability/selectors';
 import {formatReportedAt, reportedAtFromIso} from 'observability/reportedAt';
 import {completedRequestRate, denialTotalRate, requestOutcomes} from 'observability/aiRequests';
-import {familySumRate, rateMaxGapMs} from 'observability/snapshotRates';
+import {rateMaxGapMs} from 'observability/snapshotRates';
 import {countOrAbsence, formatAbsence, formatRate, formatRatio, StatRow} from 'pages/observability/common';
 import {IInstance} from 'types/oam';
 import {ObservabilityViewState} from 'types/observability';
@@ -186,7 +186,7 @@ export function GwKvExactCard({instance}: GwCardProps) {
 
 export function GwPersistenceCard({instance}: GwCardProps) {
 	const {t} = useTranslation();
-	const {snapshot, history, state, cadenceMs, refetch} = useSnapshotCardState(instance);
+	const {snapshot, state, refetch} = useSnapshotCardState(instance);
 	// There is no last-persist timestamp metric family — that fact comes from
 	// /diagnostics, an independent REST read with its own receive time (never
 	// atomically consistent with the Prometheus rows above it).
@@ -203,8 +203,14 @@ export function GwPersistenceCard({instance}: GwCardProps) {
 	// absent nothing is known, and 0 would claim a clean record.
 	const persistAbsence = familyAbsence(snapshot, 'loxilb_persist_total');
 	const persistErrorsText = !snapshot ? t('No data') : persistAbsence ? formatAbsence(persistAbsence, t) : (persistErrors ?? 0);
-	const persistRate = useMemo(() => familySumRate(history, 'loxilb_persist_total', rateMaxGapMs(cadenceMs)), [history, cadenceMs]);
-	const lastPersistAt = reportedAtFromIso(diagnostics.data?.data.last_persist?.at);
+	// `last_persist` is omitempty and nil until the process's first successful
+	// persist: with diagnostics read, an omitted record is "none since start".
+	const diag = diagnostics.data?.data;
+	const lastPersistText = !diag
+		? t('No data')
+		: diag.last_persist
+			? formatReportedAt(reportedAtFromIso(diag.last_persist.at), Date.now(), t)
+			: t('None since start');
 
 	return (
 		<CardBase title={t('Config Persistence')}>
@@ -212,11 +218,7 @@ export function GwPersistenceCard({instance}: GwCardProps) {
 				<StatRow label={t('Unsaved config changes')} value={dirty === undefined ? t('No data') : dirty > 0 ? t('Yes') : t('No')} />
 				<StatRow label={t('Consecutive auto-persist failures')} value={autopersistFailures ?? t('No data')} />
 				<StatRow label={t('Persist errors (cumulative)')} value={persistErrorsText} />
-				<StatRow label={t('Persist operations')} value={formatRate(persistRate, t)} />
-				<StatRow
-					label={t('Last persist')}
-					value={formatReportedAt(lastPersistAt, Date.now(), t, t('No data'))}
-				/>
+				<StatRow label={t('Last persist')} value={lastPersistText} />
 			</ObservabilityStateFrame>
 		</CardBase>
 	);

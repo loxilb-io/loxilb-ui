@@ -1,50 +1,38 @@
 //---------------------------------------------------------
 // Persistence observability page (UI-MON-014)
 //---------------------------------------------------------
-// Snapshot/restore/persist telemetry. There is NO last-persist timestamp
-// metric family — the persist identity (generation, mode, time) comes from
-// GET /diagnostics → last_persist, a separate REST read with its own cadence
-// and receive time. The Prometheus snapshot and the diagnostics read are
-// never presented as one atomic observation: each carries its own freshness
-// badge and neither's staleness is inferred from the other.
+// Urgent persistence state only: unsaved changes, auto-persist failing,
+// quarantined snapshots and how this process booted. Persist/restore
+// breakdowns, snapshot triggers and restore durations are in Grafana's
+// overview "Persistence" row.
+//
+// There is NO last-persist timestamp metric family — the last persist and
+// restore times come from GET /diagnostics, a separate REST read with its
+// own cadence and receive time. The Prometheus snapshot and the diagnostics
+// read are never presented as one atomic observation: each carries its own
+// freshness badge and neither's staleness is inferred from the other.
 
-import {Box, Grid, Table, TableBody, TableCell, TableHead, TableRow, Typography} from '@mui/material';
+import {Alert, Box, Grid, Typography} from '@mui/material';
 import FreshnessBadge from 'components/observability/FreshnessBadge';
 import ObservabilityStateFrame from 'components/observability/ObservabilityStateFrame';
 import {classifyViewState} from 'components/observability/observabilityState';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {DIAGNOSTICS_CADENCE_MS, useDiagnostics} from 'hooks/query/gatewayTelemetryHooks';
 import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
-import {useMemo} from 'react';
 import {useTranslation} from 'react-i18next';
-import {estimateQuantile, mergeHistogramSeries} from 'observability/histogram';
-import {formatReportedAt, reportedAtFromIso, reportedAtFromSeconds} from 'observability/reportedAt';
-import {selectSamples, selectScalar} from 'observability/selectors';
-import {familySumRate, rateMaxGapMs} from 'observability/snapshotRates';
-import {CadenceSelector, PanelPaper, StatRow, formatRate, useAbsenceExplanation, useObservabilityApplicable} from './common';
+import {bootVerdict} from 'observability/bootVerdict';
+import {formatReportedAt, reportedAtFromIso} from 'observability/reportedAt';
+import {selectScalar} from 'observability/selectors';
+import {CadenceSelector, PanelPaper, StatRow, useAbsenceExplanation, useObservabilityApplicable} from './common';
 
 export default function PersistencePage() {
 	const {t} = useTranslation();
 	const instance = useInstanceFromURL();
 	const applicable = useObservabilityApplicable('page.persistence');
-	const {snapshot, history, isLoading, cadenceMs, refetch} = useMetricsSnapshot(applicable ? instance : null);
+	const {snapshot, isLoading, cadenceMs, refetch} = useMetricsSnapshot(applicable ? instance : null);
 	// Stage 3.5: let the no-data state say WHY, from the manifest contract.
 	const absence = useAbsenceExplanation('page.persistence', snapshot);
-	const maxGap = rateMaxGapMs(cadenceMs);
 	const diagnostics = useDiagnostics(instance, applicable);
-
-	const snapshotsByTrigger = useMemo(() => (snapshot ? selectSamples(snapshot, 'loxilb_snapshot_total') : []), [snapshot]);
-	const restoresByModeResult = useMemo(() => (snapshot ? selectSamples(snapshot, 'loxilb_restore_total') : []), [snapshot]);
-	const persistByResult = useMemo(() => (snapshot ? selectSamples(snapshot, 'loxilb_persist_total') : []), [snapshot]);
-
-	const restoreDuration = useMemo(() => {
-		const family = snapshot?.families.get('loxilb_restore_duration_seconds');
-		if (!family || family.samples.length === 0) return undefined;
-		const merged = mergeHistogramSeries(family);
-		if (merged.kind !== 'ok') return {invalid: merged.reason} as const;
-		const q = (p: number) => estimateQuantile(merged.series, p);
-		return {p50: q(0.5), p95: q(0.95), count: merged.series.count} as const;
-	}, [snapshot]);
 
 	const hasData = (snapshot?.diagnostics.totalSamples ?? 0) > 0;
 	const state = classifyViewState({
@@ -56,24 +44,19 @@ export default function PersistencePage() {
 		cadenceMs,
 	});
 
-	const gauge = (family: string) => {
-		const v = snapshot ? selectScalar(snapshot, family) : undefined;
-		return v === undefined ? t('No data') : v;
-	};
-
-	const quantileText = (r: ReturnType<typeof estimateQuantile>) => {
-		if (r.kind === 'ok') return `${(r.value * 1000).toFixed(0)} ms`;
-		if (r.kind === 'above-ladder') return t('Above bucket range');
-		return t('N/A');
-	};
+	const scalar = (family: string) => (snapshot ? selectScalar(snapshot, family) : undefined);
+	const configDirty = scalar('loxilb_config_dirty');
+	const autopersistFailures = scalar('loxilb_autopersist_consecutive_failures');
+	const quarantined = scalar('loxilb_snapshot_quarantine_total');
 
 	const nowMs = Date.now();
-	const timeText = (iso: string | undefined) => formatReportedAt(reportedAtFromIso(iso), nowMs, t);
-
-	const configDirty = snapshot ? selectScalar(snapshot, 'loxilb_config_dirty') : undefined;
-	const lastRestoreTs = snapshot ? selectScalar(snapshot, 'loxilb_last_restore_timestamp_seconds') : undefined;
+	// Both records are omitempty and nil until the first SUCCESSFUL persist or
+	// restore of this process: an omitted record is "none since start".
+	const opText = (rec: {at?: string} | undefined) =>
+		rec ? formatReportedAt(reportedAtFromIso(rec.at), nowMs, t) : t('None since start');
 
 	const diag = diagnostics.data?.data;
+	const boot = bootVerdict(diag?.boot, scalar('loxilb_boot_config_conflict_total'));
 
 	return (
 		<Box sx={{p: 2}}>
@@ -87,102 +70,64 @@ export default function PersistencePage() {
 				<Grid container spacing={2}>
 					<Grid item xs={12} md={6}>
 						<PanelPaper title={t('Configuration state')}>
+							{autopersistFailures !== undefined && autopersistFailures > 0 && (
+								<Alert severity="warning" sx={{mb: 1}}>
+									{t('Auto-persist has failed {{n}} times in a row: configuration changes are not being saved to disk.', {n: autopersistFailures})}
+								</Alert>
+							)}
+							{quarantined !== undefined && quarantined > 0 && (
+								<Alert severity="warning" sx={{mb: 1}}>
+									{t('{{n}} saved snapshots were quarantined after a failed boot restore.', {n: quarantined})}
+								</Alert>
+							)}
 							<StatRow
 								label={t('Unsaved config changes')}
 								value={configDirty === undefined ? t('No data') : configDirty === 0 ? t('No') : t('Yes')}
 							/>
-							<StatRow label={t('Consecutive auto-persist failures')} value={gauge('loxilb_autopersist_consecutive_failures')} />
-							<StatRow label={t('Persist attempts')} value={formatRate(familySumRate(history, 'loxilb_persist_total', maxGap), t)} />
-							{persistByResult.map(s => (
-								<StatRow
-									key={s.labelKey}
-									label={`${t('Persists')} (${s.labels.result ?? t('Unknown value')})`}
-									value={Number.isFinite(s.value) ? s.value : t('N/A')}
-								/>
-							))}
-							<StatRow label={t('Quarantined snapshots')} value={gauge('loxilb_snapshot_quarantine_total')} />
-						</PanelPaper>
-					</Grid>
-
-					<Grid item xs={12} md={6}>
-						<PanelPaper title={t('Snapshots by trigger')}>
-							{snapshotsByTrigger.length === 0 ? (
-								<Typography variant="body2" color="text.secondary">
-									{t('No data')}
-								</Typography>
-							) : (
-								snapshotsByTrigger.map(s => (
-									<StatRow
-										key={s.labelKey}
-										label={s.labels.trigger ?? t('Unknown value')}
-										value={Number.isFinite(s.value) ? s.value : t('N/A')}
-									/>
-								))
-							)}
-						</PanelPaper>
-					</Grid>
-
-					<Grid item xs={12} md={6}>
-						<PanelPaper title={t('Restores')}>
-							{restoresByModeResult.length === 0 ? (
-								<Typography variant="body2" color="text.secondary">
-									{t('No data')}
-								</Typography>
-							) : (
-								<Table size="small">
-									<TableHead>
-										<TableRow>
-											<TableCell>{t('Mode')}</TableCell>
-											<TableCell>{t('Result')}</TableCell>
-											<TableCell align="right">{t('Count')}</TableCell>
-										</TableRow>
-									</TableHead>
-									<TableBody>
-										{restoresByModeResult.map(s => (
-											<TableRow key={s.labelKey}>
-												<TableCell>{s.labels.mode ?? t('Unknown value')}</TableCell>
-												<TableCell>{s.labels.result ?? t('Unknown value')}</TableCell>
-												<TableCell align="right">{Number.isFinite(s.value) ? s.value : t('N/A')}</TableCell>
-											</TableRow>
-										))}
-									</TableBody>
-								</Table>
-							)}
-							<StatRow
-								label={t('Last restore finished')}
-								value={formatReportedAt(reportedAtFromSeconds(lastRestoreTs), nowMs, t)}
-							/>
-							{restoreDuration && !('invalid' in restoreDuration) && (
-								<>
-									<StatRow label={t('Restore duration p50')} value={quantileText(restoreDuration.p50)} />
-									<StatRow label={t('Restore duration p95')} value={quantileText(restoreDuration.p95)} />
-								</>
-							)}
+							<StatRow label={t('Consecutive auto-persist failures')} value={autopersistFailures ?? t('No data')} />
+							<StatRow label={t('Quarantined snapshots')} value={quarantined ?? t('No data')} />
 						</PanelPaper>
 					</Grid>
 
 					<Grid item xs={12} md={6}>
 						<PanelPaper title={t('Boot')}>
-							<StatRow label={t('Boot config conflicts')} value={gauge('loxilb_boot_config_conflict_total')} />
-							<StatRow label={t('Legacy boot fallbacks')} value={gauge('loxilb_boot_legacy_fallback_total')} />
-							{diag?.boot && (
-								<>
-									<StatRow label={t('Boot profile')} value={diag.boot.profile ?? t('N/A')} />
-									<StatRow label={t('Boot snapshot found')} value={diag.boot.snapshot_found ? t('Yes') : t('No')} />
-									{/* `succeeded` means a snapshot was fully applied. With none found
-									    there was nothing to restore, which is not a failure. */}
-									<StatRow
-										label={t('Boot restore succeeded')}
-										value={!diag.boot.snapshot_found ? t('Nothing to restore') : diag.boot.succeeded ? t('Yes') : t('No')}
-									/>
-									<StatRow label={t('Running degraded')} value={diag.boot.degraded ? t('Yes') : t('No')} />
-								</>
+							{boot.kind === 'degraded' && (
+								<Alert severity="error">
+									{boot.legacyFallback
+										? t('Running degraded: the boot snapshot did not apply, and the gateway replayed its older legacy *.txt configuration instead.')
+										: t('Running degraded: the boot snapshot did not apply, and no configuration replaced it.')}
+									{boot.quarantinePath && ' ' + t('The snapshot was kept at {{path}} for recovery.', {path: boot.quarantinePath})}
+								</Alert>
+							)}
+							{boot.kind === 'conflict' && (
+								<Alert severity="warning">
+									{t('This boot found both snapshot.json and legacy *.txt configuration and had to choose one. Remove the stale set.')}
+								</Alert>
+							)}
+							{boot.kind === 'restored' && (
+								<Alert severity="success">
+									{boot.profile
+										? t('Booted from the saved snapshot ({{profile}} profile).', {profile: boot.profile})
+										: t('Booted from the saved snapshot.')}
+								</Alert>
+							)}
+							{boot.kind === 'not-restored' && (
+								<Alert severity="info">
+									{boot.profile
+										? t('Booted under the {{profile}} profile; no saved snapshot was applied.', {profile: boot.profile})
+										: t('Booted; no saved snapshot was applied.')}
+								</Alert>
+							)}
+							{boot.kind === 'unknown' && (
+								<Typography variant="body2" color="text.secondary">
+									{t('No data')}
+								</Typography>
 							)}
 						</PanelPaper>
 					</Grid>
 
 					<Grid item xs={12}>
-						<PanelPaper title={t('Persist and restore identity (from diagnostics)')}>
+						<PanelPaper title={t('Last persist and restore (from diagnostics)')}>
 							{diagnostics.error ? (
 								<Typography variant="body2" color="text.secondary">
 									{t('Diagnostics are unavailable right now; the metric panels above are still current.')}
@@ -201,24 +146,12 @@ export default function PersistencePage() {
 											{t('This REST read has its own timing and is not synchronized with the metric snapshot above.')}
 										</Typography>
 									</Box>
-									<Grid container spacing={2}>
-										<Grid item xs={12} md={4}>
-											<StatRow label={t('Last persist at')} value={timeText(diag.last_persist?.at)} />
-											<StatRow label={t('Last persist generation')} value={diag.last_persist?.generation ?? t('N/A')} />
-											<StatRow label={t('Last persist trigger')} value={diag.last_persist?.mode ?? t('N/A')} />
-										</Grid>
-										<Grid item xs={12} md={4}>
-											<StatRow label={t('Last restore at')} value={timeText(diag.last_restore?.at)} />
-											<StatRow label={t('Last restore generation')} value={diag.last_restore?.generation ?? t('N/A')} />
-											<StatRow label={t('Last restore mode')} value={diag.last_restore?.mode ?? t('N/A')} />
-										</Grid>
-										<Grid item xs={12} md={4}>
-											{/* The gateway sends `auto_persist` only while failures > 0; its absence IS zero. */}
-											<StatRow label={t('Auto-persist failures (reported)')} value={diag.auto_persist?.consecutive_failures ?? 0} />
-											<StatRow label={t('Auto-persist last attempt')} value={timeText(diag.auto_persist?.last_attempt)} />
-											<StatRow label={t('Auto-persist last error')} value={diag.auto_persist?.last_error ?? t('None')} />
-										</Grid>
-									</Grid>
+									<StatRow label={t('Last persist')} value={opText(diag.last_persist)} />
+									<StatRow label={t('Last restore')} value={opText(diag.last_restore)} />
+									{/* The gateway sends `auto_persist` only while failures > 0. */}
+									{diag.auto_persist && (
+										<StatRow label={t('Auto-persist last error')} value={diag.auto_persist.last_error ?? t('N/A')} />
+									)}
 								</>
 							)}
 						</PanelPaper>
