@@ -93,6 +93,7 @@ describe('supported customization: storage keys are what the components actually
 			dashboardLayoutGateway: 'dashboard_layout_v3:inference-gateway',
 			dashboardLayoutLoxilb: 'dashboard_layout_v3:loxilb',
 			observabilityCadence: 'observability_cadence_ms',
+			systemAuditInstance: 'system_audit_instance',
 		});
 	});
 

@@ -48,6 +48,12 @@ export const PREFERENCE_KEYS = {
 	 * trusted; anything else falls back to the honest default. JSON.
 	 */
 	observabilityCadence: 'observability_cadence_ms',
+	/**
+	 * Name of the gateway instance last picked for the audit writer panel on
+	 * the OAM-level System page. Empty until the operator picks one: the page
+	 * probes no instance on its own. JSON.
+	 */
+	systemAuditInstance: 'system_audit_instance',
 } as const;
 
 export function dashboardLayoutKey(flavor: 'inference-gateway' | 'loxilb'): string {
@@ -71,6 +77,10 @@ export const DEFAULT_SIDE_MENU_OPEN = true;
 
 export function isTableDensity(value: unknown): value is TableDensity {
 	return value === 'comfortable' || value === 'compact';
+}
+
+export function isStringPreference(value: unknown): value is string {
+	return typeof value === 'string';
 }
 
 export function isBooleanPreference(value: unknown): value is boolean {

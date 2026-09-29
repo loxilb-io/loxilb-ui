@@ -4,6 +4,7 @@
 import CircleIcon from '@mui/icons-material/Circle';
 import {Box, Divider, Stack, Typography} from '@mui/material';
 import ArchivedLogCard from 'components/card/ArchivedLogCard';
+import AuditWriterSection from 'components/observability/AuditWriterPanel';
 import SingleTextBox from 'components/element/SingleTextBox';
 import ValueBunch from 'components/element/ValueBunch';
 import LowerSection from 'components/layout/LowerSection';
@@ -81,6 +82,12 @@ export default function SystemPage() {
 
 					<ArchivedLogCard log_file_list={log_file_list} onDownload={(filename, onProgress) => download_oam_log_archive(filename, onProgress)} />
 				</Box>
+
+				<Divider />
+
+				{/* Per gateway instance: while its audit writer is down every
+				    audited management call is refused. */}
+				<AuditWriterSection />
 
 				<Divider />
 
