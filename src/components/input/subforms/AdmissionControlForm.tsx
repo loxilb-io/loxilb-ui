@@ -54,8 +54,10 @@ export default function AdmissionControlForm(props: {
 	onChange: (delta: Partial<IServiceArguments>) => void;
 	pdTopology: boolean;
 	isEdit: boolean;
+	/** The fields this instance's gateway declares (declaredFcFields); the rest are not offered. */
+	declared: ReadonlySet<keyof IServiceArguments>;
 }) {
-	const {value, onChange, pdTopology, isEdit} = props;
+	const {value, onChange, pdTopology, isEdit, declared} = props;
 	const [text, setText] = useState(() => initialText(value));
 	// Open when the rule already declares something, so an edit shows it.
 	const [open, setOpen] = useState(() => FC_FIELDS.some(field => value[field] !== undefined && value[field] !== ''));
@@ -71,6 +73,7 @@ export default function AdmissionControlForm(props: {
 	);
 
 	const box = (field: FcNumericField, label: string, description: string) => {
+		if (!declared.has(field)) return null;
 		const state = evaluateNumericField(text[field], {required: false, min: 0, max: FC_NUMERIC_MAX[field]});
 		return (
 			<ParamBox
@@ -106,12 +109,12 @@ export default function AdmissionControlForm(props: {
 						</Typography>
 					)}
 					<HorizontalStack>
-						<DropDownSelectBox
+						{declared.has('fc_mode') && <DropDownSelectBox
 							label={t('Admission Mode')}
 							value={value.fc_mode ?? ''}
 							onChange={newValue => onChange({fc_mode: (newValue || undefined) as IServiceArguments['fc_mode']})}
 							item_list={localizeDefault(MODE_ITEMS)}
-						/>
+						/>}
 						{box('fc_max_outstanding', t('Max Outstanding'), t('Pool-wide ceiling on executing inference requests.'))}
 					</HorizontalStack>
 					<HorizontalStack>
@@ -129,12 +132,12 @@ export default function AdmissionControlForm(props: {
 						{box('fc_max_queue_wait_ms', t('Queue Wait (ms)'), t('How long a queued request may wait. Required when a queue depth is set.'))}
 					</HorizontalStack>
 					<HorizontalStack>
-						<DropDownSelectBox
+						{declared.has('fc_adaptive') && <DropDownSelectBox
 							label={t('Adaptive Ceiling')}
 							value={value.fc_adaptive ?? ''}
 							onChange={newValue => onChange({fc_adaptive: (newValue || undefined) as IServiceArguments['fc_adaptive']})}
 							item_list={localizeDefault(ADAPTIVE_ITEMS)}
-						/>
+						/>}
 						{box('fc_ttft_target_ms', t('TTFT Target (ms)'), t('Time-to-first-token target the adaptive ceiling steers by.'))}
 					</HorizontalStack>
 					{value.fc_adaptive === 'off' && text.fc_ttft_target_ms.trim() !== '' && (

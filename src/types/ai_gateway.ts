@@ -53,6 +53,20 @@ const FC_ADAPTIVE = ['on', 'off', 'inherit'] as const;
 /** Writable admission fields. fc_effective is read-only and not among them. */
 export const FC_FIELDS: readonly (keyof IServiceArguments)[] = ['fc_mode', 'fc_adaptive', ...FC_NUMERIC_FIELDS];
 
+/**
+ * The admission fields this instance's gateway declares in its own `/meta`.
+ *
+ * ⚠️ The vendored spec says what the NEWEST gateway accepts, not this one. An
+ * older gateway answers 200 to a create carrying a field it does not know and
+ * drops it, so a field offered without this check can be "saved" with no effect
+ * and no error (seen live: a build with only the queue pair stored
+ * fc_max_queue_depth and discarded fc_mode). `params` is the live /meta
+ * `serviceArguments` field map; a field it omits is not offered.
+ */
+export function declaredFcFields(params: Record<string, unknown> | undefined): ReadonlySet<keyof IServiceArguments> {
+	return new Set(FC_FIELDS.filter(field => params?.[field] !== undefined));
+}
+
 /** Fields that act only on a P/D pool (prefill/decode legs, the P/D scorers). */
 export const FC_PD_ONLY_FIELDS: readonly FcNumericField[] = ['fc_prefill_max_inflight', 'fc_decode_max_inflight', 'fc_telemetry_stale_ms'];
 

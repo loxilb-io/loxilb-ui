@@ -7,10 +7,13 @@
 // them on create (and on the key-changed "create" edit), an in-place edit of an
 // AI rule stays blocked, and the read-back shows what is in force.
 //
-// ⭐ Only the rule list and the LB writes are intercepted. `/version` and
-// `/meta` stay real, so the flavor gate that exposes the AI fields is
-// exercised; the capability read is fixed to "ready" so the spec does not
-// inherit the testbed's KV-exact deployment state (helpers/capabilities.ts).
+// ⭐ Only the rule list, the LB writes and the admission part of `/meta` are
+// intercepted. `/version` and the rest of `/meta` stay real, so the flavor gate
+// that exposes the AI fields is exercised; the capability read is fixed to
+// "ready" so the spec does not inherit the testbed's KV-exact deployment state
+// (helpers/capabilities.ts). The form offers only the fc_* fields the
+// instance's own /meta declares, so the declarations are set per test rather
+// than inherited from whichever gateway build the testbed runs.
 import type {Page, Request, Route} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {activeInstance} from '../../helpers/api';
@@ -22,6 +25,33 @@ import {rowByText, selectRowByText} from '../../helpers/table';
 const LB_ALL_RE = /\/netlox\/v1\/config\/loadbalancer\/all(\?.*)?$/;
 // Every LB write: create (POST /config/loadbalancer), the tuple PATCH, deletes.
 const LB_WRITE_RE = /\/netlox\/v1\/config\/loadbalancer(\/(?!all)[^?]*)?(\?.*)?$/;
+
+const META_RE = /\/netlox\/v1\/meta(\?.*)?$/;
+
+// Writable admission fields as the current gateway declares them (the unit
+// contract test pins the UI's list against api-spec/gateway-swagger.yml).
+const FC_DECLARED = [
+	'fc_mode', 'fc_adaptive', 'fc_max_outstanding', 'fc_ep_max_inflight', 'fc_prefill_max_inflight',
+	'fc_decode_max_inflight', 'fc_max_queue_depth', 'fc_max_queue_wait_ms', 'fc_telemetry_stale_ms',
+	'fc_warmup_ms', 'fc_ttft_target_ms', 'fc_tenant_max_share_pct',
+];
+
+/** Serve the real /meta with exactly `declared` as the rule's admission fields. */
+async function declareAdmission(page: Page, declared: readonly string[] = FC_DECLARED): Promise<void> {
+	await page.route(META_RE, async (route: Route) => {
+		const resp = await route.fetch();
+		const meta = await resp.json();
+		const sa = meta['/config/loadbalancer']?.fields?.serviceArguments;
+		if (!sa) throw new Error('/meta has no /config/loadbalancer serviceArguments — the fixture no longer matches the gateway');
+		for (const key of FC_DECLARED) delete sa[key];
+		for (const key of declared) {
+			sa[key] = key === 'fc_mode' || key === 'fc_adaptive'
+				? {type: 'string', required: false}
+				: {type: 'integer', format: 'int32', required: false};
+		}
+		await route.fulfill({response: resp, json: meta});
+	});
+}
 
 const AI_RULE = 'e2e-adm-ai';
 const L4_RULE = 'e2e-adm-l4';
@@ -93,6 +123,7 @@ test.describe('@gw AI admission control — mock contract', () => {
 
 	test.beforeEach(async ({page}) => {
 		await mockKvExactReady(page);
+		await declareAdmission(page);
 	});
 
 	test('ADM-E2E-01: the group appears only for an AI service, and P/D-only fields only on P/D', async ({page}) => {
@@ -163,30 +194,31 @@ test.describe('@gw AI admission control — mock contract', () => {
 		expect(writes).toHaveLength(0);
 	});
 
-	test('ADM-E2E-04: the rule detail shows what is in force and who set it, and warns when held', async ({page}) => {
-		await mockRuleList(page, [
-			aiRule(),
-			aiRule({
-				name: 'e2e-adm-held', port: 18093,
-				fc_effective: {...aiRule().serviceArguments.fc_effective, adaptive: 'on', adapt_state: 'tightened', adapt_reason: 'ttft', effective_max_outstanding: 40},
-			}),
-			aiRule({name: 'e2e-adm-unreported', port: 18094, fc_effective: undefined}),
-		]);
+	// One rule per page load: selecting a second row re-mounts the detail pane on
+	// its first tab, so a multi-row walk tests the tab strip, not the read-back.
+	async function openAIDetail(page: Page, rule: ReturnType<typeof aiRule>): Promise<void> {
+		await page.unroute(LB_ALL_RE);
+		await mockRuleList(page, [rule]);
 		await page.goto(`instance/traffic/lb?name=${instName}`);
-
-		await rowByText(page, AI_RULE).click();
+		await rowByText(page, rule.serviceArguments.name as string).click();
 		await page.getByRole('tab', {name: 'AI Gateway'}).click();
+	}
+
+	test('ADM-E2E-04: the rule detail shows what is in force and who set it, and warns when held', async ({page}) => {
+		await openAIDetail(page, aiRule());
 		await expect(page.getByText('observe (rule)')).toBeVisible();
 		await expect(page.getByText('8 / 2000 ms (rule)')).toBeVisible();
 		await expect(page.getByText(/adaptive ceiling is/)).toHaveCount(0);
 
-		await rowByText(page, 'e2e-adm-held').click();
-		await page.getByRole('tab', {name: 'AI Gateway'}).click();
+		await openAIDetail(page, aiRule({
+			name: 'e2e-adm-held', port: 18093,
+			fc_effective: {...aiRule().serviceArguments.fc_effective, adaptive: 'on', adapt_state: 'tightened', adapt_reason: 'ttft', effective_max_outstanding: 40},
+		}));
 		await expect(page.getByText('The adaptive ceiling is tightened at 40 of 64 (reason: ttft).')).toBeVisible();
 
-		await rowByText(page, 'e2e-adm-unreported').click();
-		await page.getByRole('tab', {name: 'AI Gateway'}).click();
+		await openAIDetail(page, aiRule({name: 'e2e-adm-unreported', port: 18094, fc_effective: undefined}));
 		await expect(page.getByText('Not reported by this gateway.')).toBeVisible();
+		await expect(page.getByText(/^off\b/)).toHaveCount(0);
 	});
 
 	test('ADM-E2E-05: an admission change on an existing AI rule is named in the block, and nothing is sent', async ({page}) => {
@@ -222,26 +254,22 @@ test.describe('@gw AI admission control — mock contract', () => {
 		expect(writes).toHaveLength(1);
 	});
 
-	test('ADM-E2E-09: a key-changed edit of an AI rule is one create, carrying the edited admission and no fc_effective', async ({page}) => {
+	// The key-changed "create" edit (selectLBEditStrategy → create) is a code
+	// path only: the edit dialog locks every key field, so an operator cannot
+	// reach it. Pin the lock, so a future unlock is a conscious change that must
+	// also bring the create path's fc_effective strip under E2E.
+	test('ADM-E2E-09: the edit dialog locks the rule key, so an AI rule edit can never become a create', async ({page}) => {
 		await mockRuleList(page, [aiRule()]);
 		const writes = await recordWrites(page);
 		await page.goto(`instance/traffic/lb?name=${instName}`);
 		await selectRowByText(page, AI_RULE);
 		await openToolbarDialog(page, 'Edit', 'Edit Load Balancer Rule');
 		await expandSection(page, /^Basic Settings/);
-		await field(page, 'Port Min').fill('18095');
-		const aigw = await expandSection(page, /^AI Gateway/);
-		await field(page, 'Max Outstanding', aigw).fill('32');
-		await dialogButton(page, 'Update').click();
-
-		await expect.poll(() => writes.length).toBeGreaterThan(0);
-		expect(writes.map(r => r.method())).toEqual(['POST']);
-		const sa = writes[0].postDataJSON().serviceArguments;
-		expect(sa.port).toBe(18095);
-		expect(sa.fc_max_outstanding).toBe(32);
-		// The rest of the declaration is carried over as it was read back.
-		expect(sa).toMatchObject({fc_mode: 'observe', fc_max_queue_depth: 8, fc_max_queue_wait_ms: 2000});
-		expect(sa).not.toHaveProperty('fc_effective');
+		for (const label of ['Rule Name', 'External IP', 'Port Min', 'Port Max']) {
+			await expect(field(page, label)).toBeDisabled();
+		}
+		await expect(field(page, 'Protocol')).toBeDisabled();
+		expect(writes).toHaveLength(0);
 	});
 
 	test('ADM-E2E-01b: an L4 rule never shows the group, even with a credential policy', async ({page}) => {
@@ -254,5 +282,40 @@ test.describe('@gw AI admission control — mock contract', () => {
 		await openToolbarDialog(page, 'Edit', 'Edit Load Balancer Rule');
 		const aigw = await expandSection(page, /^AI Gateway/);
 		await expect(aigw.getByRole('button', {name: 'Admission Control'})).toHaveCount(0);
+	});
+	// Seen live: a gateway build that knew only the queue pair answered 200 to a
+	// create carrying fc_mode and fc_max_outstanding, stored the pair and
+	// dropped the rest. Offering a field that gateway does not declare is a
+	// "saved" setting with no effect and no error.
+	test('ADM-E2E-10: only the fields this gateway declares are offered', async ({page}) => {
+		await page.unroute(META_RE);
+		await declareAdmission(page, ['fc_max_queue_depth', 'fc_max_queue_wait_ms']);
+		await mockRuleList(page, []);
+		const writes = await recordWrites(page);
+		const aigw = await openAddFullproxy(page);
+		await field(page, 'SSE Mode', aigw).check();
+		await openAdmission(aigw);
+		await expect(field(page, 'Queue Depth', aigw)).toBeVisible();
+		await expect(field(page, 'Queue Wait (ms)', aigw)).toBeVisible();
+		await expect(field(page, 'Max Outstanding', aigw)).toHaveCount(0);
+		await expect(field(page, 'Admission Mode', aigw)).toHaveCount(0);
+		await field(page, 'Queue Depth', aigw).fill('8');
+		await field(page, 'Queue Wait (ms)', aigw).fill('2000');
+		await dialogButton(page, 'Create').click();
+		await expect.poll(() => writes.length).toBe(1);
+		const sa = writes[0].postDataJSON().serviceArguments;
+		expect(Object.keys(sa).filter(key => key.startsWith('fc_')).sort()).toEqual(['fc_max_queue_depth', 'fc_max_queue_wait_ms']);
+	});
+
+	// A fresh page: /meta is cached for the session, and a gateway's declarations
+	// only change across an upgrade anyway.
+	test('ADM-E2E-10b: a gateway older than admission control shows no group at all', async ({page}) => {
+		await page.unroute(META_RE);
+		await declareAdmission(page, []);
+		await mockRuleList(page, []);
+		const aigw2 = await openAddFullproxy(page);
+		await field(page, 'SSE Mode', aigw2).check();
+		await expect(field(page, 'Model Name', aigw2)).toBeVisible();
+		await expect(aigw2.getByRole('button', {name: 'Admission Control'})).toHaveCount(0);
 	});
 });

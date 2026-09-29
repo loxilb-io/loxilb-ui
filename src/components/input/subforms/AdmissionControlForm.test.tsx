@@ -12,6 +12,7 @@ import 'locales/i18n';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {cleanup, render, screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import {FC_FIELDS} from 'types/ai_gateway';
 import {IServiceArguments} from 'types/load_balancer';
 import AdmissionControlForm from './AdmissionControlForm';
 
@@ -19,9 +20,10 @@ function args(over: Partial<IServiceArguments> = {}): IServiceArguments {
 	return {name: 'r', externalIP: '192.0.2.1', inactiveTimeOut: 30, port: 8000, protocol: 'tcp', mode: 4, sse_mode: true, ...over} as IServiceArguments;
 }
 
-function renderForm(value: IServiceArguments, opts: {pdTopology?: boolean; isEdit?: boolean} = {}) {
+function renderForm(value: IServiceArguments, opts: {pdTopology?: boolean; isEdit?: boolean; declared?: readonly (keyof IServiceArguments)[]} = {}) {
 	const onChange = vi.fn();
-	render(<AdmissionControlForm value={value} onChange={onChange} pdTopology={opts.pdTopology ?? false} isEdit={opts.isEdit ?? false} />);
+	const declared = new Set(opts.declared ?? FC_FIELDS);
+	render(<AdmissionControlForm value={value} onChange={onChange} pdTopology={opts.pdTopology ?? false} isEdit={opts.isEdit ?? false} declared={declared} />);
 	return onChange;
 }
 
@@ -109,5 +111,17 @@ describe('AdmissionControlForm', () => {
 		// Gateway default may be adaptive through the environment: no claim.
 		renderForm(args({fc_ttft_target_ms: 800}));
 		expect(screen.queryByText('A TTFT target has no effect while the adaptive ceiling is off.')).toBeNull();
+	});
+	it('offers only the fields this gateway declares, so none can be dropped behind a 200', async () => {
+		// The testbed build before per-rule admission knew only the queue pair.
+		renderForm(args(), {pdTopology: true, declared: ['fc_max_queue_depth', 'fc_max_queue_wait_ms']});
+		await expand();
+		expect(box('Queue Depth')).toBeTruthy();
+		expect(box('Queue Wait (ms)')).toBeTruthy();
+		for (const name of ['Max Outstanding', 'Per-endpoint Max Inflight', 'Prefill Max Inflight', 'TTFT Target (ms)', 'Endpoint Warm-up (ms)']) {
+			expect(screen.queryByRole('textbox', {name})).toBeNull();
+		}
+		expect(screen.queryByLabelText('Admission Mode')).toBeNull();
+		expect(screen.queryByLabelText('Adaptive Ceiling')).toBeNull();
 	});
 });

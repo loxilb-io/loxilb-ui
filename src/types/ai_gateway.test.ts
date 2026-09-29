@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import {
+	declaredFcFields,
 	allowedAIHashes,
 	effectiveAIHash,
 	FC_FIELDS,
@@ -480,5 +481,17 @@ describe('admission validation (mirrors the gateway refusals)', () => {
 			'fc_max_queue_wait_ms', 'fc_mode', 'fc_prefill_max_inflight', 'fc_telemetry_stale_ms', 'fc_tenant_max_share_pct',
 			'fc_ttft_target_ms', 'fc_warmup_ms',
 		]);
+	});
+});
+
+describe('declaredFcFields (what this gateway\'s /meta offers)', () => {
+	it('keeps only the fields the live /meta declares, and never fc_effective', () => {
+		const got = declaredFcFields({fc_max_queue_depth: {type: 'integer'}, fc_max_queue_wait_ms: {type: 'integer'}, fc_effective: {}, name: {}});
+		expect([...got].sort()).toEqual(['fc_max_queue_depth', 'fc_max_queue_wait_ms']);
+	});
+
+	it('declares nothing when /meta has not loaded or predates admission', () => {
+		expect(declaredFcFields(undefined).size).toBe(0);
+		expect(declaredFcFields({}).size).toBe(0);
 	});
 });

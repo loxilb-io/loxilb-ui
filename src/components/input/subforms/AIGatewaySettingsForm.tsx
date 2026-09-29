@@ -9,12 +9,13 @@ import {useCapabilityVerdict} from 'hooks/query/statusHook';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useJWTAuthProfiles, useModelProfiles} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
-import {useCallback} from 'react';
+import {useCallback, useMemo} from 'react';
 import {
 	AI_ENGINES,
 	AIEngine,
 	allowedAIHashes,
 	allowedProfileApiModes,
+	declaredFcFields,
 	effectiveAIHash,
 	isAIService,
 	profileAcceptsModel,
@@ -111,6 +112,7 @@ export default function AIGatewaySettingsForm(props: {
 	const topology = currentTopology(value);
 	const exactRouting = topology === 'pd-exact' || topology === 'single-role';
 	const pdTopology = topology === 'pd' || topology === 'pd-exact';
+	const fcDeclared = useMemo(() => declaredFcFields(params), [params]);
 	const effectiveHash = effectiveAIHash(engine);
 
 	const engineItems: IEnumItem[] = caps
@@ -407,9 +409,10 @@ export default function AIGatewaySettingsForm(props: {
 
 				{/* Only where the gateway keeps an admission pool (its aiGwModeFor):
 				    elsewhere the fields are stored but no gate reads them, and the
-				    serializer drops them. */}
-				{isL7 && isAIService(value) && (
-					<AdmissionControlForm value={value} onChange={onChange} pdTopology={pdTopology} isEdit={isEdit} />
+				    serializer drops them. And only the fields this gateway's /meta
+				    declares: an older one drops the rest behind a 200. */}
+				{isL7 && isAIService(value) && fcDeclared.size > 0 && (
+					<AdmissionControlForm value={value} onChange={onChange} pdTopology={pdTopology} isEdit={isEdit} declared={fcDeclared} />
 				)}
 
 				{exactRouting && (
