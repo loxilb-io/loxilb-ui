@@ -781,7 +781,6 @@
 	"Filter rules": "Filter rules",
 	"Firewall rules active": "Firewall rules active",
 	"Fresh": "Fresh",
-	"GPU blocks": "GPU blocks",
 	"GPU monitoring is disabled on this instance.": "GPU monitoring is disabled on this instance.",
 	"GPU monitoring status": "GPU monitoring status",
 	"Gap in samples": "Gap in samples",
@@ -827,7 +826,6 @@
 	"Persistence": "Persistence",
 	"Persists": "Persists",
 	"Policy store unavailable": "Policy store unavailable",
-	"Preemptions (as reported)": "Preemptions (as reported)",
 	"Quarantined snapshots": "Quarantined snapshots",
 	"Queued requests": "Queued requests",
 	"Rate": "Rate",
@@ -875,7 +873,6 @@
 	"Worker rows are unavailable right now; the monitoring status above is still current.": "Worker rows are unavailable right now; the monitoring status above is still current.",
 	"Workers": "Workers",
 	"Workers tracked": "Workers tracked",
-	"eBPF maps loaded": "eBPF maps loaded",
 	"unknown": "unknown",
 	"Refresh interval": "Refresh interval",
 	"{{seconds}}s": "{{seconds}}s",
@@ -1229,5 +1226,8 @@
 	"{{m}} of {{n}} rules under strict KV attestation report an enforcement fault.": "{{m}} of {{n}} rules under strict KV attestation report an enforcement fault.",
 	"{{n}} attestation probe failures since the gateway started.": "{{n}} attestation probe failures since the gateway started.",
 	"{{n}} rules under strict KV attestation, none with an enforcement fault.": "{{n}} rules under strict KV attestation, none with an enforcement fault.",
-	"{{n}} rules under strict KV attestation. The enforcement-fault state is not reported.": "{{n}} rules under strict KV attestation. The enforcement-fault state is not reported."
+	"{{n}} rules under strict KV attestation. The enforcement-fault state is not reported.": "{{n}} rules under strict KV attestation. The enforcement-fault state is not reported.",
+	"None of the {{n}} engine-metrics scrapes since the gateway started could be parsed: load-aware P/D selection is scoring every endpoint on substituted values.": "None of the {{n}} engine-metrics scrapes since the gateway started could be parsed: load-aware P/D selection is scoring every endpoint on substituted values.",
+	"The gateway reports its worker-statistics eBPF map as not loaded, so the worker readings below may not be reaching the datapath.": "The gateway reports its worker-statistics eBPF map as not loaded, so the worker readings below may not be reaching the datapath.",
+	"{{share}} of engine-metrics scrapes in the last window failed: load-aware P/D selection scored those endpoints on stale or substituted values.": "{{share}} of engine-metrics scrapes in the last window failed: load-aware P/D selection scored those endpoints on stale or substituted values."
 }

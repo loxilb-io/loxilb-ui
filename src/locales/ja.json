@@ -781,7 +781,6 @@
 	"Filter rules": "フィルタールール",
 	"Firewall rules active": "アクティブなファイアウォールルール",
 	"Fresh": "最新",
-	"GPU blocks": "GPUブロック",
 	"GPU monitoring is disabled on this instance.": "このインスタンスではGPUモニタリングが無効になっています。",
 	"GPU monitoring status": "GPUモニタリング状態",
 	"Gap in samples": "サンプル欠落",
@@ -827,7 +826,6 @@
 	"Persistence": "永続化",
 	"Persists": "保存",
 	"Policy store unavailable": "ポリシーストア利用不可",
-	"Preemptions (as reported)": "プリエンプション（報告値）",
 	"Quarantined snapshots": "隔離されたスナップショット",
 	"Queued requests": "待機中のリクエスト",
 	"Rate": "レート",
@@ -875,7 +873,6 @@
 	"Worker rows are unavailable right now; the monitoring status above is still current.": "現在ワーカー行を取得できません。上のモニタリング状態は引き続き最新です。",
 	"Workers": "ワーカー",
 	"Workers tracked": "追跡中のワーカー",
-	"eBPF maps loaded": "eBPFマップ読み込み済み",
 	"unknown": "不明",
 	"Refresh interval": "更新間隔",
 	"{{seconds}}s": "{{seconds}}秒",
@@ -1229,5 +1226,8 @@
 	"{{m}} of {{n}} rules under strict KV attestation report an enforcement fault.": "厳格な KV アテステーション対象ルール {{n}} 件中 {{m}} 件が適用フォールトを報告しています。",
 	"{{n}} attestation probe failures since the gateway started.": "ゲートウェイ起動以降のアテステーションプローブ失敗 {{n}} 件。",
 	"{{n}} rules under strict KV attestation, none with an enforcement fault.": "厳格な KV アテステーション対象ルール {{n}} 件、適用フォールトなし。",
-	"{{n}} rules under strict KV attestation. The enforcement-fault state is not reported.": "厳格な KV アテステーション対象ルール {{n}} 件。適用フォールトの状態は報告されていません。"
+	"{{n}} rules under strict KV attestation. The enforcement-fault state is not reported.": "厳格な KV アテステーション対象ルール {{n}} 件。適用フォールトの状態は報告されていません。",
+	"None of the {{n}} engine-metrics scrapes since the gateway started could be parsed: load-aware P/D selection is scoring every endpoint on substituted values.": "ゲートウェイ起動以降のエンジンメトリクススクレイプ {{n}} 件のうち、解析できたものは 1 件もありません: 負荷考慮の P/D 選択はすべてのエンドポイントを代替値でスコアリングしています。",
+	"The gateway reports its worker-statistics eBPF map as not loaded, so the worker readings below may not be reaching the datapath.": "ゲートウェイはワーカー統計 eBPF マップが未ロードであると報告しているため、以下のワーカー値がデータパスに届いていない可能性があります。",
+	"{{share}} of engine-metrics scrapes in the last window failed: load-aware P/D selection scored those endpoints on stale or substituted values.": "直近区間のエンジンメトリクススクレイプのうち {{share}} が失敗しました: 負荷考慮の P/D 選択はそれらのエンドポイントを古い値または代替値でスコアリングしました。"
 }

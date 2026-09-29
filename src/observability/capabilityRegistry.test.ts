@@ -29,6 +29,7 @@ const GATEWAY_IDS: ObservabilityEntryId[] = [
 	'panel.tokenQuota',
 	'panel.aiAdmission',
 	'panel.proxyOverload',
+	'panel.workerScrape',
 	'panel.auditWriter',
 ];
 
@@ -94,6 +95,9 @@ describe('registry contract against the vendored artifacts', () => {
 		// ListenDrops includes ListenOverflows, so the panel needs both to show
 		// the overflow share without adding the two.
 		expect(size('panel.proxyOverload')).toBe(3);
+		// One family: the scrape counter's result label is a partition of
+		// attempts, so the verdict needs nothing beside it.
+		expect(size('panel.workerScrape')).toBe(1);
 		// Every audit family: the collector emits all eighteen once a writer
 		// exists, and the panel reads each (up, heartbeat, streams, losses).
 		expect(size('panel.auditWriter')).toBe(18);
