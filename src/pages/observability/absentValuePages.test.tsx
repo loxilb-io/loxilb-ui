@@ -24,6 +24,7 @@ import WorkersPage from './WorkersPage';
 const state = vi.hoisted(() => ({
 	history: [] as IMetricsSnapshot[],
 	gpu: undefined as unknown,
+	workers: undefined as unknown,
 	diagnostics: undefined as unknown,
 }));
 
@@ -68,7 +69,7 @@ vi.mock('hooks/query/gatewayTelemetryHooks', async importOriginal => {
 	return {
 		...mod,
 		useGpuStatus: () => ({data: state.gpu, isLoading: false, error: null, refetch: () => undefined}),
-		useWorkerMetrics: () => ({data: undefined, isLoading: false, error: null, refetch: () => undefined}),
+		useWorkerMetrics: () => ({data: state.workers, isLoading: false, error: null, refetch: () => undefined}),
 		useDiagnostics: () => ({data: state.diagnostics, isLoading: false, error: null, refetch: () => undefined}),
 	};
 });
@@ -97,6 +98,7 @@ afterEach(() => {
 	cleanup();
 	state.history = [];
 	state.gpu = undefined;
+	state.workers = undefined;
 	state.diagnostics = undefined;
 });
 
@@ -135,6 +137,18 @@ describe('WorkersPage — omitempty worker_count', () => {
 		state.gpu = gpu({worker_count: 3});
 		renderPage(<WorkersPage />);
 		expect(valueOf('Workers tracked')).toBe('3');
+	});
+});
+
+// swapped_requests is caller-supplied: the gateway stores what the reporter
+// sent and neither computes nor verifies a delta, so the column cannot claim one.
+describe('WorkersPage — preemptions are as reported', () => {
+	it('does not label a caller-supplied value a delta', () => {
+		state.gpu = {receivedAtMs: T0, data: {enabled: true, routing_mode: 'gpu_aware', worker_count: 1}};
+		state.workers = {receivedAtMs: T0, data: [{endpoint_ip: '10.0.0.1', queued_requests: 2, swapped_requests: 7, kv_cache_usage_perc: 40}]};
+		renderPage(<WorkersPage />);
+		expect(screen.getByText('Preemptions (as reported)')).toBeTruthy();
+		expect(screen.queryByText(/delta/i)).toBeNull();
 	});
 });
 

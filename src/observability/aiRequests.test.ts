@@ -12,7 +12,10 @@ import {
 	denialTotalRate,
 	hasOutcomePartition,
 	isErrorStatus,
+	TOKENS_MISSING,
+	rateLimitHitKind,
 	requestOutcomes,
+	usageMissingRates,
 } from './aiRequests';
 
 function snapshotOf(text: string, receivedAtMs: number): IMetricsSnapshot {
@@ -381,5 +384,51 @@ describe('denial reasons — disjoint rows', () => {
 		const total = denialTotalRate(h, GAP);
 		expect(total.kind).toBe('ok');
 		expect(sum).toBeCloseTo(total.kind === 'ok' ? total.perSecond : Number.NaN, 10);
+	});
+});
+
+// A per-reason listing of rate_limit_hits put "Rate limited" in front of
+// token_quota_exceeded — a refusal by a different gate.
+describe('rateLimitHitKind', () => {
+	it.each([
+		['rate_limit_exceeded', 'rate-limit'],
+		['user_rate_limit_exceeded', 'rate-limit'],
+		['tenant_quota_exceeded', 'rate-limit'],
+		['token_quota_exceeded', 'token-quota'],
+		['token_quota_would_exceed', 'token-quota'],
+		['token_quota_warming', 'token-quota-warming'],
+		[undefined, 'rate-limit'],
+	] as const)('%s -> %s', (reason, kind) => {
+		expect(rateLimitHitKind(reason)).toBe(kind);
+	});
+});
+
+// tokens_missing counts RESPONSES, and one of its reasons (stream_estimated)
+// was charged from the estimate net. Summed whole under "unaccountable", a
+// charged stream read as an uncharged one.
+describe('usageMissingRates — charged and uncharged kept apart', () => {
+	const missing = (rows: Record<string, number>) =>
+		Object.entries(rows).map(([reason, n]) => `${TOKENS_MISSING}{model="m",tenant="t",reason="${reason}"} ${n}`).join('\n');
+
+	it('splits stream_estimated from the reasons that were never charged', () => {
+		const h = [
+			snapshotOf(missing({response_complete: 0, connection_close: 0, stream_estimated: 0}), T0),
+			snapshotOf(missing({response_complete: 2, connection_close: 1, stream_estimated: 4}), T1),
+		];
+		const r = usageMissingRates(h, GAP);
+		expect(r.uncharged).toMatchObject({kind: 'ok', perSecond: 0.3});
+		expect(r.chargedFromEstimate).toMatchObject({kind: 'ok', perSecond: 0.4});
+	});
+
+	it('reads the side the present family never recorded as 0/s, not warming up', () => {
+		const h = [snapshotOf(missing({stream_estimated: 1}), T0), snapshotOf(missing({stream_estimated: 3}), T1)];
+		expect(usageMissingRates(h, GAP).uncharged).toMatchObject({kind: 'ok', perSecond: 0});
+	});
+
+	it('says why when the family itself is absent', () => {
+		const idle = `${AI_REQUESTS}{model="m",tenant="t",status="200",outcome="completed"} 1`;
+		const r = usageMissingRates([snapshotOf(idle, T0), snapshotOf(idle, T1)], GAP);
+		expect(r.uncharged.kind).toBe('absent');
+		expect(r.chargedFromEstimate.kind).toBe('absent');
 	});
 });

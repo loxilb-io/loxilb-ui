@@ -33,7 +33,7 @@ import {useMemo} from 'react';
 import {useTranslation} from 'react-i18next';
 import {estimateQuantile, mergeHistogramSeries} from 'observability/histogram';
 import {selectSamples} from 'observability/selectors';
-import {completedRequestRate, completedRequestRatesBy, denialReasons, requestOutcomes} from 'observability/aiRequests';
+import {completedRequestRate, completedRequestRatesBy, denialReasons, requestOutcomes, usageMissingRates} from 'observability/aiRequests';
 import {bearerAdmission} from 'observability/jwtAuth';
 import {familySumRate, groupRates, rateMaxGapMs} from 'observability/snapshotRates';
 import {CadenceSelector, ModelName, PanelPaper, StatRow, countOrAbsence, formatRate, formatRatio, useAbsenceExplanation, useObservabilityApplicable} from './common';
@@ -86,7 +86,8 @@ export default function AITrafficPage() {
 						// vanish instead of saying why it has no value.
 						consumed: familySumRate(history, 'loxilb_ai_tokens_consumed_total', maxGap),
 						estimated: familySumRate(history, 'loxilb_ai_tokens_estimated_total', maxGap),
-						missing: familySumRate(history, 'loxilb_ai_tokens_missing_total', maxGap),
+						// Responses, not tokens — and split by whether they were charged.
+						missing: usageMissingRates(history, maxGap),
 					}
 				: undefined,
 		[snapshot, history, maxGap],
@@ -127,7 +128,7 @@ export default function AITrafficPage() {
 			<Alert severity="info" sx={{mb: 2}}>
 				{outcomes.kind === 'partitioned'
 					? t('Total offered load and error ratio are derived from the request outcome partition. The denial events panel breaks the same denials down by reason, so each reason rate is a subset of the gate denial rate.')
-					: t('Completed SSE streams and denial events are separate, partial views. The gateway does not yet expose a complete request denominator, so no total request rate or error ratio can be shown.')}
+					: t('Completed requests and denial events are separate, partial views. The gateway does not yet expose a complete request denominator, so no total request rate or error ratio can be shown.')}
 			</Alert>
 
 			<ObservabilityStateFrame state={state} absence={absence} name={t('AI Traffic')} onRetry={refetch}>
@@ -148,7 +149,9 @@ export default function AITrafficPage() {
 					)}
 
 					<Grid item xs={12} md={6}>
-						<PanelPaper title={t('Completed SSE streams (not total requests)')}>
+						{/* "Completed" is recorded at SSE stream completion OR at response
+						    headers, so plain-JSON answers are in it too: not streams only. */}
+						<PanelPaper title={t('Completed requests (not total requests)')}>
 							<StatRow label={t('All statuses')} value={formatRate(completedTotal, t)} />
 							{completedByStatus.map(g => (
 								<StatRow key={g.labels.status ?? ''} label={g.labels.status ?? t('(no status)')} value={formatRate(g.rate, t)} />
@@ -220,7 +223,14 @@ export default function AITrafficPage() {
 										/>
 									))}
 									<StatRow label={t('Estimated (usage block absent)')} value={formatRate(tokenRates.estimated, t)} />
-									<StatRow label={t('Missing (unaccountable)')} value={formatRate(tokenRates.missing, t)} />
+									<StatRow
+										label={t('Responses without usage, not charged')}
+										value={formatRate(tokenRates.missing.uncharged, t, ` ${t('responses/s')}`)}
+									/>
+									<StatRow
+										label={t('Responses without usage, charged from estimate')}
+										value={formatRate(tokenRates.missing.chargedFromEstimate, t, ` ${t('responses/s')}`)}
+									/>
 								</>
 							)}
 						</PanelPaper>

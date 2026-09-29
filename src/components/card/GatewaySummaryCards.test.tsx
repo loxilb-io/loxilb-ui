@@ -135,3 +135,17 @@ describe('GwAiEventsCard — denial events', () => {
 		expect(valueOf('Denial events')).toBe('0.000/s');
 	});
 });
+
+// The dashboard twin of the AI Traffic panel: "Completed SSE streams" over a
+// family that also counts non-streaming answers.
+describe('GwAiEventsCard — completed requests', () => {
+	const valueOf = (label: string) => screen.getByText(label).nextElementSibling?.textContent;
+	const exposition = (completed: number) => `loxilb_ai_requests_total{model="m",tenant="t",status="200",outcome="completed"} ${completed}`;
+
+	it('labels the completed rate as requests, not SSE streams', () => {
+		state.history = [snapshotOf(exposition(100), T0), snapshotOf(exposition(150), T0 + 10_000)];
+		renderCard(<GwAiEventsCard instance={INSTANCE} />);
+		expect(valueOf('Completed requests')).toBe('5.0/s');
+		expect(screen.queryByText(/SSE stream/)).toBeNull();
+	});
+});

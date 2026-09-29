@@ -18,9 +18,11 @@ import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
 import {useMemo} from 'react';
 import {useTranslation} from 'react-i18next';
+import type {TFunction} from 'i18next';
 import {estimateQuantile, mergeHistogramSeries} from 'observability/histogram';
 import {selectSamples, selectScalar} from 'observability/selectors';
 import {familySumRate, groupRates, rateMaxGapMs} from 'observability/snapshotRates';
+import {RateLimitHitKind, rateLimitHitKind} from 'observability/aiRequests';
 import {CadenceSelector, PanelPaper, StatRow, formatRate, useAbsenceExplanation, useObservabilityApplicable} from './common';
 
 // Panel-group scopes. Every group is gateway-only today; 'parity-conditional'
@@ -42,6 +44,19 @@ export function circuitBreakerLabel(value: number | undefined): 'closed' | 'open
 	if (value === 1) return 'open';
 	if (value === 2) return 'half-open';
 	return undefined;
+}
+
+// rate_limit_hits_total also carries token-quota refusals; "Rate limited" in
+// front of token_quota_exceeded names the wrong gate.
+function rateLimitHitLabel(kind: RateLimitHitKind, t: TFunction): string {
+	switch (kind) {
+		case 'rate-limit':
+			return t('Rate limited');
+		case 'token-quota':
+			return t('Token quota denied');
+		case 'token-quota-warming':
+			return t('Token quota warming up');
+	}
 }
 
 export default function SecurityPage() {
@@ -220,7 +235,7 @@ export default function SecurityPage() {
 							{rateLimitHits.map(g => (
 								<StatRow
 									key={g.labels.reason ?? ''}
-									label={`${t('Rate limited')} (${g.labels.reason ?? t('Unknown value')})`}
+									label={`${rateLimitHitLabel(rateLimitHitKind(g.labels.reason), t)} (${g.labels.reason ?? t('Unknown value')})`}
 									value={formatRate(g.rate, t)}
 								/>
 							))}

@@ -178,6 +178,18 @@ export const TOKEN_QUOTA_WARMING = 'token_quota_warming';
 const isTokenQuotaReason: LabelPredicate = labels => (labels[REASON] ?? '').startsWith(TOKEN_QUOTA_REASON_PREFIX);
 
 /**
+ * Which gate a `rate_limit_hits_total` reason belongs to. The family carries
+ * token-quota refusals beside the request-rate buckets, so a page listing it
+ * by reason must not put "Rate limited" in front of a quota refusal.
+ */
+export type RateLimitHitKind = 'rate-limit' | 'token-quota' | 'token-quota-warming';
+
+export function rateLimitHitKind(reason: string | undefined): RateLimitHitKind {
+	if (reason === TOKEN_QUOTA_WARMING) return 'token-quota-warming';
+	return isTokenQuotaReason({[REASON]: reason ?? ''}) ? 'token-quota' : 'rate-limit';
+}
+
+/**
  * Rate over a partition of a family that may be absent altogether.
  *
  * An absent family answers with the manifest's reading, like `familySumRate`.
@@ -252,4 +264,31 @@ export function denialTotalRate(history: readonly IMetricsSnapshot[], maxGapMs: 
 		return rateOf(history, maxGapMs, {[OUTCOME]: OUTCOME_DENIED});
 	}
 	return sumDenialTerms([familySumRate(history, RATE_LIMIT_HITS, maxGapMs), familySumRate(history, MODEL_NOT_ALLOWED, maxGapMs)]);
+}
+
+//---------------------------------------------------------
+// Responses with no usage object
+//---------------------------------------------------------
+// `loxilb_ai_tokens_missing_total` counts RESPONSES, not tokens: one per 2xx
+// response that carried no readable usage object. Its `reason` names where
+// the report fired, and exactly one of them was charged anyway —
+// `stream_estimated`, a stream billed from the estimate net. The rest went
+// uncharged. Summed whole, the family put charged and uncharged responses
+// under one "unaccountable" heading.
+
+export const TOKENS_MISSING = 'loxilb_ai_tokens_missing_total';
+export const TOKENS_MISSING_STREAM_ESTIMATED = 'stream_estimated';
+
+export interface UsageMissingRates {
+	/** Responses with no usage that were never charged. */
+	uncharged: RateResult;
+	/** Streams charged from the estimate net instead. */
+	chargedFromEstimate: RateResult;
+}
+
+export function usageMissingRates(history: readonly IMetricsSnapshot[], maxGapMs: number): UsageMissingRates {
+	return {
+		uncharged: reasonRate(history, TOKENS_MISSING, maxGapMs, l => l[REASON] !== TOKENS_MISSING_STREAM_ESTIMATED),
+		chargedFromEstimate: reasonRate(history, TOKENS_MISSING, maxGapMs, {[REASON]: TOKENS_MISSING_STREAM_ESTIMATED}),
+	};
 }

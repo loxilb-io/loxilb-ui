@@ -96,7 +96,9 @@ export default function WorkersPage() {
 										<TableRow>
 											<TableCell>{t('Endpoint')}</TableCell>
 											<TableCell align="right">{t('Queued requests')}</TableCell>
-											<TableCell align="right">{t('Preemptions (delta)')}</TableCell>
+											{/* Caller-supplied: the gateway stores whatever the reporter sent and
+											    neither computes nor verifies a delta. */}
+											<TableCell align="right">{t('Preemptions (as reported)')}</TableCell>
 											<TableCell align="right">{t('KV cache used')}</TableCell>
 											<TableCell align="right">{t('GPU blocks')}</TableCell>
 											<TableCell align="right">{t('Reported at')}</TableCell>

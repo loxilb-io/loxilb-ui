@@ -186,3 +186,38 @@ describe('AITrafficPage — denial reasons do not overlap', () => {
 		expect(valueOf('Token quota warming up')).toBe('0.200/s');
 	});
 });
+
+// "Completed" is recorded at SSE stream completion OR at response headers, so
+// plain-JSON answers are in it; the panel called every one an "SSE stream".
+describe('AITrafficPage — completed is not streams only', () => {
+	it('titles the completed panel as requests, and says "SSE stream" nowhere', () => {
+		renderWith([snapshotOf(PARTITIONED(100, 5, 10), T0), snapshotOf(PARTITIONED(200, 105, 20), T0 + 10_000)]);
+		expect(screen.getByText('Completed requests (not total requests)')).toBeTruthy();
+		expect(screen.queryByText(/SSE stream/)).toBeNull();
+	});
+
+	it('says "completed requests" in the unpartitioned notice too', () => {
+		renderWith([snapshotOf(UNPARTITIONED(100), T0), snapshotOf(UNPARTITIONED(200), T0 + 10_000)]);
+		expect(screen.getByText(STALE_NOTICE).textContent).toMatch(/^Completed requests and denial events/);
+	});
+});
+
+// tokens_missing counts responses, not tokens, and sat as a bare "/s" beside
+// token rates under "Missing (unaccountable)" — with the charged
+// stream_estimated responses summed in.
+describe('AITrafficPage — responses without usage', () => {
+	const valueOf = (label: string) => screen.getByText(label).nextElementSibling?.textContent;
+	const exposition = (uncharged: number, estimated: number) =>
+		[
+			PARTITIONED(100, 0, 0),
+			`loxilb_ai_tokens_missing_total{model="m",tenant="t",reason="response_complete"} ${uncharged}`,
+			`loxilb_ai_tokens_missing_total{model="m",tenant="t",reason="stream_estimated"} ${estimated}`,
+		].join('\n');
+
+	it('counts responses per second, split by whether they were charged', () => {
+		renderWith([snapshotOf(exposition(0, 0), T0), snapshotOf(exposition(3, 5), T0 + 10_000)]);
+		expect(valueOf('Responses without usage, not charged')).toBe('0.300 responses/s');
+		expect(valueOf('Responses without usage, charged from estimate')).toBe('0.500 responses/s');
+		expect(screen.queryByText('Missing (unaccountable)')).toBeNull();
+	});
+});
