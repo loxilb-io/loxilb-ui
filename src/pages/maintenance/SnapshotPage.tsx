@@ -53,8 +53,8 @@ export default function SnapshotPage() {
 	const inst = useInstanceFromURL();
 	const instanceId = inst?.id;
 	const snapshot_query = useSnapshots(instanceId, 1, PAGE_LIMIT);
-	const {data, isError, isLoading, refetch} = snapshot_query;
-	const {data: schedule, refetch: refetchSchedule} = useSnapshotSchedule(instanceId);
+	const {data, isError, isLoading} = snapshot_query;
+	const {data: schedule} = useSnapshotSchedule(instanceId);
 	const invalidate = useInvalidateSnapshots(instanceId);
 	const {can_manage_config} = useRole();
 	const {openPopUp, enableYes} = usePopUp();
@@ -80,9 +80,7 @@ export default function SnapshotPage() {
 
 	const refreshAll = () => {
 		set_selected_rows([]);
-		invalidate();
-		refetch();
-		refetchSchedule();
+		void invalidate();
 	};
 
 	// Localized headline first, then the server's verbatim detail — the
