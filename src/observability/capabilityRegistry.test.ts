@@ -76,9 +76,11 @@ describe('registry contract against the vendored artifacts', () => {
 		// (breakdowns moved to Grafana). The three admission valves stay
 		// together — one is structurally zero and must not be read alone.
 		expect(size('page.pdKv')).toBe(14);
-		expect(size('page.security')).toBe(27);
-		// 9 since Stage 3.3: the per-policer attachment gauge joined the page.
-		expect(size('page.qos')).toBe(9);
+		// 12 since the compact trim: breakdowns moved to Grafana.
+		expect(size('page.security')).toBe(12);
+		// 1 since the compact trim: only the attachment gauge; the shaper
+		// families moved to Grafana.
+		expect(size('page.qos')).toBe(1);
 		// 4 since the compact trim: the breakdowns moved to Grafana.
 		expect(size('page.persistence')).toBe(4);
 		expect(size('page.haSync')).toBe(13);

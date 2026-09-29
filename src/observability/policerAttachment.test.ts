@@ -88,7 +88,7 @@ describe('policerAttachment — the attachment answer', () => {
 		const row = rowFor(r, 'p1');
 		expect(row.corroboration).toBe('conflict');
 		expect(row.attached).toBeUndefined();
-		expect(ok(r).conflicts).toBe(1);
+		expect(ok(r).unknown).toBe(1);
 		// A conflict must NOT read as the actionable state.
 		expect(ok(r).verdict).toBe('incomplete');
 	});

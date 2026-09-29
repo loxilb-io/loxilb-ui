@@ -10,8 +10,8 @@
 // disagreement between them is bounded staleness and heals itself on the next
 // tick. A panel that rendered it as a fault — which the stage brief's
 // "the mismatch is the panel's whole value" framing would have produced —
-// would fire on every healthy policer creation. So "Settling" must read as a
-// caveat and never as an alarm.
+// would fire on every healthy policer creation. So a settling policer must
+// read as a caveat and never be listed as shaping nothing.
 import 'locales/i18n';
 import i18n from 'locales/i18n';
 import {afterEach, beforeEach, describe, expect, it} from 'vitest';
@@ -38,7 +38,6 @@ const ok = (over: Partial<Extract<PolicerAttachmentReport, {kind: 'ok'}>> = {}):
 	configured: 1,
 	pending: 0,
 	attached: 1,
-	conflicts: 0,
 	unknown: 0,
 	...over,
 });
@@ -97,46 +96,54 @@ describe('the finding, and the things that are not it', () => {
 		expect(screen.queryByText(/\{\{n\}\}/)).toBeNull();
 	});
 
+	it('⭐ lists only the policers shaping nothing, never the healthy ones', () => {
+		render(<PolicerAttachmentPanel report={ok({verdict: 'pending-attachment', pending: 1, configured: 2, attached: 1, rows: [row('p-bad', {attached: false, metricAttached: false, restAttached: false}), row('p-ok')]})} />);
+		const list = screen.getByRole('list', {name: 'Policers shaping nothing'});
+		expect([...list.querySelectorAll('li')].map(li => li.textContent)).toEqual(['p-bad']);
+		expect(screen.queryByText('p-ok')).toBeNull();
+		expect(screen.queryByRole('table')).toBeNull();
+	});
+
 	it('⭐⭐ does NOT raise a fault when the two sources merely disagree', () => {
 		// The heart of this stage's correction. Same predicate, two read
 		// times — the state moved inside the last scrape, and it resolves
 		// itself. An alarm here would fire on every policer creation.
-		render(<PolicerAttachmentPanel report={ok({verdict: 'incomplete', conflicts: 1, unknown: 1, attached: 0, rows: [row('p1', {attached: undefined, corroboration: 'conflict', metricAttached: false, restAttached: true})]})} />);
+		render(<PolicerAttachmentPanel report={ok({verdict: 'incomplete', unknown: 1, attached: 0, rows: [row('p1', {attached: undefined, corroboration: 'conflict', metricAttached: false, restAttached: true})]})} />);
 		expect(screen.queryByText(FAULT_WORDS)).toBeNull();
 		expect(screen.getByRole('alert').className).not.toMatch(/Warning|Error/);
-		// The row is labelled as in-flight, not as broken.
-		expect(screen.getByText('Settling')).toBeTruthy();
-		expect(screen.queryByText('Shaping nothing')).toBeNull();
+		// It says how many are unsettled, and that it may heal on its own…
+		expect(screen.getByText(/state of 1 of 1 policers could not be established/)).toBeTruthy();
+		expect(screen.getByText(/may still be settling/)).toBeTruthy();
+		// …and the settling policer is never listed as shaping nothing.
+		expect(screen.queryByText('p1')).toBeNull();
+		expect(screen.queryByRole('list')).toBeNull();
 	});
 
-	it('does not render an unknown row as either shaping or not shaping', () => {
+	it('does not list an unknown row as shaping nothing', () => {
 		render(<PolicerAttachmentPanel report={ok({verdict: 'incomplete', unknown: 1, attached: 0, rows: [row('p1', {attached: undefined, corroboration: 'unreported', metricAttached: undefined, restAttached: undefined})]})} />);
-		expect(screen.getByText('Unknown')).toBeTruthy();
-		expect(screen.queryByText('Shaping')).toBeNull();
-		expect(screen.queryByText('Shaping nothing')).toBeNull();
+		expect(screen.queryByText('p1')).toBeNull();
+		expect(screen.queryByRole('list')).toBeNull();
 	});
 
 	it('withholds the verdict rather than guessing when the policy list is unavailable', () => {
 		render(<PolicerAttachmentPanel report={ok({verdict: 'unknown-configuration', configured: undefined, rows: [row('p1', {attached: false, corroboration: 'metric-only', listedInRest: undefined, restAttached: undefined, metricAttached: false})]})} />);
 		expect(screen.getByText(/policy list is unavailable/i)).toBeTruthy();
-		// The rows the gauge DID report are still shown — the missing half is
-		// the judgement, not the data.
+		// A policer the gauge DID report as shaping nothing is still listed —
+		// the missing half is the judgement, not the data.
 		expect(screen.getByText('p1')).toBeTruthy();
-		expect(screen.getByText('Shaping nothing')).toBeTruthy();
 	});
 
-	it('marks a series REST no longer lists as deleted, not as a fault', () => {
-		render(<PolicerAttachmentPanel report={ok({rows: [row('p-gone', {corroboration: 'metric-only', listedInRest: false, restAttached: undefined})]})} />);
-		expect(screen.getByText('Deleted')).toBeTruthy();
-		expect(screen.getByText(/No longer configured/i)).toBeTruthy();
+	it('says a listed policer is no longer configured when REST dropped it', () => {
+		render(<PolicerAttachmentPanel report={ok({verdict: 'pending-attachment', pending: 1, rows: [row('p-gone', {attached: false, corroboration: 'metric-only', listedInRest: false, restAttached: undefined, metricAttached: false})]})} />);
+		expect(screen.getByText('p-gone')).toBeTruthy();
+		expect(screen.getByText(/no longer configured/i)).toBeTruthy();
 	});
 
-	it('says nothing about corroboration when the two sources agree', () => {
-		// A check that passes is not news. A chip on every healthy row would
-		// train an operator to ignore the column that carries the caveats.
+	it('shows only the verdict when every policer is shaping', () => {
 		render(<PolicerAttachmentPanel report={ok()} />);
-		expect(screen.getByText('Shaping')).toBeTruthy();
-		for (const noise of ['Settling', 'Metric only', 'Not in metrics', 'Not reported', 'Deleted']) {
+		expect(screen.getByText(/All 1 configured policers are programmed/)).toBeTruthy();
+		expect(screen.queryByRole('list')).toBeNull();
+		for (const noise of ['p-live', 'Settling', 'Metric only', 'Not in metrics', 'Not reported', 'Deleted']) {
 			expect(screen.queryByText(noise), noise).toBeNull();
 		}
 	});
@@ -151,13 +158,7 @@ describe('no snapshot', () => {
 });
 
 describe('translated builds', () => {
-	it('keeps the state chips out of state_color()’s English substring matching', async () => {
-		// ⚠️ state_color() defaults to 'error' for any string it does not
-		// recognise and matches lowercase ENGLISH substrings, so routing these
-		// through a DataTable state column would paint a ko operator a red
-		// cell for a healthy policer. The chips are built locally; this pins
-		// that a translated build still renders the healthy row without an
-		// error alert.
+	it('renders the healthy verdict as success in a translated build', async () => {
 		await i18n.changeLanguage('ko');
 		render(<PolicerAttachmentPanel report={ok()} />);
 		expect(screen.getByRole('alert').className).toMatch(/Success/);
@@ -170,12 +171,10 @@ describe('translated builds', () => {
 // configured" here — asserting a delete when the API was simply not read.
 describe('policy list unavailable', () => {
 	it('does not call a policer deleted because the list was not read', () => {
-		const parsed = parseExposition(`${POLICER_ATTACHED}{ident="p1"} 1`);
+		const parsed = parseExposition(`${POLICER_ATTACHED}{ident="p1"} 0`);
 		const snapshot = {instanceId: 1, flavor: 'inference-gateway' as const, receivedAtMs: 1, available: true, families: parsed.families, diagnostics: parsed.diagnostics};
 		render(<PolicerAttachmentPanel report={policerAttachment(snapshot, undefined)} />);
 		expect(screen.getByText('p1')).toBeTruthy();
-		expect(screen.getByText('Metric only')).toBeTruthy();
-		expect(screen.queryByText('Deleted')).toBeNull();
-		expect(screen.queryByText(/No longer configured/i)).toBeNull();
+		expect(screen.queryByText(/no longer configured/i)).toBeNull();
 	});
 });

@@ -20,6 +20,8 @@ import {IMetricsSnapshot} from 'types/observability';
 import {parseExposition} from 'observability/parser';
 import PdKvPage from './PdKvPage';
 import PersistencePage from './PersistencePage';
+import QosPage from './QosPage';
+import SecurityPage from './SecurityPage';
 import WorkersPage from './WorkersPage';
 
 const state = vi.hoisted(() => ({
@@ -27,6 +29,7 @@ const state = vi.hoisted(() => ({
 	gpu: undefined as unknown,
 	workers: undefined as unknown,
 	diagnostics: undefined as unknown,
+	policies: undefined as unknown,
 }));
 
 vi.mock('hooks/instanceHook', () => ({
@@ -77,7 +80,7 @@ vi.mock('hooks/query/gatewayTelemetryHooks', async importOriginal => {
 
 vi.mock('hooks/query/queryHooks', async importOriginal => {
 	const mod = await importOriginal<typeof import('hooks/query/queryHooks')>();
-	return {...mod, useLoadBalancerConfig: () => ({data: [], refetch: () => undefined})};
+	return {...mod, useLoadBalancerConfig: () => ({data: [], refetch: () => undefined}), useQOSPolicies: () => ({data: state.policies, refetch: () => undefined})};
 });
 
 const T0 = 1_000_000;
@@ -101,6 +104,7 @@ afterEach(() => {
 	state.gpu = undefined;
 	state.workers = undefined;
 	state.diagnostics = undefined;
+	state.policies = undefined;
 });
 
 describe('PdKvPage — KV attestation verdict', () => {
@@ -495,5 +499,90 @@ describe('reported-at times on the observability pages', () => {
 		};
 		renderPage(<PersistencePage />);
 		expect(valueOf('Last restore')).toBe(new Date(NOW - DAY).toLocaleString());
+	});
+});
+
+describe('QosPage — compact', () => {
+	it('shows only the attachment verdict, even while the shaper exports lanes', () => {
+		state.history = [
+			snapshotOf(
+				[
+					'loxilb_policer_attached{ident="p1"} 1',
+					'loxilb_proxy_qos_bytes_passed_total{vip="10.0.0.1",port="80",proto="tcp",direction="upload"} 42',
+				].join('\n'),
+				T0,
+			),
+		];
+		state.policies = [{policyIdent: 'p1', attached: true}];
+		renderPage(<QosPage />);
+		expect(screen.getByText(/All 1 configured policers are programmed/)).toBeTruthy();
+		for (const gone of ['Shaped services', 'Traffic shaping', 'Bytes passed', 'Tokens (B)']) {
+			expect(screen.queryByText(gone)).toBeNull();
+		}
+		expect(screen.queryByRole('table')).toBeNull();
+	});
+});
+
+describe('SecurityPage — compact', () => {
+	const severity = (re: RegExp) => screen.getByText(re).closest('[role="alert"]')?.className;
+
+	it('drops passed traffic, byte rates, per-rule and per-reason rows and the OPA quantiles', () => {
+		state.history = [
+			snapshotOf(
+				[
+					'loxilb_security_syn_passed_total 5',
+					'loxilb_fw_rule_drop_packets_total{fw_rule="r1"} 3',
+					'loxilb_l4_error_events_total{proto="tcp",reason="rst"} 2',
+					'loxilb_ai_rate_limit_hits_total{reason="rate_limit_exceeded"} 1',
+					'loxilb_opa_circuit_breaker_state 0',
+				].join('\n'),
+				T0,
+			),
+		];
+		renderPage(<SecurityPage />);
+		for (const gone of ['SYN passed', 'UDP bytes blocked', 'Whitelist packets', 'Sync duration p50', 'Model not allowed', 'Rate limited', 'Unique source IPs tracked']) {
+			expect(screen.queryByText(gone)).toBeNull();
+		}
+		expect(screen.queryByRole('table')).toBeNull();
+		expect(screen.getByText('L4 error events')).toBeTruthy();
+	});
+
+	// The rule count is set on every stats pass, with one hit series per
+	// blacklist rule: a count of 0 is "no rules", not a counter warming up.
+	it('reads blacklist hits as "no blacklist rules" only when the rule count says so', () => {
+		state.history = [snapshotOf('loxilb_ipfilter_rules{type="blacklist"} 0\nloxilb_ipfilter_rules{type="whitelist"} 2', T0)];
+		renderPage(<SecurityPage />);
+		expect(valueOf('Blacklist hits')).toBe('No blacklist rules');
+		cleanup();
+		state.history = [snapshotOf('loxilb_ipfilter_rules{type="blacklist"} 3', T0)];
+		renderPage(<SecurityPage />);
+		expect(valueOf('Blacklist hits')).not.toBe('No blacklist rules');
+	});
+
+	// ⭐ gw pkg/opa/watcher.go: an open breaker stops the policy fetch; the
+	// OPA-managed rules stay as last synced. It never bypasses OPA.
+	it('warns on an open OPA breaker as a paused sync, never as a bypass', () => {
+		state.history = [snapshotOf('loxilb_opa_circuit_breaker_state 1', T0)];
+		renderPage(<SecurityPage />);
+		expect(valueOf('Circuit breaker')).toBe('Open (not syncing)');
+		expect(severity(/stopped fetching policy from OPA/)).toMatch(/Warning/);
+		expect(screen.queryByText(/bypass/i)).toBeNull();
+		cleanup();
+		state.history = [snapshotOf('loxilb_opa_circuit_breaker_state 0', T0)];
+		renderPage(<SecurityPage />);
+		expect(screen.queryByRole('alert')).toBeNull();
+	});
+
+	// ⭐ gw ai_metrics.go: the gateway fails CLOSED here — each count is a
+	// request refused with 503.
+	it('raises an error while requests are refused for an unreachable key store, and not otherwise', () => {
+		const at = (n: number, ms: number) => snapshotOf(`loxilb_ai_policy_store_unavailable_total ${n}`, ms);
+		state.history = [at(0, T0), at(20, T0 + 10_000)];
+		renderPage(<SecurityPage />);
+		expect(severity(/AI requests are being refused with 503/)).toMatch(/Error/);
+		cleanup();
+		state.history = [at(20, T0), at(20, T0 + 10_000)];
+		renderPage(<SecurityPage />);
+		expect(screen.queryByText(/being refused with 503/)).toBeNull();
 	});
 });

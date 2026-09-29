@@ -141,7 +141,6 @@ export type PolicerAttachmentReport =
 			configured: number | undefined;
 			pending: number;
 			attached: number;
-			conflicts: number;
 			/** Rows whose state could not be established at all. */
 			unknown: number;
 	  };
@@ -229,7 +228,6 @@ export function policerAttachment(
 
 	const pending = rows.filter(r => r.attached === false).length;
 	const attached = rows.filter(r => r.attached === true).length;
-	const conflicts = rows.filter(r => r.corroboration === 'conflict').length;
 	const unknown = rows.filter(r => r.attached === undefined).length;
 
 	return {
@@ -239,7 +237,6 @@ export function policerAttachment(
 		configured: policies ? policies.length : undefined,
 		pending,
 		attached,
-		conflicts,
 		unknown,
 		verdict: attachmentVerdict(policies, rows),
 	};
