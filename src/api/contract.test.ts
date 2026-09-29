@@ -17,6 +17,7 @@ const root = path.resolve(__dirname, '../..');
 const gateway = YAML.parse(fs.readFileSync(path.join(root, 'api-spec/gateway-swagger.yml'), 'utf8'));
 const gatewayExtras = YAML.parse(fs.readFileSync(path.join(root, 'api-spec/gateway-swagger-extras.yml'), 'utf8'));
 const oam = JSON.parse(fs.readFileSync(path.join(root, 'api-spec/oam-swagger.json'), 'utf8'));
+const LB_TUPLE_PATH = '/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}';
 
 // response JSON pointer helpers (swagger 2.0)
 function resolveRef(spec: any, node: any): any {
@@ -200,6 +201,29 @@ describe('gateway spec contract — models the UI depends on', () => {
 	it('/metrics stays a Prometheus text endpoint (GET declared)', () => {
 		expect(gateway.paths['/metrics']?.get, 'gateway /metrics GET disappeared').toBeTruthy();
 		expect(gateway.paths['/metrics'].get.security).toEqual([]);
+	});
+
+	// opResultAdapter maps 412 to a precondition failure on every operation. These
+	// two are the ones the gateway declares it on; if a re-vendor drops the
+	// declaration, the branch has lost its contract and should be looked at again.
+	it('LB create and the LB tuple PATCH declare 412', () => {
+		expect(Object.keys(gateway.paths['/config/loadbalancer'].post.responses)).toContain('412');
+		expect(Object.keys(gateway.paths[LB_TUPLE_PATH].patch.responses)).toContain('412');
+	});
+
+	// Admission control (fc_*) can only be written by a create (POST replaces).
+	// The UI keeps mode-4 rules out of PATCH on that basis; if the gateway widens
+	// the PATCH overlay to fc_*, this fails and the edit block can be revisited.
+	it('the LB tuple PATCH overlay does not apply fc_* fields', () => {
+		const description: string = gateway.paths[LB_TUPLE_PATH].patch.description;
+		expect(description).toMatch(/Other schema fields are not applied by this handler/);
+		expect(description).not.toMatch(/\bfc_/);
+	});
+
+	it('fc_effective is the only readOnly serviceArguments field', () => {
+		const serviceArguments = gateway.definitions.LoadbalanceEntry.properties.serviceArguments.properties;
+		const readOnly = Object.entries<any>(serviceArguments).filter(([, schema]) => schema.readOnly).map(([name]) => name);
+		expect(readOnly).toEqual(['fc_effective']);
 	});
 });
 

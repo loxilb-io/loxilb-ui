@@ -58,6 +58,48 @@ export function selectLBEditStrategy({
 	return canMergePatch ? 'merge-patch' : 'reconcile';
 }
 
+// The serviceArguments fields an edit actually changed, relative to the rule's
+// read-back. Immutable fields are rejected by the gateway's PATCH with 400.
+// Keys the form carried over unchanged from the read-back (including fields
+// this UI does not know) are equal to it and so never widen the patch.
+const LB_IMMUTABLE_SERVICE_ARGUMENTS = new Set(['externalIP', 'port', 'protocol', 'mode', 'security', 'egress', 'oper', 'managed']);
+// Backends omit zero-value fields on read-back while the form emits them as
+// 0/''/false — a form default over an absent field is NOT a change (it would
+// spuriously widen the gateway patch and, on loxilb, escalate endpoint-only
+// edits into a delete + re-create).
+const isZero = (v: any) => v === undefined || v === null || v === 0 || v === '' || v === false;
+// LBInputForm's non-zero injected defaults: over an absent read-back field they
+// are form scaffolding, not an operator edit.
+const LB_FORM_DEFAULTS: Record<string, unknown> = {
+	probeTimeout: 1800,
+	path_match_mode: 'disabled',
+	backend_protocol: 'http1',
+	chwbl_prefix_hash_level: 1,
+};
+const isFormDefault = (key: string, value: unknown): boolean => {
+	if (value === LB_FORM_DEFAULTS[key]) return true;
+	// The mTLS dropdown materializes the Swagger default on mount,
+	// even when the persisted rule omitted the whole object.
+	if (key === 'mtls_frontend' && value && typeof value === 'object') {
+		const mtls = value as Record<string, unknown>;
+		return mtls.client_cert_mode === 'disabled' && Object.entries(mtls).every(([field, nested]) =>
+			field === 'client_cert_mode' || isZero(nested),
+		);
+	}
+	return false;
+};
+
+export function lbServiceArgumentsPatch(edited: Record<string, any>, readBack: Record<string, any>): Record<string, any> {
+	const patch: Record<string, any> = {};
+	Object.entries(edited).forEach(([k, v]) => {
+		if (LB_IMMUTABLE_SERVICE_ARGUMENTS.has(k)) return;
+		const prev = readBack[k];
+		if (prev === undefined && (isZero(v) || isFormDefault(k, v))) return;
+		if (JSON.stringify(v) !== JSON.stringify(prev)) patch[k] = v;
+	});
+	return patch;
+}
+
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
@@ -311,42 +353,8 @@ export default function LBRulePage() {
 					// changing it means a different rule, so fall back to re-POST.
 					res = await request_create_load_balancer_config(inst, serviceConfig, effectiveFlavor);
 				} else {
-					// Change detection shared by both update strategies. Immutable
-					// fields are rejected by the gateway's PATCH with 400.
-					const IMMUTABLE = new Set(['externalIP', 'port', 'protocol', 'mode', 'security', 'egress', 'oper', 'managed']);
-					// Backends omit zero-value fields on read-back while the form
-					// emits them as 0/''/false — a form default over an absent
-					// field is NOT a change (it would spuriously widen the gateway
-					// patch and, on loxilb, escalate endpoint-only edits into a
-					// delete + re-create).
-					const isZero = (v: any) => v === undefined || v === null || v === 0 || v === '' || v === false;
-					// LBInputForm's one non-zero injected default: over an absent
-					// read-back field it is form scaffolding, not an operator edit.
-						const FORM_DEFAULTS: Record<string, unknown> = {
-							probeTimeout: 1800,
-							path_match_mode: 'disabled',
-							backend_protocol: 'http1',
-							chwbl_prefix_hash_level: 1,
-						};
-						const isFormDefault = (key: string, value: unknown): boolean => {
-							if (value === FORM_DEFAULTS[key]) return true;
-							// The mTLS dropdown materializes the Swagger default on mount,
-							// even when the persisted rule omitted the whole object.
-							if (key === 'mtls_frontend' && value && typeof value === 'object') {
-								const mtls = value as Record<string, unknown>;
-								return mtls.client_cert_mode === 'disabled' && Object.entries(mtls).every(([field, nested]) =>
-									field === 'client_cert_mode' || isZero(nested),
-								);
-							}
-							return false;
-						};
-						const saPatch: Record<string, any> = {};
-						Object.entries(sa).forEach(([k, v]) => {
-							if (IMMUTABLE.has(k)) return;
-							const prev = (osa as any)[k];
-							if (prev === undefined && (isZero(v) || isFormDefault(k, v))) return;
-						if (JSON.stringify(v) !== JSON.stringify(prev)) saPatch[k] = v;
-					});
+					// Change detection shared by both update strategies.
+					const saPatch = lbServiceArgumentsPatch(sa, osa);
 					const endpointsChanged = JSON.stringify(serviceConfig.endpoints) !== JSON.stringify(editableEndpoints);
 					// Read-back reports empty lists as null; the form emits [] —
 					// normalize both sides so that difference is not a "change".
@@ -425,8 +433,11 @@ export default function LBRulePage() {
 					// confirm against the EDITED identity, not the original row.
 					await report({refetch: fromQueryRefetch(refetch), confirm: lbRuleAppeared(serviceConfig)}, t('Load balancer rule updated successfully.'));
 				} else {
-					// Localized mapped message; raw prose stays in diagnostics.
-					showUpdateError('load balancer rule', t(res.localeKey));
+					// Localized mapped message; raw prose stays in diagnostics —
+					// except on a 412, as on create: a PATCH adding allowedSources
+					// to a rule past the source-check slot range is refused with
+					// one, and only the gateway's sentence says what to change.
+					showUpdateError('load balancer rule', opErrorText(res));
 				}
 			},
 			true,
