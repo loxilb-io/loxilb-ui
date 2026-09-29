@@ -6,6 +6,7 @@ import {InstanceFlavor} from '../api/capabilities';
 import {isGatewayScrapeFamily} from './metricManifest';
 import {TOKEN_QUOTA_FAMILIES} from './tokenQuota';
 import {ADMISSION_FAMILIES, PROXY_OVERLOAD_FAMILIES} from './aiAdmission';
+import {AUDIT_FAMILIES} from './auditWriter';
 
 //---------------------------------------------------------
 // Observability capability registry (UI-MON-001, UI-MON-011a)
@@ -50,7 +51,9 @@ export type ObservabilityEntryId =
 	// Panels embedded in an observability page but registered on their own,
 	// so a build without their families loses the panel and keeps the page.
 	| 'panel.aiAdmission'
-	| 'panel.proxyOverload';
+	| 'panel.proxyOverload'
+	// On the OAM-level System page, for a picked gateway instance.
+	| 'panel.auditWriter';
 
 export interface ITopologyInput {
 	gatewayCount: number;
@@ -344,6 +347,13 @@ const entries: readonly IObservabilityEntry[] = [
 		id: 'panel.proxyOverload',
 		kind: 'panel', flavor: 'inference-gateway',
 		metricFamilies: PROXY_OVERLOAD_FAMILIES, restPaths: [],
+	},
+	{
+		// The System page is OAM-level; this panel brings its own instance
+		// picker and renders only for a resolved inference-gateway instance.
+		id: 'panel.auditWriter',
+		kind: 'panel', flavor: 'inference-gateway',
+		metricFamilies: AUDIT_FAMILIES, restPaths: [],
 	},
 	{
 		id: 'page.aiTraffic',
