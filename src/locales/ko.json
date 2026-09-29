@@ -1217,5 +1217,7 @@
 	"{{n}} submissions have failed since it was configured.": "설정 이후 {{n}}건의 전송이 실패했습니다.",
 	"{{n}} management changes from the previous boot have no recorded result.": "이전 부팅의 관리 변경 {{n}}건에 기록된 결과가 없습니다.",
 	"Most recent: event {{id}}.": "가장 최근: 이벤트 {{id}}.",
-	"most recent: event {{id}}": "가장 최근: 이벤트 {{id}}"
+	"most recent: event {{id}}": "가장 최근: 이벤트 {{id}}",
+	"{{free}} of {{limit}} source-check slots free": "소스 검사 슬롯 {{limit}}개 중 {{free}}개 사용 가능",
+	"The gateway reports that the next rule created cannot carry allowed sources.": "게이트웨이는 다음에 생성되는 규칙에 허용 소스를 설정할 수 없다고 보고합니다."
 }

@@ -103,3 +103,64 @@ export function kvExactVllmVerdict(list: ICapabilityStatus[] | null | undefined)
 export function kvExactAdmissible(verdict: CapabilityVerdict): boolean {
 	return verdict.kind !== 'not-ready';
 }
+
+//---------------------------------------------------------
+// lb_allowed_sources — the source-check slot budget
+//---------------------------------------------------------
+// The gateway runs its admission predicate (LbSourceCheckPrecondition) on the
+// slot the allocator would hand out NEXT, so `ready` answers exactly one
+// question: can the next rule CREATED carry allowedSources. `limit`/`in_use`
+// are the budget (slots 0..limit-1; freed slots are reused first).
+//
+// ⚠️ It says NOTHING about an existing rule: a PATCH adding allowedSources
+// depends on THAT rule's slot, which the UI cannot see. So an edit never reads
+// it, and the 412 on the edit path stays the only answer there.
+//
+// ⚠️ A warning, never a block. The verdict is a cached read and another
+// operator or the CLI can free a slot after it was taken; a false block has no
+// way out, while a false allow costs one 412 that already carries the
+// gateway's sentence.
+export const CAP_LB_ALLOWED_SOURCES = 'lb_allowed_sources';
+export const REASON_LB_SOURCE_CHECK_SLOTS_EXHAUSTED = 'LB_SOURCE_CHECK_SLOTS_EXHAUSTED';
+export const REASON_LB_RULES_UNAVAILABLE = 'LB_RULES_UNAVAILABLE';
+
+export interface ICapabilityBudget {
+	limit: number;
+	inUse: number;
+}
+
+const isCount = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value) && value >= 0;
+
+/**
+ * A capability's budget, only when BOTH halves are present and sane. A missing
+ * or garbled field is `undefined` — never 0, which would claim a budget the
+ * gateway did not report.
+ */
+export function capabilityBudget(list: ICapabilityStatus[] | null | undefined, name: string): ICapabilityBudget | undefined {
+	const entry = list?.find(c => c?.name === name);
+	if (!entry || !isCount(entry.limit) || !isCount(entry.in_use)) return undefined;
+	return {limit: entry.limit, inUse: entry.in_use};
+}
+
+export type SourceBudgetNotice =
+	| {kind: 'none'}
+	/** How many slots the next rules can still take. */
+	| {kind: 'caption'; free: number; limit: number}
+	/** The next rule cannot carry sources; `reason` is the gateway's sentence (may be empty). */
+	| {kind: 'warning'; reasonCode: string; reason: string};
+
+/**
+ * What the LB CREATE form says about allowed sources. `unknown` says nothing:
+ * the form behaves as it did before the gateway reported a budget.
+ */
+export function lbSourceBudgetNotice(list: ICapabilityStatus[] | null | undefined, hasSources: boolean): SourceBudgetNotice {
+	const verdict = capabilityVerdict(list, CAP_LB_ALLOWED_SOURCES);
+	if (verdict.kind === 'not-ready') {
+		// Only worth saying to someone about to use a slot.
+		return hasSources ? {kind: 'warning', reasonCode: verdict.reasonCode, reason: verdict.reason} : {kind: 'none'};
+	}
+	if (verdict.kind !== 'ready') return {kind: 'none'};
+	const budget = capabilityBudget(list, CAP_LB_ALLOWED_SOURCES);
+	if (!budget) return {kind: 'none'};
+	return {kind: 'caption', free: Math.max(0, budget.limit - budget.inUse), limit: budget.limit};
+}
