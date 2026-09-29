@@ -27,6 +27,8 @@ const GATEWAY_IDS: ObservabilityEntryId[] = [
 	'page.persistence',
 	'panel.jwtKeysetHealth',
 	'panel.tokenQuota',
+	'panel.aiAdmission',
+	'panel.proxyOverload',
 ];
 
 describe('registry contract against the vendored artifacts', () => {
@@ -84,6 +86,12 @@ describe('registry contract against the vendored artifacts', () => {
 		// counter and the cold-open counter. A scope dropped here would take
 		// its panel section with it silently.
 		expect(size('panel.tokenQuota')).toBe(14);
+		// The gate's seven families, read together: the mode gauge is the pool
+		// list, and a decision counter without it has no pool to belong to.
+		expect(size('panel.aiAdmission')).toBe(7);
+		// ListenDrops includes ListenOverflows, so the panel needs both to show
+		// the overflow share without adding the two.
+		expect(size('panel.proxyOverload')).toBe(3);
 	});
 });
 

@@ -24,6 +24,7 @@
 
 import {Alert, Box, Grid, Table, TableBody, TableCell, TableHead, TableRow, Typography} from '@mui/material';
 import FreshnessBadge from 'components/observability/FreshnessBadge';
+import {AIAdmissionPanel, ProxyOverloadPanel} from 'components/observability/AIAdmissionPanel';
 import BearerAdmissionPanel from 'components/observability/BearerAdmissionPanel';
 import ObservabilityStateFrame from 'components/observability/ObservabilityStateFrame';
 import {classifyViewState} from 'components/observability/observabilityState';
@@ -33,6 +34,7 @@ import {useMemo} from 'react';
 import {useTranslation} from 'react-i18next';
 import {estimateQuantile, mergeHistogramSeries} from 'observability/histogram';
 import {selectSamples} from 'observability/selectors';
+import {aiAdmission, proxyOverload} from 'observability/aiAdmission';
 import {completedRequestRate, completedRequestRatesBy, denialReasons, requestOutcomes, usageMissingRates} from 'observability/aiRequests';
 import {bearerAdmission} from 'observability/jwtAuth';
 import {familySumRate, groupRates, rateMaxGapMs} from 'observability/snapshotRates';
@@ -63,6 +65,12 @@ export default function AITrafficPage() {
 	// rate_limit_hits and token_quota_denied upstream, so "Rate limited" here
 	// excludes the quota reasons rather than listing them twice.
 	const reasons = useMemo(() => denialReasons(history, maxGap), [history, maxGap]);
+	// Registered apart from the page: a gateway without the capacity gate (or
+	// the listener counters) loses only these panels.
+	const admissionApplicable = useObservabilityApplicable('panel.aiAdmission');
+	const overloadApplicable = useObservabilityApplicable('panel.proxyOverload');
+	const admission = useMemo(() => aiAdmission(snapshot, history, maxGap), [snapshot, history, maxGap]);
+	const overload = useMemo(() => proxyOverload(snapshot, history, maxGap), [snapshot, history, maxGap]);
 	const denialRates = useMemo(
 		() =>
 			snapshot
@@ -266,6 +274,22 @@ export default function AITrafficPage() {
 							/>
 						</PanelPaper>
 					</Grid>
+
+					{admissionApplicable && (
+						<Grid item xs={12}>
+							<PanelPaper title={t('Admission gate (capacity)')}>
+								<AIAdmissionPanel report={admission} />
+							</PanelPaper>
+						</Grid>
+					)}
+
+					{overloadApplicable && (
+						<Grid item xs={12} md={6}>
+							<PanelPaper title={t('Listener overload')}>
+								<ProxyOverloadPanel report={overload} />
+							</PanelPaper>
+						</Grid>
+					)}
 				</Grid>
 			</ObservabilityStateFrame>
 		</Box>

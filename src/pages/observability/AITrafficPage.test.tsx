@@ -221,3 +221,25 @@ describe('AITrafficPage — responses without usage', () => {
 		expect(screen.queryByText('Missing (unaccountable)')).toBeNull();
 	});
 });
+
+// The admission gate and listener counters get their own registry entries,
+// so the page mounts them beside its own panels.
+describe('AITrafficPage — admission gate and listener overload', () => {
+	it('mounts both panels and reads an ungated pool as not gated', () => {
+		const gate = [
+			'loxilb_ai_admission_mode{service="s:1",pool="p1"} 0',
+			'loxilb_ai_admission_inflight{service="s:1",pool="p1",role="service"} 0',
+			'loxilb_ai_admission_limit{service="s:1",pool="p1",role="service"} 0',
+			'loxilb_ai_admission_limit{service="s:1",pool="p1",role="queue"} 0',
+			'loxilb_ai_admission_queued{service="s:1",pool="p1"} 0',
+			'loxilb_ai_admission_anomalies_total{kind="underflow"} 0',
+			'loxilb_proxy_listen_drops_total 0',
+			'loxilb_proxy_listen_overflows_total 0',
+			'loxilb_proxy_header_deadline_drops_total 0',
+		].join('\n');
+		renderWith([snapshotOf(`${PARTITIONED(1, 0, 0)}\n${gate}`, T0)]);
+		expect(screen.getByText('Admission gate (capacity)')).toBeTruthy();
+		expect(screen.getByText('Listener overload')).toBeTruthy();
+		expect(screen.getAllByText('Not gated')).toHaveLength(2);
+	});
+});

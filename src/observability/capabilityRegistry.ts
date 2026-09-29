@@ -5,6 +5,7 @@ import capabilityMap from '../api/gen/loxilb-capability-map.json';
 import {InstanceFlavor} from '../api/capabilities';
 import {isGatewayScrapeFamily} from './metricManifest';
 import {TOKEN_QUOTA_FAMILIES} from './tokenQuota';
+import {ADMISSION_FAMILIES, PROXY_OVERLOAD_FAMILIES} from './aiAdmission';
 
 //---------------------------------------------------------
 // Observability capability registry (UI-MON-001, UI-MON-011a)
@@ -45,7 +46,11 @@ export type ObservabilityEntryId =
 	// observability surface that answers a question about the object the page
 	// already manages.
 	| 'panel.jwtKeysetHealth'
-	| 'panel.tokenQuota';
+	| 'panel.tokenQuota'
+	// Panels embedded in an observability page but registered on their own,
+	// so a build without their families loses the panel and keeps the page.
+	| 'panel.aiAdmission'
+	| 'panel.proxyOverload';
 
 export interface ITopologyInput {
 	gatewayCount: number;
@@ -325,6 +330,20 @@ const entries: readonly IObservabilityEntry[] = [
 		id: 'panel.tokenQuota',
 		kind: 'panel', flavor: 'inference-gateway',
 		metricFamilies: TOKEN_QUOTA_FAMILIES, restPaths: ['/config/ai/ratelimit/defaults/{scope}'],
+	},
+	{
+		// On the AI Traffic page. Registered apart from page.aiTraffic so a
+		// gateway that predates the capacity gate keeps the rest of the page.
+		id: 'panel.aiAdmission',
+		kind: 'panel', flavor: 'inference-gateway',
+		metricFamilies: ADMISSION_FAMILIES, restPaths: [],
+	},
+	{
+		// Process-wide listener signals, shown beside the admission gate: a
+		// connect burst the accept loop cannot drain never reaches the gate.
+		id: 'panel.proxyOverload',
+		kind: 'panel', flavor: 'inference-gateway',
+		metricFamilies: PROXY_OVERLOAD_FAMILIES, restPaths: [],
 	},
 	{
 		id: 'page.aiTraffic',
