@@ -1,9 +1,9 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {useQuery, useQueryClient} from '@tanstack/react-query';
+import {RefetchOptions, useQuery, useQueryClient} from '@tanstack/react-query';
 import {get_local_storage, remove_local_storage, save_local_storage} from 'common';
-import {useEffect, useState} from 'react';
+import {useCallback, useEffect, useState} from 'react';
 import {ITimeSeriesPoint} from 'types/global';
 import {IInstance} from 'types/oam';
 
@@ -151,8 +151,10 @@ export const useQueryInstanceData = <T>(
 	is_common_data?: boolean,
 ) => {
 	const instance_id = instance?.id ? instance.id.toString() : '';
-	return useQuery({
-		queryKey: is_common_data ? queryKeys : queryKeys.concat(instance_id),
+	const queryKey = is_common_data ? queryKeys : queryKeys.concat(instance_id);
+	const queryClient = useQueryClient();
+	const result = useQuery({
+		queryKey,
 		queryFn: async () => {
 			if (!instance) throw new Error('Instance is not defined');
 			else return await queryFn(instance);
@@ -165,6 +167,28 @@ export const useQueryInstanceData = <T>(
 		refetchOnReconnect: true,
 		staleTime: is_infinity ? Infinity : 5000,
 	});
+	// Pages call refetch() after a write, and enable Add while the list is
+	// still loading. React Query answers a refetch during a query's FIRST load
+	// with the fetch already in flight (cancelRefetch applies only once data
+	// exists) — issued before the write, so the new row never appeared. Cancel
+	// that load and read again. Stable across renders, like the refetch it
+	// replaces: pages list it in effect deps.
+	const keyHash = JSON.stringify(queryKey);
+	const baseRefetch = result.refetch;
+	const refetch = useCallback(
+		async (opts?: RefetchOptions) => {
+			const state = queryClient.getQueryState(queryKey);
+			if (state?.fetchStatus === 'fetching' && state.data === undefined) {
+				await queryClient.cancelQueries({queryKey, exact: true});
+			}
+			return baseRefetch(opts);
+		},
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- queryKey is a fresh array each render; keyHash is its identity
+		[queryClient, keyHash, baseRefetch],
+	);
+	// A Proxy, not a spread: spreading reads every tracked property and would
+	// re-render the page on any query state change.
+	return new Proxy(result, {get: (target, prop, receiver) => (prop === 'refetch' ? refetch : Reflect.get(target, prop, receiver))});
 };
 
 export const useQueryOAMData = <T>(queryKeys: string[], queryFn: () => Promise<T>, is_infinity?: boolean) => {
