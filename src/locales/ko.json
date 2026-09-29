@@ -1209,5 +1209,13 @@
 	"The most of the ceiling and of the queue one tenant may hold.": "한 테넌트가 차지할 수 있는 상한 및 대기열의 최대 비율입니다.",
 	"rule": "규칙",
 	"environment": "환경",
-	"default": "기본값"
+	"default": "기본값",
+	"Audit sink and orphan details need gateway administrator rights.": "감사 싱크와 고아 인텐트 상세 정보는 게이트웨이 관리자 권한이 필요합니다.",
+	"The remote audit sink {{address}} is configured but not connected.": "원격 감사 싱크 {{address}}이(가) 설정되어 있지만 연결되어 있지 않습니다.",
+	"The remote audit sink is configured but not connected.": "원격 감사 싱크가 설정되어 있지만 연결되어 있지 않습니다.",
+	"Last error: {{error}}": "마지막 오류: {{error}}",
+	"{{n}} submissions have failed since it was configured.": "설정 이후 {{n}}건의 전송이 실패했습니다.",
+	"{{n}} management changes from the previous boot have no recorded result.": "이전 부팅의 관리 변경 {{n}}건에 기록된 결과가 없습니다.",
+	"Most recent: event {{id}}.": "가장 최근: 이벤트 {{id}}.",
+	"most recent: event {{id}}": "가장 최근: 이벤트 {{id}}"
 }

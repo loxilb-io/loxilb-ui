@@ -13,17 +13,20 @@ import {cleanup, render, screen} from '@testing-library/react';
 import {PREFERENCE_KEYS} from 'preferences';
 import {AuditWriterReport} from 'observability/auditWriter';
 import {parseExposition} from 'observability/parser';
+import {AuditRestSignals} from 'types/audit_status';
 import AuditWriterSection, {AuditWriterPanel} from './AuditWriterPanel';
 
 const mocks = vi.hoisted(() => ({
 	resolution: vi.fn(),
 	snapshot: vi.fn(),
 	instances: [] as {id: number; name: string}[],
+	auditRest: vi.fn(),
 }));
 
 vi.mock('hooks/query/oamHooks', () => ({useInstances: () => ({instance_list: mocks.instances})}));
 vi.mock('hooks/query/flavorHook', () => ({useInstanceFlavorResolution: mocks.resolution}));
 vi.mock('hooks/query/observabilityHooks', () => ({useMetricsSnapshot: mocks.snapshot}));
+vi.mock('hooks/query/statusHook', () => ({useGatewayAuditRest: mocks.auditRest}));
 
 const valueOf = (label: string) => screen.getByText(label).nextElementSibling?.textContent;
 const severityOf = (re: RegExp) => screen.getByText(re).closest('[role="alert"]')?.className;
@@ -42,6 +45,8 @@ beforeEach(() => {
 	localStorage.clear();
 	mocks.resolution.mockReset();
 	mocks.snapshot.mockReset();
+	mocks.auditRest.mockReset();
+	mocks.auditRest.mockReturnValue({data: undefined, isError: false});
 	mocks.instances = [];
 });
 afterEach(cleanup);
@@ -141,6 +146,7 @@ describe('AuditWriterSection', () => {
 		expect(screen.getByText('Pick an inference gateway instance to see its audit writer.')).toBeTruthy();
 		expect(mocks.resolution).not.toHaveBeenCalled();
 		expect(mocks.snapshot).not.toHaveBeenCalled();
+		expect(mocks.auditRest).not.toHaveBeenCalled();
 	});
 
 	it('renders the remembered gateway pick, and explains a plain loxilb pick', () => {
@@ -154,8 +160,29 @@ describe('AuditWriterSection', () => {
 		cleanup();
 
 		mocks.resolution.mockReturnValue({state: 'resolved', flavor: 'loxilb'});
+		mocks.auditRest.mockClear();
 		render(<AuditWriterSection />);
 		expect(screen.getByText(/plain loxilb, which keeps no audit trail/)).toBeTruthy();
+		// Plain loxilb has no /audit/*: the read is never even set up.
+		expect(mocks.auditRest).not.toHaveBeenCalled();
+	});
+
+	// React Query keeps the last good data when a refetch fails. For an alert
+	// that would keep yesterday's "sink down" on screen; a failed read says nothing.
+	it('shows the REST alert while the read succeeds, and drops it once a refetch fails', () => {
+		mocks.instances = [{id: 2, name: 'gw'}];
+		localStorage.setItem(PREFERENCE_KEYS.systemAuditInstance, JSON.stringify('gw'));
+		mocks.resolution.mockReturnValue({state: 'resolved', flavor: 'inference-gateway'});
+		mocks.snapshot.mockReturnValue({snapshot: undefined, history: [], cadenceMs: 10_000, isLoading: true});
+		const down = {kind: 'ok', status: {available: true}, sink: {enabled: true, address: 'siem:6514'}};
+		mocks.auditRest.mockReturnValue({data: down, isError: false});
+		const {rerender} = render(<AuditWriterSection />);
+		expect(mocks.auditRest).toHaveBeenCalledWith(expect.objectContaining({name: 'gw'}));
+		expect(screen.getByText(/siem:6514 is configured but not connected/)).toBeTruthy();
+
+		mocks.auditRest.mockReturnValue({data: down, isError: true});
+		rerender(<AuditWriterSection />);
+		expect(screen.queryByText(/is configured but not connected/)).toBeNull();
 	});
 });
 
@@ -199,5 +226,55 @@ describe('AuditWriterSection — heartbeat tracking across polls', () => {
 		rerender(<AuditWriterSection />);
 		rerender(<AuditWriterSection />);
 		expect(valueOf('Heartbeat')).toBe('No change seen yet (50 s observed)');
+	});
+});
+
+describe('AuditWriterPanel — /audit REST signals (urgent only)', () => {
+	const SINK_DOWN: AuditRestSignals = {kind: 'ok', sinkDown: {address: 'siem.example:6514', lastError: 'x509: certificate signed by unknown authority', writeErrors: 4}};
+
+	// The compactness guard: a healthy REST answer must not grow the panel.
+	it('adds nothing for a healthy REST answer', () => {
+		const bare = render(<AuditWriterPanel report={okReport()} liveness={{kind: 'advancing'}} />);
+		const baseline = bare.container.innerHTML;
+		cleanup();
+		const withRest = render(<AuditWriterPanel report={okReport()} liveness={{kind: 'advancing'}} rest={{kind: 'ok'}} />);
+		expect(withRest.container.innerHTML).toBe(baseline);
+	});
+
+	it('raises a disconnected sink as one warning carrying the address, the error and the failed submissions', () => {
+		render(<AuditWriterPanel report={okReport()} liveness={{kind: 'advancing'}} rest={SINK_DOWN} />);
+		const alerts = screen.getAllByRole('alert');
+		expect(alerts).toHaveLength(1);
+		expect(alerts[0].className).toMatch(/Warning/);
+		expect(alerts[0].textContent).toContain('siem.example:6514 is configured but not connected');
+		expect(alerts[0].textContent).toContain('x509: certificate signed by unknown authority');
+		expect(alerts[0].textContent).toContain('4 submissions have failed');
+	});
+
+	it('names the latest orphaned event on the existing orphan fault line, without a second alert', () => {
+		const report = okReport({faults: [{key: 'loxilb_audit_orphaned_intents_total', total: 2}]});
+		render(<AuditWriterPanel report={report} liveness={{kind: 'advancing'}} rest={{kind: 'ok', orphan: {count: 2, eventId: 'evt-01a0'}}} />);
+		const alerts = screen.getAllByRole('alert');
+		expect(alerts).toHaveLength(1);
+		expect(alerts[0].textContent).toContain('Orphaned intents from the previous boot 2 (most recent: event evt-01a0)');
+	});
+
+	it('gives the orphan its own line when the metrics fault line does not carry it', () => {
+		render(<AuditWriterPanel report={okReport()} liveness={{kind: 'advancing'}} rest={{kind: 'ok', orphan: {count: 2, eventId: 'evt-7'}}} />);
+		const alerts = screen.getAllByRole('alert');
+		expect(alerts).toHaveLength(1);
+		expect(alerts[0].textContent).toContain('2 management changes from the previous boot have no recorded result. Most recent: event evt-7.');
+	});
+
+	it('still shows the orphan and a down sink when the metrics scrape did not answer', () => {
+		render(<AuditWriterPanel report={{kind: 'unavailable'}} liveness={{kind: 'unknown'}} rest={{...SINK_DOWN, orphan: {count: 1, eventId: 'evt-9'}}} />);
+		expect(screen.getByText(/1 management changes from the previous boot have no recorded result/).textContent).toContain('event evt-9');
+		expect(screen.getByText(/is configured but not connected/)).toBeTruthy();
+	});
+
+	it('says quietly that a 403 needs administrator rights: text, never an alert', () => {
+		render(<AuditWriterPanel report={okReport()} liveness={{kind: 'advancing'}} rest={{kind: 'forbidden'}} />);
+		expect(screen.getByText('Audit sink and orphan details need gateway administrator rights.')).toBeTruthy();
+		expect(screen.queryByRole('alert')).toBeNull();
 	});
 });

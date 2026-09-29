@@ -1,7 +1,9 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {query_get_capability_status, query_get_device_status, query_get_filesystem_status, query_get_process_status, query_get_log_level} from 'connector/instance/status';
+import {useQuery} from '@tanstack/react-query';
+import {ApiError} from 'connector/fetcher/fetcher_base';
+import {query_get_audit_rest, query_get_capability_status, query_get_device_status, query_get_filesystem_status, query_get_process_status, query_get_log_level} from 'connector/instance/status';
 import {CapabilityVerdict, capabilityVerdict} from 'types/capability_status';
 import {IInstance} from 'types/oam';
 import {useQueryInstanceData} from './common';
@@ -90,4 +92,28 @@ export function useGatewayCapabilities(instance: IInstance | null) {
 export function useCapabilityVerdict(instance: IInstance | null, name: string): CapabilityVerdict {
 	const {data} = useGatewayCapabilities(instance);
 	return capabilityVerdict(data, name);
+}
+
+export const AUDIT_REST_REFETCH_MS = 30_000;
+
+/**
+ * The audit trail's REST status for the System page (urgent signals only).
+ *
+ * ⚠️ Not useQueryInstanceData: that retries every non-404 three times at 3 s
+ * and never polls. Here a refusal is final (401/403/404 are not retried; 403
+ * and 404 arrive as data from the connector anyway), and the read polls every
+ * 30 s while a component using it is mounted; react-query stops the interval
+ * when the last observer unmounts, so leaving the page stops the requests.
+ *
+ * ⚠️ Pass `null` unless the instance is a POSITIVELY identified gateway.
+ */
+export function useGatewayAuditRest(instance: IInstance | null) {
+	return useQuery({
+		queryKey: ['status', 'audit', instance?.id ?? ''],
+		queryFn: () => query_get_audit_rest(instance!),
+		enabled: !!instance,
+		refetchInterval: AUDIT_REST_REFETCH_MS,
+		retry: (failureCount, error) => !(error instanceof ApiError && [401, 403, 404].includes(error.status)) && failureCount < 3,
+		retryDelay: 3000,
+	});
 }
