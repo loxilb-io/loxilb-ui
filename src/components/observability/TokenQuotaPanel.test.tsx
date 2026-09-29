@@ -187,6 +187,21 @@ describe('caveats that survive a healthy verdict', () => {
 		expect(screen.getByText(/Live quota buckets, charged at scrape time: 1\./)).toBeTruthy();
 	});
 
+	it('reports a cold open while a limit is configured but not yet charged', () => {
+		renderPanel(report({verdict: 'idle', storeState: 'readable', coldOpened: true}));
+		expect(screen.getByText(/started serving quota traffic on empty state/i)).toBeTruthy();
+	});
+
+	// ⚠️ The counter moves on every single-node start, quota or no quota. With
+	// no bound configured, "a quota could admit more than its bound" is false.
+	it.each(['not-configurable', 'unconfigured', 'enforcement-offline', 'indeterminate'] as const)(
+		'says nothing about a cold open on a %s gateway',
+		verdict => {
+			renderPanel(report({verdict, coldOpened: true}));
+			expect(screen.queryByText(/started serving quota traffic on empty state/i)).toBeNull();
+		},
+	);
+
 	// ⭐ Impossible from the collector, so reported as a scrape defect rather
 	// than rendered as a state.
 	it('calls an unpaired series a defect in the scrape, not a gateway state', () => {

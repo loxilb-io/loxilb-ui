@@ -5,8 +5,8 @@
 // consumer here reads the SAME shared snapshot (one 10-second query), so
 // their numbers agree by construction; the worker-freshness card is REST-fed
 // with its own independent receive time, deliberately badged separately.
-// The AI events card keeps the contract split visible: completed SSE
-// streams and denial events are separate partial views, never a total.
+// The AI events card keeps the contract split visible: completed requests
+// and denial events are separate partial views, never a total.
 
 import {Box, Link, Typography} from '@mui/material';
 import {Link as RouterLink, useSearchParams} from 'react-router-dom';
@@ -71,10 +71,11 @@ export function GwAiEventsCard({instance}: GwCardProps) {
 	return (
 		<CardBase title={t('AI Events (partial views)')}>
 			<ObservabilityStateFrame state={state} name={t('AI Events')} onRetry={refetch}>
-				<StatRow label={t('Completed SSE streams')} value={formatRate(completed, t)} />
+				{/* Recorded at stream completion OR response headers: not streams only. */}
+				<StatRow label={t('Completed requests')} value={formatRate(completed, t)} />
 				<StatRow label={t('Denial events')} value={formatRate(denialTotal, t)} />
 				<Typography variant="caption" color="text.secondary" display="block" sx={{mt: 0.5}}>
-					{t('Not a total request rate — the gateway counts completed streams and denials separately.')}
+					{t('Not a total request rate — the gateway counts completed requests and denials separately.')}
 				</Typography>
 				<Box sx={{mt: 1}}>
 					<ObservabilityLink page="ai" label={t('Open AI Traffic')} />

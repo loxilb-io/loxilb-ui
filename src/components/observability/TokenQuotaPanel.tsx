@@ -30,6 +30,7 @@ import {
 	IQuotaRow,
 	QuotaScope,
 	ScopeAbsence,
+	coldOpenApplies,
 	quotaScope,
 } from 'observability/tokenQuota';
 import {useTranslation} from 'react-i18next';
@@ -148,16 +149,17 @@ function VerdictAlert({report}: {report: IQuotaReport}) {
 }
 
 /**
- * ⚠️ Rendered independently of the verdict, never folded into it. A gateway
- * can be actively metering AND have cold-opened, which means a window of
- * traffic after the restart went unmetered.
+ * ⚠️ Not folded into the verdict: a gateway can be actively metering AND have
+ * cold-opened, which means a window of traffic after the restart went
+ * unmetered. But it is gated on one — see `coldOpenApplies`: the counter
+ * moves on every single-node start, quota or no quota.
  */
 function ColdOpenNote({report}: {report: IQuotaReport}) {
 	const {t} = useTranslation();
-	if (!report.coldOpened) return null;
+	if (!coldOpenApplies(report)) return null;
 	return (
 		<Alert severity="warning">
-			{t('This gateway started serving quota traffic on empty state, with no peer having warmed it up. Spend from before that start was not carried over, so quotas admitted more than their bound allowed until the buckets refilled.')}
+			{t('This gateway started serving quota traffic on empty state, with no peer having warmed it up. Spend from before that start was not carried over, so a quota could admit more than its bound until its bucket refilled. A gateway with no sync peers starts this way every time.')}
 		</Alert>
 	);
 }

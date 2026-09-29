@@ -71,11 +71,11 @@ export interface IObservabilityEntry {
 //---------------------------------------------------------
 
 const AI_EVENT_FAMILIES = [
-	// Completed SSE streams and point-of-denial counters. These are SEPARATE
-	// event views: loxilb_ai_requests_total counts completed SSE streams
-	// only, denials are counted at the point of denial, and non-streaming
-	// successes are counted nowhere — no combination yields total request
-	// rate or a true error ratio (BLOCKED on a gateway denominator contract).
+	// Request outcomes and point-of-denial counters. loxilb_ai_requests_total
+	// counts completed requests (recorded at SSE stream completion or at
+	// response headers, so non-streaming answers too) and, on a gateway with
+	// the `outcome` label, gate denials; the reason families below count each
+	// denial again at its point of denial (see observability/aiRequests).
 	'loxilb_ai_requests_total',
 	'loxilb_ai_rate_limit_hits_total',
 	'loxilb_ai_model_not_allowed_total',

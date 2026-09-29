@@ -8,6 +8,7 @@ import {
 	QuotaScope,
 	TOKEN_QUOTA_COLD_OPEN,
 	TOKEN_QUOTA_FAMILIES,
+	coldOpenApplies,
 	effectiveLimit,
 	quotaPressure,
 	quotaScope,
@@ -443,5 +444,33 @@ describe('scopeAbsence', () => {
 	it('does not explain an absent tenant or user scope as awaiting a charge', () => {
 		expect(scopeAbsence('tenant', withUser, true)).toBe('unexplained');
 		expect(scopeAbsence('user', withUser, true)).toBe('unexplained');
+	});
+});
+
+// ⚠️ The gateway bumps the cold-open counter on the first rate-limiter use of
+// any node with no sync peers (`getGlobalRL`), quota or no quota. loxilb-igw
+// reads 1 with no quota store at all, and the note told its operator that
+// quotas had admitted more than their bound.
+describe('coldOpenApplies — only where a bound exists to exceed', () => {
+	it.each([
+		['active', true],
+		['idle', true],
+		['not-configurable', false],
+		['unconfigured', false],
+		['enforcement-offline', false],
+		['indeterminate', false],
+	] as const)('%s -> %s', (verdict, applies) => {
+		expect(coldOpenApplies({coldOpened: true, verdict})).toBe(applies);
+	});
+
+	it('never applies without a cold open, whatever the verdict', () => {
+		expect(coldOpenApplies({coldOpened: false, verdict: 'active'})).toBe(false);
+	});
+
+	it('matches the live single-node testbed: counter at 1, no store configured', () => {
+		const report = tokenQuotaReport(input({storeState: 'unconfigured', snapshot: snapshotOf(`${TOKEN_QUOTA_COLD_OPEN} 1`)}));
+		expect(report.coldOpened).toBe(true);
+		expect(report.verdict).toBe('not-configurable');
+		expect(coldOpenApplies(report)).toBe(false);
 	});
 });

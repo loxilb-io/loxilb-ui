@@ -392,7 +392,7 @@ export interface IQuotaScopeReading {
 
 /** Identity of a bucket within a scope: its label values, in collector order. */
 function bucketKey(sample: IMetricSample, labels: readonly string[]): string {
-	return labels.map(l => sample.labels[l] ?? '').join(' ');
+	return labels.map(l => sample.labels[l] ?? '').join('\u0000');
 }
 
 function labelsOf(sample: IMetricSample, labels: readonly string[]): Record<string, string> {
@@ -567,6 +567,21 @@ export function tokenQuotaReport(input: IQuotaReportInput): IQuotaReport {
 		coldOpened,
 		userIdentityUnavailable: !input.userIdentityAvailable,
 	};
+}
+
+/**
+ * Whether the cold-open counter says anything about THIS gateway's quotas.
+ *
+ * ⚠️ The counter is not evidence that a quota was bypassed. The gateway bumps
+ * it the first time the rate-limiter store is built on a node with no sync
+ * peers (`getGlobalRL`), whether or not any quota is configured — so every
+ * single-node gateway reads 1 from its first start, including ones that
+ * cannot hold a quota at all. It only matters where a limit resolves: a
+ * bucket being metered (`active`) or configured and not yet charged (`idle`).
+ * Everywhere else there is no bound it could have let traffic past.
+ */
+export function coldOpenApplies(report: Pick<IQuotaReport, 'coldOpened' | 'verdict'>): boolean {
+	return report.coldOpened && (report.verdict === 'active' || report.verdict === 'idle');
 }
 
 /**
