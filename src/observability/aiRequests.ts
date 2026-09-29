@@ -148,30 +148,10 @@ export function requestOutcomes(history: readonly IMetricsSnapshot[], maxGapMs: 
 // So the total never sums reasons where the gateway states it directly, and
 // where it must fall back to the reason families it adds only the disjoint
 // ones (rate_limit_hits + model_not_allowed; token_quota_denied is already
-// inside rate_limit_hits). Per-reason breakdowns are Grafana's; the Security
-// page's reason rows use `rateLimitHitKind` to keep a quota refusal from
-// reading as "Rate limited".
+// inside rate_limit_hits). Per-reason breakdowns are Grafana's.
 
 export const RATE_LIMIT_HITS = 'loxilb_ai_rate_limit_hits_total';
 export const MODEL_NOT_ALLOWED = 'loxilb_ai_model_not_allowed_total';
-
-const REASON = 'reason';
-const TOKEN_QUOTA_REASON_PREFIX = 'token_quota_';
-export const TOKEN_QUOTA_WARMING = 'token_quota_warming';
-
-const isTokenQuotaReason: LabelPredicate = labels => (labels[REASON] ?? '').startsWith(TOKEN_QUOTA_REASON_PREFIX);
-
-/**
- * Which gate a `rate_limit_hits_total` reason belongs to. The family carries
- * token-quota refusals beside the request-rate buckets, so a page listing it
- * by reason must not put "Rate limited" in front of a quota refusal.
- */
-export type RateLimitHitKind = 'rate-limit' | 'token-quota' | 'token-quota-warming';
-
-export function rateLimitHitKind(reason: string | undefined): RateLimitHitKind {
-	if (reason === TOKEN_QUOTA_WARMING) return 'token-quota-warming';
-	return isTokenQuotaReason({[REASON]: reason ?? ''}) ? 'token-quota' : 'rate-limit';
-}
 
 /**
  * Sum of disjoint denial terms, where an ABSENT term contributes nothing.

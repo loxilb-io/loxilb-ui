@@ -147,57 +147,34 @@ const PD_KV_FAMILIES = [
 
 // Security page: real family groups — there is no securityrate-prefixed
 // family and no llamafirewall_*/pii_* family.
+// Only what the page still reads. Passed traffic, byte rates, per-rule and
+// per-reason breakdowns and OPA sync durations are in Grafana's
+// `loxilb-security` dashboard.
 const SECURITY_FAMILIES = [
 	// core security counters
 	'loxilb_security_syn_blocked_total',
-	'loxilb_security_syn_passed_total',
-	'loxilb_security_syn_cookies_total',
 	'loxilb_security_conn_blocked_total',
-	'loxilb_security_conn_passed_total',
 	'loxilb_security_udp_blocked_total',
-	'loxilb_security_udp_passed_total',
-	'loxilb_security_udp_bytes_blocked_total',
-	'loxilb_security_udp_bytes_passed_total',
-	'loxilb_security_unique_ips',
 	// firewall
 	'loxilb_fw_drop_packets_total',
-	'loxilb_fw_rule_drop_packets_total',
 	'loxilb_firewall_rules',
-	// IP filter
+	// IP filter: the rule count decides whether an absent hit family is "no rules"
 	'loxilb_ipfilter_blacklist_packets_total',
-	'loxilb_ipfilter_blacklist_bytes_total',
-	'loxilb_ipfilter_whitelist_packets_total',
-	'loxilb_ipfilter_whitelist_bytes_total',
 	'loxilb_ipfilter_rules',
 	// L4
 	'loxilb_l4_error_events_total',
 	// OPA
-	'loxilb_opa_watcher_syncs_total',
-	'loxilb_opa_sync_duration_seconds',
 	'loxilb_opa_firewall_rules',
 	'loxilb_opa_circuit_breaker_state',
 	// AI security
-	'loxilb_ai_model_not_allowed_total',
-	'loxilb_ai_rate_limit_hits_total',
 	'loxilb_ai_unmetered_requests_total',
 	'loxilb_ai_policy_store_unavailable_total',
 ] as const;
 
-const QOS_FAMILIES = [
-	'loxilb_proxy_qos_bytes_passed_total',
-	'loxilb_proxy_qos_bytes_delayed_total',
-	'loxilb_proxy_qos_parks_total',
-	'loxilb_proxy_qos_park_seconds_total',
-	'loxilb_proxy_qos_parked_connections',
-	'loxilb_proxy_qos_tokens_bytes',
-	'loxilb_proxy_qos_cbs_bytes',
-	'loxilb_proxy_qos_cir_bytes_per_second',
-	// Stage 3.3. ⚠️ Not a loxilb_proxy_qos_* shaper counter: this one is the
-	// per-policer attachment gauge, and it is joined against REST
-	// /config/policy rather than read on its own. It deliberately stays OUT
-	// of QosPage's own presence list — see the comment there.
-	'loxilb_policer_attached',
-] as const;
+// Only what the page still reads: the per-policer attachment gauge, joined
+// against REST /config/policy. The eight loxilb_proxy_qos_* shaper families
+// are in Grafana's "L7 byte shaper" row.
+const QOS_FAMILIES = ['loxilb_policer_attached'] as const;
 
 // Only what the page still reads. Persist/restore/snapshot breakdowns and
 // restore durations are in Grafana's overview "Persistence" row; the last

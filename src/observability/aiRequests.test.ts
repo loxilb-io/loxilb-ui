@@ -9,7 +9,6 @@ import {
 	denialTotalRate,
 	hasOutcomePartition,
 	isErrorStatus,
-	rateLimitHitKind,
 	requestOutcomes,
 } from './aiRequests';
 
@@ -317,21 +316,5 @@ describe('denial total — each refused request counted once', () => {
 	it('propagates a reset in any present term instead of summing around it', () => {
 		const h = [snapshotOf(quotaAndRate(10, 20, false), T0), snapshotOf(quotaAndRate(15, 5, false), T1)];
 		expect(denialTotalRate(h, GAP)).toEqual({kind: 'reset'});
-	});
-});
-
-// A per-reason listing of rate_limit_hits put "Rate limited" in front of
-// token_quota_exceeded — a refusal by a different gate.
-describe('rateLimitHitKind', () => {
-	it.each([
-		['rate_limit_exceeded', 'rate-limit'],
-		['user_rate_limit_exceeded', 'rate-limit'],
-		['tenant_quota_exceeded', 'rate-limit'],
-		['token_quota_exceeded', 'token-quota'],
-		['token_quota_would_exceed', 'token-quota'],
-		['token_quota_warming', 'token-quota-warming'],
-		[undefined, 'rate-limit'],
-	] as const)('%s -> %s', (reason, kind) => {
-		expect(rateLimitHitKind(reason)).toBe(kind);
 	});
 });

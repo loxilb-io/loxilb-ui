@@ -13,86 +13,13 @@
 // drift, and this renderer says so in as many words instead of raising it as
 // a fault. The actionable signal is the value they agree on.
 //
-// ⚠️ Chips are built here rather than routed through DataTable's
-// `type: 'state'` column: `state_color()` defaults to 'error' for any string
-// it does not recognise and matches lowercase ENGLISH substrings, so a
-// translated state would paint ko/ja operators a red cell for a healthy
-// policer.
+// Compact by design: the verdict, then only the policers that are shaping
+// nothing (the one actionable state). Healthy and unknown rows, and which
+// source answered for each, are not listed.
 
-import {Alert, Box, Chip, Stack, Table, TableBody, TableCell, TableHead, TableRow, Tooltip, Typography} from '@mui/material';
-import {
-	IPolicerAttachmentRow,
-	PolicerAttachmentReport,
-} from 'observability/policerAttachment';
+import {Alert, Box, Stack, Typography} from '@mui/material';
+import {PolicerAttachmentReport} from 'observability/policerAttachment';
 import {useTranslation} from 'react-i18next';
-
-/** The attachment answer as one chip. `undefined` is its own state, never "no". */
-function AttachmentChip({row}: {row: IPolicerAttachmentRow}) {
-	const {t} = useTranslation();
-	if (row.attached === true) {
-		return <Chip size="small" color="success" variant="outlined" label={t('Shaping')} />;
-	}
-	if (row.attached === false) {
-		// ⭐ The finding. The only chip on this panel that is coloured as a
-		// problem, because it is the only state that is one.
-		return (
-			<Tooltip title={t('At least one of this policer’s attachment points is not programmed, so no traffic is being shaped by it. The gateway retries every 10 seconds; a policer stuck here usually points at an attachment target that does not exist.')}>
-				<Chip size="small" color="warning" label={t('Shaping nothing')} />
-			</Tooltip>
-		);
-	}
-	return (
-		<Tooltip title={t('The attachment state could not be established from either source. This is not a report that the policer is broken.')}>
-			<Chip size="small" variant="outlined" label={t('Unknown')} />
-		</Tooltip>
-	);
-}
-
-/**
- * How well the row is corroborated, as a caveat beside the answer — never as
- * a severity. `agreed` renders nothing: a check that passes is not news.
- */
-function CorroborationNote({row}: {row: IPolicerAttachmentRow}) {
-	const {t} = useTranslation();
-	switch (row.corroboration) {
-		case 'agreed':
-			return null;
-		case 'conflict':
-			// ⚠️ Explicitly NOT a fault. Same predicate, two read times.
-			return (
-				<Tooltip title={t('The metric and the API answered differently. They compute the same check, so this means the state changed within the last scrape — it resolves itself. Refresh in a few seconds.')}>
-					<Chip size="small" variant="outlined" label={t('Settling')} />
-				</Tooltip>
-			);
-		case 'metric-only':
-			return (
-				<Tooltip
-					title={
-						// ⚠️ An unread policy list is not a delete: without it the
-						// row is metric-only, never "Deleted".
-						row.listedInRest === undefined
-							? t('The QoS policy list could not be read, so the metric is the only source for this policer.')
-							: row.listedInRest
-								? t('This gateway build does not report attachment over the API, so the metric is the only source.')
-								: t('The API no longer lists this policer. A series outlasting a delete clears on the next scrape.')
-					}>
-					<Chip size="small" variant="outlined" label={row.listedInRest === false ? t('Deleted') : t('Metric only')} />
-				</Tooltip>
-			);
-		case 'rest-only':
-			return (
-				<Tooltip title={t('The attachment metric has no series for this policer yet. Within a few seconds of creating it that is expected; if it persists, the metrics endpoint is the thing to check, not the policer.')}>
-					<Chip size="small" variant="outlined" label={t('Not in metrics')} />
-				</Tooltip>
-			);
-		case 'unreported':
-			return (
-				<Tooltip title={t('Neither the metric nor this gateway build’s API reports attachment for this policer.')}>
-					<Chip size="small" variant="outlined" label={t('Not reported')} />
-				</Tooltip>
-			);
-	}
-}
 
 function VerdictAlert({report}: {report: Extract<PolicerAttachmentReport, {kind: 'ok'}>}) {
 	const {t} = useTranslation();
@@ -128,14 +55,14 @@ function VerdictAlert({report}: {report: Extract<PolicerAttachmentReport, {kind:
 			return (
 				<Alert severity="info">
 					{report.familyExported
-						? t('No policer is reported as pending, but not every attachment state could be established. The rows below say which, and why.')
+						? t('No policer is reported as pending, but the attachment state of {{n}} of {{total}} policers could not be established. The metric and the API may still be settling after a change; refresh in a few seconds.', {n: report.unknown, total: report.configured ?? report.rows.length})
 						: t('The policy list reports policers, but the attachment metric is not being exported at all. That is a gap in monitoring rather than a datapath fault — the policers themselves may be shaping normally.')}
 				</Alert>
 			);
 		case 'unknown-configuration':
 			return (
 				<Alert severity="info">
-					{t('The QoS policy list is unavailable, so the panel cannot tell an unused feature apart from a missing metric. Any policers the metric does report are listed below.')}
+					{t('The QoS policy list is unavailable, so the panel cannot tell an unused feature apart from a missing metric. Any policer the metric reports as shaping nothing is listed below.')}
 				</Alert>
 			);
 	}
@@ -156,46 +83,30 @@ export default function PolicerAttachmentPanel({report}: PolicerAttachmentPanelP
 		);
 	}
 
+	// ⭐ Only the finding. A row whose sources disagree is `undefined`, not
+	// false, so a settling policer is never listed as shaping nothing.
+	const shapingNothing = report.rows.filter(r => r.attached === false);
 	return (
 		<Stack spacing={1.5}>
 			<VerdictAlert report={report} />
-
-			{/* ⚠️ The empty table is suppressed rather than rendered with a
-			    "no rows" line: the verdict above has already said why there
-			    are none, and in the none-configured case that is the correct
-			    state, not an absence of data. */}
-			{report.rows.length > 0 && (
-				<Table size="small">
-					<TableHead>
-						<TableRow>
-							<TableCell>{t('Policer')}</TableCell>
-							<TableCell>{t('Attachment')}</TableCell>
-							<TableCell>{t('Source')}</TableCell>
-						</TableRow>
-					</TableHead>
-					<TableBody>
-						{report.rows.map(row => (
-							<TableRow key={row.ident}>
-								<TableCell sx={{fontFamily: 'monospace'}}>
-									{row.ident}
-									{row.listedInRest === false && (
-										<Typography variant="caption" color="text.secondary" component="p">
-											{t('No longer configured')}
-										</Typography>
-									)}
-								</TableCell>
-								<TableCell>
-									<AttachmentChip row={row} />
-								</TableCell>
-								<TableCell>
-									<Box display="flex" alignItems="center" gap={1}>
-										<CorroborationNote row={row} />
-									</Box>
-								</TableCell>
-							</TableRow>
-						))}
-					</TableBody>
-				</Table>
+			{shapingNothing.length > 0 && (
+				<Box component="ul" aria-label={t('Policers shaping nothing')} sx={{m: 0, pl: 2.5}}>
+					{shapingNothing.map(row => (
+						<li key={row.ident}>
+							<Typography component="span" variant="body2" sx={{fontFamily: 'monospace'}}>
+								{row.ident}
+							</Typography>
+							{/* A series outlasting a delete: say so, or the operator
+							    goes looking for a policer that no longer exists. */}
+							{row.listedInRest === false && (
+								<Typography component="span" variant="caption" color="text.secondary">
+									{' '}
+									{t('(no longer configured)')}
+								</Typography>
+							)}
+						</li>
+					))}
+				</Box>
 			)}
 		</Stack>
 	);
