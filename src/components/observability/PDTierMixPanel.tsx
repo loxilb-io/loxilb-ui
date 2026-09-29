@@ -13,51 +13,14 @@
 // on. The verdict comes from `affinityVerdict`, computed once in the
 // derivation layer so this renderer cannot get the configured case backwards.
 //
-// ⚠️ The tier chip is built here rather than routed through DataTable's
-// `type: 'state'` column: `state_color()` defaults to 'error' for any string
-// it does not recognise and matches lowercase ENGLISH substrings, so a
-// translated tier name would paint ko/ja operators a red cell for a healthy
-// mix.
+// Compact by design: the verdict, plus the Tier-0 reconciliation alert when
+// the two Tier-0 counters disagree (a metrics-writer defect). The per-tier
+// and per-model tables are Grafana's ("P/D routing tier mix").
 
-import {Alert, Box, Chip, Stack, Table, TableBody, TableCell, TableHead, TableRow, Tooltip, Typography} from '@mui/material';
-import type {TFunction} from 'i18next';
-import {
-	IPDTierGates,
-	IPDTierRow,
-	PDTier,
-	PDTierMixReport,
-	Tier0Reconciliation,
-} from 'observability/pdTiers';
+import {Alert, Stack} from '@mui/material';
+import {IPDTierGates, PDTierMixReport, Tier0Reconciliation} from 'observability/pdTiers';
 import {useTranslation} from 'react-i18next';
-import {ModelName} from './modelLabel';
-import {formatRate, formatRatio} from './rateText';
-
-// One place a tier becomes words, so the ladder reads in the same order and
-// the same vocabulary everywhere it is shown.
-function tierText(tier: PDTier, t: TFunction): {name: string; detail: string} {
-	switch (tier) {
-		case 'tier0':
-			return {
-				name: t('Tier 0 — session'),
-				detail: t('The request reused the endpoint pair its session key was already pinned to.'),
-			};
-		case 'tier1':
-			return {
-				name: t('Tier 1 — prefix'),
-				detail: t('A shared system-prompt prefix routed the request to an endpoint that already holds it.'),
-			};
-		case 'tier15':
-			return {
-				name: t('Tier 1.5 — KV exact'),
-				detail: t('The exact KV blocks this request needs were known to live on a specific endpoint.'),
-			};
-		case 'tier2':
-			return {
-				name: t('Tier 2 — min load'),
-				detail: t('No affinity was available, so the least-loaded endpoint was chosen. Correct, but the cache there is cold.'),
-			};
-	}
-}
+import {formatRatio} from './rateText';
 
 function VerdictAlert({report, gates}: {report: Extract<PDTierMixReport, {kind: 'ok'}>; gates: IPDTierGates | undefined}) {
 	const {t} = useTranslation();
@@ -88,7 +51,7 @@ function VerdictAlert({report, gates}: {report: Extract<PDTierMixReport, {kind: 
 			// 0/0. A percentage here would assert something nothing measured.
 			return (
 				<Alert severity="info">
-					{t('No prefill selections in the last sample window. The tier totals below are lifetime counts from this gateway process.')}
+					{t('No prefill selections in the last sample window, so no affinity share is reported.')}
 				</Alert>
 			);
 		case 'unknown-configuration':
@@ -96,7 +59,7 @@ function VerdictAlert({report, gates}: {report: Extract<PDTierMixReport, {kind: 
 				<Alert severity="info">
 					{gates
 						? t('The affinity share cannot be derived from the current samples yet, so no judgement is made about cache-aware routing.')
-						: t('The load-balancer rule list is unavailable, so the panel cannot say whether an empty affinity tier is expected here or a problem. The tier mix below is still live.')}
+						: t('The load-balancer rule list is unavailable, so the panel cannot say whether an empty affinity tier is expected here or a problem.')}
 				</Alert>
 			);
 	}
@@ -114,40 +77,11 @@ function ReconciliationNote({reconciliation}: {reconciliation: Tier0Reconciliati
 			{/* ⚠️ Scoped narrowly on purpose: this is a metrics-writer defect,
 			    not a traffic or configuration problem, so it qualifies the
 			    numbers rather than reporting an incident. */}
-			{t('Tier-0 selections ({{tier}}) and the session-hit counter ({{hits}}) disagree. These two counters are written together at the same routing decision, so one of them is dropping increments — treat the Tier-0 row below as unreliable and report the mismatch. Admission and routing are unaffected.', {
+			{t('Tier-0 selections ({{tier}}) and the session-hit counter ({{hits}}) disagree. These two counters are written together at the same routing decision, so one of them is dropping increments — treat Tier-0 figures in Grafana as unreliable and report the mismatch. Admission and routing are unaffected.', {
 				tier: reconciliation.tierSelections,
 				hits: reconciliation.sessionHits,
 			})}
 		</Alert>
-	);
-}
-
-function TierRow({row}: {row: IPDTierRow}) {
-	const {t} = useTranslation();
-	const text = tierText(row.tier, t);
-	return (
-		<TableRow>
-			<TableCell>
-				<Box display="flex" alignItems="center" gap={1}>
-					<Typography variant="body2">{text.name}</Typography>
-					{/* An unreachable tier is labelled, never coloured as an
-					    error: a zero there is the configuration working. */}
-					{row.reachable === false && (
-						<Tooltip title={t('This tier is not enabled on any rule, so the datapath never attempts it. A zero here is expected.')}>
-							<Chip size="small" variant="outlined" label={t('Not enabled')} />
-						</Tooltip>
-					)}
-				</Box>
-				<Typography variant="caption" color="text.secondary" component="p" sx={{maxWidth: 420}}>
-					{text.detail}
-				</Typography>
-			</TableCell>
-			<TableCell align="right">{formatRate(row.rate, t)}</TableCell>
-			<TableCell align="right">{formatRatio(row.share, t)}</TableCell>
-			{/* No series at all is not the number zero, so it must not render
-			    as one — the tier has never been selected. */}
-			<TableCell align="right">{row.total ?? t('None')}</TableCell>
-		</TableRow>
 	);
 }
 
@@ -187,56 +121,6 @@ export default function PDTierMixPanel({report, gates}: PDTierMixPanelProps) {
 		<Stack spacing={1.5}>
 			<VerdictAlert report={report} gates={gates} />
 			<ReconciliationNote reconciliation={report.reconciliation} />
-
-			<Table size="small">
-				<TableHead>
-					<TableRow>
-						<TableCell>{t('Tier')}</TableCell>
-						<TableCell align="right">{t('Selections')}</TableCell>
-						<TableCell align="right">{t('Share')}</TableCell>
-						<TableCell align="right">{t('Lifetime')}</TableCell>
-					</TableRow>
-				</TableHead>
-				<TableBody>
-					{report.tiers.map(row => (
-						<TierRow key={row.tier} row={row} />
-					))}
-				</TableBody>
-			</Table>
-
-			{report.byModel.length > 0 && (
-				<>
-					<Typography variant="subtitle2" sx={{mt: 1}}>
-						{t('By model')}
-					</Typography>
-					<Table size="small">
-						<TableHead>
-							<TableRow>
-								<TableCell>{t('Model')}</TableCell>
-								<TableCell align="right">{t('Warm-endpoint share')}</TableCell>
-								<TableCell align="right">{t('Min-load fallback')}</TableCell>
-								<TableCell align="right">{t('Lifetime')}</TableCell>
-							</TableRow>
-						</TableHead>
-						<TableBody>
-							{report.byModel.map(row => (
-								<TableRow key={row.model}>
-									{/* ⚠️ Two of this label's values are not model names —
-									    the 64-model overflow bucket and the empty label for
-									    traffic that declared no model. ModelName is the one
-									    place that vocabulary lives. */}
-									<TableCell sx={{fontFamily: 'monospace'}}>
-										<ModelName model={row.model} />
-									</TableCell>
-									<TableCell align="right">{formatRatio(row.affinityShare, t)}</TableCell>
-									<TableCell align="right">{formatRate(row.fallbackRate, t)}</TableCell>
-									<TableCell align="right">{row.total ?? t('None')}</TableCell>
-								</TableRow>
-							))}
-						</TableBody>
-					</Table>
-				</>
-			)}
 		</Stack>
 	);
 }

@@ -110,7 +110,11 @@ const AI_TRAFFIC_FAMILIES = [
 // loxilb_kv_fetch_*/loxilb_kv_evictions_*/loxilb_kv_bytes_* families belong
 // to the standalone KV agent and loxilb_kv_agent_up to its health probe.
 const PD_KV_FAMILIES = [
-	// sockproxy P/D data path
+	// Only what the page still reads. Its breakdowns (tiers by model, KV
+	// blocks, tier-1.5 hits, the P/D robustness counters, subscriber
+	// reconnects) are in Grafana's `loxilb-ai` dashboard, and a family
+	// listed here that no panel reads would still decide applicability.
+	//
 	// ⚠️ Stage 3.4. The three admission families are ONE mechanism with a
 	// two-way fork: `LLB_PD_QUEUE_DEPTH_PER_EP` decides whether a capped pool
 	// sheds immediately (`_shed_total`) or parks and then overflows
@@ -120,58 +124,24 @@ const PD_KV_FAMILIES = [
 	'loxilb_pd_admission_overflow_shed_total',
 	'loxilb_pd_admission_queued_total',
 	'loxilb_pd_admission_shed_total',
-	'loxilb_pd_cb_flips_total',
-	'loxilb_pd_cb_proactive_heal_total',
-	'loxilb_pd_connect_failover_total',
-	'loxilb_pd_connect_retry_same_ep_ok_total',
-	'loxilb_pd_connect_retry_same_ep_total',
-	'loxilb_pd_decode_ep_died_total',
-	'loxilb_pd_decode_zero_byte_eof_total',
-	'loxilb_pd_ep_info',
-	'loxilb_pd_fallback_to_normal_total',
-	'loxilb_pd_kv_blocks',
-	'loxilb_pd_kv_tier15_cold_seeds_total',
-	'loxilb_pd_kv_tier15_fallthrough_total',
-	'loxilb_pd_kv_tier15_hits_total',
-	'loxilb_pd_kv_tier15_miss_reason_total',
-	'loxilb_pd_kv_tier15_spills_total',
-	'loxilb_pd_kv_zero_hit_watchdog_total',
-	'loxilb_pd_prefill_ep_died_total',
+	// Sessions and routing.
 	'loxilb_pd_sessions_active',
-	'loxilb_pd_sg_decode_close_drain_total',
-	'loxilb_pd_sg_oversize_reject_total',
-	'loxilb_pd_sg_prefill_abort_decode_total',
-	'loxilb_pd_sg_prefill_reject_relay_total',
-	'loxilb_pd_sg_room_retry_total',
-	'loxilb_pd_trie_nodes',
-	'loxilb_pd_trt_ctx_early_exit_total',
-	'loxilb_proxy_pd_kv_params_overflow_total',
-	// AI-side P/D
-	'loxilb_ai_pd_prefill_duration_seconds',
-	'loxilb_ai_pd_decode_ttft_seconds',
-	'loxilb_ai_pd_requests_total',
-	'loxilb_ai_pd_session_hits_total',
+	'loxilb_pd_fallback_to_normal_total',
+	'loxilb_pd_connect_failover_total',
 	// The terminal prefill routing-tier decision (Stage 3.2). Its Tier-0 child
-	// must reconcile with loxilb_ai_pd_session_hits_total above, which the tier
-	// mix panel checks in page.
+	// must reconcile with the session-hit counter, which the tier mix panel
+	// checks in page.
 	'loxilb_ai_pd_tier_selected_total',
-	'loxilb_ai_pd_kv_params_found_total',
-	'loxilb_ai_pd_kv_params_missing_total',
-	// KV attestation / TRT-LLM drain
+	'loxilb_ai_pd_session_hits_total',
+	// KV attestation.
 	'loxilb_ai_kv_attest_state',
-	'loxilb_ai_kv_attest_echo_total',
 	'loxilb_ai_kv_attest_probe_fail_total',
 	'loxilb_ai_kv_enforcement_fault',
-	'loxilb_ai_kv_trtllm_drain_ownership_fault_total',
-	'loxilb_ai_kv_trtllm_drain_ownership_heal_total',
-	// KV subscriber / inventory (gateway-side)
-	'loxilb_kv_subscriber_connected',
+	// KV subscriber freshness, and the strict ep_idx → address join it lists
+	// stale subscribers by.
 	'loxilb_kv_subscriber_last_event_timestamp_seconds',
-	'loxilb_kv_subscriber_reconnect_total',
-	'loxilb_kv_subscriber_recv_error_total',
-	'loxilb_kv_subscriber_wire_reject_total',
 	'loxilb_kv_inventory_fresh',
-	'loxilb_kv_inv_cap_evictions_total',
+	'loxilb_pd_ep_info',
 ] as const;
 
 // Security page: real family groups — there is no securityrate-prefixed

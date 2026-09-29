@@ -71,9 +71,10 @@ describe('registry contract against the vendored artifacts', () => {
 		expect(size('dashboard.gwAiEvents')).toBe(4);
 		// 17 since J3: the bearer arm's verdict counter joined the page.
 		expect(size('page.aiTraffic')).toBe(11);
-		// 49 since Stage 3.4: the admission overflow-shed valve joined the
-		// page beside the two families it forks with.
-		expect(size('page.pdKv')).toBe(49);
+		// 14 since the compact trim: only the families a panel still reads
+		// (breakdowns moved to Grafana). The three admission valves stay
+		// together — one is structurally zero and must not be read alone.
+		expect(size('page.pdKv')).toBe(14);
 		expect(size('page.security')).toBe(27);
 		// 9 since Stage 3.3: the per-policer attachment gauge joined the page.
 		expect(size('page.qos')).toBe(9);

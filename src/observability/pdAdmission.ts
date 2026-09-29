@@ -2,9 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {IMetricsSnapshot} from 'types/observability';
-import {RateResult} from './rates';
 import {selectScalar} from './selectors';
-import {familySumRate} from './snapshotRates';
 
 //---------------------------------------------------------
 // P/D per-EP admission pressure (Stage 3.4)
@@ -53,9 +51,12 @@ import {familySumRate} from './snapshotRates';
 // init (`api/prometheus/sockproxy_metrics.go`), so they export `0` from
 // process start unconditionally — confirmed on the live gateway. A zero here
 // is therefore a REAL zero, not an absent child, which is why this module has
-// no lazy-child reasoning and why `familySumRate` (not `partitionRate`) is the
-// right rate helper. The one absence that IS meaningful is a build predating
-// the overflow family: see `blindSpot`.
+// no lazy-child reasoning. The one absence that IS meaningful is a build
+// predating the overflow family: see `blindSpot`.
+//
+// The page shows only the verdict and the two defect alerts (the blind spot
+// and both valves firing). Per-valve rates live in Grafana ("P/D robustness
+// events"), so this module reads lifetime totals and needs no history.
 
 export const PD_ADMISSION_SHED = 'loxilb_pd_admission_shed_total';
 export const PD_ADMISSION_OVERFLOW_SHED = 'loxilb_pd_admission_overflow_shed_total';
@@ -106,12 +107,6 @@ export type PdAdmissionReport =
 			kind: 'ok';
 			mode: AdmissionMode;
 			verdict: AdmissionVerdict;
-			/** Requests dropped per second — both valves, of which one is live. */
-			dropRate: RateResult;
-			/** Requests parked per second. Held, not lost. */
-			queuedRate: RateResult;
-			shedRate: RateResult;
-			overflowRate: RateResult;
 			/** Lifetime totals; `undefined` when the family is absent. */
 			shedTotal: number | undefined;
 			overflowTotal: number | undefined;
@@ -126,27 +121,6 @@ export type PdAdmissionReport =
 			 */
 			blindSpot: boolean;
 	  };
-
-/**
- * Sum rates that must all be derivable.
- *
- * ⚠️ Treating an underivable term as zero would UNDERSTATE a drop count, and
- * understating drops is the dangerous direction — it is the same failure the
- * page had before this stage. So any non-`ok` term propagates instead.
- */
-function sumRates(rates: readonly RateResult[]): RateResult {
-	if (rates.length === 0) return {kind: 'insufficient-samples'};
-	const notOk = rates.find(r => r.kind !== 'ok');
-	if (notOk) return notOk;
-	let perSecond = 0;
-	let intervalMs = 0;
-	for (const r of rates) {
-		if (r.kind !== 'ok') continue;
-		perSecond += r.perSecond;
-		intervalMs = Math.max(intervalMs, r.intervalMs);
-	}
-	return {kind: 'ok', perSecond, intervalMs};
-}
 
 /**
  * Infer the armed branch from what has actually happened.
@@ -172,14 +146,6 @@ export function admissionMode(
 	return 'indeterminate';
 }
 
-/** Whether `family` can ever increment under `mode`. `undefined` ⇒ unknown. */
-export function branchReachable(family: string, mode: AdmissionMode): boolean | undefined {
-	if (mode === 'indeterminate' || mode === 'contradictory') return undefined;
-	if (family === PD_ADMISSION_SHED) return mode === 'shedding';
-	if (family === PD_ADMISSION_OVERFLOW_SHED || family === PD_ADMISSION_QUEUED) return mode === 'queueing';
-	return undefined;
-}
-
 export function admissionVerdict(dropTotal: number | undefined, queuedTotal: number | undefined): AdmissionVerdict {
 	// ⭐ Drops outrank parking. A gateway that parked a thousand requests and
 	// dropped one has still dropped one, and that is the fact an operator
@@ -189,16 +155,7 @@ export function admissionVerdict(dropTotal: number | undefined, queuedTotal: num
 	return 'no-pressure';
 }
 
-export function pdAdmission(
-	snapshot: IMetricsSnapshot | undefined,
-	history: readonly IMetricsSnapshot[],
-	maxGapMs: number,
-): PdAdmissionReport {
-	// ⚠️ The CURRENT snapshot is read separately from the rate history and is
-	// never taken off its tail — the retention ring is filled in an effect, so
-	// a page legitimately holds a snapshot while `history` is still empty.
-	// Presence and lifetime totals come from the snapshot; only rates need the
-	// pair, and with one observation they correctly say "warming up".
+export function pdAdmission(snapshot: IMetricsSnapshot | undefined): PdAdmissionReport {
 	if (!snapshot || snapshot.failure) return {kind: 'unavailable'};
 
 	const shedExported = snapshot.families.get(PD_ADMISSION_SHED) !== undefined;
@@ -222,25 +179,10 @@ export function pdAdmission(
 	const dropTotal =
 		shedTotal === undefined && overflowTotal === undefined ? undefined : (shedTotal ?? 0) + (overflowTotal ?? 0);
 
-	const shedRate = familySumRate(history, PD_ADMISSION_SHED, maxGapMs);
-	const overflowRate = familySumRate(history, PD_ADMISSION_OVERFLOW_SHED, maxGapMs);
-	const queuedRate = familySumRate(history, PD_ADMISSION_QUEUED, maxGapMs);
-
-	// Only the exported valves are summed: an absent family contributes no
-	// derivable term, and including it would turn the whole answer into
-	// "insufficient samples" on a build that simply predates it.
-	const dropTerms: RateResult[] = [];
-	if (shedExported) dropTerms.push(shedRate);
-	if (overflowExported) dropTerms.push(overflowRate);
-
 	return {
 		kind: 'ok',
 		mode,
 		verdict: admissionVerdict(dropTotal, queuedTotal),
-		dropRate: sumRates(dropTerms),
-		queuedRate,
-		shedRate,
-		overflowRate,
 		shedTotal,
 		overflowTotal,
 		queuedTotal,

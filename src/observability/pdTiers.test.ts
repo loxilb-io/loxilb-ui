@@ -7,11 +7,9 @@ import {
 	IPDTierGates,
 	PD_SESSION_HITS,
 	PD_TIER_SELECTED,
-	PD_TIERS,
 	pdTierGates,
 	pdTierMix,
 	tier0Reconciliation,
-	tierReachable,
 } from './pdTiers';
 
 function snapshotOf(text: string, receivedAtMs: number, failure?: IMetricsSnapshot['failure']): IMetricsSnapshot {
@@ -56,11 +54,6 @@ const PD_ONLY: IPDTierGates = {pdDisagg: true, cacheAware: false, kvExact: false
 // here, so the fixture declares the subset and casts once.
 const rule = (args: Partial<IServiceArguments>): IServiceConfiguration =>
 	({serviceArguments: args as IServiceArguments, endpoints: [], secondaryIPs: [], allowedSources: []}) as IServiceConfiguration;
-
-const shareOf = (report: ReturnType<typeof pdTierMix>, tier: string) =>
-	report.kind === 'ok' ? report.tiers.find(r => r.tier === tier)?.share : undefined;
-const rowOf = (report: ReturnType<typeof pdTierMix>, tier: string) =>
-	report.kind === 'ok' ? report.tiers.find(r => r.tier === tier) : undefined;
 
 //---------------------------------------------------------
 // Configuration gates
@@ -110,31 +103,6 @@ describe('pdTierGates', () => {
 	});
 });
 
-describe('tierReachable', () => {
-	it('gates tier1 on cache-aware and tier15 on KV-exact', () => {
-		expect(tierReachable('tier1', PD_ONLY)).toBe(false);
-		expect(tierReachable('tier15', PD_ONLY)).toBe(false);
-		expect(tierReachable('tier1', OPEN_ALL)).toBe(true);
-		expect(tierReachable('tier15', OPEN_ALL)).toBe(true);
-	});
-
-	it('treats tier0 and tier2 as reachable on any P/D rule', () => {
-		// Session stickiness applies whenever a session key is present,
-		// independently of cache-aware mode; min-load is the unconditional
-		// fallback.
-		expect(tierReachable('tier0', PD_ONLY)).toBe(true);
-		expect(tierReachable('tier2', PD_ONLY)).toBe(true);
-	});
-
-	it('reaches nothing without a P/D rule, and answers unknown without configuration', () => {
-		const closed: IPDTierGates = {pdDisagg: false, cacheAware: false, kvExact: false};
-		for (const tier of PD_TIERS) {
-			expect(tierReachable(tier, closed)).toBe(false);
-			expect(tierReachable(tier, undefined)).toBeUndefined();
-		}
-	});
-});
-
 //---------------------------------------------------------
 // The mix
 //---------------------------------------------------------
@@ -154,7 +122,7 @@ describe('pdTierMix preconditions', () => {
 		expect(pdTierMix(snap, [snap], GAP, OPEN_ALL).kind).toBe('not-exported');
 	});
 
-	it('reports the mix on a first observation instead of claiming the scrape failed', () => {
+	it('reports on a first observation instead of claiming the scrape failed', () => {
 		// ⚠️ The retention ring is filled in an effect, so a page holds a
 		// snapshot while history is still empty. Reading the snapshot off the
 		// history tail rendered a live "N/A" in Stage 3.1 — the two are passed
@@ -163,10 +131,10 @@ describe('pdTierMix preconditions', () => {
 		const report = pdTierMix(snap, [], GAP, OPEN_ALL);
 		expect(report.kind).toBe('ok');
 		if (report.kind !== 'ok') return;
-		// Lifetime totals come from the snapshot and are known immediately;
-		// only the rates have to wait for a second observation.
-		expect(rowOf(report, 'tier2')?.total).toBe(7);
-		expect(report.totalRate.kind).toBe('insufficient-samples');
+		// Only the share has to wait for a second observation, and it
+		// withholds the verdict rather than inventing one.
+		expect(report.affinityShare).toEqual({kind: 'not-derivable', reason: 'insufficient-samples'});
+		expect(report.verdict).toBe('unknown-configuration');
 	});
 });
 
@@ -176,24 +144,6 @@ describe('pdTierMix shares', () => {
 		snapshotOf(tierExposition([{tier: 'tier0', value: 20}, {tier: 'tier2', value: 130}]), T1),
 	];
 	const report = pdTierMix(history[1], history, GAP, OPEN_ALL);
-
-	it('derives each tier share from the same window as the total', () => {
-		// 10 tier0 + 30 tier2 over 10 s = 4/s total; tier0 is a quarter.
-		expect(report.kind).toBe('ok');
-		expect(shareOf(report, 'tier0')).toEqual({kind: 'ok', ratio: 0.25});
-		expect(shareOf(report, 'tier2')).toEqual({kind: 'ok', ratio: 0.75});
-	});
-
-	it('reads an absent tier child on a present family as a genuine zero, not warming up', () => {
-		// ⭐ The `partitionRate` rule. Tier-1 has never been selected, so no
-		// child exists — and `familySumRate` would answer insufficient-samples
-		// and print "Warming up…" forever at the tier whose emptiness is the
-		// finding.
-		expect(rowOf(report, 'tier1')?.rate).toEqual({kind: 'ok', perSecond: 0, intervalMs: 10_000});
-		expect(shareOf(report, 'tier1')).toEqual({kind: 'ok', ratio: 0});
-		// No child also means no lifetime count — which is not the number 0.
-		expect(rowOf(report, 'tier1')?.total).toBeUndefined();
-	});
 
 	it('takes the affinity share as the complement of the fallback tier', () => {
 		// Not a sum of the other three: one predicate is one summed series and
@@ -212,43 +162,26 @@ describe('pdTierMix shares', () => {
 		];
 		const r = pdTierMix(idle[1], idle, GAP, OPEN_ALL);
 		expect(r.kind === 'ok' && r.affinityShare).toEqual({kind: 'no-traffic'});
-		expect(shareOf(r, 'tier2')).toEqual({kind: 'no-traffic'});
 	});
 
-	it('marks a tier unreachable when its gate is closed', () => {
-		const r = pdTierMix(history[1], history, GAP, PD_ONLY);
-		expect(rowOf(r, 'tier1')?.reachable).toBe(false);
-		expect(rowOf(r, 'tier15')?.reachable).toBe(false);
-		expect(rowOf(r, 'tier0')?.reachable).toBe(true);
-	});
-});
-
-describe('pdTierMix per-model rows', () => {
-	it('builds rows from observed labels and orders them by lifetime volume', () => {
-		const text = tierExposition([
-			{tier: 'tier2', model: 'small', value: 3},
-			{tier: 'tier0', model: 'big', value: 40},
-			{tier: 'tier2', model: 'big', value: 10},
-		]);
-		const snap = snapshotOf(text, T1);
-		const r = pdTierMix(snap, [snap], GAP, OPEN_ALL);
-		expect(r.kind === 'ok' && r.byModel.map(m => m.model)).toEqual(['big', 'small']);
-		expect(r.kind === 'ok' && r.byModel[0].total).toBe(50);
-	});
-
-	it('keeps model-less traffic as its own row with a rate beside its total', () => {
-		// ⚠️ The datapath passes "" for traffic with no model, so the empty
-		// label is real data. Label equality would never have matched a sample
-		// that omitted the label, giving this row a total and no rate — the
-		// predicate form the module uses keeps the two consistent.
-		const history = [
-			snapshotOf(`${PD_TIER_SELECTED}{tier="tier2"} 4`, T0),
-			snapshotOf(`${PD_TIER_SELECTED}{tier="tier2"} 14`, T1),
+	it('⭐ reads never-selected affinity tiers as a genuine 0%, so the finding is not withheld', () => {
+		// The `partitionRate` rule. With cache-aware routing configured and
+		// every selection at tier2, the affinity tiers have no child at all.
+		// `familySumRate` would answer insufficient-samples and hold the
+		// verdict at "unknown" forever — exactly on the gateway whose
+		// emptiness is the finding.
+		const allFallback = [
+			snapshotOf(tierExposition([{tier: 'tier2', value: 100}]), T0),
+			snapshotOf(tierExposition([{tier: 'tier2', value: 130}]), T1),
 		];
-		const r = pdTierMix(history[1], history, GAP, OPEN_ALL);
-		expect(r.kind === 'ok' && r.byModel.map(m => m.model)).toEqual(['']);
-		expect(r.kind === 'ok' && r.byModel[0].total).toBe(14);
-		expect(r.kind === 'ok' && r.byModel[0].fallbackRate).toEqual({kind: 'ok', perSecond: 1, intervalMs: 10_000});
+		const r = pdTierMix(allFallback[1], allFallback, GAP, OPEN_ALL);
+		expect(r.kind === 'ok' && r.affinityShare).toEqual({kind: 'ok', ratio: 0});
+		expect(r.kind === 'ok' && r.verdict).toBe('configured-no-reuse');
+	});
+
+	it('carries the verdict and the reconciliation, and no per-tier or per-model rows', () => {
+		// Those breakdowns moved to Grafana ("P/D routing tier mix").
+		expect(report.kind === 'ok' && Object.keys(report).sort()).toEqual(['affinityShare', 'kind', 'reconciliation', 'verdict']);
 	});
 });
 
