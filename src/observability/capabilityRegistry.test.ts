@@ -99,9 +99,10 @@ describe('registry contract against the vendored artifacts', () => {
 		// One family: the scrape counter's result label is a partition of
 		// attempts, so the verdict needs nothing beside it.
 		expect(size('panel.workerScrape')).toBe(1);
-		// Every audit family: the collector emits all eighteen once a writer
-		// exists, and the panel reads each (up, heartbeat, streams, losses).
-		expect(size('panel.auditWriter')).toBe(18);
+		// The collector emits eighteen audit families once a writer exists; 15
+		// since the compact trim, which stopped reading the gateway-clock write
+		// time and the two housekeeping counters.
+		expect(size('panel.auditWriter')).toBe(15);
 	});
 });
 

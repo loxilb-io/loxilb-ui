@@ -7,7 +7,7 @@
 // observability/auditWriter for what each value means and why liveness is
 // judged from our own observations.
 
-import {Alert, Box, MenuItem, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography} from '@mui/material';
+import {Alert, Box, MenuItem, Stack, TextField, Typography} from '@mui/material';
 import type {TFunction} from 'i18next';
 import FreshnessBadge from 'components/observability/FreshnessBadge';
 import {StatRow} from 'components/observability/panelLayout';
@@ -18,12 +18,9 @@ import useLocalStorageState from 'hooks/localStorageHook';
 import {PREFERENCE_KEYS, isStringPreference} from 'preferences';
 import {useMemo, useRef} from 'react';
 import {useTranslation} from 'react-i18next';
-import {AuditWriterReport, HeartbeatLiveness, IHeartbeatTrack, auditWriter, heartbeatLiveness, trackHeartbeat} from 'observability/auditWriter';
+import {AuditWriterReport, HeartbeatLiveness, IAuditStreamDrops, IHeartbeatTrack, auditWriter, heartbeatLiveness, trackHeartbeat} from 'observability/auditWriter';
 import {isEntryApplicable} from 'observability/capabilityRegistry';
-import {formatReportedAt, reportedAtFromSeconds} from 'observability/reportedAt';
-import {rateMaxGapMs} from 'observability/snapshotRates';
 import {IInstance} from 'types/oam';
-import {formatRate} from './rateText';
 
 function streamLabel(stream: string, t: TFunction): string {
 	if (stream === 'mgmt') return t('Management');
@@ -34,6 +31,10 @@ function streamLabel(stream: string, t: TFunction): string {
 
 function counterLabel(key: string, t: TFunction): string {
 	switch (key) {
+		case 'loxilb_audit_writer_restarts_total':
+			return t('Writer restarts');
+		case 'loxilb_audit_writer_panics_total':
+			return t('Writer panics');
 		case 'loxilb_audit_write_failures_total':
 			return t('Append failures');
 		case 'loxilb_audit_sync_failures_total':
@@ -50,10 +51,6 @@ function counterLabel(key: string, t: TFunction): string {
 			return t('Orphaned intents from the previous boot');
 		case 'loxilb_audit_originator_dropped_total':
 			return t('Unparseable originator headers dropped');
-		case 'loxilb_audit_segments_pruned_total':
-			return t('Segments pruned by retention');
-		case 'loxilb_audit_delegation_lookups_total':
-			return t('Originator trust lookups');
 		default:
 			return key;
 	}
@@ -74,14 +71,19 @@ function livenessText(l: HeartbeatLiveness, t: TFunction): string {
 	}
 }
 
+// One stream's drops, never summed with another stream's.
+function dropText(d: IAuditStreamDrops, t: TFunction): string {
+	const total = d.total === undefined ? t('not reported') : String(d.total);
+	const by = d.by.length > 0 ? ` (${d.by.map(r => `${r.reason} ${r.total}`).join(', ')})` : '';
+	return `${streamLabel(d.stream, t)} ${total}${by}`;
+}
+
 export interface AuditWriterPanelProps {
 	report: AuditWriterReport;
 	liveness: HeartbeatLiveness;
-	/** The viewer's clock, for "is it today" only — never for liveness. */
-	nowMs: number;
 }
 
-export function AuditWriterPanel({report, liveness, nowMs}: AuditWriterPanelProps) {
+export function AuditWriterPanel({report, liveness}: AuditWriterPanelProps) {
 	const {t} = useTranslation();
 
 	if (report.kind === 'unavailable') {
@@ -106,7 +108,9 @@ export function AuditWriterPanel({report, liveness, nowMs}: AuditWriterPanelProp
 		);
 	}
 
-	const failures = [...report.failures, ...report.activity];
+	const dropsLine = report.drops.map(d => dropText(d, t)).join(' · ');
+	const anyDropped = report.drops.some(d => (d.total ?? 0) > 0);
+	const notReported = report.faultsNotReported > 0 ? t('{{n}} not reported', {n: report.faultsNotReported}) : undefined;
 	return (
 		<Stack spacing={1.5}>
 			{report.up === false && (
@@ -120,64 +124,30 @@ export function AuditWriterPanel({report, liveness, nowMs}: AuditWriterPanelProp
 			{report.reserveBreached === true && (
 				<Alert severity="error">{t('The audit filesystem is below its free-space reserve: durable management writes are refused until space is recovered.')}</Alert>
 			)}
+			{anyDropped && (
+				<Alert severity="warning">
+					{t('Audit records were dropped since the gateway started: {{list}}.', {list: dropsLine})}{' '}
+					{t('A dropped management record refused its call; a dropped data or system record is a record that does not exist.')}
+				</Alert>
+			)}
+			{report.faults.length > 0 && (
+				<Alert severity="warning">
+					{t('{{n}} audit fault counters are above zero since the gateway started: {{list}}.', {
+						n: report.faults.length,
+						list: report.faults.map(f => `${counterLabel(f.key, t)} ${f.total}`).join(', '),
+					})}
+					{notReported && ` (${notReported})`}
+				</Alert>
+			)}
 
 			<Box>
 				<StatRow label={t('Writer')} value={report.up === undefined ? t('N/A') : report.up ? t('Running') : t('Not running')} />
 				<StatRow label={t('Heartbeat')} value={livenessText(liveness, t)} />
-				<StatRow label={t('Last heartbeat (gateway clock)')} value={formatReportedAt(reportedAtFromSeconds(report.lastHeartbeatSeconds), nowMs, t)} />
-				<StatRow label={t('Last durable write (gateway clock)')} value={formatReportedAt(reportedAtFromSeconds(report.lastWriteSeconds), nowMs, t)} />
-				<StatRow label={t('Writer restarts (since start)')} value={report.restarts ?? t('N/A')} />
-				<StatRow label={t('Writer panics (since start)')} value={report.panics ?? t('N/A')} />
+				{!anyDropped && <StatRow label={t('Records dropped since start')} value={dropsLine} />}
+				{report.faults.length === 0 && (
+					<StatRow label={t('Fault counters')} value={notReported ? `${t('None above zero')}, ${notReported}` : t('None above zero')} />
+				)}
 			</Box>
-
-			<Table size="small" aria-label={t('Audit records by stream')}>
-				<TableHead>
-					<TableRow>
-						<TableCell>{t('Stream')}</TableCell>
-						<TableCell align="right">{t('Written')}</TableCell>
-						<TableCell align="right">{t('Written since start')}</TableCell>
-						<TableCell align="right">{t('Dropped since start')}</TableCell>
-					</TableRow>
-				</TableHead>
-				<TableBody>
-					{report.streams.map(s => (
-						<TableRow key={s.stream}>
-							<TableCell>{streamLabel(s.stream, t)}</TableCell>
-							<TableCell align="right">{formatRate(s.writtenRate, t)}</TableCell>
-							<TableCell align="right">{s.writtenTotal ?? t('N/A')}</TableCell>
-							<TableCell align="right" sx={(s.droppedTotal ?? 0) > 0 ? {color: 'error.main'} : undefined}>
-								{s.droppedTotal ?? t('N/A')}
-								{s.droppedBy.length > 0 && ` (${s.droppedBy.map(d => `${d.reason} ${d.total}`).join(', ')})`}
-							</TableCell>
-						</TableRow>
-					))}
-				</TableBody>
-			</Table>
-			<Typography variant="caption" color="text.secondary">
-				{t('A dropped management record refused its call; a dropped data or system record is a record that does not exist.')}
-			</Typography>
-
-			<Table size="small" aria-label={t('Audit failures and housekeeping')}>
-				<TableHead>
-					<TableRow>
-						<TableCell>{t('Counter')}</TableCell>
-						<TableCell align="right">{t('Since start')}</TableCell>
-					</TableRow>
-				</TableHead>
-				<TableBody>
-					{failures.map(f => {
-						const isFailure = report.failures.includes(f);
-						return (
-							<TableRow key={f.key}>
-								<TableCell>{counterLabel(f.key, t)}</TableCell>
-								<TableCell align="right" sx={isFailure && (f.total ?? 0) > 0 ? {color: 'error.main'} : undefined}>
-									{f.total ?? t('N/A')}
-								</TableCell>
-							</TableRow>
-						);
-					})}
-				</TableBody>
-			</Table>
 		</Stack>
 	);
 }
@@ -194,15 +164,15 @@ function useHeartbeatLiveness(instanceId: number | undefined, value: number | un
 }
 
 function GatewayAuditWriter({instance}: {instance: IInstance}) {
-	const {snapshot, history, cadenceMs} = useMetricsSnapshot(instance);
-	const report = useMemo(() => auditWriter(snapshot, history, rateMaxGapMs(cadenceMs)), [snapshot, history, cadenceMs]);
+	const {snapshot, cadenceMs} = useMetricsSnapshot(instance);
+	const report = useMemo(() => auditWriter(snapshot), [snapshot]);
 	const healthy = snapshot && !snapshot.failure ? snapshot : undefined;
 	const beat = healthy ? (report.kind === 'ok' ? report.lastHeartbeatSeconds : undefined) : undefined;
 	const liveness = useHeartbeatLiveness(instance.id, beat, healthy?.receivedAtMs, cadenceMs);
 	return (
 		<Stack spacing={1}>
 			{snapshot && !snapshot.failure && <FreshnessBadge receivedAtMs={snapshot.receivedAtMs} cadenceMs={cadenceMs} />}
-			<AuditWriterPanel report={report} liveness={liveness} nowMs={Date.now()} />
+			<AuditWriterPanel report={report} liveness={liveness} />
 		</Stack>
 	);
 }
