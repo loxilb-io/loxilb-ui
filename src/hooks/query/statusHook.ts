@@ -83,6 +83,20 @@ export function useGatewayCapabilities(instance: IInstance | null) {
 }
 
 /**
+ * The key prefix of one instance's capability reads, for invalidation.
+ *
+ * ⭐ The verdicts change with the configuration: `lb_allowed_sources` moves
+ * with every LB create and delete. Invalidate after such a write, or a second
+ * create in the same session is judged against a slot that is already gone.
+ * Kept here, next to the hook that builds the key, so the two cannot drift
+ * (the full key is ['status','capabilities',id,id]: useQueryInstanceData
+ * appends the id again).
+ */
+export function capabilityQueryPrefix(instance: Pick<IInstance, 'id'>): string[] {
+	return ['status', 'capabilities', instance.id.toString()];
+}
+
+/**
  * One capability's verdict for the selected gateway.
  *
  * ⭐ An UNREAD query (no instance yet, still loading, or a read that failed)

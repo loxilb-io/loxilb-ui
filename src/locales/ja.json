@@ -1217,5 +1217,7 @@
 	"{{n}} submissions have failed since it was configured.": "設定以降、{{n}} 件の送信が失敗しました。",
 	"{{n}} management changes from the previous boot have no recorded result.": "前回の起動時の管理変更 {{n}} 件に記録された結果がありません。",
 	"Most recent: event {{id}}.": "最新: イベント {{id}}。",
-	"most recent: event {{id}}": "最新: イベント {{id}}"
+	"most recent: event {{id}}": "最新: イベント {{id}}",
+	"{{free}} of {{limit}} source-check slots free": "ソースチェックスロット {{limit}} 個中 {{free}} 個が空き",
+	"The gateway reports that the next rule created cannot carry allowed sources.": "ゲートウェイは、次に作成されるルールに許可ソースを設定できないと報告しています。"
 }

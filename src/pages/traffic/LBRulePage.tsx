@@ -25,6 +25,7 @@ import {usePopUp} from 'hooks/popupHook';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useLoadBalancerConfig, useMirrors, useQOSPolicies} from 'hooks/query/queryHooks';
 import {fromQueryRefetch} from 'hooks/query/reconcile';
+import {capabilityQueryPrefix} from 'hooks/query/statusHook';
 import {useReconcileReporter} from 'hooks/query/reconcileReport';
 import {lbRuleAppeared, lbRulesGone} from 'hooks/query/confirmPredicates';
 import {t} from 'i18next';
@@ -156,6 +157,14 @@ export default function LBRulePage() {
 	const {errorPopup, showAddError, showUpdateError, showDeleteError, closeErrorPopup} = useErrorPopup();
 	const {report, reconcile} = useReconcileReporter();
 
+	// Every LB create and delete moves the source-check slot budget
+	// (lb_allowed_sources), so the capability read is re-asked after any write
+	// here. A failed write moved nothing; re-asking then is harmless and keeps
+	// this one rule with no exceptions.
+	const invalidateCapabilities = useCallback(() => {
+		if (inst) void queryClient.invalidateQueries({queryKey: capabilityQueryPrefix(inst)});
+	}, [inst, queryClient]);
+
 	const handleDelete = useCallback(async () => {
 		if (!inst || selectedItems.length === 0) return;
 
@@ -171,6 +180,7 @@ export default function LBRulePage() {
 		});
 
 		const results = await Promise.all(deletePromises);
+		invalidateCapabilities();
 		// {result:"fail"} envelopes now map to failed — a dataplane-rejected
 		// delete can no longer be counted as succeeded.
 		const failures = results.filter(res => res.status !== 'confirmed');
@@ -192,7 +202,7 @@ export default function LBRulePage() {
 			// All failed
 			showDeleteError('load balancer rule(s)', t(failures[0].localeKey));
 		}
-	}, [inst, selectedItems, showDeleteError, refetch, report, reconcile]);
+	}, [inst, selectedItems, showDeleteError, refetch, report, reconcile, invalidateCapabilities]);
 
 	const instanceRef = useRef<IServiceConfiguration | null>(null);
 	const openAddDialog = useCallback(function openAddDialog(seed?: Partial<IServiceConfiguration>) {
@@ -251,6 +261,7 @@ export default function LBRulePage() {
 				}
 
 				const res = await request_create_load_balancer_config(inst, submitted, effectiveFlavor);
+				invalidateCapabilities();
 				if (res.status === 'confirmed') {
 					await report({refetch: fromQueryRefetch(refetch), confirm: lbRuleAppeared(submitted)}, t('Added successfully.'));
 				} else {
@@ -282,7 +293,7 @@ export default function LBRulePage() {
 	// an IGW dialog cannot submit through the initial OSS-safe projection and
 	// silently strip the Gateway-only fields the operator just entered.
 	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
-	}, [inst, caps.resolved, effectiveFlavor, showAddError, refetch, enableYes, queryClient]);
+	}, [inst, caps.resolved, effectiveFlavor, showAddError, refetch, enableYes, queryClient, invalidateCapabilities]);
 
 	// The table's Add button passes its click event — keep the seeded reopen
 	// path (AC-06 draft preservation) out of that signature.
@@ -421,6 +432,7 @@ export default function LBRulePage() {
 								? await request_delete_lb_by_name(inst, osa.name)
 								: await request_delete_lb_by_full_key(inst, selectedLB);
 							if (del.status !== 'confirmed') {
+								invalidateCapabilities();
 								showUpdateError('load balancer rule', t(del.localeKey));
 								return;
 							}
@@ -428,6 +440,9 @@ export default function LBRulePage() {
 						res = await request_create_load_balancer_config(inst, upsert, effectiveFlavor);
 					}
 				}
+				// A key-changed edit creates a rule and the upsert deletes and
+				// re-creates one: both move the slot budget.
+				invalidateCapabilities();
 				if (res.status === 'confirmed') {
 					// The delete+re-create strategy can move the rule's key, so
 					// confirm against the EDITED identity, not the original row.
@@ -446,7 +461,7 @@ export default function LBRulePage() {
 			{size: 'wide'},
 		);
 	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
-	}, [inst, caps, selectedItem, showUpdateError, refetch, enableYes]);
+	}, [inst, caps, selectedItem, showUpdateError, refetch, enableYes, invalidateCapabilities]);
 
 	const handleRefresh = () => {
 		set_selected_rows([]);
