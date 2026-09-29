@@ -18,10 +18,11 @@ import FreshnessBadge from 'components/observability/FreshnessBadge';
 import {GPU_STATUS_CADENCE_MS, useDiagnostics, useGpuStatus} from 'hooks/query/gatewayTelemetryHooks';
 import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
 import {fromThrownError} from 'connector/fetcher/opResultAdapter';
+import {familyAbsence} from 'observability/familyActivation';
 import {aggregateSum, selectSamples, selectScalar} from 'observability/selectors';
 import {completedRequestRate} from 'observability/aiRequests';
 import {familySumRate, rateMaxGapMs} from 'observability/snapshotRates';
-import {formatRate, StatRow} from 'pages/observability/common';
+import {countOrAbsence, formatAbsence, formatRate, StatRow} from 'pages/observability/common';
 import {IInstance} from 'types/oam';
 import {ObservabilityViewState} from 'types/observability';
 import CardBase from './CardBase';
@@ -128,7 +129,8 @@ export function GwWorkerFreshnessCard({instance}: GwCardProps) {
 	return (
 		<CardBase title={t('Worker Monitoring')}>
 			<ObservabilityStateFrame state={state} name={t('Worker Monitoring')} onRetry={() => void gpu.refetch()}>
-				<StatRow label={t('Workers tracked')} value={status?.worker_count ?? t('N/A')} />
+				{/* `worker_count` is omitempty on the gateway: omitted IS zero. */}
+				<StatRow label={t('Workers tracked')} value={status ? (status.worker_count ?? 0) : t('N/A')} />
 				<StatRow label={t('Routing mode')} value={status?.routing_mode ?? t('N/A')} />
 				<StatRow
 					label={t('Last metrics update')}
@@ -150,7 +152,6 @@ export function GwKvExactCard({instance}: GwCardProps) {
 	const {snapshot, state, refetch} = useSnapshotCardState(instance);
 
 	const attest = useMemo(() => (snapshot ? selectSamples(snapshot, 'loxilb_ai_kv_attest_state').filter(s => s.value > 0) : []), [snapshot]);
-	const faults = useMemo(() => (snapshot ? selectSamples(snapshot, 'loxilb_ai_kv_enforcement_fault').filter(s => s.value > 0) : []), [snapshot]);
 	const byState = useMemo(() => {
 		const counts = new Map<string, number>();
 		for (const s of attest) counts.set(s.labels.state ?? '?', (counts.get(s.labels.state ?? '?') ?? 0) + 1);
@@ -167,7 +168,7 @@ export function GwKvExactCard({instance}: GwCardProps) {
 				) : (
 					byState.map(([attestState, count]) => <StatRow key={attestState} label={attestState} value={count} />)
 				)}
-				<StatRow label={t('Rules with enforcement faults')} value={faults.length} />
+				<StatRow label={t('Rules with enforcement faults')} value={countOrAbsence(snapshot, 'loxilb_ai_kv_enforcement_fault', s => s.value > 0, t)} />
 				<Box sx={{mt: 1}}>
 					<ObservabilityLink page="pdkv" label={t('Open P/D & KV Cache')} />
 				</Box>
@@ -190,6 +191,11 @@ export function GwPersistenceCard({instance}: GwCardProps) {
 		() => (snapshot ? aggregateSum(selectSamples(snapshot, 'loxilb_persist_total', {result: 'error'})).value : undefined),
 		[snapshot],
 	);
+	// `{result="error"}` is a lazy child: with the family present and no error
+	// child, no persist has ever failed — a true 0. With the family itself
+	// absent nothing is known, and 0 would claim a clean record.
+	const persistAbsence = familyAbsence(snapshot, 'loxilb_persist_total');
+	const persistErrorsText = !snapshot ? t('No data') : persistAbsence ? formatAbsence(persistAbsence, t) : (persistErrors ?? 0);
 	const persistRate = useMemo(() => familySumRate(history, 'loxilb_persist_total', rateMaxGapMs(cadenceMs)), [history, cadenceMs]);
 	const lastPersistAt = diagnostics.data?.data.last_persist?.at;
 
@@ -198,7 +204,7 @@ export function GwPersistenceCard({instance}: GwCardProps) {
 			<ObservabilityStateFrame state={state} name={t('Config Persistence')} onRetry={refetch}>
 				<StatRow label={t('Unsaved config changes')} value={dirty === undefined ? t('No data') : dirty > 0 ? t('Yes') : t('No')} />
 				<StatRow label={t('Consecutive auto-persist failures')} value={autopersistFailures ?? t('No data')} />
-				<StatRow label={t('Persist errors (cumulative)')} value={persistErrors ?? 0} />
+				<StatRow label={t('Persist errors (cumulative)')} value={persistErrorsText} />
 				<StatRow label={t('Persist operations')} value={formatRate(persistRate, t)} />
 				<StatRow
 					label={t('Last persist')}

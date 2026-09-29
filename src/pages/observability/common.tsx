@@ -47,7 +47,7 @@ export function useAbsenceExplanation(id: ObservabilityEntryId, snapshot: IMetri
 // The rate/ratio vocabulary moved to components/observability/rateText.ts
 // when J3 put a rate on a configuration page. Re-exported here so every
 // observability page keeps importing it from the same place.
-export {formatAgeSeconds, formatRate, formatRatio} from 'components/observability/rateText';
+export {countOrAbsence, formatAbsence, formatAgeSeconds, formatRate, formatRatio} from 'components/observability/rateText';
 
 export {PanelPaper, StatRow} from 'components/observability/panelLayout';
 

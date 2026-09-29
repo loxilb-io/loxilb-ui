@@ -821,7 +821,7 @@
 	"Model not allowed": "Model not allowed",
 	"Models reporting": "Models reporting",
 	"No": "No",
-	"No service is currently shaped. The QoS collectors are present but emit nothing until a rate limit is configured on a service.": "No service is currently shaped. The QoS collectors are present but emit nothing until a rate limit is configured on a service.",
+	"No service is currently shaped. The QoS collectors report nothing until a rate limit is configured on a service.": "No service is currently shaped. The QoS collectors report nothing until a rate limit is configured on a service.",
 	"Normal session hits": "Normal session hits",
 	"Not a total request rate — the gateway counts completed streams and denials separately.": "Not a total request rate — the gateway counts completed streams and denials separately.",
 	"OPA policy engine": "OPA policy engine",
@@ -1199,5 +1199,10 @@
 	"Per-service rows cannot be listed by the gateway. This table shows the global row and only the services looked up or configured in this session — a service that is absent here may still have its own row.": "Per-service rows cannot be listed by the gateway. This table shows the global row and only the services looked up or configured in this session — a service that is absent here may still have its own row.",
 	"Collecting counter samples to derive a rate — about {{n}}s at the current refresh interval.": "Collecting counter samples to derive a rate — about {{n}}s at the current refresh interval.",
 	"Warnings": "Warnings",
-	"Restore succeeded with warnings": "Restore succeeded with warnings"
+	"Restore succeeded with warnings": "Restore succeeded with warnings",
+	"None reported": "None reported",
+	"None since start": "None since start",
+	"Missing": "Missing",
+	"Not available": "Not available",
+	"Consumed": "Consumed"
 }

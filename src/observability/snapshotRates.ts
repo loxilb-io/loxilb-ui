@@ -2,6 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {IMetricsSnapshot} from 'types/observability';
+import {familyAbsence} from './familyActivation';
 import {computeCounterRate, RateResult} from './rates';
 import {aggregateSum, selectSamples} from './selectors';
 
@@ -128,13 +129,24 @@ export function groupRates(
 	return out;
 }
 
-/** Whole-family sum rate (groupBy nothing): one explicit total. */
+/**
+ * Whole-family sum rate (groupBy nothing): one explicit total.
+ *
+ * A family missing from the CURRENT healthy observation answers `absent` with
+ * the manifest's reading, not insufficient-samples. Waiting cannot fix an
+ * absence — the next scrape will be missing it too — so reporting it as a
+ * warm-up printed "Warming up…" forever on every idle gateway. One snapshot is
+ * enough to know. A failed scrape carries no families at all and stays
+ * insufficient-samples: it says nothing about any one of them.
+ */
 export function familySumRate(
 	history: readonly IMetricsSnapshot[],
 	family: string,
 	maxGapMs: number = RATE_MAX_GAP_MS,
 	where?: LabelMatch,
 ): RateResult {
+	const reading = familyAbsence(history[history.length - 1], family);
+	if (reading) return {kind: 'absent', reading};
 	const rates = groupRates(history, family, [], maxGapMs, where);
 	return rates.length === 1 ? rates[0].rate : {kind: 'insufficient-samples'};
 }

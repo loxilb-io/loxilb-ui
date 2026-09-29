@@ -214,7 +214,8 @@ export default function PersistencePage() {
 											<StatRow label={t('Last restore mode')} value={diag.last_restore?.mode ?? t('N/A')} />
 										</Grid>
 										<Grid item xs={12} md={4}>
-											<StatRow label={t('Auto-persist failures (reported)')} value={diag.auto_persist?.consecutive_failures ?? t('N/A')} />
+											{/* The gateway sends `auto_persist` only while failures > 0; its absence IS zero. */}
+											<StatRow label={t('Auto-persist failures (reported)')} value={diag.auto_persist?.consecutive_failures ?? 0} />
 											<StatRow label={t('Auto-persist last attempt')} value={timeText(diag.auto_persist?.last_attempt)} />
 											<StatRow label={t('Auto-persist last error')} value={diag.auto_persist?.last_error ?? t('None')} />
 										</Grid>

@@ -25,7 +25,7 @@ import {pdAdmission} from 'observability/pdAdmission';
 import {pdTierGates, pdTierMix} from 'observability/pdTiers';
 import {selectSamples, selectScalar} from 'observability/selectors';
 import {familySumRate, rateMaxGapMs} from 'observability/snapshotRates';
-import {CadenceSelector, PanelPaper, StatRow, formatRate, useAbsenceExplanation, useObservabilityApplicable} from './common';
+import {CadenceSelector, PanelPaper, StatRow, countOrAbsence, formatRate, useAbsenceExplanation, useObservabilityApplicable} from './common';
 
 export default function PdKvPage() {
 	const {t} = useTranslation();
@@ -184,7 +184,7 @@ export default function PdKvPage() {
 									</TableBody>
 								</Table>
 							)}
-							<StatRow label={t('Enforcement faults')} value={snapshot ? selectSamples(snapshot, 'loxilb_ai_kv_enforcement_fault').filter(s => s.value > 0).length : 0} />
+							<StatRow label={t('Enforcement faults')} value={countOrAbsence(snapshot, 'loxilb_ai_kv_enforcement_fault', s => s.value > 0, t)} />
 							<StatRow label={t('Attestation probe failures')} value={formatRate(familySumRate(history, 'loxilb_ai_kv_attest_probe_fail_total', maxGap), t)} />
 						</PanelPaper>
 					</Grid>

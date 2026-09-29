@@ -165,3 +165,19 @@ export function explainAbsence(
 		presentCount: families.length - absentFamilies.length,
 	};
 }
+
+/**
+ * Why `family` is missing from `snapshot` — or `undefined` when it is present,
+ * or when the snapshot cannot say (none yet, or a failed scrape, which carries
+ * no families at all and so is evidence about none of them).
+ *
+ * ⭐ The single-family counterpart of `explainAbsence`, for a widget that
+ * would otherwise derive a number from the family's samples. Every such
+ * derivation (a count of series, a sum, a `?? 0`) turns an empty sample list
+ * into 0, and 0 asserts "measured, nothing there" about a family the gateway
+ * never exported.
+ */
+export function familyAbsence(snapshot: IMetricsSnapshot | undefined, family: string): AbsenceReading | undefined {
+	if (!snapshot || !snapshot.available || snapshot.failure) return undefined;
+	return snapshot.families.get(family) === undefined ? absenceReading(family) : undefined;
+}

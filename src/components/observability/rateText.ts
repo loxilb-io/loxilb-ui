@@ -12,10 +12,36 @@
 // pages/observability/common.tsx re-exports it, so page code is unchanged.
 
 import type {TFunction} from 'i18next';
+import {AbsenceReading, familyAbsence} from 'observability/familyActivation';
 import {RateResult, RatioResult} from 'observability/rates';
+import {selectSamples} from 'observability/selectors';
+import {IMetricSample, IMetricsSnapshot} from 'types/observability';
 
-function degenerateText(kind: Exclude<RateResult['kind'], 'ok'>, t: TFunction): string {
+// ⚠️ Each phrase is the strongest claim that is true in EVERY case its reading
+// covers. `conditional` is the one that tempts: "Not configured" is wrong
+// whenever the precondition holds but nothing has happened yet, because a
+// counter vec with no increments is just as absent — so it says only that the
+// gateway reported nothing.
+export function formatAbsence(reading: AbsenceReading, t: TFunction): string {
+	switch (reading.kind) {
+		case 'conditional':
+			return t('None reported');
+		case 'until-used':
+			return t('None since start');
+		case 'unexpected':
+			return t('Missing');
+		case 'gated':
+			return t('Not available');
+		case 'indeterminate':
+		case 'not-in-manifest':
+			return t('N/A');
+	}
+}
+
+function degenerateText(kind: Exclude<RateResult['kind'], 'ok'>, t: TFunction, reading?: AbsenceReading): string {
 	switch (kind) {
+		case 'absent':
+			return reading ? formatAbsence(reading, t) : t('N/A');
 		case 'insufficient-samples':
 			return t('Warming up…');
 		case 'reset':
@@ -29,6 +55,7 @@ function degenerateText(kind: Exclude<RateResult['kind'], 'ok'>, t: TFunction): 
 }
 
 export function formatRate(rate: RateResult, t: TFunction, unit = '/s'): string {
+	if (rate.kind === 'absent') return formatAbsence(rate.reading, t);
 	if (rate.kind !== 'ok') return degenerateText(rate.kind, t);
 	const v = rate.perSecond;
 	const text = v >= 100 ? v.toFixed(0) : v >= 1 ? v.toFixed(1) : v.toFixed(3);
@@ -48,7 +75,7 @@ export function formatRatio(ratio: RatioResult, t: TFunction): string {
 		case 'no-traffic':
 			return t('No traffic');
 		case 'not-derivable':
-			return degenerateText(ratio.reason, t);
+			return degenerateText(ratio.reason, t, ratio.reading);
 		case 'ok': {
 			const pct = ratio.ratio * 100;
 			if (pct === 0) return '0%';
@@ -74,4 +101,21 @@ export function formatAgeSeconds(ageSec: number, t: TFunction): string {
 	if (s < 3600) return t('{{n}}m', {n: Math.round(s / 60)});
 	if (s < 86_400) return t('{{n}}h', {n: Math.round(s / 3600)});
 	return t('{{n}}d', {n: Math.round(s / 86_400)});
+}
+
+/**
+ * How many of a family's series satisfy `keep` — or why that cannot be
+ * counted. A count over an absent family is an empty list, and its length
+ * (0) would read as "none faulted" about a family the gateway never exported.
+ */
+export function countOrAbsence(
+	snapshot: IMetricsSnapshot | undefined,
+	family: string,
+	keep: (sample: IMetricSample) => boolean,
+	t: TFunction,
+): string | number {
+	if (!snapshot || !snapshot.available || snapshot.failure) return t('No data');
+	const reading = familyAbsence(snapshot, family);
+	if (reading) return formatAbsence(reading, t);
+	return selectSamples(snapshot, family).filter(keep).length;
 }

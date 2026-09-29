@@ -32,11 +32,11 @@ import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
 import {useMemo} from 'react';
 import {useTranslation} from 'react-i18next';
 import {estimateQuantile, mergeHistogramSeries} from 'observability/histogram';
-import {aggregateSum, selectSamples} from 'observability/selectors';
+import {selectSamples} from 'observability/selectors';
 import {completedRequestRate, completedRequestRatesBy, requestOutcomes} from 'observability/aiRequests';
 import {bearerAdmission} from 'observability/jwtAuth';
 import {familySumRate, groupRates, rateMaxGapMs} from 'observability/snapshotRates';
-import {CadenceSelector, ModelName, PanelPaper, StatRow, formatRate, formatRatio, useAbsenceExplanation, useObservabilityApplicable} from './common';
+import {CadenceSelector, ModelName, PanelPaper, StatRow, countOrAbsence, formatRate, formatRatio, useAbsenceExplanation, useObservabilityApplicable} from './common';
 
 export default function AITrafficPage() {
 	const {t} = useTranslation();
@@ -76,6 +76,10 @@ export default function AITrafficPage() {
 			snapshot
 				? {
 						byKind: groupRates(history, 'loxilb_ai_tokens_consumed_total', ['kind'], maxGap),
+						// The per-kind rows come from the family's own series, so an
+						// absent family would leave no row at all — the quantity would
+						// vanish instead of saying why it has no value.
+						consumed: familySumRate(history, 'loxilb_ai_tokens_consumed_total', maxGap),
 						estimated: familySumRate(history, 'loxilb_ai_tokens_estimated_total', maxGap),
 						missing: familySumRate(history, 'loxilb_ai_tokens_missing_total', maxGap),
 					}
@@ -200,6 +204,9 @@ export default function AITrafficPage() {
 						<PanelPaper title={t('Token accounting')}>
 							{tokenRates && (
 								<>
+									{tokenRates.consumed.kind === 'absent' && (
+										<StatRow label={t('Consumed')} value={formatRate(tokenRates.consumed, t)} />
+									)}
 									{tokenRates.byKind.map(g => (
 										<StatRow
 											key={g.labels.kind ?? ''}
@@ -240,7 +247,7 @@ export default function AITrafficPage() {
 							<StatRow label={t('Normal session hits')} value={formatRate(familySumRate(history, 'loxilb_ai_normal_session_hits_total', maxGap), t)} />
 							<StatRow
 								label={t('Engines reporting')}
-								value={snapshot ? aggregateSum(selectSamples(snapshot, 'loxilb_ai_engine_info')).finiteSamples : 0}
+								value={countOrAbsence(snapshot, 'loxilb_ai_engine_info', s => Number.isFinite(s.value), t)}
 							/>
 						</PanelPaper>
 					</Grid>
