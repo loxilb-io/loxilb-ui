@@ -21,8 +21,13 @@
 //
 // The completed views select outcome="completed" on both shapes, so a denial is
 // never counted as a served request.
+//
+// Compact by rule (owner, 2026-09-29): this page carries the headline and the
+// urgent signals only. Per-status, per-reason, token, latency and affinity
+// breakdowns are Grafana's (dashboard `loxilb-ai`); the lifetime quantiles
+// that used to sit here never showed current latency anyway.
 
-import {Alert, Box, Grid, Table, TableBody, TableCell, TableHead, TableRow, Typography} from '@mui/material';
+import {Box, Grid, Typography} from '@mui/material';
 import FreshnessBadge from 'components/observability/FreshnessBadge';
 import {AIAdmissionPanel, ProxyOverloadPanel} from 'components/observability/AIAdmissionPanel';
 import BearerAdmissionPanel from 'components/observability/BearerAdmissionPanel';
@@ -32,13 +37,12 @@ import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
 import {useMemo} from 'react';
 import {useTranslation} from 'react-i18next';
-import {estimateQuantile, mergeHistogramSeries} from 'observability/histogram';
-import {selectSamples} from 'observability/selectors';
+import {aggregateSum, selectSamples} from 'observability/selectors';
 import {aiAdmission, proxyOverload} from 'observability/aiAdmission';
-import {completedRequestRate, completedRequestRatesBy, denialReasons, requestOutcomes, usageMissingRates} from 'observability/aiRequests';
+import {completedRequestRate, denialTotalRate, requestOutcomes} from 'observability/aiRequests';
 import {bearerAdmission} from 'observability/jwtAuth';
-import {familySumRate, groupRates, rateMaxGapMs} from 'observability/snapshotRates';
-import {CadenceSelector, ModelName, PanelPaper, StatRow, countOrAbsence, formatRate, formatRatio, useAbsenceExplanation, useObservabilityApplicable} from './common';
+import {rateMaxGapMs} from 'observability/snapshotRates';
+import {CadenceSelector, PanelPaper, StatRow, formatRate, formatRatio, useAbsenceExplanation, useObservabilityApplicable} from './common';
 
 export default function AITrafficPage() {
 	const {t} = useTranslation();
@@ -49,65 +53,26 @@ export default function AITrafficPage() {
 	const absence = useAbsenceExplanation('page.aiTraffic', snapshot);
 	const maxGap = rateMaxGapMs(cadenceMs);
 
-	// Restricted to outcome="completed" where the instance reports it: since
-	// gateway 27680379 the family also carries denials, so summing it whole
-	// would put denied requests under a "completed" heading.
-	const completedByStatus = useMemo(() => (snapshot ? completedRequestRatesBy(history, ['status'], maxGap) : []), [snapshot, history, maxGap]);
-	const completedTotal = useMemo(() => completedRequestRate(history, maxGap), [history, maxGap]);
 	// Offered load / denials / error ratio, or the typed refusal to derive them
-	// on a gateway that predates the outcome label. One detection feeds both the
-	// panel and the notice, so they can never disagree about the exposition.
+	// on a gateway that predates the outcome label. One detection feeds both
+	// renderings, so they can never disagree about the exposition.
 	const outcomes = useMemo(() => requestOutcomes(history, maxGap), [history, maxGap]);
+	// Unpartitioned gateways only: the two partial views the dashboard card
+	// also shows. outcome="completed" where reported; the denial total is
+	// counted once (never a sum of the overlapping reason families).
+	const completedTotal = useMemo(() => completedRequestRate(history, maxGap), [history, maxGap]);
+	const denialTotal = useMemo(() => denialTotalRate(history, maxGap), [history, maxGap]);
 	// J3 — the bearer arm's admit/deny breakdown. Traffic, so it lives here;
 	// per-profile keyset health lives on the JWT Auth Profiles page instead.
 	const bearer = useMemo(() => bearerAdmission(snapshot, history, maxGap), [snapshot, history, maxGap]);
-	// Disjoint by construction: a token-quota refusal is in BOTH
-	// rate_limit_hits and token_quota_denied upstream, so "Rate limited" here
-	// excludes the quota reasons rather than listing them twice.
-	const reasons = useMemo(() => denialReasons(history, maxGap), [history, maxGap]);
 	// Registered apart from the page: a gateway without the capacity gate (or
 	// the listener counters) loses only these panels.
 	const admissionApplicable = useObservabilityApplicable('panel.aiAdmission');
 	const overloadApplicable = useObservabilityApplicable('panel.proxyOverload');
 	const admission = useMemo(() => aiAdmission(snapshot, history, maxGap), [snapshot, history, maxGap]);
 	const overload = useMemo(() => proxyOverload(snapshot, history, maxGap), [snapshot, history, maxGap]);
-	const denialRates = useMemo(
-		() =>
-			snapshot
-				? [
-						{key: t('Rate limited'), rate: reasons.rateLimited},
-						{key: t('Token quota denied'), rate: reasons.tokenQuotaDenied},
-						{key: t('Token quota warming up'), rate: reasons.tokenQuotaWarming},
-						{key: t('Model not allowed'), rate: reasons.modelNotAllowed},
-					]
-				: [],
-		[snapshot, reasons, t],
-	);
-	const activeStreams = useMemo(() => (snapshot ? selectSamples(snapshot, 'loxilb_ai_active_streams') : []), [snapshot]);
-	const tokenRates = useMemo(
-		() =>
-			snapshot
-				? {
-						byKind: groupRates(history, 'loxilb_ai_tokens_consumed_total', ['kind'], maxGap),
-						// The per-kind rows come from the family's own series, so an
-						// absent family would leave no row at all — the quantity would
-						// vanish instead of saying why it has no value.
-						consumed: familySumRate(history, 'loxilb_ai_tokens_consumed_total', maxGap),
-						estimated: familySumRate(history, 'loxilb_ai_tokens_estimated_total', maxGap),
-						// Responses, not tokens — and split by whether they were charged.
-						missing: usageMissingRates(history, maxGap),
-					}
-				: undefined,
-		[snapshot, history, maxGap],
-	);
-	const latency = useMemo(() => {
-		const family = snapshot?.families.get('loxilb_ai_request_duration_seconds');
-		if (!family || family.samples.length === 0) return undefined;
-		const merged = mergeHistogramSeries(family);
-		if (merged.kind !== 'ok') return {invalid: merged.reason} as const;
-		const q = (p: number) => estimateQuantile(merged.series, p);
-		return {p50: q(0.5), p95: q(0.95), p99: q(0.99), count: merged.series.count} as const;
-	}, [snapshot]);
+	// One total, the same derivation as the dashboard card; per model is Grafana's.
+	const activeStreams = useMemo(() => aggregateSum(snapshot ? selectSamples(snapshot, 'loxilb_ai_active_streams') : []), [snapshot]);
 
 	const hasData = (snapshot?.diagnostics.totalSamples ?? 0) > 0;
 	const state = classifyViewState({
@@ -119,12 +84,6 @@ export default function AITrafficPage() {
 		cadenceMs,
 	});
 
-	const quantileText = (r: ReturnType<typeof estimateQuantile>) => {
-		if (r.kind === 'ok') return `${(r.value * 1000).toFixed(0)} ms`;
-		if (r.kind === 'above-ladder') return t('Above bucket range');
-		return t('N/A');
-	};
-
 	return (
 		<Box sx={{p: 2}}>
 			<Box display="flex" alignItems="center" gap={2} sx={{mb: 2}}>
@@ -133,18 +92,9 @@ export default function AITrafficPage() {
 				<CadenceSelector />
 			</Box>
 
-			<Alert severity="info" sx={{mb: 2}}>
-				{outcomes.kind === 'partitioned'
-					? t('Total offered load and error ratio are derived from the request outcome partition. The denial events panel breaks the same denials down by reason, so each reason rate is a subset of the gate denial rate.')
-					: t('Completed requests and denial events are separate, partial views. The gateway does not yet expose a complete request denominator, so no total request rate or error ratio can be shown.')}
-			</Alert>
-
 			<ObservabilityStateFrame state={state} absence={absence} name={t('AI Traffic')} onRetry={refetch}>
 				<Grid container spacing={2}>
-					{/* Absent, not empty, on an unpartitioned gateway: there is no
-					    offered-load denominator to render, and the notice above
-					    carries that answer instead. */}
-					{outcomes.kind === 'partitioned' && (
+					{outcomes.kind === 'partitioned' ? (
 						<Grid item xs={12} md={6}>
 							<PanelPaper title={t('Request outcomes (offered load)')}>
 								<StatRow label={t('Total offered')} value={formatRate(outcomes.offered, t)} />
@@ -154,16 +104,25 @@ export default function AITrafficPage() {
 								<StatRow label={t('Error ratio (denied + failed)')} value={formatRatio(outcomes.errorRatio, t)} />
 							</PanelPaper>
 						</Grid>
+					) : (
+						// No offered-load denominator on this gateway: the unfiltered
+						// sum is the completed count, so captioning it "total" would
+						// restate the very falsehood the caption prevents.
+						<Grid item xs={12} md={6}>
+							<PanelPaper title={t('Completed requests (not total requests)')}>
+								<StatRow label={t('Completed requests')} value={formatRate(completedTotal, t)} />
+								<StatRow label={t('Denial events')} value={formatRate(denialTotal, t)} />
+								<Typography variant="caption" color="text.secondary" display="block" sx={{mt: 0.5}}>
+									{t('Completed requests and denial events are separate, partial views. The gateway does not yet expose a complete request denominator, so no total request rate or error ratio can be shown.')}
+								</Typography>
+							</PanelPaper>
+						</Grid>
 					)}
 
 					<Grid item xs={12} md={6}>
-						{/* "Completed" is recorded at SSE stream completion OR at response
-						    headers, so plain-JSON answers are in it too: not streams only. */}
-						<PanelPaper title={t('Completed requests (not total requests)')}>
-							<StatRow label={t('All statuses')} value={formatRate(completedTotal, t)} />
-							{completedByStatus.map(g => (
-								<StatRow key={g.labels.status ?? ''} label={g.labels.status ?? t('(no status)')} value={formatRate(g.rate, t)} />
-							))}
+						<PanelPaper title={t('Active AI Streams')}>
+							<StatRow label={t('Total (sum over models)')} value={activeStreams.value ?? t('No data')} />
+							<StatRow label={t('Models reporting')} value={activeStreams.finiteSamples} />
 						</PanelPaper>
 					</Grid>
 
@@ -179,104 +138,8 @@ export default function AITrafficPage() {
 						</PanelPaper>
 					</Grid>
 
-					<Grid item xs={12} md={6}>
-						<PanelPaper title={t('Denial events (counted at point of denial)')}>
-							{denialRates.map(d => (
-								<StatRow key={d.key} label={d.key} value={formatRate(d.rate, t)} />
-							))}
-						</PanelPaper>
-					</Grid>
-
-					<Grid item xs={12} md={6}>
-						<PanelPaper title={t('Active streams by model')}>
-							{activeStreams.length === 0 ? (
-								<Typography variant="body2" color="text.secondary">
-									{t('No data')}
-								</Typography>
-							) : (
-								<Table size="small">
-									<TableHead>
-										<TableRow>
-											<TableCell>{t('Model')}</TableCell>
-											<TableCell align="right">{t('Active streams')}</TableCell>
-										</TableRow>
-									</TableHead>
-									<TableBody>
-										{activeStreams.map(s => (
-											<TableRow key={s.labelKey}>
-												<TableCell>
-													<ModelName model={s.labels.model ?? ''} />
-												</TableCell>
-												<TableCell align="right">{Number.isFinite(s.value) ? s.value : t('N/A')}</TableCell>
-											</TableRow>
-										))}
-									</TableBody>
-								</Table>
-							)}
-						</PanelPaper>
-					</Grid>
-
-					<Grid item xs={12} md={6}>
-						<PanelPaper title={t('Token accounting')}>
-							{tokenRates && (
-								<>
-									{tokenRates.consumed.kind === 'absent' && (
-										<StatRow label={t('Consumed')} value={formatRate(tokenRates.consumed, t)} />
-									)}
-									{tokenRates.byKind.map(g => (
-										<StatRow
-											key={g.labels.kind ?? ''}
-											label={t('Consumed ({{kind}})', {kind: g.labels.kind ?? t('unknown')})}
-											value={formatRate(g.rate, t, t('/s'))}
-										/>
-									))}
-									<StatRow label={t('Estimated (usage block absent)')} value={formatRate(tokenRates.estimated, t)} />
-									<StatRow
-										label={t('Responses without usage, not charged')}
-										value={formatRate(tokenRates.missing.uncharged, t, ` ${t('responses/s')}`)}
-									/>
-									<StatRow
-										label={t('Responses without usage, charged from estimate')}
-										value={formatRate(tokenRates.missing.chargedFromEstimate, t, ` ${t('responses/s')}`)}
-									/>
-								</>
-							)}
-						</PanelPaper>
-					</Grid>
-
-					<Grid item xs={12} md={6}>
-						<PanelPaper title={t('Request duration (completed streams, all models)')}>
-							{latency === undefined ? (
-								<Typography variant="body2" color="text.secondary">
-									{t('No data')}
-								</Typography>
-							) : 'invalid' in latency ? (
-								<Typography variant="body2" color="text.secondary">
-									{t('Histogram invalid: {{reason}}', {reason: latency.invalid})}
-								</Typography>
-							) : (
-								<>
-									<StatRow label="p50" value={quantileText(latency.p50)} />
-									<StatRow label="p95" value={quantileText(latency.p95)} />
-									<StatRow label="p99" value={quantileText(latency.p99)} />
-									<StatRow label={t('Observations')} value={latency.count} />
-								</>
-							)}
-						</PanelPaper>
-					</Grid>
-
-					<Grid item xs={12} md={6}>
-						<PanelPaper title={t('Session affinity')}>
-							<StatRow label={t('Normal session hits')} value={formatRate(familySumRate(history, 'loxilb_ai_normal_session_hits_total', maxGap), t)} />
-							<StatRow
-								label={t('Engines reporting')}
-								value={countOrAbsence(snapshot, 'loxilb_ai_engine_info', s => Number.isFinite(s.value), t)}
-							/>
-						</PanelPaper>
-					</Grid>
-
 					{admissionApplicable && (
-						<Grid item xs={12}>
+						<Grid item xs={12} md={6}>
 							<PanelPaper title={t('Admission gate (capacity)')}>
 								<AIAdmissionPanel report={admission} />
 							</PanelPaper>

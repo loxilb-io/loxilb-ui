@@ -112,15 +112,16 @@ describe('GwWorkerFreshnessCard — omitempty worker_count', () => {
 
 // Upstream records every token-quota refusal in BOTH rate_limit_hits and
 // token_quota_denied. The card summed the two, so each one counted twice.
-describe('GwAiEventsCard — denial events', () => {
+// The partial views only render on a gateway WITHOUT the outcome partition,
+// where the total falls back to the disjoint reason families.
+describe('GwAiEventsCard — denial events (unpartitioned gateway)', () => {
 	const valueOf = (label: string) => screen.getByText(label).nextElementSibling?.textContent;
 	const exposition = (quota: number, rate: number) =>
 		[
 			`loxilb_ai_rate_limit_hits_total{tenant="t",reason="token_quota_exceeded"} ${quota}`,
 			`loxilb_ai_rate_limit_hits_total{tenant="t",reason="rate_limit_exceeded"} ${rate}`,
 			`loxilb_ai_token_quota_denied_total{tenant="t"} ${quota}`,
-			`loxilb_ai_requests_total{model="m",tenant="t",status="200",outcome="completed"} 100`,
-			`loxilb_ai_requests_total{model="m",tenant="t",status="429",outcome="denied"} ${quota + rate}`,
+			`loxilb_ai_requests_total{model="m",tenant="t",status="200"} 100`,
 		].join('\n');
 
 	it('counts each refused request once, not once per family that recorded it', () => {
@@ -128,6 +129,7 @@ describe('GwAiEventsCard — denial events', () => {
 		state.history = [snapshotOf(exposition(10, 20), T0), snapshotOf(exposition(15, 23), T0 + 10_000)];
 		renderCard(<GwAiEventsCard instance={INSTANCE} />);
 		expect(valueOf('Denial events')).toBe('0.800/s');
+		expect(screen.getByText('AI Events (partial views)')).toBeTruthy();
 	});
 
 	it('is not hidden by a reason family that has never been written', () => {
@@ -140,15 +142,44 @@ describe('GwAiEventsCard — denial events', () => {
 
 // The dashboard twin of the AI Traffic panel: "Completed SSE streams" over a
 // family that also counts non-streaming answers.
-describe('GwAiEventsCard — completed requests', () => {
+describe('GwAiEventsCard — completed requests (unpartitioned gateway)', () => {
 	const valueOf = (label: string) => screen.getByText(label).nextElementSibling?.textContent;
-	const exposition = (completed: number) => `loxilb_ai_requests_total{model="m",tenant="t",status="200",outcome="completed"} ${completed}`;
+	const exposition = (completed: number) => `loxilb_ai_requests_total{model="m",tenant="t",status="200"} ${completed}`;
 
 	it('labels the completed rate as requests, not SSE streams', () => {
 		state.history = [snapshotOf(exposition(100), T0), snapshotOf(exposition(150), T0 + 10_000)];
 		renderCard(<GwAiEventsCard instance={INSTANCE} />);
 		expect(valueOf('Completed requests')).toBe('5.0/s');
 		expect(screen.queryByText(/SSE stream/)).toBeNull();
+	});
+});
+
+// Where requests_total carries the outcome partition the headline exists, so
+// the card shows it instead of two partial views that were never a total.
+describe('GwAiEventsCard — partitioned gateway', () => {
+	const valueOf = (label: string) => screen.getByText(label).nextElementSibling?.textContent;
+	const exposition = (completed: number, failed: number, denied: number) =>
+		[
+			`loxilb_ai_requests_total{model="m",tenant="t",status="200",outcome="completed"} ${completed}`,
+			`loxilb_ai_requests_total{model="m",tenant="t",status="503",outcome="completed"} ${failed}`,
+			`loxilb_ai_requests_total{model="m",tenant="t",status="429",outcome="denied"} ${denied}`,
+		].join('\n');
+
+	it('shows offered load and the error ratio, and drops the partial-view caption', () => {
+		// +8 ok, +1 failed, +1 denied in 10 s: 1.0/s offered, 2 of 10 errors.
+		state.history = [snapshotOf(exposition(100, 10, 10), T0), snapshotOf(exposition(108, 11, 11), T0 + 10_000)];
+		renderCard(<GwAiEventsCard instance={INSTANCE} />);
+		expect(screen.getByText('AI Requests')).toBeTruthy();
+		expect(valueOf('Total offered')).toBe('1.0/s');
+		expect(valueOf('Error ratio (denied + failed)')).toBe('20.0%');
+		expect(screen.queryByText('Denial events')).toBeNull();
+		expect(screen.queryByText(/Not a total request rate/)).toBeNull();
+	});
+
+	it('reads no traffic, never 0%, when nothing was offered', () => {
+		state.history = [snapshotOf(exposition(100, 10, 10), T0), snapshotOf(exposition(100, 10, 10), T0 + 10_000)];
+		renderCard(<GwAiEventsCard instance={INSTANCE} />);
+		expect(valueOf('Error ratio (denied + failed)')).toBe('No traffic');
 	});
 });
 

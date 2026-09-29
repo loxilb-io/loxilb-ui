@@ -92,18 +92,12 @@ const AI_EVENT_FAMILIES = [
 
 const AI_TRAFFIC_FAMILIES = [
 	...AI_EVENT_FAMILIES,
-	'loxilb_ai_request_duration_seconds',
 	'loxilb_ai_active_streams',
-	'loxilb_ai_tokens_consumed_total',
-	'loxilb_ai_tokens_estimated_total',
-	'loxilb_ai_tokens_missing_total',
 	'loxilb_ai_token_quota_cold_open_total',
 	'loxilb_ai_token_quota_utilization',
 	'loxilb_ai_token_quota_limit_tokens',
 	'loxilb_ai_token_quota_model_utilization',
 	'loxilb_ai_token_quota_model_limit_tokens',
-	'loxilb_ai_normal_session_hits_total',
-	'loxilb_ai_engine_info',
 	// The bearer arm's verdict counter (J3). The keyset families are NOT here:
 	// they answer "is this profile working?", which belongs beside the profile
 	// that defines it — see panel.jwtKeysetHealth.

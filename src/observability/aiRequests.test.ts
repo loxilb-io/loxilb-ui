@@ -5,18 +5,15 @@ import {
 	AI_REQUESTS,
 	MODEL_NOT_ALLOWED,
 	RATE_LIMIT_HITS,
-	TOKEN_QUOTA_DENIED,
 	completedRequestRate,
-	completedRequestRatesBy,
-	denialReasons,
 	denialTotalRate,
 	hasOutcomePartition,
 	isErrorStatus,
-	TOKENS_MISSING,
 	rateLimitHitKind,
 	requestOutcomes,
-	usageMissingRates,
 } from './aiRequests';
+
+const TOKEN_QUOTA_DENIED = 'loxilb_ai_token_quota_denied_total';
 
 function snapshotOf(text: string, receivedAtMs: number): IMetricsSnapshot {
 	const parsed = parseExposition(text);
@@ -63,15 +60,6 @@ describe('AI request outcome partition', () => {
 	it('still counts the whole family on a gateway that predates the label', () => {
 		const history = [snapshotOf(OLD(100), T0), snapshotOf(OLD(200), T1)];
 		expect(completedRequestRate(history, GAP)).toEqual({kind: 'ok', perSecond: 10, intervalMs: 10_000});
-	});
-
-	it('keeps denied statuses out of the per-status completed breakdown', () => {
-		const history = [snapshotOf(NEW(100, 5), T0), snapshotOf(NEW(200, 105), T1)];
-		const byStatus = completedRequestRatesBy(history, ['status'], GAP);
-		// 429 belongs to the denied partition and must not appear here at all —
-		// otherwise the page shows a denial as a served response code.
-		expect(byStatus.map(r => r.labels.status)).toEqual(['200']);
-		expect(byStatus[0].rate).toEqual({kind: 'ok', perSecond: 10, intervalMs: 10_000});
 	});
 
 	it('reports insufficient samples rather than a number from one observation', () => {
@@ -332,61 +320,6 @@ describe('denial total — each refused request counted once', () => {
 	});
 });
 
-describe('denial reasons — disjoint rows', () => {
-	const hits = (rows: Record<string, number>, quotaDenied?: number) =>
-		[
-			...Object.entries(rows).map(([reason, n]) => `${RATE_LIMIT_HITS}{tenant="t",reason="${reason}"} ${n}`),
-			...(quotaDenied === undefined ? [] : [`${TOKEN_QUOTA_DENIED}{tenant="t"} ${quotaDenied}`]),
-		].join('\n');
-
-	it('keeps token-quota refusals out of "rate limited", where they were counted a second time', () => {
-		const h = [
-			snapshotOf(hits({rate_limit_exceeded: 0, token_quota_exceeded: 0, token_quota_would_exceed: 0}, 0), T0),
-			snapshotOf(hits({rate_limit_exceeded: 3, token_quota_exceeded: 4, token_quota_would_exceed: 1}, 5), T1),
-		];
-		const r = denialReasons(h, GAP);
-		expect(r.rateLimited).toMatchObject({kind: 'ok', perSecond: 0.3});
-		expect(r.tokenQuotaDenied).toMatchObject({kind: 'ok', perSecond: 0.5});
-	});
-
-	it('gives quota warming its own row, so excluding token_quota_* does not make it vanish', () => {
-		const h = [
-			snapshotOf(hits({rate_limit_exceeded: 0, token_quota_warming: 0}), T0),
-			snapshotOf(hits({rate_limit_exceeded: 1, token_quota_warming: 2}), T1),
-		];
-		const r = denialReasons(h, GAP);
-		expect(r.rateLimited).toMatchObject({kind: 'ok', perSecond: 0.1});
-		expect(r.tokenQuotaWarming).toMatchObject({kind: 'ok', perSecond: 0.2});
-	});
-
-	it('reads a reason the present family never recorded as a true 0/s, not warming up', () => {
-		// Only quota refusals so far: no request-rate child exists yet.
-		const h = [snapshotOf(hits({token_quota_exceeded: 1}, 1), T0), snapshotOf(hits({token_quota_exceeded: 3}, 3), T1)];
-		expect(denialReasons(h, GAP).rateLimited).toMatchObject({kind: 'ok', perSecond: 0});
-	});
-
-	it('says why when the hits family itself is absent', () => {
-		const idle = `${AI_REQUESTS}{model="m",tenant="t",status="200",outcome="completed"} 1`;
-		const r = denialReasons([snapshotOf(idle, T0), snapshotOf(idle, T1)], GAP);
-		expect(r.rateLimited.kind).toBe('absent');
-		expect(r.tokenQuotaWarming.kind).toBe('absent');
-	});
-
-	it('sums back to the fallback total: the rows overlap nowhere', () => {
-		const mna = (n: number) => `${MODEL_NOT_ALLOWED}{tenant="t",model="x"} ${n}`;
-		const h = [
-			snapshotOf(`${hits({rate_limit_exceeded: 0, token_quota_exceeded: 0, token_quota_warming: 0}, 0)}\n${mna(0)}`, T0),
-			snapshotOf(`${hits({rate_limit_exceeded: 3, token_quota_exceeded: 4, token_quota_warming: 2}, 4)}\n${mna(1)}`, T1),
-		];
-		const r = denialReasons(h, GAP);
-		const rows = [r.rateLimited, r.tokenQuotaDenied, r.tokenQuotaWarming, r.modelNotAllowed];
-		const sum = rows.reduce((a, x) => a + (x.kind === 'ok' ? x.perSecond : Number.NaN), 0);
-		const total = denialTotalRate(h, GAP);
-		expect(total.kind).toBe('ok');
-		expect(sum).toBeCloseTo(total.kind === 'ok' ? total.perSecond : Number.NaN, 10);
-	});
-});
-
 // A per-reason listing of rate_limit_hits put "Rate limited" in front of
 // token_quota_exceeded — a refusal by a different gate.
 describe('rateLimitHitKind', () => {
@@ -400,35 +333,5 @@ describe('rateLimitHitKind', () => {
 		[undefined, 'rate-limit'],
 	] as const)('%s -> %s', (reason, kind) => {
 		expect(rateLimitHitKind(reason)).toBe(kind);
-	});
-});
-
-// tokens_missing counts RESPONSES, and one of its reasons (stream_estimated)
-// was charged from the estimate net. Summed whole under "unaccountable", a
-// charged stream read as an uncharged one.
-describe('usageMissingRates — charged and uncharged kept apart', () => {
-	const missing = (rows: Record<string, number>) =>
-		Object.entries(rows).map(([reason, n]) => `${TOKENS_MISSING}{model="m",tenant="t",reason="${reason}"} ${n}`).join('\n');
-
-	it('splits stream_estimated from the reasons that were never charged', () => {
-		const h = [
-			snapshotOf(missing({response_complete: 0, connection_close: 0, stream_estimated: 0}), T0),
-			snapshotOf(missing({response_complete: 2, connection_close: 1, stream_estimated: 4}), T1),
-		];
-		const r = usageMissingRates(h, GAP);
-		expect(r.uncharged).toMatchObject({kind: 'ok', perSecond: 0.3});
-		expect(r.chargedFromEstimate).toMatchObject({kind: 'ok', perSecond: 0.4});
-	});
-
-	it('reads the side the present family never recorded as 0/s, not warming up', () => {
-		const h = [snapshotOf(missing({stream_estimated: 1}), T0), snapshotOf(missing({stream_estimated: 3}), T1)];
-		expect(usageMissingRates(h, GAP).uncharged).toMatchObject({kind: 'ok', perSecond: 0});
-	});
-
-	it('says why when the family itself is absent', () => {
-		const idle = `${AI_REQUESTS}{model="m",tenant="t",status="200",outcome="completed"} 1`;
-		const r = usageMissingRates([snapshotOf(idle, T0), snapshotOf(idle, T1)], GAP);
-		expect(r.uncharged.kind).toBe('absent');
-		expect(r.chargedFromEstimate.kind).toBe('absent');
 	});
 });

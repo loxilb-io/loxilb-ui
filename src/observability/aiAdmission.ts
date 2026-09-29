@@ -15,7 +15,10 @@
 //     that would have refused the request, so one request can count twice;
 //   - capacity_shed is also counted when an already admitted request fails to
 //     move a leg to another endpoint.
-// Each reason is shown as its own decision rate.
+// The page shows one compact summary (the owner's rule: the UI says what is
+// urgent, Grafana holds the per-pool and per-reason detail): a rate of
+// REFUSAL decisions summed over reasons and pools, labelled as decisions,
+// never as requests, and the pools at a ceiling right now.
 //
 // The three listen/header counters are process-wide TCP-level signals from
 // the proxy's listeners, not per pool. ListenDrops INCLUDES ListenOverflows
@@ -31,7 +34,6 @@ export const ADMISSION_MODE = 'loxilb_ai_admission_mode';
 export const ADMISSION_INFLIGHT = 'loxilb_ai_admission_inflight';
 export const ADMISSION_LIMIT = 'loxilb_ai_admission_limit';
 export const ADMISSION_QUEUED = 'loxilb_ai_admission_queued';
-export const ADMISSION_QUEUE_WAIT = 'loxilb_ai_admission_queue_wait_seconds';
 export const ADMISSION_DECISIONS = 'loxilb_ai_admission_decisions_total';
 export const ADMISSION_ANOMALIES = 'loxilb_ai_admission_anomalies_total';
 
@@ -40,7 +42,6 @@ export const ADMISSION_FAMILIES = [
 	ADMISSION_INFLIGHT,
 	ADMISSION_LIMIT,
 	ADMISSION_QUEUED,
-	ADMISSION_QUEUE_WAIT,
 	ADMISSION_DECISIONS,
 	ADMISSION_ANOMALIES,
 ] as const;
@@ -87,14 +88,6 @@ export const ADMISSION_REASONS: readonly {reason: string; group: DecisionGroup}[
 	{reason: 'bypass_non_inference', group: 'passed'},
 ];
 
-export interface IAdmissionDecision {
-	reason: string;
-	group: DecisionGroup;
-	rate: RateResult;
-	/** Lifetime count; undefined when the series is missing from the scrape. */
-	total: number | undefined;
-}
-
 export interface IAdmissionPool {
 	service: string;
 	pool: string;
@@ -106,11 +99,15 @@ export interface IAdmissionPool {
 	queued: number | undefined;
 	/** Queue depth (role="queue"); 0 = no queue, over a ceiling is refused at once. */
 	queueDepth: number | undefined;
-	/** Requests resumed from the queue since start (the wait histogram's count). */
-	resumedTotal: number | undefined;
-	/** Mean wait of those requests since start; undefined when none resumed. */
-	meanWaitSeconds: number | undefined;
-	decisions: IAdmissionDecision[];
+}
+
+/** A gated pool holding every unit its ceiling allows, or a full queue. */
+export interface ISaturatedPool {
+	service: string;
+	pool: string;
+	what: 'limit' | 'queue';
+	value: number;
+	bound: number;
 }
 
 export type AiAdmissionReport =
@@ -123,8 +120,15 @@ export type AiAdmissionReport =
 			pools: IAdmissionPool[];
 			/** Process-wide; any increment is a gateway defect, not load. */
 			anomalyTotal: number | undefined;
-			anomalies: {kind: string; total: number | undefined}[];
+			/** Refusal DECISIONS per second over every pool and refusal reason. */
+			refusing: RateResult;
+			/** Observe mode: decisions that enforce would have turned into a refusal. */
+			wouldRefuse: RateResult;
+			saturated: ISaturatedPool[];
 	  };
+
+const REFUSAL_REASONS: ReadonlySet<string> = new Set(ADMISSION_REASONS.filter(r => r.group === 'refused').map(r => r.reason));
+const OBSERVE_WOULD_SHED = 'observe_would_shed';
 
 function poolScalar(snapshot: IMetricsSnapshot, family: string, service: string, pool: string, extra?: Record<string, string>) {
 	return selectScalar(snapshot, family, {service, pool, ...extra});
@@ -135,6 +139,21 @@ function sumOf(values: (number | undefined)[]): number | undefined {
 	return finite.length === 0 ? undefined : finite.reduce((a, b) => a + b, 0);
 }
 
+/** Gated pools at a ceiling now. An off pool bounds nothing; 0 means unlimited / no queue. */
+export function saturatedPools(pools: readonly IAdmissionPool[]): ISaturatedPool[] {
+	const out: ISaturatedPool[] = [];
+	for (const p of pools) {
+		if (p.mode === 'off') continue;
+		if (p.limit !== undefined && p.limit > 0 && p.inflight !== undefined && p.inflight >= p.limit) {
+			out.push({service: p.service, pool: p.pool, what: 'limit', value: p.inflight, bound: p.limit});
+		}
+		if (p.queueDepth !== undefined && p.queueDepth > 0 && p.queued !== undefined && p.queued >= p.queueDepth) {
+			out.push({service: p.service, pool: p.pool, what: 'queue', value: p.queued, bound: p.queueDepth});
+		}
+	}
+	return out;
+}
+
 export function aiAdmission(
 	snapshot: IMetricsSnapshot | undefined,
 	history: readonly IMetricsSnapshot[],
@@ -142,11 +161,7 @@ export function aiAdmission(
 ): AiAdmissionReport {
 	if (!snapshot || snapshot.failure) return {kind: 'unavailable'};
 
-	const anomalies = selectSamples(snapshot, ADMISSION_ANOMALIES).map(s => ({
-		kind: s.labels.kind ?? '',
-		total: Number.isFinite(s.value) ? s.value : undefined,
-	}));
-	const anomalyTotal = sumOf(anomalies.map(a => a.total));
+	const anomalyTotal = sumOf(selectSamples(snapshot, ADMISSION_ANOMALIES).map(s => (Number.isFinite(s.value) ? s.value : undefined)));
 
 	// The mode gauge is present for every pool whatever the mode, so it is
 	// the pool list.
@@ -156,16 +171,6 @@ export function aiAdmission(
 	const pools: IAdmissionPool[] = modeSamples.map(m => {
 		const service = m.labels.service ?? '';
 		const pool = m.labels.pool ?? '';
-		const waitCount = histogramPart(snapshot, service, pool, '_count');
-		const waitSum = histogramPart(snapshot, service, pool, '_sum');
-		const decisions = ADMISSION_REASONS.map(({reason, group}) => ({
-			reason,
-			group,
-			// A partition of a present family: every reason child is emitted
-			// for every pool, so the selection is exact.
-			rate: partitionRate(history, ADMISSION_DECISIONS, maxGapMs, {service, pool, reason}),
-			total: poolScalar(snapshot, ADMISSION_DECISIONS, service, pool, {reason}),
-		}));
 		return {
 			service,
 			pool,
@@ -174,20 +179,20 @@ export function aiAdmission(
 			limit: poolScalar(snapshot, ADMISSION_LIMIT, service, pool, {role: 'service'}),
 			queued: poolScalar(snapshot, ADMISSION_QUEUED, service, pool),
 			queueDepth: poolScalar(snapshot, ADMISSION_LIMIT, service, pool, {role: 'queue'}),
-			resumedTotal: waitCount,
-			meanWaitSeconds: waitCount !== undefined && waitCount > 0 && waitSum !== undefined ? waitSum / waitCount : undefined,
-			decisions,
 		};
 	});
 
-	return {kind: 'ok', pools, anomalyTotal, anomalies};
-}
-
-// A histogram family keeps its `_sum`/`_count`/`_bucket` samples under the
-// family name; pick one part for one pool, exactly one sample or undefined.
-function histogramPart(snapshot: IMetricsSnapshot, service: string, pool: string, suffix: '_sum' | '_count'): number | undefined {
-	const parts = selectSamples(snapshot, ADMISSION_QUEUE_WAIT, {service, pool}).filter(s => s.name === `${ADMISSION_QUEUE_WAIT}${suffix}`);
-	return parts.length === 1 && Number.isFinite(parts[0].value) ? parts[0].value : undefined;
+	return {
+		kind: 'ok',
+		pools,
+		anomalyTotal,
+		// Decisions summed as decisions: each one increments exactly one
+		// reason child, so the sum counts decisions exactly. It is NOT a
+		// request count (see the header), and the page never calls it one.
+		refusing: partitionRate(history, ADMISSION_DECISIONS, maxGapMs, l => REFUSAL_REASONS.has(l['reason'] ?? '')),
+		wouldRefuse: partitionRate(history, ADMISSION_DECISIONS, maxGapMs, {reason: OBSERVE_WOULD_SHED}),
+		saturated: saturatedPools(pools),
+	};
 }
 
 export interface IOverloadCounter {

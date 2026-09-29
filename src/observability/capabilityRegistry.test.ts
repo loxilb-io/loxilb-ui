@@ -70,7 +70,7 @@ describe('registry contract against the vendored artifacts', () => {
 		const size = (id: ObservabilityEntryId) => getObservabilityEntry(id)!.metricFamilies.length;
 		expect(size('dashboard.gwAiEvents')).toBe(4);
 		// 17 since J3: the bearer arm's verdict counter joined the page.
-		expect(size('page.aiTraffic')).toBe(17);
+		expect(size('page.aiTraffic')).toBe(11);
 		// 49 since Stage 3.4: the admission overflow-shed valve joined the
 		// page beside the two families it forks with.
 		expect(size('page.pdKv')).toBe(49);
@@ -87,9 +87,9 @@ describe('registry contract against the vendored artifacts', () => {
 		// counter and the cold-open counter. A scope dropped here would take
 		// its panel section with it silently.
 		expect(size('panel.tokenQuota')).toBe(14);
-		// The gate's seven families, read together: the mode gauge is the pool
+		// The gate's six families, read together: the mode gauge is the pool
 		// list, and a decision counter without it has no pool to belong to.
-		expect(size('panel.aiAdmission')).toBe(7);
+		expect(size('panel.aiAdmission')).toBe(6);
 		// ListenDrops includes ListenOverflows, so the panel needs both to show
 		// the overflow share without adding the two.
 		expect(size('panel.proxyOverload')).toBe(3);
