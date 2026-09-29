@@ -20,17 +20,22 @@
 // our own observations, never by comparing the gateway's timestamp with the
 // browser clock: that difference would carry any clock skew into the verdict.
 
-import {IMetricsSnapshot} from 'types/observability';
-import {RateResult} from './rates';
-import {aggregateSum, selectSamples, selectScalar} from './selectors';
-import {partitionRate} from './snapshotRates';
+//
+// Compact by design: the three urgent alerts, the writer and its liveness,
+// one "dropped since start" line per stream and one fault-counter line. The
+// gateway-clock timestamps, written counts and housekeeping counters
+// (retention pruning, originator trust lookups) are not shown.
 
+import {IMetricsSnapshot} from 'types/observability';
+import {aggregateSum, selectSamples, selectScalar} from './selectors';
+
+// Only what the panel reads. `records_written_total` stays: its absence is
+// how a gateway with no writer configured is told apart from a restarting one.
 export const AUDIT_FAMILIES = [
 	'loxilb_audit_writer_up',
 	'loxilb_audit_writer_restarts_total',
 	'loxilb_audit_writer_panics_total',
 	'loxilb_audit_last_heartbeat_timestamp_seconds',
-	'loxilb_audit_last_write_timestamp_seconds',
 	'loxilb_audit_records_written_total',
 	'loxilb_audit_records_dropped_total',
 	'loxilb_audit_records_unattributed_total',
@@ -41,9 +46,7 @@ export const AUDIT_FAMILIES = [
 	'loxilb_audit_segment_seal_failures_total',
 	'loxilb_audit_reserve_breached',
 	'loxilb_audit_orphaned_intents_total',
-	'loxilb_audit_segments_pruned_total',
 	'loxilb_audit_originator_dropped_total',
-	'loxilb_audit_delegation_lookups_total',
 ] as const;
 
 /** The writer's liveness cadence (gateway pkg/audit DefaultHeartbeatInterval). */
@@ -52,19 +55,39 @@ export const AUDIT_HEARTBEAT_INTERVAL_MS = 30_000;
 /** The trail's streams, in display order. */
 export const AUDIT_STREAMS = ['mgmt', 'data', 'audit_system'] as const;
 
-export interface IAuditStream {
+/**
+ * Faults and losses, since the gateway started. Restarts are here because
+ * each one is a gap in which audited management calls were refused (gateway
+ * help text), and panics because each one caused a restart.
+ */
+export const AUDIT_FAULT_COUNTERS = [
+	'loxilb_audit_writer_restarts_total',
+	'loxilb_audit_writer_panics_total',
+	'loxilb_audit_write_failures_total',
+	'loxilb_audit_sync_failures_total',
+	'loxilb_audit_result_write_failures_total',
+	'loxilb_audit_mgmt_timeouts_total',
+	'loxilb_audit_segment_seal_failures_total',
+	'loxilb_audit_records_unattributed_total',
+	'loxilb_audit_orphaned_intents_total',
+	'loxilb_audit_originator_dropped_total',
+] as const;
+
+export interface IAuditStreamDrops {
 	stream: string;
-	writtenRate: RateResult;
-	writtenTotal: number | undefined;
-	/** Every drop reason summed: each is a record that was not written. */
-	droppedTotal: number | undefined;
+	/**
+	 * Every drop reason of this stream summed (the reasons partition the
+	 * stream's drops). Streams are NEVER summed with each other: a dropped
+	 * management record refused its call, a dropped data record is lost.
+	 */
+	total: number | undefined;
 	/** Reasons with a non-zero lifetime count. */
-	droppedBy: {reason: string; total: number}[];
+	by: {reason: string; total: number}[];
 }
 
-export interface IAuditFailure {
+export interface IAuditFault {
 	key: string;
-	total: number | undefined;
+	total: number;
 }
 
 export type AuditWriterReport =
@@ -77,62 +100,50 @@ export type AuditWriterReport =
 			kind: 'ok';
 			up: boolean | undefined;
 			reserveBreached: boolean | undefined;
-			/** Unix seconds as exported; 0 before the first beat/write. */
+			/** Unix seconds as exported; 0 before the first beat. Read for liveness only. */
 			lastHeartbeatSeconds: number | undefined;
-			lastWriteSeconds: number | undefined;
-			streams: IAuditStream[];
-			restarts: number | undefined;
-			panics: number | undefined;
-			/** Losses and refusals: any non-zero value is worth an operator's look. */
-			failures: IAuditFailure[];
-			/** Housekeeping counts: informational, not faults. */
-			activity: IAuditFailure[];
+			drops: IAuditStreamDrops[];
+			/** Fault counters above zero, in AUDIT_FAULT_COUNTERS order. */
+			faults: IAuditFault[];
+			/** Fault counters the gateway did not export: unknown, never zero. */
+			faultsNotReported: number;
 	  };
 
 const scalar = (s: IMetricsSnapshot, family: string) => selectScalar(s, family);
 
-export function auditWriter(snapshot: IMetricsSnapshot | undefined, history: readonly IMetricsSnapshot[], maxGapMs: number): AuditWriterReport {
+export function auditWriter(snapshot: IMetricsSnapshot | undefined): AuditWriterReport {
 	if (!snapshot || snapshot.failure) return {kind: 'unavailable'};
 	const up = scalar(snapshot, 'loxilb_audit_writer_up');
 	const written = selectSamples(snapshot, 'loxilb_audit_records_written_total');
 	if (up === undefined && written.length === 0) return {kind: 'not-exported'};
 	if (up === 0 && written.length === 0) return {kind: 'not-configured'};
 
-	const streams = AUDIT_STREAMS.map(stream => {
+	const drops = AUDIT_STREAMS.map(stream => {
 		const dropped = selectSamples(snapshot, 'loxilb_audit_records_dropped_total', {stream});
 		return {
 			stream,
-			writtenRate: partitionRate(history, 'loxilb_audit_records_written_total', maxGapMs, {stream}),
-			writtenTotal: selectScalar(snapshot, 'loxilb_audit_records_written_total', {stream}),
-			droppedTotal: aggregateSum(dropped).value,
-			droppedBy: dropped
-				.filter(d => Number.isFinite(d.value) && d.value > 0)
-				.map(d => ({reason: d.labels.reason ?? '', total: d.value})),
+			total: aggregateSum(dropped).value,
+			by: dropped.filter(d => Number.isFinite(d.value) && d.value > 0).map(d => ({reason: d.labels.reason ?? '', total: d.value})),
 		};
 	});
 
+	const faults: IAuditFault[] = [];
+	let faultsNotReported = 0;
+	for (const key of AUDIT_FAULT_COUNTERS) {
+		const total = scalar(snapshot, key);
+		if (total === undefined || !Number.isFinite(total)) faultsNotReported++;
+		else if (total > 0) faults.push({key, total});
+	}
+
 	const reserve = scalar(snapshot, 'loxilb_audit_reserve_breached');
-	const count = (key: string) => ({key, total: scalar(snapshot, key)});
 	return {
 		kind: 'ok',
 		up: up === undefined ? undefined : up > 0,
 		reserveBreached: reserve === undefined ? undefined : reserve > 0,
 		lastHeartbeatSeconds: scalar(snapshot, 'loxilb_audit_last_heartbeat_timestamp_seconds'),
-		lastWriteSeconds: scalar(snapshot, 'loxilb_audit_last_write_timestamp_seconds'),
-		streams,
-		restarts: scalar(snapshot, 'loxilb_audit_writer_restarts_total'),
-		panics: scalar(snapshot, 'loxilb_audit_writer_panics_total'),
-		failures: [
-			count('loxilb_audit_write_failures_total'),
-			count('loxilb_audit_sync_failures_total'),
-			count('loxilb_audit_result_write_failures_total'),
-			count('loxilb_audit_mgmt_timeouts_total'),
-			count('loxilb_audit_segment_seal_failures_total'),
-			count('loxilb_audit_records_unattributed_total'),
-			count('loxilb_audit_orphaned_intents_total'),
-			count('loxilb_audit_originator_dropped_total'),
-		],
-		activity: [count('loxilb_audit_segments_pruned_total'), count('loxilb_audit_delegation_lookups_total')],
+		drops,
+		faults,
+		faultsNotReported,
 	};
 }
 

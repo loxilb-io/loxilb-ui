@@ -9,9 +9,8 @@
 import {describe, expect, it} from 'vitest';
 import {IMetricsSnapshot} from 'types/observability';
 import {parseExposition} from './parser';
-import {AUDIT_HEARTBEAT_INTERVAL_MS, AUDIT_STREAMS, auditWriter, heartbeatLiveness, trackHeartbeat} from './auditWriter';
+import {AUDIT_FAULT_COUNTERS, AUDIT_HEARTBEAT_INTERVAL_MS, AUDIT_STREAMS, auditWriter, heartbeatLiveness, trackHeartbeat} from './auditWriter';
 
-const GAP = 35_000;
 const CADENCE = 10_000;
 const REASONS = ['queue_full', 'writer_down', 'invalid', 'disk_reserve'];
 
@@ -27,15 +26,20 @@ const NO_WRITER = [
 	'loxilb_audit_writer_up 0',
 ].join('\n');
 
-function withWriter(o: {up?: number; beat?: number; written?: Record<string, number>; dropped?: Record<string, number>; writeFailures?: number; reserve?: number} = {}) {
+function withWriter(o: {up?: number; beat?: number; written?: Record<string, number>; dropped?: Record<string, number>; writeFailures?: number; restarts?: number; reserve?: number} = {}) {
 	return [
 		NO_WRITER.replace('loxilb_audit_writer_up 0', `loxilb_audit_writer_up ${o.up ?? 1}`),
 		`loxilb_audit_last_heartbeat_timestamp_seconds ${o.beat ?? 1_790_000_000}`,
-		'loxilb_audit_last_write_timestamp_seconds 1790000001',
-		'loxilb_audit_writer_restarts_total 0',
+		`loxilb_audit_writer_restarts_total ${o.restarts ?? 0}`,
 		'loxilb_audit_writer_panics_total 0',
 		`loxilb_audit_write_failures_total ${o.writeFailures ?? 0}`,
 		`loxilb_audit_reserve_breached ${o.reserve ?? 0}`,
+		'loxilb_audit_sync_failures_total 0',
+		'loxilb_audit_mgmt_timeouts_total 0',
+		'loxilb_audit_segment_seal_failures_total 0',
+		'loxilb_audit_records_unattributed_total 0',
+		'loxilb_audit_orphaned_intents_total 0',
+		'loxilb_audit_segments_pruned_total 7',
 		...AUDIT_STREAMS.map(s => `loxilb_audit_records_written_total{stream="${s}"} ${o.written?.[s] ?? 0}`),
 		...AUDIT_STREAMS.flatMap(s => REASONS.map(r => `loxilb_audit_records_dropped_total{stream="${s}",reason="${r}"} ${o.dropped?.[`${s}/${r}`] ?? 0}`)),
 	].join('\n');
@@ -43,45 +47,88 @@ function withWriter(o: {up?: number; beat?: number; written?: Record<string, num
 
 describe('auditWriter', () => {
 	it('is unavailable without a healthy snapshot', () => {
-		expect(auditWriter(undefined, [], GAP)).toEqual({kind: 'unavailable'});
+		expect(auditWriter(undefined)).toEqual({kind: 'unavailable'});
 	});
 
 	// The collector's nil-writer branch: the stream families are absent
 	// because no writer exists, not because nothing was written.
 	it('reads writer_up=0 without any stream series as no writer configured', () => {
 		const s = snapshotOf(NO_WRITER, 0);
-		expect(auditWriter(s, [s], GAP)).toEqual({kind: 'not-configured'});
+		expect(auditWriter(s)).toEqual({kind: 'not-configured'});
 	});
 
 	it('reads a writer that is restarting as present and down, not as unconfigured', () => {
 		const s = snapshotOf(withWriter({up: 0}), 0);
-		const r = auditWriter(s, [s], GAP);
+		const r = auditWriter(s);
 		expect(r).toMatchObject({kind: 'ok', up: false});
 	});
 
 	it('says the gateway does not export the trail when no family is present', () => {
 		const s = snapshotOf('loxilb_config_dirty 0', 0);
-		expect(auditWriter(s, [s], GAP)).toEqual({kind: 'not-exported'});
+		expect(auditWriter(s)).toEqual({kind: 'not-exported'});
 	});
 
-	it('reports each stream: written rate and total, dropped as the sum of its reasons', () => {
-		const before = snapshotOf(withWriter({written: {data: 100}}), 0);
-		const after = snapshotOf(withWriter({written: {data: 150, mgmt: 2}, dropped: {'data/queue_full': 3, 'data/writer_down': 1}}), 10_000);
-		const r = auditWriter(after, [before, after], GAP);
+	it('reports drops per stream as the sum of that stream\'s reasons, never across streams', () => {
+		const s = snapshotOf(withWriter({dropped: {'data/queue_full': 3, 'data/writer_down': 1, 'mgmt/writer_down': 2}}), 0);
+		const r = auditWriter(s);
 		if (r.kind !== 'ok') throw new Error(r.kind);
-		const data = r.streams.find(s => s.stream === 'data')!;
-		expect(data.writtenTotal).toBe(150);
-		expect(data.writtenRate).toMatchObject({kind: 'ok', perSecond: 5});
-		expect(data.droppedTotal).toBe(4);
-		expect(data.droppedBy).toEqual([
-			{reason: 'queue_full', total: 3},
-			{reason: 'writer_down', total: 1},
+		expect(r.drops).toEqual([
+			{stream: 'mgmt', total: 2, by: [{reason: 'writer_down', total: 2}]},
+			{
+				stream: 'data',
+				total: 4,
+				by: [
+					{reason: 'queue_full', total: 3},
+					{reason: 'writer_down', total: 1},
+				],
+			},
+			{stream: 'audit_system', total: 0, by: []},
 		]);
-		const mgmt = r.streams.find(s => s.stream === 'mgmt')!;
-		expect(mgmt.droppedTotal).toBe(0);
-		expect(mgmt.droppedBy).toEqual([]);
-		expect(r.failures.find(f => f.key === 'loxilb_audit_write_failures_total')?.total).toBe(0);
 		expect(r.reserveBreached).toBe(false);
+	});
+
+	it('an absent dropped family is not reported, never 0', () => {
+		const text = withWriter()
+			.split('\n')
+			.filter(l => !l.startsWith('loxilb_audit_records_dropped_total'))
+			.join('\n');
+		const r = auditWriter(snapshotOf(text, 0));
+		if (r.kind !== 'ok') throw new Error(r.kind);
+		expect(r.drops.map(d => d.total)).toEqual([undefined, undefined, undefined]);
+	});
+
+	it('a healthy writer has no fault above zero, and housekeeping is never a fault', () => {
+		const r = auditWriter(snapshotOf(withWriter(), 0));
+		if (r.kind !== 'ok') throw new Error(r.kind);
+		// segments_pruned is 7 in the fixture: retention pruning is not a fault.
+		expect(r.faults).toEqual([]);
+		expect(r.faultsNotReported).toBe(0);
+	});
+
+	it('counts restarts as a fault (each one refused management calls), in a fixed order', () => {
+		const r = auditWriter(snapshotOf(withWriter({restarts: 2, writeFailures: 5}), 0));
+		if (r.kind !== 'ok') throw new Error(r.kind);
+		expect(r.faults).toEqual([
+			{key: 'loxilb_audit_writer_restarts_total', total: 2},
+			{key: 'loxilb_audit_write_failures_total', total: 5},
+		]);
+	});
+
+	it('counts an absent fault counter as not reported, never as zero', () => {
+		const text = withWriter()
+			.split('\n')
+			.filter(l => !l.startsWith('loxilb_audit_sync_failures_total'))
+			.join('\n');
+		const r = auditWriter(snapshotOf(text, 0));
+		if (r.kind !== 'ok') throw new Error(r.kind);
+		expect(r.faultsNotReported).toBe(1);
+		expect(r.faults).toEqual([]);
+	});
+
+	it('pins the fault set: ten counters, housekeeping excluded', () => {
+		expect(AUDIT_FAULT_COUNTERS).toHaveLength(10);
+		expect(AUDIT_FAULT_COUNTERS).not.toContain('loxilb_audit_segments_pruned_total');
+		expect(AUDIT_FAULT_COUNTERS).not.toContain('loxilb_audit_delegation_lookups_total');
 	});
 });
 

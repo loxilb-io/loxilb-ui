@@ -25,27 +25,17 @@ vi.mock('hooks/query/oamHooks', () => ({useInstances: () => ({instance_list: moc
 vi.mock('hooks/query/flavorHook', () => ({useInstanceFlavorResolution: mocks.resolution}));
 vi.mock('hooks/query/observabilityHooks', () => ({useMetricsSnapshot: mocks.snapshot}));
 
-const NOW = Date.UTC(2026, 8, 29, 6, 0, 0);
 const valueOf = (label: string) => screen.getByText(label).nextElementSibling?.textContent;
-const cellsOf = (rowText: string) => [...(screen.getByText(rowText).closest('tr')?.querySelectorAll('td') ?? [])].map(c => c.textContent);
+const severityOf = (re: RegExp) => screen.getByText(re).closest('[role="alert"]')?.className;
+
+const NO_DROPS = [
+	{stream: 'mgmt', total: 0, by: []},
+	{stream: 'data', total: 0, by: []},
+	{stream: 'audit_system', total: 0, by: []},
+];
 
 function okReport(o: Partial<Extract<AuditWriterReport, {kind: 'ok'}>> = {}): AuditWriterReport {
-	return {
-		kind: 'ok',
-		up: true,
-		reserveBreached: false,
-		lastHeartbeatSeconds: NOW / 1000 - 5,
-		lastWriteSeconds: NOW / 1000 - 5,
-		streams: [
-			{stream: 'mgmt', writtenRate: {kind: 'ok', perSecond: 0, intervalMs: 10_000}, writtenTotal: 6, droppedTotal: 0, droppedBy: []},
-			{stream: 'data', writtenRate: {kind: 'ok', perSecond: 5, intervalMs: 10_000}, writtenTotal: 150, droppedTotal: 4, droppedBy: [{reason: 'queue_full', total: 4}]},
-		],
-		restarts: 0,
-		panics: 0,
-		failures: [{key: 'loxilb_audit_write_failures_total', total: 2}],
-		activity: [{key: 'loxilb_audit_segments_pruned_total', total: 1}],
-		...o,
-	};
+	return {kind: 'ok', up: true, reserveBreached: false, lastHeartbeatSeconds: 1_790_000_000, drops: NO_DROPS, faults: [], faultsNotReported: 0, ...o};
 }
 
 beforeEach(() => {
@@ -58,45 +48,86 @@ afterEach(cleanup);
 
 describe('AuditWriterPanel', () => {
 	it('reads no writer as every audited call refused, not as no data', () => {
-		render(<AuditWriterPanel report={{kind: 'not-configured'}} liveness={{kind: 'unknown'}} nowMs={NOW} />);
+		render(<AuditWriterPanel report={{kind: 'not-configured'}} liveness={{kind: 'unknown'}} />);
 		expect(screen.getByText(/No audit writer is running on this gateway/)).toBeTruthy();
 	});
 
-	it('shows a running writer with an advancing heartbeat and no alarm', () => {
-		render(<AuditWriterPanel report={okReport()} liveness={{kind: 'advancing'}} nowMs={NOW} />);
+	it('shows a healthy writer as four quiet lines and no alarm', () => {
+		render(<AuditWriterPanel report={okReport()} liveness={{kind: 'advancing'}} />);
 		expect(valueOf('Writer')).toBe('Running');
 		expect(valueOf('Heartbeat')).toBe('Advancing');
-		expect(valueOf('Last heartbeat (gateway clock)')).toBe(new Date(NOW - 5000).toLocaleTimeString());
+		expect(valueOf('Records dropped since start')).toBe('Management 0 · Data 0 · Audit system 0');
+		expect(valueOf('Fault counters')).toBe('None above zero');
 		expect(screen.queryByRole('alert')).toBeNull();
+		expect(screen.queryByRole('table')).toBeNull();
+	});
+
+	// Compact: the gateway-clock times are gone (liveness answers them with no
+	// clock skew), and so are the written counts and the housekeeping rows.
+	it('drops the gateway-clock times, written counts and housekeeping counters', () => {
+		render(<AuditWriterPanel report={okReport()} liveness={{kind: 'advancing'}} />);
+		for (const gone of [/gateway clock/, /^Written/, /Segments pruned/, /Originator trust lookups/, /Writer restarts \(since start\)/]) {
+			expect(screen.queryByText(gone)).toBeNull();
+		}
 	});
 
 	// The up gauge says 1, the heartbeat says otherwise: the heartbeat wins.
 	it('raises a stalled heartbeat even while the up gauge reads running', () => {
-		render(<AuditWriterPanel report={okReport()} liveness={{kind: 'stalled', sinceMs: 95_000}} nowMs={NOW} />);
+		render(<AuditWriterPanel report={okReport()} liveness={{kind: 'stalled', sinceMs: 95_000}} />);
 		expect(valueOf('Writer')).toBe('Running');
 		expect(valueOf('Heartbeat')).toBe('Not advancing for at least 95 s');
 		expect(screen.getByText(/has not advanced for at least 95 s/)).toBeTruthy();
 	});
 
 	it('raises a down writer and a breached reserve', () => {
-		render(<AuditWriterPanel report={okReport({up: false, reserveBreached: true})} liveness={{kind: 'advancing'}} nowMs={NOW} />);
+		render(<AuditWriterPanel report={okReport({up: false, reserveBreached: true})} liveness={{kind: 'advancing'}} />);
 		expect(valueOf('Writer')).toBe('Not running');
 		expect(screen.getByText(/every audited management call is refused until it restarts/)).toBeTruthy();
 		expect(screen.getByText(/below its free-space reserve/)).toBeTruthy();
 	});
 
-	it('shows written and dropped per stream, with the drop reasons', () => {
-		render(<AuditWriterPanel report={okReport()} liveness={{kind: 'advancing'}} nowMs={NOW} />);
-		expect(cellsOf('Data')).toEqual(['Data', '5.0/s', '150', '4 (queue_full 4)']);
-		expect(cellsOf('Management')).toEqual(['Management', '0.000/s', '6', '0']);
-		expect(cellsOf('Append failures')).toEqual(['Append failures', '2']);
-		expect(cellsOf('Segments pruned by retention')).toEqual(['Segments pruned by retention', '1']);
+	// ⭐ Per stream, never summed: a dropped management record refused its
+	// call, a dropped data record is lost. A total of 4 would hide which.
+	it('warns on drops with one count per stream and the reasons, never a sum', () => {
+		const drops = [
+			{stream: 'mgmt', total: 1, by: [{reason: 'writer_down', total: 1}]},
+			{stream: 'data', total: 3, by: [{reason: 'queue_full', total: 3}]},
+			{stream: 'audit_system', total: 0, by: []},
+		];
+		render(<AuditWriterPanel report={okReport({drops})} liveness={{kind: 'advancing'}} />);
+		const cls = severityOf(/Management 1 \(writer_down 1\) · Data 3 \(queue_full 3\) · Audit system 0/);
+		expect(cls).toMatch(/Warning/);
+		expect(screen.queryByText(/\b4\b/)).toBeNull();
+		expect(screen.queryByText('Records dropped since start')).toBeNull();
 	});
 
-	it('says none since start for a writer that has never beaten or written', () => {
-		render(<AuditWriterPanel report={okReport({lastHeartbeatSeconds: 0, lastWriteSeconds: 0})} liveness={{kind: 'never'}} nowMs={NOW} />);
+	it('says "not reported" for a stream whose drops are absent, not 0', () => {
+		const drops = [{stream: 'mgmt', total: undefined, by: []}, ...NO_DROPS.slice(1)];
+		render(<AuditWriterPanel report={okReport({drops})} liveness={{kind: 'advancing'}} />);
+		expect(valueOf('Records dropped since start')).toBe('Management not reported · Data 0 · Audit system 0');
+	});
+
+	it('names the fault counters only when some are above zero, restarts and panics included', () => {
+		const faults = [
+			{key: 'loxilb_audit_writer_restarts_total', total: 2},
+			{key: 'loxilb_audit_writer_panics_total', total: 1},
+			{key: 'loxilb_audit_write_failures_total', total: 5},
+		];
+		render(<AuditWriterPanel report={okReport({faults, faultsNotReported: 1})} liveness={{kind: 'advancing'}} />);
+		const cls = severityOf(/3 audit fault counters are above zero since the gateway started: Writer restarts 2, Writer panics 1, Append failures 5\./);
+		expect(cls).toMatch(/Warning/);
+		expect(screen.getByText(/1 not reported/)).toBeTruthy();
+		expect(screen.queryByText('Fault counters')).toBeNull();
+	});
+
+	it('does not call unreported fault counters zero', () => {
+		render(<AuditWriterPanel report={okReport({faultsNotReported: 2})} liveness={{kind: 'advancing'}} />);
+		expect(valueOf('Fault counters')).toBe('None above zero, 2 not reported');
+	});
+
+	it('says none since start for a writer that has never beaten', () => {
+		render(<AuditWriterPanel report={okReport({lastHeartbeatSeconds: 0})} liveness={{kind: 'never'}} />);
 		expect(valueOf('Heartbeat')).toBe('None since start');
-		expect(valueOf('Last durable write (gateway clock)')).toBe('None since start');
 	});
 });
 
