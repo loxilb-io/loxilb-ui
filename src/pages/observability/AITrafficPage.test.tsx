@@ -138,61 +138,35 @@ describe('AITrafficPage — partitioned gateway', () => {
 	});
 });
 
-// ⭐ The defect this pins: the denial, token and session counters are labelled
-// vecs that emit nothing until their first increment, and each needs
-// configuration first (an API-key store, a token quota, a session header).
-// On an idle gateway they are absent for the life of the process, and every
-// such row printed "Warming up…" — a transient state that never ended.
-describe('AITrafficPage — families an idle gateway never exports', () => {
-	const rowText = (label: string) => screen.getByText(label).parentElement?.textContent ?? '';
-
-	it('says nothing was reported instead of warming up forever', () => {
+// Compact by rule (owner, 2026-09-29): the breakdowns moved to Grafana. This
+// pins that they stay gone — a panel creeping back is a scope regression.
+describe('AITrafficPage — compact: breakdowns are Grafana\'s', () => {
+	it('renders no per-status, per-reason, token, latency or affinity panel', () => {
 		renderWith([snapshotOf(PARTITIONED(100, 5, 10), T0), snapshotOf(PARTITIONED(200, 105, 20), T0 + 10_000)]);
-		for (const label of ['Model not allowed', 'Token quota denied', 'Normal session hits']) {
-			expect(rowText(label)).toContain('None reported');
-			expect(rowText(label)).not.toContain('Warming up…');
+		for (const title of [
+			'Completed requests (not total requests)',
+			'Denial events (counted at point of denial)',
+			'Token accounting',
+			'Request duration (completed streams, all models)',
+			'Session affinity',
+			'Active streams by model',
+		]) {
+			expect(screen.queryByText(title)).toBeNull();
 		}
-	});
-
-	it('keeps the token-consumed quantity on screen when its family is absent', () => {
-		renderWith([snapshotOf(PARTITIONED(100, 5, 10), T0), snapshotOf(PARTITIONED(200, 105, 20), T0 + 10_000)]);
-		expect(rowText('Consumed')).toContain('None reported');
-	});
-
-	it('never counts engines it was not told about as zero', () => {
-		renderWith([snapshotOf(PARTITIONED(100, 5, 10), T0), snapshotOf(PARTITIONED(200, 105, 20), T0 + 10_000)]);
-		expect(rowText('Engines reporting')).toContain('None reported');
-	});
-});
-
-// The denial panel listed "Rate limited" (all of rate_limit_hits, quota
-// reasons included) beside "Token quota denied" as if they were two causes,
-// while every quota refusal was in both.
-describe('AITrafficPage — denial reasons do not overlap', () => {
-	const valueOf = (label: string) => screen.getByText(label).nextElementSibling?.textContent;
-	const exposition = (rate: number, quota: number, warming: number) =>
-		[
-			PARTITIONED(100, rate + quota + warming, 0),
-			`loxilb_ai_rate_limit_hits_total{tenant="t",reason="rate_limit_exceeded"} ${rate}`,
-			`loxilb_ai_rate_limit_hits_total{tenant="t",reason="token_quota_exceeded"} ${quota}`,
-			`loxilb_ai_rate_limit_hits_total{tenant="t",reason="token_quota_warming"} ${warming}`,
-			`loxilb_ai_token_quota_denied_total{tenant="t"} ${quota}`,
-		].join('\n');
-
-	it('keeps quota refusals out of "Rate limited" and gives warming its own row', () => {
-		renderWith([snapshotOf(exposition(0, 0, 0), T0), snapshotOf(exposition(3, 5, 2), T0 + 10_000)]);
-		expect(valueOf('Rate limited')).toBe('0.300/s');
-		expect(valueOf('Token quota denied')).toBe('0.500/s');
-		expect(valueOf('Token quota warming up')).toBe('0.200/s');
+		// The partitioned headline carries "completed" itself.
+		expect(screen.getByText('Completed (answered by a backend)')).toBeTruthy();
 	});
 });
 
 // "Completed" is recorded at SSE stream completion OR at response headers, so
 // plain-JSON answers are in it; the panel called every one an "SSE stream".
-describe('AITrafficPage — completed is not streams only', () => {
+describe('AITrafficPage — unpartitioned: two partial views, never a total', () => {
+	const rowText = (label: string) => screen.getByText(label).parentElement?.textContent ?? '';
+
 	it('titles the completed panel as requests, and says "SSE stream" nowhere', () => {
-		renderWith([snapshotOf(PARTITIONED(100, 5, 10), T0), snapshotOf(PARTITIONED(200, 105, 20), T0 + 10_000)]);
+		renderWith([snapshotOf(UNPARTITIONED(100), T0), snapshotOf(UNPARTITIONED(200), T0 + 10_000)]);
 		expect(screen.getByText('Completed requests (not total requests)')).toBeTruthy();
+		expect(rowText('Completed requests')).toContain('10.0/s');
 		expect(screen.queryByText(/SSE stream/)).toBeNull();
 	});
 
@@ -200,32 +174,50 @@ describe('AITrafficPage — completed is not streams only', () => {
 		renderWith([snapshotOf(UNPARTITIONED(100), T0), snapshotOf(UNPARTITIONED(200), T0 + 10_000)]);
 		expect(screen.getByText(STALE_NOTICE).textContent).toMatch(/^Completed requests and denial events/);
 	});
+
+	// Every quota refusal is in BOTH rate_limit_hits and token_quota_denied:
+	// 5 quota refusals are 0.5/s of denials, not 1.0/s.
+	it('counts a token-quota refusal once in the denial total', () => {
+		const exposition = (quota: number) =>
+			[
+				UNPARTITIONED(100),
+				`loxilb_ai_rate_limit_hits_total{tenant="t",reason="token_quota_exceeded"} ${quota}`,
+				`loxilb_ai_token_quota_denied_total{tenant="t"} ${quota}`,
+			].join('\n');
+		renderWith([snapshotOf(exposition(0), T0), snapshotOf(exposition(5), T0 + 10_000)]);
+		expect(rowText('Denial events')).toContain('0.500/s');
+	});
+
+	// The denial families are lazy vecs that emit nothing until their first
+	// increment; on an idle gateway "Warming up…" would never end.
+	it('says nothing was reported instead of warming up forever', () => {
+		renderWith([snapshotOf(UNPARTITIONED(100), T0), snapshotOf(UNPARTITIONED(200), T0 + 10_000)]);
+		expect(rowText('Denial events')).toContain('None reported');
+		expect(rowText('Denial events')).not.toContain('Warming up…');
+	});
 });
 
-// tokens_missing counts responses, not tokens, and sat as a bare "/s" beside
-// token rates under "Missing (unaccountable)" — with the charged
-// stream_estimated responses summed in.
-describe('AITrafficPage — responses without usage', () => {
-	const valueOf = (label: string) => screen.getByText(label).nextElementSibling?.textContent;
-	const exposition = (uncharged: number, estimated: number) =>
-		[
-			PARTITIONED(100, 0, 0),
-			`loxilb_ai_tokens_missing_total{model="m",tenant="t",reason="response_complete"} ${uncharged}`,
-			`loxilb_ai_tokens_missing_total{model="m",tenant="t",reason="stream_estimated"} ${estimated}`,
-		].join('\n');
+describe('AITrafficPage — active streams as one total', () => {
+	const rowText = (label: string) => screen.getByText(label).parentElement?.textContent ?? '';
 
-	it('counts responses per second, split by whether they were charged', () => {
-		renderWith([snapshotOf(exposition(0, 0), T0), snapshotOf(exposition(3, 5), T0 + 10_000)]);
-		expect(valueOf('Responses without usage, not charged')).toBe('0.300 responses/s');
-		expect(valueOf('Responses without usage, charged from estimate')).toBe('0.500 responses/s');
-		expect(screen.queryByText('Missing (unaccountable)')).toBeNull();
+	it('sums over models and counts the models reporting', () => {
+		const streams = ['loxilb_ai_active_streams{model="a"} 3', 'loxilb_ai_active_streams{model="b"} 4'].join('\n');
+		renderWith([snapshotOf(`${PARTITIONED(1, 0, 0)}\n${streams}`, T0)]);
+		expect(rowText('Total (sum over models)')).toContain('7');
+		expect(rowText('Models reporting')).toContain('2');
+	});
+
+	// Absent is not zero: no series is "No data", never a measured 0 streams.
+	it('reads an absent family as no data, not as zero streams', () => {
+		renderWith([snapshotOf(PARTITIONED(1, 0, 0), T0)]);
+		expect(rowText('Total (sum over models)')).toContain('No data');
 	});
 });
 
 // The admission gate and listener counters get their own registry entries,
 // so the page mounts them beside its own panels.
 describe('AITrafficPage — admission gate and listener overload', () => {
-	it('mounts both panels and reads an ungated pool as not gated', () => {
+	it('mounts both panels and says an all-off gate is off instead of printing zeros', () => {
 		const gate = [
 			'loxilb_ai_admission_mode{service="s:1",pool="p1"} 0',
 			'loxilb_ai_admission_inflight{service="s:1",pool="p1",role="service"} 0',
@@ -240,6 +232,7 @@ describe('AITrafficPage — admission gate and listener overload', () => {
 		renderWith([snapshotOf(`${PARTITIONED(1, 0, 0)}\n${gate}`, T0)]);
 		expect(screen.getByText('Admission gate (capacity)')).toBeTruthy();
 		expect(screen.getByText('Listener overload')).toBeTruthy();
-		expect(screen.getAllByText('Not gated')).toHaveLength(2);
+		expect(screen.getByText(/The capacity gate is off on every pool/)).toBeTruthy();
+		expect(screen.queryByText('Refusal decisions')).toBeNull();
 	});
 });

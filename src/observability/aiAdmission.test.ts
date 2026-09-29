@@ -8,7 +8,7 @@
 import {describe, expect, it} from 'vitest';
 import {IMetricsSnapshot} from 'types/observability';
 import {parseExposition} from './parser';
-import {ADMISSION_REASONS, aiAdmission, gateMode, proxyOverload} from './aiAdmission';
+import {ADMISSION_REASONS, IAdmissionPool, aiAdmission, gateMode, proxyOverload, saturatedPools} from './aiAdmission';
 
 const GAP = 35_000;
 
@@ -17,21 +17,16 @@ function snapshotOf(text: string, receivedAtMs: number): IMetricsSnapshot {
 	return {instanceId: 1, flavor: 'inference-gateway', receivedAtMs, available: true, families: parsed.families, diagnostics: parsed.diagnostics};
 }
 
-const SVC = 'service="10.0.0.1:8080",pool="p1"';
-
 /** One pool, every child the gate emits; `decisions` overrides reason values. */
-function poolText(o: {mode?: number; inflight?: number; limit?: number; queued?: number; depth?: number; waitSum?: number; waitCount?: number; decisions?: Record<string, number>} = {}) {
+function poolText(o: {pool?: string; mode?: number; inflight?: number; limit?: number; queued?: number; depth?: number; decisions?: Record<string, number>} = {}) {
+	const SVC = `service="10.0.0.1:8080",pool="${o.pool ?? 'p1'}"`;
 	const lines = [
-		'# TYPE loxilb_ai_admission_queue_wait_seconds histogram',
 		`loxilb_ai_admission_mode{${SVC}} ${o.mode ?? 0}`,
 		...['normal', 'prefill', 'decode', 'service'].map(r => `loxilb_ai_admission_inflight{${SVC},role="${r}"} ${r === 'service' ? (o.inflight ?? 0) : 0}`),
 		...['normal', 'prefill', 'decode'].map(r => `loxilb_ai_admission_limit{${SVC},role="${r}"} 0`),
 		`loxilb_ai_admission_limit{${SVC},role="service"} ${o.limit ?? 0}`,
 		`loxilb_ai_admission_limit{${SVC},role="queue"} ${o.depth ?? 0}`,
 		`loxilb_ai_admission_queued{${SVC}} ${o.queued ?? 0}`,
-		`loxilb_ai_admission_queue_wait_seconds_bucket{${SVC},le="+Inf"} ${o.waitCount ?? 0}`,
-		`loxilb_ai_admission_queue_wait_seconds_sum{${SVC}} ${o.waitSum ?? 0}`,
-		`loxilb_ai_admission_queue_wait_seconds_count{${SVC}} ${o.waitCount ?? 0}`,
 		...ADMISSION_REASONS.map(({reason}) => `loxilb_ai_admission_decisions_total{${SVC},reason="${reason}"} ${o.decisions?.[reason] ?? 0}`),
 	];
 	return lines.join('\n');
@@ -66,36 +61,57 @@ describe('aiAdmission', () => {
 		expect(r.anomalyTotal).toBe(0);
 	});
 
-	it('takes the mean queue wait from the histogram sum and count, and none before any resume', () => {
-		const waited = snapshotOf(poolText({mode: 2, waitSum: 3, waitCount: 2}), 0);
-		const w = aiAdmission(waited, [waited], GAP);
-		if (w.kind !== 'ok') throw new Error(w.kind);
-		expect(w.pools[0].resumedTotal).toBe(2);
-		expect(w.pools[0].meanWaitSeconds).toBe(1.5);
-
-		const never = snapshotOf(poolText({mode: 2}), 0);
-		const n = aiAdmission(never, [never], GAP);
-		if (n.kind !== 'ok') throw new Error(n.kind);
-		expect(n.pools[0].resumedTotal).toBe(0);
-		expect(n.pools[0].meanWaitSeconds).toBeUndefined();
+	// A request that waited is counted `queued` and then `admitted`: two
+	// decisions, one request. Only the refusal reasons are summed, and the sum
+	// is of decisions — the page captions it so, never as requests.
+	it('sums refusal decisions over reasons and pools, and nothing else', () => {
+		const before = [poolText({mode: 2}), poolText({pool: 'p2', mode: 2})].join('\n');
+		const after = [
+			poolText({mode: 2, decisions: {queued: 10, admitted: 10, capacity_shed: 5, queue_timeout: 1}}),
+			poolText({pool: 'p2', mode: 2, decisions: {queue_full: 2, draining: 1, no_healthy_capacity: 1, observe_would_shed: 40}}),
+		].join('\n');
+		const r = aiAdmission(snapshotOf(after, 10_000), [snapshotOf(before, 0), snapshotOf(after, 10_000)], GAP);
+		if (r.kind !== 'ok') throw new Error(r.kind);
+		// 5 + 1 + 2 + 1 + 1 = 10 refusals over 10 s; queued/admitted/observe excluded.
+		expect(r.refusing).toMatchObject({kind: 'ok', perSecond: 1});
+		expect(r.wouldRefuse).toMatchObject({kind: 'ok', perSecond: 4});
 	});
 
-	// A request that waited is counted `queued` and then `admitted`: two
-	// decisions, one request. Each reason keeps its own rate; nothing here
-	// offers a sum that would read as two requests.
-	it('keeps every decision reason as its own rate, one row per reason', () => {
-		const before = snapshotOf(poolText({mode: 2}), 0);
-		const after = snapshotOf(poolText({mode: 2, decisions: {queued: 10, admitted: 10, capacity_shed: 5}}), 10_000);
-		const r = aiAdmission(after, [before, after], GAP);
+	it('refuses a rate from one observation instead of printing 0/s', () => {
+		const s = snapshotOf(poolText({mode: 2, decisions: {capacity_shed: 5}}), 0);
+		const r = aiAdmission(s, [s], GAP);
 		if (r.kind !== 'ok') throw new Error(r.kind);
-		const byReason = Object.fromEntries(r.pools[0].decisions.map(d => [d.reason, d]));
-		expect(r.pools[0].decisions.map(d => d.reason)).toEqual(ADMISSION_REASONS.map(x => x.reason));
-		expect(byReason.queued.rate).toMatchObject({kind: 'ok', perSecond: 1});
-		expect(byReason.admitted.rate).toMatchObject({kind: 'ok', perSecond: 1});
-		expect(byReason.capacity_shed.rate).toMatchObject({kind: 'ok', perSecond: 0.5});
-		expect(byReason.capacity_shed.group).toBe('refused');
-		expect(byReason.queued.total).toBe(10);
-		expect(byReason.cancelled.rate).toMatchObject({kind: 'ok', perSecond: 0});
+		expect(r.refusing.kind).toBe('insufficient-samples');
+	});
+
+	it('names a pool at its ceiling from the snapshot', () => {
+		const s = snapshotOf(poolText({mode: 2, inflight: 8, limit: 8, queued: 4, depth: 4}), 0);
+		const r = aiAdmission(s, [s], GAP);
+		if (r.kind !== 'ok') throw new Error(r.kind);
+		expect(r.saturated).toEqual([
+			{service: '10.0.0.1:8080', pool: 'p1', what: 'limit', value: 8, bound: 8},
+			{service: '10.0.0.1:8080', pool: 'p1', what: 'queue', value: 4, bound: 4},
+		]);
+	});
+});
+
+describe('saturatedPools', () => {
+	const pool = (o: Partial<IAdmissionPool>): IAdmissionPool => ({
+		service: 's', pool: 'p', mode: 'enforce', inflight: 0, limit: 0, queued: 0, queueDepth: 0, ...o,
+	});
+
+	// Off bounds nothing; a 0 ceiling is unlimited and a 0 depth is no queue,
+	// so none of these is "at a ceiling" however the gauges read.
+	it('never flags an off pool, an unlimited ceiling or a missing queue', () => {
+		expect(saturatedPools([pool({mode: 'off', inflight: 5, limit: 5})])).toEqual([]);
+		expect(saturatedPools([pool({inflight: 5, limit: 0})])).toEqual([]);
+		expect(saturatedPools([pool({queued: 0, queueDepth: 0})])).toEqual([]);
+	});
+
+	it('flags only a gauge at or over its bound, and skips unknown readings', () => {
+		expect(saturatedPools([pool({inflight: 7, limit: 8})])).toEqual([]);
+		expect(saturatedPools([pool({inflight: undefined, limit: 8})])).toEqual([]);
+		expect(saturatedPools([pool({mode: 'observe', inflight: 9, limit: 8})])).toEqual([{service: 's', pool: 'p', what: 'limit', value: 9, bound: 8}]);
 	});
 });
 

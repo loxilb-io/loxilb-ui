@@ -2,10 +2,9 @@
 // Imports
 //---------------------------------------------------------
 import {IMetricsSnapshot} from 'types/observability';
-import {familyAbsence} from './familyActivation';
 import {RateResult, RatioResult, ratioOf} from './rates';
 import {selectSamples} from './selectors';
-import {familySumRate, groupRates, IGroupRate, LabelMatch, LabelPredicate, partitionRate} from './snapshotRates';
+import {familySumRate, LabelMatch, LabelPredicate, partitionRate} from './snapshotRates';
 
 //---------------------------------------------------------
 // loxilb_ai_requests_total outcome partition
@@ -45,15 +44,6 @@ function completedFilter(history: readonly IMetricsSnapshot[]): LabelMatch | und
 /** Rate of requests a backend actually answered, on either gateway shape. */
 export function completedRequestRate(history: readonly IMetricsSnapshot[], maxGapMs: number): RateResult {
 	return familySumRate(history, AI_REQUESTS, maxGapMs, completedFilter(history));
-}
-
-/** The same restriction, grouped (e.g. by HTTP status). */
-export function completedRequestRatesBy(
-	history: readonly IMetricsSnapshot[],
-	groupBy: readonly string[],
-	maxGapMs: number,
-): IGroupRate[] {
-	return groupRates(history, AI_REQUESTS, groupBy, maxGapMs, completedFilter(history));
 }
 
 //---------------------------------------------------------
@@ -156,20 +146,14 @@ export function requestOutcomes(history: readonly IMetricsSnapshot[], maxGapMs: 
 // sibling reasons implied two disjoint causes.
 //
 // So the total never sums reasons where the gateway states it directly, and
-// the reason rows below are disjoint by construction:
-//
-//   rate limited        rate_limit_hits{reason !~ token_quota_*}
-//   token quota denied  token_quota_denied   (= the two quota reasons above)
-//   quota warming       rate_limit_hits{reason="token_quota_warming"}
-//   model not allowed   model_not_allowed    (a different gate; never in hits)
-//
-// `token_quota_warming` is the one quota-state reason NOT in
-// token_quota_denied: excluding every token_quota_* reason from "rate
-// limited" without giving it its own row would make it vanish from the page.
+// where it must fall back to the reason families it adds only the disjoint
+// ones (rate_limit_hits + model_not_allowed; token_quota_denied is already
+// inside rate_limit_hits). Per-reason breakdowns are Grafana's; the Security
+// page's reason rows use `rateLimitHitKind` to keep a quota refusal from
+// reading as "Rate limited".
 
 export const RATE_LIMIT_HITS = 'loxilb_ai_rate_limit_hits_total';
 export const MODEL_NOT_ALLOWED = 'loxilb_ai_model_not_allowed_total';
-export const TOKEN_QUOTA_DENIED = 'loxilb_ai_token_quota_denied_total';
 
 const REASON = 'reason';
 const TOKEN_QUOTA_REASON_PREFIX = 'token_quota_';
@@ -187,40 +171,6 @@ export type RateLimitHitKind = 'rate-limit' | 'token-quota' | 'token-quota-warmi
 export function rateLimitHitKind(reason: string | undefined): RateLimitHitKind {
 	if (reason === TOKEN_QUOTA_WARMING) return 'token-quota-warming';
 	return isTokenQuotaReason({[REASON]: reason ?? ''}) ? 'token-quota' : 'rate-limit';
-}
-
-/**
- * Rate over a partition of a family that may be absent altogether.
- *
- * An absent family answers with the manifest's reading, like `familySumRate`.
- * A present one is read as a partition (`partitionRate`): a reason the gateway
- * has never recorded has no child series, and that is a true 0/s, not a
- * warm-up that never ends.
- */
-function reasonRate(history: readonly IMetricsSnapshot[], family: string, maxGapMs: number, where: LabelMatch): RateResult {
-	const reading = familyAbsence(history[history.length - 1], family);
-	if (reading) return {kind: 'absent', reading};
-	return partitionRate(history, family, maxGapMs, where);
-}
-
-export interface DenialReasons {
-	/** Request-rate buckets: key, user and tenant rps/burst. */
-	rateLimited: RateResult;
-	/** Either token-quota refusal mode (latched, or would not fit). */
-	tokenQuotaDenied: RateResult;
-	/** Quota state still cold after a restart; refused until it is known. */
-	tokenQuotaWarming: RateResult;
-	/** The key does not allow the requested model. */
-	modelNotAllowed: RateResult;
-}
-
-export function denialReasons(history: readonly IMetricsSnapshot[], maxGapMs: number): DenialReasons {
-	return {
-		rateLimited: reasonRate(history, RATE_LIMIT_HITS, maxGapMs, labels => !isTokenQuotaReason(labels)),
-		tokenQuotaDenied: familySumRate(history, TOKEN_QUOTA_DENIED, maxGapMs),
-		tokenQuotaWarming: reasonRate(history, RATE_LIMIT_HITS, maxGapMs, {[REASON]: TOKEN_QUOTA_WARMING}),
-		modelNotAllowed: familySumRate(history, MODEL_NOT_ALLOWED, maxGapMs),
-	};
 }
 
 /**
@@ -264,31 +214,4 @@ export function denialTotalRate(history: readonly IMetricsSnapshot[], maxGapMs: 
 		return rateOf(history, maxGapMs, {[OUTCOME]: OUTCOME_DENIED});
 	}
 	return sumDenialTerms([familySumRate(history, RATE_LIMIT_HITS, maxGapMs), familySumRate(history, MODEL_NOT_ALLOWED, maxGapMs)]);
-}
-
-//---------------------------------------------------------
-// Responses with no usage object
-//---------------------------------------------------------
-// `loxilb_ai_tokens_missing_total` counts RESPONSES, not tokens: one per 2xx
-// response that carried no readable usage object. Its `reason` names where
-// the report fired, and exactly one of them was charged anyway —
-// `stream_estimated`, a stream billed from the estimate net. The rest went
-// uncharged. Summed whole, the family put charged and uncharged responses
-// under one "unaccountable" heading.
-
-export const TOKENS_MISSING = 'loxilb_ai_tokens_missing_total';
-export const TOKENS_MISSING_STREAM_ESTIMATED = 'stream_estimated';
-
-export interface UsageMissingRates {
-	/** Responses with no usage that were never charged. */
-	uncharged: RateResult;
-	/** Streams charged from the estimate net instead. */
-	chargedFromEstimate: RateResult;
-}
-
-export function usageMissingRates(history: readonly IMetricsSnapshot[], maxGapMs: number): UsageMissingRates {
-	return {
-		uncharged: reasonRate(history, TOKENS_MISSING, maxGapMs, l => l[REASON] !== TOKENS_MISSING_STREAM_ESTIMATED),
-		chargedFromEstimate: reasonRate(history, TOKENS_MISSING, maxGapMs, {[REASON]: TOKENS_MISSING_STREAM_ESTIMATED}),
-	};
 }

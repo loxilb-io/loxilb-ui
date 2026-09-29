@@ -5,8 +5,10 @@
 // consumer here reads the SAME shared snapshot (one 10-second query), so
 // their numbers agree by construction; the worker-freshness card is REST-fed
 // with its own independent receive time, deliberately badged separately.
-// The AI events card keeps the contract split visible: completed requests
-// and denial events are separate partial views, never a total.
+// The AI events card shows the headline the instance can back: offered load
+// and error ratio where requests_total carries the `outcome` partition, and
+// otherwise the two partial views (completed requests, denial events) with
+// the caption that they are not a total.
 
 import {Box, Link, Typography} from '@mui/material';
 import {Link as RouterLink, useSearchParams} from 'react-router-dom';
@@ -21,9 +23,9 @@ import {fromThrownError} from 'connector/fetcher/opResultAdapter';
 import {familyAbsence} from 'observability/familyActivation';
 import {aggregateSum, selectSamples, selectScalar} from 'observability/selectors';
 import {formatReportedAt, reportedAtFromIso} from 'observability/reportedAt';
-import {completedRequestRate, denialTotalRate} from 'observability/aiRequests';
+import {completedRequestRate, denialTotalRate, requestOutcomes} from 'observability/aiRequests';
 import {familySumRate, rateMaxGapMs} from 'observability/snapshotRates';
-import {countOrAbsence, formatAbsence, formatRate, StatRow} from 'pages/observability/common';
+import {countOrAbsence, formatAbsence, formatRate, formatRatio, StatRow} from 'pages/observability/common';
 import {IInstance} from 'types/oam';
 import {ObservabilityViewState} from 'types/observability';
 import CardBase from './CardBase';
@@ -61,6 +63,9 @@ export function GwAiEventsCard({instance}: GwCardProps) {
 	const {history, state, cadenceMs, refetch} = useSnapshotCardState(instance);
 
 	const maxGap = rateMaxGapMs(cadenceMs);
+	// The same one-detection derivation the AI Traffic page uses, so the card
+	// and the page cannot disagree about the exposition.
+	const outcomes = useMemo(() => requestOutcomes(history, maxGap), [history, maxGap]);
 	// outcome="completed" where the instance reports it — the family also
 	// carries gate denials since gateway 27680379 (see observability/aiRequests).
 	const completed = useMemo(() => completedRequestRate(history, maxGap), [history, maxGap]);
@@ -70,14 +75,23 @@ export function GwAiEventsCard({instance}: GwCardProps) {
 	const denialTotal = useMemo(() => denialTotalRate(history, maxGap), [history, maxGap]);
 
 	return (
-		<CardBase title={t('AI Events (partial views)')}>
+		<CardBase title={outcomes.kind === 'partitioned' ? t('AI Requests') : t('AI Events (partial views)')}>
 			<ObservabilityStateFrame state={state} name={t('AI Events')} onRetry={refetch}>
-				{/* Recorded at stream completion OR response headers: not streams only. */}
-				<StatRow label={t('Completed requests')} value={formatRate(completed, t)} />
-				<StatRow label={t('Denial events')} value={formatRate(denialTotal, t)} />
-				<Typography variant="caption" color="text.secondary" display="block" sx={{mt: 0.5}}>
-					{t('Not a total request rate — the gateway counts completed requests and denials separately.')}
-				</Typography>
+				{outcomes.kind === 'partitioned' ? (
+					<>
+						<StatRow label={t('Total offered')} value={formatRate(outcomes.offered, t)} />
+						<StatRow label={t('Error ratio (denied + failed)')} value={formatRatio(outcomes.errorRatio, t)} />
+					</>
+				) : (
+					<>
+						{/* Recorded at stream completion OR response headers: not streams only. */}
+						<StatRow label={t('Completed requests')} value={formatRate(completed, t)} />
+						<StatRow label={t('Denial events')} value={formatRate(denialTotal, t)} />
+						<Typography variant="caption" color="text.secondary" display="block" sx={{mt: 0.5}}>
+							{t('Not a total request rate — the gateway counts completed requests and denials separately.')}
+						</Typography>
+					</>
+				)}
 				<Box sx={{mt: 1}}>
 					<ObservabilityLink page="ai" label={t('Open AI Traffic')} />
 				</Box>
