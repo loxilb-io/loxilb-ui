@@ -781,7 +781,6 @@
 	"Filter rules": "필터 규칙",
 	"Firewall rules active": "활성 방화벽 규칙",
 	"Fresh": "최신",
-	"GPU blocks": "GPU 블록",
 	"GPU monitoring is disabled on this instance.": "이 인스턴스에서는 GPU 모니터링이 비활성화되어 있습니다.",
 	"GPU monitoring status": "GPU 모니터링 상태",
 	"Gap in samples": "샘플 공백",
@@ -827,7 +826,6 @@
 	"Persistence": "영속성",
 	"Persists": "저장",
 	"Policy store unavailable": "정책 저장소 사용 불가",
-	"Preemptions (as reported)": "선점 (보고값)",
 	"Quarantined snapshots": "격리된 스냅샷",
 	"Queued requests": "대기 중인 요청",
 	"Rate": "속도",
@@ -875,7 +873,6 @@
 	"Worker rows are unavailable right now; the monitoring status above is still current.": "현재 워커 행을 가져올 수 없습니다. 위의 모니터링 상태는 여전히 최신입니다.",
 	"Workers": "워커",
 	"Workers tracked": "추적 중인 워커",
-	"eBPF maps loaded": "eBPF 맵 로드됨",
 	"unknown": "알 수 없음",
 	"Refresh interval": "새로 고침 간격",
 	"{{seconds}}s": "{{seconds}}초",
@@ -1229,5 +1226,8 @@
 	"{{m}} of {{n}} rules under strict KV attestation report an enforcement fault.": "엄격한 KV 어테스테이션 대상 규칙 {{n}}개 중 {{m}}개가 적용 결함을 보고합니다.",
 	"{{n}} attestation probe failures since the gateway started.": "게이트웨이 시작 이후 어테스테이션 프로브 실패 {{n}}건.",
 	"{{n}} rules under strict KV attestation, none with an enforcement fault.": "엄격한 KV 어테스테이션 대상 규칙 {{n}}개, 적용 결함 없음.",
-	"{{n}} rules under strict KV attestation. The enforcement-fault state is not reported.": "엄격한 KV 어테스테이션 대상 규칙 {{n}}개. 적용 결함 상태는 보고되지 않습니다."
+	"{{n}} rules under strict KV attestation. The enforcement-fault state is not reported.": "엄격한 KV 어테스테이션 대상 규칙 {{n}}개. 적용 결함 상태는 보고되지 않습니다.",
+	"None of the {{n}} engine-metrics scrapes since the gateway started could be parsed: load-aware P/D selection is scoring every endpoint on substituted values.": "게이트웨이 시작 이후 엔진 메트릭 스크레이프 {{n}}건 중 파싱된 것이 하나도 없습니다: 부하 인지 P/D 선택이 모든 엔드포인트를 대체 값으로 점수화하고 있습니다.",
+	"The gateway reports its worker-statistics eBPF map as not loaded, so the worker readings below may not be reaching the datapath.": "게이트웨이가 워커 통계 eBPF 맵이 로드되지 않았다고 보고하므로, 아래 워커 값이 데이터패스에 도달하지 않을 수 있습니다.",
+	"{{share}} of engine-metrics scrapes in the last window failed: load-aware P/D selection scored those endpoints on stale or substituted values.": "최근 구간의 엔진 메트릭 스크레이프 중 {{share}}가 실패했습니다: 부하 인지 P/D 선택이 해당 엔드포인트를 오래되었거나 대체된 값으로 점수화했습니다."
 }

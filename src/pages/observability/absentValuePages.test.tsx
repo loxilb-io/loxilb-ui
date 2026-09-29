@@ -180,15 +180,76 @@ describe('WorkersPage — omitempty worker_count', () => {
 	});
 });
 
-// swapped_requests is caller-supplied: the gateway stores what the reporter
-// sent and neither computes nor verifies a delta, so the column cannot claim one.
-describe('WorkersPage — preemptions are as reported', () => {
-	it('does not label a caller-supplied value a delta', () => {
-		state.gpu = {receivedAtMs: T0, data: {enabled: true, routing_mode: 'gpu_aware', worker_count: 1}};
-		state.workers = {receivedAtMs: T0, data: [{endpoint_ip: '10.0.0.1', queued_requests: 2, swapped_requests: 7, kv_cache_usage_perc: 40}]};
+// The compact trim: "Preemptions (as reported)" was caller-supplied and
+// unverified, "GPU blocks" a static capacity. The queue and KV-cache columns
+// stay because REST is the only source for them.
+describe('WorkersPage — compact', () => {
+	const ready = (data: Record<string, unknown> = {}) => ({receivedAtMs: T0, data: {enabled: true, routing_mode: 'gpu_aware', worker_count: 1, ebpf_map_loaded: true, ...data}});
+
+	it('drops the preemption and GPU block columns and the redundant rows', () => {
+		state.gpu = ready();
+		state.workers = {receivedAtMs: T0, data: [{endpoint_ip: '10.0.0.1', queued_requests: 2, swapped_requests: 7, kv_cache_usage_perc: 40, num_gpu_blocks: 900}]};
 		renderPage(<WorkersPage />);
-		expect(screen.getByText('Preemptions (as reported)')).toBeTruthy();
-		expect(screen.queryByText(/delta/i)).toBeNull();
+		expect(screen.queryByText('Preemptions (as reported)')).toBeNull();
+		expect(screen.queryByText('GPU blocks')).toBeNull();
+		expect(screen.queryByText('7')).toBeNull();
+		expect(screen.queryByText('900')).toBeNull();
+		// "Enabled" is the page state, and a loaded map is not news.
+		expect(screen.queryByText('Enabled')).toBeNull();
+		expect(screen.queryByText(/eBPF map/)).toBeNull();
+		expect(screen.getByText('Queued requests')).toBeTruthy();
+		expect(screen.getByText('KV cache used')).toBeTruthy();
+	});
+
+	it('warns when the eBPF map is not loaded, including when the field is omitted', () => {
+		// omitempty on the gateway: an omitted bool IS false.
+		for (const data of [{ebpf_map_loaded: false}, {ebpf_map_loaded: undefined}]) {
+			state.gpu = ready(data);
+			renderPage(<WorkersPage />);
+			const alert = screen.getByText(/worker-statistics eBPF map as not loaded/);
+			expect(alert.closest('[role="alert"]')?.className).toMatch(/Warning/);
+			cleanup();
+		}
+	});
+});
+
+// The gateway's pull of each engine's /metrics for load-aware P/D selection.
+// One verdict line, above the frame: the scraper serves P/D rules whether or
+// not GPU monitoring is enabled.
+describe('WorkersPage — engine-metrics scrape verdict', () => {
+	const T1 = T0 + 10_000;
+	const scrape = (ok: number, unparseable: number, at: number) =>
+		snapshotOf(
+			['ok', 'unparseable', 'unreachable', 'http_error', 'body_error', 'bad_request', 'unknown']
+				.map(r => `loxilb_ai_worker_scrape_total{result="${r}"} ${r === 'ok' ? ok : r === 'unparseable' ? unparseable : 0}`)
+				.join('\n'),
+			at,
+		);
+
+	it('⭐⭐ says so when not one scrape has parsed since start — even with GPU monitoring disabled', () => {
+		// The live testbed's state: unparseable 39k, ok 0.
+		state.gpu = {receivedAtMs: T0, data: {enabled: false}};
+		state.history = [scrape(0, 39150, T0)];
+		renderPage(<WorkersPage />);
+		const alert = screen.getByText(/None of the 39150 engine-metrics scrapes since the gateway started could be parsed/);
+		expect(alert.closest('[role="alert"]')?.className).toMatch(/Error/);
+	});
+
+	it('warns with the failed share when some scrapes in the window fail', () => {
+		state.gpu = {receivedAtMs: T0, data: {enabled: false}};
+		state.history = [scrape(100, 0, T0), scrape(130, 10, T1)];
+		renderPage(<WorkersPage />);
+		expect(screen.getByText(/25\.0% of engine-metrics scrapes in the last window failed/)).toBeTruthy();
+	});
+
+	it('is silent when idle, when healthy, and when the family is absent', () => {
+		state.gpu = {receivedAtMs: T0, data: {enabled: false}};
+		for (const history of [[scrape(0, 0, T0)], [scrape(100, 0, T0), scrape(130, 0, T1)], [snapshotOf('loxilb_pd_sessions_active 0', T0)]]) {
+			state.history = history;
+			renderPage(<WorkersPage />);
+			expect(screen.queryByText(/engine-metrics scrapes/)).toBeNull();
+			cleanup();
+		}
 	});
 });
 

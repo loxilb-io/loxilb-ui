@@ -52,6 +52,7 @@ export type ObservabilityEntryId =
 	// so a build without their families loses the panel and keeps the page.
 	| 'panel.aiAdmission'
 	| 'panel.proxyOverload'
+	| 'panel.workerScrape'
 	// On the OAM-level System page, for a picked gateway instance.
 	| 'panel.auditWriter';
 
@@ -311,6 +312,14 @@ const entries: readonly IObservabilityEntry[] = [
 		id: 'panel.proxyOverload',
 		kind: 'panel', flavor: 'inference-gateway',
 		metricFamilies: PROXY_OVERLOAD_FAMILIES, restPaths: [],
+	},
+	{
+		// On the Workers page, which is otherwise REST-only. The gateway's own
+		// pull of each engine's /metrics for load-aware P/D selection — a
+		// different path from the pushed worker rows the page lists.
+		id: 'panel.workerScrape',
+		kind: 'panel', flavor: 'inference-gateway',
+		metricFamilies: ['loxilb_ai_worker_scrape_total'], restPaths: [],
 	},
 	{
 		// The System page is OAM-level; this panel brings its own instance
