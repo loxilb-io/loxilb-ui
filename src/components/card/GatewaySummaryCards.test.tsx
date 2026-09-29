@@ -8,7 +8,7 @@
 //     N/A, asserting "unknown" about a value that was stated.
 
 import 'locales/i18n';
-import {afterEach, describe, expect, it, vi} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {cleanup, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
 import {IMetricsSnapshot} from 'types/observability';
@@ -18,6 +18,7 @@ import {GwAiEventsCard, GwKvExactCard, GwPersistenceCard, GwWorkerFreshnessCard}
 const state = vi.hoisted(() => ({
 	history: [] as IMetricsSnapshot[],
 	gpu: undefined as unknown,
+	diagnostics: undefined as unknown,
 }));
 
 vi.mock('hooks/query/observabilityHooks', async importOriginal => {
@@ -40,7 +41,7 @@ vi.mock('hooks/query/gatewayTelemetryHooks', async importOriginal => {
 	return {
 		...mod,
 		useGpuStatus: () => ({data: state.gpu, isLoading: false, error: null, refetch: () => undefined}),
-		useDiagnostics: () => ({data: undefined, isLoading: false, error: null, refetch: () => undefined}),
+		useDiagnostics: () => ({data: state.diagnostics, isLoading: false, error: null, refetch: () => undefined}),
 	};
 });
 
@@ -62,6 +63,7 @@ afterEach(() => {
 	cleanup();
 	state.history = [];
 	state.gpu = undefined;
+	state.diagnostics = undefined;
 });
 
 describe('GwKvExactCard — enforcement faults', () => {
@@ -147,5 +149,46 @@ describe('GwAiEventsCard — completed requests', () => {
 		renderCard(<GwAiEventsCard instance={INSTANCE} />);
 		expect(valueOf('Completed requests')).toBe('5.0/s');
 		expect(screen.queryByText(/SSE stream/)).toBeNull();
+	});
+});
+
+// Go's zero time is what the gateway sends before any worker reports
+// (strfmt.DateTime is a struct; omitempty never drops it): the card printed
+// it as a year-1 clock time. And a bare clock time hid the date, so a
+// day-old persist read as this morning's. The clock is faked (Date only) at
+// 06:00 UTC: NOW − 5 s is the same local day in every zone, NOW − 1 day never.
+describe('reported-at times on the dashboard cards', () => {
+	const NOW = Date.UTC(2026, 8, 29, 6, 0, 0);
+	const DAY = 86_400_000;
+	const valueOf = (label: string) => screen.getByText(label).nextElementSibling?.textContent;
+
+	beforeEach(() => {
+		vi.useFakeTimers({toFake: ['Date']});
+		vi.setSystemTime(NOW);
+	});
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('GwWorkerFreshnessCard: Go zero time reads "none since start", not year 1', () => {
+		state.gpu = {receivedAtMs: NOW, data: {enabled: true, routing_mode: 'gpu_aware', last_metrics_update: '0001-01-01T00:00:00.000Z'}};
+		renderCard(<GwWorkerFreshnessCard instance={INSTANCE} />);
+		expect(valueOf('Last metrics update')).toBe('None since start');
+	});
+
+	const persistAt = (at: number) => {
+		state.history = [snapshotOf('loxilb_config_dirty 0', NOW)];
+		state.diagnostics = {receivedAtMs: NOW, data: {ready: true, maintenance_state: 'active', uptime_seconds: 1, version: 'v', last_persist: {generation: 1, mode: 'manual', at: new Date(at).toISOString()}}};
+		renderCard(<GwPersistenceCard instance={INSTANCE} />);
+	};
+
+	it('GwPersistenceCard: a day-old persist carries its date', () => {
+		persistAt(NOW - DAY);
+		expect(valueOf('Last persist')).toBe(new Date(NOW - DAY).toLocaleString());
+	});
+
+	it("GwPersistenceCard: today's persist is a bare clock time", () => {
+		persistAt(NOW - 5_000);
+		expect(valueOf('Last persist')).toBe(new Date(NOW - 5_000).toLocaleTimeString());
 	});
 });

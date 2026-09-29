@@ -12,7 +12,7 @@
 //     `auto_persist`, which /diagnostics only sends while failures > 0.
 
 import 'locales/i18n';
-import {afterEach, describe, expect, it, vi} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {cleanup, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
 import {IMetricsSnapshot} from 'types/observability';
@@ -200,5 +200,99 @@ describe('PdKvPage — KV blocks are occupancy', () => {
 		renderPage(<PdKvPage />);
 		expect(screen.getByText('KV blocks stored by endpoint (strict join)')).toBeTruthy();
 		expect(screen.queryByText(/capacity/i)).toBeNull();
+	});
+});
+
+//---------------------------------------------------------
+// Reported-at sentinels and day-old instants
+//---------------------------------------------------------
+// Before any worker reports, the gateway still sends `last_metrics_update`
+// as Go's zero time (strfmt.DateTime is a struct; omitempty never drops it).
+// Read as an instant it printed a year-1 clock time AND tripped "ingestion
+// stalled" — for ingestion that had never started. A bare clock time also
+// hid the date, so a day-old report read as this morning's.
+// The clock is faked (Date only) at NOW = 06:00 UTC, so NOW − 5 s is the
+// same local day in every zone and NOW − 1 day never is.
+const NOW = Date.UTC(2026, 8, 29, 6, 0, 0);
+const DAY = 86_400_000;
+const GO_ZERO_TIME = '0001-01-01T00:00:00.000Z';
+const STALLED = /Worker ingestion is stalled/;
+
+describe('reported-at times on the observability pages', () => {
+	beforeEach(() => {
+		vi.useFakeTimers({toFake: ['Date']});
+		vi.setSystemTime(NOW);
+	});
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	const gpu = (last: string) => ({receivedAtMs: NOW, data: {enabled: true, routing_mode: 'gpu_aware', worker_count: 0, last_metrics_update: last}});
+	const cellsOf = (rowText: string) => [...(screen.getByText(rowText).closest('tr')?.querySelectorAll('td') ?? [])].map(c => c.textContent);
+
+	it('Workers: Go zero time is "none since start", not a stalled year-1 update', () => {
+		state.gpu = gpu(GO_ZERO_TIME);
+		renderPage(<WorkersPage />);
+		expect(valueOf('Last metrics update')).toBe('None since start');
+		expect(screen.queryByText(STALLED)).toBeNull();
+	});
+
+	it('Workers: a recent update is a clock time and not stalled', () => {
+		const at = NOW - 5_000;
+		state.gpu = gpu(new Date(at).toISOString());
+		renderPage(<WorkersPage />);
+		expect(valueOf('Last metrics update')).toBe(new Date(at).toLocaleTimeString());
+		expect(screen.queryByText(STALLED)).toBeNull();
+	});
+
+	it('Workers: a day-old update carries its date and is stalled', () => {
+		const at = NOW - DAY;
+		state.gpu = gpu(new Date(at).toISOString());
+		renderPage(<WorkersPage />);
+		expect(valueOf('Last metrics update')).toBe(new Date(at).toLocaleString());
+		expect(screen.getByText(STALLED)).toBeTruthy();
+	});
+
+	it('Workers: a row stamped with Go zero time reads "none since start"', () => {
+		state.gpu = gpu(new Date(NOW - 5_000).toISOString());
+		state.workers = {receivedAtMs: NOW, data: [{endpoint_ip: '10.0.0.1', queued_requests: 0, kv_cache_usage_perc: 0, timestamp: GO_ZERO_TIME}]};
+		renderPage(<WorkersPage />);
+		expect(cellsOf('10.0.0.1').at(-1)).toBe('None since start');
+	});
+
+	// The subscriber family's `ep` label carries the ep_idx: the page printed
+	// "2" in the Endpoint column. The address comes from loxilb_pd_ep_info.
+	it('PdKv: subscriber freshness shows the joined address, never the ep_idx', () => {
+		const last = NOW / 1000 - 60;
+		state.history = [
+			snapshotOf(
+				[
+					`loxilb_kv_subscriber_last_event_timestamp_seconds{ep="2",service="1"} ${last}`,
+					'loxilb_kv_inventory_fresh{ep="2",service="1"} 1',
+					'loxilb_pd_ep_info{ep="33.33.33.1",ep_idx="2",service="1"} 1',
+				].join('\n'),
+				NOW,
+			),
+		];
+		renderPage(<PdKvPage />);
+		expect(cellsOf('33.33.33.1')).toEqual(['1', '33.33.33.1', new Date(last * 1000).toLocaleTimeString(), 'Yes']);
+	});
+
+	it('PdKv: an unjoined ep_idx is an unknown endpoint, and a day-old event carries its date', () => {
+		const last = (NOW - DAY) / 1000;
+		state.history = [snapshotOf(`loxilb_kv_subscriber_last_event_timestamp_seconds{ep="4",service="1"} ${last}`, NOW)];
+		renderPage(<PdKvPage />);
+		expect(cellsOf('Unknown endpoint')).toEqual(['1', 'Unknown endpoint', new Date(last * 1000).toLocaleString(), 'N/A']);
+	});
+
+	it('Persistence: a restore gauge still at 0 and a zero-time persist read "none since start"', () => {
+		state.history = [snapshotOf(['loxilb_config_dirty 0', 'loxilb_last_restore_timestamp_seconds 0'].join('\n'), NOW)];
+		state.diagnostics = {
+			receivedAtMs: NOW,
+			data: {ready: true, maintenance_state: 'active', uptime_seconds: 1, version: 'v', last_persist: {generation: 1, mode: 'manual', at: GO_ZERO_TIME}},
+		};
+		renderPage(<PersistencePage />);
+		expect(valueOf('Last restore finished')).toBe('None since start');
+		expect(valueOf('Last persist at')).toBe('None since start');
 	});
 });

@@ -20,6 +20,7 @@ import {
 	useWorkerMetrics,
 } from 'hooks/query/gatewayTelemetryHooks';
 import {useTranslation} from 'react-i18next';
+import {formatReportedAt, reportedAtFromIso} from 'observability/reportedAt';
 import {ObservabilityViewState} from 'types/observability';
 import {PanelPaper, StatRow, useObservabilityApplicable} from './common';
 
@@ -49,8 +50,11 @@ export default function WorkersPage() {
 	else state = {kind: 'ready'};
 
 	const status = gpu.data?.data;
-	const lastUpdateMs = status?.last_metrics_update ? Date.parse(status.last_metrics_update) : undefined;
-	const ingestionStalled = lastUpdateMs !== undefined && Date.now() - lastUpdateMs > WORKER_DATA_STALE_MS;
+	// Before any worker reports, the gateway still sends `last_metrics_update`
+	// as Go's zero time: that is "never", not an update so old it is stalled.
+	const nowMs = Date.now();
+	const lastUpdate = reportedAtFromIso(status?.last_metrics_update);
+	const ingestionStalled = typeof lastUpdate === 'number' && nowMs - lastUpdate > WORKER_DATA_STALE_MS;
 
 	return (
 		<Box sx={{p: 2}}>
@@ -70,7 +74,7 @@ export default function WorkersPage() {
 							<StatRow label={t('eBPF maps loaded')} value={status?.ebpf_map_loaded === true ? t('Yes') : t('No')} />
 							<StatRow
 								label={t('Last metrics update')}
-								value={lastUpdateMs !== undefined ? new Date(lastUpdateMs).toLocaleTimeString() : t('N/A')}
+								value={formatReportedAt(lastUpdate, nowMs, t)}
 							/>
 						</PanelPaper>
 					</Grid>
@@ -113,7 +117,7 @@ export default function WorkersPage() {
 												<TableCell align="right">{`${w.kv_cache_usage_perc}%`}</TableCell>
 												<TableCell align="right">{w.num_gpu_blocks ?? t('N/A')}</TableCell>
 												<TableCell align="right">
-													{w.timestamp ? new Date(w.timestamp).toLocaleTimeString() : t('N/A')}
+													{formatReportedAt(reportedAtFromIso(w.timestamp), nowMs, t)}
 												</TableCell>
 											</TableRow>
 										))}

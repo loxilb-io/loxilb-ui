@@ -23,6 +23,7 @@ import {useTranslation} from 'react-i18next';
 import {buildEpJoinIndex, joinEp} from 'observability/pdJoin';
 import {pdAdmission} from 'observability/pdAdmission';
 import {pdTierGates, pdTierMix} from 'observability/pdTiers';
+import {formatReportedAt, reportedAtFromSeconds} from 'observability/reportedAt';
 import {selectSamples, selectScalar} from 'observability/selectors';
 import {familySumRate, rateMaxGapMs} from 'observability/snapshotRates';
 import {CadenceSelector, PanelPaper, StatRow, countOrAbsence, formatRate, useAbsenceExplanation, useObservabilityApplicable} from './common';
@@ -55,6 +56,7 @@ export default function PdKvPage() {
 	}, [refetch, refetchLb]);
 
 	const epJoin = useMemo(() => (snapshot ? buildEpJoinIndex(snapshot) : undefined), [snapshot]);
+	const nowMs = Date.now();
 
 	// The snapshot and the history are passed APART on purpose: the retention
 	// ring is filled in an effect, so this page holds a snapshot while
@@ -208,19 +210,19 @@ export default function PdKvPage() {
 									</TableHead>
 									<TableBody>
 										{subscriberFreshness.map(s => {
-											// This family's `ep` label IS the endpoint (no join
-											// needed); `loxilb_kv_inventory_fresh` shares its label
-											// pair, so the strict-match lookup stays exact.
+											// Despite its name, this family's `ep` label carries the
+											// ep_idx (the gateway keys every per-EP KV series by it),
+											// so the address comes from the same strict join as the
+											// block table. `loxilb_kv_inventory_fresh` shares the
+											// label pair, so its strict-match lookup stays exact.
 											const fresh = snapshot
 												? selectScalar(snapshot, 'loxilb_kv_inventory_fresh', {service: s.labels.service ?? '', ep: s.labels.ep ?? ''})
 												: undefined;
 											return (
 												<TableRow key={s.labelKey}>
 													<TableCell>{s.labels.service ?? ''}</TableCell>
-													<TableCell>{s.labels.ep ?? ''}</TableCell>
-													<TableCell align="right">
-														{Number.isFinite(s.value) ? new Date(s.value * 1000).toLocaleTimeString() : t('N/A')}
-													</TableCell>
+													<TableCell>{epCell(s.labels.service, s.labels.ep)}</TableCell>
+													<TableCell align="right">{formatReportedAt(reportedAtFromSeconds(s.value), nowMs, t)}</TableCell>
 													<TableCell align="right">{fresh === undefined ? t('N/A') : fresh === 1 ? t('Yes') : t('No')}</TableCell>
 												</TableRow>
 											);
