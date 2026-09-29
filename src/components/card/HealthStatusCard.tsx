@@ -3,6 +3,7 @@
 //---------------------------------------------------------
 import {Box, Typography, LinearProgress, Chip} from '@mui/material';
 import {useLiveMetrics} from 'hooks/query/metricsHook';
+import {useInstanceFlavor} from 'hooks/query/flavorHook';
 import {t} from 'i18next';
 import {useMemo} from 'react';
 import {IInstance} from 'types/oam';
@@ -32,6 +33,12 @@ export default function HealthStatusCard(props: HealthStatusCardProps) {
 	// unit-testable without a renderer.
 	const healthData = useMemo(() => derive_endpoint_health(liveMetrics), [liveMetrics]);
 	const reported = healthData.status !== 'unknown';
+	// ⚠️ On the gateway a host whose health probe is not active reports ok
+	// unless forced down (gauge HELP), so this percentage is not measured
+	// health for every host it counts. loxilb documents no such rule, so the
+	// caveat is the gateway's alone.
+	const {flavor} = useInstanceFlavor(instance);
+	const unprobedCountAsHealthy = flavor === 'inference-gateway' && (healthData.total ?? 0) > 0;
 
 	// Status configuration
 	const statusConfig = {
@@ -101,6 +108,11 @@ export default function HealthStatusCard(props: HealthStatusCardProps) {
 				{healthData.status === 'no-endpoints' && (
 					<Typography variant="body2" color="textSecondary" textAlign="center">
 						{t('No endpoints configured')}
+					</Typography>
+				)}
+				{unprobedCountAsHealthy && (
+					<Typography variant="caption" color="text.secondary" textAlign="center">
+						{t('Hosts without an active health probe count as healthy.')}
 					</Typography>
 				)}
 				{!reported && (

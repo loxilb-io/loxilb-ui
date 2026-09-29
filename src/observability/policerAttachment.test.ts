@@ -145,7 +145,9 @@ describe('policerAttachment — what a zero is supposed to look like', () => {
 		// The gauge's rows are still reported — the data is shown, only the
 		// verdict is withheld.
 		expect(rowFor(r, 'p1').attached).toBe(false);
-		expect(rowFor(r, 'p1').listedInRest).toBe(false);
+		// ⚠️ Unknown, not false: the list was not read, so nothing says the
+		// policer was deleted (it used to render "Deleted" / "No longer configured").
+		expect(rowFor(r, 'p1').listedInRest).toBeUndefined();
 	});
 
 	it('does not claim all-attached while any state is unknown', () => {

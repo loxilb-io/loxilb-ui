@@ -801,8 +801,8 @@
 	"IP filter": "IP 필터",
 	"KV Exact Enforcement": "KV Exact 적용",
 	"KV attestation": "KV 어테스테이션",
-	"KV block capacity by endpoint (strict join)": "엔드포인트별 KV 블록 용량 (엄격 조인)",
-	"KV blocks": "KV 블록",
+	"KV blocks stored by endpoint (strict join)": "엔드포인트별 저장된 KV 블록 (엄격 조인)",
+	"KV blocks stored": "저장된 KV 블록",
 	"KV cache used": "KV 캐시 사용량",
 	"KV subscriber freshness": "KV 구독자 최신성",
 	"L4 errors": "L4 오류",
@@ -1207,5 +1207,9 @@
 	"None since start": "시작 이후 없음",
 	"Missing": "누락",
 	"Not available": "사용 불가",
-	"Consumed": "소비"
+	"Consumed": "소비",
+	"Nothing to restore": "복원할 항목 없음",
+	"loxilb’s own share (its container’s allowance when containerized)": "loxilb 자체 사용률 (컨테이너 실행 시 컨테이너 할당량 대비)",
+	"The QoS policy list could not be read, so the metric is the only source for this policer.": "QoS 정책 목록을 읽을 수 없어 이 폴리서의 정보는 메트릭에서만 얻었습니다.",
+	"Hosts without an active health probe count as healthy.": "헬스 프로브가 활성화되지 않은 호스트는 정상으로 집계됩니다."
 }

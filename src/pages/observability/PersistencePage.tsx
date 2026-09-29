@@ -175,7 +175,12 @@ export default function PersistencePage() {
 								<>
 									<StatRow label={t('Boot profile')} value={diag.boot.profile ?? t('N/A')} />
 									<StatRow label={t('Boot snapshot found')} value={diag.boot.snapshot_found ? t('Yes') : t('No')} />
-									<StatRow label={t('Boot restore succeeded')} value={diag.boot.succeeded ? t('Yes') : t('No')} />
+									{/* `succeeded` means a snapshot was fully applied. With none found
+									    there was nothing to restore, which is not a failure. */}
+									<StatRow
+										label={t('Boot restore succeeded')}
+										value={!diag.boot.snapshot_found ? t('Nothing to restore') : diag.boot.succeeded ? t('Yes') : t('No')}
+									/>
 									<StatRow label={t('Running degraded')} value={diag.boot.degraded ? t('Yes') : t('No')} />
 								</>
 							)}

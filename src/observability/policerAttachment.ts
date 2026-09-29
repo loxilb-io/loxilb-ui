@@ -90,8 +90,12 @@ export interface IPolicerAttachmentRow {
 	 */
 	attached: boolean | undefined;
 	corroboration: PolicerCorroboration;
-	/** Whether the REST policy list contains this ident at all. */
-	listedInRest: boolean;
+	/**
+	 * Whether the REST policy list contains this ident at all; `undefined`
+	 * when that list was not read. ⚠️ Never `false` then: an unread list is
+	 * not a delete, and "no longer configured" would invent one.
+	 */
+	listedInRest: boolean | undefined;
 	/** The gauge's answer for this ident; `undefined` when it has no series. */
 	metricAttached: boolean | undefined;
 	/** REST's answer; `undefined` when unlisted or the build omits the field. */
@@ -212,7 +216,7 @@ export function policerAttachment(
 			const restAttached = restByIdent.get(ident)?.attached;
 			return {
 				ident,
-				listedInRest: restByIdent.has(ident),
+				listedInRest: policies ? restByIdent.has(ident) : undefined,
 				metricAttached,
 				restAttached,
 				...corroborate(metricAttached, restAttached),

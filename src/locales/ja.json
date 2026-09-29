@@ -801,8 +801,8 @@
 	"IP filter": "IPフィルター",
 	"KV Exact Enforcement": "KV Exact適用",
 	"KV attestation": "KVアテステーション",
-	"KV block capacity by endpoint (strict join)": "エンドポイント別KVブロック容量（厳密結合）",
-	"KV blocks": "KVブロック",
+	"KV blocks stored by endpoint (strict join)": "エンドポイント別の格納済みKVブロック（厳密結合）",
+	"KV blocks stored": "格納済みKVブロック",
 	"KV cache used": "KVキャッシュ使用量",
 	"KV subscriber freshness": "KVサブスクライバー鮮度",
 	"L4 errors": "L4エラー",
@@ -1207,5 +1207,9 @@
 	"None since start": "起動以降なし",
 	"Missing": "欠落",
 	"Not available": "利用不可",
-	"Consumed": "消費"
+	"Consumed": "消費",
+	"Nothing to restore": "復元対象なし",
+	"loxilb’s own share (its container’s allowance when containerized)": "loxilb自身の使用率（コンテナ実行時はコンテナの割り当てに対する割合）",
+	"The QoS policy list could not be read, so the metric is the only source for this policer.": "QoSポリシー一覧を読み取れなかったため、このポリサーの情報源はメトリクスのみです。",
+	"Hosts without an active health probe count as healthy.": "ヘルスプローブが有効でないホストは正常として数えられます。"
 }

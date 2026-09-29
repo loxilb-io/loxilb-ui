@@ -130,7 +130,7 @@ export default function PdKvPage() {
 					</Grid>
 
 					<Grid item xs={12} md={8}>
-						<PanelPaper title={t('KV block capacity by endpoint (strict join)')}>
+						<PanelPaper title={t('KV blocks stored by endpoint (strict join)')}>
 							{kvBlocks.length === 0 ? (
 								<Typography variant="body2" color="text.secondary">
 									{t('No data')}
@@ -142,7 +142,8 @@ export default function PdKvPage() {
 											<TableCell>{t('Service')}</TableCell>
 											<TableCell>{t('EP index')}</TableCell>
 											<TableCell>{t('Endpoint')}</TableCell>
-											<TableCell align="right">{t('KV blocks')}</TableCell>
+											{/* Occupancy ("blocks currently stored"), not the cache's capacity. */}
+											<TableCell align="right">{t('KV blocks stored')}</TableCell>
 										</TableRow>
 									</TableHead>
 									<TableBody>

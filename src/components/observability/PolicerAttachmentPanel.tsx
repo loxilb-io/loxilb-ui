@@ -68,11 +68,15 @@ function CorroborationNote({row}: {row: IPolicerAttachmentRow}) {
 			return (
 				<Tooltip
 					title={
-						row.listedInRest
-							? t('This gateway build does not report attachment over the API, so the metric is the only source.')
-							: t('The API no longer lists this policer. A series outlasting a delete clears on the next scrape.')
+						// ⚠️ An unread policy list is not a delete: without it the
+						// row is metric-only, never "Deleted".
+						row.listedInRest === undefined
+							? t('The QoS policy list could not be read, so the metric is the only source for this policer.')
+							: row.listedInRest
+								? t('This gateway build does not report attachment over the API, so the metric is the only source.')
+								: t('The API no longer lists this policer. A series outlasting a delete clears on the next scrape.')
 					}>
-					<Chip size="small" variant="outlined" label={row.listedInRest ? t('Metric only') : t('Deleted')} />
+					<Chip size="small" variant="outlined" label={row.listedInRest === false ? t('Deleted') : t('Metric only')} />
 				</Tooltip>
 			);
 		case 'rest-only':
@@ -174,7 +178,7 @@ export default function PolicerAttachmentPanel({report}: PolicerAttachmentPanelP
 							<TableRow key={row.ident}>
 								<TableCell sx={{fontFamily: 'monospace'}}>
 									{row.ident}
-									{!row.listedInRest && (
+									{row.listedInRest === false && (
 										<Typography variant="caption" color="text.secondary" component="p">
 											{t('No longer configured')}
 										</Typography>
