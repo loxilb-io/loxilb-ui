@@ -1209,5 +1209,13 @@
 	"The most of the ceiling and of the queue one tenant may hold.": "1 つのテナントが占有できる上限およびキューの最大割合です。",
 	"rule": "ルール",
 	"environment": "環境",
-	"default": "既定値"
+	"default": "既定値",
+	"Audit sink and orphan details need gateway administrator rights.": "監査シンクと孤立インテントの詳細にはゲートウェイ管理者権限が必要です。",
+	"The remote audit sink {{address}} is configured but not connected.": "リモート監査シンク {{address}} は設定されていますが、接続されていません。",
+	"The remote audit sink is configured but not connected.": "リモート監査シンクは設定されていますが、接続されていません。",
+	"Last error: {{error}}": "最後のエラー: {{error}}",
+	"{{n}} submissions have failed since it was configured.": "設定以降、{{n}} 件の送信が失敗しました。",
+	"{{n}} management changes from the previous boot have no recorded result.": "前回の起動時の管理変更 {{n}} 件に記録された結果がありません。",
+	"Most recent: event {{id}}.": "最新: イベント {{id}}。",
+	"most recent: event {{id}}": "最新: イベント {{id}}"
 }

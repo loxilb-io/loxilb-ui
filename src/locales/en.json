@@ -1209,5 +1209,13 @@
 	"The most of the ceiling and of the queue one tenant may hold.": "The most of the ceiling and of the queue one tenant may hold.",
 	"rule": "rule",
 	"environment": "environment",
-	"default": "default"
+	"default": "default",
+	"Audit sink and orphan details need gateway administrator rights.": "Audit sink and orphan details need gateway administrator rights.",
+	"The remote audit sink {{address}} is configured but not connected.": "The remote audit sink {{address}} is configured but not connected.",
+	"The remote audit sink is configured but not connected.": "The remote audit sink is configured but not connected.",
+	"Last error: {{error}}": "Last error: {{error}}",
+	"{{n}} submissions have failed since it was configured.": "{{n}} submissions have failed since it was configured.",
+	"{{n}} management changes from the previous boot have no recorded result.": "{{n}} management changes from the previous boot have no recorded result.",
+	"Most recent: event {{id}}.": "Most recent: event {{id}}.",
+	"most recent: event {{id}}": "most recent: event {{id}}"
 }

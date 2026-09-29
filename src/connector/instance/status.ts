@@ -12,6 +12,7 @@ import {clean_string, format_uptime, parse_log_lines} from 'common';
 // the inconsistency was harmless until the moment it wasn't.
 import {ApiError, assertOk, DOWNLOAD_FILE_STREAM, DownloadProgress} from '../fetcher/fetcher_base';
 import {t} from 'i18next';
+import {AuditRestRead, IAuditSink, IAuditStatus} from 'types/audit_status';
 import {ISystemInfo} from 'types/device';
 import {IFilesystemAttribute} from 'types/filesystem';
 import {IVipAttribute} from 'types/ha';
@@ -270,4 +271,30 @@ export async function query_instance_health(instance: IInstance): Promise<{isHea
 		}
 		return {isHealthy: false, error: 'Unknown error'};
 	}
+}
+
+/**
+ * The audit trail's REST status and sink state, for the System page's urgent
+ * signals (types/audit_status.ts).
+ *
+ * ⭐ 403 and 404 are ANSWERS here, not failures: a caller without gateway
+ * administrator rights is told so quietly, and a gateway older than the audit
+ * API simply has nothing to add to the metrics. Returning them as data keeps
+ * react-query from retrying a refusal and the page from showing an error for a
+ * gateway that is working as designed. Anything else still throws.
+ *
+ * ⚠️ Call only for a POSITIVELY identified gateway: plain loxilb has no
+ * /audit/* and must never see the request.
+ */
+export async function query_get_audit_rest(instance: IInstance): Promise<AuditRestRead> {
+	const statusResp = await GET_INST<GwGetResp<'/audit/status'>>(instance, `/audit/status`);
+	if (statusResp.code === 403) return {kind: 'forbidden'};
+	if (statusResp.code === 404) return {kind: 'absent'};
+	assertOk(statusResp, 'Get Audit Status');
+	// Only after the status answered: a refusal there would be refused here
+	// too, and a second identical refusal is just more console noise. The sink
+	// read stands on its own: its failure loses the sink signal only.
+	const sinkResp = await GET_INST<GwGetResp<'/audit/sink'>>(instance, `/audit/sink`);
+	const sinkOk = sinkResp.code >= 200 && sinkResp.code < 300 && !sinkResp.parse_failed;
+	return {kind: 'ok', status: (statusResp.data ?? {}) as IAuditStatus, sink: sinkOk ? ((sinkResp.data ?? {}) as IAuditSink) : undefined};
 }
