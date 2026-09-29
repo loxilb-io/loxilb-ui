@@ -5,7 +5,8 @@
 // are rendered again on their own pages, and a fix to the card alone would
 // leave the page telling the operator the opposite.
 //   - PdKv "Enforcement faults" counted the series of a family the gateway
-//     never exported and printed 0 ("measured, none faulted");
+//     never exported and printed 0 ("measured, none faulted") — now a
+//     verdict line that says "not reported" instead;
 //   - Workers "Workers tracked" printed N/A for `worker_count`, which the
 //     gateway omits (omitempty) precisely when it is 0;
 //   - Persistence "Auto-persist failures (reported)" printed N/A for
@@ -102,25 +103,64 @@ afterEach(() => {
 	state.diagnostics = undefined;
 });
 
-describe('PdKvPage — enforcement faults', () => {
-	it('does not count faults for a family the gateway never exported', () => {
-		// No strict KV-exact rule → the fault family is absent entirely.
+describe('PdKvPage — KV attestation verdict', () => {
+	const attest = (rules: string[], faults?: number[]) =>
+		snapshotOf(
+			[
+				...rules.map(r => `loxilb_ai_kv_attest_state{rule="${r}",state="READY"} 1`),
+				...(faults ?? []).map((v, i) => `loxilb_ai_kv_enforcement_fault{rule="${rules[i]}"} ${v}`),
+			].join('\n'),
+			T0,
+		);
+
+	it('says no rule is attesting when the gateway exports no ladder state', () => {
+		// No strict KV-exact rule → both families absent. Not "0 faults".
 		state.history = [snapshotOf('loxilb_pd_sessions_active 0', T0)];
 		renderPage(<PdKvPage />);
-		expect(valueOf('Enforcement faults')).toBe('None reported');
+		expect(screen.getByText(/No rule reports a KV attestation state/)).toBeTruthy();
+		expect(screen.queryByText(/none with an enforcement fault/)).toBeNull();
 	});
 
-	it('counts the faulted rules when the family is exported, including a true zero', () => {
-		const faults = (a: number, b: number) =>
-			snapshotOf([`loxilb_ai_kv_enforcement_fault{rule="a"} ${a}`, `loxilb_ai_kv_enforcement_fault{rule="b"} ${b}`].join('\n'), T0);
-		state.history = [faults(1, 0)];
+	it('does not call an unreported fault state "none faulted"', () => {
+		state.history = [attest(['a', 'b'])];
 		renderPage(<PdKvPage />);
-		expect(valueOf('Enforcement faults')).toBe('1');
+		expect(screen.getByText('2 rules under strict KV attestation. The enforcement-fault state is not reported.')).toBeTruthy();
+	});
+
+	it('counts the faulted rules as an error, and a true zero as healthy', () => {
+		state.history = [attest(['a', 'b'], [1, 0])];
+		renderPage(<PdKvPage />);
+		const alert = screen.getByText('1 of 2 rules under strict KV attestation report an enforcement fault.');
+		expect(alert.closest('[role="alert"]')?.className).toMatch(/Error/);
 		cleanup();
 
-		state.history = [faults(0, 0)];
+		state.history = [attest(['a', 'b'], [0, 0])];
 		renderPage(<PdKvPage />);
-		expect(valueOf('Enforcement faults')).toBe('0');
+		expect(screen.getByText('2 rules under strict KV attestation, none with an enforcement fault.')).toBeTruthy();
+	});
+
+	it('shows probe failures only when there are some', () => {
+		// A lazy CounterVec{reason}: no child on a clean ladder. The old rate
+		// row read "Warming up…" forever there.
+		state.history = [attest(['a'], [0])];
+		renderPage(<PdKvPage />);
+		expect(screen.queryByText(/probe failures/)).toBeNull();
+		expect(screen.queryByText('Warming up…')).toBeNull();
+		cleanup();
+
+		state.history = [
+			snapshotOf(
+				[
+					'loxilb_ai_kv_attest_state{rule="a",state="DEGRADED"} 1',
+					'loxilb_ai_kv_enforcement_fault{rule="a"} 0',
+					'loxilb_ai_kv_attest_probe_fail_total{reason="identity_mismatch"} 2',
+					'loxilb_ai_kv_attest_probe_fail_total{reason="timeout"} 3',
+				].join('\n'),
+				T0,
+			),
+		];
+		renderPage(<PdKvPage />);
+		expect(screen.getByText('5 attestation probe failures since the gateway started.')).toBeTruthy();
 	});
 });
 
@@ -192,14 +232,33 @@ describe('PersistencePage — boot with no snapshot', () => {
 	});
 });
 
-// loxilb_pd_kv_blocks is "KV cache blocks currently stored": occupancy. Titled
-// "capacity", a live 4 read as a tiny cache limit.
-describe('PdKvPage — KV blocks are occupancy', () => {
-	it('does not call blocks stored a capacity', () => {
-		state.history = [snapshotOf('loxilb_pd_kv_blocks{service="s",ep_idx="0"} 4', T0)];
+// The compact trim: the per-endpoint breakdowns are Grafana's. A family the
+// dashboard KV card still reads must not bring its page table back.
+describe('PdKvPage — compact', () => {
+	it('renders no KV blocks table, tier table or admission table', () => {
+		state.history = [
+			snapshotOf(
+				[
+					'loxilb_pd_kv_blocks{service="s",ep_idx="0"} 4',
+					'loxilb_ai_pd_tier_selected_total{tier="tier2",model="m"} 3',
+					'loxilb_pd_admission_shed_total 0',
+					'loxilb_pd_admission_queued_total 0',
+					'loxilb_pd_admission_overflow_shed_total 0',
+				].join('\n'),
+				T0,
+			),
+		];
 		renderPage(<PdKvPage />);
-		expect(screen.getByText('KV blocks stored by endpoint (strict join)')).toBeTruthy();
-		expect(screen.queryByText(/capacity/i)).toBeNull();
+		expect(screen.queryByText('KV blocks stored by endpoint (strict join)')).toBeNull();
+		expect(screen.queryByText('KV blocks stored')).toBeNull();
+		expect(screen.queryByText('Tier 2 — min load')).toBeNull();
+		expect(screen.queryByText('Queued (held)')).toBeNull();
+		expect(screen.queryByRole('table')).toBeNull();
+		// The panels themselves stay, and the page heading is what E2E keys on.
+		expect(screen.getByText('P/D & KV Cache', {selector: 'h2'})).toBeTruthy();
+		expect(screen.getByText('Prefill routing tier mix')).toBeTruthy();
+		expect(screen.getByText('Admission pressure')).toBeTruthy();
+		expect(screen.getByText('Sessions and routing')).toBeTruthy();
 	});
 });
 
@@ -262,27 +321,43 @@ describe('reported-at times on the observability pages', () => {
 
 	// The subscriber family's `ep` label carries the ep_idx: the page printed
 	// "2" in the Endpoint column. The address comes from loxilb_pd_ep_info.
-	it('PdKv: subscriber freshness shows the joined address, never the ep_idx', () => {
+	it('PdKv: a stale subscriber is listed by its joined address, never the ep_idx', () => {
 		const last = NOW / 1000 - 60;
 		state.history = [
 			snapshotOf(
 				[
 					`loxilb_kv_subscriber_last_event_timestamp_seconds{ep="2",service="1"} ${last}`,
-					'loxilb_kv_inventory_fresh{ep="2",service="1"} 1',
+					'loxilb_kv_inventory_fresh{ep="2",service="1"} 0',
+					`loxilb_kv_subscriber_last_event_timestamp_seconds{ep="3",service="1"} ${last}`,
+					'loxilb_kv_inventory_fresh{ep="3",service="1"} 1',
 					'loxilb_pd_ep_info{ep="33.33.33.1",ep_idx="2",service="1"} 1',
+					'loxilb_pd_ep_info{ep="33.33.33.9",ep_idx="3",service="1"} 1',
 				].join('\n'),
 				NOW,
 			),
 		];
 		renderPage(<PdKvPage />);
-		expect(cellsOf('33.33.33.1')).toEqual(['1', '33.33.33.1', new Date(last * 1000).toLocaleTimeString(), 'Yes']);
+		expect(screen.getByText('1 of 2 KV subscribers fresh.')).toBeTruthy();
+		expect(cellsOf('33.33.33.1')).toEqual(['1', '33.33.33.1', new Date(last * 1000).toLocaleTimeString(), 'No']);
+		// ⭐ Only the stale ones: a fresh subscriber needs no row.
+		expect(screen.queryByText('33.33.33.9')).toBeNull();
 	});
 
 	it('PdKv: an unjoined ep_idx is an unknown endpoint, and a day-old event carries its date', () => {
+		// No freshness child: not reported, so it is NOT counted fresh.
 		const last = (NOW - DAY) / 1000;
 		state.history = [snapshotOf(`loxilb_kv_subscriber_last_event_timestamp_seconds{ep="4",service="1"} ${last}`, NOW)];
 		renderPage(<PdKvPage />);
+		expect(screen.getByText('0 of 1 KV subscribers fresh.')).toBeTruthy();
 		expect(cellsOf('Unknown endpoint')).toEqual(['1', 'Unknown endpoint', new Date(last * 1000).toLocaleString(), 'N/A']);
+	});
+
+	it('PdKv: all subscribers fresh is one line and no table', () => {
+		state.history = [snapshotOf(['loxilb_kv_inventory_fresh{ep="0",service="1"} 1', 'loxilb_kv_inventory_fresh{ep="1",service="1"} 1'].join('\n'), NOW)];
+		renderPage(<PdKvPage />);
+		const line = screen.getByText('2 of 2 KV subscribers fresh.');
+		expect(line.closest('[role="alert"]')?.className).toMatch(/Success/);
+		expect(screen.queryByRole('table')).toBeNull();
 	});
 
 	it('Persistence: a restore gauge still at 0 and a zero-time persist read "none since start"', () => {

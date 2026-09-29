@@ -8,8 +8,13 @@
 // families are NOT here despite the prefix: they belong to the standalone AI
 // controller's scrape (excluded class in the vendored manifest), and the
 // registry/parser tolerate their absence and any unregistered presence.
+//
+// Compact by design (owner rule, 2026-09-29): each panel is a verdict plus
+// what is urgent. The breakdowns — tiers by model, admission by valve, KV
+// blocks by endpoint, the attestation ladder by rule, event times by
+// subscriber — are in Grafana's `loxilb-ai` dashboard.
 
-import {Box, Grid, Table, TableBody, TableCell, TableHead, TableRow, Typography} from '@mui/material';
+import {Alert, Box, Grid, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography} from '@mui/material';
 import FreshnessBadge from 'components/observability/FreshnessBadge';
 import ObservabilityStateFrame from 'components/observability/ObservabilityStateFrame';
 import {classifyViewState} from 'components/observability/observabilityState';
@@ -20,13 +25,14 @@ import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
 import {useLoadBalancerConfig} from 'hooks/query/queryHooks';
 import {useCallback, useMemo} from 'react';
 import {useTranslation} from 'react-i18next';
+import {kvAttestation, kvSubscribers} from 'observability/kvHealth';
 import {buildEpJoinIndex, joinEp} from 'observability/pdJoin';
 import {pdAdmission} from 'observability/pdAdmission';
 import {pdTierGates, pdTierMix} from 'observability/pdTiers';
 import {formatReportedAt, reportedAtFromSeconds} from 'observability/reportedAt';
-import {selectSamples, selectScalar} from 'observability/selectors';
+import {selectScalar} from 'observability/selectors';
 import {familySumRate, rateMaxGapMs} from 'observability/snapshotRates';
-import {CadenceSelector, PanelPaper, StatRow, countOrAbsence, formatRate, useAbsenceExplanation, useObservabilityApplicable} from './common';
+import {CadenceSelector, PanelPaper, StatRow, formatRate, useAbsenceExplanation, useObservabilityApplicable} from './common';
 
 export default function PdKvPage() {
 	const {t} = useTranslation();
@@ -64,17 +70,9 @@ export default function PdKvPage() {
 	// tail would render "N/A" — "the scrape did not answer" — on a gateway
 	// that had just answered.
 	const tierMix = useMemo(() => pdTierMix(snapshot, history, maxGap, gates), [snapshot, history, maxGap, gates]);
-	const admission = useMemo(() => pdAdmission(snapshot, history, maxGap), [snapshot, history, maxGap]);
-
-	const kvBlocks = useMemo(() => (snapshot ? selectSamples(snapshot, 'loxilb_pd_kv_blocks') : []), [snapshot]);
-	const attestStates = useMemo(
-		() => (snapshot ? selectSamples(snapshot, 'loxilb_ai_kv_attest_state').filter(s => s.value > 0) : []),
-		[snapshot],
-	);
-	const subscriberFreshness = useMemo(
-		() => (snapshot ? selectSamples(snapshot, 'loxilb_kv_subscriber_last_event_timestamp_seconds') : []),
-		[snapshot],
-	);
+	const admission = useMemo(() => pdAdmission(snapshot), [snapshot]);
+	const attestation = useMemo(() => kvAttestation(snapshot), [snapshot]);
+	const subscribers = useMemo(() => kvSubscribers(snapshot), [snapshot]);
 
 	const hasData = (snapshot?.diagnostics.totalSamples ?? 0) > 0;
 	const state = classifyViewState({
@@ -112,13 +110,9 @@ export default function PdKvPage() {
 
 					<Grid item xs={12}>
 						<PanelPaper title={t('Admission pressure')}>
-							{/* ⚠️ This replaced two StatRows, one of which was
-							    actively misleading: "Admission shed" read
-							    `loxilb_pd_admission_shed_total` alone, and that
-							    counter is structurally pinned at zero whenever
-							    queueing is enabled — so the page showed 0/s
-							    while the overflow valve dropped traffic. Drops
-							    now read as ONE quantity across both valves. */}
+							{/* ⚠️ Drops read as ONE lifetime quantity across
+							    both valves: the plain-shed counter alone is
+							    pinned at zero whenever queueing is enabled. */}
 							<PDAdmissionPanel report={admission} />
 						</PanelPaper>
 					</Grid>
@@ -131,104 +125,94 @@ export default function PdKvPage() {
 						</PanelPaper>
 					</Grid>
 
-					<Grid item xs={12} md={8}>
-						<PanelPaper title={t('KV blocks stored by endpoint (strict join)')}>
-							{kvBlocks.length === 0 ? (
-								<Typography variant="body2" color="text.secondary">
-									{t('No data')}
-								</Typography>
-							) : (
-								<Table size="small">
-									<TableHead>
-										<TableRow>
-											<TableCell>{t('Service')}</TableCell>
-											<TableCell>{t('EP index')}</TableCell>
-											<TableCell>{t('Endpoint')}</TableCell>
-											{/* Occupancy ("blocks currently stored"), not the cache's capacity. */}
-											<TableCell align="right">{t('KV blocks stored')}</TableCell>
-										</TableRow>
-									</TableHead>
-									<TableBody>
-										{kvBlocks.map(s => (
-											<TableRow key={s.labelKey}>
-												<TableCell>{s.labels.service ?? ''}</TableCell>
-												<TableCell>{s.labels.ep_idx ?? ''}</TableCell>
-												<TableCell>{epCell(s.labels.service, s.labels.ep_idx)}</TableCell>
-												<TableCell align="right">{Number.isFinite(s.value) ? s.value : t('N/A')}</TableCell>
-											</TableRow>
-										))}
-									</TableBody>
-								</Table>
-							)}
-						</PanelPaper>
-					</Grid>
-
-					<Grid item xs={12} md={6}>
+					<Grid item xs={12} md={4}>
 						<PanelPaper title={t('KV attestation')}>
-							{attestStates.length === 0 ? (
+							{attestation.kind === 'unavailable' && (
 								<Typography variant="body2" color="text.secondary">
 									{t('No data')}
 								</Typography>
-							) : (
-								<Table size="small">
-									<TableHead>
-										<TableRow>
-											<TableCell>{t('Rule')}</TableCell>
-											<TableCell>{t('State')}</TableCell>
-										</TableRow>
-									</TableHead>
-									<TableBody>
-										{attestStates.map(s => (
-											<TableRow key={s.labelKey}>
-												<TableCell>{s.labels.rule ?? ''}</TableCell>
-												<TableCell>{s.labels.state ?? t('Unknown value')}</TableCell>
-											</TableRow>
-										))}
-									</TableBody>
-								</Table>
 							)}
-							<StatRow label={t('Enforcement faults')} value={countOrAbsence(snapshot, 'loxilb_ai_kv_enforcement_fault', s => s.value > 0, t)} />
-							<StatRow label={t('Attestation probe failures')} value={formatRate(familySumRate(history, 'loxilb_ai_kv_attest_probe_fail_total', maxGap), t)} />
+							{attestation.kind === 'not-running' && (
+								<Typography variant="body2" color="text.secondary">
+									{t('No rule reports a KV attestation state: none is configured for strict KV-exact attestation, or its data-plane contract has not installed yet.')}
+								</Typography>
+							)}
+							{attestation.kind === 'ok' && (
+								<Stack spacing={1}>
+									{attestation.faulted === undefined ? (
+										// Absent is not zero: the fault state is unreported, so
+										// "none faulted" would be a claim nothing measured.
+										<Alert severity="info">
+											{t('{{n}} rules under strict KV attestation. The enforcement-fault state is not reported.', {n: attestation.rules})}
+										</Alert>
+									) : attestation.faulted > 0 ? (
+										<Alert severity="error">
+											{t('{{m}} of {{n}} rules under strict KV attestation report an enforcement fault.', {m: attestation.faulted, n: attestation.rules})}
+										</Alert>
+									) : (
+										<Alert severity="success">
+											{t('{{n}} rules under strict KV attestation, none with an enforcement fault.', {n: attestation.rules})}
+										</Alert>
+									)}
+									{/* Shown only when above zero: a clean ladder run
+									    creates no reason child, so there is nothing to
+									    print on a healthy gateway. */}
+									{(attestation.probeFailures ?? 0) > 0 && (
+										<Alert severity="warning">
+											{t('{{n}} attestation probe failures since the gateway started.', {n: attestation.probeFailures})}
+										</Alert>
+									)}
+								</Stack>
+							)}
 						</PanelPaper>
 					</Grid>
 
-					<Grid item xs={12} md={6}>
+					<Grid item xs={12} md={4}>
 						<PanelPaper title={t('KV subscriber freshness')}>
-							{subscriberFreshness.length === 0 ? (
+							{subscribers.kind === 'unavailable' && (
 								<Typography variant="body2" color="text.secondary">
 									{t('No data')}
 								</Typography>
-							) : (
-								<Table size="small">
-									<TableHead>
-										<TableRow>
-											<TableCell>{t('Service')}</TableCell>
-											<TableCell>{t('Endpoint')}</TableCell>
-											<TableCell align="right">{t('Last event')}</TableCell>
-											<TableCell align="right">{t('Fresh')}</TableCell>
-										</TableRow>
-									</TableHead>
-									<TableBody>
-										{subscriberFreshness.map(s => {
-											// Despite its name, this family's `ep` label carries the
-											// ep_idx (the gateway keys every per-EP KV series by it),
-											// so the address comes from the same strict join as the
-											// block table. `loxilb_kv_inventory_fresh` shares the
-											// label pair, so its strict-match lookup stays exact.
-											const fresh = snapshot
-												? selectScalar(snapshot, 'loxilb_kv_inventory_fresh', {service: s.labels.service ?? '', ep: s.labels.ep ?? ''})
-												: undefined;
-											return (
-												<TableRow key={s.labelKey}>
-													<TableCell>{s.labels.service ?? ''}</TableCell>
-													<TableCell>{epCell(s.labels.service, s.labels.ep)}</TableCell>
-													<TableCell align="right">{formatReportedAt(reportedAtFromSeconds(s.value), nowMs, t)}</TableCell>
-													<TableCell align="right">{fresh === undefined ? t('N/A') : fresh === 1 ? t('Yes') : t('No')}</TableCell>
+							)}
+							{subscribers.kind === 'none' && (
+								<Typography variant="body2" color="text.secondary">
+									{t('No KV subscriber is running: no KV-exact rule has started one.')}
+								</Typography>
+							)}
+							{subscribers.kind === 'ok' && (
+								<Stack spacing={1}>
+									<Alert severity={subscribers.notFresh.length === 0 ? 'success' : 'warning'}>
+										{t('{{fresh}} of {{total}} KV subscribers fresh.', {fresh: subscribers.fresh, total: subscribers.total})}
+									</Alert>
+									{/* Only the ones that are not fresh: a healthy
+									    subscriber needs no row. */}
+									{subscribers.notFresh.length > 0 && (
+										<Table size="small">
+											<TableHead>
+												<TableRow>
+													<TableCell>{t('Service')}</TableCell>
+													<TableCell>{t('Endpoint')}</TableCell>
+													<TableCell align="right">{t('Last event')}</TableCell>
+													<TableCell align="right">{t('Fresh')}</TableCell>
 												</TableRow>
-											);
-										})}
-									</TableBody>
-								</Table>
+											</TableHead>
+											<TableBody>
+												{subscribers.notFresh.map(row => (
+													<TableRow key={`${row.service}/${row.epIdx}`}>
+														<TableCell>{row.service}</TableCell>
+														{/* The `ep` label is the ep_idx; the address comes
+														    from the strict loxilb_pd_ep_info join. */}
+														<TableCell>{epCell(row.service, row.epIdx)}</TableCell>
+														<TableCell align="right">
+															{row.lastEventSec === undefined ? t('None reported') : formatReportedAt(reportedAtFromSeconds(row.lastEventSec), nowMs, t)}
+														</TableCell>
+														<TableCell align="right">{row.fresh === undefined ? t('N/A') : t('No')}</TableCell>
+													</TableRow>
+												))}
+											</TableBody>
+										</Table>
+									)}
+								</Stack>
 							)}
 						</PanelPaper>
 					</Grid>

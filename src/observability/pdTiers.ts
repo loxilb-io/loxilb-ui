@@ -3,7 +3,7 @@
 //---------------------------------------------------------
 import {IServiceConfiguration} from 'types/load_balancer';
 import {IMetricsSnapshot} from 'types/observability';
-import {RateResult, RatioResult, ratioOf} from './rates';
+import {RatioResult, ratioOf} from './rates';
 import {selectSamples} from './selectors';
 import {partitionRate} from './snapshotRates';
 
@@ -23,8 +23,9 @@ import {partitionRate} from './snapshotRates';
 //   tier2   min-load — no affinity was available, so pick the least loaded
 //
 // So tier2 is the fallback: it serves the request correctly, but on an
-// endpoint with a cold cache. The share of selections landing there is what
-// this panel exists to report.
+// endpoint with a cold cache. The page reports one verdict on the share that
+// reused a warm endpoint; the per-tier and per-model breakdown is Grafana's
+// ("P/D routing tier mix").
 //
 // ⭐⭐ The trap it exists to AVOID, and the direct analogue of the JWKS
 // last-known-good case in Stage 3.1: **a 100% tier2 mix is frequently the
@@ -42,28 +43,9 @@ export const PD_TIER_SELECTED = 'loxilb_ai_pd_tier_selected_total';
 export const PD_SESSION_HITS = 'loxilb_ai_pd_session_hits_total';
 
 const TIER = 'tier';
-const MODEL = 'model';
-
-/**
- * The four tier label values, verified at the collector rather than copied
- * from the manifest: `RecordPDTierSelected` (api/prometheus/ai_metrics.go)
- * maps the datapath's integer tier through a `switch` whose `default` arm
- * RETURNS WITHOUT RECORDING, and the C datapath's four call sites
- * (loxilb-ebpf/common/sockproxy_pd.c) pass the literals 0, 1, 15 and 2.
- *
- * ⭐ The label set is therefore CLOSED: an unrecognised tier cannot appear in
- * the exposition, because the Go switch drops it before it becomes a series.
- * That is why this module has no "unknown tier" row — it would be a state the
- * contract makes unreachable. The cost of that design lands elsewhere: a tier
- * the datapath adds without the Go switch learning it increments nothing at
- * all, which is invisible in this family and is exactly what the reconciliation
- * below is for.
- */
-export const PD_TIERS = ['tier0', 'tier1', 'tier15', 'tier2'] as const;
-export type PDTier = (typeof PD_TIERS)[number];
 
 /** Tier 2 is the no-affinity fallback; the other three all reuse a warm endpoint. */
-export const PD_FALLBACK_TIER: PDTier = 'tier2';
+export const PD_FALLBACK_TIER = 'tier2';
 
 //---------------------------------------------------------
 // What configuration makes a tier reachable
@@ -71,8 +53,7 @@ export const PD_FALLBACK_TIER: PDTier = 'tier2';
 // ⚠️ The metric is gateway-global (labelled by model, never by rule), so a
 // gate is answered for the GATEWAY: "can any rule here select this tier".
 // With one cache-aware rule and one plain P/D rule beside it, both tier1 and
-// tier2 selections are expected and neither is attributable to a rule. The
-// panel says "reachable", not "enabled for this traffic", for that reason.
+// tier2 selections are expected and neither is attributable to a rule.
 
 export interface IPDTierGates {
 	/** Some rule runs P/D disaggregation at all — without this nothing here ever increments. */
@@ -110,26 +91,6 @@ export function pdTierGates(rules: readonly IServiceConfiguration[] | undefined)
 		if (args.kvExactMode === KV_EXACT_PD_MODE) gates.kvExact = true;
 	}
 	return gates;
-}
-
-/** Whether `tier` can be selected at all under `gates`. `undefined` gates ⇒ unknown. */
-export function tierReachable(tier: PDTier, gates: IPDTierGates | undefined): boolean | undefined {
-	if (!gates) return undefined;
-	if (!gates.pdDisagg) return false;
-	switch (tier) {
-		case 'tier1':
-			return gates.cacheAware;
-		case 'tier15':
-			return gates.kvExact;
-		// Tier-0 session stickiness applies to P/D routing whenever a client
-		// session key is present, independently of pd_cache_aware_mode (the
-		// vendored `pd_session_ttl_sec` description says so explicitly), and
-		// Tier-2 is the unconditional fallback. Both are reachable on any P/D
-		// rule.
-		case 'tier0':
-		case 'tier2':
-			return true;
-	}
 }
 
 //---------------------------------------------------------
@@ -197,31 +158,6 @@ export function tier0Reconciliation(snapshot: IMetricsSnapshot | undefined): Tie
 // The mix
 //---------------------------------------------------------
 
-export interface IPDTierRow {
-	tier: PDTier;
-	/** Selections per second across the observed window. */
-	rate: RateResult;
-	/** This tier's share of all selections in the same window. */
-	share: RatioResult;
-	/** Lifetime selections at this tier, summed over models. */
-	total: number | undefined;
-	/**
-	 * Whether configuration permits this tier at all; `undefined` when the
-	 * rule list was unavailable. A zero at an unreachable tier is expected
-	 * and must not read as a fault.
-	 */
-	reachable: boolean | undefined;
-}
-
-export interface IPDModelRow {
-	/** The metric label. ⚠️ "other" is the 64-model overflow bucket, not a model. */
-	model: string;
-	total: number | undefined;
-	/** Share of this model's selections that reused a warm endpoint. */
-	affinityShare: RatioResult;
-	fallbackRate: RateResult;
-}
-
 /**
  * What the mix says about cache-aware routing, as one verdict so no renderer
  * re-derives it and gets the configured case backwards.
@@ -230,7 +166,7 @@ export type AffinityVerdict =
 	// No selections in the window. 0/0 asserts nothing about affinity.
 	| 'no-traffic'
 	// The rule list was unavailable, so "expected" cannot be distinguished
-	// from "broken". The mix is still shown; the judgement is withheld.
+	// from "broken". The judgement is withheld.
 	| 'unknown-configuration'
 	// ⭐ Neither affinity gate is open. A tier2-dominant mix IS the configured
 	// behaviour here and is not a finding.
@@ -251,13 +187,9 @@ export type PDTierMixReport =
 	| {kind: 'not-exported'}
 	| {
 			kind: 'ok';
-			tiers: readonly IPDTierRow[];
-			/** All selections, every tier and model. */
-			totalRate: RateResult;
 			/** Share reusing a warm endpoint — every tier except the min-load fallback. */
 			affinityShare: RatioResult;
 			verdict: AffinityVerdict;
-			byModel: readonly IPDModelRow[];
 			reconciliation: Tier0Reconciliation;
 		};
 
@@ -271,19 +203,17 @@ export function pdTierMix(
 	// is never read off its tail. The retention ring is filled in an effect,
 	// so a page legitimately holds a snapshot while `history` is still empty;
 	// reading the tail there answers "unavailable", which claims the scrape
-	// failed. Presence, lifetime totals and the row set come from the
-	// snapshot — only rates need the pair, and with one observation they
-	// correctly say "warming up".
+	// failed. Presence comes from the snapshot — only the share needs the
+	// pair, and with one observation it correctly says "warming up".
 	if (!snapshot || snapshot.failure) return {kind: 'unavailable'};
 	if (!snapshot.families.get(PD_TIER_SELECTED)) return {kind: 'not-exported'};
 
-	// ⚠️ `partitionRate`, not `familySumRate`, for every tier. A counter child
-	// exists only once incremented, so a tier the ladder has never terminated
-	// at exports no series — and on a family that IS present that is a
-	// genuine 0/s, not an unknown. `familySumRate` would answer
-	// insufficient-samples and print "Warming up…" forever at exactly the
-	// tiers whose emptiness is the finding.
-	const tierRate = (tier: PDTier) => partitionRate(history, PD_TIER_SELECTED, maxGapMs, {[TIER]: tier});
+	// ⚠️ `partitionRate`, not `familySumRate`. A counter child exists only
+	// once incremented, so the affinity tiers export no series until the
+	// ladder first terminates there — and on a family that IS present that is
+	// a genuine 0/s, not an unknown. `familySumRate` would answer
+	// insufficient-samples and withhold the verdict forever at exactly the
+	// state (`configured-no-reuse`) whose emptiness is the finding.
 	const totalRate = partitionRate(history, PD_TIER_SELECTED, maxGapMs, () => true);
 	// The complement of the fallback rather than a sum of the other three:
 	// one predicate is one summed series and therefore one rate, where
@@ -292,56 +222,10 @@ export function pdTierMix(
 	const affinityRate = partitionRate(history, PD_TIER_SELECTED, maxGapMs, l => l[TIER] !== PD_FALLBACK_TIER);
 	const affinityShare = ratioOf(affinityRate, totalRate);
 
-	const tiers = PD_TIERS.map<IPDTierRow>(tier => {
-		const rate = tierRate(tier);
-		return {
-			tier,
-			rate,
-			share: ratioOf(rate, totalRate),
-			total: lifetimeSum(snapshot, PD_TIER_SELECTED, l => l[TIER] === tier),
-			reachable: tierReachable(tier, gates),
-		};
-	});
-
-	// Rows come from the snapshot's own label values, not from REST. The
-	// question "which models took P/D traffic" is answerable only by the
-	// traffic: a rule's configured `model_name` is a different set, and the
-	// label may be the "other" overflow bucket or the empty string (the
-	// datapath passes "" for model-less traffic) — neither of which any REST
-	// field can produce. Pattern-4's REST-first rule still governs the
-	// VERDICT, which is where a wrong guess would misinform an operator.
-	const models = new Set<string>();
-	for (const s of selectSamples(snapshot, PD_TIER_SELECTED)) models.add(s.labels[MODEL] ?? '');
-
-	const byModel = [...models]
-		.map<IPDModelRow>(model => {
-			// ⚠️ A predicate, not label equality, and the same one the row key
-			// and the lifetime total use. Label equality never matches a
-			// sample that OMITS the label, while `?? ''` groups it under the
-			// empty-model row — so the equality form would have given that one
-			// row a lifetime total with no rate beside it. The gateway does
-			// emit `model=""` for model-less traffic, so the row is real.
-			const isModel = (l: Readonly<Record<string, string>>) => (l[MODEL] ?? '') === model;
-			const all = partitionRate(history, PD_TIER_SELECTED, maxGapMs, isModel);
-			const affinity = partitionRate(history, PD_TIER_SELECTED, maxGapMs, l => isModel(l) && l[TIER] !== PD_FALLBACK_TIER);
-			return {
-				model,
-				total: lifetimeSum(snapshot, PD_TIER_SELECTED, isModel),
-				affinityShare: ratioOf(affinity, all),
-				fallbackRate: partitionRate(history, PD_TIER_SELECTED, maxGapMs, l => isModel(l) && l[TIER] === PD_FALLBACK_TIER),
-			};
-		})
-		// Busiest model first, with lifetime total as the tiebreak so the
-		// table does not reshuffle between polls.
-		.sort((a, b) => (b.total ?? -1) - (a.total ?? -1) || a.model.localeCompare(b.model));
-
 	return {
 		kind: 'ok',
-		tiers,
-		totalRate,
 		affinityShare,
 		verdict: affinityVerdict(affinityShare, gates),
-		byModel,
 		reconciliation: tier0Reconciliation(snapshot),
 	};
 }

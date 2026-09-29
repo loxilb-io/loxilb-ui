@@ -6,33 +6,25 @@
 // that an all-Tier-2 mix has two correct readings and only one is a finding,
 // so a rendering that raised an alarm on the configured one would be wrong
 // even with a perfectly correct verdict behind it.
+//
+// The panel is compact: the verdict and the reconciliation alert. The tier
+// and model tables are Grafana's now, and a test below pins that they stay
+// gone.
 import 'locales/i18n';
 import i18n from 'locales/i18n';
 import {afterEach, beforeEach, describe, expect, it} from 'vitest';
 import {cleanup, render, screen} from '@testing-library/react';
-import {IPDTierGates, IPDTierRow, PDTier, PDTierMixReport, Tier0Reconciliation} from 'observability/pdTiers';
+import {IPDTierGates, PDTierMixReport, Tier0Reconciliation} from 'observability/pdTiers';
 import PDTierMixPanel from './PDTierMixPanel';
 
 const OPEN_ALL: IPDTierGates = {pdDisagg: true, cacheAware: true, kvExact: true};
 const PD_ONLY: IPDTierGates = {pdDisagg: true, cacheAware: false, kvExact: false};
 const NO_PD: IPDTierGates = {pdDisagg: false, cacheAware: false, kvExact: false};
 
-const row = (tier: PDTier, over: Partial<IPDTierRow> = {}): IPDTierRow => ({
-	tier,
-	rate: {kind: 'ok', perSecond: 0, intervalMs: 10_000},
-	share: {kind: 'ok', ratio: 0},
-	total: 0,
-	reachable: true,
-	...over,
-});
-
 const ok = (over: Partial<Extract<PDTierMixReport, {kind: 'ok'}>> = {}): PDTierMixReport => ({
 	kind: 'ok',
-	tiers: [row('tier0'), row('tier1'), row('tier15'), row('tier2', {share: {kind: 'ok', ratio: 1}, total: 40})],
-	totalRate: {kind: 'ok', perSecond: 4, intervalMs: 10_000},
 	affinityShare: {kind: 'ok', ratio: 0},
 	verdict: 'configured-no-reuse',
-	byModel: [],
 	reconciliation: {kind: 'agrees', selections: 0},
 	...over,
 });
@@ -87,8 +79,6 @@ describe('the two correct readings of an all-Tier-2 mix', () => {
 		render(<PDTierMixPanel report={ok({verdict: 'unknown-configuration'})} gates={undefined} />);
 		expect(screen.queryByText(FAULT_WORDS)).toBeNull();
 		expect(screen.getByText(/rule list is unavailable/i)).toBeTruthy();
-		// The mix itself is still shown — the missing half is the judgement.
-		expect(screen.getByText(/Tier 2 — min load/)).toBeTruthy();
 	});
 });
 
@@ -108,13 +98,6 @@ describe('absent series are preconditions, not errors', () => {
 	it('says a failed scrape is not a routing verdict', () => {
 		render(<PDTierMixPanel report={{kind: 'unavailable'}} gates={OPEN_ALL} />);
 		expect(screen.getByText(/says nothing about whether P\/D routing is working/i)).toBeTruthy();
-	});
-
-	it('labels an unreachable tier instead of colouring it as an error', () => {
-		render(<PDTierMixPanel report={ok({tiers: [row('tier1', {reachable: false, total: undefined})]})} gates={PD_ONLY} />);
-		expect(screen.getByText('Not enabled')).toBeTruthy();
-		// ⚠️ No series at all is not the number zero.
-		expect(screen.getByText('None')).toBeTruthy();
 	});
 });
 
@@ -145,31 +128,22 @@ describe('the Tier-0 reconciliation note', () => {
 	});
 });
 
-describe('the model column', () => {
-	it('never presents the overflow bucket or model-less traffic as a model name', () => {
-		render(
-			<PDTierMixPanel
-				report={ok({
-					byModel: [
-						{model: 'other', total: 10, affinityShare: {kind: 'ok', ratio: 0.5}, fallbackRate: {kind: 'ok', perSecond: 1, intervalMs: 10_000}},
-						{model: '', total: 4, affinityShare: {kind: 'no-traffic'}, fallbackRate: {kind: 'ok', perSecond: 0, intervalMs: 10_000}},
-					],
-				})}
-				gates={OPEN_ALL}
-			/>,
-		);
-		expect(screen.getByText(/overflow bucket/i)).toBeTruthy();
-		expect(screen.getByText('No model declared')).toBeTruthy();
+describe('compact: the breakdown lives in Grafana', () => {
+	it('renders no tier or model table, only the verdict', () => {
+		render(<PDTierMixPanel report={ok({verdict: 'reuse-working', affinityShare: {kind: 'ok', ratio: 0.5}})} gates={OPEN_ALL} />);
+		expect(screen.queryByRole('table')).toBeNull();
+		expect(screen.queryByText(/Tier 2 — min load/)).toBeNull();
+		expect(screen.queryByText('By model')).toBeNull();
+		expect(screen.queryByText('Not enabled')).toBeNull();
+		// The share is carried by the verdict sentence itself.
+		expect(screen.getByText(/50\.0% of prefill selections reused a warm endpoint/)).toBeTruthy();
 	});
 });
 
 describe('translated surfaces', () => {
 	it('renders the configured-behaviour case in Korean without borrowing failure colour', async () => {
-		// ⚠️ The chip and the alert severity are built in this panel rather
-		// than routed through DataTable's `type: 'state'` column, whose
-		// `state_color()` defaults to 'error' for any string it does not
-		// recognise and matches lowercase ENGLISH substrings. Translated text
-		// through that path paints ko/ja operators red for a healthy mix.
+		// ⚠️ Severity comes from the verdict, never from matching translated
+		// text — ko/ja operators must not see a healthy mix painted red.
 		await i18n.changeLanguage('ko');
 		render(<PDTierMixPanel report={ok({verdict: 'as-configured'})} gates={PD_ONLY} />);
 		const alert = screen.getByRole('alert');
