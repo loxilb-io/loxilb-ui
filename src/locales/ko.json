@@ -873,6 +873,7 @@
 	"This REST read has its own timing and is not synchronized with the metric snapshot above.": "이 REST 조회는 자체 타이밍을 가지며 위의 메트릭 스냅샷과 동기화되지 않습니다.",
 	"Token accounting": "토큰 집계",
 	"Token quota denied": "토큰 쿼터 거부",
+	"Token quota warming up": "토큰 쿼터 준비 중",
 	"Tokens (B)": "토큰 (B)",
 	"Total (sum over models)": "합계 (전체 모델 합산)",
 	"Traffic shaping": "트래픽 셰이핑",

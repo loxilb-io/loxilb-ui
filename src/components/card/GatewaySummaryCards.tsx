@@ -20,7 +20,7 @@ import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
 import {fromThrownError} from 'connector/fetcher/opResultAdapter';
 import {familyAbsence} from 'observability/familyActivation';
 import {aggregateSum, selectSamples, selectScalar} from 'observability/selectors';
-import {completedRequestRate} from 'observability/aiRequests';
+import {completedRequestRate, denialTotalRate} from 'observability/aiRequests';
 import {familySumRate, rateMaxGapMs} from 'observability/snapshotRates';
 import {countOrAbsence, formatAbsence, formatRate, StatRow} from 'pages/observability/common';
 import {IInstance} from 'types/oam';
@@ -63,19 +63,10 @@ export function GwAiEventsCard({instance}: GwCardProps) {
 	// outcome="completed" where the instance reports it — the family also
 	// carries gate denials since gateway 27680379 (see observability/aiRequests).
 	const completed = useMemo(() => completedRequestRate(history, maxGap), [history, maxGap]);
-	const denials = useMemo(
-		() => [
-			familySumRate(history, 'loxilb_ai_rate_limit_hits_total', maxGap),
-			familySumRate(history, 'loxilb_ai_model_not_allowed_total', maxGap),
-			familySumRate(history, 'loxilb_ai_token_quota_denied_total', maxGap),
-		],
-		[history, maxGap],
-	);
-	// Sum only when every constituent has a real rate; a partial sum labeled
-	// as "denials" would understate silently.
-	const denialTotal = denials.every(d => d.kind === 'ok')
-		? {kind: 'ok' as const, perSecond: denials.reduce((a, d) => a + (d.kind === 'ok' ? d.perSecond : 0), 0), intervalMs: 0}
-		: denials.find(d => d.kind !== 'ok')!;
+	// Counted once each: the gateway's own denied-outcome count where it
+	// reports one, never a sum of reason families that overlap (every
+	// token-quota refusal is in both rate_limit_hits and token_quota_denied).
+	const denialTotal = useMemo(() => denialTotalRate(history, maxGap), [history, maxGap]);
 
 	return (
 		<CardBase title={t('AI Events (partial views)')}>

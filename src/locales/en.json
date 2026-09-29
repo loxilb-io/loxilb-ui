@@ -873,6 +873,7 @@
 	"This REST read has its own timing and is not synchronized with the metric snapshot above.": "This REST read has its own timing and is not synchronized with the metric snapshot above.",
 	"Token accounting": "Token accounting",
 	"Token quota denied": "Token quota denied",
+	"Token quota warming up": "Token quota warming up",
 	"Tokens (B)": "Tokens (B)",
 	"Total (sum over models)": "Total (sum over models)",
 	"Traffic shaping": "Traffic shaping",

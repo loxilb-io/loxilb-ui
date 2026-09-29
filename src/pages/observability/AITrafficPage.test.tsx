@@ -164,3 +164,25 @@ describe('AITrafficPage — families an idle gateway never exports', () => {
 		expect(rowText('Engines reporting')).toContain('None reported');
 	});
 });
+
+// The denial panel listed "Rate limited" (all of rate_limit_hits, quota
+// reasons included) beside "Token quota denied" as if they were two causes,
+// while every quota refusal was in both.
+describe('AITrafficPage — denial reasons do not overlap', () => {
+	const valueOf = (label: string) => screen.getByText(label).nextElementSibling?.textContent;
+	const exposition = (rate: number, quota: number, warming: number) =>
+		[
+			PARTITIONED(100, rate + quota + warming, 0),
+			`loxilb_ai_rate_limit_hits_total{tenant="t",reason="rate_limit_exceeded"} ${rate}`,
+			`loxilb_ai_rate_limit_hits_total{tenant="t",reason="token_quota_exceeded"} ${quota}`,
+			`loxilb_ai_rate_limit_hits_total{tenant="t",reason="token_quota_warming"} ${warming}`,
+			`loxilb_ai_token_quota_denied_total{tenant="t"} ${quota}`,
+		].join('\n');
+
+	it('keeps quota refusals out of "Rate limited" and gives warming its own row', () => {
+		renderWith([snapshotOf(exposition(0, 0, 0), T0), snapshotOf(exposition(3, 5, 2), T0 + 10_000)]);
+		expect(valueOf('Rate limited')).toBe('0.300/s');
+		expect(valueOf('Token quota denied')).toBe('0.500/s');
+		expect(valueOf('Token quota warming up')).toBe('0.200/s');
+	});
+});

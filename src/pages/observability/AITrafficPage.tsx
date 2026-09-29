@@ -33,7 +33,7 @@ import {useMemo} from 'react';
 import {useTranslation} from 'react-i18next';
 import {estimateQuantile, mergeHistogramSeries} from 'observability/histogram';
 import {selectSamples} from 'observability/selectors';
-import {completedRequestRate, completedRequestRatesBy, requestOutcomes} from 'observability/aiRequests';
+import {completedRequestRate, completedRequestRatesBy, denialReasons, requestOutcomes} from 'observability/aiRequests';
 import {bearerAdmission} from 'observability/jwtAuth';
 import {familySumRate, groupRates, rateMaxGapMs} from 'observability/snapshotRates';
 import {CadenceSelector, ModelName, PanelPaper, StatRow, countOrAbsence, formatRate, formatRatio, useAbsenceExplanation, useObservabilityApplicable} from './common';
@@ -59,16 +59,21 @@ export default function AITrafficPage() {
 	// J3 — the bearer arm's admit/deny breakdown. Traffic, so it lives here;
 	// per-profile keyset health lives on the JWT Auth Profiles page instead.
 	const bearer = useMemo(() => bearerAdmission(snapshot, history, maxGap), [snapshot, history, maxGap]);
+	// Disjoint by construction: a token-quota refusal is in BOTH
+	// rate_limit_hits and token_quota_denied upstream, so "Rate limited" here
+	// excludes the quota reasons rather than listing them twice.
+	const reasons = useMemo(() => denialReasons(history, maxGap), [history, maxGap]);
 	const denialRates = useMemo(
 		() =>
 			snapshot
 				? [
-						{key: t('Rate limited'), rate: familySumRate(history, 'loxilb_ai_rate_limit_hits_total', maxGap)},
-						{key: t('Model not allowed'), rate: familySumRate(history, 'loxilb_ai_model_not_allowed_total', maxGap)},
-						{key: t('Token quota denied'), rate: familySumRate(history, 'loxilb_ai_token_quota_denied_total', maxGap)},
+						{key: t('Rate limited'), rate: reasons.rateLimited},
+						{key: t('Token quota denied'), rate: reasons.tokenQuotaDenied},
+						{key: t('Token quota warming up'), rate: reasons.tokenQuotaWarming},
+						{key: t('Model not allowed'), rate: reasons.modelNotAllowed},
 					]
 				: [],
-		[snapshot, history, maxGap, t],
+		[snapshot, reasons, t],
 	);
 	const activeStreams = useMemo(() => (snapshot ? selectSamples(snapshot, 'loxilb_ai_active_streams') : []), [snapshot]);
 	const tokenRates = useMemo(

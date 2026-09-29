@@ -873,6 +873,7 @@
 	"This REST read has its own timing and is not synchronized with the metric snapshot above.": "このREST読み取りは独自のタイミングを持ち、上のメトリクススナップショットとは同期していません。",
 	"Token accounting": "トークン集計",
 	"Token quota denied": "トークンクォータ拒否",
+	"Token quota warming up": "トークンクォータ準備中",
 	"Tokens (B)": "トークン (B)",
 	"Total (sum over models)": "合計（全モデル合算）",
 	"Traffic shaping": "トラフィックシェーピング",

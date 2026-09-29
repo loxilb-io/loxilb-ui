@@ -3,8 +3,13 @@ import {IMetricsSnapshot} from 'types/observability';
 import {parseExposition} from './parser';
 import {
 	AI_REQUESTS,
+	MODEL_NOT_ALLOWED,
+	RATE_LIMIT_HITS,
+	TOKEN_QUOTA_DENIED,
 	completedRequestRate,
 	completedRequestRatesBy,
+	denialReasons,
+	denialTotalRate,
 	hasOutcomePartition,
 	isErrorStatus,
 	requestOutcomes,
@@ -265,5 +270,116 @@ describe('requestOutcomes — the partitioned path', () => {
 
 		expect(o.offered).toEqual({kind: 'insufficient-samples'});
 		expect(o.errorRatio).toEqual({kind: 'not-derivable', reason: 'insufficient-samples'});
+	});
+});
+
+// ⭐ The defect these pin: upstream records every token-quota refusal in BOTH
+// rate_limit_hits (reason token_quota_exceeded | token_quota_would_exceed) and
+// token_quota_denied, at both call sites (pkg/loxinet/ai_gateway_dp.go). The
+// dashboard summed the two families and so counted each quota refusal twice.
+describe('denial total — each refused request counted once', () => {
+	// One 10-second interval in which the gateway refused 5 requests on quota
+	// and 3 on a request-rate bucket, recorded exactly as upstream records
+	// them: the quota refusals land in BOTH reason families.
+	const quotaAndRate = (quota: number, rate: number, withOutcome: boolean) =>
+		[
+			`${RATE_LIMIT_HITS}{tenant="t",reason="token_quota_exceeded"} ${quota}`,
+			`${RATE_LIMIT_HITS}{tenant="t",reason="rate_limit_exceeded"} ${rate}`,
+			`${TOKEN_QUOTA_DENIED}{tenant="t"} ${quota}`,
+			withOutcome
+				? `${AI_REQUESTS}{model="m",tenant="t",status="429",outcome="denied"} ${quota + rate}`
+				: `${AI_REQUESTS}{model="m",tenant="t",status="200"} 100`,
+		].join('\n');
+
+	it('reads the gateway\'s own denied-outcome count where it exists', () => {
+		const h = [snapshotOf(quotaAndRate(10, 20, true), T0), snapshotOf(quotaAndRate(15, 23, true), T1)];
+		// 8 refusals in 10 s. The old sum read hits (8) + quota_denied (5) = 1.3/s.
+		expect(denialTotalRate(h, GAP)).toMatchObject({kind: 'ok', perSecond: 0.8});
+	});
+
+	it('never adds token_quota_denied on a gateway without the outcome label', () => {
+		const h = [snapshotOf(quotaAndRate(10, 20, false), T0), snapshotOf(quotaAndRate(15, 23, false), T1)];
+		expect(denialTotalRate(h, GAP)).toMatchObject({kind: 'ok', perSecond: 0.8});
+	});
+
+	it('adds model_not_allowed, a different gate the hits family never records', () => {
+		const mna = (n: number) => `${MODEL_NOT_ALLOWED}{tenant="t",model="x"} ${n}`;
+		const h = [
+			snapshotOf(`${quotaAndRate(10, 20, false)}\n${mna(0)}`, T0),
+			snapshotOf(`${quotaAndRate(15, 23, false)}\n${mna(2)}`, T1),
+		];
+		expect(denialTotalRate(h, GAP)).toMatchObject({kind: 'ok', perSecond: 1.0});
+	});
+
+	it('lets an absent lazy term contribute nothing while another term proves the scrape measures', () => {
+		// model_not_allowed has never been incremented, so it has no series.
+		const h = [snapshotOf(quotaAndRate(10, 20, false), T0), snapshotOf(quotaAndRate(15, 23, false), T1)];
+		expect(denialTotalRate(h, GAP).kind).toBe('ok');
+	});
+
+	it('stays absent — never 0/s — when every reason family is absent', () => {
+		const old = `${AI_REQUESTS}{model="m",tenant="t",status="200"} 100`;
+		const r = denialTotalRate([snapshotOf(old, T0), snapshotOf(old, T1)], GAP);
+		expect(r.kind).toBe('absent');
+	});
+
+	it('propagates a reset in any present term instead of summing around it', () => {
+		const h = [snapshotOf(quotaAndRate(10, 20, false), T0), snapshotOf(quotaAndRate(15, 5, false), T1)];
+		expect(denialTotalRate(h, GAP)).toEqual({kind: 'reset'});
+	});
+});
+
+describe('denial reasons — disjoint rows', () => {
+	const hits = (rows: Record<string, number>, quotaDenied?: number) =>
+		[
+			...Object.entries(rows).map(([reason, n]) => `${RATE_LIMIT_HITS}{tenant="t",reason="${reason}"} ${n}`),
+			...(quotaDenied === undefined ? [] : [`${TOKEN_QUOTA_DENIED}{tenant="t"} ${quotaDenied}`]),
+		].join('\n');
+
+	it('keeps token-quota refusals out of "rate limited", where they were counted a second time', () => {
+		const h = [
+			snapshotOf(hits({rate_limit_exceeded: 0, token_quota_exceeded: 0, token_quota_would_exceed: 0}, 0), T0),
+			snapshotOf(hits({rate_limit_exceeded: 3, token_quota_exceeded: 4, token_quota_would_exceed: 1}, 5), T1),
+		];
+		const r = denialReasons(h, GAP);
+		expect(r.rateLimited).toMatchObject({kind: 'ok', perSecond: 0.3});
+		expect(r.tokenQuotaDenied).toMatchObject({kind: 'ok', perSecond: 0.5});
+	});
+
+	it('gives quota warming its own row, so excluding token_quota_* does not make it vanish', () => {
+		const h = [
+			snapshotOf(hits({rate_limit_exceeded: 0, token_quota_warming: 0}), T0),
+			snapshotOf(hits({rate_limit_exceeded: 1, token_quota_warming: 2}), T1),
+		];
+		const r = denialReasons(h, GAP);
+		expect(r.rateLimited).toMatchObject({kind: 'ok', perSecond: 0.1});
+		expect(r.tokenQuotaWarming).toMatchObject({kind: 'ok', perSecond: 0.2});
+	});
+
+	it('reads a reason the present family never recorded as a true 0/s, not warming up', () => {
+		// Only quota refusals so far: no request-rate child exists yet.
+		const h = [snapshotOf(hits({token_quota_exceeded: 1}, 1), T0), snapshotOf(hits({token_quota_exceeded: 3}, 3), T1)];
+		expect(denialReasons(h, GAP).rateLimited).toMatchObject({kind: 'ok', perSecond: 0});
+	});
+
+	it('says why when the hits family itself is absent', () => {
+		const idle = `${AI_REQUESTS}{model="m",tenant="t",status="200",outcome="completed"} 1`;
+		const r = denialReasons([snapshotOf(idle, T0), snapshotOf(idle, T1)], GAP);
+		expect(r.rateLimited.kind).toBe('absent');
+		expect(r.tokenQuotaWarming.kind).toBe('absent');
+	});
+
+	it('sums back to the fallback total: the rows overlap nowhere', () => {
+		const mna = (n: number) => `${MODEL_NOT_ALLOWED}{tenant="t",model="x"} ${n}`;
+		const h = [
+			snapshotOf(`${hits({rate_limit_exceeded: 0, token_quota_exceeded: 0, token_quota_warming: 0}, 0)}\n${mna(0)}`, T0),
+			snapshotOf(`${hits({rate_limit_exceeded: 3, token_quota_exceeded: 4, token_quota_warming: 2}, 4)}\n${mna(1)}`, T1),
+		];
+		const r = denialReasons(h, GAP);
+		const rows = [r.rateLimited, r.tokenQuotaDenied, r.tokenQuotaWarming, r.modelNotAllowed];
+		const sum = rows.reduce((a, x) => a + (x.kind === 'ok' ? x.perSecond : Number.NaN), 0);
+		const total = denialTotalRate(h, GAP);
+		expect(total.kind).toBe('ok');
+		expect(sum).toBeCloseTo(total.kind === 'ok' ? total.perSecond : Number.NaN, 10);
 	});
 });
