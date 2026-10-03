@@ -11,6 +11,8 @@
 //   AI accordion gone (silent-drop fields), e2ehttps sends 2 and round-trips
 // - endpoint form: no tls-hello probe (422)
 // - flavor chip identifies the instance as loxilb
+// - LB create form: no /status/capabilities request, no slot-budget caption
+// - System page audit section: no /audit/* request (plain loxilb has none)
 //---------------------------------------------------------
 import {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
@@ -292,6 +294,20 @@ test.describe('@loxilb flavor gating — plain upstream loxilb instance', () => 
 		expect(rule?.serviceArguments?.inactiveTimeOut, 'earlier sa edit survived').toBe(120);
 	});
 
+	test('LB create form: never asks /status/capabilities and shows no source-check budget', async ({page}) => {
+		const capabilityReads: string[] = [];
+		page.on('request', rq => {
+			if (/\/status\/capabilities/.test(new URL(rq.url()).pathname)) capabilityReads.push(rq.url());
+		});
+		await page.goto(`instance/traffic/lb?name=${instName}`);
+		await waitForLoxilbChip(page);
+		await openToolbarDialog(page, 'Add', 'Add Load Balancer Rule');
+		const sources = await expandSection(page, /^Allowed Sources$/);
+		await expect(sources.getByText(/source-check slots free/)).toHaveCount(0);
+		await dialogButton(page, 'Cancel').click();
+		expect(capabilityReads).toEqual([]);
+	});
+
 	test('endpoint form: tls-hello probe option is absent', async ({page}) => {
 		await page.goto(`instance/traffic/endpoint?name=${instName}`);
 		await waitForLoxilbChip(page);
@@ -303,6 +319,19 @@ test.describe('@loxilb flavor gating — plain upstream loxilb instance', () => 
 		expect(probeOptions).not.toContain('TLS-HELLO');
 		await page.keyboard.press('Escape');
 		await dialogButton(page, 'Cancel').click();
+	});
+
+	test('System page audit section: explains the flavor and never asks for /audit/*', async ({page}) => {
+		const auditRequests: string[] = [];
+		page.on('request', rq => {
+			if (/\/audit\//.test(new URL(rq.url()).pathname)) auditRequests.push(rq.url());
+		});
+		await page.addInitScript(name => localStorage.setItem('system_audit_instance', JSON.stringify(name)), instName);
+		await page.goto('system');
+		// The flavor answer is the terminal state: by the time it renders, a
+		// gateway pick would already have issued its audit read.
+		await expect(page.getByText(/plain loxilb, which keeps no audit trail/)).toBeVisible({timeout: 20_000});
+		expect(auditRequests).toEqual([]);
 	});
 
 	test('instance card and breadcrumb identify the flavor', async ({page}) => {

@@ -8,8 +8,10 @@ import useFormWithParams from 'hooks/inputFormHook';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useInstanceCapabilities} from 'hooks/query/flavorHook';
 import {useModelProfiles} from 'hooks/query/queryHooks';
+import {useGatewayCapabilities} from 'hooks/query/statusHook';
 import {t} from 'i18next';
 import {isAIEngineChange, validateAIConfiguration, validateProfileSelection} from 'types/ai_gateway';
+import {lbSourceBudgetNotice, SourceBudgetNotice} from 'types/capability_status';
 import {IServiceConfiguration} from 'types/load_balancer';
 import {AllowedSourcesListInputForm, SecondaryIPListInputForm} from './IPListInputForm';
 import AdvancedSettingsForm from './subforms/AdvancedSettingsForm';
@@ -20,6 +22,21 @@ import EndpointListForm from './subforms/EndpointListForm';
 //---------------------------------------------------------
 // Component
 //---------------------------------------------------------
+// A warning only: submit stays enabled and the gateway's 412 stays the authority.
+function SourceBudgetNoticeView({notice}: {notice: SourceBudgetNotice}) {
+	if (notice.kind === 'caption') {
+		return (
+			<Typography variant="caption" color="text.secondary">
+				{t('{{free}} of {{limit}} source-check slots free', {free: notice.free, limit: notice.limit})}
+			</Typography>
+		);
+	}
+	if (notice.kind === 'warning') {
+		return <Alert severity="warning">{notice.reason || t('The gateway reports that the next rule created cannot carry allowed sources.')}</Alert>;
+	}
+	return null;
+}
+
 interface LBInputFormProps {
 	onChange: (data: IServiceConfiguration & { isValid?: boolean; errors?: any }) => void;
 	onValidation?: (isValid: boolean) => void;
@@ -67,6 +84,11 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 	const inst = useInstanceFromURL();
 	const caps = useInstanceCapabilities();
 	const profilesQuery = useModelProfiles(caps.resolved && caps.flavor === 'inference-gateway' ? inst : null);
+	// Source-check slot budget (lb_allowed_sources), CREATE only: the verdict is
+	// about the next slot the gateway hands out, never about the rule being
+	// edited (types/capability_status.ts). Gateway-only endpoint, so plain
+	// loxilb never sees the request. The edit path relies on the gateway's 412.
+	const {data: capabilityList} = useGatewayCapabilities(!isEdit && caps.resolved && caps.flavor === 'inference-gateway' ? inst : null);
 	const publishedProfiles = profilesQuery.data?.profiles;
 
 	// Derive validation from formData (no setState-in-effect — that pattern caused
@@ -202,7 +224,12 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 				/>
 				{errors.aiGateway && <Alert severity="error">{errors.aiGateway}</Alert>}
 				<SecondaryIPListInputForm values={formData?.secondaryIPs ?? []} onChange={handleSecondaryIPs} description={params?.secondaryIPs?.description} />
-				<AllowedSourcesListInputForm values={formData?.allowedSources ?? []} onChange={handleAllowedSources} description={params?.allowedSources?.description} />
+				<AllowedSourcesListInputForm
+					values={formData?.allowedSources ?? []}
+					onChange={handleAllowedSources}
+					description={params?.allowedSources?.description}
+					notice={isEdit ? null : <SourceBudgetNoticeView notice={lbSourceBudgetNotice(capabilityList, (formData?.allowedSources ?? []).length > 0)} />}
+				/>
 				<EndpointListForm
 					values={formData?.endpoints ?? []}
 					onChange={handleEndpoints}

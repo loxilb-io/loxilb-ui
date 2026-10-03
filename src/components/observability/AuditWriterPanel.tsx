@@ -5,7 +5,9 @@
 // picker; the panel renders only for an instance whose flavor RESOLVED to
 // the inference gateway and whose registry entry is applicable. See
 // observability/auditWriter for what each value means and why liveness is
-// judged from our own observations.
+// judged from our own observations. The gateway's /audit REST read adds only
+// what the metrics cannot say (types/audit_status.ts): a configured sink that
+// is not connected, and the event id of the latest orphaned intent.
 
 import {Alert, Box, MenuItem, Stack, TextField, Typography} from '@mui/material';
 import type {TFunction} from 'i18next';
@@ -14,12 +16,14 @@ import {StatRow} from 'components/observability/panelLayout';
 import {useInstanceFlavorResolution} from 'hooks/query/flavorHook';
 import {useInstances} from 'hooks/query/oamHooks';
 import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
+import {useGatewayAuditRest} from 'hooks/query/statusHook';
 import useLocalStorageState from 'hooks/localStorageHook';
 import {PREFERENCE_KEYS, isStringPreference} from 'preferences';
 import {useMemo, useRef} from 'react';
 import {useTranslation} from 'react-i18next';
 import {AuditWriterReport, HeartbeatLiveness, IAuditStreamDrops, IHeartbeatTrack, auditWriter, heartbeatLiveness, trackHeartbeat} from 'observability/auditWriter';
 import {isEntryApplicable} from 'observability/capabilityRegistry';
+import {AuditRestSignals, auditRestSignals} from 'types/audit_status';
 import {IInstance} from 'types/oam';
 
 function streamLabel(stream: string, t: TFunction): string {
@@ -81,23 +85,62 @@ function dropText(d: IAuditStreamDrops, t: TFunction): string {
 export interface AuditWriterPanelProps {
 	report: AuditWriterReport;
 	liveness: HeartbeatLiveness;
+	/** The /audit REST signals; absent or `none` adds nothing. */
+	rest?: AuditRestSignals;
 }
 
-export function AuditWriterPanel({report, liveness}: AuditWriterPanelProps) {
-	const {t} = useTranslation();
+const ORPHAN_KEY = 'loxilb_audit_orphaned_intents_total';
 
-	if (report.kind === 'unavailable') {
+// The REST facts that need no metrics context: a sink that is down, and the
+// quiet note for a caller who may not read the audit API.
+function SinkAndAccess({rest}: {rest?: AuditRestSignals}) {
+	const {t} = useTranslation();
+	if (rest?.kind === 'forbidden') {
 		return (
 			<Typography variant="body2" color="text.secondary">
-				{t('Audit writer health is unavailable: the metrics scrape did not answer.')}
+				{t('Audit sink and orphan details need gateway administrator rights.')}
 			</Typography>
 		);
 	}
-	if (report.kind === 'not-exported') {
+	if (rest?.kind !== 'ok' || !rest.sinkDown) return null;
+	const {address, lastError, writeErrors} = rest.sinkDown;
+	return (
+		<Alert severity="warning">
+			{address ? t('The remote audit sink {{address}} is configured but not connected.', {address}) : t('The remote audit sink is configured but not connected.')}
+			{lastError && <> {t('Last error: {{error}}', {error: lastError})}</>}
+			{writeErrors > 0 && <> {t('{{n}} submissions have failed since it was configured.', {n: writeErrors})}</>}
+		</Alert>
+	);
+}
+
+// An orphan the metrics' fault line does not carry (the counter is not
+// exported, not yet above zero in this scrape, or the scrape failed) still
+// has its own line: the REST read is evidence on its own.
+function OrphanAlert({orphan}: {orphan: {count: number; eventId?: string}}) {
+	const {t} = useTranslation();
+	return (
+		<Alert severity="warning">
+			{t('{{n}} management changes from the previous boot have no recorded result.', {n: orphan.count})}
+			{orphan.eventId && <> {t('Most recent: event {{id}}.', {id: orphan.eventId})}</>}
+		</Alert>
+	);
+}
+
+export function AuditWriterPanel({report, liveness, rest}: AuditWriterPanelProps) {
+	const {t} = useTranslation();
+	const orphan = rest?.kind === 'ok' ? rest.orphan : undefined;
+
+	if (report.kind === 'unavailable' || report.kind === 'not-exported') {
 		return (
-			<Typography variant="body2" color="text.secondary">
-				{t('This gateway does not export audit writer metrics.')}
-			</Typography>
+			<Stack spacing={1.5}>
+				<Typography variant="body2" color="text.secondary">
+					{report.kind === 'unavailable'
+						? t('Audit writer health is unavailable: the metrics scrape did not answer.')
+						: t('This gateway does not export audit writer metrics.')}
+				</Typography>
+				{orphan && <OrphanAlert orphan={orphan} />}
+				<SinkAndAccess rest={rest} />
+			</Stack>
 		);
 	}
 	if (report.kind === 'not-configured') {
@@ -108,6 +151,7 @@ export function AuditWriterPanel({report, liveness}: AuditWriterPanelProps) {
 		);
 	}
 
+	const orphanOnFaultLine = report.faults.some(f => f.key === ORPHAN_KEY);
 	const dropsLine = report.drops.map(d => dropText(d, t)).join(' · ');
 	const anyDropped = report.drops.some(d => (d.total ?? 0) > 0);
 	const notReported = report.faultsNotReported > 0 ? t('{{n}} not reported', {n: report.faultsNotReported}) : undefined;
@@ -134,11 +178,19 @@ export function AuditWriterPanel({report, liveness}: AuditWriterPanelProps) {
 				<Alert severity="warning">
 					{t('{{n}} audit fault counters are above zero since the gateway started: {{list}}.', {
 						n: report.faults.length,
-						list: report.faults.map(f => `${counterLabel(f.key, t)} ${f.total}`).join(', '),
+						list: report.faults
+							.map(f => {
+								const line = `${counterLabel(f.key, t)} ${f.total}`;
+								return f.key === ORPHAN_KEY && orphan?.eventId ? `${line} (${t('most recent: event {{id}}', {id: orphan.eventId})})` : line;
+							})
+							.join(', '),
 					})}
 					{notReported && ` (${notReported})`}
 				</Alert>
 			)}
+
+			{orphan && !orphanOnFaultLine && <OrphanAlert orphan={orphan} />}
+			<SinkAndAccess rest={rest} />
 
 			<Box>
 				<StatRow label={t('Writer')} value={report.up === undefined ? t('N/A') : report.up ? t('Running') : t('Not running')} />
@@ -169,10 +221,15 @@ function GatewayAuditWriter({instance}: {instance: IInstance}) {
 	const healthy = snapshot && !snapshot.failure ? snapshot : undefined;
 	const beat = healthy ? (report.kind === 'ok' ? report.lastHeartbeatSeconds : undefined) : undefined;
 	const liveness = useHeartbeatLiveness(instance.id, beat, healthy?.receivedAtMs, cadenceMs);
+	// Rendered only for a resolved gateway (PickedInstance), which is the gate
+	// the audit read needs. A read that failed shows nothing rather than the
+	// last answer: these are alerts, and an alert must be about now.
+	const auditRest = useGatewayAuditRest(instance);
+	const rest = useMemo(() => auditRestSignals(auditRest.isError ? undefined : auditRest.data), [auditRest.isError, auditRest.data]);
 	return (
 		<Stack spacing={1}>
 			{snapshot && !snapshot.failure && <FreshnessBadge receivedAtMs={snapshot.receivedAtMs} cadenceMs={cadenceMs} />}
-			<AuditWriterPanel report={report} liveness={liveness} />
+			<AuditWriterPanel report={report} liveness={liveness} rest={rest} />
 		</Stack>
 	);
 }

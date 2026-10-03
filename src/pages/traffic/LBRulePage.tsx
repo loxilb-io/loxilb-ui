@@ -25,6 +25,7 @@ import {usePopUp} from 'hooks/popupHook';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useLoadBalancerConfig, useMirrors, useQOSPolicies} from 'hooks/query/queryHooks';
 import {fromQueryRefetch} from 'hooks/query/reconcile';
+import {capabilityQueryPrefix} from 'hooks/query/statusHook';
 import {useReconcileReporter} from 'hooks/query/reconcileReport';
 import {lbRuleAppeared, lbRulesGone} from 'hooks/query/confirmPredicates';
 import {t} from 'i18next';
@@ -56,6 +57,48 @@ export function selectLBEditStrategy({
 	// update operation: delete + create would interrupt active AI traffic.
 	if (mode === 4) return 'block-fullproxy';
 	return canMergePatch ? 'merge-patch' : 'reconcile';
+}
+
+// The serviceArguments fields an edit actually changed, relative to the rule's
+// read-back. Immutable fields are rejected by the gateway's PATCH with 400.
+// Keys the form carried over unchanged from the read-back (including fields
+// this UI does not know) are equal to it and so never widen the patch.
+const LB_IMMUTABLE_SERVICE_ARGUMENTS = new Set(['externalIP', 'port', 'protocol', 'mode', 'security', 'egress', 'oper', 'managed']);
+// Backends omit zero-value fields on read-back while the form emits them as
+// 0/''/false — a form default over an absent field is NOT a change (it would
+// spuriously widen the gateway patch and, on loxilb, escalate endpoint-only
+// edits into a delete + re-create).
+const isZero = (v: any) => v === undefined || v === null || v === 0 || v === '' || v === false;
+// LBInputForm's non-zero injected defaults: over an absent read-back field they
+// are form scaffolding, not an operator edit.
+const LB_FORM_DEFAULTS: Record<string, unknown> = {
+	probeTimeout: 1800,
+	path_match_mode: 'disabled',
+	backend_protocol: 'http1',
+	chwbl_prefix_hash_level: 1,
+};
+const isFormDefault = (key: string, value: unknown): boolean => {
+	if (value === LB_FORM_DEFAULTS[key]) return true;
+	// The mTLS dropdown materializes the Swagger default on mount,
+	// even when the persisted rule omitted the whole object.
+	if (key === 'mtls_frontend' && value && typeof value === 'object') {
+		const mtls = value as Record<string, unknown>;
+		return mtls.client_cert_mode === 'disabled' && Object.entries(mtls).every(([field, nested]) =>
+			field === 'client_cert_mode' || isZero(nested),
+		);
+	}
+	return false;
+};
+
+export function lbServiceArgumentsPatch(edited: Record<string, any>, readBack: Record<string, any>): Record<string, any> {
+	const patch: Record<string, any> = {};
+	Object.entries(edited).forEach(([k, v]) => {
+		if (LB_IMMUTABLE_SERVICE_ARGUMENTS.has(k)) return;
+		const prev = readBack[k];
+		if (prev === undefined && (isZero(v) || isFormDefault(k, v))) return;
+		if (JSON.stringify(v) !== JSON.stringify(prev)) patch[k] = v;
+	});
+	return patch;
 }
 
 //---------------------------------------------------------
@@ -114,6 +157,14 @@ export default function LBRulePage() {
 	const {errorPopup, showAddError, showUpdateError, showDeleteError, closeErrorPopup} = useErrorPopup();
 	const {report, reconcile} = useReconcileReporter();
 
+	// Every LB create and delete moves the source-check slot budget
+	// (lb_allowed_sources), so the capability read is re-asked after any write
+	// here. A failed write moved nothing; re-asking then is harmless and keeps
+	// this one rule with no exceptions.
+	const invalidateCapabilities = useCallback(() => {
+		if (inst) void queryClient.invalidateQueries({queryKey: capabilityQueryPrefix(inst)});
+	}, [inst, queryClient]);
+
 	const handleDelete = useCallback(async () => {
 		if (!inst || selectedItems.length === 0) return;
 
@@ -129,6 +180,7 @@ export default function LBRulePage() {
 		});
 
 		const results = await Promise.all(deletePromises);
+		invalidateCapabilities();
 		// {result:"fail"} envelopes now map to failed — a dataplane-rejected
 		// delete can no longer be counted as succeeded.
 		const failures = results.filter(res => res.status !== 'confirmed');
@@ -150,7 +202,7 @@ export default function LBRulePage() {
 			// All failed
 			showDeleteError('load balancer rule(s)', t(failures[0].localeKey));
 		}
-	}, [inst, selectedItems, showDeleteError, refetch, report, reconcile]);
+	}, [inst, selectedItems, showDeleteError, refetch, report, reconcile, invalidateCapabilities]);
 
 	const instanceRef = useRef<IServiceConfiguration | null>(null);
 	const openAddDialog = useCallback(function openAddDialog(seed?: Partial<IServiceConfiguration>) {
@@ -209,6 +261,7 @@ export default function LBRulePage() {
 				}
 
 				const res = await request_create_load_balancer_config(inst, submitted, effectiveFlavor);
+				invalidateCapabilities();
 				if (res.status === 'confirmed') {
 					await report({refetch: fromQueryRefetch(refetch), confirm: lbRuleAppeared(submitted)}, t('Added successfully.'));
 				} else {
@@ -240,7 +293,7 @@ export default function LBRulePage() {
 	// an IGW dialog cannot submit through the initial OSS-safe projection and
 	// silently strip the Gateway-only fields the operator just entered.
 	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
-	}, [inst, caps.resolved, effectiveFlavor, showAddError, refetch, enableYes, queryClient]);
+	}, [inst, caps.resolved, effectiveFlavor, showAddError, refetch, enableYes, queryClient, invalidateCapabilities]);
 
 	// The table's Add button passes its click event — keep the seeded reopen
 	// path (AC-06 draft preservation) out of that signature.
@@ -311,42 +364,8 @@ export default function LBRulePage() {
 					// changing it means a different rule, so fall back to re-POST.
 					res = await request_create_load_balancer_config(inst, serviceConfig, effectiveFlavor);
 				} else {
-					// Change detection shared by both update strategies. Immutable
-					// fields are rejected by the gateway's PATCH with 400.
-					const IMMUTABLE = new Set(['externalIP', 'port', 'protocol', 'mode', 'security', 'egress', 'oper', 'managed']);
-					// Backends omit zero-value fields on read-back while the form
-					// emits them as 0/''/false — a form default over an absent
-					// field is NOT a change (it would spuriously widen the gateway
-					// patch and, on loxilb, escalate endpoint-only edits into a
-					// delete + re-create).
-					const isZero = (v: any) => v === undefined || v === null || v === 0 || v === '' || v === false;
-					// LBInputForm's one non-zero injected default: over an absent
-					// read-back field it is form scaffolding, not an operator edit.
-						const FORM_DEFAULTS: Record<string, unknown> = {
-							probeTimeout: 1800,
-							path_match_mode: 'disabled',
-							backend_protocol: 'http1',
-							chwbl_prefix_hash_level: 1,
-						};
-						const isFormDefault = (key: string, value: unknown): boolean => {
-							if (value === FORM_DEFAULTS[key]) return true;
-							// The mTLS dropdown materializes the Swagger default on mount,
-							// even when the persisted rule omitted the whole object.
-							if (key === 'mtls_frontend' && value && typeof value === 'object') {
-								const mtls = value as Record<string, unknown>;
-								return mtls.client_cert_mode === 'disabled' && Object.entries(mtls).every(([field, nested]) =>
-									field === 'client_cert_mode' || isZero(nested),
-								);
-							}
-							return false;
-						};
-						const saPatch: Record<string, any> = {};
-						Object.entries(sa).forEach(([k, v]) => {
-							if (IMMUTABLE.has(k)) return;
-							const prev = (osa as any)[k];
-							if (prev === undefined && (isZero(v) || isFormDefault(k, v))) return;
-						if (JSON.stringify(v) !== JSON.stringify(prev)) saPatch[k] = v;
-					});
+					// Change detection shared by both update strategies.
+					const saPatch = lbServiceArgumentsPatch(sa, osa);
 					const endpointsChanged = JSON.stringify(serviceConfig.endpoints) !== JSON.stringify(editableEndpoints);
 					// Read-back reports empty lists as null; the form emits [] —
 					// normalize both sides so that difference is not a "change".
@@ -413,6 +432,7 @@ export default function LBRulePage() {
 								? await request_delete_lb_by_name(inst, osa.name)
 								: await request_delete_lb_by_full_key(inst, selectedLB);
 							if (del.status !== 'confirmed') {
+								invalidateCapabilities();
 								showUpdateError('load balancer rule', t(del.localeKey));
 								return;
 							}
@@ -420,13 +440,19 @@ export default function LBRulePage() {
 						res = await request_create_load_balancer_config(inst, upsert, effectiveFlavor);
 					}
 				}
+				// A key-changed edit creates a rule and the upsert deletes and
+				// re-creates one: both move the slot budget.
+				invalidateCapabilities();
 				if (res.status === 'confirmed') {
 					// The delete+re-create strategy can move the rule's key, so
 					// confirm against the EDITED identity, not the original row.
 					await report({refetch: fromQueryRefetch(refetch), confirm: lbRuleAppeared(serviceConfig)}, t('Load balancer rule updated successfully.'));
 				} else {
-					// Localized mapped message; raw prose stays in diagnostics.
-					showUpdateError('load balancer rule', t(res.localeKey));
+					// Localized mapped message; raw prose stays in diagnostics —
+					// except on a 412, as on create: a PATCH adding allowedSources
+					// to a rule past the source-check slot range is refused with
+					// one, and only the gateway's sentence says what to change.
+					showUpdateError('load balancer rule', opErrorText(res));
 				}
 			},
 			true,
@@ -435,7 +461,7 @@ export default function LBRulePage() {
 			{size: 'wide'},
 		);
 	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
-	}, [inst, caps, selectedItem, showUpdateError, refetch, enableYes]);
+	}, [inst, caps, selectedItem, showUpdateError, refetch, enableYes, invalidateCapabilities]);
 
 	const handleRefresh = () => {
 		set_selected_rows([]);

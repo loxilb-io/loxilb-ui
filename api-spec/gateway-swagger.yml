@@ -639,7 +639,14 @@ paths:
   '/config/loadbalancer':
     post:
       summary: Create a new Load balancer service
-      description: Create a new load balancer service with .
+      description: >-
+        Create a new load balancer service. A well-formed request can still be
+        refused by this Gateway's own deployment state with 412 - a vLLM
+        KV-exact rule without the launch seed or without a loadable tokenizer
+        for its model_name, or allowedSources on a rule allocated a slot past
+        the source-check range - and no request body can satisfy such a
+        refusal; GET /status/capabilities reports the same verdicts before
+        submission.
       parameters:
         - name: attr
           in: body
@@ -670,6 +677,10 @@ paths:
             $ref: '#/definitions/Error'
         '409':
           description: Resource Conflict. VLAN already exists OR dependency VRF/VNET not found
+          schema:
+            $ref: '#/definitions/Error'
+        '412':
+          description: Server precondition not met - the request is valid but this Gateway's deployment cannot admit it (result names the setting or artifact and what to change)
           schema:
             $ref: '#/definitions/Error'
         '500':
@@ -973,6 +984,10 @@ paths:
           $ref: '#/responses/ManagementForbidden'
         '404':
           description: Resource not found
+          schema:
+            $ref: '#/definitions/Error'
+        '412':
+          description: Server precondition not met - the merged rule is valid but this Gateway's deployment cannot admit it (for example allowedSources on a rule whose slot is past the source-check range)
           schema:
             $ref: '#/definitions/Error'
         '500':
@@ -4881,8 +4896,25 @@ paths:
         else, and reporting it 503 would be wrong. Absence of a capability from
         this list means this build does not know it, which is not the same as
         not ready.
+        Known capabilities - "kv_exact_vllm": admission of vLLM KV-exact rules;
+        without model_name the verdict covers the launch seed, with model_name
+        it also covers whether a tokenizer for that model can be loaded, which
+        is the other deployment precondition admission checks.
+        "lb_allowed_sources": whether the next load-balancer rule created can
+        carry allowedSources; limit and in_use carry the slot budget.
       produces:
         - application/json
+      parameters:
+        - name: model_name
+          in: query
+          required: false
+          type: string
+          description: >-
+            Model name a KV-exact rule would carry (the served model, as in
+            LoadbalanceEntry.serviceArguments.model_name). When given, the
+            kv_exact_vllm verdict also checks that a tokenizer for it can be
+            loaded now, using the same probe rule admission uses. Omitted, the
+            verdict covers only the model-independent preconditions.
       responses:
         '200':
           description: OK
@@ -7362,6 +7394,180 @@ paths:
           $ref: '#/responses/ManagementStoreUnavailable'
 
 #----------------------------------------------
+# Audit Trail
+#----------------------------------------------
+  '/audit/status':
+    get:
+      summary: Audit trail status
+      description: >-
+        Reports the state of the management audit trail: whether a writer is
+        configured and running, records accepted and dropped per stream,
+        write, sync and timeout failures, the time of the last write, the
+        active segment and the sealed bytes, the retention policy with the
+        retention it projects, and the management intents of the previous
+        boot that never received a result. Status only: no record content is
+        served over the management API, and this read is not itself audited
+        because it is designed to be polled. A gateway whose audit directory
+        was unusable at start still answers, with available false, so the
+        refused management calls can be explained.
+      operationId: GetAuditStatus
+      tags:
+        - audit
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: Audit trail status
+          schema:
+            $ref: '#/definitions/AuditStatus'
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
+
+  '/audit/policy':
+    get:
+      summary: Audit policy in force
+      description: >-
+        Returns the runtime-changeable part of the audit configuration: the
+        limits that seal the active segment and the local retention target.
+        The audit root directory, the mandatory-audit mode and the instance
+        identity are startup-only and are not served here, because changing
+        where the trail is written while it is being written would break the
+        one thing the trail is for. This read is not itself audited, by the
+        same decision that leaves the status read unaudited.
+      operationId: GetAuditPolicy
+      tags:
+        - audit
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: Audit policy
+          schema:
+            $ref: '#/definitions/AuditPolicy'
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
+    post:
+      summary: Change the audit policy
+      description: >-
+        Replaces the runtime-changeable audit policy. The change is itself
+        audited before it is applied, like any other management mutation.
+        A value below the deployment profile's floor is refused for every
+        caller, the gateway administrator included, and the refusal names
+        the fields. That refusal answers 400, not 403: the caller was
+        authorized and the values were not acceptable, and a 403 here would
+        be recorded as an authorization denial rather than as the refused
+        policy change it is. Lowering a retention target never deletes
+        segments already on disk: they keep the terms they were sealed
+        under, and only what is sealed afterwards is subject to the
+        shorter one.
+      operationId: PostAuditPolicy
+      tags:
+        - audit
+      parameters:
+        - in: body
+          name: attr
+          description: The policy to apply
+          required: true
+          schema:
+            $ref: '#/definitions/AuditPolicy'
+      responses:
+        '204':
+          description: OK
+        '400':
+          $ref: '#/responses/ManagementBadRequest'
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
+
+  '/audit/sink':
+    get:
+      summary: Audit sink configuration and state
+      description: >-
+        Returns the remote sink's configuration and what is known about its
+        current session. Certificate material is named by path and never
+        served: the management API reports where the trust anchors are, not
+        what they contain.
+      operationId: GetAuditSink
+      tags:
+        - audit
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: Audit sink
+          schema:
+            $ref: '#/definitions/AuditSink'
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
+    post:
+      summary: Configure the audit sink
+      description: >-
+        Configures the remote syslog sink. The receiver's certificate is
+        always verified against the configured bundle; there is no mode that
+        disables verification, and a configuration without a bundle is
+        refused. The change is audited like any other management mutation.
+      operationId: PostAuditSink
+      tags:
+        - audit
+      parameters:
+        - in: body
+          name: attr
+          description: The sink configuration to apply
+          required: true
+          schema:
+            $ref: '#/definitions/AuditSink'
+      responses:
+        '204':
+          description: OK
+        '400':
+          $ref: '#/responses/ManagementBadRequest'
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
+
+  '/audit/rotate':
+    post:
+      summary: Seal the active segment now
+      description: >-
+        Seals the active segment and opens the next one, as the operator
+        action of the same name. It is audited, and the record names both
+        the segment that was sealed and the one now active.
+      operationId: PostAuditRotate
+      tags:
+        - audit
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: Segment rotated
+          schema:
+            $ref: '#/definitions/AuditRotateResult'
+        '401':
+          $ref: '#/responses/ManagementUnauthorized'
+        '403':
+          $ref: '#/responses/ManagementForbidden'
+        '503':
+          $ref: '#/responses/ManagementStoreUnavailable'
+
+#----------------------------------------------
 # Log Archives
 #----------------------------------------------
   '/log-archives':
@@ -8688,6 +8894,10 @@ paths:
 # Schema definitions
 #----------------------------------------------
 responses:
+  ManagementBadRequest:
+    description: The request is malformed or the values are not acceptable; nothing was changed
+    schema:
+      $ref: '#/definitions/Error'
   ManagementForbidden:
     description: Authenticated principal is not authorized for this operation
     schema:
@@ -8782,18 +8992,30 @@ definitions:
     properties:
       name:
         type: string
-        description: 'Stable capability identifier. Deliberately not an enum: a build that gains a capability must not become unparseable to an older client. Known value - "kv_exact_vllm": admission of vLLM KV-exact (Tier 1.5) rules, kvExactMode 1 or 3 with kvEngineType vllm.'
+        description: 'Stable capability identifier. Deliberately not an enum: a build that gains a capability must not become unparseable to an older client. Known values - "kv_exact_vllm": admission of vLLM KV-exact (Tier 1.5) rules, kvExactMode 1 or 3 with kvEngineType vllm; "lb_allowed_sources": admission of allowedSources on the next load-balancer rule created.'
         example: kv_exact_vllm
       ready:
         type: boolean
-        description: True when this Gateway can currently admit use of the capability. False means every attempt is refused with 412 until the deployment is changed - no request body can satisfy it.
+        description: True when this Gateway can currently admit use of the capability. False means every attempt is refused with 412 until the deployment is changed - no request body can satisfy it. For kv_exact_vllm the verdict is complete for a model only when the request carried model_name; without it the tokenizer precondition is not evaluated.
       reason_code:
         type: string
-        description: 'Stable machine-readable code for why the capability is not ready, for clients that must branch without matching prose. Absent when ready. Known values - "KV_EXACT_SEED_UNSET": the Gateway was launched without a non-empty LLB_KV_NONE_HASH_SEED; "KV_EXACT_SEED_TOO_LONG": the seed exceeds the 23-byte representable bound.'
+        description: 'Stable machine-readable code for why the capability is not ready, for clients that must branch without matching prose. Absent when ready. Known values - "KV_EXACT_SEED_UNSET": the Gateway was launched without a non-empty LLB_KV_NONE_HASH_SEED; "KV_EXACT_SEED_TOO_LONG": the seed exceeds the 23-byte representable bound; "KV_EXACT_TOKENIZER_UNLOADABLE": no tokenizer can be loaded for the model_name asked about (nothing staged under /etc/loxilb/tokenizers/<model-slug>/ and no published model profile carries one); "LB_SOURCE_CHECK_SLOTS_EXHAUSTED": every load-balancer rule slot able to carry source checks is held by an existing rule; "LB_RULES_UNAVAILABLE": this Gateway is not serving load-balancer rules (bgp-only mode).'
         example: KV_EXACT_SEED_UNSET
       reason:
         type: string
         description: The operator-facing sentence, identical to the one the 412 refusal carries. It names the setting and the required relationship, and is what an operator needs to fix the deployment. Absent when ready.
+      limit:
+        type: integer
+        format: int64
+        x-nullable: true
+        description: For a capability with a budget, how many uses the deployment can hold at once. Present only for such capabilities - lb_allowed_sources reports the number of load-balancer rule slots able to carry source checks.
+        example: 29
+      in_use:
+        type: integer
+        format: int64
+        x-nullable: true
+        description: For a capability with a budget, how much of it existing configuration holds. Present with limit - for lb_allowed_sources, the source-check-capable slots held by existing load-balancer rules, whether or not those rules carry allowedSources, because the slot is the rule's index.
+        example: 3
 
   ReadyStatus:
     type: object
@@ -8997,11 +9219,15 @@ definitions:
         description: Mutating configuration API calls are being refused (503), except the configuration-lifecycle operations and the maintenance endpoint itself.
       refusing_new_inference:
         type: boolean
-        description: New data-path inference requests are being refused. Gateway-wide data-path refusal is not implemented by this management-plane state - this field reports false so no caller mistakes maintenance for a traffic drain; per-service and per-endpoint drain remain the data path's own mechanisms.
+        description: New data-path inference requests are being refused. True while maintenance is in effect on a gateway whose data path is attached; the capacity admission gate then answers new inference requests 503 gateway_draining with Retry-After, ends the requests waiting in its queues with 503 admission_drained, and lets executing requests finish. False on a management plane with no data path behind it, so no caller mistakes maintenance for a traffic drain that is not happening.
       in_flight_streams:
         type: integer
         format: int64
         description: AI inference streaming sessions (SSE) currently open through the gateway. Non-streaming requests have no in-flight counter and are deliberately not estimated.
+      in_flight_requests:
+        type: integer
+        format: int64
+        description: Inference requests the capacity admission gate counts as executing across every gated model pool, streaming and non-streaming alike; 0 when no pool is gated. Read from the data plane at each GET.
       entered_at:
         type: string
         format: date-time
@@ -9706,6 +9932,21 @@ definitions:
         description: At least one route is required by shared validation. Evaluation is first-match-wins by ascending position; stored GET order is not an effective-order or capacity-validation report.
         items:
           $ref: '#/definitions/L7Rule'
+      trustedProxies:
+        type: array
+        description: >-
+          Address ranges this listener's own upstreams occupy, each "A.B.C.D" or
+          "A.B.C.D/N" IPv4. A request whose socket peer falls in one of them is
+          attributed to the right-most address in its inbound forwarding chain that
+          does not, and its chain is extended rather than replaced. Omitted or empty
+          trusts nothing, which is edge behaviour: the peer is the origin. At most 16
+          ranges; more is refused rather than truncated, as is a range the dataplane
+          parser will not read, and either refusal fails the whole request. An IPv6
+          peer never falls inside a range and so is never treated as an upstream.
+          These ranges are dropped when the policy is deleted, since the dataplane
+          acts on them only while a policy is attached.
+        items:
+          type: string
   L7PolicyGetEntry:
     type: object
     description: Registry collection wrapper, sorted by policy ID. Values are stored configuration, not effective dataplane or runtime validation results.
@@ -9735,8 +9976,8 @@ definitions:
         type: object
         description: >-
           Service configuration. Implementation warnings for this REST representation:
-          POST does not copy adminStateUp, connectionLimit or snat into the domain.
-          GET omits privateIP, connectionLimit, timeoutMemberConnect, timeoutMemberData,
+          POST does not copy adminStateUp or snat into the domain.
+          GET omits privateIP, timeoutMemberConnect, timeoutMemberData,
           timeoutTcpInspect, vip_qos_policy_id, alpn_protocols, tls_ciphers, tls_versions,
           hsts_max_age, hsts_include_subdomains, hsts_preload, backend_ca_cert_id,
           backend_client_cert_id and mtls_frontend.client_crl_path. GET/edit/POST is
@@ -9775,12 +10016,15 @@ definitions:
             type: integer
             format: uint32
             description: >-
-              Requested concurrent-connection ceiling across the service's endpoints;
-              zero represents unlimited. Distinct from a per-source-IP security limit.
-              The domain and eBPF conntrack selector contain a per-rule limit gate,
-              but this REST POST does not copy the value, PATCH does not overlay it,
-              and normal GET omits it. This field cannot currently establish an
-              enforced connection limit through these REST operations.
+              Concurrent-connection ceiling for the rule, counted across all of its
+              endpoints; zero or absent means unlimited. Distinct from the per-source-IP
+              security limits. POST stores it, PATCH overlays it when present (an
+              explicit zero clears it) and GET reports it (omitted when zero); null is
+              rejected. Enforced by the conntrack selector on DNAT-mode rules: once the
+              rule's live connection count has reached the ceiling, further SYNs are
+              dropped without a reset and without a conntrack entry, and a slot frees
+              when a connection is torn down. A FullProxy rule is not gated by this
+              field, and HTTP/2 streams are not counted as connections.
           annotations:
             type: object
             additionalProperties:
@@ -9939,7 +10183,7 @@ definitions:
             type: string
             enum: ["off", "both", "request", "response"]
             default: "off"
-            description: Directional sockmap acceleration for this FullProxy service - off (default), both, request (client->backend only), response (backend->client only). The direction that is not selected stays on the userspace relay and never runs the sockmap verdict. A mode other than off requires a plaintext tcp fullproxy service with an ipv4 external IP and ipv4 endpoints, and the daemon started with --sockmapsupport; a request that does not meet either condition is rejected with 400 before any rule state changes. A snapshot restore on a daemon without --sockmapsupport keeps the mode, logs a warning and runs the rule unaccelerated. A service whose data plane changes bytes on every request accepts only off and is rejected with 400 otherwise. Those are sse_mode, pd_disagg_mode, ANY api_key_auth declaration - an explicit disabled included, since that value still makes the gateway strip X-Api-Key, as is one kept by a replace that omits the field - and an attached L7 policy. On an accelerated connection the later keep-alive requests skip admission, the request-header rewrites and the X-Api-Key strip, and the responses are not recorded. Attaching an L7 policy to a service that declares a mode is rejected with 400 as well, since a policy can arrive long after the rule. A snapshot restore of such a service turns the mode off with a warning; a restored policy whose rule declares a mode is attached with a warning and the rule stays unaccelerated. Services are told apart by address and port; services pointing at the same endpoint address and port, or host-based services on the same VIP address and port, share a portset entry, but a connection is accelerated only in the directions its own service selects. HTTP/2, including h2c, is never accelerated. Adding a direction applies to new connections; a connection already running is never accelerated retroactively. Taking a direction away, and deleting the service, close the connections that had it accelerated, since the verdict decides on the pairing installed when a connection was accepted and could not otherwise be reached. POST .../sockmapreset does the same without changing the configuration. Connections that were never accelerated are not touched. Redirect correctness depends on the kernel - see docs/sockmap-acceleration.md before enabling.
+            description: Directional sockmap acceleration for this FullProxy service - off (default), both, request (client->backend only), response (backend->client only). The direction that is not selected stays on the userspace relay and never runs the sockmap verdict. A mode other than off requires a plaintext tcp fullproxy service with an ipv4 external IP and ipv4 endpoints, and the daemon started with --sockmapsupport; a request that does not meet either condition is rejected with 400 before any rule state changes. A snapshot restore on a daemon without --sockmapsupport keeps the mode, logs a warning and runs the rule unaccelerated. A service whose data plane changes bytes in the direction being accelerated is rejected with 400, and the check is per direction. sse_mode, pd_disagg_mode and an attached L7 policy own BOTH directions and accept only off. ANY api_key_auth declaration - an explicit disabled included, since that value still makes the gateway strip X-Api-Key, as is one kept by a replace that omits the field - owns the REQUEST direction only - both and request are rejected with 400, response is accepted because validating the credential and stripping X-Api-Key both happen before dispatch and neither rewrites a response byte. Accepting it logs a warning, since api_key_auth arms ai_gw_mode and an accelerated response is not recorded. On a connection whose REQUEST direction is accelerated the later keep-alive requests skip admission, the request-header rewrites and the X-Api-Key strip; on one whose RESPONSE direction is accelerated the responses are not recorded. Attaching an L7 policy to a service that declares a mode is rejected with 400 as well, since a policy can arrive long after the rule. A snapshot restore of such a service turns the mode off with a warning; a restored policy whose rule declares a mode is attached with a warning and the rule stays unaccelerated. Services are told apart by address and port; services pointing at the same endpoint address and port, or host-based services on the same VIP address and port, share a portset entry, but a connection is accelerated only in the directions its own service selects. HTTP/2, including h2c, is never accelerated. Adding a direction applies to new connections; a connection already running is never accelerated retroactively. Taking a direction away, and deleting the service, close the connections that had it accelerated, since the verdict decides on the pairing installed when a connection was accepted and could not otherwise be reached. POST .../sockmapreset does the same without changing the configuration. Connections that were never accelerated are not touched. Redirect correctness depends on the kernel - see docs/sockmap-acceleration.md before enabling.
           egress:
             type: boolean
             description: Marks an egress rule. The ordinary LB2DP programming path returns early for this marker; do not infer ordinary ingress FullProxy behavior. The existing-rule path rejects changes to this flag.
@@ -10125,6 +10369,328 @@ definitions:
               omission retains the stored declaration, explicit 0 resets it to the
               system default of 3, and a valid positive value replaces it. Explicit
               JSON null is rejected before rule or data-plane mutation.
+          fc_max_queue_depth:
+            type: integer
+            format: int32
+            x-nullable: false
+            minimum: 0
+            maximum: 65536
+            default: 0
+            description: >-
+              Capacity admission queue of the service's model pool: how many
+              inference requests may wait for a capacity unit instead of being
+              refused with 429 when the pool's ceilings are reached. 0 or omitted
+              leaves the process default (LLB_FC_MAX_QUEUE_DEPTH) in force; the
+              ceiling is 65536. HTTP/1.1 requests wait; HTTP/2 streams are refused
+              on their stream and never wait. Every waiting request parks its
+              client connection, which holds about one MiB of receive buffer, so a
+              depth is a memory bound as much as a queue bound: depth x 1 MiB when
+              the queue is full (65536 is about 64 GiB). The gateway logs a WARNING
+              at rule apply when that bound exceeds half of the node's memory and
+              still applies it; bound the connections themselves with
+              connectionLimit or the process valve LLB_PD_MAX_TOTAL_INFLIGHT.
+              Changeable at runtime by a replace POST (the stored value is kept
+              when omitted, an explicit 0 resets to the process default); PATCH
+              does not reach FullProxy rules. Explicit JSON null is rejected.
+              The resolved values are read back in fc_effective.
+          fc_max_queue_wait_ms:
+            type: integer
+            format: int32
+            x-nullable: false
+            minimum: 0
+            maximum: 3600000
+            default: 0
+            description: >-
+              The longest a request may wait in the capacity admission queue, in
+              milliseconds, before it is answered 504 admission_queue_timeout with
+              the wait it spent (queued_ms). Required, greater than 0, whenever
+              fc_max_queue_depth is set; 0 or omitted with no depth leaves the
+              process default (LLB_FC_MAX_QUEUE_WAIT_MS) in force. Replace and
+              null semantics as fc_max_queue_depth.
+          fc_mode:
+            type: string
+            x-nullable: false
+            enum: ["off", "observe", "enforce", "inherit"]
+            description: >-
+              The service's capacity admission gate: enforce refuses (or queues)
+              a request over a ceiling, observe counts what it would have done and
+              changes nothing, off bypasses the gate. inherit, or omitted on
+              create, runs on the process default (LLB_FC_MODE); a rule may switch
+              the gate off under an enforcing environment. On a replace POST an
+              omitted fc_mode keeps the stored one and inherit returns the rule to
+              the process default. Explicit JSON null is rejected. Read back only
+              when declared; the mode in force is fc_effective.mode.
+          fc_max_outstanding:
+            type: integer
+            format: int32
+            x-nullable: false
+            minimum: 0
+            maximum: 100000
+            default: 0
+            description: >-
+              The pool-wide ceiling on executing inference requests of the service's model pool. 0 or omitted leaves the process default (LLB_FC_MAX_OUTSTANDING) in force;
+              at most 100000. Changeable at runtime by a replace POST (the stored
+              value is kept when omitted, an explicit 0 resets to the process
+              default). Explicit JSON null is rejected. The value in force and
+              its source are read back in fc_effective.
+          fc_ep_max_inflight:
+            type: integer
+            format: int32
+            x-nullable: false
+            minimum: 0
+            maximum: 100000
+            default: 0
+            description: >-
+              The per-endpoint ceiling on executing inference requests for the normal (non P/D) role. 0 or omitted leaves the process default (LLB_FC_EP_MAX_INFLIGHT) in force;
+              at most 100000. Changeable at runtime by a replace POST (the stored
+              value is kept when omitted, an explicit 0 resets to the process
+              default). Explicit JSON null is rejected. The value in force and
+              its source are read back in fc_effective.
+          fc_prefill_max_inflight:
+            type: integer
+            format: int32
+            x-nullable: false
+            minimum: 0
+            maximum: 100000
+            default: 0
+            description: >-
+              The per-endpoint ceiling on prefill legs of disaggregated requests. 0 or omitted leaves the process default (LLB_FC_PREFILL_MAX_INFLIGHT, else LLB_PD_MAX_INFLIGHT_PER_EP) in force;
+              at most 100000. Changeable at runtime by a replace POST (the stored
+              value is kept when omitted, an explicit 0 resets to the process
+              default). Explicit JSON null is rejected. The value in force and
+              its source are read back in fc_effective.
+          fc_decode_max_inflight:
+            type: integer
+            format: int32
+            x-nullable: false
+            minimum: 0
+            maximum: 100000
+            default: 0
+            description: >-
+              The per-endpoint ceiling on decode legs of disaggregated requests. 0 or omitted leaves the process default (LLB_FC_DECODE_MAX_INFLIGHT) in force;
+              at most 100000. Changeable at runtime by a replace POST (the stored
+              value is kept when omitted, an explicit 0 resets to the process
+              default). Explicit JSON null is rejected. The value in force and
+              its source are read back in fc_effective.
+          fc_telemetry_stale_ms:
+            type: integer
+            format: int32
+            x-nullable: false
+            minimum: 0
+            maximum: 3600000
+            default: 0
+            description: >-
+              How long an endpoint's scraped queue depth is trusted by the P/D
+              scorers without a refresh, in milliseconds; an older value is
+              replaced by the candidates' average. 0 or omitted leaves the process
+              default (LLB_FC_TELEMETRY_STALE_MS, else 30000) in force. The scraper
+              stamps whole seconds, so the window is effectively rounded to them.
+              Replace and null semantics as fc_max_outstanding.
+          fc_adaptive:
+            type: string
+            x-nullable: false
+            enum: ["on", "off", "inherit"]
+            description: >-
+              on lets the service ceiling (fc_max_outstanding in force) tighten
+              while the rule's endpoints report backpressure (scraped waiting
+              requests, or a time to first token over fc_ttft_target_ms): to
+              four fifths each second, never below a quarter of the ceiling, and
+              back up by one each second the fresh signals are clear. With no
+              fresh signal it holds where it is: stale telemetry never widens it.
+              off keeps the ceiling fixed; inherit, or omitted on create, runs on
+              the process default (LLB_FC_ADAPTIVE). Replace and null semantics as
+              fc_mode. The ceiling in force and its state are read back in
+              fc_effective.
+          fc_warmup_ms:
+            type: integer
+            format: int32
+            x-nullable: false
+            minimum: 0
+            maximum: 3600000
+            default: 0
+            description: >-
+              An endpoint back in service (its circuit breaker closed, or a
+              replace added or re-enabled it) ramps its per-endpoint ceilings from
+              a quarter to all of them over this window, in milliseconds, instead
+              of taking a full share of a burst cold. 0 or omitted leaves the
+              process default (LLB_FC_WARMUP_MS, else no ramp) in force. Replace
+              and null semantics as fc_max_outstanding.
+          fc_ttft_target_ms:
+            type: integer
+            format: int32
+            x-nullable: false
+            minimum: 0
+            maximum: 3600000
+            default: 0
+            description: >-
+              With fc_adaptive on: an endpoint whose streamed responses take
+              longer than this from admission to their first data event (an
+              eighth-weighted average, trusted for fc_telemetry_stale_ms) is
+              backpressure. Only streamed responses are measured: a buffered
+              response's first byte comes with the whole completion. 0 or omitted
+              leaves the process default (LLB_FC_TTFT_TARGET_MS, else TTFT unused)
+              in force. Replace and null semantics as fc_max_outstanding.
+          fc_tenant_max_share_pct:
+            type: integer
+            format: int32
+            x-nullable: false
+            minimum: 0
+            maximum: 100
+            default: 0
+            description: >-
+              The most of the service ceiling in force, and of the queue depth,
+              one tenant may hold, in percent (rounded up, at least one). A tenant
+              is the tenant id the request's credential resolved to; requests
+              without one are one tenant. A tenant at its share waits for one of
+              its own units when the pool queues (within its share of the queue),
+              or is refused with 429 admission_tenant_share, while other tenants
+              still admit; waiters held back by their share never make another
+              tenant wait. Inert without fc_max_outstanding. 100 is no share; 0 or
+              omitted leaves the process default (LLB_FC_TENANT_MAX_SHARE_PCT,
+              else no share) in force. Replace and null semantics as
+              fc_max_outstanding.
+          fc_effective:
+            type: object
+            readOnly: true
+            description: >-
+              The capacity admission gate's resolved state on this rule's model
+              pool, read from the data plane. Present on GET for AI-gateway
+              services (sse_mode, pd_disagg_mode or an api-key policy); ignored on
+              input. mode is off, observe or enforce; the ceilings are the values
+              in force, the process defaults where the rule declared nothing;
+              inflight and queued are live counts; queue_memory_bound_mib is the
+              memory the full queue may park (queue_depth x 1 MiB);
+              telemetry_stale_ms is the P/D scorers' trust window; source names
+              where each value in force came from (rule, env or default);
+              effective_max_outstanding is the service ceiling in force now (the
+              adaptive one while the pool adapts), adapt_state and adapt_reason
+              say where it stands and why, warming_endpoints counts endpoints
+              inside their warm-up window.
+            properties:
+              mode:
+                type: string
+                description: >-
+                  The gate mode in force on the pool (off, observe or enforce).
+              max_outstanding:
+                type: integer
+                format: int32
+                description: Pool-wide ceiling on executing inference requests; 0 is unlimited.
+              ep_max_inflight:
+                type: integer
+                format: int32
+                description: Per-endpoint ceiling for the normal role; 0 is unlimited.
+              prefill_max_inflight:
+                type: integer
+                format: int32
+                description: Per-endpoint ceiling for prefill legs; 0 is unlimited.
+              decode_max_inflight:
+                type: integer
+                format: int32
+                description: Per-endpoint ceiling for decode legs; 0 is unlimited.
+              queue_depth:
+                type: integer
+                format: int32
+                description: >-
+                  Requests that may wait for a unit; 0 means over a ceiling is refused.
+              queue_wait_ms:
+                type: integer
+                format: int32
+                description: The wait window in force for a queued request, in milliseconds.
+              inflight:
+                type: integer
+                format: int32
+                description: Inference requests executing on the pool right now.
+              queued:
+                type: integer
+                format: int32
+                description: Inference requests waiting for a unit right now.
+              queue_memory_bound_mib:
+                type: integer
+                format: int64
+                description: Memory the full queue may park, in MiB (queue_depth x 1 MiB, one parked client connection per waiting request).
+              telemetry_stale_ms:
+                type: integer
+                format: int32
+                description: The P/D scorers' trust window for scraped queue depth, in milliseconds.
+              adaptive:
+                type: string
+                enum: ["on", "off"]
+              warmup_ms:
+                type: integer
+                format: int32
+              ttft_target_ms:
+                type: integer
+                format: int32
+              effective_max_outstanding:
+                type: integer
+                format: int32
+                description: The service ceiling in force now; below max_outstanding while an adaptive pool is tightened.
+              adapt_state:
+                type: string
+                enum: ["off", "open", "tightened", "frozen"]
+                description: >-
+                  off (not adaptive, or no service ceiling), open (at the
+                  ceiling), tightened (below it, following fresh signals) or
+                  frozen (below it, no fresh signal: held).
+              adapt_reason:
+                type: string
+                enum: ["none", "queued", "ttft", "clear", "stale"]
+                description: Why the adaptive ceiling last moved, or why it holds.
+              warming_endpoints:
+                type: integer
+                format: int32
+                description: Endpoints inside their warm-up window.
+              tenant_max_share_pct:
+                type: integer
+                format: int32
+                description: The tenant share in force, in percent; 0 or 100 is no share.
+              tenants_active:
+                type: integer
+                format: int32
+                description: Tenants holding a unit or waiting on the pool now, while it holds tenants to a share.
+              source:
+                type: object
+                description: >-
+                  Where each value in force came from: rule (the rule's own
+                  declaration), env (the process environment, LLB_FC_*) or default
+                  (the product default).
+                properties:
+                  mode:
+                    type: string
+                    enum: [rule, env, default]
+                  max_outstanding:
+                    type: string
+                    enum: [rule, env, default]
+                  ep_max_inflight:
+                    type: string
+                    enum: [rule, env, default]
+                  prefill_max_inflight:
+                    type: string
+                    enum: [rule, env, default]
+                  decode_max_inflight:
+                    type: string
+                    enum: [rule, env, default]
+                  queue_depth:
+                    type: string
+                    enum: [rule, env, default]
+                  queue_wait_ms:
+                    type: string
+                    enum: [rule, env, default]
+                  telemetry_stale_ms:
+                    type: string
+                    enum: [rule, env, default]
+                  adaptive:
+                    type: string
+                    enum: [rule, env, default]
+                  warmup_ms:
+                    type: string
+                    enum: [rule, env, default]
+                  ttft_target_ms:
+                    type: string
+                    enum: [rule, env, default]
+                  tenant_max_share_pct:
+                    type: string
+                    enum: [rule, env, default]
           kvExactMode:
             type: integer
             format: int64
@@ -10624,7 +11190,7 @@ definitions:
 
       allowedSources:
         type: array
-        description: Source-address prefixes associated with the LB source-check path. A nonempty domain list enables source checking; GET returns the stored prefixes. This is an address filter, not projectId-based tenant authorization.
+        description: Source-address prefixes associated with the LB source-check path. A nonempty domain list enables source checking; GET returns the stored prefixes. This is an address filter, not projectId-based tenant authorization. Only load-balancer rules in the first 29 rule slots (0-28) can carry source checks - the slot is allocated by the Gateway, not chosen here - so a create or patch carrying allowedSources on a rule allocated a higher slot is refused with 412; GET /status/capabilities reports the slot budget as lb_allowed_sources.
         items:
           properties:
             prefix:
@@ -12899,6 +13465,10 @@ definitions:
       role:
         type: string
         enum: ["admin", "viewer"]
+      delegation_allowed:
+        type: boolean
+        x-nullable: true
+        description: Whether a request this account authenticates may name another originator that the trail then records as trusted. False for every new account; ignored on create and on login. Settable only by an administrator through PUT, where an omitted value keeps what is stored and a present one is recorded as a changed field.
     type: object
     required:
       - username
@@ -12922,6 +13492,9 @@ definitions:
       role:
         type: string
         enum: ["admin", "viewer"]
+      delegation_allowed:
+        type: boolean
+        description: Whether requests this account authenticates may name another originator.
     type: object
 
   FlowCountMetrics:
@@ -13112,6 +13685,298 @@ definitions:
         type: integer
         format: int64
         description: Bytes examined to build this page. Equal to the page's own span when unfiltered; larger for a filtered query that had to search backwards past non-matching lines. Compare against total_size to show progress through a long search.
+
+#----------------------------------------------
+# Audit Trail Definitions
+#----------------------------------------------
+  AuditPolicy:
+    type: object
+    description: >-
+      The runtime-changeable audit policy. A zero means "no limit" for every
+      field except max_prune_per_pass, where it means the built-in default.
+    properties:
+      max_segment_bytes:
+        type: integer
+        format: int64
+        description: Seal the active segment before it exceeds this many bytes. Zero never seals by size.
+      max_segment_age_seconds:
+        type: integer
+        format: int64
+        description: Seal the active segment once it has been open this long. Zero never seals by age, which leaves the unsealed part of the trail growing without bound and is what a profile ceiling refuses.
+      retention_max_age_seconds:
+        type: integer
+        format: int64
+        description: Prune a sealed segment older than this. Zero keeps by age forever, which is the strongest setting and never below a floor.
+      retention_max_bytes:
+        type: integer
+        format: int64
+        description: Prune oldest first while the sealed segments exceed this total. Zero disables the quota. A quota below one segment is refused, since pruning could never satisfy it.
+      retention_reserve_bytes:
+        type: integer
+        format: int64
+        description: Free-space floor on the audit filesystem. Below it, pruning proceeds regardless of age and quota and durable management writes are refused. Zero disables the check.
+      retention_max_prune_per_pass:
+        type: integer
+        format: int64
+        description: Deletions allowed per retention pass. Zero means the built-in default of one.
+  AuditSink:
+    type: object
+    description: >-
+      The remote sink's configuration and session state. Certificate
+      material is named by path and never served.
+    properties:
+      enabled:
+        type: boolean
+        description: Whether a sink is configured and submitting.
+      address:
+        type: string
+        description: The receiver's host and port.
+      ca_bundle_path:
+        type: string
+        description: PEM bundle the receiver's certificate is verified against. Required; there is no unverified mode.
+      server_name:
+        type: string
+        description: Name expected in the receiver's certificate. Defaults to the host part of the address.
+      client_cert_path:
+        type: string
+        description: Client certificate for mutual TLS. Both this and the key must be set, or neither.
+      client_key_path:
+        type: string
+        description: Client key for mutual TLS.
+      max_frame_bytes:
+        type: integer
+        format: int64
+        description: Largest message this receiver accepts. A record that does not fit is truncated at a field boundary and marked, never cut mid-record. Zero means no limit.
+      facility:
+        type: integer
+        format: int64
+        description: Syslog facility. Defaults to 13, log audit.
+      connected:
+        type: boolean
+        description: Read-only. Whether a session is currently established.
+      submitted:
+        type: integer
+        format: int64
+        description: Read-only. Records written to the socket since this sink was configured. Not a delivery count, the protocol carries no acknowledgement.
+      truncated:
+        type: integer
+        format: int64
+        description: Read-only. Records that did not fit the receiver's cap and were sent shortened.
+      write_errors:
+        type: integer
+        format: int64
+        description: Read-only. Submissions that failed, each of which stops the cursor from advancing.
+      last_error:
+        type: string
+        description: Read-only. The most recent transport error, empty when the last attempt succeeded.
+  AuditRotateResult:
+    type: object
+    description: The segments either side of an operator-requested rotation.
+    properties:
+      sealed_segment_uuid:
+        type: string
+        description: The segment that was sealed.
+      new_segment_uuid:
+        type: string
+        description: The segment now active.
+  AuditStatus:
+    type: object
+    description: >-
+      State of the management audit trail. Every counter is since the writer
+      started in this process; identifiers name segments and events, never
+      their content.
+    properties:
+      available:
+        type: boolean
+        x-omitempty: false   # the answer a writer-less gateway gives is false, not an absent field
+        description: A writer was configured at start. When false the audit directory was unusable, every audited management call is refused, and the remaining fields describe nothing.
+      running:
+        type: boolean
+        description: The writer goroutine is running. False while it restarts after a failure.
+      boot_id:
+        type: string
+        description: Identity of this writer process, stamped on every record it wrote.
+      seq_high:
+        type: integer
+        format: int64
+        description: Highest sequence number written in this boot.
+      last_write:
+        type: string
+        description: Time of the last record written, RFC3339 UTC. Empty until the first record.
+      accepted:
+        type: object
+        additionalProperties:
+          type: integer
+          format: int64
+        description: Records written, by stream (mgmt, data, system).
+      dropped:
+        type: array
+        items:
+          $ref: '#/definitions/AuditDropCount'
+        description: Records the writer could not accept, by stream and reason. Absent reasons are zero.
+      result_drops:
+        type: integer
+        format: int64
+        description: Management result records lost after the mutation had happened. The intent stays on disk without its result; the loss is counted here, not hidden.
+      originator_dropped:
+        type: integer
+        format: int64
+        description: X-Loxilb-Originator headers that did not parse (unknown scheme, empty identifier, non-printable or over 256 bytes) and were dropped rather than recorded in part.
+      delegation_lookups:
+        type: integer
+        format: int64
+        description: Account lookups made to decide whether a named originator is trusted. A request without the header makes none.
+      queue_depth:
+        type: object
+        additionalProperties:
+          type: integer
+        description: Records waiting in each queue right now.
+      queue_hwm:
+        type: object
+        additionalProperties:
+          type: integer
+        description: High-water mark of each queue since start.
+      write_failures:
+        type: integer
+        format: int64
+      sync_failures:
+        type: integer
+        format: int64
+      mgmt_timeouts:
+        type: integer
+        format: int64
+        description: Durable management writes that missed the caller's deadline; each one refused a management call.
+      panics:
+        type: integer
+        format: int64
+      restarts:
+        type: integer
+        format: int64
+      heartbeats:
+        type: integer
+        format: int64
+      rotations:
+        type: integer
+        format: int64
+      path_sanitized:
+        type: integer
+        format: int64
+        description: Records whose resource path carried bytes outside the allowed set and was rewritten.
+      unattributed:
+        type: integer
+        format: int64
+        description: Records that reached the writer without a producer identity.
+      perm_repaired:
+        type: integer
+        format: int64
+        description: Times the active segment's mode was found wider than 0600 and narrowed.
+      rotation_failed:
+        type: integer
+        format: int64
+      compress_failed:
+        type: integer
+        format: int64
+      compress_skipped:
+        type: integer
+        format: int64
+      pruned:
+        type: integer
+        format: int64
+        description: Sealed segments removed by the retention policy.
+      reserve_breaches:
+        type: integer
+        format: int64
+      reserve_breached:
+        type: boolean
+        description: The audit filesystem is below its reserve right now; durable management writes are refused until space is recovered.
+      sealed_bytes:
+        type: integer
+        format: int64
+        description: Bytes held by sealed segments on disk, after compression.
+      orphaned_intents:
+        type: integer
+        format: int64
+        description: Management intents of the previous boot that had no result when this writer started. Each one is a change whose outcome is unknown.
+      last_orphan_event_id:
+        type: string
+        description: Event id of the most recent orphaned intent, for the investigator to look up in the trail.
+      segment:
+        $ref: '#/definitions/AuditSegmentStatus'
+      retention:
+        $ref: '#/definitions/AuditRetentionPolicy'
+      projected_retention_days:
+        type: number
+        format: double
+        description: Days of records the policy is projected to keep, from the age bound and from the byte quota divided by this process's write rate, whichever is shorter. Zero when nothing bounds retention or the rate is not yet measurable.
+      producers:
+        type: array
+        items:
+          $ref: '#/definitions/AuditProducerStatus'
+        description: Per-producer accounting, sorted by producer id.
+  AuditDropCount:
+    type: object
+    properties:
+      stream:
+        type: string
+      reason:
+        type: string
+      count:
+        type: integer
+        format: int64
+  AuditSegmentStatus:
+    type: object
+    description: The segment the writer is appending to.
+    properties:
+      uuid:
+        type: string
+      opened:
+        type: string
+        description: When the segment was opened, RFC3339 UTC.
+      records:
+        type: integer
+        format: int64
+      bytes:
+        type: integer
+        format: int64
+        description: Size on disk including the header line.
+  AuditRetentionPolicy:
+    type: object
+    description: The policy in force. Zero disables a bound.
+    properties:
+      max_age_seconds:
+        type: integer
+        format: int64
+      max_bytes:
+        type: integer
+        format: int64
+      reserve_bytes:
+        type: integer
+        format: int64
+        description: Free-space floor on the audit filesystem below which pruning proceeds regardless of age and quota and durable writes are refused.
+  AuditProducerStatus:
+    type: object
+    properties:
+      id:
+        type: string
+      stream:
+        type: string
+      pseq_high:
+        type: integer
+        format: int64
+        description: Highest producer sequence number handed out; a gap against the writer's arrivals is a loss.
+      accepted:
+        type: integer
+        format: int64
+      dropped:
+        type: object
+        additionalProperties:
+          type: integer
+          format: int64
+        description: Drops by reason.
+      drop_ring_overflows:
+        type: integer
+        format: int64
+        description: Drop records that could not be kept in the producer's own ring.
 
   LogArchives:
     type: object

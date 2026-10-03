@@ -228,7 +228,10 @@ export const DESC_RUNTIME_TYPES: Readonly<Record<string, RuntimeMetricType>> = {
 	// Policer attachment collector: 1 gauge
 	loxilb_policer_attached: 'gauge',
 	// AI admission collector (api/prometheus/ai_admission_metrics.go):
-	// 4 gauges + 1 ConstHistogram + 2 counters.
+	// 9 gauges + 1 ConstHistogram + 3 counters. adapt_state / adapt_reason are
+	// one-hot state sets (0/1 per label value); adapt_moves_total is a counter
+	// split by direction (Collect, gateway 64d95c2e); tenants_active is a gauge
+	// (Collect, gateway 314fd6e8).
 	loxilb_ai_admission_mode: 'gauge',
 	loxilb_ai_admission_inflight: 'gauge',
 	loxilb_ai_admission_limit: 'gauge',
@@ -236,6 +239,12 @@ export const DESC_RUNTIME_TYPES: Readonly<Record<string, RuntimeMetricType>> = {
 	loxilb_ai_admission_queue_wait_seconds: 'histogram',
 	loxilb_ai_admission_decisions_total: 'counter',
 	loxilb_ai_admission_anomalies_total: 'counter',
+	loxilb_ai_admission_effective_limit: 'gauge',
+	loxilb_ai_admission_adapt_state: 'gauge',
+	loxilb_ai_admission_adapt_reason: 'gauge',
+	loxilb_ai_admission_warming_endpoints: 'gauge',
+	loxilb_ai_admission_adapt_moves_total: 'counter',
+	loxilb_ai_admission_tenants_active: 'gauge',
 	// Audit writer collector (api/restapi/handler/audit_metrics.go):
 	// 4 gauges + 14 counters. The two timestamps are Unix seconds, and
 	// `reserve_breached` / `writer_up` are 0/1 states — gauges, not counters.

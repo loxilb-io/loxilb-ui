@@ -9,6 +9,10 @@
 import {describe, expect, it} from 'vitest';
 import {
 	CAP_KV_EXACT_VLLM,
+	CAP_LB_ALLOWED_SOURCES,
+	REASON_LB_SOURCE_CHECK_SLOTS_EXHAUSTED,
+	capabilityBudget,
+	lbSourceBudgetNotice,
 	ICapabilityStatus,
 	REASON_KV_EXACT_SEED_TOO_LONG,
 	REASON_KV_EXACT_SEED_UNSET,
@@ -115,5 +119,56 @@ describe('kvExactAdmissible', () => {
 		expect(kvExactAdmissible({kind: 'unknown', why: 'not-listed'})).toBe(true);
 		expect(kvExactAdmissible({kind: 'unknown', why: 'unreadable'})).toBe(true);
 		expect(kvExactAdmissible({kind: 'not-ready', reasonCode: REASON_KV_EXACT_SEED_UNSET, reason: SENTENCE})).toBe(false);
+	});
+});
+
+describe('capabilityBudget (lb_allowed_sources)', () => {
+	const entry = (over: Partial<ICapabilityStatus>): ICapabilityStatus[] => [{name: CAP_LB_ALLOWED_SOURCES, ready: true, ...over}];
+
+	it('reads a budget only when both halves are present', () => {
+		expect(capabilityBudget(entry({limit: 29, in_use: 20}), CAP_LB_ALLOWED_SOURCES)).toEqual({limit: 29, inUse: 20});
+		expect(capabilityBudget(entry({limit: 29}), CAP_LB_ALLOWED_SOURCES)).toBeUndefined();
+		expect(capabilityBudget(entry({in_use: 3}), CAP_LB_ALLOWED_SOURCES)).toBeUndefined();
+	});
+
+	it('never turns a garbled count into a budget (or into 0)', () => {
+		for (const bad of [-1, 1.5, '29' as unknown as number, NaN, Infinity]) {
+			expect(capabilityBudget(entry({limit: bad, in_use: 0}), CAP_LB_ALLOWED_SOURCES)).toBeUndefined();
+			expect(capabilityBudget(entry({limit: 29, in_use: bad}), CAP_LB_ALLOWED_SOURCES)).toBeUndefined();
+		}
+	});
+
+	it('is undefined when the entry, the list or the endpoint is absent', () => {
+		expect(capabilityBudget([], CAP_LB_ALLOWED_SOURCES)).toBeUndefined();
+		expect(capabilityBudget(null, CAP_LB_ALLOWED_SOURCES)).toBeUndefined();
+		expect(capabilityBudget(undefined, CAP_LB_ALLOWED_SOURCES)).toBeUndefined();
+	});
+});
+
+describe('lbSourceBudgetNotice (the LB create form; a warning, never a block)', () => {
+	const EXHAUSTED = 'all 29 source-check slots are held; delete a rule to free one (freed slots are reused first)';
+	const notReady: ICapabilityStatus[] = [{name: CAP_LB_ALLOWED_SOURCES, ready: false, reason_code: REASON_LB_SOURCE_CHECK_SLOTS_EXHAUSTED, reason: EXHAUSTED, limit: 29, in_use: 29}];
+
+	it('ready with a budget: a caption with the free slots', () => {
+		expect(lbSourceBudgetNotice([{name: CAP_LB_ALLOWED_SOURCES, ready: true, limit: 29, in_use: 20}], false)).toEqual({kind: 'caption', free: 9, limit: 29});
+	});
+
+	it('not ready with sources entered: the gateway sentence, verbatim', () => {
+		expect(lbSourceBudgetNotice(notReady, true)).toEqual({kind: 'warning', reasonCode: REASON_LB_SOURCE_CHECK_SLOTS_EXHAUSTED, reason: EXHAUSTED});
+	});
+
+	it('not ready with no sources: nothing, because nothing asks for a slot', () => {
+		expect(lbSourceBudgetNotice(notReady, false)).toEqual({kind: 'none'});
+	});
+
+	it('unknown (404, not listed, unreadable) or ready without a budget: nothing, as before the budget existed', () => {
+		expect(lbSourceBudgetNotice(null, true)).toEqual({kind: 'none'});
+		expect(lbSourceBudgetNotice([], true)).toEqual({kind: 'none'});
+		expect(lbSourceBudgetNotice(undefined, true)).toEqual({kind: 'none'});
+		expect(lbSourceBudgetNotice([{name: CAP_LB_ALLOWED_SOURCES, ready: true}], true)).toEqual({kind: 'none'});
+	});
+
+	it('never shows a negative number of free slots', () => {
+		expect(lbSourceBudgetNotice([{name: CAP_LB_ALLOWED_SOURCES, ready: true, limit: 29, in_use: 31}], false)).toEqual({kind: 'caption', free: 0, limit: 29});
 	});
 });

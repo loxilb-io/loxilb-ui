@@ -44,7 +44,11 @@ export const persister = createSyncStoragePersister({storage: window.localStorag
 // has a 2–5s `staleTime` and a refetch interval, so it is re-fetched on mount
 // regardless. Telemetry is re-read, never remembered.
 /** Query-key segments that mark a live-telemetry read. Never persisted. */
-const LIVE_TELEMETRY_KEYS: readonly string[] = ['metrics-snapshot', 'worker-metrics', 'gpu-status', 'diagnostics'];
+//
+// `audit` (the System page's /audit/status + /audit/sink read) joins them for
+// the same reason: it renders urgent alerts only (a disconnected sink, an
+// orphaned intent), and a restored one would raise yesterday's alert as today's.
+const LIVE_TELEMETRY_KEYS: readonly string[] = ['metrics-snapshot', 'worker-metrics', 'gpu-status', 'diagnostics', 'audit'];
 
 //---------------------------------------------------------
 // Deployment state — a second reason, not a second instance of the first

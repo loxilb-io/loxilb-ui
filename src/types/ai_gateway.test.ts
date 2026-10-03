@@ -1,7 +1,11 @@
 import {describe, expect, it} from 'vitest';
 import {
+	declaredFcFields,
 	allowedAIHashes,
 	effectiveAIHash,
+	FC_FIELDS,
+	FC_NUMERIC_MAX,
+	isAIService,
 	hasRequiredApiKeyPolicy,
 	isAIEngineChange,
 	resolveAIEngine,
@@ -370,5 +374,124 @@ describe('AI Gateway wire serialization', () => {
 		expect(payload.serviceArguments).not.toHaveProperty('kvBlockSize');
 		expect(payload.serviceArguments).not.toHaveProperty('kvZmqPort');
 		expect(payload.serviceArguments).not.toHaveProperty('kvDpRankCount');
+	});
+});
+
+//---------------------------------------------------------
+// Capacity admission gate (fc_*)
+//---------------------------------------------------------
+const pdEndpoints = [endpoint({ep_role: 1}), endpoint({endpointIP: '10.0.0.11', ep_role: 2})];
+const sse = (fc: Partial<IServiceArguments> = {}) => configuration({sse_mode: true, ...fc});
+const pd = (fc: Partial<IServiceArguments> = {}) => configuration({pd_disagg_mode: true, ...fc}, pdEndpoints);
+const wire = (config: IServiceConfiguration) => serializeAIConfiguration(config).serviceArguments as unknown as Record<string, unknown>;
+const fcKeys = (config: IServiceConfiguration) => Object.keys(wire(config)).filter(key => key.startsWith('fc_')).sort();
+
+describe('isAIService (the gateway aiGwModeFor predicate)', () => {
+	it('is true for a fullproxy rule with SSE, P/D, or a credential policy other than disabled', () => {
+		expect(isAIService({mode: 4, sse_mode: true})).toBe(true);
+		expect(isAIService({mode: 4, pd_disagg_mode: true})).toBe(true);
+		for (const policy of ['required', 'jwt', 'apikey-or-jwt'] as const) expect(isAIService({mode: 4, api_key_auth: policy})).toBe(true);
+	});
+
+	it('is false for an explicit disabled policy, no policy, or a non-fullproxy rule', () => {
+		expect(isAIService({mode: 4, api_key_auth: 'disabled'})).toBe(false);
+		expect(isAIService({mode: 4})).toBe(false);
+		expect(isAIService({mode: 0, sse_mode: true})).toBe(false);
+	});
+});
+
+describe('admission serialization (blank is omitted, never 0 or null)', () => {
+	it('sends no fc_* key when the group is untouched, blank, or cleared', () => {
+		expect(fcKeys(sse())).toEqual([]);
+		expect(fcKeys(sse({fc_mode: '' as any, fc_adaptive: '' as any, fc_max_outstanding: undefined, fc_max_queue_depth: null as any}))).toEqual([]);
+	});
+
+	it('sends exactly what was declared, and keeps an explicit 0 (reset to the process default)', () => {
+		const body = wire(sse({fc_mode: 'observe', fc_max_outstanding: 64, fc_max_queue_depth: 8, fc_max_queue_wait_ms: 2000, fc_warmup_ms: 0}));
+		expect(Object.fromEntries(Object.entries(body).filter(([key]) => key.startsWith('fc_')))).toEqual({
+			fc_mode: 'observe', fc_max_outstanding: 64, fc_max_queue_depth: 8, fc_max_queue_wait_ms: 2000, fc_warmup_ms: 0,
+		});
+	});
+
+	it('never sends the read-only fc_effective, whatever the rule shape', () => {
+		const fc_effective = {mode: 'observe', inflight: 3, queued: 1, source: {mode: 'rule'}} as any;
+		for (const config of [sse({fc_effective}), pd({fc_effective}), configuration({mode: 0, fc_effective}), configuration({fc_effective})]) {
+			expect(wire(config)).not.toHaveProperty('fc_effective');
+		}
+	});
+
+	it('drops the P/D-only fields on a rule that is not P/D, and keeps them on P/D', () => {
+		const pdOnly = {fc_prefill_max_inflight: 4, fc_decode_max_inflight: 8, fc_telemetry_stale_ms: 500};
+		expect(fcKeys(sse({...pdOnly, fc_max_outstanding: 64}))).toEqual(['fc_max_outstanding']);
+		expect(fcKeys(pd(pdOnly))).toEqual(['fc_decode_max_inflight', 'fc_prefill_max_inflight', 'fc_telemetry_stale_ms']);
+	});
+
+	it('drops every fc_* on a rule with no admission pool (no gate reads them there)', () => {
+		expect(fcKeys(configuration({fc_mode: 'enforce', fc_max_outstanding: 64}))).toEqual([]);
+		expect(fcKeys(configuration({api_key_auth: 'disabled', fc_max_outstanding: 64}))).toEqual([]);
+		expect(fcKeys(configuration({mode: 0, fc_max_outstanding: 64}))).toEqual([]);
+	});
+});
+
+describe('admission validation (mirrors the gateway refusals)', () => {
+	it('accepts every numeric field at 0 and at its maximum', () => {
+		const atMax = Object.fromEntries(Object.entries(FC_NUMERIC_MAX)) as Partial<IServiceArguments>;
+		expect(issueFields(pd(atMax))).toEqual([]);
+		const atZero = Object.fromEntries(Object.keys(FC_NUMERIC_MAX).map(key => [key, 0])) as Partial<IServiceArguments>;
+		expect(issueFields(pd(atZero))).toEqual([]);
+	});
+
+	it('refuses each numeric field one above its maximum, below 0, fractional, or as unparsed text', () => {
+		for (const [field, max] of Object.entries(FC_NUMERIC_MAX)) {
+			for (const bad of [max + 1, -1, 1.5, '12x']) {
+				// Pair the queue fields so only the value under test is wrong.
+				const pair = field === 'fc_max_queue_depth' ? {fc_max_queue_wait_ms: 1} : {};
+				expect(issueFields(pd({...pair, [field]: bad} as any)), `${field}=${bad}`).toEqual([field]);
+			}
+		}
+	});
+
+	it('requires a queue wait above 0 whenever a depth above 0 is declared', () => {
+		expect(issueFields(sse({fc_max_queue_depth: 8}))).toEqual(['fc_max_queue_wait_ms']);
+		expect(issueFields(sse({fc_max_queue_depth: 8, fc_max_queue_wait_ms: 0}))).toEqual(['fc_max_queue_wait_ms']);
+		expect(issueFields(sse({fc_max_queue_depth: 8, fc_max_queue_wait_ms: 1}))).toEqual([]);
+		// Depth 0 resets to the process default: no window needed.
+		expect(issueFields(sse({fc_max_queue_depth: 0}))).toEqual([]);
+	});
+
+	it('refuses a mode or adaptive word the gateway does not know', () => {
+		expect(issueFields(sse({fc_mode: 'strict' as any}))).toEqual(['fc_mode']);
+		expect(issueFields(sse({fc_adaptive: 'auto' as any}))).toEqual(['fc_adaptive']);
+		expect(issueFields(sse({fc_mode: 'inherit', fc_adaptive: 'inherit'}))).toEqual([]);
+	});
+
+	it('does not block on fields the form hides: P/D-only on non-P/D, any fc_* without a pool', () => {
+		expect(issueFields(sse({fc_prefill_max_inflight: '12x' as any}))).toEqual([]);
+		expect(issueFields(configuration({fc_max_outstanding: '12x' as any}))).toEqual([]);
+	});
+
+	it('treats a declared admission field on a non-fullproxy rule as AI configuration, but not inherit', () => {
+		expect(issueFields(configuration({mode: 0, fc_max_outstanding: 64}))).toEqual(['mode']);
+		expect(issueFields(configuration({mode: 0, fc_mode: 'inherit', fc_adaptive: 'inherit'}))).toEqual([]);
+	});
+
+	it('lists every writable spec field and nothing read-only', () => {
+		expect([...FC_FIELDS].sort()).toEqual([
+			'fc_adaptive', 'fc_decode_max_inflight', 'fc_ep_max_inflight', 'fc_max_outstanding', 'fc_max_queue_depth',
+			'fc_max_queue_wait_ms', 'fc_mode', 'fc_prefill_max_inflight', 'fc_telemetry_stale_ms', 'fc_tenant_max_share_pct',
+			'fc_ttft_target_ms', 'fc_warmup_ms',
+		]);
+	});
+});
+
+describe('declaredFcFields (what this gateway\'s /meta offers)', () => {
+	it('keeps only the fields the live /meta declares, and never fc_effective', () => {
+		const got = declaredFcFields({fc_max_queue_depth: {type: 'integer'}, fc_max_queue_wait_ms: {type: 'integer'}, fc_effective: {}, name: {}});
+		expect([...got].sort()).toEqual(['fc_max_queue_depth', 'fc_max_queue_wait_ms']);
+	});
+
+	it('declares nothing when /meta has not loaded or predates admission', () => {
+		expect(declaredFcFields(undefined).size).toBe(0);
+		expect(declaredFcFields({}).size).toBe(0);
 	});
 });

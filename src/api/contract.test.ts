@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {describe, expect, it} from 'vitest';
 import YAML from 'yaml';
+import {FC_FIELDS, FC_NUMERIC_MAX, READ_ONLY_SERVICE_ARGUMENTS} from 'types/ai_gateway';
 
 // Backward-compatibility contract between this UI and the vendored backend
 // specs (api-spec/*). When a new loxilb-inference-gateway or oam-loxilb
@@ -17,6 +18,7 @@ const root = path.resolve(__dirname, '../..');
 const gateway = YAML.parse(fs.readFileSync(path.join(root, 'api-spec/gateway-swagger.yml'), 'utf8'));
 const gatewayExtras = YAML.parse(fs.readFileSync(path.join(root, 'api-spec/gateway-swagger-extras.yml'), 'utf8'));
 const oam = JSON.parse(fs.readFileSync(path.join(root, 'api-spec/oam-swagger.json'), 'utf8'));
+const LB_TUPLE_PATH = '/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}';
 
 // response JSON pointer helpers (swagger 2.0)
 function resolveRef(spec: any, node: any): any {
@@ -200,6 +202,42 @@ describe('gateway spec contract — models the UI depends on', () => {
 	it('/metrics stays a Prometheus text endpoint (GET declared)', () => {
 		expect(gateway.paths['/metrics']?.get, 'gateway /metrics GET disappeared').toBeTruthy();
 		expect(gateway.paths['/metrics'].get.security).toEqual([]);
+	});
+
+	// opResultAdapter maps 412 to a precondition failure on every operation. These
+	// two are the ones the gateway declares it on; if a re-vendor drops the
+	// declaration, the branch has lost its contract and should be looked at again.
+	it('LB create and the LB tuple PATCH declare 412', () => {
+		expect(Object.keys(gateway.paths['/config/loadbalancer'].post.responses)).toContain('412');
+		expect(Object.keys(gateway.paths[LB_TUPLE_PATH].patch.responses)).toContain('412');
+	});
+
+	// Admission control (fc_*) can only be written by a create (POST replaces).
+	// The UI keeps mode-4 rules out of PATCH on that basis; if the gateway widens
+	// the PATCH overlay to fc_*, this fails and the edit block can be revisited.
+	it('the LB tuple PATCH overlay does not apply fc_* fields', () => {
+		const description: string = gateway.paths[LB_TUPLE_PATH].patch.description;
+		expect(description).toMatch(/Other schema fields are not applied by this handler/);
+		expect(description).not.toMatch(/\bfc_/);
+	});
+
+	// The serializer never sends these. A new readOnly field fails here until it
+	// is added to READ_ONLY_SERVICE_ARGUMENTS, instead of being posted back.
+	it('READ_ONLY_SERVICE_ARGUMENTS is exactly the spec readOnly serviceArguments', () => {
+		const serviceArguments = gateway.definitions.LoadbalanceEntry.properties.serviceArguments.properties;
+		const readOnly = Object.entries<any>(serviceArguments).filter(([, schema]) => schema.readOnly).map(([name]) => name);
+		expect([...READ_ONLY_SERVICE_ARGUMENTS].sort()).toEqual(readOnly.sort());
+	});
+
+	// The admission form and serializer know these fields by name. A new fc_*
+	// field fails here until it is handled (a bound, a P/D-only flag, a control).
+	it('FC_FIELDS is exactly the spec writable fc_* serviceArguments', () => {
+		const serviceArguments = gateway.definitions.LoadbalanceEntry.properties.serviceArguments.properties;
+		const writable = Object.entries<any>(serviceArguments).filter(([name, schema]) => name.startsWith('fc_') && !schema.readOnly).map(([name]) => name);
+		expect([...FC_FIELDS].sort()).toEqual(writable.sort());
+		for (const [name, max] of Object.entries(FC_NUMERIC_MAX)) {
+			expect(serviceArguments[name].maximum, `${name} maximum`).toBe(max);
+		}
 	});
 });
 

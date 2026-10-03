@@ -1,5 +1,6 @@
 import {Alert, Stack, Typography} from '@mui/material';
 import AccordionBox from 'components/element/AccordionBox';
+import AdmissionControlForm from 'components/input/subforms/AdmissionControlForm';
 import DropDownSelectBox from 'components/element/DropDownSelectBox';
 import ParamBox from 'components/element/ParamBox';
 import HorizontalStack from 'components/layout/HorizontalStack';
@@ -8,13 +9,15 @@ import {useCapabilityVerdict} from 'hooks/query/statusHook';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useJWTAuthProfiles, useModelProfiles} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
-import {useCallback} from 'react';
+import {useCallback, useMemo} from 'react';
 import {
 	AI_ENGINES,
 	AIEngine,
 	allowedAIHashes,
 	allowedProfileApiModes,
+	declaredFcFields,
 	effectiveAIHash,
+	isAIService,
 	profileAcceptsModel,
 	resolveAIEngine,
 } from 'types/ai_gateway';
@@ -109,6 +112,7 @@ export default function AIGatewaySettingsForm(props: {
 	const topology = currentTopology(value);
 	const exactRouting = topology === 'pd-exact' || topology === 'single-role';
 	const pdTopology = topology === 'pd' || topology === 'pd-exact';
+	const fcDeclared = useMemo(() => declaredFcFields(params), [params]);
 	const effectiveHash = effectiveAIHash(engine);
 
 	const engineItems: IEnumItem[] = caps
@@ -401,6 +405,14 @@ export default function AIGatewaySettingsForm(props: {
 							<ParamBox label={t('P/D Bootstrap Port')} value={value.pdBootstrapPort ?? 0} onChange={handleChange('pdBootstrapPort')} param_desc={{...params?.pdBootstrapPort, type: 'integer', description: t("Must match SGLang's disaggregation bootstrap port. 0 uses 8998.")}} />
 						)}
 					</>
+				)}
+
+				{/* Only where the gateway keeps an admission pool (its aiGwModeFor):
+				    elsewhere the fields are stored but no gate reads them, and the
+				    serializer drops them. And only the fields this gateway's /meta
+				    declares: an older one drops the rest behind a 200. */}
+				{isL7 && isAIService(value) && fcDeclared.size > 0 && (
+					<AdmissionControlForm value={value} onChange={onChange} pdTopology={pdTopology} isEdit={isEdit} declared={fcDeclared} />
 				)}
 
 				{exactRouting && (

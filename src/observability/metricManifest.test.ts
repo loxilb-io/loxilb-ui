@@ -55,6 +55,29 @@ import {
 //     unchanged;
 //   - no registry entry references the new families, so the per-page family
 //     sets below stay put. Surfacing them is the follow-up UI work.
+//
+// 230 (was 222) since the re-vendor to gateway 64d95c2e. The 8 added families
+// are the adaptive admission state (`loxilb_ai_admission_{effective_limit,
+// adapt_state,adapt_reason,adapt_moves_total,warming_endpoints}`) and the
+// proxy accept valve (`loxilb_proxy_{accept_blocked_total,accept_bound,
+// context_inflight}`). Re-verified the same way:
+//   - all 8 are class `default` + packaged;
+//   - the 3 proxy families are activation `E` with an EMPTY precondition
+//     (registered at init, so a missing one is `unexpected`); the 5 admission
+//     families are `C` with the AI-gateway-service precondition;
+//   - the 5 admission families are custom-collector (`desc`) families, their
+//     types pinned in DESC_RUNTIME_TYPES from the gateway's Collect, not from
+//     the manifest;
+//   - none of the 222 families already vendored changed type, labels,
+//     activation, precondition or implementation status — only source line
+//     references and consumer lists moved;
+//   - no registry entry references the new families. Whether an urgent signal
+//     needs any of them is decided with the admission read-back work.
+//
+// 231 (was 230) since the re-vendor to gateway 314fd6e8: the per-pool tenant
+// count `loxilb_ai_admission_tenants_active` (class `default`, packaged,
+// activation `C`, a `desc` gauge pinned from Collect). No existing family
+// changed beyond source line references.
 
 describe('vendored envelope', () => {
 	it('carries UI-owned provenance the upstream artifact lacks', () => {
@@ -72,7 +95,7 @@ describe('vendored envelope', () => {
 describe('gateway scrape applicability (class + packaged)', () => {
 	it('marks exactly the packaged default class as gateway-applicable', () => {
 		const applicable = allManifestFamilies().filter(f => isGatewayScrapeFamily(f.name));
-		expect(applicable).toHaveLength(222);
+		expect(applicable).toHaveLength(231);
 		for (const f of applicable) {
 			expect(f.class).toBe('default');
 			expect(f.packaged).toBe(true);
@@ -121,16 +144,22 @@ describe('gateway scrape applicability (class + packaged)', () => {
 });
 
 describe('desc normalization (definition mechanism vs runtime type)', () => {
-	it('pins the 50 custom-collector families to 20 counters + 28 gauges + 2 histograms', () => {
+	it('pins the 56 custom-collector families to 21 counters + 33 gauges + 2 histograms', () => {
 		const desc = allManifestFamilies().filter(f => f.definitionMechanism === 'desc');
 		expect(desc.map(f => f.name).sort()).toEqual([
+			'loxilb_ai_admission_adapt_moves_total',
+			'loxilb_ai_admission_adapt_reason',
+			'loxilb_ai_admission_adapt_state',
 			'loxilb_ai_admission_anomalies_total',
 			'loxilb_ai_admission_decisions_total',
+			'loxilb_ai_admission_effective_limit',
 			'loxilb_ai_admission_inflight',
 			'loxilb_ai_admission_limit',
 			'loxilb_ai_admission_mode',
 			'loxilb_ai_admission_queue_wait_seconds',
 			'loxilb_ai_admission_queued',
+			'loxilb_ai_admission_tenants_active',
+			'loxilb_ai_admission_warming_endpoints',
 			'loxilb_ai_jwks_keys',
 			'loxilb_ai_jwks_last_success_timestamp_seconds',
 			'loxilb_ai_jwks_usable',
@@ -178,6 +207,7 @@ describe('desc normalization (definition mechanism vs runtime type)', () => {
 
 		const byType = (t: string) => desc.filter(f => f.runtimeType === t).map(f => f.name).sort();
 		expect(byType('counter')).toEqual([
+			'loxilb_ai_admission_adapt_moves_total',
 			'loxilb_ai_admission_anomalies_total',
 			'loxilb_ai_admission_decisions_total',
 			'loxilb_audit_delegation_lookups_total',
@@ -200,10 +230,15 @@ describe('desc normalization (definition mechanism vs runtime type)', () => {
 			'loxilb_proxy_qos_parks_total',
 		]);
 		expect(byType('gauge')).toEqual([
+			'loxilb_ai_admission_adapt_reason',
+			'loxilb_ai_admission_adapt_state',
+			'loxilb_ai_admission_effective_limit',
 			'loxilb_ai_admission_inflight',
 			'loxilb_ai_admission_limit',
 			'loxilb_ai_admission_mode',
 			'loxilb_ai_admission_queued',
+			'loxilb_ai_admission_tenants_active',
+			'loxilb_ai_admission_warming_endpoints',
 			'loxilb_ai_jwks_keys',
 			'loxilb_ai_jwks_last_success_timestamp_seconds',
 			'loxilb_ai_jwks_usable',

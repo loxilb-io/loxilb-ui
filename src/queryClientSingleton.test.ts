@@ -83,6 +83,12 @@ describe('shouldPersistQuery', () => {
 		expect(shouldPersistQuery(queryOf(['instance', 'diagnostics', 1]))).toBe(false);
 	});
 
+	it('refuses the audit REST read, whose only output is an urgent alert', () => {
+		// A restored "sink not connected" would be shown as current until the
+		// first refetch — and kept if that refetch failed.
+		expect(shouldPersistQuery(queryOf(['status', 'audit', 1]))).toBe(false);
+	});
+
 	it('refuses the capability verdict, because a FAILED read must read as unknown', () => {
 		// `useCapabilityVerdict` states: an unread query — including a read that
 		// FAILED — yields `unknown`, never `not-ready`, because `not-ready`

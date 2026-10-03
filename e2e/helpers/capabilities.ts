@@ -74,3 +74,21 @@ export function capsBody(entry: Record<string, unknown>) {
 export async function mockKvExactReady(page: Page): Promise<CapsHarness> {
 	return mockCapabilities(page, {body: capsBody({name: CAP_KV_EXACT_VLLM, ready: true})});
 }
+
+/** The capability name the gateway publishes for the LB source-check slot budget. */
+export const CAP_LB_ALLOWED_SOURCES = 'lb_allowed_sources';
+
+/**
+ * Answer successive capability reads from `bodies` in order, repeating the last
+ * one. For specs that prove a read was re-asked after a write (the answer the
+ * page shows must be the SECOND one).
+ */
+export async function mockCapabilitiesSequence(page: Page, bodies: unknown[]): Promise<CapsHarness> {
+	let calls = 0;
+	await page.route(CAPS_RE, (route: Route) => {
+		const body = bodies[Math.min(calls, bodies.length - 1)];
+		calls += 1;
+		return route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify(body)});
+	});
+	return {count: () => calls};
+}
