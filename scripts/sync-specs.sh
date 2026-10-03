@@ -19,6 +19,8 @@
 #                                 # (pin the exact merge SHA with
 #                                 # `git worktree add --detach <dir> <sha>`) so
 #                                 # the recorded commit is immutable truth.
+#   sync-specs.sh --only oam      # OAM Swagger + provenance only; requires a
+#                                 # clean detached OAM checkout and never runs swag.
 #   sync-specs.sh --only manifest # gateway metric manifest
 #                                 # (deploy/monitoring/manifest/) + its
 #                                 # SOURCES.json entry only, same immutable-
@@ -31,8 +33,8 @@ cd "$(dirname "$0")/.."
 
 ONLY="${1:-}"
 if [ -n "$ONLY" ]; then
-	[ "$ONLY" = "--only" ] && { [ "${2:-}" = "gateway" ] || [ "${2:-}" = "manifest" ]; } || {
-		echo "usage: $0 [--only gateway|--only manifest]" >&2; exit 2; }
+	[ "$ONLY" = "--only" ] && { [ "${2:-}" = "gateway" ] || [ "${2:-}" = "manifest" ] || [ "${2:-}" = "oam" ]; } || {
+		echo "usage: $0 [--only gateway|--only manifest|--only oam]" >&2; exit 2; }
 	ONLY="${2}"
 fi
 
@@ -45,12 +47,41 @@ OAM_REPO="${OAM_REPO:-../loxilb-oam}"
 # the flavor capability map are generated from the real community spec.
 LOXILB_REPO="${LOXILB_REPO:-../loxilb}"
 
-[ -f "$GATEWAY_REPO/api/swagger.yml" ] || { echo "gateway repo not found at $GATEWAY_REPO (set GATEWAY_REPO=...)"; exit 1; }
-
 MANIFEST_SRC="deploy/monitoring/manifest/metric-manifest.json"
 
 rev() { git -C "$1" rev-parse HEAD 2>/dev/null || echo unknown; }
 dirty() { [ -n "$(git -C "$1" status --porcelain 2>/dev/null)" ] && echo true || echo false; }
+
+if [ "$ONLY" = "oam" ]; then
+	[ -f "$OAM_REPO/docs/swagger.json" ] || {
+		echo "OAM swagger not found at $OAM_REPO/docs/swagger.json" >&2; exit 1; }
+	git -C "$OAM_REPO" rev-parse --verify HEAD >/dev/null 2>&1 || {
+		echo "refusing --only oam: OAM input has no committed revision" >&2; exit 1; }
+	[ "$(dirty "$OAM_REPO")" = "false" ] || {
+		echo "refusing --only oam: $OAM_REPO working tree is dirty" >&2; exit 1; }
+	git -C "$OAM_REPO" symbolic-ref -q HEAD >/dev/null && {
+		echo "refusing --only oam: $OAM_REPO is on a branch, not a detached SHA" >&2; exit 1; }
+	git -C "$OAM_REPO" cat-file -e HEAD:docs/swagger.json || {
+		echo "refusing --only oam: Swagger is not part of the committed source" >&2; exit 1; }
+	git -C "$OAM_REPO" show HEAD:docs/swagger.json > api-spec/oam-swagger.json
+	OAM_SHA="$(rev "$OAM_REPO")" node - <<'EOF'
+const fs = require('fs');
+const p = 'api-spec/SOURCES.json';
+const s = JSON.parse(fs.readFileSync(p, 'utf8'));
+s.oam = {
+	repo: 'loxilb-oam',
+	path: 'docs/swagger.json',
+	commit: process.env.OAM_SHA,
+	dirty: false,
+	note: 'vendored verbatim from a clean detached checkout; no source regeneration',
+};
+fs.writeFileSync(p, JSON.stringify(s, null, 2) + '\n');
+EOF
+	echo "vendored OAM spec from $(rev "$OAM_REPO"); now run: npm run gen:api"
+	exit 0
+fi
+
+[ -f "$GATEWAY_REPO/api/swagger.yml" ] || { echo "gateway repo not found at $GATEWAY_REPO (set GATEWAY_REPO=...)"; exit 1; }
 
 # Immutable-input gate shared by the --only modes: a branch head can move and
 # a dirty tree has no commit at all, so either would record provenance that is
