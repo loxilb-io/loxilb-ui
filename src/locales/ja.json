@@ -1219,5 +1219,7 @@
 	"Most recent: event {{id}}.": "最新: イベント {{id}}。",
 	"most recent: event {{id}}": "最新: イベント {{id}}",
 	"{{free}} of {{limit}} source-check slots free": "ソースチェックスロット {{limit}} 個中 {{free}} 個が空き",
-	"The gateway reports that the next rule created cannot carry allowed sources.": "ゲートウェイは、次に作成されるルールに許可ソースを設定できないと報告しています。"
+	"The gateway reports that the next rule created cannot carry allowed sources.": "ゲートウェイは、次に作成されるルールに許可ソースを設定できないと報告しています。",
+	"Admission Response Headers": "推論応答ヘッダー",
+	"Admission response headers must be on, off, or the gateway default.": "推論応答ヘッダーは on、off、またはゲートウェイの既定値を指定してください。"
 }

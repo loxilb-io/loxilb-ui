@@ -140,6 +140,12 @@ export default function AdmissionControlForm(props: {
 						/>}
 						{box('fc_ttft_target_ms', t('TTFT Target (ms)'), t('Time-to-first-token target the adaptive ceiling steers by.'))}
 					</HorizontalStack>
+					{declared.has('fc_expose_headers') && <DropDownSelectBox
+						label={t('Admission Response Headers')}
+						value={value.fc_expose_headers ?? ''}
+						onChange={newValue => onChange({fc_expose_headers: (newValue || undefined) as IServiceArguments['fc_expose_headers']})}
+						item_list={localizeDefault(ADAPTIVE_ITEMS)}
+					/>}
 					{value.fc_adaptive === 'off' && text.fc_ttft_target_ms.trim() !== '' && (
 						<Alert severity="info">{t('A TTFT target has no effect while the adaptive ceiling is off.')}</Alert>
 					)}

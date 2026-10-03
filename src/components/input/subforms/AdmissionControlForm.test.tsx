@@ -78,6 +78,13 @@ describe('AdmissionControlForm', () => {
 		// The dropdowns announce their first item on an empty value at mount.
 		expect(sent(onChange, 'fc_mode').every(value => value === undefined)).toBe(true);
 		expect(sent(onChange, 'fc_adaptive').every(value => value === undefined)).toBe(true);
+		expect(sent(onChange, 'fc_expose_headers').every(value => value === undefined)).toBe(true);
+	});
+
+	it('preserves an explicit response header mode in its declared selector', () => {
+		const onChange = renderForm(args({fc_expose_headers: 'off'}));
+		expect(screen.getByLabelText('Admission Response Headers')).toBeTruthy();
+		expect(sent(onChange, 'fc_expose_headers')).not.toContain(undefined);
 	});
 
 	it('shows the P/D-only fields only on a P/D rule', async () => {
@@ -123,5 +130,6 @@ describe('AdmissionControlForm', () => {
 		}
 		expect(screen.queryByLabelText('Admission Mode')).toBeNull();
 		expect(screen.queryByLabelText('Adaptive Ceiling')).toBeNull();
+		expect(screen.queryByLabelText('Admission Response Headers')).toBeNull();
 	});
 });
