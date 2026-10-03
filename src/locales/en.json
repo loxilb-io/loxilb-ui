@@ -1219,5 +1219,7 @@
 	"Most recent: event {{id}}.": "Most recent: event {{id}}.",
 	"most recent: event {{id}}": "most recent: event {{id}}",
 	"{{free}} of {{limit}} source-check slots free": "{{free}} of {{limit}} source-check slots free",
-	"The gateway reports that the next rule created cannot carry allowed sources.": "The gateway reports that the next rule created cannot carry allowed sources."
+	"The gateway reports that the next rule created cannot carry allowed sources.": "The gateway reports that the next rule created cannot carry allowed sources.",
+	"Admission Response Headers": "Admission Response Headers",
+	"Admission response headers must be on, off, or the gateway default.": "Admission response headers must be on, off, or the gateway default."
 }

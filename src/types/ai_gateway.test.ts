@@ -477,7 +477,7 @@ describe('admission validation (mirrors the gateway refusals)', () => {
 
 	it('lists every writable spec field and nothing read-only', () => {
 		expect([...FC_FIELDS].sort()).toEqual([
-			'fc_adaptive', 'fc_decode_max_inflight', 'fc_ep_max_inflight', 'fc_max_outstanding', 'fc_max_queue_depth',
+			'fc_adaptive', 'fc_decode_max_inflight', 'fc_ep_max_inflight', 'fc_expose_headers', 'fc_max_outstanding', 'fc_max_queue_depth',
 			'fc_max_queue_wait_ms', 'fc_mode', 'fc_prefill_max_inflight', 'fc_telemetry_stale_ms', 'fc_tenant_max_share_pct',
 			'fc_ttft_target_ms', 'fc_warmup_ms',
 		]);
@@ -493,5 +493,22 @@ describe('declaredFcFields (what this gateway\'s /meta offers)', () => {
 	it('declares nothing when /meta has not loaded or predates admission', () => {
 		expect(declaredFcFields(undefined).size).toBe(0);
 		expect(declaredFcFields({}).size).toBe(0);
+	});
+});
+
+ describe('admission response header declaration', () => {
+	it('preserves declared modes, omits blank input, and rejects unknown modes', () => {
+		for (const mode of ['on', 'off', 'inherit'] as const) {
+			const config = configuration({sse_mode: true, fc_expose_headers: mode});
+			expect(serializeAIConfiguration(config).serviceArguments.fc_expose_headers).toBe(mode);
+			expect(validateAIConfiguration(config)).toEqual([]);
+		}
+		expect(serializeAIConfiguration(configuration({sse_mode: true, fc_expose_headers: '' as any})).serviceArguments).not.toHaveProperty('fc_expose_headers');
+		expect(validateAIConfiguration(configuration({sse_mode: true, fc_expose_headers: 'always' as any})).map(issue => issue.field)).toContain('fc_expose_headers');
+		expect(serializeAIConfiguration(configuration({mode: 0, fc_expose_headers: 'on'})).serviceArguments).not.toHaveProperty('fc_expose_headers');
+	});
+	it('requires a live field declaration', () => {
+		expect(declaredFcFields({fc_expose_headers: {type: 'string'}}).has('fc_expose_headers')).toBe(true);
+		expect(declaredFcFields({}).has('fc_expose_headers')).toBe(false);
 	});
 });

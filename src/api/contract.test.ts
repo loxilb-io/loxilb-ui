@@ -231,10 +231,12 @@ describe('gateway spec contract — models the UI depends on', () => {
 
 	// The admission form and serializer know these fields by name. A new fc_*
 	// field fails here until it is handled (a bound, a P/D-only flag, a control).
-	it('FC_FIELDS is exactly the spec writable fc_* serviceArguments', () => {
+	it('supported declared FC_FIELDS are exactly the spec writable fc_* serviceArguments', () => {
 		const serviceArguments = gateway.definitions.LoadbalanceEntry.properties.serviceArguments.properties;
 		const writable = Object.entries<any>(serviceArguments).filter(([name, schema]) => name.startsWith('fc_') && !schema.readOnly).map(([name]) => name);
-		expect([...FC_FIELDS].sort()).toEqual(writable.sort());
+		// Optional controls may support a newer live /meta than this vendored baseline.
+		// Every writable field in the exact vendored source must still be supported.
+		expect(FC_FIELDS.filter(field => field in serviceArguments).sort()).toEqual(writable.sort());
 		for (const [name, max] of Object.entries(FC_NUMERIC_MAX)) {
 			expect(serviceArguments[name].maximum, `${name} maximum`).toBe(max);
 		}

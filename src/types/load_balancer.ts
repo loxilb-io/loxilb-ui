@@ -126,6 +126,8 @@ export interface IServiceArguments {
 		fc_max_queue_wait_ms?: number;		// required (> 0) whenever a depth is set
 		fc_telemetry_stale_ms?: number;		// P/D only
 		fc_adaptive?: GwServiceArguments['fc_adaptive'];
+		/** Optional: offered only when the live Gateway metadata declares it. */
+		fc_expose_headers?: 'on' | 'off' | 'inherit';
 		fc_warmup_ms?: number;
 		fc_ttft_target_ms?: number;
 		fc_tenant_max_share_pct?: number;

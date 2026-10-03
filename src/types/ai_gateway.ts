@@ -51,7 +51,7 @@ const FC_MODES = ['off', 'observe', 'enforce', 'inherit'] as const;
 const FC_ADAPTIVE = ['on', 'off', 'inherit'] as const;
 
 /** Writable admission fields. fc_effective is read-only and not among them. */
-export const FC_FIELDS: readonly (keyof IServiceArguments)[] = ['fc_mode', 'fc_adaptive', ...FC_NUMERIC_FIELDS];
+export const FC_FIELDS: readonly (keyof IServiceArguments)[] = ['fc_mode', 'fc_adaptive', 'fc_expose_headers', ...FC_NUMERIC_FIELDS];
 
 /**
  * The admission fields this instance's gateway declares in its own `/meta`.
@@ -232,7 +232,7 @@ export function validateAIConfiguration(configuration: IServiceConfiguration): A
 				!(field === 'kvBlockSize' && value === 16) &&
 				!(field === 'kvZmqPort' && value === 5557) &&
 				!(field === 'kvDpRankCount' && value === 1) &&
-				!((field === 'fc_mode' || field === 'fc_adaptive') && value === 'inherit');
+				!((field === 'fc_mode' || field === 'fc_adaptive' || field === 'fc_expose_headers') && value === 'inherit');
 		});
 		if (active) issues.push({field: 'mode', message: 'AI Gateway routing requires full-proxy mode.'});
 		return issues;
@@ -366,6 +366,9 @@ function validateAdmissionFields(args: IServiceArguments, topology: AITopology, 
 	}
 	if (!isFcBlank(args.fc_adaptive) && !(FC_ADAPTIVE as readonly unknown[]).includes(args.fc_adaptive)) {
 		issues.push({field: 'fc_adaptive', message: 'Adaptive ceiling must be on, off, or the gateway default.'});
+	}
+	if (!isFcBlank(args.fc_expose_headers) && !(FC_ADAPTIVE as readonly unknown[]).includes(args.fc_expose_headers)) {
+		issues.push({field: 'fc_expose_headers', message: 'Admission response headers must be on, off, or the gateway default.'});
 	}
 	for (const field of FC_NUMERIC_FIELDS) {
 		if (topology !== 'pd' && FC_PD_ONLY_FIELDS.includes(field)) continue;
