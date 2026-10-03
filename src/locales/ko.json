@@ -1219,5 +1219,7 @@
 	"Most recent: event {{id}}.": "가장 최근: 이벤트 {{id}}.",
 	"most recent: event {{id}}": "가장 최근: 이벤트 {{id}}",
 	"{{free}} of {{limit}} source-check slots free": "소스 검사 슬롯 {{limit}}개 중 {{free}}개 사용 가능",
-	"The gateway reports that the next rule created cannot carry allowed sources.": "게이트웨이는 다음에 생성되는 규칙에 허용 소스를 설정할 수 없다고 보고합니다."
+	"The gateway reports that the next rule created cannot carry allowed sources.": "게이트웨이는 다음에 생성되는 규칙에 허용 소스를 설정할 수 없다고 보고합니다.",
+	"Admission Response Headers": "추론 응답 헤더",
+	"Admission response headers must be on, off, or the gateway default.": "추론 응답 헤더는 on, off 또는 게이트웨이 기본값이어야 합니다."
 }
