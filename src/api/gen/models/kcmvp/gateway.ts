@@ -4508,6 +4508,12 @@ export interface paths {
             "application/json": components["schemas"]["Error"];
           };
         };
+        /** @description Management credential store unavailable; optional capability readiness is reported in the 200 response */
+        503: {
+          content: {
+            "application/json": components["schemas"]["Error"];
+          };
+        };
       };
     };
   };
@@ -12390,7 +12396,7 @@ export interface components {
       tenant_id: string;
       /** @description Human-readable label for the API key */
       name?: string;
-      /** @description Optional imported credential; absent or empty generates a new key. Imports require 16-512 printable non-space ASCII bytes. GET/list never returns the credential. Create currently emits an empty raw_key string for imports, not omission. Length rejection maps to 400; invalid character errors currently fall through to generic 500. */
+      /** @description Optional imported credential; absent or empty generates a new key. Imports require 16-512 printable non-space ASCII bytes. GET/list never returns the credential. Create currently emits an empty raw_key string for imports, not omission. Length and invalid-character rejections both map to 400 with api_key validation fields. */
       api_key?: string;
       /** @description List of model identifiers this key may access */
       allowed_models?: string[];
@@ -14341,6 +14347,12 @@ export interface operations {
       };
       /** @description Authenticated principal is not authorized to create API keys */
       403: {
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description Imported API key is already registered */
+      409: {
         content: {
           "application/json": components["schemas"]["Error"];
         };

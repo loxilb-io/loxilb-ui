@@ -19,8 +19,6 @@ if (!['general','kcmvp'].includes(model)) throw new Error('unknown Product model
 const spec = (file:string) => model==='general' ? `api-spec/${file}` : `api-spec/models/${model}/${file}`;
 const gateway = YAML.parse(fs.readFileSync(path.join(root, spec('gateway-swagger.yml')), 'utf8'));
 const gatewayExtras = YAML.parse(fs.readFileSync(path.join(root, spec('gateway-swagger-extras.yml')), 'utf8'));
-const provenance = JSON.parse(fs.readFileSync(path.join(root,spec('SOURCES.json')), 'utf8'));
-const knownGaps = JSON.parse(fs.readFileSync(path.join(root,'api-spec/KNOWN_CONTRACT_GAPS.json'), 'utf8')).gaps;
 const oam = JSON.parse(fs.readFileSync(path.join(root, spec('oam-swagger.json')), 'utf8'));
 
 // response JSON pointer helpers (swagger 2.0)
@@ -179,7 +177,7 @@ describe('gateway spec contract — models the UI depends on', () => {
 });
 
 describe('gateway management authentication response matrices', () => {
-	it('protected operations retain auth responses and report the exact pinned capabilities 503 gap', () => {
+	it('every protected main operation declares 401, 403, and 503', () => {
 		for (const [pathName, pathItem] of Object.entries<any>(gateway.paths)) {
 			for (const method of ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']) {
 				const operation = pathItem[method];
@@ -189,22 +187,10 @@ describe('gateway management authentication response matrices', () => {
 				expect(operation.responses, `${method.toUpperCase()} ${pathName}`).toEqual(
 					expect.objectContaining({'401': expect.anything(), '403': expect.anything()}),
 				);
-				const gap = knownGaps.find((row: any) => row.model === model && row.producerCommit === provenance.gateway.commit
-					&& row.swaggerSha256 === provenance.gateway.sha256['gateway-swagger.yml'] && row.path === pathName && row.method === method && row.missingResponse === '503');
-				if (gap) {
-					expect(pathName).toBe('/status/capabilities');
-					expect(gap).toEqual(expect.objectContaining({missingResponse: '503', status: 'OPEN', sourceContractGate: 'BLOCKED'}));
-					expect(operation.responses['503']).toBeUndefined();
-				} else expect(operation.responses['503'], `${method.toUpperCase()} ${pathName}`).toBeTruthy();
+				expect(operation.responses['503'], `${method.toUpperCase()} ${pathName}`).toBeTruthy();
 			}
 		}
-		const conflictGap = knownGaps.find((row: any) => row.model === model && row.producerCommit === provenance.gateway.commit
-			&& row.swaggerSha256 === provenance.gateway.sha256['gateway-swagger.yml'] && row.path === '/config/ai/apikey'
-			&& row.method === 'post' && row.missingResponse === '409');
-		if (conflictGap) {
-			expect(conflictGap).toEqual(expect.objectContaining({status: 'OPEN', sourceContractGate: 'BLOCKED'}));
-			expect(gateway.paths['/config/ai/apikey'].post.responses['409']).toBeUndefined();
-		} else expect(gateway.paths['/config/ai/apikey'].post.responses['409']).toBeTruthy();
+		expect(gateway.paths['/config/ai/apikey'].post.responses['409']).toBeTruthy();
 	});
 
 	it('every raw extras operation declares bearer auth and 401/403/503', () => {

@@ -4928,6 +4928,10 @@ paths:
           description: Authenticated principal's role carries no authority for this operation
           schema:
             $ref: '#/definitions/Error'
+        '503':
+          description: Management credential store unavailable; optional capability readiness is reported in the 200 response
+          schema:
+            $ref: '#/definitions/Error'
   '/maintenance':
     get:
       summary: Operator maintenance state with drain read-back
@@ -7928,6 +7932,10 @@ paths:
             $ref: '#/definitions/Error'
         '403':
           description: Authenticated principal is not authorized to create API keys
+          schema:
+            $ref: '#/definitions/Error'
+        '409':
+          description: Imported API key is already registered
           schema:
             $ref: '#/definitions/Error'
         '500':
@@ -15382,8 +15390,8 @@ definitions:
           Optional imported credential; absent or empty generates a new key.
           Imports require 16-512 printable non-space ASCII bytes. GET/list never
           returns the credential. Create currently emits an empty raw_key string
-          for imports, not omission. Length rejection maps to 400; invalid
-          character errors currently fall through to generic 500.
+          for imports, not omission. Length and invalid-character rejections
+          both map to 400 with api_key validation fields.
       allowed_models:
         type: array
         items:

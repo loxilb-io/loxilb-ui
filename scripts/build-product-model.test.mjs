@@ -26,6 +26,17 @@ test('private selection overlays only ephemeral generated imports and binds exac
  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
 });
 
-test('both exact current producer pins block source-contract/build acceptance',()=>{
- for(const model of ['general','kcmvp']) assert.throws(()=>requireSourceContract(root,model),/SOURCE_CONTRACT_BLOCKED/);
+test('reviewed corrected producer pins pass the source contract gap gate',()=>{
+ for(const model of ['general','kcmvp']) assert.equal(requireSourceContract(root,model).model,model);
+ assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root,'api-spec/KNOWN_CONTRACT_GAPS.json'))).gaps,[]);
+});
+test('a new exact pinned OPEN gap still blocks author build acceptance',()=>{
+ const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'ui-build-gap-'));
+ try {
+  fs.cpSync(path.join(root,'api-spec'),path.join(tmp,'api-spec'),{recursive:true});
+  const sources=requireSourceContract(tmp,'kcmvp');
+  const gap={model:'kcmvp',producerCommit:sources.gateway.commit,swaggerSha256:sources.gateway.sha256['gateway-swagger.yml'],status:'OPEN'};
+  fs.writeFileSync(path.join(tmp,'api-spec/KNOWN_CONTRACT_GAPS.json'),JSON.stringify({gaps:[gap]}));
+  assert.throws(()=>requireSourceContract(tmp,'kcmvp'),/SOURCE_CONTRACT_BLOCKED/);
+ }finally{fs.rmSync(tmp,{recursive:true,force:true});}
 });
