@@ -56,7 +56,10 @@
 		"web-vitals": "^2.1.4"
 	},
 	"scripts": {
+		"build:model": "node scripts/build-product-model.mjs",
+		"test:model-tools": "node --test scripts/api-spec-model.test.mjs scripts/build-product-model.test.mjs",
 		"gen:api": "node scripts/gen-api-types.mjs && node scripts/gen-capability-map.mjs && node scripts/gen-metric-manifest.mjs",
+
 		"gen:api:check": "npm run gen:api && git diff --exit-code -- src/api/gen",
 		"api:check-mapping": "node scripts/check-api-mapping.mjs",
 		"api:coverage": "node scripts/check-api-mapping.mjs --coverage",

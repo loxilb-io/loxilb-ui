@@ -32,7 +32,7 @@ export async function query_get_apikey_all(instance: IInstance, tenant_id?: stri
 /**
  * Create a new API key for a tenant ( batch 2 — OpResult).
  * Generated mode returns plaintext only in this response. Imported mode sends
- * caller-supplied material once and the response deliberately omits raw_key.
+ * caller-supplied material once and the producer returns an empty raw_key.
  * The adapter closes the two false-success gaps the legacy path had: a 200
  * carrying {result:"fail"} and a 200 whose body failed to parse both map to
  * `failed`, so the reveal dialog can never render around a failure body.

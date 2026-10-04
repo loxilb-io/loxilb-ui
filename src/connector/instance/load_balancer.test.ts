@@ -88,10 +88,11 @@ describe('load-balancer AI wire boundary', () => {
 	});
 
 	it('keeps absent, disabled and required API-key policies distinct on the wire', async () => {
-		for (const policy of [undefined, 'disabled', 'required'] as const) {
+		for (const policy of [undefined, 'disabled', 'required', 'jwt', 'apikey-or-jwt'] as const) {
 			post.mockClear();
 			const data = baseConfiguration();
 			data.serviceArguments.api_key_auth = policy;
+			if (policy === 'jwt' || policy === 'apikey-or-jwt') data.serviceArguments.jwt_auth_profile = 'configured-test-profile';
 
 			await request_create_load_balancer_config(instance, data, 'inference-gateway');
 			const payload = post.mock.calls[0][2] as IServiceConfiguration;

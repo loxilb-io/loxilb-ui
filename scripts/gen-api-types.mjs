@@ -15,6 +15,7 @@
 //   api-spec/oam-swagger.json           <- oam-loxilb/docs/swagger.json
 //      (regenerate there first: swag init --parseDependency --parseInternal -g main.go -o docs)
 import fs from 'node:fs';
+import {productModel,specRelative,verifyModelSpecs} from './api-spec-model.mjs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import YAML from 'yaml';
@@ -23,10 +24,13 @@ import openapiTS from 'openapi-typescript';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+const model=productModel();
+verifyModelSpecs(root,model);
+const gen = file => model==='general' ? `src/api/gen/${file}` : `src/api/gen/models/${model}/${file}`;
 const SPECS = [
-	{src: 'api-spec/gateway-swagger.yml', out: 'src/api/gen/gateway.ts'},
-	{src: 'api-spec/gateway-swagger-extras.yml', out: 'src/api/gen/gateway-extras.ts'},
-	{src: 'api-spec/oam-swagger.json', out: 'src/api/gen/oam.ts'},
+	{src: specRelative('gateway-swagger.yml',model), out: gen('gateway.ts')},
+	{src: specRelative('gateway-swagger-extras.yml',model), out: gen('gateway-extras.ts')},
+	{src: specRelative('oam-swagger.json',model), out: gen('oam.ts')},
 ];
 
 for (const {src, out} of SPECS) {

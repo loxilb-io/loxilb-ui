@@ -29,6 +29,9 @@
 #                                 # src/api/gen/ is regenerated from the new
 #                                 # provenance.
 set -euo pipefail
+if [[ "${1:-}" == "--model" || "${1:-}" == "--gateway-repo" || "${1:-}" == "--gateway-revision" || "${1:-}" == "--oam-repo" || "${1:-}" == "--oam-revision" ]]; then
+  exec node "$(dirname "$0")/sync-specs.mjs" "$@"
+fi
 cd "$(dirname "$0")/.."
 
 ONLY="${1:-}"
@@ -68,7 +71,11 @@ if [ "$ONLY" = "oam" ]; then
 const fs = require('fs');
 const p = 'api-spec/SOURCES.json';
 const s = JSON.parse(fs.readFileSync(p, 'utf8'));
+const crypto = require('crypto');
 s.oam = {
+	repository: 'https://github.com/loxilb-io/loxilb-oam',
+	readMode: 'immutable-git-blobs',
+	sha256: {'oam-swagger.json': crypto.createHash('sha256').update(fs.readFileSync('api-spec/oam-swagger.json')).digest('hex')},
 	repo: 'loxilb-oam',
 	path: 'docs/swagger.json',
 	commit: process.env.OAM_SHA,
@@ -137,7 +144,11 @@ const fs = require('fs');
 const p = 'api-spec/SOURCES.json';
 const s = JSON.parse(fs.readFileSync(p, 'utf8'));
 s.vendoredAt = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+const crypto = require('crypto');
 s.gateway = {
+	repository: 'https://github.com/loxilb-io/loxilb-inference-gateway',
+	readMode: 'immutable-git-blobs',
+	sha256: Object.fromEntries(['gateway-swagger.yml', 'gateway-swagger-extras.yml'].map(file => [file, crypto.createHash('sha256').update(fs.readFileSync('api-spec/' + file)).digest('hex')])),
 	repo: 'loxilb-inference-gateway',
 	path: 'api/swagger.yml + api/swagger-extras.yml',
 	commit: process.env.GW_SHA,
@@ -151,46 +162,8 @@ EOF
 	exit 0
 fi
 
-[ -d "$OAM_REPO" ] || { echo "oam repo not found at $OAM_REPO (set OAM_REPO=...)"; exit 1; }
-[ -f "$LOXILB_REPO/api/swagger.yml" ] || { echo "loxilb repo not found at $LOXILB_REPO (set LOXILB_REPO=...)"; exit 1; }
-
-cp "$GATEWAY_REPO/api/swagger.yml" api-spec/gateway-swagger.yml
-cp "$GATEWAY_REPO/api/swagger-extras.yml" api-spec/gateway-swagger-extras.yml
-cp "$GATEWAY_REPO/$MANIFEST_SRC" api-spec/metric-manifest.json
-cp "$LOXILB_REPO/api/swagger.yml" api-spec/loxilb-swagger.yml
-
-echo "regenerating OAM swagger (swag init) ..."
-if command -v swag >/dev/null 2>&1; then
-	(cd "$OAM_REPO" && swag init --parseDependency --parseInternal -g main.go -o docs >/dev/null)
-else
-	echo "  swag not installed — vendoring the existing $OAM_REPO/docs/swagger.json as-is"
-fi
-cp "$OAM_REPO/docs/swagger.json" api-spec/oam-swagger.json
-
-cat > api-spec/SOURCES.json <<EOF
-{
-  "vendoredAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-  "gateway": {
-    "repo": "loxilb-inference-gateway",
-    "path": "api/swagger.yml + api/swagger-extras.yml",
-    "commit": "$(rev "$GATEWAY_REPO")",
-    "dirty": $(dirty "$GATEWAY_REPO")
-  },
-  "oam": {
-    "repo": "oam-loxilb",
-    "path": "docs/swagger.json (swag init)",
-    "commit": "$(rev "$OAM_REPO")",
-    "dirty": $(dirty "$OAM_REPO")
-  },
-  "loxilb": {
-    "repo": "loxilb",
-    "path": "api/swagger.yml",
-    "commit": "$(rev "$LOXILB_REPO")",
-    "dirty": $(dirty "$LOXILB_REPO")
-  }
-}
-EOF
-stamp_manifest_entry
-
-echo "vendored specs:"
-cat api-spec/SOURCES.json
+# Full API sync also reads immutable committed bytes without regenerating OAM.
+# Metric provenance remains independently pinned via --only manifest.
+exec node "$(dirname "$0")/sync-specs.mjs" --model general \
+  --gateway-repo "$GATEWAY_REPO" --gateway-revision "$(rev "$GATEWAY_REPO")" \
+  --oam-repo "$OAM_REPO" --oam-revision "$(rev "$OAM_REPO")"

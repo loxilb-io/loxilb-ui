@@ -15,8 +15,11 @@ import YAML from 'yaml';
 // before merging the spec bump.
 
 const root = path.resolve(__dirname, '../..');
+const model = process.env.PRODUCT_MODEL ?? 'general';
+if (!['general','kcmvp'].includes(model)) throw new Error('unknown Product model');
+const spec = (file:string) => model==='general' ? `api-spec/${file}` : `api-spec/models/${model}/${file}`;
 const loxilb = YAML.parse(fs.readFileSync(path.join(root, 'api-spec/loxilb-swagger.yml'), 'utf8'));
-const gateway = YAML.parse(fs.readFileSync(path.join(root, 'api-spec/gateway-swagger.yml'), 'utf8'));
+const gateway = YAML.parse(fs.readFileSync(path.join(root, spec('gateway-swagger.yml')), 'utf8'));
 
 function resolveRef(spec: any, node: any): any {
 	if (node && node.$ref) {

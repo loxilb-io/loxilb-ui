@@ -15,9 +15,12 @@ import {FC_FIELDS, FC_NUMERIC_MAX, READ_ONLY_SERVICE_ARGUMENTS} from 'types/ai_g
 // (and likely the page) before merging the spec bump.
 
 const root = path.resolve(__dirname, '../..');
-const gateway = YAML.parse(fs.readFileSync(path.join(root, 'api-spec/gateway-swagger.yml'), 'utf8'));
-const gatewayExtras = YAML.parse(fs.readFileSync(path.join(root, 'api-spec/gateway-swagger-extras.yml'), 'utf8'));
-const oam = JSON.parse(fs.readFileSync(path.join(root, 'api-spec/oam-swagger.json'), 'utf8'));
+const model = process.env.PRODUCT_MODEL ?? 'general';
+if (!['general', 'kcmvp'].includes(model)) throw new Error('unknown Product model');
+const spec = (file: string) => model === 'general' ? `api-spec/${file}` : `api-spec/models/${model}/${file}`;
+const gateway = YAML.parse(fs.readFileSync(path.join(root, spec('gateway-swagger.yml')), 'utf8'));
+const gatewayExtras = YAML.parse(fs.readFileSync(path.join(root, spec('gateway-swagger-extras.yml')), 'utf8'));
+const oam = JSON.parse(fs.readFileSync(path.join(root, spec('oam-swagger.json')), 'utf8'));
 const LB_TUPLE_PATH = '/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}';
 
 // response JSON pointer helpers (swagger 2.0)
@@ -244,31 +247,9 @@ describe('gateway spec contract — models the UI depends on', () => {
 });
 
 describe('gateway management authentication response matrices', () => {
-	// ⭐ Operations that deliberately declare NO 503, keyed `METHOD path`.
-	//
-	// The 401/403 half of the rule below is universal — every secured operation
-	// must say how it refuses an unauthenticated or unauthorized caller. The
-	// 503 half is not: it asks whether the operation participates in the
-	// gateway's availability envelope, and an operation that cannot emit 503
-	// should not claim it. Declaring an unreachable response is the same defect
-	// as omitting a reachable one, pointing the other way.
-	//
-	// An entry here is earned by reading the gateway, not by a failing test:
-	//   - GET /status/capabilities: the handler answers 200 unconditionally and
-	//     puts the verdict in the body — deliberately, so that a gateway with
-	//     an unready OPTIONAL capability does not report itself unhealthy. Nor
-	//     can the write-freeze envelope reach it: SnapshotFreezeMiddleware
-	//     returns early for GET/HEAD/OPTIONS before any of its three 503 gates
-	//     (boot replay unsettled, restore in progress, operator maintenance).
-	//     Its /status siblings declare 503 because their handlers really emit
-	//     one; this one has no such path.
-	//
-	// ⚠️ A 503 still reaches the UI for these paths from OUTSIDE the gateway —
-	// the OAM proxy answers for an instance that is down — which is why the
-	// fetcher maps 502/503/504 generically for every call rather than from this
-	// matrix. The exemption is about what the GATEWAY's contract claims, not
-	// about which statuses the UI must survive.
-	const NO_503_BY_DESIGN = new Set(['GET /status/capabilities']);
+	// Both exact producer contracts declare credential-store unavailability
+	// on capabilities; optional readiness remains represented in a 200 body.
+	const NO_503_BY_DESIGN = new Set<string>();
 
 	it('every protected main operation declares 401 and 403, and 503 unless exempt', () => {
 		for (const [pathName, pathItem] of Object.entries<any>(gateway.paths)) {
@@ -297,10 +278,9 @@ describe('gateway management authentication response matrices', () => {
 			const [method, pathName] = label.split(' ');
 			expect(gateway.paths[pathName]?.[method.toLowerCase()], `${label} (exempt) is not in the spec`).toBeTruthy();
 		}
-		// No 409 on API-key create: the store's only unique index is on the key
-		// hash, duplicate names succeed, and no handler path emits Conflict — the
-		// old UI-only 409 overlay described unreachable behavior.
-		expect(gateway.paths['/config/ai/apikey'].post.responses['409']).toBeUndefined();
+		// Both corrected producers classify an imported-key hash collision as
+		// 409 while duplicate display names remain permitted.
+		expect(gateway.paths['/config/ai/apikey'].post.responses['409'].schema.$ref).toBe('#/definitions/Error');
 	});
 
 	it('every raw extras operation declares bearer auth and 401/403/503', () => {

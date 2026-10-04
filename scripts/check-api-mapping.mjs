@@ -17,11 +17,14 @@
 //   - a connector {p} hole only matches a spec {param} segment — a hole where
 //     the spec expects a literal is a mismatch.
 import fs from 'node:fs';
+import {productModel,specRelative,verifyModelSpecs} from './api-spec-model.mjs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import YAML from 'yaml';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const model=productModel();
+verifyModelSpecs(root,model);
 const COVERAGE = process.argv.includes('--coverage');
 
 //---------------------------------------------------------
@@ -56,8 +59,8 @@ function specRoutes(...specs) {
 	return routes;
 }
 
-const gatewayRoutes = specRoutes(loadSpec('api-spec/gateway-swagger.yml'), loadSpec('api-spec/gateway-swagger-extras.yml'));
-const oamRoutes = specRoutes(loadSpec('api-spec/oam-swagger.json'));
+const gatewayRoutes = specRoutes(loadSpec(specRelative('gateway-swagger.yml',model)), loadSpec(specRelative('gateway-swagger-extras.yml',model)));
+const oamRoutes = specRoutes(loadSpec(specRelative('oam-swagger.json',model)));
 
 //---------------------------------------------------------
 // Extract connector calls
