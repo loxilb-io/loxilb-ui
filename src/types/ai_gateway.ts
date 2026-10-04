@@ -27,6 +27,7 @@ const HASHES_BY_ENGINE: Record<AIEngine, readonly AIHashAlgorithm[]> = {
 const AI_ONLY_FIELDS: readonly (keyof IServiceArguments)[] = [
 	'model_name',
 	'api_key_auth',
+	'jwt_auth_profile',
 	'trace_type',
 	'session_header_name',
 	'chwbl_prefix_hash_level',
@@ -149,6 +150,13 @@ export function validateAIConfiguration(configuration: IServiceConfiguration): A
 	const topology = resolveAITopology(args);
 	const issues: AIValidationIssue[] = [];
 	const exactMode = args.kvExactMode ?? 0;
+	if (args.api_key_auth === 'jwt' || args.api_key_auth === 'apikey-or-jwt') {
+		if (!args.jwt_auth_profile || args.jwt_auth_profile.length > 63) {
+			issues.push({field: 'jwt_auth_profile', message: 'JWT modes require a configured JWT profile name of at most 63 characters.'});
+		}
+	} else if (args.api_key_auth !== undefined && args.jwt_auth_profile) {
+		issues.push({field: 'jwt_auth_profile', message: 'A JWT profile reference is valid only for JWT credential modes.'});
+	}
 
 	if (args.mode !== 4) {
 		const active = AI_ONLY_FIELDS.some(field => {
@@ -265,6 +273,13 @@ function stripEndpointAI(endpoint: IEndpoint): IEndpoint {
 	return rest;
 }
 
+export function credentialPolicyPatch(value: string): Partial<IServiceArguments> {
+	if (value === '') return {api_key_auth: undefined, jwt_auth_profile: undefined};
+	if (value === 'jwt' || value === 'apikey-or-jwt') return {api_key_auth: value};
+	if (value === 'disabled' || value === 'required') return {api_key_auth: value, jwt_auth_profile: ''};
+	throw new Error('Unknown credential policy');
+}
+
 export function serializeAIConfiguration(configuration: IServiceConfiguration): IServiceConfiguration {
 	const engine = resolveAIEngine(configuration.serviceArguments.kvEngineType);
 	const topology = resolveAITopology(configuration.serviceArguments);
@@ -278,9 +293,12 @@ export function serializeAIConfiguration(configuration: IServiceConfiguration): 
 	}
 
 	// Omission is a real third policy state. Never materialize Swagger's
-	// historical "disabled" default: absent preserves an unmanaged backend
-	// X-Api-Key header, whereas explicit disabled strips it.
-	if (!serviceArguments.api_key_auth) delete serviceArguments.api_key_auth;
+	// historical "disabled" default: omission preserves the stored policy on
+	// updates and leaves a new service unmanaged; explicit disabled strips the key.
+	if (!serviceArguments.api_key_auth) {
+		delete serviceArguments.api_key_auth;
+		delete serviceArguments.jwt_auth_profile;
+	}
 
 	if (!serviceArguments.kvHashAlgo) delete serviceArguments.kvHashAlgo;
 	if (topology === 'plain') {

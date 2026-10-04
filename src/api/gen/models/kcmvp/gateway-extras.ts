@@ -1,10 +1,22 @@
 /**
- * Generated from api-spec/gateway-swagger-extras.yml by scripts/gen-api-types.mjs — DO NOT EDIT.
+ * Generated from api-spec/models/kcmvp/gateway-swagger-extras.yml by scripts/gen-api-types.mjs — DO NOT EDIT.
  * Regenerate with: npm run gen:api
  */
 
 
 export interface paths {
+  "/config/tls/listener": {
+    /**
+     * Read a managed neutral TLS listener or its effective endpoint health
+     * @description With vip and port only, returns requested and independently queried effective TLS generation identities, readiness, high-water and pending transaction. Add both endpointIP and endpointPort to read one exact endpoint's current C inactivity bit under the one-rule-per-listener contract. The health variant requires an active managed generation; its value is a transient snapshot and may be superseded by the prober. The two 200 shapes are exclusive. Canonical unicast IPv4 and nonzero ports are required; unknown or repeated query parameters are rejected.
+     */
+    get: operations["getManagedNeutralTLSListener"];
+    /**
+     * Publish a managed TLS generation or send a transient endpoint health signal
+     * @description Opt-in managed path for exactly one eligible LB rule per listener (VIP,port), with independent listeners on distinct tuples. The transaction variant requires transactionId and expectedGeneration; an active transaction supplies frontend, optionally backend, requireSNI and sni. A tombstone transaction supplies tombstone true and omits all policy fields; it is logical deletion and retains the physical LB rule. The disjoint health-only variant has exactly vip, port, expectedGeneration and healthOnly, addresses one unique existing endpoint and never writes a TLS generation or durable override. It is acknowledged only after a separate effective C readback matches the requested bit; the prober can supersede it immediately afterward. Shared-rule listeners and physical LB rule deletion are unsupported. Unknown, null, duplicate and mixed-variant fields are rejected before mutation. Maximum body size is 65536 bytes.
+     */
+    post: operations["postManagedNeutralTLSListener"];
+  };
   "/config/ai/kv/inventory": {
     /**
      * Dump the KV-cache block inventory for an endpoint
@@ -504,6 +516,94 @@ export type webhooks = Record<string, never>;
 
 export interface components {
   schemas: {
+    /** @description Neutral managed-listener direction only. This is not the reserved frontendTlsPolicy/backendTlsPolicy field on ordinary LB requests. Material is referenced by identity/trust ID, never by a client path. Runtime normalization further restricts TLS versions, suites and ALPN. */
+    ManagedNeutralTLSPolicy: {
+      /** Format: uint32 */
+      schemaVersion?: number;
+      minVersion?: string;
+      maxVersion?: string;
+      tls12CipherList?: string;
+      tls13CipherSuites?: string;
+      alpnProtocols?: string[];
+      identityRef?: string;
+      trustRef?: string;
+      offloadPolicy?: string;
+    };
+    ManagedNeutralTLSHealthSignal: {
+      /** @description Canonical unicast IPv4 backend address. */
+      endpointIP: string;
+      /** Format: uint16 */
+      endpointPort: number;
+      /** @description True marks the backend inactive; false marks it active. */
+      inactive: boolean;
+    };
+    ManagedNeutralTLSSNIBinding: {
+      hostname: string;
+      identityRef: string;
+    };
+    /** @description Exactly one variant is allowed. TLS publish/recreate needs transactionId and frontend; logical deletion needs transactionId and tombstone true but no policy fields; transient health needs healthOnly and must have exactly four top-level fields (vip, port, expectedGeneration, healthOnly). The raw handler enforces those conditional rules, not Swagger 2.0. */
+    ManagedNeutralTLSWriteRequest: {
+      /** @description Canonical unicast IPv4 listener address. */
+      vip: string;
+      /** Format: uint16 */
+      port: number;
+      /** @description Required for generation transaction; forbidden for healthOnly. */
+      transactionId?: string;
+      /**
+       * Format: uint64
+       * @description Current generation CAS value; zero only for initial publication.
+       */
+      expectedGeneration: number;
+      /** @description True performs logical deletion while retaining the physical LB rule. */
+      tombstone?: boolean;
+      frontend?: components["schemas"]["ManagedNeutralTLSPolicy"];
+      backend?: components["schemas"]["ManagedNeutralTLSPolicy"];
+      requireSNI?: boolean;
+      sni?: components["schemas"]["ManagedNeutralTLSSNIBinding"][];
+      healthOnly?: components["schemas"]["ManagedNeutralTLSHealthSignal"];
+    };
+    /** @description Exact requested/effective TLS identity, not a health bit. */
+    ManagedNeutralTLSAck: {
+      Listener?: string;
+      TxID?: string;
+      /** Format: uint64 */
+      Generation?: number;
+      Digest?: string;
+      Tombstone?: boolean;
+    };
+    /** @description Two exclusive success shapes. Ordinary status has ready, requested, effective and highWater, optionally pending. Endpoint health readback has transient, generation, endpointIP, endpointPort and inactive. It is independently queried from C, not read from the TLS journal. */
+    ManagedNeutralTLSReadResponse: {
+      ready?: boolean;
+      requested?: components["schemas"]["ManagedNeutralTLSAck"];
+      effective?: components["schemas"]["ManagedNeutralTLSAck"];
+      /** Format: uint64 */
+      highWater?: number;
+      pending?: string;
+      transient?: boolean;
+      /** Format: uint64 */
+      generation?: number;
+      endpointIP?: string;
+      /** Format: uint16 */
+      endpointPort?: number;
+      inactive?: boolean;
+    };
+    /** @description A generation transaction returns the status fields. Health-only returns applied=true, transient=true, unchanged generation and the effective C endpoint bit after a separate query. The two shapes are exclusive. */
+    ManagedNeutralTLSWriteResponse: {
+      ready?: boolean;
+      requested?: components["schemas"]["ManagedNeutralTLSAck"];
+      effective?: components["schemas"]["ManagedNeutralTLSAck"];
+      /** Format: uint64 */
+      highWater?: number;
+      pending?: string;
+      applied?: boolean;
+      transient?: boolean;
+      /** Format: uint64 */
+      generation?: number;
+      endpointIP?: string;
+      /** Format: uint16 */
+      endpointPort?: number;
+      inactive?: boolean;
+    };
     /** @description Permissive schema for two alternative error envelopes. Management authentication/authorization emits code, message, result, and fields; raw JSON failures emit error instead. These are alternative shapes, not five jointly required fields. Does not describe the plain-text 405 body. */
     RawError: {
       /**
@@ -681,4 +781,116 @@ export type $defs = Record<string, never>;
 
 export type external = Record<string, never>;
 
-export type operations = Record<string, never>;
+export interface operations {
+
+  /**
+   * Read a managed neutral TLS listener or its effective endpoint health
+   * @description With vip and port only, returns requested and independently queried effective TLS generation identities, readiness, high-water and pending transaction. Add both endpointIP and endpointPort to read one exact endpoint's current C inactivity bit under the one-rule-per-listener contract. The health variant requires an active managed generation; its value is a transient snapshot and may be superseded by the prober. The two 200 shapes are exclusive. Canonical unicast IPv4 and nonzero ports are required; unknown or repeated query parameters are rejected.
+   */
+  getManagedNeutralTLSListener: {
+    parameters: {
+      query: {
+        /** @description Canonical unicast IPv4 listener address. */
+        vip: string;
+        port: number;
+        /** @description Canonical unicast IPv4 backend address; requires endpointPort. */
+        endpointIP?: string;
+        /** @description Exact backend port; requires endpointIP. */
+        endpointPort?: number;
+      };
+    };
+    responses: {
+      /** @description TLS generation status, or effective C health snapshot when both endpoint parameters are supplied. */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ManagedNeutralTLSReadResponse"];
+        };
+      };
+      /** @description Malformed */
+      400: {
+        content: {
+          "application/json": components["schemas"]["SimpleError"];
+        };
+      };
+      /** @description Missing or invalid management credential */
+      401: {
+        content: {
+          "application/json": components["schemas"]["ManagementError"];
+        };
+      };
+      /** @description Authenticated principal is not authorized */
+      403: {
+        content: {
+          "application/json": components["schemas"]["ManagementError"];
+        };
+      };
+      /** @description TLS generation not found for a two-parameter status query */
+      404: {
+        content: {
+          "application/json": components["schemas"]["SimpleError"];
+        };
+      };
+      /** @description Health query targets an absent */
+      409: {
+        content: {
+          "application/json": components["schemas"]["SimpleError"];
+        };
+      };
+      /** @description Neutral TLS is disabled or recovery */
+      503: {
+        content: {
+          "application/json": components["schemas"]["SimpleError"];
+        };
+      };
+    };
+  };
+  /**
+   * Publish a managed TLS generation or send a transient endpoint health signal
+   * @description Opt-in managed path for exactly one eligible LB rule per listener (VIP,port), with independent listeners on distinct tuples. The transaction variant requires transactionId and expectedGeneration; an active transaction supplies frontend, optionally backend, requireSNI and sni. A tombstone transaction supplies tombstone true and omits all policy fields; it is logical deletion and retains the physical LB rule. The disjoint health-only variant has exactly vip, port, expectedGeneration and healthOnly, addresses one unique existing endpoint and never writes a TLS generation or durable override. It is acknowledged only after a separate effective C readback matches the requested bit; the prober can supersede it immediately afterward. Shared-rule listeners and physical LB rule deletion are unsupported. Unknown, null, duplicate and mixed-variant fields are rejected before mutation. Maximum body size is 65536 bytes.
+   */
+  postManagedNeutralTLSListener: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ManagedNeutralTLSWriteRequest"];
+      };
+    };
+    responses: {
+      /** @description Exact requested/effective TLS generation status or transient health acknowledgement; the shapes are exclusive. */
+      200: {
+        content: {
+          "application/json": components["schemas"]["ManagedNeutralTLSWriteResponse"];
+        };
+      };
+      /** @description Invalid JSON */
+      400: {
+        content: {
+          "application/json": components["schemas"]["SimpleError"];
+        };
+      };
+      /** @description Missing or invalid management credential */
+      401: {
+        content: {
+          "application/json": components["schemas"]["ManagementError"];
+        };
+      };
+      /** @description Authenticated principal is not authorized */
+      403: {
+        content: {
+          "application/json": components["schemas"]["ManagementError"];
+        };
+      };
+      /** @description Absent or ineligible route */
+      409: {
+        content: {
+          "application/json": components["schemas"]["SimpleError"];
+        };
+      };
+      /** @description Recovery */
+      503: {
+        content: {
+          "application/json": components["schemas"]["SimpleError"];
+        };
+      };
+    };
+  };
+}

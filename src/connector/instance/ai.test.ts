@@ -18,12 +18,12 @@ describe('AI write connector wire contracts', () => {
 		post.mockReset();
 	});
 
-	it('sends an imported key exactly once and accepts a response without raw_key', async () => {
-		post.mockResolvedValue({code: 201, data: {key_id: 'key-1'}, message: 'Created'});
+	it('sends an imported key exactly once and accepts an empty raw_key', async () => {
+		post.mockResolvedValue({code: 201, data: {key_id: 'key-1', raw_key: ''}, message: 'Created'});
 		const request = {tenant_id: 'tenant-a', api_key: 'imported-key-1234', enabled: true};
 
 		const result = await request_create_apikey(instance, request);
-		expect(result).toEqual({status: 'success', created: {key_id: 'key-1'}});
+		expect(result).toEqual({status: 'success', created: {key_id: 'key-1', raw_key: ''}});
 		expect(post).toHaveBeenCalledOnce();
 		expect(post).toHaveBeenCalledWith(instance, '/config/ai/apikey', request);
 	});

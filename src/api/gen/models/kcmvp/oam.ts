@@ -1,5 +1,5 @@
 /**
- * Generated from api-spec/oam-swagger.json by scripts/gen-api-types.mjs — DO NOT EDIT.
+ * Generated from api-spec/models/kcmvp/oam-swagger.json by scripts/gen-api-types.mjs — DO NOT EDIT.
  * Regenerate with: npm run gen:api
  */
 

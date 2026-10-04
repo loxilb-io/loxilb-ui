@@ -14,9 +14,14 @@ import YAML from 'yaml';
 // (and likely the page) before merging the spec bump.
 
 const root = path.resolve(__dirname, '../..');
-const gateway = YAML.parse(fs.readFileSync(path.join(root, 'api-spec/gateway-swagger.yml'), 'utf8'));
-const gatewayExtras = YAML.parse(fs.readFileSync(path.join(root, 'api-spec/gateway-swagger-extras.yml'), 'utf8'));
-const oam = JSON.parse(fs.readFileSync(path.join(root, 'api-spec/oam-swagger.json'), 'utf8'));
+const model = process.env.PRODUCT_MODEL ?? 'general';
+if (!['general','kcmvp'].includes(model)) throw new Error('unknown Product model');
+const spec = (file:string) => model==='general' ? `api-spec/${file}` : `api-spec/models/${model}/${file}`;
+const gateway = YAML.parse(fs.readFileSync(path.join(root, spec('gateway-swagger.yml')), 'utf8'));
+const gatewayExtras = YAML.parse(fs.readFileSync(path.join(root, spec('gateway-swagger-extras.yml')), 'utf8'));
+const provenance = JSON.parse(fs.readFileSync(path.join(root,spec('SOURCES.json')), 'utf8'));
+const knownGaps = JSON.parse(fs.readFileSync(path.join(root,'api-spec/KNOWN_CONTRACT_GAPS.json'), 'utf8')).gaps;
+const oam = JSON.parse(fs.readFileSync(path.join(root, spec('oam-swagger.json')), 'utf8'));
 
 // response JSON pointer helpers (swagger 2.0)
 function resolveRef(spec: any, node: any): any {
@@ -89,22 +94,22 @@ describe('gateway spec contract — models the UI depends on', () => {
 			expect.objectContaining({type: 'integer', minimum: 0, maximum: 65535}),
 		);
 		expect(serviceArguments.security.enum).toEqual([0, 1, 2]);
-		expect(serviceArguments.api_key_auth.enum).toEqual(['disabled', 'required']);
+		expect(serviceArguments.api_key_auth.enum).toEqual(['disabled', 'required', 'jwt', 'apikey-or-jwt']);
 		expect(serviceArguments.api_key_auth.default, 'omission must not materialize explicit disabled').toBeUndefined();
-		expect(serviceArguments.api_key_auth.description).toContain('Omission is a first-class state');
+		expect(serviceArguments.api_key_auth.description).toContain('Omission is a state of its own');
 	});
 
-	it('API-key import and create response keep the secret-safe wire contract', () => {
+	it('API-key import and create response describe the actual wire contract', () => {
 		const imported = gateway.definitions.ApiKeyCreateRequest.properties.api_key;
 		expect(imported).toEqual(expect.objectContaining({
 			type: 'string',
-			minLength: 16,
-			maxLength: 512,
-			pattern: '^[!-~]{16,512}$',
 		}));
 		const response = gateway.definitions.ApiKeyCreateResponse;
 		expect(response.required).toContain('key_id');
-		expect(response.required ?? []).not.toContain('raw_key');
+		// The producer emits an empty string for imports; UI validation tests
+		// independently retain the 16–512 printable ASCII input boundary.
+		expect(response.required).toContain('raw_key');
+		expect(response.properties.raw_key.description).toContain('empty string');
 		expect(response.properties.raw_key).toEqual(expect.objectContaining({type: 'string'}));
 	});
 
@@ -119,7 +124,7 @@ describe('gateway spec contract — models the UI depends on', () => {
 			expect(modelLimits.type).toBe('array');
 			expect(modelLimits.items.$ref).toBe('#/definitions/TenantModelRateLimit');
 			expect(gateway.definitions[name].properties.burst_pct).toEqual(
-				expect.objectContaining({type: 'integer', minimum: 0, maximum: 1000}),
+				expect.objectContaining({type: 'integer', format: 'int64'}),
 			);
 		}
 		expect(propNames(gateway, gateway.definitions.TenantModelRateLimit)).toEqual(
@@ -154,10 +159,11 @@ describe('gateway spec contract — models the UI depends on', () => {
 		}
 	});
 
-	it('Gateway users use password-free summaries for list and create responses', () => {
+	it('Gateway users list password-free summaries and create an operation result', () => {
 		expect(propNames(gateway, gateway.definitions.UserSummary)).not.toContain('password');
 		expect(gateway.paths['/auth/users'].get.responses['200'].schema.items.$ref).toBe('#/definitions/UserSummary');
-		expect(gateway.paths['/auth/users'].post.responses['201'].schema.$ref).toBe('#/definitions/UserSummary');
+		expect(gateway.paths['/auth/users'].post.responses['200'].schema.$ref).toBe('#/definitions/OperationResult');
+		expect(propNames(gateway, gateway.definitions.OperationResult)).not.toContain('password');
 	});
 
 	it('/sni/certificates GET keeps certificates/totalCertificates', () => {
@@ -173,7 +179,7 @@ describe('gateway spec contract — models the UI depends on', () => {
 });
 
 describe('gateway management authentication response matrices', () => {
-	it('every protected main operation declares 401, 403, and 503', () => {
+	it('protected operations retain auth responses and report the exact pinned capabilities 503 gap', () => {
 		for (const [pathName, pathItem] of Object.entries<any>(gateway.paths)) {
 			for (const method of ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']) {
 				const operation = pathItem[method];
@@ -181,11 +187,24 @@ describe('gateway management authentication response matrices', () => {
 				const security = operation.security === undefined ? gateway.security : operation.security;
 				if (!Array.isArray(security) || security.length === 0) continue;
 				expect(operation.responses, `${method.toUpperCase()} ${pathName}`).toEqual(
-					expect.objectContaining({'401': expect.anything(), '403': expect.anything(), '503': expect.anything()}),
+					expect.objectContaining({'401': expect.anything(), '403': expect.anything()}),
 				);
+				const gap = knownGaps.find((row: any) => row.model === model && row.producerCommit === provenance.gateway.commit
+					&& row.swaggerSha256 === provenance.gateway.sha256['gateway-swagger.yml'] && row.path === pathName && row.method === method && row.missingResponse === '503');
+				if (gap) {
+					expect(pathName).toBe('/status/capabilities');
+					expect(gap).toEqual(expect.objectContaining({missingResponse: '503', status: 'OPEN', sourceContractGate: 'BLOCKED'}));
+					expect(operation.responses['503']).toBeUndefined();
+				} else expect(operation.responses['503'], `${method.toUpperCase()} ${pathName}`).toBeTruthy();
 			}
 		}
-		expect(gateway.paths['/config/ai/apikey'].post.responses['409']).toBeTruthy();
+		const conflictGap = knownGaps.find((row: any) => row.model === model && row.producerCommit === provenance.gateway.commit
+			&& row.swaggerSha256 === provenance.gateway.sha256['gateway-swagger.yml'] && row.path === '/config/ai/apikey'
+			&& row.method === 'post' && row.missingResponse === '409');
+		if (conflictGap) {
+			expect(conflictGap).toEqual(expect.objectContaining({status: 'OPEN', sourceContractGate: 'BLOCKED'}));
+			expect(gateway.paths['/config/ai/apikey'].post.responses['409']).toBeUndefined();
+		} else expect(gateway.paths['/config/ai/apikey'].post.responses['409']).toBeTruthy();
 	});
 
 	it('every raw extras operation declares bearer auth and 401/403/503', () => {
@@ -206,11 +225,10 @@ describe('gateway management authentication response matrices', () => {
 });
 
 describe('gateway spec hygiene', () => {
-	it('every operation the UI must not call is still flagged x-not-implemented', () => {
-		// If the gateway implements these later, this test reminds us to unflag
-		// them and (optionally) build the UI — see docs/API_COVERAGE_REPORT.md.
+	it('implemented metrics declare GET response schemas', () => {
 		for (const p of Object.keys(gateway.paths).filter(p => p.startsWith('/metrics/'))) {
-			expect(gateway.paths[p].get?.['x-not-implemented'], `${p} implemented? update flag + coverage report`).toBe(true);
+			expect(gateway.paths[p].get.responses['200'].schema, p).toBeTruthy();
+			expect(gateway.paths[p].get['x-not-implemented'], p).not.toBe(true);
 		}
 	});
 });

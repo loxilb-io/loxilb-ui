@@ -10,7 +10,7 @@ import type {GwSchema} from 'api';
 export type IApiKeyCreateRequest = GwSchema<'ApiKeyCreateRequest'>;
 
 // POST /config/ai/apikey 201 body. Generated mode returns raw_key once;
-// import mode deliberately omits it.
+// import mode returns an empty string in the actual producer contract.
 export type IApiKeyCreateResponse = GwSchema<'ApiKeyCreateResponse'>;
 
 // GET /config/ai/apikey list element

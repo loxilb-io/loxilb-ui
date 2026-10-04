@@ -30,7 +30,7 @@ export type ApiKeyCreateResult = ApiResult & {created?: IApiKeyCreateResponse};
 /**
  * Create a new API key for a tenant.
  * Generated mode returns plaintext only in this response. Imported mode sends
- * caller-supplied material once and the response deliberately omits raw_key.
+ * caller-supplied material once and the producer returns raw_key as an empty string.
  */
 export async function request_create_apikey(instance: IInstance, data: IApiKeyCreateRequest): Promise<ApiKeyCreateResult> {
 	const resp = await POST_INST<IApiKeyCreateResponse>(instance, `/config/ai/apikey`, data);

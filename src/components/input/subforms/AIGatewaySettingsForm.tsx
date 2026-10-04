@@ -11,6 +11,7 @@ import {
 	AIEngine,
 	allowedAIHashes,
 	effectiveAIHash,
+	credentialPolicyPatch,
 	resolveAIEngine,
 } from 'types/ai_gateway';
 import {IEnumItem} from 'types/global';
@@ -22,6 +23,8 @@ const API_KEY_POLICY_ITEMS: IEnumItem[] = [
 	{id: 0, name: 'Preserve / unmanaged', send_value: ''},
 	{id: 1, name: 'Disabled (strip header)', send_value: 'disabled'},
 	{id: 2, name: 'Required (enforce and strip)', send_value: 'required'},
+	{id: 3, name: 'JWT bearer token', send_value: 'jwt'},
+	{id: 4, name: 'API key or JWT (key takes precedence)', send_value: 'apikey-or-jwt'},
 ];
 
 function currentTopology(value: IServiceArguments): TopologySelection {
@@ -125,12 +128,15 @@ export default function AIGatewaySettingsForm(props: {
 						<DropDownSelectBox
 							label={t('Data-plane API Key Policy')}
 							value={value.api_key_auth ?? ''}
-							onChange={newValue => onChange({api_key_auth: newValue || undefined})}
+							onChange={newValue => onChange(credentialPolicyPatch(newValue))}
 							item_list={API_KEY_POLICY_ITEMS}
 							disabled={!isL7}
 						/>
+						{(value.api_key_auth === 'jwt' || value.api_key_auth === 'apikey-or-jwt') && (
+							<ParamBox label={t('JWT Auth Profile')} value={value.jwt_auth_profile ?? ''} onChange={handleChange('jwt_auth_profile')} param_desc={{...params?.jwt_auth_profile, type: 'string', maxLength: 63, required: true, description: t('Name of an existing Gateway JWT authentication profile. Configure issuer trust separately before selecting this mode.')}} disabled={!isL7} />
+						)}
 						<Typography variant="caption" color="text.secondary">
-							{t('Preserve/unmanaged omits the field and leaves backend X-Api-Key headers untouched. Disabled admits keyless traffic but strips that header. Required validates the key, strips it, and fails closed if the policy store is unavailable.')}
+							{t('Preserve/unmanaged omits policy and profile: updates keep existing backend configuration; new services remain unmanaged. Disabled admits keyless traffic but strips that header. Required validates the key, strips it, and fails closed if the policy store is unavailable. JWT validates a bearer token using the named profile. API-key-or-JWT gives a present key precedence with no fallback after key rejection.')}
 						</Typography>
 					</Stack>
 				)}

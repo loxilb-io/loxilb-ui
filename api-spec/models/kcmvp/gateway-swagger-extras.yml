@@ -21,8 +21,9 @@ info:
     generated request binding and validation. Some operations, including the
     OPA watcher operations, also have x-raw-middleware stubs in swagger.yml;
     this document describes their raw-handler contract.
-    Covered areas are the raw configuration/debug handlers (AI KV inventory,
-    DPU debug and hardware counters, OPA policy watcher, AI API key patch).
+    Covered areas are the raw configuration/debug handlers (managed neutral TLS
+    listener, AI KV inventory, DPU debug and hardware counters, OPA policy
+    watcher, AI API key patch).
     When management authentication is enabled, supply a management credential
     in Authorization as Bearer <token>. In role-based modes, viewers may read
     and administrators may modify these resources. A validated manual token
@@ -32,12 +33,16 @@ info:
     503 using ManagementError. OPTIONS returns an empty 200 before authentication.
     Unsupported methods on the KV, DPU, and OPA raw routes return plain-text
     405 after authentication, despite the default JSON media type declaration.
-    Body handlers decode one JSON value without generated schema validation,
-    unknown-field rejection, or trailing-value checks; the media type declarations
-    do not establish generated 415/406 enforcement. These are current validation
-    limitations, not guarantees that malformed requests are supported.
-    Raw dispatch also bypasses the generated snapshot-freeze and auto-persist
-    wrappers; their protections must not be assumed for these operations.
+    Most raw body handlers decode one JSON value without generated schema
+    validation, unknown-field rejection, or trailing-value checks. The managed
+    neutral TLS listener is an exception: its own handler checks duplicate,
+    unknown, null and mixed-variant fields before mutation. Media type
+    declarations do not establish generated 415/406 enforcement. These are
+    current validation limitations, not guarantees that malformed requests
+    are supported.
+    Most raw dispatches bypass the generated snapshot-freeze and auto-persist
+    wrappers; their protections must not be assumed for those operations. The
+    managed neutral TLS listener route explicitly uses both wrappers.
     Unsigned 64-bit hashes and counters are JSON numbers; clients must preserve
     integer precision beyond 2^53-1. Described implementation limitations are
     based on static source inspection, not runtime or hardware qualification.
@@ -64,6 +69,70 @@ securityDefinitions:
 security:
   - BearerAuth: []
 paths:
+
+  '/config/tls/listener':
+    get:
+      operationId: getManagedNeutralTLSListener
+      summary: Read a managed neutral TLS listener or its effective endpoint health
+      description: >
+        With vip and port only, returns requested and independently queried
+        effective TLS generation identities, readiness, high-water and pending
+        transaction. Add both endpointIP and endpointPort to read one exact
+        endpoint's current C inactivity bit under the one-rule-per-listener
+        contract. The health variant requires an active managed generation;
+        its value is a transient snapshot and may be superseded by the prober.
+        The two 200 shapes are exclusive. Canonical unicast IPv4 and nonzero
+        ports are required; unknown or repeated query parameters are rejected.
+      parameters:
+        - {name: vip, in: query, required: true, type: string, description: Canonical unicast IPv4 listener address.}
+        - {name: port, in: query, required: true, type: integer, format: uint16, minimum: 1, maximum: 65535}
+        - {name: endpointIP, in: query, required: false, type: string, description: Canonical unicast IPv4 backend address; requires endpointPort.}
+        - {name: endpointPort, in: query, required: false, type: integer, format: uint16, minimum: 1, maximum: 65535, description: Exact backend port; requires endpointIP.}
+      responses:
+        '200':
+          description: TLS generation status, or effective C health snapshot when both endpoint parameters are supplied.
+          schema:
+            $ref: '#/definitions/ManagedNeutralTLSReadResponse'
+        '400': {description: Malformed, unknown or repeated query parameter, schema: {$ref: '#/definitions/SimpleError'}}
+        '401': {description: Missing or invalid management credential, schema: {$ref: '#/definitions/ManagementError'}}
+        '403': {description: Authenticated principal is not authorized, schema: {$ref: '#/definitions/ManagementError'}}
+        '404': {description: TLS generation not found for a two-parameter status query, schema: {$ref: '#/definitions/SimpleError'}}
+        '409': {description: Health query targets an absent, changed, tombstoned or ineligible managed listener or endpoint, schema: {$ref: '#/definitions/SimpleError'}}
+        '503': {description: Neutral TLS is disabled or recovery, effective acknowledgement or C health readback is unavailable, schema: {$ref: '#/definitions/SimpleError'}}
+    post:
+      operationId: postManagedNeutralTLSListener
+      summary: Publish a managed TLS generation or send a transient endpoint health signal
+      description: >
+        Opt-in managed path for exactly one eligible LB rule per listener
+        (VIP,port), with independent listeners on distinct tuples. The
+        transaction variant requires transactionId and expectedGeneration;
+        an active transaction supplies frontend, optionally backend, requireSNI
+        and sni. A tombstone transaction supplies tombstone true and omits all
+        policy fields; it is logical deletion and retains the physical LB rule.
+        The disjoint health-only variant has exactly vip, port,
+        expectedGeneration and healthOnly, addresses one unique existing
+        endpoint and never writes a TLS generation or durable override. It is
+        acknowledged only after a separate effective C readback matches the
+        requested bit; the prober can supersede it immediately afterward.
+        Shared-rule listeners and physical LB rule deletion are unsupported.
+        Unknown, null, duplicate and mixed-variant fields are rejected before
+        mutation. Maximum body size is 65536 bytes.
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/ManagedNeutralTLSWriteRequest'
+      responses:
+        '200':
+          description: Exact requested/effective TLS generation status or transient health acknowledgement; the shapes are exclusive.
+          schema:
+            $ref: '#/definitions/ManagedNeutralTLSWriteResponse'
+        '400': {description: Invalid JSON, shape, policy or TLS material, schema: {$ref: '#/definitions/SimpleError'}}
+        '401': {description: Missing or invalid management credential, schema: {$ref: '#/definitions/ManagementError'}}
+        '403': {description: Authenticated principal is not authorized, schema: {$ref: '#/definitions/ManagementError'}}
+        '409': {description: Absent or ineligible route, stale generation, changed binding or unique endpoint mismatch, schema: {$ref: '#/definitions/SimpleError'}}
+        '503': {description: Recovery, datapath acknowledgement or effective C readback unavailable; query status before retry, schema: {$ref: '#/definitions/SimpleError'}}
 
   # ===============================
   # Raw configuration / debug handlers
@@ -793,6 +862,105 @@ paths:
             $ref: '#/definitions/SimpleError'
 
 definitions:
+  ManagedNeutralTLSPolicy:
+    type: object
+    additionalProperties: false
+    description: >
+      Neutral managed-listener direction only. This is not the reserved
+      frontendTlsPolicy/backendTlsPolicy field on ordinary LB requests.
+      Material is referenced by identity/trust ID, never by a client path.
+      Runtime normalization further restricts TLS versions, suites and ALPN.
+    properties:
+      schemaVersion: {type: integer, format: uint32}
+      minVersion: {type: string}
+      maxVersion: {type: string}
+      tls12CipherList: {type: string}
+      tls13CipherSuites: {type: string}
+      alpnProtocols: {type: array, items: {type: string}}
+      identityRef: {type: string}
+      trustRef: {type: string}
+      offloadPolicy: {type: string}
+  ManagedNeutralTLSHealthSignal:
+    type: object
+    additionalProperties: false
+    required: [endpointIP, endpointPort, inactive]
+    properties:
+      endpointIP: {type: string, description: Canonical unicast IPv4 backend address.}
+      endpointPort: {type: integer, format: uint16, minimum: 1, maximum: 65535}
+      inactive: {type: boolean, description: True marks the backend inactive; false marks it active.}
+  ManagedNeutralTLSSNIBinding:
+    type: object
+    additionalProperties: false
+    required: [hostname, identityRef]
+    properties:
+      hostname: {type: string}
+      identityRef: {type: string}
+  ManagedNeutralTLSWriteRequest:
+    type: object
+    additionalProperties: false
+    required: [vip, port, expectedGeneration]
+    description: >
+      Exactly one variant is allowed. TLS publish/recreate needs transactionId
+      and frontend; logical deletion needs transactionId and tombstone true but
+      no policy fields; transient health needs healthOnly and must have exactly
+      four top-level fields (vip, port, expectedGeneration, healthOnly). The
+      raw handler enforces those conditional rules, not Swagger 2.0.
+    properties:
+      vip: {type: string, description: Canonical unicast IPv4 listener address.}
+      port: {type: integer, format: uint16, minimum: 1, maximum: 65535}
+      transactionId: {type: string, description: Required for generation transaction; forbidden for healthOnly.}
+      expectedGeneration: {type: integer, format: uint64, minimum: 0, description: Current generation CAS value; zero only for initial publication.}
+      tombstone: {type: boolean, description: True performs logical deletion while retaining the physical LB rule.}
+      frontend: {$ref: '#/definitions/ManagedNeutralTLSPolicy'}
+      backend: {$ref: '#/definitions/ManagedNeutralTLSPolicy'}
+      requireSNI: {type: boolean}
+      sni: {type: array, items: {$ref: '#/definitions/ManagedNeutralTLSSNIBinding'}}
+      healthOnly: {$ref: '#/definitions/ManagedNeutralTLSHealthSignal'}
+  ManagedNeutralTLSAck:
+    type: object
+    description: Exact requested/effective TLS identity, not a health bit.
+    properties:
+      Listener: {type: string}
+      TxID: {type: string}
+      Generation: {type: integer, format: uint64}
+      Digest: {type: string}
+      Tombstone: {type: boolean}
+  ManagedNeutralTLSReadResponse:
+    type: object
+    description: >
+      Two exclusive success shapes. Ordinary status has ready, requested,
+      effective and highWater, optionally pending. Endpoint health readback
+      has transient, generation, endpointIP, endpointPort and inactive. It is
+      independently queried from C, not read from the TLS journal.
+    properties:
+      ready: {type: boolean}
+      requested: {$ref: '#/definitions/ManagedNeutralTLSAck'}
+      effective: {$ref: '#/definitions/ManagedNeutralTLSAck'}
+      highWater: {type: integer, format: uint64}
+      pending: {type: string}
+      transient: {type: boolean}
+      generation: {type: integer, format: uint64}
+      endpointIP: {type: string}
+      endpointPort: {type: integer, format: uint16}
+      inactive: {type: boolean}
+  ManagedNeutralTLSWriteResponse:
+    type: object
+    description: >
+      A generation transaction returns the status fields. Health-only returns
+      applied=true, transient=true, unchanged generation and the effective C
+      endpoint bit after a separate query. The two shapes are exclusive.
+    properties:
+      ready: {type: boolean}
+      requested: {$ref: '#/definitions/ManagedNeutralTLSAck'}
+      effective: {$ref: '#/definitions/ManagedNeutralTLSAck'}
+      highWater: {type: integer, format: uint64}
+      pending: {type: string}
+      applied: {type: boolean}
+      transient: {type: boolean}
+      generation: {type: integer, format: uint64}
+      endpointIP: {type: string}
+      endpointPort: {type: integer, format: uint16}
+      inactive: {type: boolean}
   RawError:
     description: >
       Permissive schema for two alternative error envelopes. Management

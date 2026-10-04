@@ -1,5 +1,5 @@
 /**
- * Generated from api-spec/gateway-swagger.yml by scripts/gen-api-types.mjs — DO NOT EDIT.
+ * Generated from api-spec/models/kcmvp/gateway-swagger.yml by scripts/gen-api-types.mjs — DO NOT EDIT.
  * Regenerate with: npm run gen:api
  */
 
@@ -907,25 +907,6 @@ export interface paths {
      * @description Closes the connections of this service that the kernel is currently accelerating, and reports how many were closed. A configuration change applies to new connections only - the sockmap verdict decides on the socket pairing installed when a connection was accepted, so a connection already accelerated keeps redirecting until it closes. This is the operation that stops it on connections that are already running, for instance after finding the kernel affected by the redirect defect documented in docs/sockmap-acceleration.md. It closes rather than unmaps, because removing a socket from the map while traffic flows can drop bytes mid-connection while closing cannot; clients reconnect and the new connections follow the service as it now stands. Connections of the same service that were never accelerated are not touched, which includes every HTTP/2 connection and any connection that has not yet sent a request. The operation is idempotent and answers 200 with zero on a service that has nothing accelerated, including one whose sockMapMode is off. A service that does not exist answers 404. Changing sockMapMode so that it gives up a direction, and deleting the service, already perform this teardown.
      */
     post: operations["postConfigLoadbalancerSockmapReset"];
-  };
-  "/config/halfclose": {
-    /**
-     * Get the half-close hold settings
-     * @description The process-wide settings for holding a client that half-closes after its request, on the services whose half_close_mode is hold: whether new holds may be taken, and the idle bound on a hold. Until they are set, the defaults are in force (allowed, 240 seconds) and are what this returns.
-     */
-    get: operations["getConfigHalfclose"];
-    /**
-     * Set the half-close hold settings
-     * @description Sets whether new holds may be taken and the idle bound on a hold. A field omitted keeps the value in force; a body with neither, or with a field the model does not have, is refused (400). The answer is the settings in force once applied. Blocking stops new holds only: the clients already held stay held until their answers are out or the bound ends them, and /config/halfclose/release is what closes them at once. A new bound applies to every hold from the next pass of the data path, those already held included. The settings are kept across a restart and in a configuration snapshot.
-     */
-    post: operations["postConfigHalfclose"];
-  };
-  "/config/halfclose/release": {
-    /**
-     * Close every held half-closed client
-     * @description Closes, at the data path's next pass (within a second), every client held after a half-close, on every service, as it would have been closed without the hold: both of its connections are shut and released. An answer still on its way to such a client is lost. Nothing is stored: holds taken afterwards are taken as before, so block new holds first (POST /config/halfclose with allow false) to stop them. Answers 200 whether or not anything is held.
-     */
-    post: operations["postConfigHalfcloseRelease"];
   };
   "/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}/kvexactstatus": {
     /**
@@ -7789,23 +7770,6 @@ export interface paths {
      */
     post: operations["PostAuditSink"];
   };
-  "/audit/sinks/{name}": {
-    /**
-     * A secondary audit sink's configuration and state
-     * @description Returns one secondary sink: where it sends, what it selects from the trail, and how far it has got. Certificate material is named by path and never served.
-     */
-    get: operations["GetAuditSinksName"];
-    /**
-     * Create or replace a secondary audit sink
-     * @description Configures a secondary sink that follows the trail beside the compliance sink of /audit/sink. A secondary sink may select records by stream, service and outcome and may sample the data stream; it numbers what it sends, and that export sequence travels beside each record under the configured private enterprise number, so a configuration without one is refused. The receiver's certificate is always verified. Replacing a sink keeps its place in the trail and its export sequence. The name compliance is reserved. The change is audited like any other management mutation.
-     */
-    put: operations["PutAuditSinksName"];
-    /**
-     * Remove a secondary audit sink
-     * @description Stops the sink. Its place in the trail and its export sequence are kept, so a sink configured under the same name afterwards continues both and no export sequence number is used twice. The change is audited like any other management mutation.
-     */
-    delete: operations["DeleteAuditSinksName"];
-  };
   "/audit/rotate": {
     /**
      * Seal the active segment now
@@ -8381,6 +8345,19 @@ export type webhooks = Record<string, never>;
 
 export interface components {
   schemas: {
+    /** @description Reserved vendor-neutral declaration, not an enabled data-plane contract. Every explicit frontendTlsPolicy/backendTlsPolicy declaration, including null or an empty object, is rejected. This schema does not establish effective TLS enforcement, policy publication or a frozen ABI. */
+    TLSDirectionPolicy: {
+      /** Format: uint32 */
+      schemaVersion?: number;
+      minVersion?: string;
+      maxVersion?: string;
+      tls12CipherList?: string;
+      tls13CipherSuites?: string;
+      alpnProtocols?: string[];
+      identityRef?: string;
+      trustRef?: string;
+      offloadPolicy?: string;
+    };
     /** @description Per-domain replacement counts computed by PLAN, not a minimal difference. to_delete counts current entries and to_apply counts document entries; dry-run does not exercise all apply-time validation. */
     RestorePlanItem: {
       domain?: string;
@@ -8705,16 +8682,6 @@ export interface components {
       /** @description How many accelerated connections were closed. Zero means the service had none, which is also the answer for a service whose sockMapMode is off. Connections that were never accelerated are not counted because they are not touched. */
       droppedConnections?: number;
     };
-    /** @description The process-wide half-close hold settings. They apply to the services whose half_close_mode is hold; a service's own mode decides whether it holds at all. A field this model does not have is refused (400), so a misspelt one cannot pass for a change that was not made. */
-    HalfCloseConfig: {
-      /** @description Whether new holds may be taken. false blocks them on every service, whatever its mode, and leaves the clients already held to finish. */
-      allow?: boolean | null;
-      /**
-       * Format: int32
-       * @description The idle bound on a hold, in seconds: a held client to which no answer byte has been written for this long is closed. The clock starts once the request has reached the backend and restarts with every write of the answer, so a long answer that keeps coming is never cut by it.
-       */
-      capSeconds?: number | null;
-    };
     /** @description Per-LB lifecycle status (Octavia). */
     LoadbalanceStatus: {
       /** @description Octavia admin_state_up — true = enabled, false = paused. */
@@ -8978,7 +8945,7 @@ export interface components {
     L7PolicyGetEntry: {
       l7policyAttr?: components["schemas"]["L7Policy"][];
     };
-    /** @description Shared request/readback representation. POST can create or replace an existing rule; PATCH supports only the restricted L4 overlay described on its operation. Create callers must supply serviceArguments and usable endpoints. Implementation warning: the POST handler dereferences serviceArguments without a nil guard, although the shared schema permits its omission for PATCH. Configuration acceptance and GET readback do not establish runtime enforcement. See serviceArguments and endpoints for intake, update and readback gaps. */
+    /** @description Shared request/readback representation. POST can create or replace an existing rule; PATCH supports only the restricted L4 overlay described on its operation. Create callers must supply serviceArguments and usable endpoints. POST rejects missing serviceArguments; the shared schema permits its omission for PATCH. Configuration acceptance and GET readback do not establish runtime enforcement. See serviceArguments and endpoints for intake, update and readback gaps. */
     LoadbalanceEntry: {
       /** @description Service configuration. Implementation warnings for this REST representation: POST does not copy adminStateUp or snat into the domain. GET omits privateIP, timeoutMemberConnect, timeoutMemberData, timeoutTcpInspect, vip_qos_policy_id, alpn_protocols, tls_ciphers, tls_versions, hsts_max_age, hsts_include_subdomains, hsts_preload, backend_ca_cert_id, backend_client_cert_id and mtls_frontend.client_crl_path. GET/edit/POST is therefore not a lossless configuration round trip. PATCH has a limited overlay and does not update arbitrary properties. Metadata-only POSTs can return an unchanged-rule error before applying metadata; managed is not assigned on the existing-rule update path. FullProxy replacement removes its pool but C retains the listener; reuse does not reliably restore listener arguments or rebuild TLS contexts, so updated TLS/HSTS/timeout settings are not established by stored state. Requested-security fail-closed behavior and LB-resource/listener policy ownership remain unresolved; these defects are not supported fallback or update semantics. */
       serviceArguments?: {
@@ -9110,11 +9077,6 @@ export interface components {
          * @enum {string}
          */
         sockMapMode?: "off" | "both" | "request" | "response";
-        /**
-         * @description What this FullProxy service does with a client that half-closes (shuts down its write side) after sending its request. hold keeps the client open until the answer is out, where the gateway relays the answer itself: a plaintext connection whose traffic the kernel was never given to carry. Such a client is then closed once its answers are written, once the backend ends the answer's connection, when no answer byte has reached it for the bound set at /config/halfclose, or when that endpoint's release is called; with sockMapMode other than off, a client whose FIN arrives before the connection is accelerated is not accelerated, so that it can be held. off cuts the client at its FIN, as before. inherit, or omitted on create, runs on the process default, which is off. hold+parked is refused (400) until it is available. hold is refused (400) on a service whose mode is not fullproxy, whose clients use TLS (security 1 or 2: TLS connections are never held), or that runs P/D (pd_disagg_mode, not yet measured) - judged on the service as a replace leaves it, so switching pd_disagg_mode on under a stored hold is refused as well. A snapshot restore of such a rule drops the hold with a warning. Replace and null semantics as fc_mode; a replace that changes nothing else applies in place, to half-closes from then on. Read back only when declared.
-         * @enum {string}
-         */
-        half_close_mode?: "off" | "hold" | "hold+parked" | "inherit";
         /** @description Marks an egress rule. The ordinary LB2DP programming path returns early for this marker; do not infer ordinary ingress FullProxy behavior. The existing-rule path rejects changes to this flag. */
         egress?: boolean;
         /** @description Tracing catalog name, for example v1, anthropic or default. The domain resolves and maps it for the FullProxy tracing path when the catalog component is available. A configured name alone does not prove capture or parser execution. */
@@ -9509,6 +9471,10 @@ export interface components {
         alpn_protocols?: string[];
         /** @description Cipher string passed to both the TLS 1.3 ciphersuite and TLS 1.2 cipher configuration calls for listener/backend contexts, regardless of the selected version range. Empty uses the built-in lists. Implementation warnings: the C copy limits the string to 255 bytes without admission rejection; either OpenSSL call can fail, and listener creation then reaches an SSL-context assertion. Invalid input is not guaranteed to produce a clean REST rejection. See shared readback/update warnings. */
         tls_ciphers?: string;
+        /** @description Reserved and unavailable. Every explicit declaration, including null or an empty string, is rejected before rule mutation. Omission preserves the legacy path; no crypto profile is activated. */
+        frontendCryptoProfile?: string | null;
+        frontendTlsPolicy?: components["schemas"]["TLSDirectionPolicy"];
+        backendTlsPolicy?: components["schemas"]["TLSDirectionPolicy"];
         /** @description TLS version selection for listener/backend context setup. The encoder recognizes TLSv1.0 through TLSv1.3 and collapses recognized entries to an inclusive minimum/maximum range; empty uses TLS 1.2 through 1.3. Implementation limitations: noncontiguous selections include intermediate versions, unknown tokens are ignored, and an entirely unrecognized list uses default bounds. This is not exact allow-list enforcement; version policy and strict rejection require separate decisions and fixes. */
         tls_versions?: string[];
         /**
@@ -11270,132 +11236,6 @@ export interface components {
       /** @description Read-only. The most recent transport error, empty when the last attempt succeeded. */
       last_error?: string;
     };
-    /** @description What a secondary sink selects from the trail. Each field that is set narrows the selection, and a field judges only the records that have what it looks at. */
-    AuditSinkFilter: {
-      /** @description Keep records of these streams (mgmt, data, audit_system). Empty keeps all. */
-      streams?: string[];
-      /** @description Keep data records of these services. Records of other streams are not judged by it. */
-      services?: string[];
-      /** @description Keep records whose outcome is ok, or failed. Empty keeps both. */
-      outcome?: string;
-      /**
-       * Format: int64
-       * @description Keep one data record in this many. Zero and one keep all. Only the data stream can be sampled.
-       */
-      data_sample?: number;
-    };
-    /** @description A place in the trail, the last record a sink is past. */
-    AuditSinkCursor: {
-      /** @description The segment the record is in. */
-      segment_uuid?: string;
-      /**
-       * Format: int64
-       * @description The record's sequence number.
-       */
-      seq?: number;
-    };
-    /** @description A secondary sink's configuration and state. Certificate material is named by path and never served. */
-    AuditNamedSink: {
-      /** @description Read-only. The sink's name, from the path. */
-      name?: string;
-      /** @description The receiver's host and port. */
-      address?: string;
-      /** @description PEM bundle the receiver's certificate is verified against. Required; there is no unverified mode. */
-      ca_bundle_path?: string;
-      /** @description Name expected in the receiver's certificate. Defaults to the host part of the address. */
-      server_name?: string;
-      /** @description Client certificate for mutual TLS. Both this and the key must be set, or neither. */
-      client_cert_path?: string;
-      /** @description Client key for mutual TLS. */
-      client_key_path?: string;
-      /**
-       * Format: int64
-       * @description Largest message this receiver accepts. Zero means no limit.
-       */
-      max_frame_bytes?: number;
-      /**
-       * Format: int64
-       * @description Syslog facility. Defaults to 13, log audit.
-       */
-      facility?: number;
-      /**
-       * Format: int64
-       * @description The IANA private enterprise number that qualifies the export sequence element. Required; none is built in.
-       */
-      enterprise_number?: number;
-      filter?: components["schemas"]["AuditSinkFilter"];
-      /** @description Read-only. starting, connected, disconnected, stalled or stopped. */
-      state?: string;
-      cursor?: components["schemas"]["AuditSinkCursor"];
-      /**
-       * Format: int64
-       * @description Read-only. The highest export sequence number the sink has used.
-       */
-      xseq_high?: number;
-      /**
-       * Format: int64
-       * @description Read-only. The epoch of the export sequence. It changes whenever the count starts again.
-       */
-      xseq_epoch?: number;
-      /**
-       * Format: int64
-       * @description Read-only. Records written to the socket since this sink was configured, records sent again included. Not a delivery count.
-       */
-      submitted?: number;
-      /**
-       * Format: int64
-       * @description Read-only. Records the filter kept from this sink.
-       */
-      filtered?: number;
-      /**
-       * Format: int64
-       * @description Read-only. Submissions that repeated an earlier one after a session failed.
-       */
-      resent?: number;
-      /**
-       * Format: int64
-       * @description Read-only. Records skipped because the sink cannot carry them.
-       */
-      poison?: number;
-      /**
-       * Format: int64
-       * @description Read-only. Records that did not fit the receiver's cap and were sent shortened.
-       */
-      truncated?: number;
-      /**
-       * Format: int64
-       * @description Read-only. Submissions that failed, each of which stops the cursor from advancing.
-       */
-      write_errors?: number;
-      /**
-       * Format: int64
-       * @description Read-only. Times a segment was removed by retention before this sink had read it out.
-       */
-      lag_drops?: number;
-      /** @description Read-only. The most recent error, empty when the last attempt succeeded. */
-      last_error?: string;
-    };
-    /** @description One sink's progress through the trail. */
-    AuditSinkStatus: {
-      name?: string;
-      /** @description The sink that receives every record. */
-      compliance?: boolean;
-      /** @description starting, connected, disconnected, stalled or stopped. */
-      state?: string;
-      cursor?: components["schemas"]["AuditSinkCursor"];
-      /** @description The sink has reached the segment being written. When false it is still reading sealed segments and lag_records does not apply. */
-      in_active_segment?: boolean;
-      /**
-       * Format: int64
-       * @description Records written to the active segment that the sink is not yet past. Zero while the sink is still in a sealed segment.
-       */
-      lag_records?: number;
-      /**
-       * Format: int64
-       * @description Times a segment was removed by retention before this sink had read it out.
-       */
-      lag_drops?: number;
-    };
     /** @description The segments either side of an operator-requested rotation. */
     AuditRotateResult: {
       /** @description The segment that was sealed. */
@@ -11515,10 +11355,6 @@ export interface components {
       projected_retention_days?: number;
       /** @description Per-producer accounting, sorted by producer id. */
       producers?: components["schemas"]["AuditProducerStatus"][];
-      /** @description A compliance sink is configured. When false no record leaves the gateway in full and the trail is local only. */
-      compliance_sink?: boolean;
-      /** @description Every configured sink that follows the trail, the compliance sink first, then by name. */
-      sinks?: components["schemas"]["AuditSinkStatus"][];
     };
     AuditDropCount: {
       stream?: string;
@@ -13510,102 +13346,6 @@ export interface operations {
     };
   };
   /**
-   * Get the half-close hold settings
-   * @description The process-wide settings for holding a client that half-closes after its request, on the services whose half_close_mode is hold: whether new holds may be taken, and the idle bound on a hold. Until they are set, the defaults are in force (allowed, 240 seconds) and are what this returns.
-   */
-  getConfigHalfclose: {
-    responses: {
-      /** @description OK */
-      200: {
-        content: {
-          "application/json": components["schemas"]["HalfCloseConfig"];
-        };
-      };
-      /** @description Invalid authentication credentials */
-      401: {
-        content: {
-          "application/json": components["schemas"]["Error"];
-        };
-      };
-      403: components["responses"]["ManagementForbidden"];
-      /** @description Internal service error */
-      500: {
-        content: {
-          "application/json": components["schemas"]["Error"];
-        };
-      };
-      503: components["responses"]["ManagementStoreUnavailable"];
-    };
-  };
-  /**
-   * Set the half-close hold settings
-   * @description Sets whether new holds may be taken and the idle bound on a hold. A field omitted keeps the value in force; a body with neither, or with a field the model does not have, is refused (400). The answer is the settings in force once applied. Blocking stops new holds only: the clients already held stay held until their answers are out or the bound ends them, and /config/halfclose/release is what closes them at once. A new bound applies to every hold from the next pass of the data path, those already held included. The settings are kept across a restart and in a configuration snapshot.
-   */
-  postConfigHalfclose: {
-    /** @description The settings to set */
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["HalfCloseConfig"];
-      };
-    };
-    responses: {
-      /** @description The settings in force once applied */
-      200: {
-        content: {
-          "application/json": components["schemas"]["HalfCloseConfig"];
-        };
-      };
-      /** @description Malformed arguments for API call */
-      400: {
-        content: {
-          "application/json": components["schemas"]["Error"];
-        };
-      };
-      /** @description Invalid authentication credentials */
-      401: {
-        content: {
-          "application/json": components["schemas"]["Error"];
-        };
-      };
-      403: components["responses"]["ManagementForbidden"];
-      /** @description Internal service error */
-      500: {
-        content: {
-          "application/json": components["schemas"]["Error"];
-        };
-      };
-      503: components["responses"]["ManagementStoreUnavailable"];
-    };
-  };
-  /**
-   * Close every held half-closed client
-   * @description Closes, at the data path's next pass (within a second), every client held after a half-close, on every service, as it would have been closed without the hold: both of its connections are shut and released. An answer still on its way to such a client is lost. Nothing is stored: holds taken afterwards are taken as before, so block new holds first (POST /config/halfclose with allow false) to stop them. Answers 200 whether or not anything is held.
-   */
-  postConfigHalfcloseRelease: {
-    responses: {
-      /** @description OK */
-      200: {
-        content: {
-          "application/json": components["schemas"]["OperationResult"];
-        };
-      };
-      /** @description Invalid authentication credentials */
-      401: {
-        content: {
-          "application/json": components["schemas"]["Error"];
-        };
-      };
-      403: components["responses"]["ManagementForbidden"];
-      /** @description Internal service error */
-      500: {
-        content: {
-          "application/json": components["schemas"]["Error"];
-        };
-      };
-      503: components["responses"]["ManagementStoreUnavailable"];
-    };
-  };
-  /**
    * Get the resolved KV-exact composition status of Load balancer rules
    * @description Returns the resolved KV-exact status (model-profile/engine-contract binding identity, binding generation and digest, hash contract, attestation-ladder desired/enforced states with reason codes) for every KV-exact rule on the composite key. A DEDICATED read model - resolved status never rides the GET/POST-shared LoadbalanceEntry, so an echoed GET body can never replay resolved state back as configuration. Every identity field is a scalar by schema.
    */
@@ -14506,90 +14246,6 @@ export interface operations {
       400: components["responses"]["ManagementBadRequest"];
       401: components["responses"]["ManagementUnauthorized"];
       403: components["responses"]["ManagementForbidden"];
-      503: components["responses"]["ManagementStoreUnavailable"];
-    };
-  };
-  /**
-   * A secondary audit sink's configuration and state
-   * @description Returns one secondary sink: where it sends, what it selects from the trail, and how far it has got. Certificate material is named by path and never served.
-   */
-  GetAuditSinksName: {
-    parameters: {
-      path: {
-        /** @description The sink's name, 1 to 64 of a-z, 0-9, '-' and '_'. */
-        name: string;
-      };
-    };
-    responses: {
-      /** @description Audit sink */
-      200: {
-        content: {
-          "application/json": components["schemas"]["AuditNamedSink"];
-        };
-      };
-      401: components["responses"]["ManagementUnauthorized"];
-      403: components["responses"]["ManagementForbidden"];
-      /** @description No sink of that name */
-      404: {
-        content: {
-          "application/json": components["schemas"]["Error"];
-        };
-      };
-      503: components["responses"]["ManagementStoreUnavailable"];
-    };
-  };
-  /**
-   * Create or replace a secondary audit sink
-   * @description Configures a secondary sink that follows the trail beside the compliance sink of /audit/sink. A secondary sink may select records by stream, service and outcome and may sample the data stream; it numbers what it sends, and that export sequence travels beside each record under the configured private enterprise number, so a configuration without one is refused. The receiver's certificate is always verified. Replacing a sink keeps its place in the trail and its export sequence. The name compliance is reserved. The change is audited like any other management mutation.
-   */
-  PutAuditSinksName: {
-    parameters: {
-      path: {
-        /** @description The sink's name, 1 to 64 of a-z, 0-9, '-' and '_'. */
-        name: string;
-      };
-    };
-    /** @description The sink configuration to apply */
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["AuditNamedSink"];
-      };
-    };
-    responses: {
-      /** @description OK */
-      204: {
-        content: never;
-      };
-      400: components["responses"]["ManagementBadRequest"];
-      401: components["responses"]["ManagementUnauthorized"];
-      403: components["responses"]["ManagementForbidden"];
-      503: components["responses"]["ManagementStoreUnavailable"];
-    };
-  };
-  /**
-   * Remove a secondary audit sink
-   * @description Stops the sink. Its place in the trail and its export sequence are kept, so a sink configured under the same name afterwards continues both and no export sequence number is used twice. The change is audited like any other management mutation.
-   */
-  DeleteAuditSinksName: {
-    parameters: {
-      path: {
-        /** @description The sink's name. */
-        name: string;
-      };
-    };
-    responses: {
-      /** @description OK */
-      204: {
-        content: never;
-      };
-      401: components["responses"]["ManagementUnauthorized"];
-      403: components["responses"]["ManagementForbidden"];
-      /** @description No sink of that name */
-      404: {
-        content: {
-          "application/json": components["schemas"]["Error"];
-        };
-      };
       503: components["responses"]["ManagementStoreUnavailable"];
     };
   };

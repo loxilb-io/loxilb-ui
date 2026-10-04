@@ -1,6 +1,7 @@
 import {describe, expect, it} from 'vitest';
 import {
 	allowedAIHashes,
+	credentialPolicyPatch,
 	effectiveAIHash,
 	hasRequiredApiKeyPolicy,
 	isAIEngineChange,
@@ -310,4 +311,45 @@ describe('AI Gateway wire serialization', () => {
 		expect(payload.serviceArguments).not.toHaveProperty('kvZmqPort');
 		expect(payload.serviceArguments).not.toHaveProperty('kvDpRankCount');
 	});
+});
+
+ describe('JWT credential policy wire contract', () => {
+  it('preserves both exact JWT policies and their configured profile references', () => {
+   for (const policy of ['jwt', 'apikey-or-jwt'] as const) {
+    const value=configuration({api_key_auth:policy,jwt_auth_profile:'test-profile'});
+    const payload=serializeAIConfiguration(value);
+    expect(payload.serviceArguments.api_key_auth).toBe(policy);
+    expect(payload.serviceArguments.jwt_auth_profile).toBe('test-profile');
+    expect(validateAIConfiguration(value).filter(issue=>issue.field==='jwt_auth_profile')).toEqual([]);
+    expect(validateAIConfiguration(configuration({api_key_auth:policy})).some(issue=>issue.field==='jwt_auth_profile')).toBe(true);
+   }
+  });
+  it('strips JWT policy and profile together outside fullproxy', () => {
+   const payload=serializeAIConfiguration(configuration({mode:1,api_key_auth:'jwt',jwt_auth_profile:'test-profile'}));
+   expect(payload.serviceArguments).not.toHaveProperty('api_key_auth');
+   expect(payload.serviceArguments).not.toHaveProperty('jwt_auth_profile');
+  });
+ });
+
+describe('credential policy selection and omission', () => {
+ it('existing and newly entered JWT profiles are omitted together when selecting preserve', () => {
+  for (const jwt_auth_profile of ['configured-profile','new-profile']) {
+   const existing=configuration({api_key_auth:'jwt',jwt_auth_profile});
+   const preserved={...existing,serviceArguments:{...existing.serviceArguments,...credentialPolicyPatch('')}};
+   expect(validateAIConfiguration(preserved).filter(issue=>issue.field==='jwt_auth_profile')).toEqual([]);
+   const payload=serializeAIConfiguration(preserved);
+   expect(payload.serviceArguments).not.toHaveProperty('api_key_auth');
+   expect(payload.serviceArguments).not.toHaveProperty('jwt_auth_profile');
+  }
+ });
+ it('serialization also drops a stale hidden profile when policy is omitted', () => {
+  const payload=serializeAIConfiguration(configuration({jwt_auth_profile:'stale-profile'}));
+  expect(payload.serviceArguments).not.toHaveProperty('api_key_auth');
+  expect(payload.serviceArguments).not.toHaveProperty('jwt_auth_profile');
+ });
+ it('explicit non-JWT choices clear the profile and JWT choice keeps the configured reference', () => {
+  for (const policy of ['disabled','required']) expect(credentialPolicyPatch(policy)).toEqual({api_key_auth:policy,jwt_auth_profile:''});
+  for (const policy of ['jwt','apikey-or-jwt']) expect(credentialPolicyPatch(policy)).toEqual({api_key_auth:policy});
+  expect(()=>credentialPolicyPatch('unknown')).toThrow();
+ });
 });

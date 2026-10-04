@@ -18,7 +18,7 @@ export interface IMtlsFrontend {
 // Declaration carried on an Inference Gateway fullproxy service. Omission is
 // deliberately distinct from "disabled": omission leaves the backend's
 // X-Api-Key namespace unmanaged, while explicit disabled claims and strips it.
-export type ApiKeyAuthPolicy = 'disabled' | 'required';
+export type ApiKeyAuthPolicy = 'disabled' | 'required' | 'jwt' | 'apikey-or-jwt';
 
 export interface IServiceArguments {
 	name: string;
@@ -59,6 +59,7 @@ export interface IServiceArguments {
 
 	// --- AI gateway: model routing / tracing ---
 	model_name?: string;			// endpoint-pool selector for AI model routing
+	jwt_auth_profile?: string; // configured profile reference for jwt/apikey-or-jwt
 	api_key_auth?: ApiKeyAuthPolicy;	// absent = preserve/unmanaged; disabled = strip; required = enforce + strip
 	trace_type?: string;			// tracing catalog name for deep inspection
 	session_header_name?: string;	// header carrying the session key (sel=persist)
