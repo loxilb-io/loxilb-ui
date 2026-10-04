@@ -22,7 +22,7 @@ export default function LogPage() {
 	return (
 		<ScrollableBox>
 			<Stack position="relative" id="fixed-container" width="100%" height="100%" spacing={3} padding="16px">
-				<Typography variant="h5">{t('Instance Logs')}</Typography>
+				<Typography variant="h5" component="h2">{t('Instance Logs')}</Typography>
 
 				<LogConsole {...paging} archives={archives} archiveInfo={log_archives?.archive_info} />
 

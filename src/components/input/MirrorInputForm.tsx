@@ -61,6 +61,7 @@ export default function MirrorInputForm(props: MirrorInputFormProps) {
 		if (onValidation) {
 			onValidation(isValid);
 		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, [form, isValid, errors, onChange, onValidation]);
 
    if (!form) return null;

@@ -20,11 +20,9 @@ function InstanceIcon() {
 
 	return (
 		<Tooltip title={return_message} placement="top" arrow>
-			<span>
-				<IconButton component={Link} to="/instance">
-					<StorageIcon sx={{color: 'white'}} fontSize="small" />
-				</IconButton>
-			</span>
+			<IconButton component={Link} to="/instance" aria-label={return_message}>
+				<StorageIcon sx={{color: 'white'}} fontSize="small" />
+			</IconButton>
 		</Tooltip>
 	);
 }
@@ -34,11 +32,9 @@ function UserIcon() {
 
 	return (
 		<Tooltip title={user_status_message} placement="top" arrow>
-			<span>
-				<IconButton component={Link} to="/user">
-					<PersonIcon sx={{color: 'white'}} fontSize="small" />
-				</IconButton>
-			</span>
+			<IconButton component={Link} to="/user" aria-label={user_status_message}>
+				<PersonIcon sx={{color: 'white'}} fontSize="small" />
+			</IconButton>
 		</Tooltip>
 	);
 }
@@ -49,7 +45,7 @@ export default function Header() {
 	const is_enabled = is_logged_in();
 
 	return (
-		<Box id="header" width="100%" height="48px" display="flex" alignItems="center" justifyContent="space-between" bgcolor="primary.main" padding="0 16px">
+		<Box id="header" component="header" width="100%" height="48px" display="flex" alignItems="center" justifyContent="space-between" bgcolor="primary.main" padding="0 16px">
 			<Box id="logo" display="flex" alignItems="center" gap="12px">
 				<Box width="64px" component="img" src={Logo} alt="logo" onClick={() => move_home()} sx={{cursor: 'pointer'}} />
 

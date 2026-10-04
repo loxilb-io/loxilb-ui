@@ -30,7 +30,7 @@ async function readVip(): Promise<Vip | null> {
 }
 
 function editButton(page: Page) {
-	return page.locator('[aria-label="Edit High Availability"] button');
+	return page.locator('button[aria-label="Edit High Availability"]');
 }
 
 async function openEdit(page: Page): Promise<void> {

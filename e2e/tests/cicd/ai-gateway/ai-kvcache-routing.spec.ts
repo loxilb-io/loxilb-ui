@@ -15,7 +15,7 @@
 // the expressible KV surface below is what this spec proves.
 //---------------------------------------------------------
 import {test} from '../../../fixtures';
-import {activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
+import {activeInstance, gatewayKvExactReadiness, KvExactReadiness, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
 import {cleanupLbByName, LbRecipe, runLbScenario} from '../_recipes';
 
 const recipe: LbRecipe = {
@@ -25,7 +25,11 @@ const recipe: LbRecipe = {
 	port: '2020',
 	mode: 'fullproxy',
 	host: '203.0.113.108',
-	ai: {pdDisaggMode: true, kvExactMode: '1', kvHashAlgo: 'sha256_cbor', kvBlockSize: '16', kvZmqPort: '5557'},
+	// modelName: the gateway admits NO kvExactMode rule without model_name
+	// ("must equal the served model and staged tokenizer identity" — admission
+	// present since the pinned contract revision). Qwen3-0.6B is the cicd
+	// scenario's KV_MODEL default.
+	ai: {modelName: 'Qwen/Qwen3-0.6B', pdDisaggMode: true, kvExactMode: '1', kvHashAlgo: 'sha256_cbor', kvBlockSize: '16', kvZmqPort: '5557'},
 	endpoints: [
 		{ip: '198.51.100.61', targetPort: '8000', epRole: 'prefill'},
 		{ip: '198.51.100.62', targetPort: '8000', epRole: 'decode'},
@@ -35,10 +39,22 @@ const recipe: LbRecipe = {
 };
 
 let instName: string;
+// ⚠️ kvExactMode has launch-environment preconditions (LLB_KV_NONE_HASH_SEED /
+// a staged tokenizer). A Gateway started without them refuses EVERY KV-exact
+// create, which no UI change can fix — so this reports the Gateway's own verdict
+// instead of standing red.
+//
+// ⭐ Both halves of that are now contract, not inference: the seed requirement
+// is stated on the kvExactMode field in the vendored specification, and
+// readiness is readable from GET /status/capabilities before anything is
+// submitted. A skip here quotes the Gateway; it no longer guesses from the
+// wording of a 400. See gatewayKvExactReadiness.
+let kvReadiness: KvExactReadiness;
 
 test.describe('@gw cicd/vllm-kvcache-routing-cpu — KV-cache routing config round-trips', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
+		kvReadiness = await gatewayKvExactReadiness();
 		await sweepLbRules();
 		await sweepFirewallRules();
 	});
@@ -50,6 +66,7 @@ test.describe('@gw cicd/vllm-kvcache-routing-cpu — KV-cache routing config rou
 	});
 
 	test('KV routing fields + prefill/decode endpoint roles round-trip', async ({page}) => {
+		test.skip(!kvReadiness.ready, kvReadiness.reason);
 		await runLbScenario(page, instName, recipe);
 	});
 });

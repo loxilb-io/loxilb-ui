@@ -6,12 +6,13 @@ import DataTable from 'components/table/DataTable';
 import {useInstanceName} from 'hooks/query/instanceHook';
 import {IDataTableColumnDef} from 'types/global';
 import {IMirrorConfiguration} from 'types/mirror';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function MirrorTable(props: {data: IMirrorConfiguration; selected_rows: number[]; onChangeSelectedRows: any; onAdd?: any; onDelete?: any; onRefresh?: any; error?: boolean}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
+export default function MirrorTable(props: {data: IMirrorConfiguration; selected_rows: number[]; onChangeSelectedRows: any; onAdd?: any; onDelete?: any; onRefresh?: any; state?: PageDataState<unknown>; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, state, error} = props;
 	const type_name_set = mirrortypes.map(type => type.name);
 
 	const cols: IDataTableColumnDef[] = [
@@ -61,5 +62,5 @@ export default function MirrorTable(props: {data: IMirrorConfiguration; selected
 	   })()
 	   : undefined;
 
-	return <DataTable name={'Mirror'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onRefresh={onRefresh} error={error} hideCheckbox={true} />;
+	return <DataTable name={'Mirror'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onRefresh={onRefresh} state={state} error={error} hideCheckbox={true} />;
 }

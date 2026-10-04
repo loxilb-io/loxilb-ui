@@ -5,6 +5,7 @@ import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {ISNICertificateListItem} from 'types/security';
 import {IDataTableColumnDef} from 'types/global';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -16,11 +17,12 @@ interface SNICertificatesTableProps {
 	onAdd?: () => void;
 	onDelete?: () => void;
 	onRefresh?: () => void;
+	state?: PageDataState<unknown>;
 	error?: boolean;
 }
 
 export default function SNICertificatesTable(props: SNICertificatesTableProps) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, state, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'hostname', header: 'Hostname', width: 'wide'},
@@ -47,6 +49,7 @@ export default function SNICertificatesTable(props: SNICertificatesTableProps) {
 			onAdd={onAdd}
 			onDelete={onDelete}
 			onRefresh={onRefresh}
+			state={state}
 			error={error}
 		/>
 	);

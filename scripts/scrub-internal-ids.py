@@ -43,6 +43,9 @@ _FAMILY = (
     r"FR-\d+(?:/\d+)*|"                                   # requirements: "FR-NN/NN", "FR-NN/NN/NN"
     r"REQ-M?\d+(?:/\d+)*|FIX-\d+(?:/\d+)*|"               # requirements / fixes: "FIX-NN/NN/NN"
     r"T-\d+(?:[-/]\d+)+(?:-[A-Z]{2,})?|"                  # test ids: "T-NN-NN/NN", "T-NN-NN-ROT"
+    r"UI-P\d+-\d+(?:[a-z])?|"                             # internal UI task ids: "UI-PN-NN"
+    r"ES-\d{2}|"                                          # evaluation/assessment item codes: "ES-NN"
+    r"Q-\d+(?:-[a-z]+)?|"                                 # internal open questions: "Q-N"
     r"Bug [A-Z]"                                          # bug labels
 )
 # A citation is one family, optionally chained to more via "/" or " / "

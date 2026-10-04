@@ -5,6 +5,12 @@ import {Box, Button, Modal, Stack, Typography} from '@mui/material';
 import {useTranslation} from 'react-i18next';
 
 //---------------------------------------------------------
+// Constants
+//---------------------------------------------------------
+const ERROR_TITLE_ID = 'app-error-dialog-title';
+const ERROR_BODY_ID = 'app-error-dialog-body';
+
+//---------------------------------------------------------
 // Types
 //---------------------------------------------------------
 interface ErrorPopUpProps {
@@ -33,7 +39,7 @@ export default function ErrorPopUp({
 	errorData, 
 	buttonText = 'OK' 
 }: ErrorPopUpProps) {
-	const {t} = useTranslation();
+	useTranslation();
 
 	const style = {
 		position: 'absolute',
@@ -117,16 +123,22 @@ export default function ErrorPopUp({
 
 	return (
 		<Modal open={isOpen} onClose={handleClose}>
-			<Box sx={style}>
+			{/* MUI's Modal adds no dialog semantics of its own — without these a
+			    screen reader announces this as an unnamed group, not as a dialog.
+ Same contract the shared PopUp carries; this second copy
+			    of the shape was missed then and is pinned by
+			    e2e/tests/oam/dialog-contract.spec.ts. */}
+			<Box sx={style} role="dialog" aria-modal="true" aria-labelledby={ERROR_TITLE_ID} aria-describedby={ERROR_BODY_ID}>
 				<Stack spacing={3}>
 					{/* Header with icon */}
 					<Box display="flex" alignItems="center" gap="12px">
 						<span style={{ fontSize: '24px' }}>⚠️</span>
 						<Typography 
-							variant="h6" 
-							component="h2" 
-							style={{ 
-								color: '#d32f2f',
+							id={ERROR_TITLE_ID}
+							variant="h6"
+							component="h2"
+							sx={{
+								color: 'error.main',
 								fontWeight: '600',
 								margin: 0
 							}}
@@ -136,7 +148,7 @@ export default function ErrorPopUp({
 					</Box>
 
 					{/* Error content */}
-					<Box sx={{ minHeight: '40px' }}>
+					<Box id={ERROR_BODY_ID} sx={{ minHeight: '40px' }}>
 						<div style={{ textAlign: 'left' }}>
 							{/* Main message */}
 							<div style={{ marginBottom: '12px', fontWeight: '500' }}>
@@ -144,31 +156,35 @@ export default function ErrorPopUp({
 							</div>
 							
 							{/* Primary error */}
-							<div style={{ marginBottom: '8px', color: '#d32f2f', lineHeight: '1.5' }}>
+							<Box sx={{marginBottom: '8px', color: 'error.main', lineHeight: 1.5}}>
 								{primary}
-							</div>
-							
-							{/* Secondary error details */}
+							</Box>
+
+							{/* Secondary error details. Subordinate to the primary line,
+							    but an error dialog is exactly where text must stay
+							    legible: the muted TEXT token carries that rank at
+							    5.48:1, where the old washed-out red sat at 2.6:1. */}
 							{secondary && (
-								<div style={{ 
-									marginBottom: '8px', 
-									color: '#e57373', 
+								<Box sx={{
+									marginBottom: '8px',
+									color: 'text.secondary',
 									fontSize: '0.9rem',
-									lineHeight: '1.4'
+									lineHeight: 1.4
 								}}>
 									{secondary}
-								</div>
+								</Box>
 							)}
 							
 							{/* Error code and additional details box */}
 							{(code || additionalDetails) && (
-								<div style={{ 
-									fontSize: '0.875rem', 
-									color: '#666', 
-									backgroundColor: '#f5f5f5', 
-									padding: '12px', 
+								<Box sx={{
+									fontSize: '0.875rem',
+									color: 'text.secondary',
+									backgroundColor: 'background.default',
+									padding: '12px',
 									borderRadius: '4px',
-									border: '1px solid #e0e0e0'
+									border: '1px solid',
+									borderColor: 'divider'
 								}}>
 									{code && (
 										<div style={{ marginBottom: additionalDetails ? '8px' : '0', fontWeight: '500' }}>
@@ -180,7 +196,7 @@ export default function ErrorPopUp({
 											Details: {additionalDetails}
 										</div>
 									)}
-								</div>
+								</Box>
 							)}
 						</div>
 					</Box>
@@ -188,18 +204,18 @@ export default function ErrorPopUp({
 					{/* Button */}
 					<Box display="flex" justifyContent="flex-end" paddingTop="8px">
 						<Box width="100px">
-							<Button 
-								fullWidth 
-								variant="contained" 
+							{/* `color="error"` rather than a hand-rolled red: the palette
+							    token is the one that is contrast-checked, and MUI derives
+							    the hover and the label color from it. */}
+							<Button
+								fullWidth
+								variant="contained"
+								color="error"
 								onClick={handleClose}
 								sx={{
 									height: '40px',
 									textTransform: 'none',
-									fontWeight: '500',
-									backgroundColor: '#d32f2f',
-									'&:hover': {
-										backgroundColor: '#b71c1c',
-									}
+									fontWeight: '500'
 								}}
 							>
 								{buttonText}

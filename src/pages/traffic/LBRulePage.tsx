@@ -16,12 +16,18 @@ import SecondaryIPsPanel from 'components/panel/SecondaryIPPanel';
 import SettingsPanel from 'components/panel/SettingPanel';
 import LBTable from 'components/table/traffic/LBTable';
 import {query_get_load_balancer_config_all, request_create_load_balancer_config, request_delete_lb_by_full_key, request_delete_lb_by_name, request_patch_load_balancer_config} from 'connector/instance/load_balancer';
+import {query_get_model_profile} from 'connector/instance/model_profile';
+import {useQueryClient} from '@tanstack/react-query';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {InstanceFlavor} from 'api/capabilities';
 import {useInstanceCapabilities} from 'hooks/query/flavorHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useLoadBalancerConfig, useMirrors, useQOSPolicies} from 'hooks/query/queryHooks';
+import {fromQueryRefetch} from 'hooks/query/reconcile';
+import {capabilityQueryPrefix} from 'hooks/query/statusHook';
+import {useReconcileReporter} from 'hooks/query/reconcileReport';
+import {lbRuleAppeared, lbRulesGone} from 'hooks/query/confirmPredicates';
 import {t} from 'i18next';
 import {Fragment, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {useSearchParams} from 'react-router-dom';
@@ -29,6 +35,8 @@ import {IEndpoint, ILBData, IServiceConfiguration} from 'types/load_balancer';
 import {lbRuleRowId} from 'types/lb_identity';
 import {IMirrorConfiguration} from 'types/mirror';
 import {buildQoSRuleTarget, IPolicyConfiguration} from 'types/qos';
+import {toPageState} from 'components/state/pageState';
+import {isPreconditionFailure, opErrorText} from 'connector/fetcher/opResultText';
 
 export type LBEditStrategy = 'create' | 'merge-patch' | 'reconcile' | 'block-fullproxy';
 
@@ -51,12 +59,55 @@ export function selectLBEditStrategy({
 	return canMergePatch ? 'merge-patch' : 'reconcile';
 }
 
+// The serviceArguments fields an edit actually changed, relative to the rule's
+// read-back. Immutable fields are rejected by the gateway's PATCH with 400.
+// Keys the form carried over unchanged from the read-back (including fields
+// this UI does not know) are equal to it and so never widen the patch.
+const LB_IMMUTABLE_SERVICE_ARGUMENTS = new Set(['externalIP', 'port', 'protocol', 'mode', 'security', 'egress', 'oper', 'managed']);
+// Backends omit zero-value fields on read-back while the form emits them as
+// 0/''/false — a form default over an absent field is NOT a change (it would
+// spuriously widen the gateway patch and, on loxilb, escalate endpoint-only
+// edits into a delete + re-create).
+const isZero = (v: any) => v === undefined || v === null || v === 0 || v === '' || v === false;
+// LBInputForm's non-zero injected defaults: over an absent read-back field they
+// are form scaffolding, not an operator edit.
+const LB_FORM_DEFAULTS: Record<string, unknown> = {
+	probeTimeout: 1800,
+	path_match_mode: 'disabled',
+	backend_protocol: 'http1',
+	chwbl_prefix_hash_level: 1,
+};
+const isFormDefault = (key: string, value: unknown): boolean => {
+	if (value === LB_FORM_DEFAULTS[key]) return true;
+	// The mTLS dropdown materializes the Swagger default on mount,
+	// even when the persisted rule omitted the whole object.
+	if (key === 'mtls_frontend' && value && typeof value === 'object') {
+		const mtls = value as Record<string, unknown>;
+		return mtls.client_cert_mode === 'disabled' && Object.entries(mtls).every(([field, nested]) =>
+			field === 'client_cert_mode' || isZero(nested),
+		);
+	}
+	return false;
+};
+
+export function lbServiceArgumentsPatch(edited: Record<string, any>, readBack: Record<string, any>): Record<string, any> {
+	const patch: Record<string, any> = {};
+	Object.entries(edited).forEach(([k, v]) => {
+		if (LB_IMMUTABLE_SERVICE_ARGUMENTS.has(k)) return;
+		const prev = readBack[k];
+		if (prev === undefined && (isZero(v) || isFormDefault(k, v))) return;
+		if (JSON.stringify(v) !== JSON.stringify(prev)) patch[k] = v;
+	});
+	return patch;
+}
+
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
 export default function LBRulePage() {
 	const inst = useInstanceFromURL();
 	const caps = useInstanceCapabilities();
+	const queryClient = useQueryClient();
 	// Writes must fail toward the smaller OSS contract until /version positively
 	// identifies IGW. The IGW-only controls are also hidden while unresolved, so
 	// this fallback cannot discard an operator-visible Gateway setting.
@@ -66,7 +117,8 @@ export default function LBRulePage() {
 	const servName = searchParams.get('servName');
 	const qosTarget = searchParams.get('qosTarget');
 
-	const {data: lb_data, isError, refetch} = useLoadBalancerConfig(inst);
+	const lb_query = useLoadBalancerConfig(inst);
+	const {data: lb_data, refetch} = lb_query;
 	const lb_info: ILBData = useMemo(() => ({lbAttr: lb_data ?? []}), [lb_data]);
 
 	const {data: data_qos} = useQOSPolicies(inst);
@@ -103,6 +155,15 @@ export default function LBRulePage() {
 
 	const {openPopUp, enableYes} = usePopUp();
 	const {errorPopup, showAddError, showUpdateError, showDeleteError, closeErrorPopup} = useErrorPopup();
+	const {report, reconcile} = useReconcileReporter();
+
+	// Every LB create and delete moves the source-check slot budget
+	// (lb_allowed_sources), so the capability read is re-asked after any write
+	// here. A failed write moved nothing; re-asking then is harmless and keeps
+	// this one rule with no exceptions.
+	const invalidateCapabilities = useCallback(() => {
+		if (inst) void queryClient.invalidateQueries({queryKey: capabilityQueryPrefix(inst)});
+	}, [inst, queryClient]);
 
 	const handleDelete = useCallback(async () => {
 		if (!inst || selectedItems.length === 0) return;
@@ -119,33 +180,38 @@ export default function LBRulePage() {
 		});
 
 		const results = await Promise.all(deletePromises);
-		const failures = results.filter(res => res.status === 'error');
+		invalidateCapabilities();
+		// {result:"fail"} envelopes now map to failed — a dataplane-rejected
+		// delete can no longer be counted as succeeded.
+		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
-			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: selectedItems.length}), t('OK'));
 			set_selected_rows([]);
-			setTimeout(() => {
-				refetch();
-			}, 1000);
+			// Confirmation is "the rules are gone from the list", not "the DELETE
+			// was accepted" — a dataplane that rejects after acceptance leaves
+			// the rows in place, which the operator must be told about.
+			await report({refetch: fromQueryRefetch(refetch), confirm: lbRulesGone(selectedItems)}, t('Deleted {{count}} item(s) successfully.', {count: selectedItems.length}));
 		} else if (failures.length < results.length) {
-			// Partial success
-			showDeleteError('load balancer rule(s)', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
-			setTimeout(() => {
-				refetch();
-			}, 1000);
+			// Partial success: the error popup already carries the outcome, so
+			// reconcile silently — but only against the rules that actually
+			// went (Promise.all preserves order, so results[i] is selectedItems[i]).
+			showDeleteError('load balancer rule(s)', t('{{succeeded}} succeeded, {{failed}} failed. {{error}}', {succeeded: results.length - failures.length, failed: failures.length, error: t(failures[0].localeKey)}));
+			const deleted = selectedItems.filter((_, i) => results[i].status === 'confirmed');
+			await reconcile({refetch: fromQueryRefetch(refetch), confirm: lbRulesGone(deleted)});
 		} else {
 			// All failed
-			showDeleteError('load balancer rule(s)', failures[0].error);
+			showDeleteError('load balancer rule(s)', t(failures[0].localeKey));
 		}
-	}, [inst, selectedItems, showDeleteError, refetch, openPopUp]);
+	}, [inst, selectedItems, showDeleteError, refetch, report, reconcile, invalidateCapabilities]);
 
 	const instanceRef = useRef<IServiceConfiguration | null>(null);
-	const handleAdd = useCallback(() => {
+	const openAddDialog = useCallback(function openAddDialog(seed?: Partial<IServiceConfiguration>) {
 		if (!inst || !caps.resolved) return;
 
 		const input_form = (
 			<LBInputForm
 				key={Date.now()}
+				initialData={seed}
 				onChange={data => {
 					// Keep client-side validation state (isValid/errors) out of the
 					// POST payload — the gateway schema has no such keys.
@@ -156,6 +222,16 @@ export default function LBRulePage() {
 			/>
 		);
 
+		// AC-06: a strict-rule create that fails must not cost the operator
+		// their form. Reopening the dialog seeded with the submitted values
+		// (from inside handle_yes, so the popup's follow-up rule keeps it
+		// alive) preserves the draft; the registry cache is invalidated so the
+		// reopened selector reflects the current published set.
+		const preserveStrictDraft = (draft: IServiceConfiguration) => {
+			queryClient.invalidateQueries({queryKey: ['ai_model_profiles']});
+			openAddDialog(draft);
+		};
+
 		openPopUp(
 			'',
 			input_form,
@@ -164,23 +240,64 @@ export default function LBRulePage() {
 			async () => {
 				if (!instanceRef.current) return;
 
-				const res = await request_create_load_balancer_config(inst, instanceRef.current, effectiveFlavor);
-				if (res.status === 'success') {
-					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
-					setTimeout(() => {
-						refetch();
-					}, 1000);
+				const submitted = instanceRef.current;
+				const profileId = submitted.serviceArguments?.kvModelProfile;
+
+				// Submit-time freshness check: the discovery cache the
+				// selector was built from may predate a registry reload. A
+				// profile that vanished answers 404 here — block the POST, keep
+				// the form, refresh the registry. Any other failure falls
+				// through: the gateway POST is the admission authority.
+				if (profileId) {
+					try {
+						await query_get_model_profile(inst, profileId);
+					} catch (error) {
+						if ((error as any)?.status === 404) {
+							showAddError('load balancer rule', t('The selected model profile is no longer published — the registry changed after it was chosen. The profile list has been refreshed; reselect a profile and submit again.'));
+							preserveStrictDraft(submitted);
+							return;
+						}
+					}
+				}
+
+				const res = await request_create_load_balancer_config(inst, submitted, effectiveFlavor);
+				invalidateCapabilities();
+				if (res.status === 'confirmed') {
+					await report({refetch: fromQueryRefetch(refetch), confirm: lbRuleAppeared(submitted)}, t('Added successfully.'));
 				} else {
-					// Show formatted error popup
-					showAddError('load balancer rule', res.error);
+					// Localized mapped message; raw prose stays in diagnostics —
+					// except on a 412, where the gateway's sentence is the only
+					// half that names the setting to change (see opResultText.ts).
+					showAddError('load balancer rule', opErrorText(res));
+					// A rejected strict create (stale-generation admission included)
+					// keeps the operator's draft on screen — never a success, never
+					// a lost form.
+					//
+					// ⭐ A precondition refusal keeps it too, whether or not the rule
+					// carried a profile. It is the one rejection that is definitionally
+					// NOT about the form: the gateway is telling the operator its own
+					// deployment is wrong, so discarding six sections of input they
+					// have no reason to change would punish them for someone else's
+					// configuration. Deliberately narrower than "preserve on any
+					// failure" — an invalid or conflicting create still behaves as it
+					// always has.
+					if (profileId || isPreconditionFailure(res)) preserveStrictDraft(submitted);
 				}
 			},
 			true,
+			// The LB form is the heaviest dialog in the app (six sub-sections
+			// of row-laid fields) — it gets the wide dialog size.
+			{size: 'wide'},
 		);
 	// Flavor resolves asynchronously. Rebuild this callback when it changes so
 	// an IGW dialog cannot submit through the initial OSS-safe projection and
 	// silently strip the Gateway-only fields the operator just entered.
-	}, [inst, caps.resolved, effectiveFlavor, showAddError, refetch, enableYes]);
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
+	}, [inst, caps.resolved, effectiveFlavor, showAddError, refetch, enableYes, queryClient, invalidateCapabilities]);
+
+	// The table's Add button passes its click event — keep the seeded reopen
+	// path (AC-06 draft preservation) out of that signature.
+	const handleAdd = useCallback(() => openAddDialog(undefined), [openAddDialog]);
 
 	// Update handler for LB rules
 	const updateFormRef = useRef<(IServiceConfiguration & {isValid?: boolean; errors?: any}) | null>(null);
@@ -247,42 +364,8 @@ export default function LBRulePage() {
 					// changing it means a different rule, so fall back to re-POST.
 					res = await request_create_load_balancer_config(inst, serviceConfig, effectiveFlavor);
 				} else {
-					// Change detection shared by both update strategies. Immutable
-					// fields are rejected by the gateway's PATCH with 400.
-					const IMMUTABLE = new Set(['externalIP', 'port', 'protocol', 'mode', 'security', 'egress', 'oper', 'managed']);
-					// Backends omit zero-value fields on read-back while the form
-					// emits them as 0/''/false — a form default over an absent
-					// field is NOT a change (it would spuriously widen the gateway
-					// patch and, on loxilb, escalate endpoint-only edits into a
-					// delete + re-create).
-					const isZero = (v: any) => v === undefined || v === null || v === 0 || v === '' || v === false;
-					// LBInputForm's one non-zero injected default: over an absent
-					// read-back field it is form scaffolding, not an operator edit.
-						const FORM_DEFAULTS: Record<string, unknown> = {
-							probeTimeout: 1800,
-							path_match_mode: 'disabled',
-							backend_protocol: 'http1',
-							chwbl_prefix_hash_level: 1,
-						};
-						const isFormDefault = (key: string, value: unknown): boolean => {
-							if (value === FORM_DEFAULTS[key]) return true;
-							// The mTLS dropdown materializes the Swagger default on mount,
-							// even when the persisted rule omitted the whole object.
-							if (key === 'mtls_frontend' && value && typeof value === 'object') {
-								const mtls = value as Record<string, unknown>;
-								return mtls.client_cert_mode === 'disabled' && Object.entries(mtls).every(([field, nested]) =>
-									field === 'client_cert_mode' || isZero(nested),
-								);
-							}
-							return false;
-						};
-						const saPatch: Record<string, any> = {};
-						Object.entries(sa).forEach(([k, v]) => {
-							if (IMMUTABLE.has(k)) return;
-							const prev = (osa as any)[k];
-							if (prev === undefined && (isZero(v) || isFormDefault(k, v))) return;
-						if (JSON.stringify(v) !== JSON.stringify(prev)) saPatch[k] = v;
-					});
+					// Change detection shared by both update strategies.
+					const saPatch = lbServiceArgumentsPatch(sa, osa);
 					const endpointsChanged = JSON.stringify(serviceConfig.endpoints) !== JSON.stringify(editableEndpoints);
 					// Read-back reports empty lists as null; the form emits [] —
 					// normalize both sides so that difference is not a "change".
@@ -348,27 +431,37 @@ export default function LBRulePage() {
 							const del = osa.name
 								? await request_delete_lb_by_name(inst, osa.name)
 								: await request_delete_lb_by_full_key(inst, selectedLB);
-							if (del.status !== 'success') {
-								showUpdateError('load balancer rule', del.error);
+							if (del.status !== 'confirmed') {
+								invalidateCapabilities();
+								showUpdateError('load balancer rule', t(del.localeKey));
 								return;
 							}
 						}
 						res = await request_create_load_balancer_config(inst, upsert, effectiveFlavor);
 					}
 				}
-				if (res.status === 'success') {
-					openPopUp(t('Success'), t('Load balancer rule updated successfully.'), t('OK'));
-					setTimeout(() => {
-						refetch();
-					}, 1000);
+				// A key-changed edit creates a rule and the upsert deletes and
+				// re-creates one: both move the slot budget.
+				invalidateCapabilities();
+				if (res.status === 'confirmed') {
+					// The delete+re-create strategy can move the rule's key, so
+					// confirm against the EDITED identity, not the original row.
+					await report({refetch: fromQueryRefetch(refetch), confirm: lbRuleAppeared(serviceConfig)}, t('Load balancer rule updated successfully.'));
 				} else {
-					// Show formatted error popup
-					showUpdateError('load balancer rule', res.error);
+					// Localized mapped message; raw prose stays in diagnostics —
+					// except on a 412, as on create: a PATCH adding allowedSources
+					// to a rule past the source-check slot range is refused with
+					// one, and only the gateway's sentence says what to change.
+					showUpdateError('load balancer rule', opErrorText(res));
 				}
 			},
 			true,
+			// The LB form is the heaviest dialog in the app (six sub-sections
+			// of row-laid fields) — it gets the wide dialog size.
+			{size: 'wide'},
 		);
-	}, [inst, caps, selectedItem, showUpdateError, refetch, enableYes]);
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
+	}, [inst, caps, selectedItem, showUpdateError, refetch, enableYes, invalidateCapabilities]);
 
 	const handleRefresh = () => {
 		set_selected_rows([]);
@@ -402,7 +495,7 @@ export default function LBRulePage() {
 				onDelete={handleDelete}
 				onUpdate={caps.resolved ? handleUpdate : undefined}
 					onRefresh={handleRefresh}
-					error={isError}
+					state={toPageState(lb_query, {op: 'lb.list'})}
 			/>
 
 			{selectedItem && (

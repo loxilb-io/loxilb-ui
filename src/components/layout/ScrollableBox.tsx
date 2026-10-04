@@ -28,7 +28,10 @@ export default function ScrollableBox(props: {children?: ReactNode; bgcolor?: st
 
 	return (
 		<Box id="outer-box" ref={area_ref} width="100%" height="100%" display="flex">
-			<Box id="content-area" width="100%" height={area_height} padding="16px" sx={{overflowY: 'auto'}} bgcolor={bgcolor}>
+			{/* tabIndex: the content area is the app's vertical scroll region;
+			    a page with no focusable content (read-only metric tables) is
+			    otherwise unscrollable by keyboard (WCAG 2.1.1). */}
+			<Box id="content-area" tabIndex={0} width="100%" height={area_height} padding="16px" sx={{overflowY: 'auto'}} bgcolor={bgcolor}>
 				{children}
 			</Box>
 		</Box>

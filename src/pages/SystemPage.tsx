@@ -4,6 +4,7 @@
 import CircleIcon from '@mui/icons-material/Circle';
 import {Box, Divider, Stack, Typography} from '@mui/material';
 import ArchivedLogCard from 'components/card/ArchivedLogCard';
+import AuditWriterSection from 'components/observability/AuditWriterPanel';
 import SingleTextBox from 'components/element/SingleTextBox';
 import ValueBunch from 'components/element/ValueBunch';
 import LowerSection from 'components/layout/LowerSection';
@@ -15,6 +16,7 @@ import {useOAMLogArchives, useOAMLogs} from 'hooks/query/oamHooks';
 import {t} from 'i18next';
 import {useEffect, useState} from 'react';
 import {ILog} from 'types/log';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -57,7 +59,8 @@ export default function SystemPage() {
 		);
 	};
 
-	const {data: log_list} = useOAMLogs();
+	const oam_log_query = useOAMLogs();
+	const {data: log_list} = oam_log_query;
 
 	const {data: log_archives} = useOAMLogArchives();
 	const log_file_list = log_archives?.archives.map((filename: string, idx: number) => ({id: idx, filename})) ?? [];
@@ -69,11 +72,11 @@ export default function SystemPage() {
 	return (
 		<ScrollableBox>
 			<Stack position="relative" id="fixed-container" width="100%" height="100%" spacing={3} padding="16px">
-				<Typography variant="h5">{t('System')}</Typography>
+				<Typography variant="h5" component="h2">{t('System')}</Typography>
 
 				<Box width="100%" display="flex" alignItems="center" justifyContent="space-between" gap="20px">
 					<Box display="flex" alignItems="center" gap="20px">
-						<Typography variant="h6">{t('Health Status')}</Typography>
+						<Typography variant="h6" component="h2">{t('Health Status')}</Typography>
 						{is_online !== undefined && renderServerState(is_online)}
 					</Box>
 
@@ -82,7 +85,19 @@ export default function SystemPage() {
 
 				<Divider />
 
-				<LogTable data={log_list ?? []} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} />
+				{/* Per gateway instance: while its audit writer is down every
+				    audited management call is refused. */}
+				<AuditWriterSection />
+
+				<Divider />
+
+				<LogTable
+					data={log_list ?? []}
+					selected_rows={selected_rows}
+					onChangeSelectedRows={set_selected_rows}
+					state={toPageState(oam_log_query, {op: 'oam_log.list'})}
+					onRefresh={() => void oam_log_query.refetch()}
+				/>
 
 				{selected_rows.length === 1 && log_list && (
 					<LowerSection>

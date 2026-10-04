@@ -39,7 +39,7 @@ test.describe('Conntrack page (read + filter)', () => {
 		await expect(toolbarButton(page, 'Refresh')).toHaveCount(1);
 		await expect(toolbarButton(page, 'Add')).toHaveCount(0);
 		await expect(toolbarButton(page, 'Delete')).toHaveCount(0);
-		await expect(toolbarButton(page, 'Mode')).toHaveCount(0);
+		await expect(toolbarButton(page, 'Edit')).toHaveCount(0);
 	});
 
 	test('filter: a non-matching service name empties the grid; Clear All resets the filter', async ({page}) => {

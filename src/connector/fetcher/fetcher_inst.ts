@@ -1,9 +1,8 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {filterUnusedParams} from 'common';
 import {IInstance} from 'types/oam';
-import {getProxiedUrl, getApiBaseUrl} from 'utils/apiProxy';
+import {getApiBaseUrl} from 'utils/apiProxy';
 import {DELETE, GET, GET_TEXT, PATCH, POST, PUT, SimpleResponse} from './fetcher_base';
 
 //---------------------------------------------------------

@@ -19,11 +19,12 @@ import {
 	deleteSnapshotById,
 	disableSnapshotSchedule,
 	downloadSnapshot,
-	gw,
 	gwJson,
+	gwPersisted,
 	listSnapshots,
 	sweepLbRules,
 	sweepSnapshots,
+	waitForAutoPersistIdle,
 } from '../../helpers/api';
 import {dialog, dialogButton, dialogTitle, openDialog} from '../../helpers/dialogs';
 import {grid, refreshUntilGone, refreshUntilRow} from '../../helpers/table';
@@ -35,6 +36,9 @@ test.beforeAll(async () => {
 	// Leftovers from a FAILED prior run (e.g. an orphaned pinned pre-upgrade
 	// row) would collide with this run's exact-name assertions — sweep first.
 	await sweepSnapshots();
+	// The previous spec file's last config write may still be waiting to be
+	// auto-persisted; a capture landing in that write is refused with 409.
+	await waitForAutoPersistIdle();
 });
 
 test.afterAll(async () => {
@@ -102,21 +106,45 @@ test.describe('@gw Snapshots page (admin)', () => {
 		const apiResp = await downloadSnapshot(snap!.id);
 		expect(apiResp.ok).toBeTruthy();
 		expect(doc.checksum).toBe(apiResp.headers.get('X-Snapshot-Checksum'));
-		expect(doc.schema_version).toBe('1.0');
+		// ⚠️ A VERSION PIN IS RE-VERIFICATION, NOT A DIGIT EDIT.
+		// Re-verified 2026-09-22 against gateway `pkg/snapshot/doc.go`
+		// (`SchemaVersion = "1.6"`), whose own history documents every step:
+		//   1.2 included_domains (CHANGES RESTORE SEMANTICS: selection derives
+		//       from it, so a partial document no longer wipes what it does not
+		//       cover) + BGP neighbour transport fidelity
+		//   1.3 l7policy / cors / tracing / cert domains
+		//   1.4 recovery_dependencies manifest, with a REQUIRED flag
+		//   1.5 generation — monotonic lineage, so "which state is newer" does
+		//       not depend on file mtimes
+		//   1.6 current
+		// All additive behind the gateway's minor-version gate, which refuses a
+		// newer-minor document rather than silently dropping fields — so the UI
+		// stays correct by leaving that verdict to the gateway (it only
+		// DISPLAYS the version, in RestoreWizard).
+		//
+		// Kept as an exact pin deliberately: it is what surfaced this drift at
+		// all, and loosening it to a major-version match would have hidden the
+		// gaps the re-verification found — the UI models neither
+		// `included_domains` nor `recovery_dependencies`, and its restore
+		// result type dropped `warnings` entirely (fixed separately).
+		expect(doc.schema_version).toBe('1.6');
 	});
 
 	test('2. full restore wizard happy path → pre_restore row appears, config restored', async ({page}) => {
 		test.slow();
 		// Seed an LB, snapshot it, delete it — the restore must resurrect it.
+		// Each raw write waits for the auto-persist it arms: the gateway holds
+		// the snapshot gate while writing, so a capture or restore — or the
+		// next test's capture — landing in that write is refused with 409.
 		const lb = {
 			serviceArguments: {externalIP: '198.51.100.21', port: 18021, protocol: 'tcp', name: 'e2e-snap-restore-lb'},
 			endpoints: [{endpointIP: '198.51.100.13', targetPort: 18021, weight: 1}],
 		};
-		expect((await gw('POST', '/config/loadbalancer', lb)).ok).toBeTruthy();
+		expect((await gwPersisted('POST', '/config/loadbalancer', lb)).ok).toBeTruthy();
 
 		await openPage(page);
 		await takeSnapshotViaUI(page, 'e2e-spec-restore');
-		expect((await gw('DELETE', '/config/loadbalancer/name/e2e-snap-restore-lb')).ok).toBeTruthy();
+		expect((await gwPersisted('DELETE', '/config/loadbalancer/name/e2e-snap-restore-lb')).ok).toBeTruthy();
 
 		await selectSnapRow(page, 'e2e-spec-restore');
 		await page.getByRole('button', {name: 'Restore…'}).click();
@@ -144,12 +172,14 @@ test.describe('@gw Snapshots page (admin)', () => {
 		await refreshUntilRow(page, /pre-restore-/);
 		const lbs = await gwJson<any>('/config/loadbalancer/all');
 		expect((lbs.lbAttr ?? []).some((r: any) => r.serviceArguments?.name === 'e2e-snap-restore-lb')).toBeTruthy();
-		expect((await gw('DELETE', '/config/loadbalancer/name/e2e-snap-restore-lb')).ok).toBeTruthy();
+		expect((await gwPersisted('DELETE', '/config/loadbalancer/name/e2e-snap-restore-lb')).ok).toBeTruthy();
 	});
 
 	test('3. break it: OAM unreachable mid-wizard → error surfaced, no fake success, state consistent after reload', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/Failed to load resource/i);
-		consoleGuard.allow(/net::ERR_FAILED|ERR_INTERNET_DISCONNECTED/i);
+		// The one failure this test causes: the commit it aborts below with
+		// `connectionfailed`. Chrome logs that with no status and no URL, so it
+		// can only be allowed by its exact text.
+		consoleGuard.allow(/^Failed to load resource: net::ERR_CONNECTION_FAILED$/);
 
 		await openPage(page);
 		await takeSnapshotViaUI(page, 'e2e-spec-outage');
@@ -256,7 +286,6 @@ test.describe('@gw Snapshots page (admin)', () => {
 	});
 
 	test('9. stale row (deleted by another session): action surfaces the verbatim 404 inline — never the global /404 page', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/Failed to load resource/i);
 		await openPage(page);
 		await takeSnapshotViaUI(page, 'e2e-spec-stale');
 		await selectSnapRow(page, 'e2e-spec-stale');
@@ -265,6 +294,10 @@ test.describe('@gw Snapshots page (admin)', () => {
 		const snap = (await listSnapshots()).find(s => s.name === 'e2e-spec-stale');
 		expect(snap).toBeTruthy();
 		expect(await deleteSnapshotById(snap!.id)).toBeTruthy();
+		// The 404s this test provokes — the Pin and the dry-run on THIS deleted
+		// snapshot — and nothing else: a 404 on any other snapshot, or any other
+		// path, still fails.
+		consoleGuard.allowRequest({status: 404, path: new RegExp(`/snapshots/${snap!.id}(/restore)?$`)});
 
 		// Acting on the stale selection must surface the server's 404 verbatim
 		// in the error popup, with the user still ON the snapshots page.
@@ -305,8 +338,9 @@ test.describe('@gw Snapshots page (admin)', () => {
 		await wizard.getByRole('button', {name: 'Close'}).click();
 	});
 
-	test('7. legacy config-management page stays dead', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/Failed to load resource/i);
+	test('7. legacy config-management page stays dead', async ({page}) => {
+		// No allowance: an unknown route is the SPA's own 404 page, and no
+		// request fails to render it.
 		await page.goto('config-management');
 		await expect(page.getByText(/404|not found/i).first()).toBeVisible();
 	});
@@ -335,8 +369,9 @@ test.describe('@gw Snapshots page (admin)', () => {
 test.describe('@gw Snapshots page (viewer)', () => {
 	test.use({storageState: '.auth/viewer.json'});
 
-	test('6. viewer: list loads, zero mutating controls, no mutation requests', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/Failed to load resource/i);
+	test('6. viewer: list loads, zero mutating controls, no mutation requests', async ({page}) => {
+		// No allowance: every read on this page is one a viewer may make, so a
+		// failed read here (a 403 included) is a defect, not noise.
 		const mutations: string[] = [];
 		page.on('request', r => {
 			if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(r.method()) && !/\/(login|logout)\b/.test(r.url())) {

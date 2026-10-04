@@ -40,6 +40,7 @@ export default class RouteErrorBoundary extends Component<Props, State> {
 
 	componentDidCatch(error: Error, info: ErrorInfo) {
 		// Keep a console trace for developers; the fallback keeps the app usable.
+		// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 		console.error('Route render error:', error, info.componentStack);
 	}
 

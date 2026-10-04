@@ -2,15 +2,27 @@
 // Imports
 //---------------------------------------------------------
 import {clean_string, format_uptime, parse_log_lines} from 'common';
-import {ApiResult, assertOk, createDetailedErrorMessage, DOWNLOAD_FILE_STREAM, DownloadProgress} from 'connector/fetcher/fetcher_base';
+// ⚠️ RELATIVE, like every sibling connector — not the 'connector/fetcher/...'
+// alias this line used to carry. The alias and the relative path can resolve to
+// two SEPARATE module instances (they do under vitest), and then `error
+// instanceof ApiError` below compares against a different class object than the
+// one the thrown error was built from: the 404 branch silently stops matching
+// and an older gateway's missing endpoint starts propagating as an error
+// instead of `null`. Nothing else in this file depended on module identity, so
+// the inconsistency was harmless until the moment it wasn't.
+import {ApiError, assertOk, DOWNLOAD_FILE_STREAM, DownloadProgress} from '../fetcher/fetcher_base';
 import {t} from 'i18next';
+import {AuditRestRead, IAuditSink, IAuditStatus} from 'types/audit_status';
 import {ISystemInfo} from 'types/device';
 import {IFilesystemAttribute} from 'types/filesystem';
 import {IVipAttribute} from 'types/ha';
 import {ILog, ILogArchiveList, LevelType} from 'types/log';
 import {IInstance} from 'types/oam';
 import {IProcessAttribute} from 'types/process';
+import {ICapabilityStatus} from 'types/capability_status';
 import {GET_INST, POST_INST} from '../fetcher/fetcher_inst';
+import {OpResult} from '../fetcher/opResult';
+import {runOp} from '../fetcher/opResultAdapter';
 import { getApiBaseUrl } from 'utils/apiProxy';
 import type {GwGetResp, GwSchema} from 'api';
 
@@ -31,6 +43,7 @@ export async function query_get_process_status(instance: IInstance): Promise<IPr
 
 export async function query_get_device_status(instance: IInstance): Promise<ISystemInfo> {
 	const resp = await GET_INST<GwGetResp<'/status/device'>>(instance, `/status/device`);
+	assertOk(resp, 'Get Device Status');
 
 	if (resp.data) {
 		const system_info = resp.data as ISystemInfo;
@@ -68,6 +81,42 @@ export async function query_get_device_status(instance: IInstance): Promise<ISys
 	}
 }
 
+/**
+ * Runtime capability readiness: which optional features THIS deployment can
+ * serve, and the gateway's own reason when it cannot.
+ *
+ * ⭐⭐ RETURNS `null` FOR 404 RATHER THAN THROWING, and that is the contract,
+ * not leniency. The endpoint is newer than the gateways we support, so a 404
+ * means "this build has no capability surface" — a fact about the build, the
+ * same class of answer as an empty list. Letting it throw would turn every
+ * form that consults readiness into an error state on an older gateway, which
+ * is strictly worse than the submit-and-be-refused behaviour that predates the
+ * endpoint. `capabilityVerdict(null, …)` maps it to `unknown`, and `unknown`
+ * offers the control.
+ *
+ * ⚠️ Every OTHER failure still throws. A 401/403/503 is not evidence about
+ * capabilities, and swallowing it here would report "unknown" for a gateway
+ * that is merely unreachable — hiding a session or availability problem the
+ * page needs to show.
+ */
+export async function query_get_capability_status(instance: IInstance): Promise<ICapabilityStatus[] | null> {
+	try {
+		const resp = await GET_INST<GwGetResp<'/status/capabilities'>>(instance, `/status/capabilities`);
+		assertOk(resp, 'Get Capability Status');
+		// `capabilities` is required and non-null upstream ("a null here would
+		// make a client distinguish 'no capabilities gated' from a malformed
+		// body"), so a readable body without it is still read as "none listed".
+		// ⚠️ A body that could not be read at all no longer reaches this line:
+		// assertOk throws on `parse_failed`, the query errors, and
+		// `capabilityVerdict` reads `unknown`/`unreadable` — never the
+		// "nothing is gated" that `[]` would claim.
+		return (resp.data?.capabilities ?? []) as ICapabilityStatus[];
+	} catch (error) {
+		if (error instanceof ApiError && error.status === 404) return null;
+		throw error;
+	}
+}
+
 export async function query_get_ha_state_all(instance: IInstance): Promise<IVipAttribute[]> {
 	const resp = await GET_INST<GwGetResp<'/config/cistate/all'>>(instance, `/config/cistate/all`);
 	assertOk(resp, 'Get HA State');
@@ -75,21 +124,20 @@ export async function query_get_ha_state_all(instance: IInstance): Promise<IVipA
 }
 
 // not for frontend use, only for backend to update HA state
-export async function request_update_ha_state(instance: IInstance, data: IVipAttribute): Promise<ApiResult> {
+export async function request_update_ha_state(instance: IInstance, data: IVipAttribute): Promise<OpResult> {
 	// Send only the schema fields — the form rides an `isValid` flag on its
 	// onChange payload for button-gating, which must never reach the gateway.
 	const payload: IVipAttribute = {instance: data.instance, state: data.state, vip: data.vip};
-	const resp = await POST_INST(instance, `/config/cistate`, payload);
-	if (resp.code !== 200 && resp.code !== 204) {
-		const errorMessage = createDetailedErrorMessage(resp, 'Update HA State');
-		return {status: 'error', error: errorMessage};
-	} else {
-		return {status: 'success'};
-	}
+	return runOp('status.update_ha_state', () => POST_INST(instance, `/config/cistate`, payload));
 }
 
 export async function query_get_metadata(instance: IInstance): Promise<any> {
 	const resp = await GET_INST<GwGetResp<'/meta'>>(instance, `/meta`);
+	// A failed metadata read used to resolve as `{}`, which every form reads
+	// as "fetched, and this endpoint has no parameters" — so the form rendered
+	// with no field descriptions and no validation rules rather than saying it
+	// could not be prepared.
+	assertOk(resp, 'Get Metadata');
 	return resp.data ?? {};
 }
 
@@ -105,17 +153,13 @@ export async function query_get_version(instance: IInstance): Promise<IVersionEn
 	return (resp.data ?? {}) as IVersionEntry;
 }
 
-export async function request_post_log_level(instance: IInstance, level: LevelType): Promise<ApiResult> {
-	const resp = await POST_INST(instance, `/config/params`, {logLevel: level});
-	if (resp.code !== 200 && resp.code !== 204) {
-		const errorMessage = createDetailedErrorMessage(resp, 'Status Operation');
-		return {status: 'error', error: errorMessage};
-	}
-	else return {status: 'success'};
+export async function request_post_log_level(instance: IInstance, level: LevelType): Promise<OpResult> {
+	return runOp('status.post_log_level', () => POST_INST(instance, `/config/params`, {logLevel: level}));
 }
 
 export async function query_get_log_level(instance: IInstance): Promise<Partial<GwSchema<'OperParams'>>> {
 	const resp = await GET_INST<GwGetResp<'/config/params'>>(instance, `/config/params`);
+	assertOk(resp, 'Get Log Level');
 	return resp.data ?? {};
 }
 
@@ -155,6 +199,7 @@ export async function query_get_inst_logs(instance: IInstance, options?: {
 	const endpoint = `/logs${queryString ? `?${queryString}` : ''}`;
 	
 	const resp = await GET_INST<GwGetResp<'/logs'>>(instance, endpoint);
+	assertOk(resp, 'Get Instance Logs');
 
 	const log_strings = resp.data?.logs;
 	if (!log_strings) return {logs: [], has_more: false};
@@ -181,7 +226,9 @@ export async function query_get_inst_logs(instance: IInstance, options?: {
 
 export async function query_get_inst_log_archives(instance: IInstance): Promise<ILogArchiveList> {
 	const resp = await GET_INST<GwGetResp<'/log-archives'>>(instance, `/log-archives`);
-	if (resp.code !== 200 && resp.code !== 204) return {archives: []};
+	// 204 stays a success (assertOk accepts the whole 2xx class): an instance
+	// that has rotated nothing yet genuinely has no archives.
+	assertOk(resp, 'Get Instance Log Archives');
 	return (resp.data ?? {archives: []}) as ILogArchiveList;
 }
 
@@ -224,4 +271,30 @@ export async function query_instance_health(instance: IInstance): Promise<{isHea
 		}
 		return {isHealthy: false, error: 'Unknown error'};
 	}
+}
+
+/**
+ * The audit trail's REST status and sink state, for the System page's urgent
+ * signals (types/audit_status.ts).
+ *
+ * ⭐ 403 and 404 are ANSWERS here, not failures: a caller without gateway
+ * administrator rights is told so quietly, and a gateway older than the audit
+ * API simply has nothing to add to the metrics. Returning them as data keeps
+ * react-query from retrying a refusal and the page from showing an error for a
+ * gateway that is working as designed. Anything else still throws.
+ *
+ * ⚠️ Call only for a POSITIVELY identified gateway: plain loxilb has no
+ * /audit/* and must never see the request.
+ */
+export async function query_get_audit_rest(instance: IInstance): Promise<AuditRestRead> {
+	const statusResp = await GET_INST<GwGetResp<'/audit/status'>>(instance, `/audit/status`);
+	if (statusResp.code === 403) return {kind: 'forbidden'};
+	if (statusResp.code === 404) return {kind: 'absent'};
+	assertOk(statusResp, 'Get Audit Status');
+	// Only after the status answered: a refusal there would be refused here
+	// too, and a second identical refusal is just more console noise. The sink
+	// read stands on its own: its failure loses the sink signal only.
+	const sinkResp = await GET_INST<GwGetResp<'/audit/sink'>>(instance, `/audit/sink`);
+	const sinkOk = sinkResp.code >= 200 && sinkResp.code < 300 && !sinkResp.parse_failed;
+	return {kind: 'ok', status: (statusResp.data ?? {}) as IAuditStatus, sink: sinkOk ? ((sinkResp.data ?? {}) as IAuditSink) : undefined};
 }

@@ -16,6 +16,7 @@ import SubTitlePannel from 'components/layout/SubTitlePannel';
 import SNICertificatesTable from 'components/table/traffic/SNICertificatesTable';
 import {request_delete_cert_pem, request_rotate_cert_pem, request_upload_cert_pem} from 'connector/instance/cert';
 import {request_register_sni_certificate, request_unregister_sni_certificate} from 'connector/instance/sni_certificates';
+import {OpResult} from 'connector/fetcher/opResult';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useRole} from 'hooks/query/oamHooks';
@@ -23,6 +24,20 @@ import {useSNICertificates} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
 import {Fragment, useRef, useState, useMemo} from 'react';
 import {ICert, ISNICertificateEntry, ISNICertificateListItem} from 'types/security';
+import {toPageState} from 'components/state/pageState';
+
+//---------------------------------------------------------
+// SNI-store soft errors follow the snapshot inline-error convention:
+// localized headline first, the store's verbatim detail after. The store
+// reports domain rejections inside a 200 body ("Error: Failed to load
+// certificate … Check certificate files at <path>") — operator-actionable
+// text that the generic OpResult copy would erase, so this family
+// deliberately renders rawDetail.
+//---------------------------------------------------------
+function sniOpErrorText(res: Pick<OpResult, 'localeKey' | 'rawDetail'>): string {
+	const detail = res.rawDetail?.trim();
+	return detail ? `${t(res.localeKey)} ${detail}` : t(res.localeKey);
+}
 
 //---------------------------------------------------------
 // Detail Panel Component
@@ -54,8 +69,11 @@ function DetailPanel(props: {cert: ISNICertificateListItem}) {
 //---------------------------------------------------------
 export default function SNICertificatesPage() {
 	const inst = useInstanceFromURL();
-	const {data, isError, refetch} = useSNICertificates(inst);
+	const sni_query = useSNICertificates(inst);
+	const {data, refetch} = sni_query;
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	const certificates = data?.certificates ?? [];
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
 	const totalCertificates = data?.totalCertificates ?? 0;
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
@@ -87,7 +105,7 @@ export default function SNICertificatesPage() {
 		});
 
 		const results = await Promise.all(deletePromises);
-		const failures = results.filter(res => res.status === 'error');
+		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
 			openPopUp(t('Success'), t('Deleted {{count}} certificate(s) successfully.', {count: results.length}), t('OK'));
@@ -100,7 +118,7 @@ export default function SNICertificatesPage() {
 			setTimeout(() => refetch(), 1000);
 		} else {
 			// All failed
-			openPopUp(t('Error'), t('Failed to unregister. {{error}}', {error: failures[0].error}), t('OK'));
+			openPopUp(t('Error'), t('Failed to unregister. {{error}}', {error: sniOpErrorText(failures[0])}), t('OK'));
 		}
 	};
 
@@ -126,11 +144,11 @@ export default function SNICertificatesPage() {
 				if (!formRef.current) return;
 
 				const res = await request_register_sni_certificate(inst, formRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Certificate registered successfully.'), t('OK'));
 					setTimeout(() => refetch(), 1000);
 				} else {
-					openPopUp(t('Error'), t('Failed to register. {{error}}', {error: res.error}), t('OK'));
+					openPopUp(t('Error'), t('Failed to register. {{error}}', {error: sniOpErrorText(res)}), t('OK'));
 				}
 			},
 			true,
@@ -174,11 +192,11 @@ export default function SNICertificatesPage() {
 
 				const res =
 					mode === 'rotate' ? await request_rotate_cert_pem(inst, cert.certId as string, cert) : await request_upload_cert_pem(inst, cert);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), mode === 'rotate' ? t('Certificate rotated successfully.') : t('Certificate uploaded successfully.'), t('OK'));
 					setTimeout(() => refetch(), 1000);
 				} else {
-					openPopUp(t('Error'), t('Failed. {{error}}', {error: res.error}), t('OK'));
+					openPopUp(t('Error'), t('Failed. {{error}}', {error: t(res.localeKey)}), t('OK'));
 				}
 			},
 			true,
@@ -204,10 +222,10 @@ export default function SNICertificatesPage() {
 
 		openPopUp('', id_form, t('Delete'), t('Cancel'), async () => {
 			const res = await request_delete_cert_pem(inst, certIdRef.current.trim());
-			if (res.status === 'success') {
+			if (res.status === 'confirmed') {
 				openPopUp(t('Success'), t('Certificate deleted.'), t('OK'));
 				setTimeout(() => refetch(), 1000);
-			} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: res.error}), t('OK'));
+			} else openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: t(res.localeKey)}), t('OK'));
 		});
 	};
 
@@ -233,7 +251,7 @@ export default function SNICertificatesPage() {
 				onAdd={handleAdd}
 				onDelete={selectedItems.length > 0 ? handleDelete : undefined}
 				onRefresh={handleRefresh}
-				error={isError}
+				state={toPageState(sni_query, {op: 'sni_certificate.list'})}
 			/>
 			{selectedItem && (
 				<LowerSection>

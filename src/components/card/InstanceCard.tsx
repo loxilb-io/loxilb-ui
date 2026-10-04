@@ -7,7 +7,7 @@ import FlavorBadge from 'components/element/FlavorBadge';
 import IDBadge from 'components/element/IDBadge';
 import SimpleButton from 'components/element/SimpleButton';
 import InstanceInputForm from 'components/input/InstanceInputForm';
-import {describe_instance_error, TInstanceFormData} from 'components/input/instanceFormLogic';
+import {describe_instance_op_error, TInstanceFormData} from 'components/input/instanceFormLogic';
 import {request_delete_instance, request_update_instance} from 'connector/oam/oam';
 import {usePopUp} from 'hooks/popupHook';
 import {useInstances, useRole} from 'hooks/query/oamHooks';
@@ -15,7 +15,7 @@ import {useTranslation} from 'react-i18next';
 import {useRef, useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {IVipAttribute} from 'types/ha';
-import {IInstance, IInstanceInput} from 'types/oam';
+import {IInstance} from 'types/oam';
 import {IInstanceHealth} from 'hooks/query/healthHook';
 
 //---------------------------------------------------------
@@ -85,7 +85,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 				}
 				const {isValid, errors, ...payload} = instanceRef.current;
 				const res = await request_update_instance(instance_info.id, payload);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Updated successfully.'), t('OK'), '', () => {
 						refetch();
 						// Trigger health check after successful update
@@ -93,7 +93,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 							onHealthRefresh();
 						}
 					});
-				} else openPopUp(t('Error'), t('Failed to update. {{error}}', {error: describe_instance_error(res.error)}), t('OK'));
+				} else openPopUp(t('Error'), t('Failed to update. {{error}}', {error: t(describe_instance_op_error(res))}), t('OK'));
 			}
 		});
 	};
@@ -101,7 +101,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 	const handleDelete = () => {
 		openPopUp(t('WARNING!! Delete Instance'), t('Are you sure you want to delete this instance? This action cannot be undone.'), t('Delete'), t('Cancel'), async () => {
 			const res = await request_delete_instance(instance_info.id);
-			if (res.status === 'success') {
+			if (res.status === 'confirmed') {
 				// First refresh the instance list
 				await refetch();
 				// Then show success message and navigate to instances page
@@ -110,8 +110,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 					navigate('/instance', { replace: true });
 				});
 			} else {
-				const error_message = res.error ? describe_instance_error(res.error) : t('Failed to delete instance');
-				openPopUp(t('Error'), error_message, t('OK'));
+				openPopUp(t('Error'), t(describe_instance_op_error(res)), t('OK'));
 			}
 		});
 	};
@@ -149,7 +148,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 							{t('Created at')}
 						</Typography>
 
-						<Typography variant="caption" color="text.disabled">
+						<Typography variant="caption" color="text.primary">
 							{get_date(instance_info.created_at)}
 						</Typography>
 					</Box>
@@ -175,7 +174,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 						<Typography variant="caption" color="text.secondary">
 							{t('Host')}
 						</Typography>
-						<Typography variant="caption" color="text.disabled">
+						<Typography variant="caption" color="text.primary">
 							{`${instance_info.host}:${instance_info.port}`}
 						</Typography>
 					</Box>
@@ -184,7 +183,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 						<Typography variant="caption" color="text.secondary">
 							{t('Version')}
 						</Typography>
-						<Typography variant="caption" color="text.disabled">
+						<Typography variant="caption" color="text.primary">
 							{instance_info.version}
 						</Typography>
 					</Box>
@@ -201,7 +200,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 							{t('HA State')}
 						</Typography>
 
-						<Typography variant="caption" color="text.disabled">
+						<Typography variant="caption" color="text.primary">
 							{ha?.state ?? t('Unknown')}
 						</Typography>
 					</Box>
@@ -240,7 +239,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 						<Typography variant="caption" color="text.secondary">
 							{t('Tag')}
 						</Typography>
-						<Typography variant="caption" color="text.disabled">
+						<Typography variant="caption" color="text.primary">
 							{instance_info.ctag}
 						</Typography>
 					</Box>
@@ -249,7 +248,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 						<Typography variant="caption" color="text.secondary">
 							{t('CImage')}
 						</Typography>
-						<Typography variant="caption" color="text.disabled">
+						<Typography variant="caption" color="text.primary">
 							{instance_info.cimage}
 						</Typography>
 					</Box>
@@ -260,7 +259,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 						</Typography>
 					</Box>
 					<Box display="flex" justifyContent="space-between">
-						<Typography variant="caption" color="text.disabled">
+						<Typography variant="caption" color="text.primary">
 							{instance_info.api_endpoint}
 						</Typography>
 					</Box>
@@ -269,7 +268,7 @@ export default function InstanceCard(props: {instance_info: IInstance; ha: IVipA
 					<Box width="100%" overflow="hidden">
 						<Typography
 							variant="caption"
-							color="text.disabled"
+							color="text.primary"
 							overflow="hidden"
 							textOverflow="ellipsis"
 							sx={{

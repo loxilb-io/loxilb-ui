@@ -6,6 +6,7 @@ import DataTable from 'components/table/DataTable';
 import {useMemo} from 'react';
 import {IIPFilterEntry} from 'types/security';
 import {IDataTableColumnDef} from 'types/global';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -17,9 +18,10 @@ export default function IPFilterTable(props: {
 	onAdd?: any;
 	onDelete?: any;
 	onRefresh?: any;
+	state?: PageDataState<unknown>;
 	error?: boolean;
 }) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, state, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'filterType', header: 'Filter Type', width: 'medium', type: 'tag'},
@@ -64,6 +66,7 @@ export default function IPFilterTable(props: {
 			onAdd={onAdd}
 			onDelete={onDelete}
 			onRefresh={onRefresh}
+			state={state}
 			error={error}
 		/>
 	);

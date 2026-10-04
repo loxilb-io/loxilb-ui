@@ -211,7 +211,7 @@ test.describe('Firewall page CRUD', () => {
 		// create gets 409 Conflict. Both outcomes prove what this case is
 		// for — the UI payload — so both are accepted, and the app must stay
 		// healthy either way.
-		consoleGuard.allow(/status of 409/);
+		consoleGuard.allowRequest({status: 409, path: /\/netlox\/v1\/config\/firewall$/});
 
 		await openToolbarDialog(page, 'Add', 'Firewall Rule Arguments');
 		await fillRuleForm(
@@ -320,8 +320,9 @@ test.describe('Firewall page CRUD', () => {
 		}
 
 		// Form let it through: the gateway must 4xx and the UI must surface
-		// an error popup instead of crashing (or creating the rule).
-		consoleGuard.allow(/Failed to load resource/);
+		// an error popup instead of crashing (or creating the rule). Measured
+		// live: 400 "malformed-rule src error" on the create — that and only that.
+		consoleGuard.allowRequest({status: 400, path: /\/netlox\/v1\/config\/firewall$/});
 		let created = false;
 		const [req] = await Promise.all([
 			page.waitForRequest(r => r.method() === 'POST' && r.url().includes(FW_PATH)).catch(() => null),
@@ -354,7 +355,8 @@ test.describe('Firewall page CRUD', () => {
 			return;
 		}
 
-		consoleGuard.allow(/Failed to load resource/);
+		// Measured live: 400 "invalid src port range" on the create.
+		consoleGuard.allowRequest({status: 400, path: /\/netlox\/v1\/config\/firewall$/});
 		let created = false;
 		const [req] = await Promise.all([
 			page.waitForRequest(r => r.method() === 'POST' && r.url().includes(FW_PATH)).catch(() => null),

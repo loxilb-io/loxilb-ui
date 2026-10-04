@@ -12,11 +12,14 @@ node_modules/
 # Misc
 .DS_Store
 
-# Environment files — only .env.example is committed (P0-2)
+# Environment files — only .env.example and .env.production are committed
+# (P0-2). .env.production is tracked ON PURPOSE: it carries production BUILD
+# FLAGS ONLY (never secrets) — build:prod points dotenv-cli at it, and
+# dotenv-cli silently proceeds when the file is missing, which once meant the
+# release built with none of its flags applied.
 .env
 .env.local
 .env.development
-.env.production
 .env.test
 .env.*.local
 

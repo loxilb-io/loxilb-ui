@@ -37,6 +37,21 @@ export interface IGatewayRestoreResult {
 	/** ok, rolled-back, or ROLLBACK-FAILED; empty when the pipeline stopped before APPLY. */
 	result?: string;
 	pre_restore_snapshot_persisted?: string;
+	/**
+	 * Non-fatal findings the gateway reports alongside a result — including a
+	 * SUCCESSFUL one. Populated by `restore.go` for inbound secrets that had to
+	 * be re-encrypted under this node's secret, for OPTIONAL recovery
+	 * dependencies (which are informational and never verified), and for items
+	 * APPLY skipped as already-existing duplicates.
+	 *
+	 * ⚠️ These were modelled and rendered nowhere, so a restore the gateway
+	 * qualified rendered as an unqualified success — the exact thing
+	 * `snapshots.spec.ts` names as its first honesty invariant ("the page never
+	 * reports success the server didn't return"). Dry-run emits them too:
+	 * dependency verification runs there on purpose, so these are the operator's
+	 * only warning BEFORE they commit.
+	 */
+	warnings?: string[];
 }
 
 // A restore outcome with the pass-through blob narrowed for rendering.

@@ -41,7 +41,3 @@ export interface ILogArchiveList {
 
 export type LevelType = 'debug' | 'info' | 'error' | 'warning' ;
 export const LevelTypeList: LevelType[] = ['debug', 'info', 'error', 'warning'];
-export interface ApiResult {
-	status: 'success' | 'error';
-	error?: string;
-}

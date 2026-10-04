@@ -3,12 +3,14 @@
 //---------------------------------------------------------
 import {Box, Typography, LinearProgress, Chip} from '@mui/material';
 import {useLiveMetrics} from 'hooks/query/metricsHook';
+import {useInstanceFlavor} from 'hooks/query/flavorHook';
 import {t} from 'i18next';
 import {useMemo} from 'react';
 import {IInstance} from 'types/oam';
 import CardBase from './CardBase';
 import {derive_endpoint_health} from './cardMetricsLogic';
 import MetricFigure from './MetricFigure';
+import MetricScrapeState from './MetricScrapeState';
 
 //---------------------------------------------------------
 // Component Props
@@ -25,12 +27,18 @@ export default function HealthStatusCard(props: HealthStatusCardProps) {
 	const {title, instance} = props;
 
 	// Get live metrics with polling
-	const {metrics: liveMetrics, isLoading} = useLiveMetrics(instance, {keyPrefix: 'health-status-realtime', refetchInterval: 10000});
+	const {metrics: liveMetrics, isLoading, failure: scrapeFailure, refetch: refetchMetrics} = useLiveMetrics(instance);
 
 	// Derivation lives in cardMetricsLogic so the "absent ≠ zero" rule is
 	// unit-testable without a renderer.
 	const healthData = useMemo(() => derive_endpoint_health(liveMetrics), [liveMetrics]);
 	const reported = healthData.status !== 'unknown';
+	// ⚠️ On the gateway a host whose health probe is not active reports ok
+	// unless forced down (gauge HELP), so this percentage is not measured
+	// health for every host it counts. loxilb documents no such rule, so the
+	// caveat is the gateway's alone.
+	const {flavor} = useInstanceFlavor(instance);
+	const unprobedCountAsHealthy = flavor === 'inference-gateway' && (healthData.total ?? 0) > 0;
 
 	// Status configuration
 	const statusConfig = {
@@ -43,6 +51,10 @@ export default function HealthStatusCard(props: HealthStatusCardProps) {
 	};
 
 	const currentStatus = statusConfig[healthData.status as keyof typeof statusConfig];
+
+	// A refused or disabled scrape is not this instance declining to publish a
+	// metric — say which it was, instead of falling through to "not reported".
+	if (scrapeFailure) return <MetricScrapeState title={title} failure={scrapeFailure} onRetry={refetchMetrics} />;
 
 	if (isLoading) {
 		return (
@@ -59,7 +71,7 @@ export default function HealthStatusCard(props: HealthStatusCardProps) {
 			<Box display="flex" flexDirection="column" gap={2}>
 				{/* Health Percentage */}
 				<Box textAlign="center">
-					<Typography variant="h2" fontWeight="bold" color={reported ? `${currentStatus.color}.main` : 'text.disabled'}>
+					<Typography component="p" variant="h2" fontWeight="bold" color={reported ? `${currentStatus.color}.main` : 'text.disabled'}>
 						{reported ? `${healthData.healthPercentage}%` : t('N/A')}
 					</Typography>
 					<Chip
@@ -96,6 +108,11 @@ export default function HealthStatusCard(props: HealthStatusCardProps) {
 				{healthData.status === 'no-endpoints' && (
 					<Typography variant="body2" color="textSecondary" textAlign="center">
 						{t('No endpoints configured')}
+					</Typography>
+				)}
+				{unprobedCountAsHealthy && (
+					<Typography variant="caption" color="text.secondary" textAlign="center">
+						{t('Hosts without an active health probe count as healthy.')}
 					</Typography>
 				)}
 				{!reported && (

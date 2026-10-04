@@ -89,6 +89,15 @@ export interface RecipeAi {
 	/** KV block hash algorithm (kv_hash_algos.json send_value). */
 	kvHashAlgo?: 'sha256_cbor' | 'xxhash_cbor';
 	kvZmqPort?: string;
+	/** Published ModelPromptProfile ID — makes the rule STRICT (option matched by prefix). */
+	modelProfile?: string;
+	/** Declared API surface (completions | chat | both); requires modelProfile. */
+	apiSurface?: string;
+	/** Capacity admission gate (Admission Control group; AI services only). */
+	fcMode?: 'enforce' | 'observe' | 'off';
+	fcMaxOutstanding?: string;
+	fcMaxQueueDepth?: string;
+	fcMaxQueueWaitMs?: string;
 }
 
 /**
@@ -231,6 +240,12 @@ export function expectedServiceArguments(r: LbRecipe): Record<string, unknown> {
 		if (a.kvBlockSize !== undefined) sa.kvBlockSize = Number(a.kvBlockSize);
 		if (a.kvHashAlgo !== undefined) sa.kvHashAlgo = a.kvHashAlgo;
 		if (a.kvZmqPort !== undefined) sa.kvZmqPort = Number(a.kvZmqPort);
+		if (a.modelProfile !== undefined) sa.kvModelProfile = a.modelProfile;
+		if (a.apiSurface !== undefined) sa.kvExactApiMode = a.apiSurface;
+		if (a.fcMode !== undefined) sa.fc_mode = a.fcMode;
+		if (a.fcMaxOutstanding !== undefined) sa.fc_max_outstanding = Number(a.fcMaxOutstanding);
+		if (a.fcMaxQueueDepth !== undefined) sa.fc_max_queue_depth = Number(a.fcMaxQueueDepth);
+		if (a.fcMaxQueueWaitMs !== undefined) sa.fc_max_queue_wait_ms = Number(a.fcMaxQueueWaitMs);
 	}
 	if (r.probe) {
 		sa.probetype = PROBE_SEND[r.probe.type];
@@ -342,6 +357,20 @@ export async function driveLbCreate(page: Page, r: LbRecipe): Promise<any> {
 		if (a.kvBlockSize !== undefined) await field(page, 'Block/Page Size Confirmed', aigw).check();
 		if (a.kvHashAlgo !== undefined) await selectOption(page, 'KV Hash Override', a.kvHashAlgo);
 		if (a.kvZmqPort !== undefined) await setField(page, 'KV ZMQ Port', a.kvZmqPort, aigw);
+		// Strict-rule profile binding: the option label is the composite
+		// "profileId — baseModel — apis", so match by profileId prefix.
+		if (a.modelProfile !== undefined) await selectOption(page, 'Model Profile', new RegExp(`^${a.modelProfile} — `));
+		if (a.apiSurface !== undefined) await selectOption(page, 'API Surface', a.apiSurface);
+		// Admission Control is a collapsed group inside this section; it renders
+		// only once the rule is an AI service (SSE / P/D / a credential policy).
+		if ([a.fcMode, a.fcMaxOutstanding, a.fcMaxQueueDepth, a.fcMaxQueueWaitMs].some(v => v !== undefined)) {
+			const toggle = aigw.getByRole('button', {name: 'Admission Control'});
+			if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+			if (a.fcMode !== undefined) await selectOption(page, 'Admission Mode', a.fcMode);
+			if (a.fcMaxOutstanding !== undefined) await field(page, 'Max Outstanding', aigw).fill(a.fcMaxOutstanding);
+			if (a.fcMaxQueueDepth !== undefined) await field(page, 'Queue Depth', aigw).fill(a.fcMaxQueueDepth);
+			if (a.fcMaxQueueWaitMs !== undefined) await field(page, 'Queue Wait (ms)', aigw).fill(a.fcMaxQueueWaitMs);
+		}
 	}
 
 	// Allowed Sources (cicd --sources=): one prefix row per CIDR.

@@ -1,0 +1,225 @@
+//---------------------------------------------------------
+// Gateway summary dashboard cards (UI-MON-007)
+//---------------------------------------------------------
+// The five registry-driven gateway panels of the dashboard. Every Prometheus
+// consumer here reads the SAME shared snapshot (one 10-second query), so
+// their numbers agree by construction; the worker-freshness card is REST-fed
+// with its own independent receive time, deliberately badged separately.
+// The AI events card shows the headline the instance can back: offered load
+// and error ratio where requests_total carries the `outcome` partition, and
+// otherwise the two partial views (completed requests, denial events) with
+// the caption that they are not a total.
+
+import {Box, Link, Typography} from '@mui/material';
+import {Link as RouterLink, useSearchParams} from 'react-router-dom';
+import {useTranslation} from 'react-i18next';
+import {useMemo} from 'react';
+import {classifyViewState} from 'components/observability/observabilityState';
+import ObservabilityStateFrame from 'components/observability/ObservabilityStateFrame';
+import FreshnessBadge from 'components/observability/FreshnessBadge';
+import {GPU_STATUS_CADENCE_MS, useDiagnostics, useGpuStatus} from 'hooks/query/gatewayTelemetryHooks';
+import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
+import {fromThrownError} from 'connector/fetcher/opResultAdapter';
+import {familyAbsence} from 'observability/familyActivation';
+import {aggregateSum, selectSamples, selectScalar} from 'observability/selectors';
+import {formatReportedAt, reportedAtFromIso} from 'observability/reportedAt';
+import {completedRequestRate, denialTotalRate, requestOutcomes} from 'observability/aiRequests';
+import {rateMaxGapMs} from 'observability/snapshotRates';
+import {countOrAbsence, formatAbsence, formatRate, formatRatio, StatRow} from 'pages/observability/common';
+import {IInstance} from 'types/oam';
+import {ObservabilityViewState} from 'types/observability';
+import CardBase from './CardBase';
+
+interface GwCardProps {
+	instance: IInstance | null;
+}
+
+// Deep link that keeps the ?name= instance selection.
+function ObservabilityLink({page, label}: {page: string; label: string}) {
+	const [params] = useSearchParams();
+	const name = params.get('name');
+	return (
+		<Link component={RouterLink} to={`/instance/observability/${page}${name ? `?name=${encodeURIComponent(name)}` : ''}`} variant="body2">
+			{label}
+		</Link>
+	);
+}
+
+function useSnapshotCardState(instance: IInstance | null): ReturnType<typeof useMetricsSnapshot> & {state: ObservabilityViewState} {
+	const q = useMetricsSnapshot(instance);
+	const state = classifyViewState({
+		applicable: true, // mounting is the registry's decision (DashboardPage)
+		isLoading: q.isLoading,
+		snapshot: q.snapshot,
+		hasData: (q.snapshot?.diagnostics.totalSamples ?? 0) > 0,
+		nowMs: Date.now(),
+		cadenceMs: q.cadenceMs,
+	});
+	return {...q, state};
+}
+
+export function GwAiEventsCard({instance}: GwCardProps) {
+	const {t} = useTranslation();
+	const {history, state, cadenceMs, refetch} = useSnapshotCardState(instance);
+
+	const maxGap = rateMaxGapMs(cadenceMs);
+	// The same one-detection derivation the AI Traffic page uses, so the card
+	// and the page cannot disagree about the exposition.
+	const outcomes = useMemo(() => requestOutcomes(history, maxGap), [history, maxGap]);
+	// outcome="completed" where the instance reports it — the family also
+	// carries gate denials since gateway 27680379 (see observability/aiRequests).
+	const completed = useMemo(() => completedRequestRate(history, maxGap), [history, maxGap]);
+	// Counted once each: the gateway's own denied-outcome count where it
+	// reports one, never a sum of reason families that overlap (every
+	// token-quota refusal is in both rate_limit_hits and token_quota_denied).
+	const denialTotal = useMemo(() => denialTotalRate(history, maxGap), [history, maxGap]);
+
+	return (
+		<CardBase title={outcomes.kind === 'partitioned' ? t('AI Requests') : t('AI Events (partial views)')}>
+			<ObservabilityStateFrame state={state} name={t('AI Events')} onRetry={refetch}>
+				{outcomes.kind === 'partitioned' ? (
+					<>
+						<StatRow label={t('Total offered')} value={formatRate(outcomes.offered, t)} />
+						<StatRow label={t('Error ratio (denied + failed)')} value={formatRatio(outcomes.errorRatio, t)} />
+					</>
+				) : (
+					<>
+						{/* Recorded at stream completion OR response headers: not streams only. */}
+						<StatRow label={t('Completed requests')} value={formatRate(completed, t)} />
+						<StatRow label={t('Denial events')} value={formatRate(denialTotal, t)} />
+						<Typography variant="caption" color="text.secondary" display="block" sx={{mt: 0.5}}>
+							{t('Not a total request rate — the gateway counts completed requests and denials separately.')}
+						</Typography>
+					</>
+				)}
+				<Box sx={{mt: 1}}>
+					<ObservabilityLink page="ai" label={t('Open AI Traffic')} />
+				</Box>
+			</ObservabilityStateFrame>
+		</CardBase>
+	);
+}
+
+export function GwActiveStreamsCard({instance}: GwCardProps) {
+	const {t} = useTranslation();
+	const {snapshot, state, refetch} = useSnapshotCardState(instance);
+
+	const streams = useMemo(() => (snapshot ? selectSamples(snapshot, 'loxilb_ai_active_streams') : []), [snapshot]);
+	const total = aggregateSum(streams);
+
+	return (
+		<CardBase title={t('Active AI Streams')}>
+			<ObservabilityStateFrame state={state} name={t('Active AI Streams')} onRetry={refetch}>
+				<StatRow label={t('Total (sum over models)')} value={total.value ?? t('No data')} />
+				<StatRow label={t('Models reporting')} value={total.finiteSamples} />
+				<Box sx={{mt: 1}}>
+					<ObservabilityLink page="ai" label={t('Open AI Traffic')} />
+				</Box>
+			</ObservabilityStateFrame>
+		</CardBase>
+	);
+}
+
+export function GwWorkerFreshnessCard({instance}: GwCardProps) {
+	const {t} = useTranslation();
+	const gpu = useGpuStatus(instance, true);
+
+	let state: ObservabilityViewState;
+	if (gpu.error) {
+		const failure = fromThrownError('observability.gpu_status', gpu.error);
+		state = failure.status === 'denied' ? {kind: 'denied', failure} : {kind: 'unavailable', failure};
+	} else if (gpu.isLoading || !gpu.data) state = {kind: 'loading'};
+	else if (gpu.data.data.enabled !== true) state = {kind: 'disabled', reasonKey: 'GPU monitoring is disabled on this instance.'};
+	else state = {kind: 'ready'};
+
+	const status = gpu.data?.data;
+	return (
+		<CardBase title={t('Worker Monitoring')}>
+			<ObservabilityStateFrame state={state} name={t('Worker Monitoring')} onRetry={() => void gpu.refetch()}>
+				{/* `worker_count` is omitempty on the gateway: omitted IS zero. */}
+				<StatRow label={t('Workers tracked')} value={status ? (status.worker_count ?? 0) : t('N/A')} />
+				<StatRow label={t('Routing mode')} value={status?.routing_mode ?? t('N/A')} />
+				<StatRow
+					label={t('Last metrics update')}
+					value={formatReportedAt(reportedAtFromIso(status?.last_metrics_update), Date.now(), t)}
+				/>
+				{gpu.data && (
+					<Box sx={{mt: 1}} display="flex" gap={1} alignItems="center">
+						<FreshnessBadge receivedAtMs={gpu.data.receivedAtMs} cadenceMs={GPU_STATUS_CADENCE_MS} />
+						<ObservabilityLink page="workers" label={t('Open Workers')} />
+					</Box>
+				)}
+			</ObservabilityStateFrame>
+		</CardBase>
+	);
+}
+
+export function GwKvExactCard({instance}: GwCardProps) {
+	const {t} = useTranslation();
+	const {snapshot, state, refetch} = useSnapshotCardState(instance);
+
+	const attest = useMemo(() => (snapshot ? selectSamples(snapshot, 'loxilb_ai_kv_attest_state').filter(s => s.value > 0) : []), [snapshot]);
+	const byState = useMemo(() => {
+		const counts = new Map<string, number>();
+		for (const s of attest) counts.set(s.labels.state ?? '?', (counts.get(s.labels.state ?? '?') ?? 0) + 1);
+		return [...counts.entries()];
+	}, [attest]);
+
+	return (
+		<CardBase title={t('KV Exact Enforcement')}>
+			<ObservabilityStateFrame state={state} name={t('KV Exact Enforcement')} onRetry={refetch}>
+				{byState.length === 0 ? (
+					<Typography variant="body2" color="text.secondary">
+						{t('No data')}
+					</Typography>
+				) : (
+					byState.map(([attestState, count]) => <StatRow key={attestState} label={attestState} value={count} />)
+				)}
+				<StatRow label={t('Rules with enforcement faults')} value={countOrAbsence(snapshot, 'loxilb_ai_kv_enforcement_fault', s => s.value > 0, t)} />
+				<Box sx={{mt: 1}}>
+					<ObservabilityLink page="pdkv" label={t('Open P/D & KV Cache')} />
+				</Box>
+			</ObservabilityStateFrame>
+		</CardBase>
+	);
+}
+
+export function GwPersistenceCard({instance}: GwCardProps) {
+	const {t} = useTranslation();
+	const {snapshot, state, refetch} = useSnapshotCardState(instance);
+	// There is no last-persist timestamp metric family — that fact comes from
+	// /diagnostics, an independent REST read with its own receive time (never
+	// atomically consistent with the Prometheus rows above it).
+	const diagnostics = useDiagnostics(instance, true);
+
+	const dirty = snapshot ? selectScalar(snapshot, 'loxilb_config_dirty') : undefined;
+	const autopersistFailures = snapshot ? selectScalar(snapshot, 'loxilb_autopersist_consecutive_failures') : undefined;
+	const persistErrors = useMemo(
+		() => (snapshot ? aggregateSum(selectSamples(snapshot, 'loxilb_persist_total', {result: 'error'})).value : undefined),
+		[snapshot],
+	);
+	// `{result="error"}` is a lazy child: with the family present and no error
+	// child, no persist has ever failed — a true 0. With the family itself
+	// absent nothing is known, and 0 would claim a clean record.
+	const persistAbsence = familyAbsence(snapshot, 'loxilb_persist_total');
+	const persistErrorsText = !snapshot ? t('No data') : persistAbsence ? formatAbsence(persistAbsence, t) : (persistErrors ?? 0);
+	// `last_persist` is omitempty and nil until the process's first successful
+	// persist: with diagnostics read, an omitted record is "none since start".
+	const diag = diagnostics.data?.data;
+	const lastPersistText = !diag
+		? t('No data')
+		: diag.last_persist
+			? formatReportedAt(reportedAtFromIso(diag.last_persist.at), Date.now(), t)
+			: t('None since start');
+
+	return (
+		<CardBase title={t('Config Persistence')}>
+			<ObservabilityStateFrame state={state} name={t('Config Persistence')} onRetry={refetch}>
+				<StatRow label={t('Unsaved config changes')} value={dirty === undefined ? t('No data') : dirty > 0 ? t('Yes') : t('No')} />
+				<StatRow label={t('Consecutive auto-persist failures')} value={autopersistFailures ?? t('No data')} />
+				<StatRow label={t('Persist errors (cumulative)')} value={persistErrorsText} />
+				<StatRow label={t('Last persist')} value={lastPersistText} />
+			</ObservabilityStateFrame>
+		</CardBase>
+	);
+}

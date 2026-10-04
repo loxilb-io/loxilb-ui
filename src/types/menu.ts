@@ -6,6 +6,7 @@ import SettingsBackupRestoreIcon from '@mui/icons-material/SettingsBackupRestore
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import VpnLockIcon from '@mui/icons-material/VpnLock';
 import MonitorIcon from '@mui/icons-material/Monitor';
+import QueryStatsIcon from '@mui/icons-material/QueryStats';
 import RouteIcon from '@mui/icons-material/Route';
 import WysiwygIcon from '@mui/icons-material/Wysiwyg';
 import SecurityIcon from '@mui/icons-material/Security';
@@ -79,6 +80,14 @@ export const MENU_LIST: IMenuItem[] = [
 			{
 				name: 'API Keys',
 				path: 'apikey',
+			},
+			{
+				name: 'JWT Auth Profiles',
+				path: 'jwtauth',
+			},
+			{
+				name: 'Model Profiles',
+				path: 'profiles',
 			},
 			// Tenant Rate Limits hidden (decision 2026-07-17): the gateway's
 			// AI quota API is tenant-mandatory and only active when the gateway
@@ -190,6 +199,45 @@ export const MENU_LIST: IMenuItem[] = [
 			// },
 		],
 	},	
+	{
+		// Native metric monitoring (gateway-only at launch: every page is fed
+		// by gateway metric families or gateway-only REST paths, so the group
+		// is flavor-gated — an OSS instance shows no Observability menu at
+		// all, and direct URLs land on the route guard's terminal state).
+		name: 'Observability',
+		icon: QueryStatsIcon,
+		path: 'observability',
+		requiresFlavor: 'inference-gateway',
+		items: [
+			{
+				name: 'AI Traffic',
+				path: 'ai',
+			},
+			{
+				name: 'Workers',
+				path: 'workers',
+			},
+			{
+				name: 'P/D & KV Cache',
+				path: 'pdkv',
+			},
+			{
+				// "Security Metrics"/"QoS Metrics": the bare names already exist
+				// as config surfaces in other drawer groups (Security group,
+				// Traffic → QoS) — the Metrics suffix keeps drawer text unique.
+				name: 'Security Metrics',
+				path: 'security',
+			},
+			{
+				name: 'QoS Metrics',
+				path: 'qos',
+			},
+			{
+				name: 'Persistence',
+				path: 'persistence',
+			},
+		],
+	},
 	{
 		name: 'Status',
 		icon: MonitorIcon,

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {describe, expect, it} from 'vitest';
 import YAML from 'yaml';
+import {FC_FIELDS, FC_NUMERIC_MAX, READ_ONLY_SERVICE_ARGUMENTS} from 'types/ai_gateway';
 
 // Backward-compatibility contract between this UI and the vendored backend
 // specs (api-spec/*). When a new loxilb-inference-gateway or oam-loxilb
@@ -15,11 +16,12 @@ import YAML from 'yaml';
 
 const root = path.resolve(__dirname, '../..');
 const model = process.env.PRODUCT_MODEL ?? 'general';
-if (!['general','kcmvp'].includes(model)) throw new Error('unknown Product model');
-const spec = (file:string) => model==='general' ? `api-spec/${file}` : `api-spec/models/${model}/${file}`;
+if (!['general', 'kcmvp'].includes(model)) throw new Error('unknown Product model');
+const spec = (file: string) => model === 'general' ? `api-spec/${file}` : `api-spec/models/${model}/${file}`;
 const gateway = YAML.parse(fs.readFileSync(path.join(root, spec('gateway-swagger.yml')), 'utf8'));
 const gatewayExtras = YAML.parse(fs.readFileSync(path.join(root, spec('gateway-swagger-extras.yml')), 'utf8'));
 const oam = JSON.parse(fs.readFileSync(path.join(root, spec('oam-swagger.json')), 'utf8'));
+const LB_TUPLE_PATH = '/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}';
 
 // response JSON pointer helpers (swagger 2.0)
 function resolveRef(spec: any, node: any): any {
@@ -92,23 +94,46 @@ describe('gateway spec contract — models the UI depends on', () => {
 			expect.objectContaining({type: 'integer', minimum: 0, maximum: 65535}),
 		);
 		expect(serviceArguments.security.enum).toEqual([0, 1, 2]);
-		expect(serviceArguments.api_key_auth.enum).toEqual(['disabled', 'required', 'jwt', 'apikey-or-jwt']);
+		expect(serviceArguments.api_key_auth.enum).toEqual([
+			'disabled',
+			'required',
+			'jwt',
+			'apikey-or-jwt',
+		]);
 		expect(serviceArguments.api_key_auth.default, 'omission must not materialize explicit disabled').toBeUndefined();
+		// The omission contract survives the JWT modes: omission still declares
+		// nothing and is preserved on read-back, never resolved to a value.
 		expect(serviceArguments.api_key_auth.description).toContain('Omission is a state of its own');
+		expect(serviceArguments.api_key_auth.description).toContain('never resolved to a value');
+		// Both JWT arms are profile-bound; a bare mode with no profile is invalid.
+		expect(serviceArguments.api_key_auth.description).toContain(
+			'Both JWT modes require jwt_auth_profile',
+		);
+		// The profile reference rides serviceArguments and shares the
+		// preserve-on-omit replace semantics of the mode it pairs with.
+		expect(serviceArguments.jwt_auth_profile).toEqual(
+			expect.objectContaining({type: 'string', maxLength: 63}),
+		);
+		expect(serviceArguments.jwt_auth_profile.description).toContain(
+			'preserves the existing reference',
+		);
 	});
 
-	it('API-key import and create response describe the actual wire contract', () => {
+	it('API-key import and create response keep the secret-safe wire contract', () => {
+		// The 16..512 printable-ASCII rule lives in the gateway handler, not the
+		// spec (upstreaming the pattern is an open gateway request); the UI form
+		// enforces it independently in ApiKeyInputForm.
 		const imported = gateway.definitions.ApiKeyCreateRequest.properties.api_key;
-		expect(imported).toEqual(expect.objectContaining({
-			type: 'string',
-		}));
+		expect(imported).toEqual(expect.objectContaining({type: 'string'}));
+		expect(imported.pattern).toBeUndefined();
 		const response = gateway.definitions.ApiKeyCreateResponse;
-		expect(response.required).toContain('key_id');
-		// The producer emits an empty string for imports; UI validation tests
-		// independently retain the 16–512 printable ASCII input boundary.
+		// raw_key is deliberately the empty string in import mode because the
+		// caller already holds the secret. key_id is the always-present management
+		// handle. Never pin minLength on the conditional secret.
 		expect(response.required).toContain('raw_key');
-		expect(response.properties.raw_key.description).toContain('empty string');
+		expect(response.required).toContain('key_id');
 		expect(response.properties.raw_key).toEqual(expect.objectContaining({type: 'string'}));
+		expect(response.properties.key_id).toEqual(expect.objectContaining({type: 'string'}));
 	});
 
 	it('PolicyEntry exposes rule, port-ingress, and port-egress attachments', () => {
@@ -121,9 +146,14 @@ describe('gateway spec contract — models the UI depends on', () => {
 			const modelLimits = gateway.definitions[name].properties.model_limits;
 			expect(modelLimits.type).toBe('array');
 			expect(modelLimits.items.$ref).toBe('#/definitions/TenantModelRateLimit');
-			expect(gateway.definitions[name].properties.burst_pct).toEqual(
-				expect.objectContaining({type: 'integer', format: 'int64'}),
-			);
+			// No declared bounds: the gateway API path stores and returns burst_pct
+			// verbatim (the 1..1000 clamp exists only in rate-limit enforcement), so
+			// a validating client must tolerate out-of-range read-backs. The UI's own
+			// 1..1000 form rule is pinned in src/types/ai.test.ts.
+			const burst = gateway.definitions[name].properties.burst_pct;
+			expect(burst).toEqual(expect.objectContaining({type: 'integer'}));
+			expect(burst.minimum).toBeUndefined();
+			expect(burst.maximum).toBeUndefined();
 		}
 		expect(propNames(gateway, gateway.definitions.TenantModelRateLimit)).toEqual(
 			expect.arrayContaining(['model', 'tokens_per_min']),
@@ -157,11 +187,13 @@ describe('gateway spec contract — models the UI depends on', () => {
 		}
 	});
 
-	it('Gateway users list password-free summaries and create an operation result', () => {
+	it('Gateway user reads stay password-free summaries', () => {
 		expect(propNames(gateway, gateway.definitions.UserSummary)).not.toContain('password');
 		expect(gateway.paths['/auth/users'].get.responses['200'].schema.items.$ref).toBe('#/definitions/UserSummary');
+		// Creation returns the operation result emitted by the handler, never the
+		// password-bearing request model.
 		expect(gateway.paths['/auth/users'].post.responses['200'].schema.$ref).toBe('#/definitions/OperationResult');
-		expect(propNames(gateway, gateway.definitions.OperationResult)).not.toContain('password');
+		expect(gateway.paths['/auth/users'].post.responses['201']).toBeUndefined();
 	});
 
 	it('/sni/certificates GET keeps certificates/totalCertificates', () => {
@@ -174,28 +206,88 @@ describe('gateway spec contract — models the UI depends on', () => {
 		expect(gateway.paths['/metrics']?.get, 'gateway /metrics GET disappeared').toBeTruthy();
 		expect(gateway.paths['/metrics'].get.security).toEqual([]);
 	});
+
+	// opResultAdapter maps 412 to a precondition failure on every operation. These
+	// two are the ones the gateway declares it on; if a re-vendor drops the
+	// declaration, the branch has lost its contract and should be looked at again.
+	it('LB create and the LB tuple PATCH declare 412', () => {
+		expect(Object.keys(gateway.paths['/config/loadbalancer'].post.responses)).toContain('412');
+		expect(Object.keys(gateway.paths[LB_TUPLE_PATH].patch.responses)).toContain('412');
+	});
+
+	// Admission control (fc_*) can only be written by a create (POST replaces).
+	// The UI keeps mode-4 rules out of PATCH on that basis; if the gateway widens
+	// the PATCH overlay to fc_*, this fails and the edit block can be revisited.
+	it('the LB tuple PATCH overlay does not apply fc_* fields', () => {
+		const description: string = gateway.paths[LB_TUPLE_PATH].patch.description;
+		expect(description).toMatch(/Other schema fields are not applied by this handler/);
+		expect(description).not.toMatch(/\bfc_/);
+	});
+
+	// The serializer never sends these. A new readOnly field fails here until it
+	// is added to READ_ONLY_SERVICE_ARGUMENTS, instead of being posted back.
+	it('READ_ONLY_SERVICE_ARGUMENTS is exactly the spec readOnly serviceArguments', () => {
+		const serviceArguments = gateway.definitions.LoadbalanceEntry.properties.serviceArguments.properties;
+		const readOnly = Object.entries<any>(serviceArguments).filter(([, schema]) => schema.readOnly).map(([name]) => name);
+		expect([...READ_ONLY_SERVICE_ARGUMENTS].sort()).toEqual(readOnly.sort());
+	});
+
+	// The admission form and serializer know these fields by name. A new fc_*
+	// field fails here until it is handled (a bound, a P/D-only flag, a control).
+	it('supported declared FC_FIELDS are exactly the spec writable fc_* serviceArguments', () => {
+		const serviceArguments = gateway.definitions.LoadbalanceEntry.properties.serviceArguments.properties;
+		const writable = Object.entries<any>(serviceArguments).filter(([name, schema]) => name.startsWith('fc_') && !schema.readOnly).map(([name]) => name);
+		// Optional controls may support a newer live /meta than this vendored baseline.
+		// Every writable field in the exact vendored source must still be supported.
+		expect(FC_FIELDS.filter(field => field in serviceArguments).sort()).toEqual(writable.sort());
+		for (const [name, max] of Object.entries(FC_NUMERIC_MAX)) {
+			expect(serviceArguments[name].maximum, `${name} maximum`).toBe(max);
+		}
+	});
 });
 
 describe('gateway management authentication response matrices', () => {
-	it('every protected main operation declares 401, 403, and 503', () => {
+	// Both exact producer contracts declare credential-store unavailability
+	// on capabilities; optional readiness remains represented in a 200 body.
+	const NO_503_BY_DESIGN = new Set<string>();
+
+	it('every protected main operation declares 401 and 403, and 503 unless exempt', () => {
 		for (const [pathName, pathItem] of Object.entries<any>(gateway.paths)) {
 			for (const method of ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']) {
 				const operation = pathItem[method];
 				if (!operation) continue;
 				const security = operation.security === undefined ? gateway.security : operation.security;
 				if (!Array.isArray(security) || security.length === 0) continue;
-				expect(operation.responses, `${method.toUpperCase()} ${pathName}`).toEqual(
+				const label = `${method.toUpperCase()} ${pathName}`;
+				expect(operation.responses, label).toEqual(
 					expect.objectContaining({'401': expect.anything(), '403': expect.anything()}),
 				);
-				expect(operation.responses['503'], `${method.toUpperCase()} ${pathName}`).toBeTruthy();
+				if (NO_503_BY_DESIGN.has(label)) {
+					// Pin the exemption in both directions: if the gateway ever
+					// does declare 503 here, the reasoning above is stale and
+					// the entry must go, not quietly widen.
+					expect(operation.responses['503'], `${label} is exempt from 503 — remove the exemption`).toBeUndefined();
+					continue;
+				}
+				expect(operation.responses, label).toEqual(expect.objectContaining({'503': expect.anything()}));
 			}
 		}
-		expect(gateway.paths['/config/ai/apikey'].post.responses['409']).toBeTruthy();
+		// Every exemption must name an operation that exists, or a rename
+		// leaves a dead entry silently excusing nothing.
+		for (const label of NO_503_BY_DESIGN) {
+			const [method, pathName] = label.split(' ');
+			expect(gateway.paths[pathName]?.[method.toLowerCase()], `${label} (exempt) is not in the spec`).toBeTruthy();
+		}
+		// Both corrected producers classify an imported-key hash collision as
+		// 409 while duplicate display names remain permitted.
+		expect(gateway.paths['/config/ai/apikey'].post.responses['409'].schema.$ref).toBe('#/definitions/Error');
 	});
 
 	it('every raw extras operation declares bearer auth and 401/403/503', () => {
-		expect(gatewayExtras.securityDefinitions.BearerAuth).toEqual(
-			expect.objectContaining({type: 'apiKey', name: 'Authorization', in: 'header'}),
+		expect(gatewayExtras.securityDefinitions).toEqual(
+			expect.objectContaining({
+				BearerAuth: expect.objectContaining({type: 'apiKey', name: 'Authorization', in: 'header'}),
+			}),
 		);
 		expect(gatewayExtras.security).toEqual([{BearerAuth: []}]);
 		for (const [pathName, pathItem] of Object.entries<any>(gatewayExtras.paths)) {
@@ -211,10 +303,10 @@ describe('gateway management authentication response matrices', () => {
 });
 
 describe('gateway spec hygiene', () => {
-	it('implemented metrics declare GET response schemas', () => {
+	it('declares every metrics operation as implemented', () => {
 		for (const p of Object.keys(gateway.paths).filter(p => p.startsWith('/metrics/'))) {
-			expect(gateway.paths[p].get.responses['200'].schema, p).toBeTruthy();
-			expect(gateway.paths[p].get['x-not-implemented'], p).not.toBe(true);
+			expect(gateway.paths[p].get, `${p} GET disappeared`).toBeTruthy();
+			expect(gateway.paths[p].get?.['x-not-implemented'], `${p} GET regressed to a stub`).not.toBe(true);
 		}
 	});
 });

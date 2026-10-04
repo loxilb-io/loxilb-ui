@@ -7,6 +7,13 @@
 import fs from 'fs';
 import path from 'path';
 import {buildLBDeleteKey, buildLBDeletePath} from '../../src/types/lb_identity';
+import type {RequestAllowance} from './consoleGuard';
+import {KvExactReadiness, kvExactVerdictFromCapabilities, kvExactVerdictFromRefusal} from './kvExactVerdict';
+
+// Re-exported so the specs keep importing the readiness type from the helper
+// they already use; the decision itself lives in ./kvExactVerdict so the
+// selftest project can drive it with no environment.
+export type {KvExactReadiness};
 
 // No default on purpose: the suite runs against a live OAM/gateway stack the
 // operator owns, so the address must come from the environment
@@ -154,6 +161,63 @@ export async function gwJson<T = any>(apiPath: string): Promise<T> {
 	const resp = await gw('GET', apiPath);
 	if (!resp.ok) throw new Error(`GET ${apiPath} failed: ${resp.status}`);
 	return (await resp.json()) as T;
+}
+
+//---------------------------------------------------------
+// Gateway auto-persist vs. the snapshot gate
+//---------------------------------------------------------
+// Every successful config mutation arms the gateway's auto-persist debounce
+// (pkg/snapshot/autopersist.go, 3 s quiet period). When it fires, the gateway
+// writes its running config to disk while holding the snapshot gate, and a
+// snapshot capture or restore arriving in that write is answered 409 "another
+// snapshot or restore operation is in progress" — by design, not a fault. A
+// spec that mutates config over the raw API and then captures or restores
+// must let that write land first, or it races it.
+const AUTO_PERSIST_QUIET_MS = 3000;
+
+/** Generation of the gateway's last persisted config (0 before the first). */
+export async function lastPersistGeneration(): Promise<number> {
+	// A not-ready gateway answers 503 with the same body.
+	const resp = await gw('GET', '/status/ready');
+	const body = await resp.json().catch(() => ({}));
+	return Number(body?.last_persist?.generation ?? 0);
+}
+
+/**
+ * `gw()` for a config mutation, returning only once the auto-persist it armed
+ * has written (the persist generation moved past its value before the call).
+ */
+export async function gwPersisted(method: string, apiPath: string, body?: unknown): Promise<Response> {
+	const before = await lastPersistGeneration();
+	const resp = await gw(method, apiPath, body);
+	if (resp.ok) {
+		const deadline = Date.now() + 20_000;
+		while ((await lastPersistGeneration()) <= before) {
+			if (Date.now() > deadline) {
+				throw new Error(`${method} ${apiPath}: no auto-persist within 20s (generation stuck at ${before}; is --config-auto-persist off?)`);
+			}
+			await new Promise(r => setTimeout(r, 250));
+		}
+	}
+	return resp;
+}
+
+/**
+ * Returns once no auto-persist is pending: the persist generation held still
+ * for longer than the debounce's quiet period, so nothing armed before this
+ * call is still waiting to write. For a spec's beforeAll, where the previous
+ * spec file's last mutation may still be in flight.
+ */
+export async function waitForAutoPersistIdle(): Promise<void> {
+	const deadline = Date.now() + 30_000;
+	let generation = await lastPersistGeneration();
+	for (;;) {
+		await new Promise(r => setTimeout(r, AUTO_PERSIST_QUIET_MS + 1500));
+		const now = await lastPersistGeneration();
+		if (now === generation) return;
+		if (Date.now() > deadline) throw new Error('gateway auto-persist never went idle within 30s');
+		generation = now;
+	}
 }
 
 /**
@@ -506,6 +570,53 @@ export async function sweepIpsecCerts(): Promise<number> {
 	return removed;
 }
 
+/**
+ * A rate-limit defaults ladder level with no row answers 404. That is the
+ * store ANSWERING, not failing — `query_get_ratelimit_defaults` and
+ * `query_get_ratelimit_defaults_for` both read it as "no row" — but the
+ * browser still logs it, on every visit to a page that reads the ladder of a
+ * gateway with no defaults configured.
+ */
+export const RATELIMIT_DEFAULTS_ABSENT: RequestAllowance = {status: 404, path: /\/config\/ai\/ratelimit\/defaults\/(global|rule)$/};
+
+/**
+ * What the AI management reads answer on a gateway that is NOT ready: the
+ * status the readiness probe itself got (401/403/503 identity or store), on
+ * the AI config family only. `null` when ready — a ready gateway gets no
+ * allowance, so a failure there is a defect.
+ */
+export function aiNotReadyAllowance(readiness: AIManagementReadiness): RequestAllowance | null {
+	return readiness.ready ? null : {status: readiness.status, path: /\/config\/ai\//};
+}
+
+/**
+ * The instance list health-probes EVERY registered instance (`GET /version`
+ * per instance, `query_instance_health`), and OAM answers 502 for an instance
+ * it cannot reach (504 on its timeout path). Which instances are dead is
+ * testbed state, so a page that probes them all needs this; a page that reads
+ * only the active instance must not.
+ */
+export const DEAD_INSTANCE_PROBE: RequestAllowance[] = [502, 504].map(status => ({status, path: /\/loxilbs\/\d+\/netlox\/v1\/version$/}));
+
+/** BGP reads answer 403 "loxilb BGP mode is disabled" on a gateway without BGP (measured live). */
+export const BGP_DISABLED: RequestAllowance = {status: 403, path: /\/netlox\/v1\/config\/bgp\//};
+
+/**
+ * ⚠️ A GATEWAY DEFECT, not a contract: with no BFD session running,
+ * `NetBFDGet` returns "bfd session not running" and the handler serves the
+ * empty list as `500 Internal service error`, not `200 {Attr: []}`. Remove
+ * this once the gateway answers an empty list.
+ */
+export const BFD_NONE_RUNNING_500: RequestAllowance = {status: 500, path: /\/netlox\/v1\/config\/bfd\/all$/};
+
+/**
+ * Signing out clears the token before it navigates away (`terminateSession`);
+ * a read scheduled in that window goes out without one and answers 401 — on
+ * whatever path was in flight, which is timing. The status is known; the
+ * path is not.
+ */
+export const SIGNED_OUT_READ_401: RequestAllowance = {status: 401, path: /./};
+
 export interface AIManagementReadiness {
 	ready: boolean;
 	status: number;
@@ -534,6 +645,89 @@ export async function gatewayAIManagementReadiness(): Promise<AIManagementReadin
 	};
 }
 
+/**
+ * Ask the gateway, on the record, whether it can admit vLLM KV-exact rules.
+ *
+ * Returns `null` when this gateway cannot answer — the endpoint is absent (an
+ * older build) or the capability is not in its list, which the contract defines
+ * as "this build does not know it", NOT as "not ready". Both send the caller to
+ * the legacy probe below.
+ */
+async function kvExactReadinessFromCapabilities(): Promise<KvExactReadiness | null> {
+	let resp: Response;
+	try {
+		resp = await gw('GET', '/status/capabilities');
+	} catch {
+		return null;
+	}
+	const bodyText = await resp.text().catch(() => '');
+	return kvExactVerdictFromCapabilities(resp.status, bodyText);
+}
+
+/**
+ * LEGACY fallback: learn readiness by attempting a write.
+ *
+ * ⚠️ Only reached on a gateway with no capability surface. Kept, rather than
+ * deleted with the string matching it contains, for one reason: the suite must
+ * stay honest against BOTH builds during the rollout. Deleting it would make
+ * the KV specs stand red on every not-yet-upgraded gateway for a reason no UI
+ * change can fix — which teaches the suite's readers to ignore red, the exact
+ * failure the gate exists to prevent. It is dead the day the fleet is on a build
+ * with `/status/capabilities`, and deleting it then is a one-function change.
+ *
+ * ⭐ THE SAFETY PROPERTY, unchanged: only a refusal that is positively about the
+ * server's launch environment yields `ready: false`. A 412 says so structurally.
+ * A 400 whose text names a launch-environment precondition says so by string
+ * match — the old, fragile road, now confined to old builds. Anything else — any
+ * other 400, any other status, a transport failure — returns `ready: true` so
+ * the spec RUNS and fails loudly, because a gate that swallowed unrecognised
+ * errors would hide the UI regressions it sits in front of.
+ */
+async function kvExactReadinessFromWriteProbe(): Promise<KvExactReadiness> {
+	const probe = {
+		serviceArguments: {
+			name: 'e2e-kv-readiness-probe', externalIP: '203.0.113.250', port: 8250,
+			protocol: 'tcp', sel: 0, mode: 4, model_name: 'Qwen/Qwen3-0.6B', kvExactMode: 3,
+		},
+		endpoints: [{endpointIP: '198.51.100.250', targetPort: 8250, weight: 1}],
+	};
+	let resp: Response;
+	try {
+		resp = await gw('POST', '/config/loadbalancer', probe);
+	} catch {
+		return {ready: true, reason: 'KV-exact readiness probe could not reach the Gateway'};
+	}
+	if (resp.ok) {
+		// Accepted — tear the probe back down and let the real cases run.
+		await gw('DELETE', `/config/loadbalancer/name/${encodeURIComponent(probe.serviceArguments.name)}`).catch(() => undefined);
+		return {ready: true, reason: 'Gateway accepts KV-exact rules'};
+	}
+	return kvExactVerdictFromRefusal(resp.status, await resp.text().catch(() => ''));
+}
+
+/**
+ * Whether this Gateway can accept a KV-exact rule at all.
+ *
+ * ⭐⭐ ASKS THE CONTRACT FIRST. `kvExactMode` has a runtime precondition that
+ * lives in the gateway's launch environment (`LLB_KV_NONE_HASH_SEED`, matching
+ * the engine's `PYTHONHASHSEED`), so on a gateway started without it every
+ * KV-exact create is refused whatever the client sends. That is now
+ * discoverable: `GET /status/capabilities` reports `kv_exact_vllm` with a
+ * boolean, a stable `reason_code` and the operator-facing sentence, produced by
+ * the same check admission performs.
+ *
+ * A UI spec cannot make an unprovisioned gateway serve KV-exact, and a red test
+ * that no code change can fix teaches the suite's readers to ignore red — so the
+ * KV cases skip, with the gateway's OWN words as the reason.
+ *
+ * ⚠️ The skip reason is now a QUOTE OF A CONTRACT FIELD rather than a guess
+ * derived from an error message. The write probe survives only for gateways with
+ * no capability surface; see kvExactReadinessFromWriteProbe.
+ */
+export async function gatewayKvExactReadiness(): Promise<KvExactReadiness> {
+	return (await kvExactReadinessFromCapabilities()) ?? (await kvExactReadinessFromWriteProbe());
+}
+
 /** Deletes every AI API key owned by an e2e- tenant (no-op unless the store is ready). */
 export async function sweepApiKeys(): Promise<number> {
 	const resp = await gw('GET', '/config/ai/apikey');
@@ -556,6 +750,76 @@ export async function sweepApiKeys(): Promise<number> {
 // ever matching the persistent RBAC fixtures (e2e_operator /
 // e2e_viewer) or the real admin.
 //---------------------------------------------------------
+//---------------------------------------------------------
+// AI JWT auth profiles (/config/ai/jwtauthprofile)
+//---------------------------------------------------------
+// Profiles are keyed by NAME, and DELETE takes that name in the path. The list
+// arrives wrapped as {jwtAuthProfileAttr: [...]}; a licence/auth failure answers
+// a JSON OBJECT instead, so every reader must tolerate a non-array.
+
+export const JWTPROFILE_PATH = '/config/ai/jwtauthprofile';
+
+export async function listJwtAuthProfiles(): Promise<any[]> {
+	const resp = await gw('GET', JWTPROFILE_PATH);
+	if (!resp.ok) return [];
+	const data = await resp.json();
+	const list = data?.jwtAuthProfileAttr;
+	return Array.isArray(list) ? list : [];
+}
+
+export async function gatewayJwtAuthReadiness(): Promise<AIManagementReadiness> {
+	const resp = await gw('GET', JWTPROFILE_PATH);
+	const reasons: Record<number, string> = {
+		401: 'Gateway management service identity is missing or invalid (HTTP 401)',
+		403: 'Gateway management service identity lacks permission (HTTP 403)',
+		404: 'Gateway predates the JWT bearer auth contract (HTTP 404)',
+		501: 'Gateway does not implement the JWT auth profile API (HTTP 501)',
+		503: 'Gateway JWT auth profile store is unconfigured or unavailable (HTTP 503)',
+	};
+	return {
+		ready: resp.ok,
+		status: resp.status,
+		reason: resp.ok ? 'Gateway JWT auth profile API is ready' : (reasons[resp.status] ?? `Unexpected Gateway JWT auth response (HTTP ${resp.status})`),
+	};
+}
+
+/**
+ * Whether the gateway exports the scrape-time JWKS keyset gauges (J3).
+ *
+ * ⚠️ Probed on `loxilb_ai_jwks_usable`, NOT on `loxilb_ai_jwks_refresh_total`.
+ * The refresh counter is a promauto vector whose children survive for the
+ * process lifetime, so a gateway with ZERO profiles configured still exports
+ * failure counters for profiles deleted days ago — a live gateway was observed
+ * in exactly that state. The gauges come from a scrape-time collector over
+ * LIVE profile state, which is what "does this gateway report keyset health"
+ * actually asks.
+ *
+ * Call it with the profile already created: with no profile configured the
+ * collector has nothing to report and a modern gateway answers false too.
+ */
+export async function gatewayExportsJwksGauges(): Promise<boolean> {
+	const resp = await gw('GET', '/metrics');
+	if (!resp.ok) return false;
+	return /^loxilb_ai_jwks_usable\{/m.test(await resp.text());
+}
+
+/**
+ * Remove every e2e-marked profile.
+ *
+ * ⚠️ A profile referenced by an LB rule is refused with 409, so LB rules must be
+ * swept FIRST or this leaves survivors. zz-cleanup orders them accordingly; a
+ * spec that seeds both must drop its rule before its profile.
+ */
+export async function sweepJwtAuthProfiles(): Promise<number> {
+	let removed = 0;
+	for (const p of await listJwtAuthProfiles()) {
+		if (!isE2eMarked(p.name)) continue;
+		const del = await gw('DELETE', `${JWTPROFILE_PATH}/${encodeURIComponent(p.name)}`);
+		if (del.ok) removed++;
+	}
+	return removed;
+}
+
 export interface OamUser {
 	id: number;
 	username: string;

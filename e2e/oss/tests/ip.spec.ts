@@ -25,7 +25,7 @@ const NEW_IP = '203.0.113.30/32';
 
 async function openEditFor(page: Page, rowText: string): Promise<void> {
 	await selectRowByText(page, rowText);
-	await openToolbarDialog(page, 'Mode', 'New IP Address');
+	await openToolbarDialog(page, 'Edit', 'New IP Address');
 	await expect(field(page, 'IP Address')).toBeVisible();
 }
 

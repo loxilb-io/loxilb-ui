@@ -4,6 +4,7 @@
 import DataTable from 'components/table/DataTable';
 import {IDataTableColumnDef} from 'types/global';
 import {IIPsecCACertificate, IIPsecCertificate} from 'types/ipsec';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Helpers
@@ -30,9 +31,10 @@ export function IPsecCertTable(props: {
 	onAdd?: () => void;
 	onDelete?: () => void;
 	onRefresh?: () => void;
+	state?: PageDataState<unknown>;
 	error?: boolean;
 }) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, state, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'name', header: 'Name', width: 'medium'},
@@ -63,6 +65,7 @@ export function IPsecCertTable(props: {
 			onAdd={onAdd}
 			onDelete={onDelete}
 			onRefresh={onRefresh}
+			state={state}
 			error={error}
 			hideCheckbox={true}
 		/>
@@ -76,9 +79,10 @@ export function IPsecCACertTable(props: {
 	onAdd?: () => void;
 	onDelete?: () => void;
 	onRefresh?: () => void;
+	state?: PageDataState<unknown>;
 	error?: boolean;
 }) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, state, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'name', header: 'Name', width: 'medium'},
@@ -107,6 +111,7 @@ export function IPsecCACertTable(props: {
 			onAdd={onAdd}
 			onDelete={onDelete}
 			onRefresh={onRefresh}
+			state={state}
 			error={error}
 			hideCheckbox={true}
 		/>

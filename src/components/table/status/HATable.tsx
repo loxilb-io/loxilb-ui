@@ -4,12 +4,13 @@
 import DataTable from 'components/table/DataTable';
 import {IDataTableColumnDef} from 'types/global';
 import {IVipConfiguration} from 'types/ha';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function HATable(props: {data: IVipConfiguration; selected_rows: number[]; onChangeSelectedRows: any; onEdit?: any; onRefresh?: any; error?: boolean}) {
-	const {data, selected_rows, onChangeSelectedRows, onEdit, onRefresh, error} = props;
+export default function HATable(props: {data: IVipConfiguration; selected_rows: number[]; onChangeSelectedRows: any; onEdit?: any; onRefresh?: any; state?: PageDataState<unknown>; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onEdit, onRefresh, state, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'instance', header: 'Instance', width: 'wide', tooltip: 'Name of the instance LoxiLB is running on'},
@@ -26,5 +27,5 @@ export default function HATable(props: {data: IVipConfiguration; selected_rows: 
 		};
 	});
 
-	return <DataTable name={'High Availability'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onEdit={onEdit} onRefresh={onRefresh} error={error} />;
+	return <DataTable name={'High Availability'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onEdit={onEdit} onRefresh={onRefresh} state={state} error={error} />;
 }

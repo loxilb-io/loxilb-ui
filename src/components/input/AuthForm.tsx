@@ -98,6 +98,7 @@ export default function AuthForm({onSubmit, loading, error, disabled = false}: I
 					label={t('Username')}
 					name="username"
 					autoComplete="username"
+					// eslint-disable-next-line jsx-a11y/no-autofocus -- deliberate: initial focus on the only actionable field of a dedicated login page
 					autoFocus
 					value={formData.username}
 					error={touched.username && !!errors.username}

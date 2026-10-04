@@ -11,6 +11,8 @@
 //   AI accordion gone (silent-drop fields), e2ehttps sends 2 and round-trips
 // - endpoint form: no tls-hello probe (422)
 // - flavor chip identifies the instance as loxilb
+// - LB create form: no /status/capabilities request, no slot-budget caption
+// - System page audit section: no /audit/* request (plain loxilb has none)
 //---------------------------------------------------------
 import {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
@@ -26,7 +28,7 @@ function field(page: Page, label: string, root?: Locator) {
 }
 
 function section(page: Page, title: string | RegExp): Locator {
-	return dialog(page).locator('.MuiAccordion-root').filter({has: page.locator('h6', {hasText: title})});
+	return dialog(page).locator('.MuiAccordion-root').filter({has: page.locator('.MuiAccordionSummary-content', {hasText: title})});
 }
 
 async function expandSection(page: Page, title: string | RegExp): Promise<Locator> {
@@ -75,8 +77,9 @@ test.describe('@loxilb flavor gating — plain upstream loxilb instance', () => 
 			await expect(menu.getByText(group, {exact: true}), `${group} group`).toBeVisible();
 		}
 		// Gateway-only groups collapse away entirely (AI Gateway, IPsec VPN,
-		// Security via both children gated, Maintenance via Snapshots).
-		for (const group of ['AI Gateway', 'IPsec VPN', 'Security', 'Maintenance']) {
+		// Security via both children gated, Maintenance via Snapshots,
+		// Observability via its group-level flavor gate).
+		for (const group of ['AI Gateway', 'IPsec VPN', 'Security', 'Maintenance', 'Observability']) {
 			await expect(menu.getByText(group, {exact: true}), `${group} group`).toHaveCount(0);
 		}
 		// Leaves inside mixed groups.
@@ -90,7 +93,7 @@ test.describe('@loxilb flavor gating — plain upstream loxilb instance', () => 
 
 	test('route: direct hit on a gated page shows the friendly state, not /404 or an error banner', async ({page, consoleGuard}) => {
 		const guard = await attachContractGuard(page);
-		for (const route of ['ai/apikey', 'ipsec/tunnels', 'security/ipfilter', 'network/ip6', 'maintenance/snapshots', 'traffic/sni-certs']) {
+		for (const route of ['ai/apikey', 'ai/profiles', 'ipsec/tunnels', 'security/ipfilter', 'network/ip6', 'maintenance/snapshots', 'traffic/sni-certs', 'observability/ai', 'observability/workers', 'observability/pdkv', 'observability/security', 'observability/qos', 'observability/persistence']) {
 			await page.goto(`instance/${route}?name=${instName}`, {waitUntil: 'domcontentloaded'});
 			await waitForLoxilbChip(page);
 			await expect(page.getByText('Not available on this instance'), route).toBeVisible({timeout: 15_000});
@@ -235,7 +238,7 @@ test.describe('@loxilb flavor gating — plain upstream loxilb instance', () => 
 			await expect(row).toBeVisible({timeout: 20_000});
 			const box = row.getByRole('checkbox');
 			if (!(await box.isChecked())) await box.check();
-			await openToolbarDialog(page, 'Mode', 'Edit Load Balancer Rule');
+			await openToolbarDialog(page, 'Edit', 'Edit Load Balancer Rule');
 		};
 		const captureMutations = () => {
 			const calls: string[] = [];
@@ -291,6 +294,20 @@ test.describe('@loxilb flavor gating — plain upstream loxilb instance', () => 
 		expect(rule?.serviceArguments?.inactiveTimeOut, 'earlier sa edit survived').toBe(120);
 	});
 
+	test('LB create form: never asks /status/capabilities and shows no source-check budget', async ({page}) => {
+		const capabilityReads: string[] = [];
+		page.on('request', rq => {
+			if (/\/status\/capabilities/.test(new URL(rq.url()).pathname)) capabilityReads.push(rq.url());
+		});
+		await page.goto(`instance/traffic/lb?name=${instName}`);
+		await waitForLoxilbChip(page);
+		await openToolbarDialog(page, 'Add', 'Add Load Balancer Rule');
+		const sources = await expandSection(page, /^Allowed Sources$/);
+		await expect(sources.getByText(/source-check slots free/)).toHaveCount(0);
+		await dialogButton(page, 'Cancel').click();
+		expect(capabilityReads).toEqual([]);
+	});
+
 	test('endpoint form: tls-hello probe option is absent', async ({page}) => {
 		await page.goto(`instance/traffic/endpoint?name=${instName}`);
 		await waitForLoxilbChip(page);
@@ -302,6 +319,19 @@ test.describe('@loxilb flavor gating — plain upstream loxilb instance', () => 
 		expect(probeOptions).not.toContain('TLS-HELLO');
 		await page.keyboard.press('Escape');
 		await dialogButton(page, 'Cancel').click();
+	});
+
+	test('System page audit section: explains the flavor and never asks for /audit/*', async ({page}) => {
+		const auditRequests: string[] = [];
+		page.on('request', rq => {
+			if (/\/audit\//.test(new URL(rq.url()).pathname)) auditRequests.push(rq.url());
+		});
+		await page.addInitScript(name => localStorage.setItem('system_audit_instance', JSON.stringify(name)), instName);
+		await page.goto('system');
+		// The flavor answer is the terminal state: by the time it renders, a
+		// gateway pick would already have issued its audit read.
+		await expect(page.getByText(/plain loxilb, which keeps no audit trail/)).toBeVisible({timeout: 20_000});
+		expect(auditRequests).toEqual([]);
 	});
 
 	test('instance card and breadcrumb identify the flavor', async ({page}) => {

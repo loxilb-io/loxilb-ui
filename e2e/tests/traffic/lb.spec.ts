@@ -18,7 +18,7 @@
 //---------------------------------------------------------
 import {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {activeInstance, gw, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
+import {activeInstance, gatewayKvExactReadiness, gw, KvExactReadiness, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
 import {confirmDelete, dialog, dialogButton, expectErrorAndDismiss, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 import {refreshUntilGone, refreshUntilRow, rowByText, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 import {lbRuleRowId} from '../../../src/types/lb_identity';
@@ -57,9 +57,11 @@ function field(page: Page, label: string, root?: Locator) {
 
 // AccordionBox wraps its summary in a Tooltip, and the tooltip text hijacks
 // the button's accessible name — so accordions are located by the visible
-// h6 title inside the summary, not by button name.
+// title inside the summary box, not by button name. ⚠️ Match the summary BOX,
+// never a tag: this filtered on `h6` until the theme stopped mapping
+// `subtitle2` onto one (src/theme.ts), which turned the whole LB tree red.
 function section(page: Page, title: string | RegExp): Locator {
-	return dialog(page).locator('.MuiAccordion-root').filter({has: page.locator('h6', {hasText: title})});
+	return dialog(page).locator('.MuiAccordion-root').filter({has: page.locator('.MuiAccordionSummary-content', {hasText: title})});
 }
 
 async function expandSection(page: Page, title: string | RegExp): Promise<Locator> {
@@ -159,10 +161,15 @@ function rowByStableId(page: Page, id: string): Locator {
 // Suite
 //---------------------------------------------------------
 let instName: string;
+// Whether this Gateway is launched for KV-exact routing at all — asked once via
+// GET /status/capabilities (see gatewayKvExactReadiness), consulted by the KV
+// case only.
+let kvReadiness: KvExactReadiness;
 
 test.describe('LB Rule page CRUD', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
+		kvReadiness = await gatewayKvExactReadiness();
 		await sweepLbRules();
 		await sweepFirewallRules();
 	});
@@ -312,8 +319,13 @@ test.describe('LB Rule page CRUD', () => {
 	});
 
 	test('@gw C-aigw-auth-policy: omission, disabled, and required remain distinct', async ({page}) => {
+		// ⚠️ The control is "Data-plane CREDENTIAL Policy", not "API Key Policy",
+		// and its first option is "Unmanaged (no policy)". Both were renamed when
+		// the JWT arc widened the enum past API keys; this spec kept the old
+		// names and had been red on main ever since, which is also why the read-
+		// only AIGatewayPanel was still using them (now aligned).
 		const cases = [
-			{label: 'Preserve / unmanaged', name: 'e2e-lb-auth-absent', vip: '203.0.113.71', expected: undefined},
+			{label: 'Unmanaged (no policy)', name: 'e2e-lb-auth-absent', vip: '203.0.113.71', expected: undefined},
 			{label: 'Disabled (strip header)', name: 'e2e-lb-auth-disabled', vip: '203.0.113.72', expected: 'disabled'},
 			{label: 'Required (enforce and strip)', name: 'e2e-lb-auth-required', vip: '203.0.113.73', expected: 'required'},
 		] as const;
@@ -324,7 +336,7 @@ test.describe('LB Rule page CRUD', () => {
 			await expandSection(page, ADVANCED);
 			await selectOption(page, 'Mode', 'fullproxy');
 			await expandSection(page, AIGW);
-			await selectOption(page, 'Data-plane API Key Policy', policy.label);
+			await selectOption(page, 'Data-plane Credential Policy', policy.label);
 			await addEndpoint(page, 0, `198.51.100.${71 + index}`, String(8471 + index));
 			const body = await submitCreate(page);
 			expect(body.serviceArguments.api_key_auth).toBe(policy.expected);
@@ -361,7 +373,7 @@ test.describe('LB Rule page CRUD', () => {
 		// Submitting the read-back form untouched is a true no-op. In particular,
 		// it must not synthesize an api_key_auth change or attempt the L4 PATCH route.
 		await selectRowByText(page, name);
-		await openToolbarDialog(page, 'Mode', 'Edit Load Balancer Rule');
+		await openToolbarDialog(page, 'Edit', 'Edit Load Balancer Rule');
 		await dialogButton(page, 'Update').click();
 		await expect(dialog(page).getByText('No changes to apply.')).toBeVisible();
 		await dialogButton(page, 'OK').click();
@@ -375,10 +387,10 @@ test.describe('LB Rule page CRUD', () => {
 		// delete-and-recreate behind the operator's back.
 		await refreshUntilRow(page, name);
 		await selectRowByText(page, name);
-		await openToolbarDialog(page, 'Mode', 'Edit Load Balancer Rule');
+		await openToolbarDialog(page, 'Edit', 'Edit Load Balancer Rule');
 		await expandSection(page, ADVANCED);
 		await expandSection(page, AIGW);
-		await selectOption(page, 'Data-plane API Key Policy', 'Disabled (strip header)');
+		await selectOption(page, 'Data-plane Credential Policy', 'Disabled (strip header)');
 		await dialogButton(page, 'Update').click();
 		await expect(dialog(page).getByText(/Fullproxy \(mode 4\) rules cannot be updated in place/)).toBeVisible();
 		await expectErrorAndDismiss(page);
@@ -425,6 +437,12 @@ test.describe('LB Rule page CRUD', () => {
 	});
 
 	test('@gw C-aigw-kv: CHWBL sel + KV-cache routing fields (boundary values)', async ({page}) => {
+		// See gatewayKvExactReadiness: a Gateway launched without
+		// LLB_KV_NONE_HASH_SEED refuses every KV-exact create regardless of what
+		// the UI sends, so this reports the Gateway's own verdict rather than
+		// standing red. The verdict is now read from the capability surface, so
+		// the skip reason is a contract field rather than a parsed error string.
+		test.skip(!kvReadiness.ready, kvReadiness.reason);
 		await openAddDialog(page);
 		await fillBasics(page, 'e2e-lb-kv', '203.0.113.53', '8446');
 		await expandSection(page, ADVANCED);
@@ -435,6 +453,12 @@ test.describe('LB Rule page CRUD', () => {
 		await setField(page, 'CHWBL Prefix Hash Flags', '1');
 		// Single-role is the only KV-exact topology valid on a role-less pool.
 		await selectOption(page, 'Topology', 'Single-role KV exact');
+		// The gateway admits no kvExactMode rule without model_name AND a
+		// loadable tokenizer for it (staged under /etc/loxilb/tokenizers/ or
+		// via a bound profile) — runtime admission, present since the pinned
+		// contract revision. Qwen3-0.6B is the testbed's staged model (the
+		// cicd KV scenario's KV_MODEL default).
+		await field(page, 'Model Name').fill('Qwen/Qwen3-0.6B');
 		await setField(page, 'KV Block Size', '1'); // boundary
 		await selectOption(page, 'KV Hash Override', 'xxhash_cbor');
 		await setField(page, 'KV ZMQ Port', '65535'); // boundary
@@ -446,6 +470,7 @@ test.describe('LB Rule page CRUD', () => {
 			sel: 8,
 			chwbl_prefix_hash_level: 2,
 			chwbl_prefix_hash_flags: 1,
+			model_name: 'Qwen/Qwen3-0.6B',
 			kvExactMode: 3,
 			kvBlockSize: 1,
 			kvHashAlgo: 'xxhash_cbor',
@@ -564,8 +589,9 @@ test.describe('LB Rule page CRUD', () => {
 	});
 
 	test('V-n3-proto: sel=n3 is UDP-only in the datapath — a TCP rule is refused and the refusal is surfaced', async ({page, consoleGuard}) => {
-		// The 400 is the subject of the test, not a defect.
-		consoleGuard.allow(/Failed to load resource.*400/);
+		// The 400 on the create is the subject of the test, not a defect —
+		// and the only failed request it may leave.
+		consoleGuard.allowRequest({status: 400, path: /\/netlox\/v1\/config\/loadbalancer$/});
 		// n3 is the 5G N3 (GTP-U) selector. sel=6 passes swagger validation and
 		// is then rejected by the datapath unless the rule is UDP:
 		//   400 {"result":"non-udp-n3-args error"}
@@ -623,7 +649,7 @@ test.describe('LB Rule page CRUD', () => {
 		await refreshUntilRow(page, 'e2e-lb-edit');
 
 		await selectRowByText(page, 'e2e-lb-edit');
-		await openToolbarDialog(page, 'Mode', 'Edit Load Balancer Rule'); // edit (pencil)
+		await openToolbarDialog(page, 'Edit', 'Edit Load Balancer Rule'); // edit (pencil)
 
 		// E-immutable: composite key + name are disabled in edit mode.
 		await expect(field(page, 'Rule Name')).toBeDisabled();

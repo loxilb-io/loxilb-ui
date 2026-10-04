@@ -5,6 +5,7 @@ import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IDataTableColumnDef} from 'types/global';
 import {ITenantRateLimitEntry} from 'types/ai';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -16,9 +17,10 @@ export default function TenantRateLimitTable(props: {
 	onAdd?: () => void;
 	onEdit?: () => void;
 	onRefresh?: () => void;
+	state?: PageDataState<unknown>;
 	error?: boolean;
 }) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onEdit, onRefresh, error} = props;
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onEdit, onRefresh, state, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'tenant_id', header: 'Tenant', width: 'wide'},
@@ -51,6 +53,7 @@ export default function TenantRateLimitTable(props: {
 			onAdd={onAdd}
 				onEdit={onEdit}
 				onRefresh={onRefresh}
+				state={state}
 				error={error}
 			/>
 		);

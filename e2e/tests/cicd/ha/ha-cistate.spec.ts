@@ -52,7 +52,7 @@ async function readCistate(): Promise<Cistate | null> {
 }
 
 function haEditButton(page: Page) {
-	return page.locator('[aria-label="Edit High Availability"] button');
+	return page.locator('button[aria-label="Edit High Availability"]');
 }
 
 async function openHaEdit(page: Page): Promise<void> {

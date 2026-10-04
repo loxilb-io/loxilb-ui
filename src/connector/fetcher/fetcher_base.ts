@@ -1,7 +1,9 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {forced_relocation_to_login, get_local_storage, move_404, move_403, move_402, move_500, move_503, move_cors, remove_local_storage} from 'common';
+import {get_local_storage, move_404, move_402, move_500, move_cors, remove_local_storage} from 'common';
+import {terminateSession} from 'session/session';
+import {getApiBaseUrl} from 'utils/apiProxy';
 
 //---------------------------------------------------------
 // Interfaces
@@ -15,17 +17,17 @@ export interface RequestOptions {
 // T is the expected 2xx JSON body shape — pass a generated type from
 // src/api (e.g. GwGetResp<'/config/loadbalancer/all'>). data is null when
 // the body is not parseable JSON, and may be an error body on non-2xx codes.
+// parse_failed distinguishes the two data:null cases: a genuinely
+// empty body (legit for 204/205 and bodyless-200 upserts) leaves it unset,
+// while a NON-empty body that failed to parse (truncated JSON, an HTML error
+// page served with a 2xx) sets it — that one must never look like success.
 export interface SimpleResponse<T = any> {
 	code: number;
 	data: T | null;
 	message: string;
 	headers?: Headers;
+	parse_failed?: boolean;
 }
-
-export type ApiResult = {
-	status: 'success' | 'error';
-	error?: string;
-};
 
 // Carries the HTTP status so react-query's retry predicate (which skips 404)
 // and a page's error handling can branch on the code.
@@ -42,22 +44,25 @@ export class ApiError extends Error {
 // Common Error Formatting Function
 //---------------------------------------------------------
 export function createDetailedErrorMessage(resp: any, operation: string): string {
-	const primaryMessage = resp.data?.result || resp.data?.message || resp.data?.error || resp.message || 'Unknown error';
+	// A 2xx with an unusable body has only its status text ("OK") to offer.
+	const primaryMessage = resp.parse_failed
+		? 'The response body could not be read'
+		: resp.data?.result || resp.data?.message || resp.data?.error || resp.message || 'Unknown error';
 
-	let message = primaryMessage + '.' + '\n\n';
-	message += `Operation is \[${operation}\].\n\n`;
-	message += `HTTP Code is \[${resp.code}\].\n\n`;
+	let message = primaryMessage + '.\n\n';
+	message += `Operation is [${operation}].\n\n`;
+	message += `HTTP Code is [${resp.code}].\n\n`;
 
 	if (resp.data?.fields) {
-		message += `Fields are : \[${JSON.stringify(resp.data.fields)}\].\n\n`;
+		message += `Fields are : [${JSON.stringify(resp.data.fields)}].\n\n`;
 	}
 
 	if (resp.data?.message && resp.data.message !== primaryMessage) {
-		message += `Message is \[${resp.data.message}\].\n\n`;
+		message += `Message is [${resp.data.message}].\n\n`;
 	}
 
 	if (resp.data?.result && resp.data.result !== primaryMessage) {
-		message += `Result is \[${resp.data.result}\].\n\n`;
+		message += `Result is [${resp.data.result}].\n\n`;
 	}
 
 	return message;
@@ -70,7 +75,11 @@ export function createDetailedErrorMessage(resp: any, operation: string): string
 // state and the page can show a "Couldn't load …" banner instead of "No rows"
 // 2xx (incl. 204 no-content) passes through untouched.
 export function assertOk(resp: SimpleResponse, operation: string): void {
-	if (resp.code >= 200 && resp.code < 300) return;
+	// A 2xx whose body could not be used is NOT success: every read maps
+	// `data: null` to "nothing there" (`resp.data?.xAttr ?? []`), so letting
+	// it through turns a failed read into an empty page. The status code is
+	// kept — the server did answer 2xx; it is the body that never arrived.
+	if (resp.code >= 200 && resp.code < 300 && !resp.parse_failed) return;
 	throw new ApiError(createDetailedErrorMessage(resp, operation), resp.code);
 }
 
@@ -97,19 +106,67 @@ export function remove_token() {
 	remove_local_storage('access_token');
 }
 
+const GATEWAY_PASSTHROUGH = /\/loxilbs\/\d+\/netlox\//;
+
+export type UnauthorizedVerdict = 'inline' | 'expire' | 'verify';
+
+/** OAM's own view of the session: the route the confirmation probe asks. */
+const SESSION_PROBE_PATH = '/users/me';
+
 /**
- * Decide whether a 401 invalidates the human's OAM browser session.
+ * Decide what a 401 means for the human's OAM browser session.
  *
  * X-Loxi-Error-Origin is trusted only as a response provenance marker added at
  * the OAM boundary. A Gateway-origin failure belongs to the management hop and
- * must remain inline. Missing or unknown markers retain the conservative
- * legacy behavior so older OAM versions do not leave an expired browser token
- * installed. Login failures are always inline.
+ * stays inline; an OAM-origin one ends the session. Login failures are always
+ * inline.
+ *
+ * Without a trusted marker a 401 cannot be attributed. OAM relays Gateway
+ * statuses on more than the pass-through (a snapshot taken while the Gateway
+ * refuses OAM's management credential answers 401 on an OAM route), and OAMs
+ * that predate the marker relay them bare. Ending the session on that guess
+ * signed operators out a second after every login — so it is 'verify': ask
+ * OAM, which is the authority on its own session. Only a 401 from the probe
+ * route itself needs no second opinion.
  */
-export function shouldExpireOAMSession(response: Response, url: string): boolean {
-	if (/\/login(?:\b|\/)/.test(url)) return false;
+export function classifyUnauthorized(response: Response, url: string): UnauthorizedVerdict {
+	if (/\/login(?:\b|\/)/.test(url)) return 'inline';
 	const origin = response.headers.get('X-Loxi-Error-Origin')?.trim().toLowerCase();
-	return origin !== 'gateway';
+	if (origin === 'gateway') return 'inline';
+	if (origin === 'oam') return 'expire';
+	return new URL(url, window.location.href).pathname.endsWith(SESSION_PROBE_PATH) ? 'expire' : 'verify';
+}
+
+// One probe per token: a page's parallel pass-through reads all answer 401 at
+// once, and they share the one answer.
+let sessionProbe: {token: string; answer: Promise<boolean>} | null = null;
+
+/**
+ * Asks OAM whether `token` is still a live session. Only an explicit 401 from
+ * OAM counts as "ended": a probe that cannot complete proves nothing, and the
+ * token's own expiry timer and the next OAM-native request remain in force.
+ */
+function oamSessionEnded(token: string): Promise<boolean> {
+	if (sessionProbe?.token === token) return sessionProbe.answer;
+	const answer = fetch(`${getApiBaseUrl()}${SESSION_PROBE_PATH}`, {method: 'GET', headers: {Accept: 'application/json', Authorization: `Bearer ${token}`}})
+		.then(resp => resp.status === 401)
+		.catch(() => false);
+	sessionProbe = {token, answer};
+	return answer;
+}
+
+/** Test seam only — forgets the cached probe so cases cannot leak into each other. */
+export function __resetSessionProbe(): void {
+	sessionProbe = null;
+}
+
+async function endSessionIfOAMConfirms(token: string): Promise<void> {
+	// A request sent without a token has no session to ask about.
+	if (token && !(await oamSessionEnded(token))) return;
+	// A new login while the probe was in flight is a different session; the
+	// verdict was about the token that was sent.
+	if (load_token() !== token) return;
+	await terminateSession('revoked');
 }
 
 async function fetch_data(url: string, options?: RequestOptions): Promise<Response> {
@@ -151,7 +208,13 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 		// (e.g. 501 Not Implemented, or 404) would otherwise take down the whole
 		// UI instead of letting the feature page degrade to an empty / inline
 		// error state. OAM control-plane failures still redirect as before.
-		const isGatewayPassthrough = typeof url === 'string' && /\/loxilbs\/\d+\/netlox\//.test(url);
+		const isGatewayPassthrough = typeof url === 'string' && GATEWAY_PASSTHROUGH.test(url);
+		// Mutations must fail INLINE: their non-2xx flows through the
+		// OpResult adapter into a localized dialog. The legacy full-app
+		// redirects here discarded the operator's open form (proven live: a 500
+		// on an instance PUT ejected the app to /500 mid-dialog). Reads keep
+		// the redirect behavior until standardizes page states.
+		const isMutation = mergedOptions.method !== 'GET';
 		// OAM snapshot endpoints surface failures INLINE (error banner /
 		// verbatim error popup / wizard error panel) — snapshots are
 		// user-deletable rows, so a stale action (another session removed the
@@ -161,36 +224,32 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 		const isInlineErrorEndpoint = typeof url === 'string' && /\/oam\/(snapshots\/|instances\/[^/]+\/snapshot)/.test(url);
 		// if (resp.status === 401 || resp.status === 403) {
 		if (resp.status === 401) {
-			if (shouldExpireOAMSession(resp, url)) {
-				remove_token();
-				forced_relocation_to_login();
-			}
+			// One idempotent teardown for the whole app. N parallel
+			// queries can all answer 401 at once; the old code called the
+			// relocation helper once per response and leaned on a
+			// "already on /login?" guard to hide the duplicates, while the
+			// persisted query cache survived either way.
+			// A management-hop 401 is not the human's OAM session ending; an
+			// unattributed one is settled by asking OAM (classifyUnauthorized).
+			const verdict = classifyUnauthorized(resp, url);
+			if (verdict === 'expire') void terminateSession('revoked');
+			else if (verdict === 'verify') void endSessionIfOAMConfirms(access_token);
 			return resp;
 		} else if (resp.status === 403) {
 			// Forbidden - user is authenticated but lacks permission or action is forbidden
 			// Return response so caller can handle the error message
 			return resp;
-		} else if (resp.status === 402) move_402();
+		} else if (resp.status === 402) {
+			// Dead license branch for reads only — a 402 on a mutation (the
+			// gateway license-gates AI writes) maps to denied in the adapter.
+			if (!isMutation) move_402();
+		}
 		else if (resp.status === 404) {
-			if (!isGatewayPassthrough && !isInlineErrorEndpoint) move_404();
-		}
-		else if (resp.status === 503) {
-			if (!isGatewayPassthrough && !isInlineErrorEndpoint) move_503();
-		}
-		else if (resp.status >= 500 && resp.status < 600 && resp.status !== 502 && resp.status !== 503) {
-			if (!isGatewayPassthrough && !isInlineErrorEndpoint) {
-				const resp_json = await resp.json();
-				const code = resp.status;
-				const message = resp_json.message || resp.statusText;
-				const result = resp_json.result || '';
-
-				// Filter for "not running" messages and redirect to move_503
-				if (message.includes('not running') || result.includes('not running')) {
-					move_503(code, message);
-				} else {
-					move_500(code, message);
-				}
-			}
+			// The one redirect a read keeps (user decision). "This
+			// resource does not exist" is an answer about the route the operator
+			// asked for, not about one panel on the page — a 404 page is the
+			// honest destination, and there is no stale content worth staying on.
+			if (!isMutation && !isGatewayPassthrough && !isInlineErrorEndpoint) move_404();
 		}
 
 		return resp;
@@ -207,6 +266,7 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 				move_cors();
 			} else {
 				// For network failures, don't redirect - let React Query handle retries
+				// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 				console.warn('Network request failed:', error.message);
 			}
 		} else {
@@ -219,19 +279,48 @@ async function fetch_data(url: string, options?: RequestOptions): Promise<Respon
 async function handle_response<T = any>(response: any): Promise<SimpleResponse<T>> {
 	try {
 		const cc = response.clone();
-		const resp_json = await cc.json();
-		return {
-			code: response.status,
-			data: resp_json,
-			message: response.statusText || resp_json.result,
-			headers: response.headers
-		};
+		const text = await cc.text();
+		// Empty body: legitimate for 204/205 and bodyless-200 mutations — not
+		// a parse failure. data stays null, parse_failed stays unset.
+		if (text.trim() === '') {
+			return {
+				code: response.status,
+				data: null,
+				message: response.statusText,
+				headers: response.headers
+			};
+		}
+		try {
+			const resp_json = JSON.parse(text);
+			return {
+				code: response.status,
+				data: resp_json,
+				message: response.statusText || resp_json.result,
+				headers: response.headers
+			};
+		} catch {
+			// Non-empty but unparseable (truncated JSON, HTML error page on a
+			// 2xx): flag it so the OpResult adapter maps it to `failed` instead
+			// of the legacy silent success ( parse-swallow defect).
+			return {
+				code: response.status,
+				data: null,
+				message: response.statusText,
+				headers: response.headers,
+				parse_failed: true
+			};
+		}
 	} catch (error) {
+		// The body stream itself could not be read (cut off mid-transfer, e.g.
+		// a reload aborting it after the headers arrived). For the caller that
+		// is the same as a body that would not parse: flag it, or it reads as
+		// an empty success.
 		return {
 			code: response.status,
 			data: null,
 			message: response.statusText,
-			headers: response.headers
+			headers: response.headers,
+			parse_failed: true
 		};
 	}
 }
@@ -309,6 +398,7 @@ export async function UPLOAD_FILE(url: string, file: File, additionalData?: Reco
 		
 		return await handle_response(response);
 	} catch (error: any) {
+		// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 		console.error('Upload file error:', error);
 		throw error;
 	}
@@ -394,6 +484,7 @@ export async function DOWNLOAD_FILE(url: string): Promise<{blob: Blob, filename:
 			// Check if the response is actually a file
 			const contentType = response.headers.get('Content-Type');
 			if (contentType && contentType.includes('text/html')) {
+				// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 				console.error('Received HTML instead of file - likely a routing error or authentication issue');
 				return undefined;
 			}
@@ -416,9 +507,11 @@ export async function DOWNLOAD_FILE(url: string): Promise<{blob: Blob, filename:
 			const blob = await response.blob();
 			return { blob, filename };
 		} else {
+			// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 			console.error('Download failed:', response.status, response.statusText);
 		}
 	} catch (error) {
+		// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 		console.error('Download file error:', error);
 	}
 	

@@ -6,12 +6,13 @@ import DataTable from 'components/table/DataTable';
 import {useInstanceName} from 'hooks/query/instanceHook';
 import {ICtData} from 'types/conn_track';
 import {IDataTableColumnDef} from 'types/global';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function ConntrackTable(props: {data: ICtData; selected_rows: number[]; onChangeSelectedRows: any; onRefresh?: any; error?: boolean}) {
-	const {data, selected_rows, onChangeSelectedRows, onRefresh, error} = props;
+export default function ConntrackTable(props: {data: ICtData; selected_rows: number[]; onChangeSelectedRows: any; onRefresh?: any; state?: PageDataState<unknown>; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onRefresh, state, error} = props;
 
 	const inst_name = useInstanceName();
 
@@ -73,5 +74,5 @@ export default function ConntrackTable(props: {data: ICtData; selected_rows: num
 	// The row id is a synthetic hash of the 5-tuple (see getHashKey) — an internal
 	// key, not an operator-facing identifier. Showing it only rendered a truncated
 	// 10-digit number, so hide it and give the width to Act.
-	return <DataTable name={'Connection Track'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onRefresh={onRefresh} error={error} hideCheckbox={true} hideIdColumn={true} />;
+	return <DataTable name={'Connection Track'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onRefresh={onRefresh} state={state} error={error} hideCheckbox={true} hideIdColumn={true} />;
 }

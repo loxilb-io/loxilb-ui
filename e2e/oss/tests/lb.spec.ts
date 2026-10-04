@@ -67,7 +67,7 @@ function field(page: Page, label: string, root?: Locator) {
 // the button's accessible name — so accordions are located by the visible
 // h6 title inside the summary, not by button name.
 function section(page: Page, title: string | RegExp): Locator {
-	return dialog(page).locator('.MuiAccordion-root').filter({has: page.locator('h6', {hasText: title})});
+	return dialog(page).locator('.MuiAccordion-root').filter({has: page.locator('.MuiAccordionSummary-content', {hasText: title})});
 }
 
 async function expandSection(page: Page, title: string | RegExp): Promise<Locator> {

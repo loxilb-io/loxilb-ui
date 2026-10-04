@@ -37,11 +37,16 @@ export function useSnapshotSchedule(instanceId: number | undefined) {
 // Invalidates every snapshot query of one instance (all pages + schedule).
 // Call after any mutation — including a failed restore commit, which still
 // creates a pre_restore row.
+//
+// Cancels first: while a query has no data yet, React Query answers an
+// invalidate with the fetch already in flight, which was issued before the
+// mutation — a snapshot taken during the page's first load would never show.
 export function useInvalidateSnapshots(instanceId: number | undefined) {
 	const queryClient = useQueryClient();
-	return useCallback(() => {
+	return useCallback(async () => {
 		if (instanceId === undefined) return;
-		queryClient.invalidateQueries({queryKey: ['oam', 'snapshots', instanceId]});
-		queryClient.invalidateQueries({queryKey: snapshotScheduleQueryKey(instanceId)});
+		const keys = [['oam', 'snapshots', instanceId], snapshotScheduleQueryKey(instanceId)];
+		await Promise.all(keys.map(queryKey => queryClient.cancelQueries({queryKey})));
+		await Promise.all(keys.map(queryKey => queryClient.invalidateQueries({queryKey})));
 	}, [queryClient, instanceId]);
 }

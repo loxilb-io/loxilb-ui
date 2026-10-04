@@ -7,12 +7,13 @@ import {useInstanceName} from 'hooks/query/instanceHook';
 import {t} from 'i18next';
 import {IDataTableColumnDef} from 'types/global';
 import {IPolicyConfiguration, qosAttachmentLabel, qosTargetUrl} from 'types/qos';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function QoSTable(props: {data: IPolicyConfiguration; selected_rows: number[]; onChangeSelectedRows: any; onAdd?: any; onDelete?: any; onRefresh?: any; error?: boolean}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
+export default function QoSTable(props: {data: IPolicyConfiguration; selected_rows: number[]; onChangeSelectedRows: any; onAdd?: any; onDelete?: any; onRefresh?: any; state?: PageDataState<unknown>; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, state, error} = props;
 
 	const inst_name = useInstanceName();
 
@@ -52,5 +53,5 @@ export default function QoSTable(props: {data: IPolicyConfiguration; selected_ro
 	   })()
 	   : undefined;
 
-	return <DataTable name={'QoS'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onRefresh={onRefresh} error={error} hideCheckbox={true} />;
+	return <DataTable name={'QoS'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onRefresh={onRefresh} state={state} error={error} hideCheckbox={true} />;
 }

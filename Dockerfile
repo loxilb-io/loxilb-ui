@@ -43,6 +43,14 @@ ARG REACT_APP_API_URL=/api/oam
 ARG REACT_APP_PUBLIC_URL=/netlox
 ENV REACT_APP_API_URL=${REACT_APP_API_URL}
 ENV REACT_APP_PUBLIC_URL=${REACT_APP_PUBLIC_URL}
+# CSP: the served pages must need no inline <script> — the certified policy has
+# no script-src 'unsafe-inline', so an inlined CRA runtime chunk would blank
+# every page. Kept in sync with .env.production (CI has an agreement gate);
+# stated here as well because a build could otherwise silently regress if the
+# dotenv file went missing (dotenv-cli proceeds without it).
+ENV INLINE_RUNTIME_CHUNK=false
+# No source maps in release images.
+ENV GENERATE_SOURCEMAP=false
 RUN npm run build:prod
 
 # ---- Runtime stage: serve the built SPA with nginx ----
@@ -65,6 +73,10 @@ COPY nginx.conf /etc/nginx/nginx.conf
 COPY nginx-app.conf.template   /etc/nginx/templates/app.conf.template
 COPY nginx-http.conf.template  /etc/nginx/templates/http.conf.template
 COPY nginx-https.conf.template /etc/nginx/templates/https.conf.template
+
+# Security headers (incl. the CSP). Not a template — nothing to substitute —
+# so it is copied straight to where the rendered configs include it from.
+COPY nginx-security-headers.conf /etc/nginx/snippets/security-headers.conf
 
 COPY ssl-setup.sh /usr/local/bin/ssl-setup.sh
 COPY docker-entrypoint.sh /docker-entrypoint.sh

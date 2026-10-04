@@ -9,11 +9,13 @@ one.
 | <img width="30px" src="https://avatars.githubusercontent.com/u/76096751">  | [SeokHwan Kong](https://github.com/NLX-SeokHwanKong) |  Netlox   |
 | <img width="30px" src="https://avatars.githubusercontent.com/u/88170638">  | [Baekgyun Jung](https://github.com/backguynn)        |  Netlox   |
 | <img width="30px" src="https://avatars.githubusercontent.com/u/75723069">  | [Inho Gog (Renhao Chu)](https://github.com/inhogog2) |  Netlox   |
+| <img width="30px" src="https://avatars.githubusercontent.com/u/328939390"> | [loxilb-devel](https://github.com/loxilb-devel)      |  LoxiLB   |
 
 <!--
   Keep this list in sync with .github/CODEOWNERS. When adding or removing a maintainer, update both
   files and grant/revoke the corresponding GitHub write access. Confirm the roster for loxilb-ui
   specifically — it is seeded from the LoxiLB Maintainer Council and may differ.
+
 -->
 
 If any person or organization wants to become a maintainer of loxilb-ui, please review the

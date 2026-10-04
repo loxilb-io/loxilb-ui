@@ -5,6 +5,7 @@ import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IDataTableColumnDef} from 'types/global';
 import {IIPsecTunnel} from 'types/ipsec';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Helpers
@@ -28,9 +29,10 @@ export default function IPsecTunnelTable(props: {
 	onEdit?: () => void;
 	onDelete?: () => void;
 	onRefresh?: () => void;
+	state?: PageDataState<unknown>;
 	error?: boolean;
 }) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onEdit, onDelete, onRefresh, error} = props;
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onEdit, onDelete, onRefresh, state, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'name', header: 'Name', width: 'medium'},
@@ -68,6 +70,7 @@ export default function IPsecTunnelTable(props: {
 			onEdit={onEdit}
 			onDelete={onDelete}
 			onRefresh={onRefresh}
+			state={state}
 			error={error}
 			hideCheckbox={true}
 		/>

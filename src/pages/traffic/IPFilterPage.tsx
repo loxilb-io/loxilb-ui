@@ -18,6 +18,7 @@ import {t} from 'i18next';
 import {Fragment, useRef, useState, useMemo} from 'react';
 import React from 'react';
 import {IIPFilterEntry} from 'types/security';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Detail Panel Component
@@ -60,7 +61,9 @@ function DetailPanel(props: {entry: IIPFilterEntry}) {
 //---------------------------------------------------------
 export default function IPFilterPage() {
 	const inst = useInstanceFromURL();
-	const {data, isError, refetch} = useIPFilterRules(inst);
+	const ipfilter_query = useIPFilterRules(inst);
+	const {data, refetch} = ipfilter_query;
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	const entries: IIPFilterEntry[] = data ?? [];
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds hash ids
@@ -98,7 +101,7 @@ export default function IPFilterPage() {
 		});
 
 		const results = await Promise.all(deletePromises);
-		const failures = results.filter(res => res.status === 'error');
+		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
 			openPopUp(t('Success'), t('Deleted {{count}} rule(s) successfully.', {count: selectedItems.length}), t('OK'));
@@ -111,7 +114,7 @@ export default function IPFilterPage() {
 			setTimeout(() => refetch(), 1000);
 		} else {
 			// All failed
-			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: failures[0].error}), t('OK'));
+			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: t(failures[0].localeKey)}), t('OK'));
 		}
 	};
 
@@ -137,11 +140,11 @@ export default function IPFilterPage() {
 				if (!formRef.current) return;
 
 				const res = await request_create_ipfilter_rule(inst, formRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('IP filter rule added successfully.'), t('OK'));
 					setTimeout(() => refetch(), 1000);
 				} else {
-					openPopUp(t('Error'), t('Failed to add. {{error}}', {error: res.error}), t('OK'));
+					openPopUp(t('Error'), t('Failed to add. {{error}}', {error: t(res.localeKey)}), t('OK'));
 				}
 			},
 			true,
@@ -162,7 +165,7 @@ export default function IPFilterPage() {
 				onAdd={handleAdd}
 				onDelete={selected_rows.length > 0 ? handleDelete : undefined}
 				onRefresh={handleRefresh}
-				error={isError}
+				state={toPageState(ipfilter_query, {op: 'ip_filter.list'})}
 			/>
 			{selectedItem && (
 				<LowerSection>

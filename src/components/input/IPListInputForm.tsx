@@ -7,14 +7,14 @@ import AccordionBox from 'components/element/AccordionBox';
 import ParamBox from 'components/element/ParamBox';
 import SimpleButton from 'components/element/SimpleButton';
 import {t} from 'i18next';
-import {useState, useEffect} from 'react';
+import {ReactNode, useState, useEffect} from 'react';
 import {IAllowedSource, ISecondaryIP} from 'types/load_balancer';
 
 //---------------------------------------------------------
 // Component
 //---------------------------------------------------------
 export function SecondaryIPListInputForm(props: {values: ISecondaryIP[]; onChange: (values: ISecondaryIP[]) => void; description?: string}) {
-	const {values, onChange, description} = props;
+	const {values, onChange} = props;
 
    const [ip_list, set_ip_list] = useState<string[]>(() => (Array.isArray(values) ? values.map(v => v?.secondaryIP ?? '') : []));
 
@@ -67,8 +67,8 @@ export function SecondaryIPListInputForm(props: {values: ISecondaryIP[]; onChang
    );
 }
 
-export function AllowedSourcesListInputForm(props: {values: IAllowedSource[]; onChange: (values: IAllowedSource[]) => void; description?: string}) {
-	const {values, onChange, description} = props;
+export function AllowedSourcesListInputForm(props: {values: IAllowedSource[]; onChange: (values: IAllowedSource[]) => void; description?: string; notice?: ReactNode}) {
+	const {values, onChange} = props;
 
    const [ip_list, set_ip_list] = useState<string[]>(() => (Array.isArray(values) ? values.map(v => v?.prefix ?? '') : []));
 
@@ -102,6 +102,7 @@ export function AllowedSourcesListInputForm(props: {values: IAllowedSource[]; on
    return (
 	   <AccordionBox title={t('Allowed Sources')} tooltip={"Define the list of allowed source IP addresses for this Load Balancer"}>
 		   <Stack spacing={2}>
+			   {props.notice}
 			   <Stack spacing={2}>
 				   {ip_list.map((item, index) => (
 					   <Box border={'1px solid #ccc'} borderRadius={2} padding={2} key={index}>

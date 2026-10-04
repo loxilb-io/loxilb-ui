@@ -72,6 +72,7 @@ export default function UserEditModal(props: UserEditModalProps) {
 		} catch (error) {
 			// Error is already handled by parent component (UserManagementPage)
 			// Just need to prevent the error from bubbling up further
+			// eslint-disable-next-line no-console -- deliberate operator-visible log on a failure/edge path; listed in the expected-console-message catalogue
 			console.error('User update failed:', error);
 		}
 	};
@@ -130,7 +131,7 @@ export default function UserEditModal(props: UserEditModalProps) {
 								color="secondary"
 								onClick={handleSubmit}
 								disabled={!isFormValid || loading}
-								startIcon={loading ? <CircularProgress size={16} /> : undefined}
+								startIcon={loading ? <CircularProgress size={16} aria-label={t('Loading...')} /> : undefined}
 								sx={{ minWidth: 120 }}
 							>
 								{loading

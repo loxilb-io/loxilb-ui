@@ -11,8 +11,11 @@ import {t} from 'i18next';
 export default function PieChartWithTitle(props: {title?: string; data: PieValueType[]}) {
 	const {title, data} = props;
 
+	// No fixed width: the chart fills its container. It used to be a hard 230px,
+	// so a row of three inside a card narrower than ~700px overflowed and the
+	// card's overflow:hidden silently swallowed the third chart — a metric
+	// vanishing rather than shrinking.
 	const pie_param = {
-		width: 230,
 		height: 200,
 		margin: {right: 5},
 		slotProps: {legend: {hidden: true}},
@@ -33,7 +36,7 @@ export default function PieChartWithTitle(props: {title?: string; data: PieValue
 	// const colors = [...chart_color.slice(0, processedData.length - 1), '#E0E0E0'];
 
 	return (
-		<Box flexGrow={1} gap={2} display="flex" flexDirection="column" alignItems="center">
+		<Box flexGrow={1} minWidth={0} width="100%" gap={2} display="flex" flexDirection="column" alignItems="center">
 			{title && (
 				<Typography variant="subtitle2" color="text.secondary">
 					{title}

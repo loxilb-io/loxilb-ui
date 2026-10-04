@@ -1,8 +1,11 @@
 import {describe, expect, it} from 'vitest';
 import {
+	declaredFcFields,
 	allowedAIHashes,
-	credentialPolicyPatch,
 	effectiveAIHash,
+	FC_FIELDS,
+	FC_NUMERIC_MAX,
+	isAIService,
 	hasRequiredApiKeyPolicy,
 	isAIEngineChange,
 	resolveAIEngine,
@@ -186,6 +189,28 @@ describe('AI Gateway validation matrix', () => {
 		expect(issueFields(configuration({kvEngineType: 'sglang', kvHashAlgo: 'sha256_cbor'}))).toContain('kvHashAlgo');
 	});
 
+	it('rejects CHWBL prefix hash settings on a non-CHWBL selector, admits them under sel chwbl (F-CHWBL)', () => {
+		// The gateway silently drops these fields off sel 8/10 (verified live);
+		// the form must refuse instead of losing operator input.
+		expect(issueFields(configuration({chwbl_prefix_hash_level: 2}))).toContain('chwbl_prefix_hash_level');
+		expect(issueFields(configuration({sel: 0, chwbl_prefix_hash_flags: 3}))).toContain('chwbl_prefix_hash_level');
+		expect(validateAIConfiguration(configuration({sel: 8, chwbl_prefix_hash_level: 2, chwbl_prefix_hash_flags: 3}))).toEqual([]);
+		// The level dropdown's "Not set" placeholder ('') is a form artifact,
+		// never operator intent — no issue on any selector.
+		expect(validateAIConfiguration(configuration({chwbl_prefix_hash_level: '' as unknown as number}))).toEqual([]);
+	});
+
+	it('strips unset/placeholder CHWBL fields from the wire and keeps real ones (F-CHWBL)', () => {
+		const stripped = serializeAIConfiguration(configuration({chwbl_prefix_hash_level: '' as unknown as number})).serviceArguments;
+		expect('chwbl_prefix_hash_level' in stripped).toBe(false);
+		expect('chwbl_prefix_hash_flags' in stripped).toBe(false);
+
+		const kept = serializeAIConfiguration(configuration({sel: 8, chwbl_prefix_hash_level: 2, chwbl_prefix_hash_flags: 0})).serviceArguments;
+		expect(kept.chwbl_prefix_hash_level).toBe(2);
+		// Flags 0 is a REAL value (empty bitmask), not "unset".
+		expect(kept.chwbl_prefix_hash_flags).toBe(0);
+	});
+
 	it('enforces Swagger bounds for AI numeric fields that are sent', () => {
 		const fields = issueFields(configuration(
 			{
@@ -239,6 +264,45 @@ describe('AI Gateway wire serialization', () => {
 		expect(unmanaged.serviceArguments).not.toHaveProperty('api_key_auth');
 		expect(disabled.serviceArguments.api_key_auth).toBe('disabled');
 		expect(required.serviceArguments.api_key_auth).toBe('required');
+	});
+
+	// The two JWT modes and their profile reference. Every case below mirrors
+	// a row of the gateway's own pairing matrix in
+	// pkg/loxinet/rules_jwtprofile_test.go, because the failure mode is a 400
+	// on save rather than anything the type system can catch.
+	it('carries the profile with a JWT mode', () => {
+		for (const mode of ['jwt', 'apikey-or-jwt'] as const) {
+			const payload = serializeAIConfiguration(configuration({api_key_auth: mode, jwt_auth_profile: 'realm-a'}));
+			expect(payload.serviceArguments.api_key_auth).toBe(mode);
+			expect(payload.serviceArguments.jwt_auth_profile).toBe('realm-a');
+		}
+	});
+
+	// A non-JWT mode carrying a profile is REFUSED upstream
+	// (ErrJwtProfileNotApplicable) — an unmanaged rule included, because the
+	// dangling reference would block that profile's deletion for a rule that
+	// can never consult it.
+	it('never sends a profile on a mode that cannot consult it', () => {
+		for (const mode of ['disabled', 'required', undefined] as const) {
+			const payload = serializeAIConfiguration(configuration({api_key_auth: mode, jwt_auth_profile: 'realm-a'}));
+			expect(payload.serviceArguments).not.toHaveProperty('jwt_auth_profile');
+		}
+	});
+
+	// "mode change away from jwt drops reference": switching to a non-JWT mode
+	// must OMIT the field, which is what drops the old reference. Sending an
+	// empty string instead would be a present-but-empty profile, and the
+	// gateway refuses a non-JWT mode that carries one.
+	it('drops the reference by omission when the mode moves away from JWT', () => {
+		const payload = serializeAIConfiguration(configuration({api_key_auth: 'required', jwt_auth_profile: ''}));
+		expect(payload.serviceArguments).not.toHaveProperty('jwt_auth_profile');
+		expect(payload.serviceArguments.api_key_auth).toBe('required');
+	});
+
+	it('strips the profile from non-fullproxy rules along with the rest of the AI surface', () => {
+		const payload = serializeAIConfiguration(configuration({mode: 0, api_key_auth: 'jwt', jwt_auth_profile: 'realm-a'}));
+		expect(payload.serviceArguments).not.toHaveProperty('jwt_auth_profile');
+		expect(payload.serviceArguments).not.toHaveProperty('api_key_auth');
 	});
 
 	it('strips API-key policy from non-fullproxy rules independently of streaming and topology', () => {
@@ -313,43 +377,138 @@ describe('AI Gateway wire serialization', () => {
 	});
 });
 
- describe('JWT credential policy wire contract', () => {
-  it('preserves both exact JWT policies and their configured profile references', () => {
-   for (const policy of ['jwt', 'apikey-or-jwt'] as const) {
-    const value=configuration({api_key_auth:policy,jwt_auth_profile:'test-profile'});
-    const payload=serializeAIConfiguration(value);
-    expect(payload.serviceArguments.api_key_auth).toBe(policy);
-    expect(payload.serviceArguments.jwt_auth_profile).toBe('test-profile');
-    expect(validateAIConfiguration(value).filter(issue=>issue.field==='jwt_auth_profile')).toEqual([]);
-    expect(validateAIConfiguration(configuration({api_key_auth:policy})).some(issue=>issue.field==='jwt_auth_profile')).toBe(true);
-   }
-  });
-  it('strips JWT policy and profile together outside fullproxy', () => {
-   const payload=serializeAIConfiguration(configuration({mode:1,api_key_auth:'jwt',jwt_auth_profile:'test-profile'}));
-   expect(payload.serviceArguments).not.toHaveProperty('api_key_auth');
-   expect(payload.serviceArguments).not.toHaveProperty('jwt_auth_profile');
-  });
- });
+//---------------------------------------------------------
+// Capacity admission gate (fc_*)
+//---------------------------------------------------------
+const pdEndpoints = [endpoint({ep_role: 1}), endpoint({endpointIP: '10.0.0.11', ep_role: 2})];
+const sse = (fc: Partial<IServiceArguments> = {}) => configuration({sse_mode: true, ...fc});
+const pd = (fc: Partial<IServiceArguments> = {}) => configuration({pd_disagg_mode: true, ...fc}, pdEndpoints);
+const wire = (config: IServiceConfiguration) => serializeAIConfiguration(config).serviceArguments as unknown as Record<string, unknown>;
+const fcKeys = (config: IServiceConfiguration) => Object.keys(wire(config)).filter(key => key.startsWith('fc_')).sort();
 
-describe('credential policy selection and omission', () => {
- it('existing and newly entered JWT profiles are omitted together when selecting preserve', () => {
-  for (const jwt_auth_profile of ['configured-profile','new-profile']) {
-   const existing=configuration({api_key_auth:'jwt',jwt_auth_profile});
-   const preserved={...existing,serviceArguments:{...existing.serviceArguments,...credentialPolicyPatch('')}};
-   expect(validateAIConfiguration(preserved).filter(issue=>issue.field==='jwt_auth_profile')).toEqual([]);
-   const payload=serializeAIConfiguration(preserved);
-   expect(payload.serviceArguments).not.toHaveProperty('api_key_auth');
-   expect(payload.serviceArguments).not.toHaveProperty('jwt_auth_profile');
-  }
- });
- it('serialization also drops a stale hidden profile when policy is omitted', () => {
-  const payload=serializeAIConfiguration(configuration({jwt_auth_profile:'stale-profile'}));
-  expect(payload.serviceArguments).not.toHaveProperty('api_key_auth');
-  expect(payload.serviceArguments).not.toHaveProperty('jwt_auth_profile');
- });
- it('explicit non-JWT choices clear the profile and JWT choice keeps the configured reference', () => {
-  for (const policy of ['disabled','required']) expect(credentialPolicyPatch(policy)).toEqual({api_key_auth:policy,jwt_auth_profile:''});
-  for (const policy of ['jwt','apikey-or-jwt']) expect(credentialPolicyPatch(policy)).toEqual({api_key_auth:policy});
-  expect(()=>credentialPolicyPatch('unknown')).toThrow();
- });
+describe('isAIService (the gateway aiGwModeFor predicate)', () => {
+	it('is true for a fullproxy rule with SSE, P/D, or a credential policy other than disabled', () => {
+		expect(isAIService({mode: 4, sse_mode: true})).toBe(true);
+		expect(isAIService({mode: 4, pd_disagg_mode: true})).toBe(true);
+		for (const policy of ['required', 'jwt', 'apikey-or-jwt'] as const) expect(isAIService({mode: 4, api_key_auth: policy})).toBe(true);
+	});
+
+	it('is false for an explicit disabled policy, no policy, or a non-fullproxy rule', () => {
+		expect(isAIService({mode: 4, api_key_auth: 'disabled'})).toBe(false);
+		expect(isAIService({mode: 4})).toBe(false);
+		expect(isAIService({mode: 0, sse_mode: true})).toBe(false);
+	});
+});
+
+describe('admission serialization (blank is omitted, never 0 or null)', () => {
+	it('sends no fc_* key when the group is untouched, blank, or cleared', () => {
+		expect(fcKeys(sse())).toEqual([]);
+		expect(fcKeys(sse({fc_mode: '' as any, fc_adaptive: '' as any, fc_max_outstanding: undefined, fc_max_queue_depth: null as any}))).toEqual([]);
+	});
+
+	it('sends exactly what was declared, and keeps an explicit 0 (reset to the process default)', () => {
+		const body = wire(sse({fc_mode: 'observe', fc_max_outstanding: 64, fc_max_queue_depth: 8, fc_max_queue_wait_ms: 2000, fc_warmup_ms: 0}));
+		expect(Object.fromEntries(Object.entries(body).filter(([key]) => key.startsWith('fc_')))).toEqual({
+			fc_mode: 'observe', fc_max_outstanding: 64, fc_max_queue_depth: 8, fc_max_queue_wait_ms: 2000, fc_warmup_ms: 0,
+		});
+	});
+
+	it('never sends the read-only fc_effective, whatever the rule shape', () => {
+		const fc_effective = {mode: 'observe', inflight: 3, queued: 1, source: {mode: 'rule'}} as any;
+		for (const config of [sse({fc_effective}), pd({fc_effective}), configuration({mode: 0, fc_effective}), configuration({fc_effective})]) {
+			expect(wire(config)).not.toHaveProperty('fc_effective');
+		}
+	});
+
+	it('drops the P/D-only fields on a rule that is not P/D, and keeps them on P/D', () => {
+		const pdOnly = {fc_prefill_max_inflight: 4, fc_decode_max_inflight: 8, fc_telemetry_stale_ms: 500};
+		expect(fcKeys(sse({...pdOnly, fc_max_outstanding: 64}))).toEqual(['fc_max_outstanding']);
+		expect(fcKeys(pd(pdOnly))).toEqual(['fc_decode_max_inflight', 'fc_prefill_max_inflight', 'fc_telemetry_stale_ms']);
+	});
+
+	it('drops every fc_* on a rule with no admission pool (no gate reads them there)', () => {
+		expect(fcKeys(configuration({fc_mode: 'enforce', fc_max_outstanding: 64}))).toEqual([]);
+		expect(fcKeys(configuration({api_key_auth: 'disabled', fc_max_outstanding: 64}))).toEqual([]);
+		expect(fcKeys(configuration({mode: 0, fc_max_outstanding: 64}))).toEqual([]);
+	});
+});
+
+describe('admission validation (mirrors the gateway refusals)', () => {
+	it('accepts every numeric field at 0 and at its maximum', () => {
+		const atMax = Object.fromEntries(Object.entries(FC_NUMERIC_MAX)) as Partial<IServiceArguments>;
+		expect(issueFields(pd(atMax))).toEqual([]);
+		const atZero = Object.fromEntries(Object.keys(FC_NUMERIC_MAX).map(key => [key, 0])) as Partial<IServiceArguments>;
+		expect(issueFields(pd(atZero))).toEqual([]);
+	});
+
+	it('refuses each numeric field one above its maximum, below 0, fractional, or as unparsed text', () => {
+		for (const [field, max] of Object.entries(FC_NUMERIC_MAX)) {
+			for (const bad of [max + 1, -1, 1.5, '12x']) {
+				// Pair the queue fields so only the value under test is wrong.
+				const pair = field === 'fc_max_queue_depth' ? {fc_max_queue_wait_ms: 1} : {};
+				expect(issueFields(pd({...pair, [field]: bad} as any)), `${field}=${bad}`).toEqual([field]);
+			}
+		}
+	});
+
+	it('requires a queue wait above 0 whenever a depth above 0 is declared', () => {
+		expect(issueFields(sse({fc_max_queue_depth: 8}))).toEqual(['fc_max_queue_wait_ms']);
+		expect(issueFields(sse({fc_max_queue_depth: 8, fc_max_queue_wait_ms: 0}))).toEqual(['fc_max_queue_wait_ms']);
+		expect(issueFields(sse({fc_max_queue_depth: 8, fc_max_queue_wait_ms: 1}))).toEqual([]);
+		// Depth 0 resets to the process default: no window needed.
+		expect(issueFields(sse({fc_max_queue_depth: 0}))).toEqual([]);
+	});
+
+	it('refuses a mode or adaptive word the gateway does not know', () => {
+		expect(issueFields(sse({fc_mode: 'strict' as any}))).toEqual(['fc_mode']);
+		expect(issueFields(sse({fc_adaptive: 'auto' as any}))).toEqual(['fc_adaptive']);
+		expect(issueFields(sse({fc_mode: 'inherit', fc_adaptive: 'inherit'}))).toEqual([]);
+	});
+
+	it('does not block on fields the form hides: P/D-only on non-P/D, any fc_* without a pool', () => {
+		expect(issueFields(sse({fc_prefill_max_inflight: '12x' as any}))).toEqual([]);
+		expect(issueFields(configuration({fc_max_outstanding: '12x' as any}))).toEqual([]);
+	});
+
+	it('treats a declared admission field on a non-fullproxy rule as AI configuration, but not inherit', () => {
+		expect(issueFields(configuration({mode: 0, fc_max_outstanding: 64}))).toEqual(['mode']);
+		expect(issueFields(configuration({mode: 0, fc_mode: 'inherit', fc_adaptive: 'inherit'}))).toEqual([]);
+	});
+
+	it('lists every writable spec field and nothing read-only', () => {
+		expect([...FC_FIELDS].sort()).toEqual([
+			'fc_adaptive', 'fc_decode_max_inflight', 'fc_ep_max_inflight', 'fc_expose_headers', 'fc_max_outstanding', 'fc_max_queue_depth',
+			'fc_max_queue_wait_ms', 'fc_mode', 'fc_prefill_max_inflight', 'fc_telemetry_stale_ms', 'fc_tenant_max_share_pct',
+			'fc_ttft_target_ms', 'fc_warmup_ms',
+		]);
+	});
+});
+
+describe('declaredFcFields (what this gateway\'s /meta offers)', () => {
+	it('keeps only the fields the live /meta declares, and never fc_effective', () => {
+		const got = declaredFcFields({fc_max_queue_depth: {type: 'integer'}, fc_max_queue_wait_ms: {type: 'integer'}, fc_effective: {}, name: {}});
+		expect([...got].sort()).toEqual(['fc_max_queue_depth', 'fc_max_queue_wait_ms']);
+	});
+
+	it('declares nothing when /meta has not loaded or predates admission', () => {
+		expect(declaredFcFields(undefined).size).toBe(0);
+		expect(declaredFcFields({}).size).toBe(0);
+	});
+});
+
+ describe('admission response header declaration', () => {
+	it('preserves declared modes, omits blank input, and rejects unknown modes', () => {
+		for (const mode of ['on', 'off', 'inherit'] as const) {
+			const config = configuration({sse_mode: true, fc_expose_headers: mode});
+			expect(serializeAIConfiguration(config).serviceArguments.fc_expose_headers).toBe(mode);
+			expect(validateAIConfiguration(config)).toEqual([]);
+		}
+		expect(serializeAIConfiguration(configuration({sse_mode: true, fc_expose_headers: '' as any})).serviceArguments).not.toHaveProperty('fc_expose_headers');
+		expect(validateAIConfiguration(configuration({sse_mode: true, fc_expose_headers: 'always' as any})).map(issue => issue.field)).toContain('fc_expose_headers');
+		expect(serializeAIConfiguration(configuration({mode: 0, fc_expose_headers: 'on'})).serviceArguments).not.toHaveProperty('fc_expose_headers');
+	});
+	it('requires a live field declaration', () => {
+		expect(declaredFcFields({fc_expose_headers: {type: 'string'}}).has('fc_expose_headers')).toBe(true);
+		expect(declaredFcFields({}).has('fc_expose_headers')).toBe(false);
+	});
 });

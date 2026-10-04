@@ -20,6 +20,7 @@ export default function Footer(props: {variant?: 'light' | 'dark'}) {
 	return (
 		<Box
 			id="footer"
+			component="footer"
 			width="100%"
 			height="32px"
 			display="flex"
@@ -32,7 +33,7 @@ export default function Footer(props: {variant?: 'light' | 'dark'}) {
 		>
 			{variant === 'dark' ? (
 				<Link href="https://netlox.io" target="_blank" rel="noopener noreferrer" underline="none">
-					<Box component="img" src={Logo} height="14px" />
+					<Box component="img" src={Logo} alt="NetLOX" height="14px" />
 				</Link>
 			) : (
 				<Box />

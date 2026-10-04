@@ -3,6 +3,16 @@
 //---------------------------------------------------------
 import {Box, Button, Paper, Typography} from '@mui/material';
 import {get_local_storage, save_local_storage} from 'common';
+import {useInstanceCapabilities} from 'hooks/query/flavorHook';
+import {dashboardLayoutKey, PREFERENCE_KEYS} from 'preferences';
+import {applicableGwSummaryCards, BASE_DASHBOARD_LAYOUT, defaultLayoutFor, reconcileDashboardLayout} from './dashboardLayout';
+import {
+	GwActiveStreamsCard,
+	GwAiEventsCard,
+	GwKvExactCard,
+	GwPersistenceCard,
+	GwWorkerFreshnessCard,
+} from 'components/card/GatewaySummaryCards';
 import RealTimeRateCard from 'components/card/RealTimeRateCard';
 import CriticalMetricCard from 'components/card/CriticalMetricCard';
 import HealthStatusCard from 'components/card/HealthStatusCard';
@@ -13,21 +23,33 @@ import SystemUsageCard from 'components/card/SystemUsageCard';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useInstanceHealth} from 'hooks/query/healthHook';
 import {t} from 'i18next';
-import {useEffect, useState, useMemo} from 'react';
+import {useEffect, useState} from 'react';
 import RGL, {Layout, WidthProvider} from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
+import {Alert, AlertTitle, CircularProgress} from '@mui/material';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
 // Measured grid: fills the viewport instead of the old hard-coded 1200px
 // column that left dead space on wide NOC displays.
 const ResponsiveGrid = WidthProvider(RGL);
-import {Alert, AlertTitle, CircularProgress} from '@mui/material';
-import RefreshIcon from '@mui/icons-material/Refresh';
 
-// Versioned so the fix for the compaction-reflow bug (gap-free default + no
-// auto-compaction) supersedes any already-corrupted layout persisted under the
-// old `layout` key — stale saves floated the log card above the rate cards.
-const LAYOUT_STORAGE_KEY = 'dashboard_layout_v2';
+// Layout persistence is per-flavor (`dashboard_layout_v3:<flavor>`) with the
+// old global v2 key kept as a READ-ONLY migration source: a saved v2 layout
+// seeds the first v3 open of each flavor, and the old length-equality check
+// is replaced by key-set reconciliation so adding a card amends a saved
+// layout instead of silently resetting it (see `reconcileDashboardLayout`).
+const LEGACY_LAYOUT_KEY = PREFERENCE_KEYS.dashboardLayoutLegacy;
+
+function readStoredLayout(key: string): unknown {
+	const raw = get_local_storage(key);
+	if (!raw) return undefined;
+	try {
+		return JSON.parse(raw);
+	} catch {
+		return undefined;
+	}
+}
 
 //---------------------------------------------------------
 // Functional Component
@@ -39,7 +61,25 @@ export default function DashboardPage() {
 	const {health, isLoading: healthLoading, refetch: refreshHealth} = useInstanceHealth(inst, true);
 	const isInstanceDown = health?.isHealthy === false;
 
+	// While the /version probe is unresolved (or no instance is selected) the
+	// layout must be neither read nor persisted — a denied or in-flight probe
+	// must not adopt the wrong flavor's saved geometry, and a save made in
+	// that window would land under a flavor the operator never chose. The
+	// same resolution drives the card set: gateway summary panels mount only
+	// on a PROVEN gateway flavor (registry-checked), so no gateway-only
+	// telemetry request can leave for an OSS or unresolved instance.
+	const capabilities = useInstanceCapabilities();
+	const resolvedFlavor = capabilities.resolved ? capabilities.flavor : undefined;
+
 	// RealTimeRateCard components will handle their own metrics fetching and time series accumulation
+
+	const GW_CARD_COMPONENTS: Record<string, JSX.Element> = {
+		'gw-ai-events': <GwAiEventsCard instance={inst} />,
+		'gw-active-streams': <GwActiveStreamsCard instance={inst} />,
+		'gw-worker-freshness': <GwWorkerFreshnessCard instance={inst} />,
+		'gw-kv-exact': <GwKvExactCard instance={inst} />,
+		'gw-persistence': <GwPersistenceCard instance={inst} />,
+	};
 
 	const CARD_CONFIG = [
 		// === SYSTEM OVERVIEW ===
@@ -60,57 +100,55 @@ export default function DashboardPage() {
 
 		// === SYSTEM LOGS AND DIAGNOSTICS ===
 		{key: 'system-log', component: <SystemLogCard />},
+
+		// === GATEWAY SUMMARY (registry-composed, gateway flavor only) ===
+		...applicableGwSummaryCards(resolvedFlavor).map(c => ({key: c.key, component: GW_CARD_COMPONENTS[c.key]})),
 	];
 
-	// Rows are contiguous with NO vertical gaps: row 2 (h 1.3) ends at y 3.3, the
-	// rate row (h 1) ends at 4.3, the log row starts there. A gappy layout used to
-	// let react-grid-layout's vertical compaction reflow the full-width log card
-	// above the rate cards; the grid below now runs with compaction OFF, so items
-	// stay exactly where they're placed and this must already be gap-free.
-	const DEFAULT_LAYOUT: Layout[] = [
-		// === ROW 1: SYSTEM OVERVIEW ===
-		{i: 'system-usage', x: 0, y: 0, w: 8, h: 2}, // System usage metrics
-		{i: 'ha', x: 8, y: 0, w: 4, h: 2}, // High Availability status
-
-		// === ROW 2: CRITICAL METRICS ===
-		{i: 'connection-flows', x: 0, y: 2, w: 4, h: 1.3}, // Connection tracking
-		{i: 'health-status', x: 4, y: 2, w: 4, h: 1.3}, // Endpoint health
-		{i: 'lb-rules', x: 8, y: 2, w: 4, h: 1.3}, // Load balancer rules
-
-		// === ROW 3: REAL-TIME TRAFFIC MONITORING ===
-		{i: 'total-traffic-rate', x: 0, y: 3.3, w: 4, h: 1}, // Total traffic rate
-		{i: 'total-packet-rate', x: 4, y: 3.3, w: 4, h: 1}, // Total packet rate
-		{i: 'total-error-rate', x: 8, y: 3.3, w: 4, h: 1}, // Total error rate
-
-		// === ROW 4: SYSTEM LOGS AND DIAGNOSTICS ===
-		{i: 'system-log', x: 0, y: 4.3, w: 12, h: 2}, // System logs
-	];
+	// Rows are contiguous with NO vertical gaps (the geometry, and the reason it
+	// must stay gap-free, live in dashboardLayout.ts next to the gateway rows
+	// that chain off its end).
+	const DEFAULT_LAYOUT = BASE_DASHBOARD_LAYOUT as Layout[];
 
 	const [layout, set_layout] = useState<Layout[] | null>(null);
 
+	const storageKey = resolvedFlavor ? dashboardLayoutKey(resolvedFlavor) : null;
+	// The flavor's gap-free default: shared base plus the registry-applicable
+	// gateway summary rows.
+	const FLAVOR_DEFAULT_LAYOUT = defaultLayoutFor(DEFAULT_LAYOUT, resolvedFlavor);
+
 	const handleLayoutChange = (newLayout: any) => {
 		set_layout(newLayout);
-		save_local_storage(LAYOUT_STORAGE_KEY, JSON.stringify(newLayout));
+		if (storageKey) save_local_storage(storageKey, JSON.stringify(newLayout));
 	};
 
 	const handleClick = () => {
-		set_layout(DEFAULT_LAYOUT);
-		save_local_storage(LAYOUT_STORAGE_KEY, JSON.stringify(DEFAULT_LAYOUT));
+		set_layout(FLAVOR_DEFAULT_LAYOUT);
+		if (storageKey) save_local_storage(storageKey, JSON.stringify(FLAVOR_DEFAULT_LAYOUT));
 	};
 
 	useEffect(() => {
-		try {
-			const saved_layout = get_local_storage(LAYOUT_STORAGE_KEY);
-			if (saved_layout) {
-				const parsed_layout = JSON.parse(saved_layout);
-				if (parsed_layout.length !== DEFAULT_LAYOUT.length) throw new Error('Invalid layout length');
-				set_layout(parsed_layout);
-			} else set_layout(DEFAULT_LAYOUT);
-		} catch (error) {
-			console.error('Failed to load layout:', error);
-			set_layout(DEFAULT_LAYOUT);
+		if (!storageKey) {
+			// Unresolved flavor: render the in-memory base defaults (the narrow
+			// set), persist nothing.
+			set_layout(defaultLayoutFor(DEFAULT_LAYOUT, undefined));
+			return;
 		}
-	}, []);
+		// v3 for this flavor, else the global v2 as a read-only migration
+		// source, reconciled against the current card key set either way (the
+		// key-set reconciliation is also what folds the gateway summary cards
+		// into a layout saved before they existed — amended, never reset).
+		const stored = readStoredLayout(storageKey) ?? readStoredLayout(LEGACY_LAYOUT_KEY);
+		const {layout: reconciled, changed} = reconcileDashboardLayout(stored, defaultLayoutFor(DEFAULT_LAYOUT, resolvedFlavor));
+		set_layout(reconciled);
+		// Persist only when reconciliation amended something or a v2 layout
+		// was migrated — an untouched default needs no stored copy, and the v2
+		// value itself is never rewritten or deleted.
+		if (stored !== undefined && (changed || readStoredLayout(storageKey) === undefined)) {
+			save_local_storage(storageKey, JSON.stringify(reconciled));
+		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- DEFAULT_LAYOUT is a stable per-render literal; re-running on its identity would re-read storage every render
+	}, [storageKey, resolvedFlavor]);
 
 	// Show error state if instance is down
 	if (isInstanceDown) {
@@ -127,7 +165,7 @@ export default function DashboardPage() {
 					variant="outlined"
 					onClick={() => refreshHealth()}
 					disabled={healthLoading}
-					startIcon={healthLoading ? <CircularProgress size={16} /> : <RefreshIcon />}
+					startIcon={healthLoading ? <CircularProgress size={16} aria-label={t('Loading...')} /> : <RefreshIcon />}
 				>
 					{healthLoading ? t('Checking...') : t('Recheck Health')}
 				</Button>
@@ -139,8 +177,8 @@ export default function DashboardPage() {
 	if (inst && health === null && healthLoading) {
 		return (
 			<Box width="100%" height="100%" display="flex" flexDirection="column" alignItems="center" justifyContent="center" padding="40px">
-				<CircularProgress size={48} sx={{ mb: 3 }} />
-				<Typography variant="h6" gutterBottom>
+				<CircularProgress size={48} sx={{ mb: 3 }} aria-label={t('Checking Instance Status...')} />
+				<Typography variant="h6" component="p" gutterBottom>
 					{t('Checking Instance Status...')}
 				</Typography>
 				<Typography variant="body2" color="text.secondary" textAlign="center">
@@ -153,7 +191,7 @@ export default function DashboardPage() {
 	return (
 		<Box width="100%" height="100%">
 			<Box display="flex" gap="20px" marginLeft="10px">
-				<Typography variant="h5">{t('Dashboard')}</Typography>
+				<Typography variant="h5" component="h2">{t('Dashboard')}</Typography>
 				<Button color="secondary" variant="outlined" size="small" onClick={handleClick}>
 					{t('Reset Layout')}
 				</Button>

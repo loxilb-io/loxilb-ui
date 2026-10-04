@@ -1,4 +1,5 @@
-import {IEndpoint, IServiceArguments, IServiceConfiguration} from './load_balancer';
+import type {GwSchema} from 'api';
+import {IEndpoint, IServiceArguments, IServiceConfiguration, KvExactApiMode, requiresJwtProfile} from './load_balancer';
 
 export type AIEngine = NonNullable<IServiceArguments['kvEngineType']>;
 export type AIHashAlgorithm = NonNullable<IServiceArguments['kvHashAlgo']>;
@@ -24,6 +25,75 @@ const HASHES_BY_ENGINE: Record<AIEngine, readonly AIHashAlgorithm[]> = {
 	llamacpp: [],
 };
 
+//---------------------------------------------------------
+// Capacity admission gate (fc_*)
+//---------------------------------------------------------
+// Bounds mirror the gateway's validateFcGateFields / validateFcQueueFields
+// (every numeric field is 0..max; 0 or omission leaves the process default in
+// force). The gateway is the authority; these only keep a request that is
+// certain to be refused inside the browser.
+export const FC_NUMERIC_MAX = {
+	fc_max_outstanding: 100000,
+	fc_ep_max_inflight: 100000,
+	fc_prefill_max_inflight: 100000,
+	fc_decode_max_inflight: 100000,
+	fc_max_queue_depth: 65536,
+	fc_max_queue_wait_ms: 3600000,
+	fc_telemetry_stale_ms: 3600000,
+	fc_warmup_ms: 3600000,
+	fc_ttft_target_ms: 3600000,
+	fc_tenant_max_share_pct: 100,
+} as const;
+export type FcNumericField = keyof typeof FC_NUMERIC_MAX;
+const FC_NUMERIC_FIELDS = Object.keys(FC_NUMERIC_MAX) as FcNumericField[];
+
+const FC_MODES = ['off', 'observe', 'enforce', 'inherit'] as const;
+const FC_ADAPTIVE = ['on', 'off', 'inherit'] as const;
+
+/** Writable admission fields. fc_effective is read-only and not among them. */
+export const FC_FIELDS: readonly (keyof IServiceArguments)[] = ['fc_mode', 'fc_adaptive', 'fc_expose_headers', ...FC_NUMERIC_FIELDS];
+
+/**
+ * The admission fields this instance's gateway declares in its own `/meta`.
+ *
+ * ⚠️ The vendored spec says what the NEWEST gateway accepts, not this one. An
+ * older gateway answers 200 to a create carrying a field it does not know and
+ * drops it, so a field offered without this check can be "saved" with no effect
+ * and no error (seen live: a build with only the queue pair stored
+ * fc_max_queue_depth and discarded fc_mode). `params` is the live /meta
+ * `serviceArguments` field map; a field it omits is not offered.
+ */
+export function declaredFcFields(params: Record<string, unknown> | undefined): ReadonlySet<keyof IServiceArguments> {
+	return new Set(FC_FIELDS.filter(field => params?.[field] !== undefined));
+}
+
+/** Fields that act only on a P/D pool (prefill/decode legs, the P/D scorers). */
+export const FC_PD_ONLY_FIELDS: readonly FcNumericField[] = ['fc_prefill_max_inflight', 'fc_decode_max_inflight', 'fc_telemetry_stale_ms'];
+
+/**
+ * serviceArguments the gateway declares `readOnly`: returned on GET, ignored on
+ * input, so never sent. Pinned against the vendored spec in
+ * src/api/contract.test.ts — a new readOnly field fails that test until it is
+ * listed here.
+ */
+export const READ_ONLY_SERVICE_ARGUMENTS: readonly (keyof IServiceArguments)[] = ['fc_effective'];
+
+/**
+ * Whether the gateway runs AI-gateway accounting — and so an admission pool —
+ * for this rule. The gateway's one definition (aiGwModeFor): a fullproxy rule
+ * with sse_mode, pd_disagg_mode, or a credential policy other than disabled.
+ * An explicit `disabled` does not count; neither does an unset policy.
+ */
+export function isAIService(args: Pick<IServiceArguments, 'mode' | 'sse_mode' | 'pd_disagg_mode' | 'api_key_auth'>): boolean {
+	if (args.mode !== 4) return false;
+	return Boolean(args.sse_mode) || Boolean(args.pd_disagg_mode) || (!!args.api_key_auth && args.api_key_auth !== 'disabled');
+}
+
+/** A form value that stands for "nothing declared": omitted on the wire. */
+function isFcBlank(value: unknown): boolean {
+	return value === undefined || value === null || value === '';
+}
+
 const AI_ONLY_FIELDS: readonly (keyof IServiceArguments)[] = [
 	'model_name',
 	'api_key_auth',
@@ -48,6 +118,9 @@ const AI_ONLY_FIELDS: readonly (keyof IServiceArguments)[] = [
 	'kvEngineType',
 	'kvDpRankCount',
 	'pdBootstrapPort',
+	'kvModelProfile',
+	'kvExactApiMode',
+	...FC_FIELDS,
 ];
 
 const KV_FIELDS: readonly (keyof IServiceArguments)[] = [
@@ -150,13 +223,6 @@ export function validateAIConfiguration(configuration: IServiceConfiguration): A
 	const topology = resolveAITopology(args);
 	const issues: AIValidationIssue[] = [];
 	const exactMode = args.kvExactMode ?? 0;
-	if (args.api_key_auth === 'jwt' || args.api_key_auth === 'apikey-or-jwt') {
-		if (!args.jwt_auth_profile || args.jwt_auth_profile.length > 63) {
-			issues.push({field: 'jwt_auth_profile', message: 'JWT modes require a configured JWT profile name of at most 63 characters.'});
-		}
-	} else if (args.api_key_auth !== undefined && args.jwt_auth_profile) {
-		issues.push({field: 'jwt_auth_profile', message: 'A JWT profile reference is valid only for JWT credential modes.'});
-	}
 
 	if (args.mode !== 4) {
 		const active = AI_ONLY_FIELDS.some(field => {
@@ -165,7 +231,8 @@ export function validateAIConfiguration(configuration: IServiceConfiguration): A
 				!(field === 'kvEngineType' && value === 'vllm') &&
 				!(field === 'kvBlockSize' && value === 16) &&
 				!(field === 'kvZmqPort' && value === 5557) &&
-				!(field === 'kvDpRankCount' && value === 1);
+				!(field === 'kvDpRankCount' && value === 1) &&
+				!((field === 'fc_mode' || field === 'fc_adaptive' || field === 'fc_expose_headers') && value === 'inherit');
 		});
 		if (active) issues.push({field: 'mode', message: 'AI Gateway routing requires full-proxy mode.'});
 		return issues;
@@ -186,10 +253,20 @@ export function validateAIConfiguration(configuration: IServiceConfiguration): A
 	if (topology === 'pd' && engine === 'llamacpp') {
 		issues.push({field: 'pd_disagg_mode', message: 'llama.cpp does not support P/D disaggregation.'});
 	}
-	if (args.chwbl_prefix_hash_level !== undefined && ![1, 2, 3].includes(args.chwbl_prefix_hash_level)) {
+	// CHWBL prefix hashing belongs to the CHWBL/WRR-hash selectors (sel 8/10).
+	// The gateway silently DROPS these fields on any other selector (verified
+	// live 2026-09-08: POST carried them, read-back returned None on sel=rr) —
+	// accepting them there loses operator input without a word, so the form
+	// blocks it honestly instead. '' is the level dropdown's "Not set"
+	// placeholder — a form artifact, never operator intent.
+	const chwblSelector = [8, 10].includes(args.sel ?? 0);
+	if ((hasValue(args.chwbl_prefix_hash_level) || hasValue(args.chwbl_prefix_hash_flags)) && !chwblSelector) {
+		issues.push({field: 'chwbl_prefix_hash_level', message: 'CHWBL prefix hash settings require the chwbl load-balancing algorithm (SEL); clear them or switch the algorithm.'});
+	}
+	if (hasValue(args.chwbl_prefix_hash_level) && ![1, 2, 3].includes(Number(args.chwbl_prefix_hash_level))) {
 		issues.push({field: 'chwbl_prefix_hash_level', message: 'CHWBL prefix hash level must be 1, 2, or 3.'});
 	}
-	if (args.chwbl_prefix_hash_flags !== undefined && (!isNonNegativeInteger(args.chwbl_prefix_hash_flags) || args.chwbl_prefix_hash_flags > 255)) {
+	if (hasValue(args.chwbl_prefix_hash_flags) && (!isNonNegativeInteger(args.chwbl_prefix_hash_flags) || Number(args.chwbl_prefix_hash_flags) > 255)) {
 		issues.push({field: 'chwbl_prefix_hash_flags', message: 'CHWBL prefix hash flags must be an integer between 0 and 255.'});
 	}
 	if (args.max_stream_duration_sec !== undefined && !isNonNegativeInteger(args.max_stream_duration_sec)) {
@@ -258,8 +335,56 @@ export function validateAIConfiguration(configuration: IServiceConfiguration): A
 		}
 	}
 
+	// Structural model-profile checks that need no registry: the contract
+	// rejects both fields outside KV-exact routing outright.
+	if (hasValue(args.kvModelProfile) && exactMode === 0) {
+		issues.push({field: 'kvModelProfile', message: 'A model profile binds only to a KV-exact rule.'});
+	}
+	if (hasValue(args.kvExactApiMode)) {
+		if (exactMode === 0) {
+			issues.push({field: 'kvExactApiMode', message: 'An API surface declaration is meaningless without KV exact routing.'});
+		}
+		if (!KV_EXACT_API_MODES.includes(args.kvExactApiMode as KvExactApiMode)) {
+			issues.push({field: 'kvExactApiMode', message: 'API surface must be completions, chat, or both.'});
+		}
+	}
+
+	validateAdmissionFields(args, topology, issues);
+
 	validateEndpointTopology(engine, topology, endpoints, issues);
 	return issues;
+}
+
+// Only what the gateway would refuse. Fields the form hides (P/D-only fields on
+// a non-P/D rule, any fc_* on a rule with no admission pool) are dropped by the
+// serializer instead: blocking submit on a value the operator cannot see or
+// clear would be worse than dropping a setting that has no effect there.
+function validateAdmissionFields(args: IServiceArguments, topology: AITopology, issues: AIValidationIssue[]): void {
+	if (!isAIService(args)) return;
+	if (!isFcBlank(args.fc_mode) && !(FC_MODES as readonly unknown[]).includes(args.fc_mode)) {
+		issues.push({field: 'fc_mode', message: 'Admission mode must be off, observe, enforce, or the gateway default.'});
+	}
+	if (!isFcBlank(args.fc_adaptive) && !(FC_ADAPTIVE as readonly unknown[]).includes(args.fc_adaptive)) {
+		issues.push({field: 'fc_adaptive', message: 'Adaptive ceiling must be on, off, or the gateway default.'});
+	}
+	if (!isFcBlank(args.fc_expose_headers) && !(FC_ADAPTIVE as readonly unknown[]).includes(args.fc_expose_headers)) {
+		issues.push({field: 'fc_expose_headers', message: 'Admission response headers must be on, off, or the gateway default.'});
+	}
+	for (const field of FC_NUMERIC_FIELDS) {
+		if (topology !== 'pd' && FC_PD_ONLY_FIELDS.includes(field)) continue;
+		const value = args[field];
+		if (isFcBlank(value)) continue;
+		// A value the form could not parse arrives as its raw text, so it is
+		// refused here rather than dropped on the way to the wire.
+		if (!isNonNegativeInteger(value) || value > FC_NUMERIC_MAX[field]) {
+			issues.push({field, message: `${field} must be a whole number from 0 to ${FC_NUMERIC_MAX[field]}.`});
+		}
+	}
+	// The gateway judges the pair on the stored values; a create stores exactly
+	// what it sends, so the rule is the same here.
+	if (isNonNegativeInteger(args.fc_max_queue_depth) && args.fc_max_queue_depth > 0 && !isPositiveInteger(args.fc_max_queue_wait_ms)) {
+		issues.push({field: 'fc_max_queue_wait_ms', message: 'A queue depth needs a queue wait greater than 0 ms.'});
+	}
 }
 
 function omitFields(args: IServiceArguments, fields: readonly (keyof IServiceArguments)[]): IServiceArguments {
@@ -268,22 +393,33 @@ function omitFields(args: IServiceArguments, fields: readonly (keyof IServiceArg
 	return result;
 }
 
+// Blank means OMITTED, never 0: on these fields an explicit 0 resets to the
+// process default and null is refused, so a blank form field must not reach
+// the wire as either.
+function serializeAdmissionFields(args: IServiceArguments, topology: AITopology): IServiceArguments {
+	// No admission pool, no effect: the gateway stores the fields but no gate
+	// reads them. Sending them would make a rule look configured when it is not.
+	if (!isAIService(args)) return omitFields(args, FC_FIELDS);
+	let result = {...args};
+	for (const field of FC_FIELDS) {
+		if (isFcBlank(result[field])) delete result[field];
+	}
+	if (topology !== 'pd') result = omitFields(result, FC_PD_ONLY_FIELDS);
+	return result;
+}
+
 function stripEndpointAI(endpoint: IEndpoint): IEndpoint {
 	const {ep_role, nixl_port, ...rest} = endpoint;
 	return rest;
 }
 
-export function credentialPolicyPatch(value: string): Partial<IServiceArguments> {
-	if (value === '') return {api_key_auth: undefined, jwt_auth_profile: undefined};
-	if (value === 'jwt' || value === 'apikey-or-jwt') return {api_key_auth: value};
-	if (value === 'disabled' || value === 'required') return {api_key_auth: value, jwt_auth_profile: ''};
-	throw new Error('Unknown credential policy');
-}
-
 export function serializeAIConfiguration(configuration: IServiceConfiguration): IServiceConfiguration {
 	const engine = resolveAIEngine(configuration.serviceArguments.kvEngineType);
 	const topology = resolveAITopology(configuration.serviceArguments);
-	let serviceArguments = {...configuration.serviceArguments};
+	// Read-only fields arrive through a form seeded from a read-back (the
+	// key-changed "create" edit and the reconcile upsert both copy it). The
+	// gateway ignores them on input; they never go on the wire.
+	let serviceArguments = omitFields({...configuration.serviceArguments}, READ_ONLY_SERVICE_ARGUMENTS);
 	let endpoints = configuration.endpoints.map(endpoint => ({...endpoint}));
 
 	if (serviceArguments.mode !== 4) {
@@ -293,14 +429,35 @@ export function serializeAIConfiguration(configuration: IServiceConfiguration): 
 	}
 
 	// Omission is a real third policy state. Never materialize Swagger's
-	// historical "disabled" default: omission preserves the stored policy on
-	// updates and leaves a new service unmanaged; explicit disabled strips the key.
-	if (!serviceArguments.api_key_auth) {
-		delete serviceArguments.api_key_auth;
+	// historical "disabled" default: absent preserves an unmanaged backend
+	// X-Api-Key header, whereas explicit disabled strips it.
+	//
+	// ⚠️ On a REPLACE, omitting this PRESERVES the declared policy rather than
+	// clearing it — so "unmanaged" is not a way back once a policy exists.
+	// The form labels that honestly instead of implying otherwise; clearing
+	// enforcement means sending "disabled".
+	if (!serviceArguments.api_key_auth) delete serviceArguments.api_key_auth;
+
+	// jwt_auth_profile travels WITH the mode and is valid only alongside the
+	// two JWT modes. The gateway's own pairing matrix
+	// (pkg/loxinet/rules_jwtprofile_test.go) fixes both directions:
+	//   - a non-JWT mode carrying a profile is REFUSED
+	//     (ErrJwtProfileNotApplicable), an unmanaged rule included, because a
+	//     dangling reference blocks that profile's deletion for a rule that
+	//     can never consult it;
+	//   - a mode change away from JWT that OMITS the profile drops the old
+	//     reference cleanly — which is why this deletes the key rather than
+	//     sending an empty string.
+	if (!requiresJwtProfile(serviceArguments.api_key_auth) || !serviceArguments.jwt_auth_profile) {
 		delete serviceArguments.jwt_auth_profile;
 	}
 
 	if (!serviceArguments.kvHashAlgo) delete serviceArguments.kvHashAlgo;
+	// The CHWBL level dropdown's "Not set" placeholder maps to '' — a form
+	// artifact. An untouched or cleared CHWBL field must be ABSENT on the
+	// wire, not empty (and never the old announce-injected level 1).
+	if (!hasValue(serviceArguments.chwbl_prefix_hash_level)) delete serviceArguments.chwbl_prefix_hash_level;
+	if (!hasValue(serviceArguments.chwbl_prefix_hash_flags)) delete serviceArguments.chwbl_prefix_hash_flags;
 	if (topology === 'plain') {
 		serviceArguments = omitFields(serviceArguments, [...KV_FIELDS, 'pd_disagg_mode', ...PD_TUNING_FIELDS, 'pdBootstrapPort']);
 		endpoints = endpoints.map(stripEndpointAI);
@@ -321,5 +478,206 @@ export function serializeAIConfiguration(configuration: IServiceConfiguration): 
 	if (engine === 'trtllm' || engine === 'llamacpp') delete serviceArguments.kvZmqPort;
 	if (engine === 'llamacpp') serviceArguments = omitFields(serviceArguments, KV_FIELDS);
 
+	serviceArguments = serializeAdmissionFields(serviceArguments, topology);
+
+	// Last: the topology/engine rules above may have stripped kvExactMode, and
+	// the profile fields must never outlive the exact routing they qualify.
+	serviceArguments = serializeStrictProfileFields(serviceArguments);
+
 	return {...configuration, serviceArguments, endpoints};
+}
+
+//---------------------------------------------------------
+// KV-exact model-profile binding (read/select/status — never mutation)
+//
+// Types derive from the vendored gateway swagger (src/api/gen/gateway.ts)
+// so they cannot drift from the live contract. The gateway POST is the
+// admission authority; everything here is client-side convenience and
+// pre-flight courtesy validation.
+//---------------------------------------------------------
+
+export type IModelProfileRegistry = GwSchema<'AiModelProfileRegistry'>;
+export type IModelProfileEntry = GwSchema<'AiModelProfileEntry'>;
+export type IKvExactStatusEntry = GwSchema<'KvExactStatusEntry'>;
+export type IKvExactEnforcement = GwSchema<'KvExactEnforcement'>;
+
+export const KV_EXACT_API_MODES: readonly KvExactApiMode[] = ['completions', 'chat', 'both'];
+
+function hasValue(value: unknown): boolean {
+	return value !== undefined && value !== null && value !== '';
+}
+
+export type ProfileModelMatch = 'base' | 'alias';
+
+/**
+ * Whether a published profile admits a served model name, and how.
+ * aliasPolicy is a closed set by contract: base_model_only or list — there
+ * is no "any". An empty model name matches nothing (the caller filters only
+ * when the rule declares a model).
+ */
+export function profileAcceptsModel(profile: IModelProfileEntry, modelName: string): ProfileModelMatch | null {
+	if (!hasValue(modelName)) return null;
+	if (profile.baseModel === modelName) return 'base';
+	if (profile.aliasPolicy === 'list' && (profile.allowedAliases ?? []).includes(modelName)) return 'alias';
+	return null;
+}
+
+/**
+ * API surfaces selectable for a profile: each declared surface, plus "both"
+ * only when the profile declares both. supportedApis is contractually
+ * non-empty; unknown future surface strings pass through untouched so a
+ * newer gateway does not brick the selector.
+ */
+export function allowedProfileApiModes(profile: IModelProfileEntry): KvExactApiMode[] {
+	const apis = profile.supportedApis ?? [];
+	const modes = KV_EXACT_API_MODES.filter(mode => mode !== 'both' && apis.includes(mode));
+	if (apis.includes('completions') && apis.includes('chat')) modes.push('both');
+	return modes;
+}
+
+/**
+ * Pre-flight validation of a profile selection against the rule draft.
+ * Field-level issues block the POST in the form (AC-05); the gateway POST
+ * remains the final admission authority — this never replaces it.
+ */
+export function validateProfileSelection(
+	args: Pick<IServiceArguments, 'model_name' | 'kvModelProfile' | 'kvExactApiMode' | 'kvExactMode'>,
+	profile: IModelProfileEntry | undefined,
+): AIValidationIssue[] {
+	const issues: AIValidationIssue[] = [];
+	if (!hasValue(args.kvModelProfile)) return issues;
+
+	if ((args.kvExactMode ?? 0) === 0) {
+		issues.push({field: 'kvModelProfile', message: 'A model profile binds only to a KV-exact rule.'});
+	}
+	if (!profile) {
+		issues.push({field: 'kvModelProfile', message: 'Selected profile is not in the currently published registry. Refresh the profile list.'});
+		return issues;
+	}
+	if (profile.profileId !== args.kvModelProfile) {
+		issues.push({field: 'kvModelProfile', message: 'Selected profile does not match the profile entry being validated.'});
+		return issues;
+	}
+	if (hasValue(args.model_name) && profileAcceptsModel(profile, args.model_name!) === null) {
+		issues.push({field: 'kvModelProfile', message: `Profile ${profile.profileId} does not serve model ${args.model_name} (base model or allowed alias required).`});
+	}
+	if (hasValue(args.kvExactApiMode) && !allowedProfileApiModes(profile).includes(args.kvExactApiMode as KvExactApiMode)) {
+		issues.push({field: 'kvExactApiMode', message: `API surface ${args.kvExactApiMode} is outside the profile's supported surfaces (${(profile.supportedApis ?? []).join(', ')}).`});
+	}
+	return issues;
+}
+
+/**
+ * Serialize the strict-rule profile fields: exactly the two scalars when a
+ * profile is bound to a KV-exact rule, neither otherwise.
+ *
+ * - No KV-exact routing (kvExactMode absent/0) → both fields dropped; the
+ *   contract rejects them outright there.
+ * - No profile → kvExactApiMode is also dropped. The contract does allow a
+ *   surface declaration on a profile-less rule, but this UI never produces
+ *   one: the selector derives its options from the bound profile, so a
+ *   surviving orphan value could only be stale form state.
+ * - Empty strings are form artifacts, never wire values.
+ */
+export function serializeStrictProfileFields(args: IServiceArguments): IServiceArguments {
+	const result = {...args};
+	if (!hasValue(result.kvModelProfile)) delete result.kvModelProfile;
+	if (!hasValue(result.kvExactApiMode)) delete result.kvExactApiMode;
+
+	const exactMode = result.kvExactMode ?? 0;
+	if (exactMode === 0 || result.kvModelProfile === undefined) {
+		delete result.kvModelProfile;
+		delete result.kvExactApiMode;
+	}
+	return result;
+}
+
+//---------------------------------------------------------
+// KV-exact enforcement status classification
+//
+// The state vocabulary is OPEN (x-kv-status-states, versioned by
+// x-kv-status-vocabulary-version). Binding forward-compatibility rule from
+// the contract: an unrecognized enforcedState MUST be treated as "not
+// ready / in transition" and rendered raw; an unrecognized reasonCode MUST
+// be rendered raw and MUST NOT be fatal.
+//---------------------------------------------------------
+
+export type KvExactReadinessKind =
+	| 'legacy'
+	| 'pending'
+	| 'ready'
+	| 'ready-functional-only'
+	| 'degrading'
+	| 'degraded'
+	| 'fault'
+	| 'requires-migration'
+	| 'unknown';
+
+export interface KvExactReadiness {
+	kind: KvExactReadinessKind;
+	/** Safe to render as Ready: a READY-class enforcedState AND an explicitly lifted fence (goFenced === false). POST 2xx and pending are never ready. */
+	ready: boolean;
+	/** READY_FUNCTIONAL_ONLY: functionally attested with no manifest trust root — always rendered with a warning, never as plain Ready. */
+	warning: boolean;
+	/** Tri-state fence passthrough: true = denied, false = explicitly lifted, undefined = unreported. false and undefined MUST render differently. */
+	fenced?: boolean;
+	/** Verbatim enforcedState for display — unknown vocabulary is shown raw, never remapped. */
+	rawState: string;
+}
+
+const PENDING_STATES = new Set([
+	'PROFILE_VALIDATED',
+	'PENDING_DATAPLANE_CONTRACT',
+	'TOKEN_PARITY_VERIFIED',
+	'TOKEN_PARITY_NOT_AVAILABLE_WITH_APPROVED_ORACLE',
+	'ENGINE_HASH_ATTESTED',
+]);
+
+function readinessKind(state: string): KvExactReadinessKind {
+	if (state === 'LEGACY_ACTIVE_UNATTESTED') return 'legacy';
+	if (PENDING_STATES.has(state)) return 'pending';
+	if (state === 'READY') return 'ready';
+	if (state === 'READY_FUNCTIONAL_ONLY') return 'ready-functional-only';
+	if (state === 'DEGRADING') return 'degrading';
+	if (state === 'DEGRADED') return 'degraded';
+	if (state === 'ENFORCEMENT_FAULT') return 'fault';
+	if (state === 'REQUIRES_MIGRATION') return 'requires-migration';
+	return 'unknown';
+}
+
+export function classifyKvExactReadiness(entry: Pick<IKvExactStatusEntry, 'enforcedState' | 'enforcement'>): KvExactReadiness {
+	const rawState = entry.enforcedState ?? '';
+	const kind = readinessKind(rawState);
+	const fenced = entry.enforcement?.goFenced;
+	return {
+		kind,
+		ready: (kind === 'ready' || kind === 'ready-functional-only') && fenced === false,
+		warning: kind === 'ready-functional-only',
+		fenced,
+		rawState,
+	};
+}
+
+//---------------------------------------------------------
+// Status polling cadence
+//---------------------------------------------------------
+
+export const KV_STATUS_POLL_FAST_MS = 5000;
+export const KV_STATUS_POLL_STEADY_MS = 30000;
+
+/**
+ * Poll cadence for the enforcement status panel. Transitional states (and
+ * "no data yet") poll fast; settled states — READY included — keep a slower
+ * steady-state cadence, never zero: drift and degradation after READY must
+ * still surface while the panel is visible. Callers stop polling entirely
+ * only by unmounting/hiding the panel, not through this function.
+ */
+export function kvExactPollIntervalMs(entries: readonly IKvExactStatusEntry[] | null | undefined): number {
+	if (entries === undefined) return KV_STATUS_POLL_FAST_MS;
+	if (entries === null || entries.length === 0) return KV_STATUS_POLL_STEADY_MS;
+	const transitional = entries.some(entry => {
+		const kind = classifyKvExactReadiness(entry).kind;
+		return kind === 'pending' || kind === 'degrading' || kind === 'unknown';
+	});
+	return transitional ? KV_STATUS_POLL_FAST_MS : KV_STATUS_POLL_STEADY_MS;
 }

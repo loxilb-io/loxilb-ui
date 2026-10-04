@@ -15,9 +15,13 @@ import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {useEndpoints} from 'hooks/query/queryHooks';
+import {fromQueryRefetch} from 'hooks/query/reconcile';
+import {useReconcileReporter} from 'hooks/query/reconcileReport';
+import {endpointAppeared, endpointsGone} from 'hooks/query/confirmPredicates';
 import {t} from 'i18next';
 import {Fragment, useRef, useState, useMemo} from 'react';
 import {IEndpointAttr, IEndpointInput, IEndpointItem} from 'types/endpoint';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -53,7 +57,8 @@ function ProbeInfoPanel(props: {name: string; data: IEndpointItem}) {
 export default function EndpointPage() {
 	const inst = useInstanceFromURL();
 
-	const {data, isError, refetch} = useEndpoints(inst);
+	const endpoint_query = useEndpoints(inst);
+	const {data, refetch} = endpoint_query;
 	const ep_info: IEndpointAttr = {Attr: data ?? []};
 
 	// Selection is keyed by a stable content hash (the same id the table assigns
@@ -62,6 +67,7 @@ export default function EndpointPage() {
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
 	const {openPopUp, enableYes} = usePopUp();
 	const {errorPopup, showAddError, showUpdateError, showDeleteError, closeErrorPopup} = useErrorPopup();
+	const {report, reconcile} = useReconcileReporter();
 
 	// Hash function for endpoint — must match EndpointTable's row id.
 	const getHashKey = (item: any) => {
@@ -82,20 +88,26 @@ export default function EndpointPage() {
 		if (!inst || selectedItems.length === 0) return;
 
 		const results = await Promise.all(selectedItems.map(item => request_delete_endpoint_by_ip(inst, item)));
-		const failures = results.filter(res => res.status === 'error');
+		// A rule-referenced endpoint's rejected delete now maps to failed on
+		// every transport (body sniff, not reason-phrase sniff — D7).
+		const failures = results.filter(res => res.status !== 'confirmed');
 
+		// Promise.all preserves order, so results[i] belongs to selectedItems[i]
+		// — reconcile only against the endpoints that actually went.
+		const deleted = selectedItems.filter((_, i) => results[i].status === 'confirmed');
 		if (failures.length === 0) {
-			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
-		} else if (failures.length < results.length) {
-			showDeleteError('endpoint', `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`);
-		} else {
-			showDeleteError('endpoint', failures[0].error);
+			set_selected_rows([]);
+			await report({refetch: fromQueryRefetch(refetch), confirm: endpointsGone(deleted)}, t('Deleted {{count}} item(s) successfully.', {count: results.length}));
 			return;
 		}
-		set_selected_rows([]);
-		setTimeout(() => {
-			refetch();
-		}, 1000);
+		if (failures.length < results.length) {
+			// The error popup already states the partial outcome; reconcile quietly.
+			showDeleteError('endpoint', t('{{succeeded}} succeeded, {{failed}} failed. {{error}}', {succeeded: results.length - failures.length, failed: failures.length, error: t(failures[0].localeKey)}));
+			set_selected_rows([]);
+			await reconcile({refetch: fromQueryRefetch(refetch), confirm: endpointsGone(deleted)});
+			return;
+		}
+		showDeleteError('endpoint', t(failures[0].localeKey));
 	};
 
 	const instanceRef = useRef<IEndpointInput | null>(null);
@@ -121,13 +133,11 @@ export default function EndpointPage() {
 			async () => {
 				if (!instanceRef.current) return;
 
-				const res = await request_create_endpoint(inst, instanceRef.current);
-				if (res.status === 'success') {
-					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
-					setTimeout(() => {
-						refetch();
-					}, 1000);
-				} else showAddError('endpoint', res.error);
+				const submitted = instanceRef.current;
+				const res = await request_create_endpoint(inst, submitted);
+				if (res.status === 'confirmed') {
+					await report({refetch: fromQueryRefetch(refetch), confirm: endpointAppeared(submitted)}, t('Added successfully.'));
+				} else showAddError('endpoint', t(res.localeKey));
 			},
 			true,
 		);
@@ -171,14 +181,12 @@ export default function EndpointPage() {
 				if (!updateFormRef.current) return;
 
 				// Use POST API with same function as create (as requested by user)
-				const res = await request_create_endpoint(inst, updateFormRef.current);
-				if (res.status === 'success') {
-					openPopUp(t('Success'), t('Endpoint updated successfully.'), t('OK'));
-					setTimeout(() => {
-						refetch();
-					}, 1000);
+				const submitted = updateFormRef.current;
+				const res = await request_create_endpoint(inst, submitted);
+				if (res.status === 'confirmed') {
+					await report({refetch: fromQueryRefetch(refetch), confirm: endpointAppeared(submitted)}, t('Endpoint updated successfully.'));
 				} else {
-					showUpdateError('endpoint', res.error);
+					showUpdateError('endpoint', t(res.localeKey));
 				}
 			},
 			true,
@@ -200,7 +208,7 @@ export default function EndpointPage() {
 				onDelete={handleDelete}
 				onUpdate={handleUpdate}
 				onRefresh={handleRefresh}
-				error={isError}
+				state={toPageState(endpoint_query, {op: 'endpoint.list'})}
 			/>
 
 			{selectedItem && (

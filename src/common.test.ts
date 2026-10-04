@@ -1,5 +1,5 @@
-import {describe, expect, it} from 'vitest';
-import {formatBytes, getStableHash, get_ip_port_str, parse_log_lines} from './common';
+import {beforeEach, describe, expect, it} from 'vitest';
+import {clearOldTimeSeriesData, formatBytes, getStableHash, get_ip_port_str, parse_log_lines} from './common';
 
 describe('parse_log_lines', () => {
 	it('parses the gateway log format (LEVEL: DATE TIME message)', () => {
@@ -74,5 +74,68 @@ describe('get_ip_port_str', () => {
 	it('joins ip and port', () => {
 		expect(get_ip_port_str('10.0.0.1', 8080)).toContain('10.0.0.1');
 		expect(get_ip_port_str('10.0.0.1', 8080)).toContain('8080');
+	});
+});
+
+//---------------------------------------------------------
+// Quota recovery must actually free the thing it looked at
+//---------------------------------------------------------
+// `clearOldTimeSeriesData` runs only under quota pressure, so it is the one
+// path where leaving a value in place has a direct cost. It trimmed arrays and
+// removed unparseable values, but a value that PARSED and was not an array
+// fell through untouched — freeing nothing on a pass whose entire purpose is
+// freeing space, and preserving exactly the shape the series reader chokes on.
+//
+// ⚠️ Harness note, learned the hard way: do NOT test this by spying on
+// `localStorage.setItem` to fake a QuotaExceededError. Whether that spy
+// intercepts depends on which `localStorage` the environment supplies —
+// `vitest.setup.ts` installs a plain-object shim only when none exists, and a
+// spy that works against the shim does NOT intercept a real Storage-backed
+// one. The quota branch then never runs, `save_local_storage` returns
+// silently, and every assertion fails for a reason unrelated to the code.
+// That divergence passed locally and failed in CI. Call the function.
+describe('clearOldTimeSeriesData', () => {
+	const seriesKey = 'conntrack-series_1';
+
+	beforeEach(() => {
+		localStorage.clear();
+	});
+
+	it('removes a series key whose value parsed but is not a series', () => {
+		localStorage.setItem(seriesKey, JSON.stringify({not: 'a series'}));
+
+		clearOldTimeSeriesData();
+
+		expect(localStorage.getItem(seriesKey)).toBeNull();
+	});
+
+	it('removes a series key holding malformed JSON', () => {
+		localStorage.setItem(seriesKey, '{"timestamp":');
+
+		clearOldTimeSeriesData();
+
+		expect(localStorage.getItem(seriesKey)).toBeNull();
+	});
+
+	it('TRIMS a real series rather than deleting it', () => {
+		// The counterpart that stops "remove everything" from being the fix: a
+		// genuine series is history the operator is looking at, so it is
+		// trimmed to its most recent points, not discarded.
+		const points = Array.from({length: 120}, (_, i) => ({timestamp: i, data: i}));
+		localStorage.setItem(seriesKey, JSON.stringify(points));
+
+		clearOldTimeSeriesData();
+
+		const kept = JSON.parse(localStorage.getItem(seriesKey)!) as {data: number}[];
+		expect(kept).toHaveLength(50);
+		expect(kept[kept.length - 1].data).toBe(119);
+	});
+
+	it('leaves keys that are not time series alone', () => {
+		localStorage.setItem('access_token', 'a-token');
+
+		clearOldTimeSeriesData();
+
+		expect(localStorage.getItem('access_token')).toBe('a-token');
 	});
 });

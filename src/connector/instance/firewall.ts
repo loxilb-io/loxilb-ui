@@ -3,8 +3,10 @@
 //---------------------------------------------------------
 import {IFirewallDeleteFilter, IFirewallRule} from 'types/firewall';
 import {IInstance} from 'types/oam';
-import {ApiResult, assertOk, createDetailedErrorMessage} from '../fetcher/fetcher_base';
+import {assertOk} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
+import {OpResult} from '../fetcher/opResult';
+import {runOp} from '../fetcher/opResultAdapter';
 import type {GwGetResp} from 'api';
 
 //---------------------------------------------------------
@@ -16,17 +18,11 @@ export async function query_get_firewall_rules(instance: IInstance): Promise<IFi
 	return (resp.data?.fwAttr ?? []) as IFirewallRule[];
 }
 
-export async function request_create_firewall_rule(instance: IInstance, data: IFirewallRule): Promise<ApiResult> {
-	const resp = await POST_INST(instance, `/config/firewall`, data);
-	if (resp.code !== 200 && resp.code !== 204) {
-		const errorMessage = createDetailedErrorMessage(resp, 'Firewall Operation');
-		return {status: 'error', error: errorMessage};
-	} else {
-		return {status: 'success'};
-	}
+export async function request_create_firewall_rule(instance: IInstance, data: IFirewallRule): Promise<OpResult> {
+	return runOp('firewall.create_firewall_rule', () => POST_INST(instance, `/config/firewall`, data));
 }
 
-export async function request_delete_all_firewall_rules(instance: IInstance, filter?: IFirewallDeleteFilter): Promise<ApiResult> {
+export async function request_delete_all_firewall_rules(instance: IInstance, filter?: IFirewallDeleteFilter): Promise<OpResult> {
 	const params = new URLSearchParams();
 
 	if (filter?.sourceIP) params.append('sourceIP', filter.sourceIP);
@@ -40,12 +36,5 @@ export async function request_delete_all_firewall_rules(instance: IInstance, fil
 	if (filter?.preference !== undefined) params.append('preference', String(filter.preference));
 
 	const url = `/config/firewall${params.toString() ? `?${params.toString()}` : ''}`;
-	const resp = await DELETE_INST(instance, url);
-
-	if (resp.code !== 200 && resp.code !== 204) {
-		const errorMessage = createDetailedErrorMessage(resp, 'Firewall Operation');
-		return {status: 'error', error: errorMessage};
-	} else {
-		return {status: 'success'};
-	}
+	return runOp('firewall.delete_all_firewall_rules', () => DELETE_INST(instance, url));
 }

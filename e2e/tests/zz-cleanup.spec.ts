@@ -33,7 +33,12 @@ test.describe.serial('zz — cleanup & leak detector', () => {
 			api.sweepTestUsers(),
 			api.sweepInstances(),
 		]);
-		const total = swept.reduce((a, b) => a + b, 0);
+		// ⚠️ AFTER the batch, not inside it: a JWT auth profile referenced by an LB
+		// rule is refused with 409, and Promise.all gives no ordering between
+		// sweepLbRules() and this one.
+		const profiles = await api.sweepJwtAuthProfiles();
+
+		const total = swept.reduce((a, b) => a + b, 0) + profiles;
 		// Informational — a clean run sweeps 0 here because per-spec hooks already ran.
 		console.log(`zz-cleanup swept ${total} leftover entities`);
 	});

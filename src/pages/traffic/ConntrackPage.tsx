@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {Box, Stack, Typography, FormControl, InputLabel, Select, MenuItem, TextField, Button, Chip} from '@mui/material';
+import {Box, Stack, Typography, TextField, Button, Chip} from '@mui/material';
 import {formatRate} from 'common';
 import RateLineGraph from 'components/element/RateLineGraph';
 import RateTooltip from 'components/element/RateTooltip';
@@ -18,6 +18,7 @@ import {Fragment, useCallback, useEffect, useMemo, useState} from 'react';
 import {ICtAttribute, ICtData} from 'types/conn_track';
 import {ITimeSeriesPoint, ITimelineDataSet} from 'types/global';
 import {IInstance} from 'types/oam';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Sub Component
@@ -164,7 +165,8 @@ function ConntrackPanel(props: {instance: IInstance | null; data: ICtAttribute})
 export default function ConntrackPage() {
 	const inst = useInstanceFromURL();
 
-	const {data: ct_info, isError, refetch} = useConntrack(inst);
+	const conntrack_query = useConntrack(inst);
+	const {data: ct_info, refetch} = conntrack_query;
 
 	// Filter states
 	const [servNameFilter, setServNameFilter] = useState<string>('');
@@ -175,8 +177,10 @@ export default function ConntrackPage() {
 
    const [selected_rows, set_selected_rows] = useState<number[]>([]); // holds stable hash ids
    // Apply filters and clear filters functions
+   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- parked feature code kept for re-enablement; remove the disable when it is wired back up or deleted
    const applyFilters = useCallback(() => {
 	   // Filters will be applied in the filteredCtAttr useMemo
+   // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
    }, [servNameFilter, sourceIPFilter, sourcePortFilter, destinationIPFilter, destinationPortFilter]);
 
    const clearFilters = useCallback(() => {
@@ -356,7 +360,7 @@ export default function ConntrackPage() {
 			   data={{ctAttr: filteredCtAttr}}
 			   selected_rows={selected_rows}
 			   onRefresh={refetch}
-			   error={isError}
+			   state={toPageState(conntrack_query, {op: 'conntrack.list'})}
 			   onChangeSelectedRows={handleSelectionChange}
 		   />
 		   {selected_attr && (

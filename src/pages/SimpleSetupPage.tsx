@@ -135,7 +135,6 @@ export default function SimpleSetupPage() {
 
 	return (
 		<Container
-			component="main"
 			maxWidth="xs"
 			sx={{
 				minHeight: '100vh',
@@ -185,6 +184,7 @@ export default function SimpleSetupPage() {
 						onChange={handleChange('currentPassword')}
 						disabled={loading}
 						helperText={t('Enter the default admin password')}
+						// eslint-disable-next-line jsx-a11y/no-autofocus -- deliberate: initial focus on the only actionable field of the first-run setup page
 						autoFocus
 					/>
 					

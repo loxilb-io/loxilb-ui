@@ -44,6 +44,7 @@ export default function IpInputForm(props: {onChange: (data: IIpAttributeInput) 
 			}
 			hasSetInitialData.current = true;
 		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, [form, isEdit, initialData]); // Run when form becomes available
 
 

@@ -11,7 +11,7 @@
 // real boundary.
 //---------------------------------------------------------
 import {expect, test} from '../../fixtures';
-import {activeInstance} from '../../helpers/api';
+import {activeInstance, AIManagementReadiness, aiNotReadyAllowance, BFD_NONE_RUNNING_500, BGP_DISABLED, gatewayAIManagementReadiness, RATELIMIT_DEFAULTS_ABSENT} from '../../helpers/api';
 
 let instName: string;
 test.beforeAll(async () => {
@@ -47,14 +47,22 @@ const MUTABLE_ROUTES = [
 const MUTATION_ICONS = ['AddIcon', 'ModeIcon', 'DeleteIcon'];
 
 test.describe('RBAC — viewer (read-only everywhere)', () => {
+	let readiness: AIManagementReadiness;
+	test.beforeAll(async () => {
+		readiness = await gatewayAIManagementReadiness();
+	});
+
 	test.use({storageState: '.auth/viewer.json'});
 
 	for (const route of MUTABLE_ROUTES) {
 		test(`viewer: ${route} exposes no mutation controls or requests`, async ({page, consoleGuard}) => {
-			// Some read endpoints answer 401/403/503 for a viewer, service identity,
-			// or unavailable store. We only care about controls + mutations here.
-			consoleGuard.allow(/Failed to load resource/i);
-			consoleGuard.allow(/status of \d{3}/i);
+			// Only the reads these routes are KNOWN to fail, each for its reason:
+			// the defaults ladder's "no row", BFD with no session running (a
+			// gateway defect), BGP disabled, and an unready AI management API.
+			// Anything else a viewer's read hits is a finding.
+			for (const a of [RATELIMIT_DEFAULTS_ABSENT, BFD_NONE_RUNNING_500, BGP_DISABLED]) consoleGuard.allowRequest(a);
+			const notReady = aiNotReadyAllowance(readiness);
+			if (notReady) consoleGuard.allowRequest(notReady);
 
 			const mutations: string[] = [];
 			const cap = (r: any) => {

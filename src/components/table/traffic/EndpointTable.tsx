@@ -5,12 +5,13 @@ import { getStableHash } from 'common';
 import DataTable from 'components/table/DataTable';
 import {IEndpointAttr} from 'types/endpoint';
 import {IDataTableColumnDef} from 'types/global';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function EndpointTable(props: {data: IEndpointAttr; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onUpdate?: any; onRefresh?: any; error?: boolean}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onUpdate, onRefresh, error} = props;
+export default function EndpointTable(props: {data: IEndpointAttr; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onUpdate?: any; onRefresh?: any; state?: PageDataState<unknown>; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onUpdate, onRefresh, state, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'hostName', header: 'Host Name', type: 'mono'},
@@ -47,5 +48,5 @@ export default function EndpointTable(props: {data: IEndpointAttr; selected_rows
 	   })()
 	   : undefined;
 
-	return <DataTable name={'Endpoint'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onEdit={onUpdate} onRefresh={onRefresh} error={error} />;
+	return <DataTable name={'Endpoint'} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onEdit={onUpdate} onRefresh={onRefresh} state={state} error={error} />;
 }

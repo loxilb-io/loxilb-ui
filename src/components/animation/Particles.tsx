@@ -227,6 +227,7 @@ const Particles: React.FC<ParticlesProps> = ({
 				container.removeChild(gl.canvas);
 			}
 		};
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, [particleCount, particleSpread, speed, moveParticlesOnHover, particleHoverFactor, alphaParticles, particleBaseSize, sizeRandomness, cameraDistance, disableRotation]);
 
 	return <div ref={containerRef} className={`particles-container ${className}`} />;

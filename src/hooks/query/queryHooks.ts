@@ -2,6 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {query_get_apikey_all} from 'connector/instance/ai';
+import {query_get_jwtauthprofile_all} from 'connector/instance/ai_jwt';
 import {query_get_bfd_all} from 'connector/instance/bfd';
 import {query_get_conntrack_all} from 'connector/instance/conn_track';
 import {query_get_endpoint_all} from 'connector/instance/endpoint';
@@ -12,6 +13,7 @@ import {query_get_ipsec_ca_certificate_all, query_get_ipsec_certificate_all, que
 import {query_get_ipv4_all, query_get_ipv6_all} from 'connector/instance/ip';
 import {query_get_load_balancer_config_all} from 'connector/instance/load_balancer';
 import {query_get_mirror_all} from 'connector/instance/mirror';
+import {query_get_model_profile, query_get_model_profiles} from 'connector/instance/model_profile';
 import {query_get_port_all} from 'connector/instance/port';
 import {query_get_qos_policy_all} from 'connector/instance/qos';
 import {query_get_route_all} from 'connector/instance/route_attr';
@@ -134,6 +136,12 @@ export function useApiKeys(instance: IInstance | null) {
 	return useQueryInstanceData(['ai_apikeys'], query_get_apikey_all, instance);
 }
 
+// Desired configuration only — this says nothing about issuer reachability or
+// keyset health, which the loxilb_ai_jwks_* families answer separately.
+export function useJWTAuthProfiles(instance: IInstance | null) {
+	return useQueryInstanceData(['ai_jwtauthprofiles'], query_get_jwtauthprofile_all, instance);
+}
+
 export function useIPsecConfig(instance: IInstance | null) {
 	return useQueryInstanceData(['ipsec_config'], query_get_ipsec_config, instance);
 }
@@ -156,4 +164,20 @@ export function useIPsecCertificates(instance: IInstance | null) {
 
 export function useIPsecCACertificates(instance: IInstance | null) {
 	return useQueryInstanceData(['ipsec_ca_certs'], query_get_ipsec_ca_certificate_all, instance);
+}
+
+export function useModelProfiles(instance: IInstance | null) {
+	return useQueryInstanceData(['ai_model_profiles'], query_get_model_profiles, instance);
+}
+
+/**
+ * One published profile, keyed by id so a submit-time freshness refetch
+ * (stale-selection guard) does not thrash the list query.
+ */
+export function useModelProfileDetail(instance: IInstance | null, profileId: string | null) {
+	return useQueryInstanceData(
+		['ai_model_profile', profileId ?? ''],
+		useCallback((inst: IInstance) => query_get_model_profile(inst, profileId!), [profileId]),
+		profileId ? instance : null,
+	);
 }

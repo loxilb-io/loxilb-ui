@@ -8,7 +8,7 @@
 //---------------------------------------------------------
 import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {activeInstance, Instance} from '../../helpers/api';
+import {activeInstance, DEAD_INSTANCE_PROBE, Instance} from '../../helpers/api';
 import {dialog, dialogButton, dialogTitle} from '../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../helpers/form';
 
@@ -31,8 +31,8 @@ test.describe('Instances page', () => {
 	});
 
 	test('dashboard widgets render and Check Health round-trips', async ({page, consoleGuard}) => {
-		consoleGuard.allow(/Failed to load resource/i);
-		consoleGuard.allow(/status of \d{3}/i);
+		// Check Health probes every registered instance; which are dead is testbed state.
+		for (const a of DEAD_INSTANCE_PROBE) consoleGuard.allowRequest(a);
 
 		const c = card(page);
 		for (const label of ['Host', 'Version', 'HA State', 'Health Status', 'Activation Status']) {

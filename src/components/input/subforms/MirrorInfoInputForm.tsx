@@ -8,7 +8,7 @@ import HorizontalStack from 'components/layout/HorizontalStack';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePortAttr} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef} from 'react';
 import {IEnumItem} from 'types/global';
 import {IMirrorInfo} from 'types/mirror';
 
@@ -91,6 +91,7 @@ export default function MirrorInfoInputForm(props: {value: IMirrorInfo; onChange
 		if (value.type !== undefined && !typeInitialized.current) {
 			typeInitialized.current = true;
 		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, [value, onChange]);
 
 	// When type is set but port is not, set the first port (only once)
@@ -105,6 +106,7 @@ export default function MirrorInfoInputForm(props: {value: IMirrorInfo; onChange
 		if (value.port && !portInitialized.current) {
 			portInitialized.current = true;
 		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, [value.type, value.port, portList.length, onChange, value, portList]);
 
 	useEffect(() => {
@@ -136,6 +138,7 @@ export default function MirrorInfoInputForm(props: {value: IMirrorInfo; onChange
 		if (hasChanges) {
 			emit(updatedForm);
 		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, [
 		type_index,
 		isPortEnabled,

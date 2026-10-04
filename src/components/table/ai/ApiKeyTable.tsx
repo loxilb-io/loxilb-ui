@@ -5,6 +5,7 @@ import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IDataTableColumnDef} from 'types/global';
 import {IApiKeySummary} from 'types/ai';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -14,11 +15,13 @@ export default function ApiKeyTable(props: {
 	selected_rows: number[];
 	onChangeSelectedRows: any;
 	onAdd?: () => void;
+	onEdit?: () => void;
 	onDelete?: () => void;
 	onRefresh?: () => void;
+	state?: PageDataState<unknown>;
 	error?: boolean;
 }) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onEdit, onDelete, onRefresh, state, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'key_id', header: 'Key ID', width: 'wide', type: 'mono'},
@@ -51,8 +54,10 @@ export default function ApiKeyTable(props: {
 			selected_rows={selected_rows}
 			onChangeSelectedRows={onChangeSelectedRows}
 			onAdd={onAdd}
+				onEdit={onEdit}
 				onDelete={onDelete}
 				onRefresh={onRefresh}
+				state={state}
 				error={error}
 			/>
 		);

@@ -14,14 +14,21 @@ import {IProcessAttribute} from 'types/process';
 // the CPU/memory/disk percentages the pies want, so the card shows real
 // numbers on loxilb instead of N/A.
 //
-// The Prometheus gauge stays authoritative wherever it exists (the gateway):
-// it measures the whole system directly, while `top` can only be summed over
-// the processes it happened to list. Callers prefer the gauge and fall back
-// to these — see SystemUsageCard.
+// The Prometheus gauges stay authoritative wherever they exist (the gateway):
+// they measure directly, while `top` can only be summed over the processes it
+// happened to list. Callers prefer the gauges and fall back to these — see
+// SystemUsageCard and `cpu_usage_from_metrics` for which CPU gauge.
 
 // Where a displayed percentage came from, so the UI can say so rather than
 // implying every number carries the same weight.
-export type UsageSource = 'metrics' | 'top' | 'df';
+export type UsageSource =
+	| 'metrics'
+	// ⚠️ CPU only: `loxilb_system_cpu_utilization_percent` is NOT the machine.
+	// Containerized, it is loxilb's share of its own CPU allowance, so a busy
+	// host reads near idle (live: 1.1% beside a 28% host).
+	| 'metrics-loxilb-scope'
+	| 'top'
+	| 'df';
 
 export interface IDerivedUsage {
 	percent: number;
@@ -72,6 +79,20 @@ export function derive_cpu_usage(processes: IProcessAttribute[] | undefined): ID
 	const {total, counted} = sum_process_column(processes, p => p.CPUUsage);
 	if (counted === 0) return undefined;
 	return {percent: clamp_percent(total), source: 'top', detail: `${counted}`};
+}
+
+/**
+ * CPU from the gauges, for a card titled "System Usage".
+ *
+ * The whole-machine gauge answers that title; the scope gauge only does when
+ * loxilb is not containerized, and the exposition does not say which. So the
+ * host gauge wins, and the scope gauge is used only where it is the one
+ * exported — tagged, so the card says whose CPU it is.
+ */
+export function cpu_usage_from_metrics(host: number | undefined, scope: number | undefined): IDerivedUsage | undefined {
+	if (host !== undefined && Number.isFinite(host)) return {percent: host, source: 'metrics'};
+	if (scope !== undefined && Number.isFinite(scope)) return {percent: scope, source: 'metrics-loxilb-scope'};
+	return undefined;
 }
 
 // Memory utilization ≈ Σ %MEM (RSS as a share of total RAM) across processes.

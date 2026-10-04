@@ -6,12 +6,13 @@ import {IFdbData} from 'types/fdb';
 import {IDataTableColumnDef} from 'types/global';
 import {identifyFdbEntries} from 'types/fdb_identity';
 import {GridRowId} from '@mui/x-data-grid';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function FDBTable(props: {data: IFdbData; selected_rows: GridRowId[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onRefresh?: any; error?: boolean}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
+export default function FDBTable(props: {data: IFdbData; selected_rows: GridRowId[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onRefresh?: any; state?: PageDataState<unknown>; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, state, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'dev', header: 'Device', width: 'wide'},
@@ -43,6 +44,7 @@ export default function FDBTable(props: {data: IFdbData; selected_rows: GridRowI
 			onAdd={onAdd}
 			onDelete={onDelete}
 			onRefresh={onRefresh}
+			state={state}
 			error={error}
 		/>
 	);

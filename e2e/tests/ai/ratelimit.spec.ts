@@ -10,11 +10,21 @@
 // only) and NO delete — the UI must not offer a Delete affordance. The
 // table shows only tenants seen on API keys plus session lookups.
 //---------------------------------------------------------
+import {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {activeInstance, AIManagementReadiness, gatewayAIManagementReadiness, gw} from '../../helpers/api';
+import {activeInstance, AIManagementReadiness, gatewayAIManagementReadiness, aiNotReadyAllowance, gw, RATELIMIT_DEFAULTS_ABSENT} from '../../helpers/api';
 import {dialog, dialogButton, dialogTitle, expectSuccessAndDismiss, openToolbarDialog} from '../../helpers/dialogs';
 import {field} from '../../helpers/form';
 import {grid, rowByText, toolbarButton} from '../../helpers/table';
+
+// This page renders three DataTables, and every toolbar and grid on it looks
+// alike. Anything asserting about ONE of them must say which — `data-table` /
+// `data-table-bar` carry DataTable's `name` prop and cannot drift the way an
+// ordinal can. `TENANT` is passed to every helper below for that reason: the
+// tenant table happens to be first today, and that is not a fact worth
+// depending on.
+const TENANT = 'AI Tenant Rate Limits';
+const tenantTable = (page: Page): Locator => page.locator(`[data-table="${TENANT}"]`);
 
 const RL_PATH = '/config/ai/tenant/ratelimit';
 const RATE_LIMIT_RUN_ID = `${Date.now().toString(36)}-${process.pid}`;
@@ -43,31 +53,46 @@ test.describe('@gw AI Tenant Rate Limit page', () => {
 	});
 
 	test.beforeEach(async ({page, consoleGuard}) => {
-		consoleGuard.allow(/status of (401|403|503)/i);
-		consoleGuard.allow(/Failed to load resource/i);
+		consoleGuard.allowRequest(RATELIMIT_DEFAULTS_ABSENT);
+		const notReady = aiNotReadyAllowance(readiness);
+		if (notReady) consoleGuard.allowRequest(notReady);
 		await page.goto(`instance/ai/ratelimit?name=${instName}`); // relative — see baseURL note
-		await expect(toolbarButton(page, 'Add')).toBeVisible({timeout: 20_000});
+		await expect(toolbarButton(page, 'Add', TENANT)).toBeVisible({timeout: 20_000});
 	});
 
 	test('render: empty table + NO delete affordance (gateway has no DELETE), no crash', async ({page}) => {
-		await expect(grid(page)).toBeVisible();
-		await expect(grid(page).getByText(/No .* entries yet|No rows/)).toBeVisible();
-		// The API exposes no delete — the toolbar must not offer one.
-		await expect(page.locator('#table-bar button:has([data-testid="DeleteIcon"])')).toHaveCount(0);
+		await expect(grid(page, TENANT)).toBeVisible();
+		await expect(grid(page, TENANT).getByText(/No .* entries yet|No rows/)).toBeVisible();
+		// The API exposes no delete — the TENANT toolbar must not offer one.
+		// ⚠️ Scoped by name, never by position: this page grew a second and
+		// third table (per-user, then the defaults ladder), and the defaults
+		// table DOES offer Delete. Unscoped, this absence assertion was reading
+		// another table's toolbar and had been red on main since that table
+		// landed.
+		await expect(tenantTable(page).locator('[data-table-bar] button:has([data-testid="DeleteIcon"])')).toHaveCount(0);
 		// Upsert (Add) + Edit are offered.
-		await expect(toolbarButton(page, 'Add')).toBeEnabled();
+		await expect(toolbarButton(page, 'Add', TENANT)).toBeEnabled();
 	});
 
-	test('lookup of an unknown tenant surfaces a Not Found popup, no crash', async ({page}) => {
+	test('lookup of an unknown tenant surfaces a Not Found popup, no crash', async ({page, consoleGuard}) => {
+		// The lookup needs a configured key store: an unconfigured store
+		// answers 503 ai_key_store_unconfigured for EVERY tenant, so the
+		// 404→Not-Found path under test is unreachable (same readiness gate
+		// as upsert; observed live on a gateway without --aikey-db-host).
+		test.skip(!readiness.ready, readiness.reason);
+		// The 404 IS the answer under test.
+		consoleGuard.allowRequest({status: 404, path: /\/config\/ai\/tenant\/ratelimit\/e2e-nonexistent-tenant$/});
 		await page.getByLabel('Tenant ID lookup').fill('e2e-nonexistent-tenant');
-		await page.getByRole('button', {name: 'Lookup'}).click();
+		// Both lookup panels render a button reading "Lookup"; the accessible
+		// names disambiguate them (see AITenantRateLimitPage).
+		await page.getByRole('button', {name: 'Lookup tenant', exact: true}).click();
 		await expect(dialogTitle(page, 'Not Found')).toBeVisible({timeout: 10_000});
 		await dialogButton(page, 'OK').click();
 		await expect(dialog(page)).toBeHidden();
 	});
 
 	test('client validation: invalid numbers and duplicate model quotas block Apply', async ({page}) => {
-		await openToolbarDialog(page, 'Add', dialog(page).getByRole('heading', {name: 'New AI Tenant Rate Limit'}));
+		await openToolbarDialog(page, 'Add', dialog(page).getByRole('heading', {name: 'New AI Tenant Rate Limit'}), {table: TENANT});
 
 		const apply = dialogButton(page, 'Apply');
 		await expect(apply).toBeDisabled();
@@ -103,7 +128,7 @@ test.describe('@gw AI Tenant Rate Limit page', () => {
 
 		try {
 			// First upsert.
-			await openToolbarDialog(page, 'Add', dialog(page).getByRole('heading', {name: 'New AI Tenant Rate Limit'}));
+			await openToolbarDialog(page, 'Add', dialog(page).getByRole('heading', {name: 'New AI Tenant Rate Limit'}), {table: TENANT});
 			await field(page, 'Tenant ID').fill(tenantId);
 			await field(page, 'Rate Limit (req/s)').fill('100');
 			await field(page, 'Burst Percentage').fill('175');
@@ -123,12 +148,12 @@ test.describe('@gw AI Tenant Rate Limit page', () => {
 			});
 			expect(req1.postDataJSON().isValid).toBeUndefined();
 			await expectSuccessAndDismiss(page);
-			await toolbarButton(page, 'Refresh').click();
+			await toolbarButton(page, 'Refresh', TENANT).click();
 			await expect(rowByText(page, tenantId).first()).toBeVisible({timeout: 10_000});
 
 			// Re-apply with a changed rps → overwrite (upsert, not a second row).
 			await rowByText(page, tenantId).first().getByRole('checkbox').check();
-			await toolbarButton(page, 'Mode').click();
+			await toolbarButton(page, 'Edit', TENANT).click();
 			await field(page, 'Rate Limit (req/s)').fill('250');
 			await page.mouse.move(0, 0);
 			const [req2] = await Promise.all([

@@ -30,13 +30,16 @@ let VID = 0;
 let MEMBER_VID = 0;
 let MEMBER_BASE_DEV = '';
 
-// The member sub-panel renders a second DataTable — target its (2nd) toolbar
-// and grid explicitly since #table-bar / .MuiDataGrid-root ids repeat.
+// The member sub-panel renders a second DataTable. Target it BY NAME, not by
+// ordinal: `.MuiDataGrid-root` and the toolbar look identical on both, so an
+// ordinal re-aims the moment a grid is added above. `VLAN Member` is
+// DataTable's `name` prop (VLANMemberTable.tsx).
+const MEMBER = 'VLAN Member';
 function memberGrid(page: Page): Locator {
-	return page.locator('.MuiDataGrid-root').nth(1);
+	return page.locator(`[data-table="${MEMBER}"] .MuiDataGrid-root`).first();
 }
 function memberToolbar(page: Page, icon: 'Add' | 'Delete'): Locator {
-	return page.locator('#table-bar').nth(1).locator(`button:has([data-testid="${icon}Icon"])`).first();
+	return page.locator(`[data-table-bar="${MEMBER}"] button:has([data-testid="${icon}Icon"])`).first();
 }
 
 async function captureDeletes(page: Page, needle: string, action: () => Promise<void>): Promise<URL[]> {

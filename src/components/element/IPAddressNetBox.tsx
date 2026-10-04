@@ -43,6 +43,7 @@ export default function IPAddressCidrBox(props: {label: string; value: string; d
 
 	useEffect(() => {
 		if (disabled) onChange('');
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, [disabled]);
 
 	// Combine internal and external error states

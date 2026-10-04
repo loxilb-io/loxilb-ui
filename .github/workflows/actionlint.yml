@@ -1,0 +1,29 @@
+name: Actionlint
+
+# Static analysis of the GitHub Actions workflows themselves (expression
+# typos, shellcheck on run: blocks, invalid action inputs). Workflow YAML has
+# no unit tests, so this is the only automated gate over .github/workflows/.
+# The binary is installed with `go install @vX.Y.Z` so the Go module sumdb
+# verifies the exact pinned version — no curl-pipe, no mutable docker tag.
+
+on:
+  pull_request:
+    paths: ['.github/workflows/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    name: actionlint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Install actionlint (sumdb-verified)
+        run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+
+      - name: Run actionlint
+        run: '"$(go env GOPATH)/bin/actionlint" -color'

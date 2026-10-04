@@ -5,12 +5,13 @@ import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IDefinedSetsInfo} from 'types/bgp_defined_set';
 import {IDataTableColumnDef} from 'types/global';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function BGPDefinedSetTable(props: {data: IDefinedSetsInfo; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; error?: boolean}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, error} = props;
+export default function BGPDefinedSetTable(props: {data: IDefinedSetsInfo; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; state?: PageDataState<unknown>; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, state, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'name', header: 'Name', width: 'wide'},
@@ -74,5 +75,5 @@ export default function BGPDefinedSetTable(props: {data: IDefinedSetsInfo; selec
 		};
 	});
 
-	return <DataTable name="Defined Set" columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} error={error} />;
+	return <DataTable name="Defined Set" columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} state={state} error={error} />;
 }

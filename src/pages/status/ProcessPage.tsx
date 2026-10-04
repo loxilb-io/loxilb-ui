@@ -13,6 +13,7 @@ import {useStatus} from 'hooks/query/statusHook';
 import {t} from 'i18next';
 import {Fragment, useState, useMemo} from 'react';
 import {IProcessAttribute, IProcessInfo} from 'types/process';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -53,7 +54,7 @@ function ProcessPanel(props: {data: IProcessAttribute}) {
 export default function ProcessPage() {
 	const inst = useInstanceFromURL();
 
-	const {processAttr, psError, refetch} = useStatus(inst);
+	const {processAttr, psQuery, refetch} = useStatus(inst);
 	const process_info: IProcessInfo = {processAttr: processAttr ?? []};
 
 	// Selection is keyed by a stable content hash (the row id assigned by
@@ -89,7 +90,7 @@ export default function ProcessPage() {
 				selected_rows={selected_rows}
 				onChangeSelectedRows={handleSelectionChange}
 				onRefresh={handleRefresh}
-				error={!!psError}
+				state={toPageState(psQuery, {op: 'process.list'})}
 			/>
 
 			{selectedItem && (

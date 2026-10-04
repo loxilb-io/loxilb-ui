@@ -18,11 +18,11 @@ import {dialog, openDialog, openToolbarDialog} from '../helpers/dialogs';
 /** A toolbar whose Add button silently ignores its first `swallow` clicks. */
 async function harness(page: Page, swallow: number, title = 'New Route'): Promise<void> {
 	await page.setContent(`
-		<div id="table-bar"><button><svg data-testid="AddIcon"></svg></button></div>
+		<div data-table-bar="Route"><button><svg data-testid="AddIcon"></svg></button></div>
 		<div id="host"></div>
 		<script>
 			let n = 0;
-			document.querySelector('#table-bar button').addEventListener('click', () => {
+			document.querySelector('[data-table-bar] button').addEventListener('click', () => {
 				if (++n <= ${swallow}) return;            // the lost click
 				document.querySelector('#host').innerHTML =
 					'<div class="MuiModal-root"><h2>${title}</h2></div>';
@@ -58,6 +58,6 @@ test('a WRONG dialog fails fast and names what opened, instead of being retried'
 
 test('openDialog also drives a non-toolbar opener', async ({page}) => {
 	await harness(page, 2);
-	await openDialog(page, 'New Route', () => page.locator('#table-bar button').click());
+	await openDialog(page, 'New Route', () => page.locator('[data-table-bar] button').click());
 	await expect(dialog(page)).toBeVisible();
 });

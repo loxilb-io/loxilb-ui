@@ -1,9 +1,10 @@
 import {Alert, Grid2, Stack, Typography} from '@mui/material';
 import SingleTextBox from 'components/element/SingleTextBox';
 import ValueBunch from 'components/element/ValueBunch';
+import KvExactStatusPanel from 'components/panel/KvExactStatusPanel';
 import {t} from 'i18next';
-import {effectiveAIHash, resolveAIEngine, resolveAITopology} from 'types/ai_gateway';
-import {IServiceArguments} from 'types/load_balancer';
+import {effectiveAIHash, isAIService, resolveAIEngine, resolveAITopology} from 'types/ai_gateway';
+import {IFcEffective, IServiceArguments} from 'types/load_balancer';
 
 function isSet(value: unknown): boolean {
 	return value !== undefined && value !== null && value !== '' && value !== false && value !== 0;
@@ -11,6 +12,68 @@ function isSet(value: unknown): boolean {
 
 function flag(value?: boolean): string {
 	return value ? t('Enabled') : t('Disabled');
+}
+
+/** "value (source)", where the source says who decided it: the rule, the gateway's environment, or the product default. */
+function withSource(value: string | number | undefined, source?: string): string | undefined {
+	if (value === undefined) return undefined;
+	return source ? `${value} (${SOURCE_NAMES[source] ? t(SOURCE_NAMES[source]) : source})` : String(value);
+}
+
+const SOURCE_NAMES: Record<string, string> = {rule: 'rule', env: 'environment', default: 'default'};
+
+function ceiling(value?: number): string | number | undefined {
+	return value === 0 ? t('Unlimited') : value;
+}
+
+// ⚠️ Compact on purpose (observability scope): what is in force and who set
+// it, plus the two states an operator must act on. Pool trends, per-tenant and
+// per-endpoint detail stay in Grafana.
+function AdmissionReadBack({effective}: {effective?: IFcEffective}) {
+	if (!effective) {
+		// Absent is not "off": the gateway reports it only where its data plane
+		// can read the pool state, so say what we know.
+		return (
+			<ValueBunch name={t('Admission Control')}>
+				<Typography variant="body2" color="text.secondary">{t('Not reported by this gateway.')}</Typography>
+			</ValueBunch>
+		);
+	}
+	const source = effective.source ?? {};
+	const adaptive = effective.adaptive === 'on';
+	const inForce = adaptive ? effective.effective_max_outstanding : effective.max_outstanding;
+	const depth = effective.queue_depth;
+	const queue = depth === undefined ? undefined : depth === 0 ? t('None (over the ceiling is refused)') : `${depth} / ${effective.queue_wait_ms ?? '?'} ms`;
+	const share = effective.tenant_max_share_pct;
+	const held = effective.adapt_state === 'tightened' || effective.adapt_state === 'frozen';
+
+	return (
+		<ValueBunch name={t('Admission Control')}>
+			<Stack spacing={1}>
+				{held && (
+					<Alert severity="warning">
+						{t('The adaptive ceiling is {{state}} at {{limit}} of {{max}} (reason: {{reason}}).', {
+							state: effective.adapt_state,
+							limit: effective.effective_max_outstanding ?? '?',
+							max: effective.max_outstanding ?? '?',
+							reason: effective.adapt_reason ?? t('not reported'),
+						})}
+					</Alert>
+				)}
+				{(effective.queued ?? 0) > 0 && (
+					<Alert severity="info">{t('{{count}} requests are waiting for capacity.', {count: effective.queued})}</Alert>
+				)}
+				<Grid2 container spacing={2}>
+					<SingleTextBox label={t('Admission Mode')} value={withSource(effective.mode, source.mode)} tooltip={t('The gate mode in force on the pool, and where it came from: the rule, the gateway environment, or the default.')} />
+					<SingleTextBox label={t('Ceiling in Force')} value={withSource(ceiling(inForce), source.max_outstanding)} tooltip={t('Executing inference requests the pool admits now. Below the declared ceiling while an adaptive pool is tightened.')} />
+					<SingleTextBox label={t('Queue (depth / wait)')} value={withSource(queue, source.queue_depth)} tooltip={t('Requests that may wait for capacity, and how long.')} />
+					{share !== undefined && share !== 0 && share !== 100 && (
+						<SingleTextBox label={t('Tenant Max Share (%)')} value={withSource(share, source.tenant_max_share_pct)} tooltip={t('The most of the ceiling and of the queue one tenant may hold.')} />
+					)}
+				</Grid2>
+			</Stack>
+		</ValueBunch>
+	);
 }
 
 const KV_EXACT_MODES: Record<number, string> = {
@@ -43,6 +106,9 @@ export default function AIGatewayPanel({serviceArguments}: {serviceArguments: IS
 		serviceArguments.kvWarmupSec,
 		serviceArguments.kvDpRankCount,
 		serviceArguments.pdBootstrapPort,
+		serviceArguments.kvModelProfile,
+		serviceArguments.kvExactApiMode,
+		serviceArguments.fc_effective,
 	];
 
 	if (!aiValues.some(isSet)) {
@@ -68,11 +134,18 @@ export default function AIGatewayPanel({serviceArguments}: {serviceArguments: IS
 
 	return (
 		<Stack spacing={2}>
-			<ValueBunch name={t('Data-plane API Key Policy')}>
+			{/* ⚠️ The NAMES here must track AIGatewaySettingsForm's, which is where
+			    this value is set. They drifted when the JWT arc widened the enum:
+			    the form became "Credential Policy" / "Unmanaged (no policy)" while
+			    this panel still read "API Key Policy" / "Preserve / unmanaged" —
+			    two names for one field, and the older one is wrong outright once
+			    the value is `jwt`. (Neither old string was a locale key either, so
+			    they rendered untranslated.) */}
+			<ValueBunch name={t('Data-plane Credential Policy')}>
 				<Grid2 container spacing={2}>
 					<SingleTextBox
 						label={t('Declared Policy')}
-						value={serviceArguments.api_key_auth ?? t('Preserve / unmanaged')}
+						value={serviceArguments.api_key_auth ?? t('Unmanaged (no policy)')}
 						tooltip={t('This is the declaration returned by the Gateway. Omission is distinct from explicit disabled.')}
 					/>
 				</Grid2>
@@ -104,6 +177,8 @@ export default function AIGatewayPanel({serviceArguments}: {serviceArguments: IS
 				</Grid2>
 			</ValueBunch>
 
+			{isAIService(serviceArguments) && <AdmissionReadBack effective={serviceArguments.fc_effective} />}
+
 			{topology === 'pd' && (
 				<ValueBunch name={t('Prefill / Decode Disaggregation')}>
 					<Grid2 container spacing={2}>
@@ -126,6 +201,10 @@ export default function AIGatewayPanel({serviceArguments}: {serviceArguments: IS
 						{engine !== 'trtllm' && <SingleTextBox label={t('KV ZMQ Port')} value={serviceArguments.kvZmqPort} tooltip={t('Base event-publisher port.')} />}
 						<SingleTextBox label={t('KV Warmup (s)')} value={serviceArguments.kvWarmupSec} tooltip={t('Inventory warmup before exact routing activates.')} />
 						{engine === 'sglang' && exactMode === 3 && <SingleTextBox label={t('KV DP Rank Count')} value={serviceArguments.kvDpRankCount || 1} tooltip={t('Ranks publish at base ZMQ port plus rank index.')} />}
+						{/* DECLARED binding only — the resolved/live position renders in the
+						    separate enforcement-status section below, never merged here. */}
+						<SingleTextBox label={t('Model Profile (declared)')} value={serviceArguments.kvModelProfile ?? t('None — legacy profile-less rule')} tooltip={t('Bound ModelPromptProfile ID as declared on the rule. Immutable after create.')} />
+						{serviceArguments.kvModelProfile && <SingleTextBox label={t('API Surface (declared)')} value={serviceArguments.kvExactApiMode ?? t('Profile default')} tooltip={t('Declared KV-exact API surface. Immutable after create.')} />}
 					</Grid2>
 				</ValueBunch>
 			)}
@@ -135,6 +214,10 @@ export default function AIGatewayPanel({serviceArguments}: {serviceArguments: IS
 					{t('llama.cpp uses plain load balancing or CHWBL/session affinity and has no KV event plane or P/D controls.')}
 				</Alert>
 			)}
+
+			{/* Resolved status — a dedicated read model, kept structurally apart
+			    from the declared configuration above (renders only on KV-exact rules). */}
+			<KvExactStatusPanel serviceArguments={serviceArguments} />
 		</Stack>
 	);
 }

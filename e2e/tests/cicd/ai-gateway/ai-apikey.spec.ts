@@ -33,10 +33,10 @@ test.describe('@gw cicd/ai-apikey — AI API-key management contract', () => {
 		expect([200, 401, 403, 503], 'response must identify management auth/RBAC/store readiness').toContain(resp.status);
 	});
 
-	test('C → one-time raw_key; D (needs management/store readiness)', async ({page, consoleGuard}) => {
+	test('C → one-time raw_key; D (needs management/store readiness)', async ({page}) => {
 		test.skip(!readiness.ready, readiness.reason);
+		// No allowance: on a ready gateway nothing this test does fails.
 
-		consoleGuard.allow(/Failed to load resource/i);
 		await page.goto(`instance/ai/apikey?name=${instName}`); // relative — baseURL carries /netlox
 		await expect(toolbarButton(page, 'Add')).toBeVisible({timeout: 20_000});
 
@@ -53,7 +53,11 @@ test.describe('@gw cicd/ai-apikey — AI API-key management contract', () => {
 		expect(body.isValid).toBeUndefined();
 		expect((await req.response())?.status()).toBeLessThan(300);
 
-		// The plaintext key is surfaced exactly once.
+		// The plaintext key is surfaced exactly once — the reveal is persistent,
+		// so Escape and a backdrop click must NOT dismiss it before OK.
+		await expect(dialogTitle(page, 'API Key Created')).toBeVisible();
+		await page.keyboard.press('Escape');
+		await page.mouse.click(5, 5);
 		await expect(dialogTitle(page, 'API Key Created')).toBeVisible();
 		await dialogButton(page, 'OK').click();
 

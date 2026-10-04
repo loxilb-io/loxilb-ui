@@ -17,8 +17,10 @@ import {
 	IIPsecTunnelMod,
 } from 'types/ipsec';
 import {IInstance} from 'types/oam';
-import {ApiResult, assertOk, createDetailedErrorMessage} from '../fetcher/fetcher_base';
+import {assertOk} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST, PUT_INST} from '../fetcher/fetcher_inst';
+import {OpResult} from '../fetcher/opResult';
+import {runOp} from '../fetcher/opResultAdapter';
 
 //---------------------------------------------------------
 // Global configuration (/config/ipsec)
@@ -26,15 +28,16 @@ import {DELETE_INST, GET_INST, POST_INST, PUT_INST} from '../fetcher/fetcher_ins
 
 export async function query_get_ipsec_config(instance: IInstance): Promise<IIPsecConfig | null> {
 	const resp = await GET_INST<IIPsecConfig>(instance, `/config/ipsec`);
-	return resp.code === 200 ? resp.data : null;
+	// 404 keeps its meaning — IPsec simply is not configured on this instance,
+	// which the panel renders as such. Anything else is a failure the operator
+	// must be told about instead of seeing an empty settings panel.
+	if (resp.code === 404) return null;
+	assertOk(resp, 'Get IPsec Configuration');
+	return resp.data;
 }
 
-export async function request_set_ipsec_config(instance: IInstance, data: IIPsecConfigMod): Promise<ApiResult> {
-	const resp = await POST_INST(instance, `/config/ipsec`, data);
-	if (resp.code !== 200 && resp.code !== 204) {
-		return {status: 'error', error: createDetailedErrorMessage(resp, 'IPsec Configuration')};
-	}
-	return {status: 'success'};
+export async function request_set_ipsec_config(instance: IInstance, data: IIPsecConfigMod): Promise<OpResult> {
+	return runOp('ipsec.set_ipsec_config', () => POST_INST(instance, `/config/ipsec`, data));
 }
 
 //---------------------------------------------------------
@@ -47,12 +50,8 @@ export async function query_get_ipsec_tunnel_all(instance: IInstance): Promise<I
 	return resp.data?.ipsecTunnelAttr ?? [];
 }
 
-export async function request_create_ipsec_tunnel(instance: IInstance, data: IIPsecTunnelMod): Promise<ApiResult> {
-	const resp = await POST_INST(instance, `/config/ipsec/tunnels`, data);
-	if (resp.code !== 200 && resp.code !== 204) {
-		return {status: 'error', error: createDetailedErrorMessage(resp, 'IPsec Tunnel Create')};
-	}
-	return {status: 'success'};
+export async function request_create_ipsec_tunnel(instance: IInstance, data: IIPsecTunnelMod): Promise<OpResult> {
+	return runOp('ipsec.create_ipsec_tunnel', () => POST_INST(instance, `/config/ipsec/tunnels`, data));
 }
 
 /**
@@ -60,21 +59,13 @@ export async function request_create_ipsec_tunnel(instance: IInstance, data: IIP
  * the gateway, no delete/recreate window. PSK may be omitted when unchanged
  * (the gateway keeps the stored one).
  */
-export async function request_update_ipsec_tunnel(instance: IInstance, name: string, data: IIPsecTunnelMod): Promise<ApiResult> {
-	const resp = await PUT_INST(instance, `/config/ipsec/tunnels/${encodeURIComponent(name)}`, data);
-	if (resp.code !== 200 && resp.code !== 204) {
-		return {status: 'error', error: createDetailedErrorMessage(resp, 'IPsec Tunnel Update')};
-	}
-	return {status: 'success'};
+export async function request_update_ipsec_tunnel(instance: IInstance, name: string, data: IIPsecTunnelMod): Promise<OpResult> {
+	return runOp('ipsec.update_ipsec_tunnel', () => PUT_INST(instance, `/config/ipsec/tunnels/${encodeURIComponent(name)}`, data));
 }
 
 /** Initiate (ipsec up), terminate (ipsec down), or restart the tunnel connection. */
-export async function request_ipsec_tunnel_action(instance: IInstance, name: string, action: IIPsecTunnelAction): Promise<ApiResult> {
-	const resp = await POST_INST(instance, `/config/ipsec/tunnels/${encodeURIComponent(name)}/action`, {action});
-	if (resp.code !== 200 && resp.code !== 204) {
-		return {status: 'error', error: createDetailedErrorMessage(resp, `IPsec Tunnel ${action}`)};
-	}
-	return {status: 'success'};
+export async function request_ipsec_tunnel_action(instance: IInstance, name: string, action: IIPsecTunnelAction): Promise<OpResult> {
+	return runOp(`ipsec.tunnel_${action}`, () => POST_INST(instance, `/config/ipsec/tunnels/${encodeURIComponent(name)}/action`, {action}));
 }
 
 /**
@@ -83,15 +74,13 @@ export async function request_ipsec_tunnel_action(instance: IInstance, name: str
  */
 export async function query_get_ipsec_tunnel_peerconfig(instance: IInstance, name: string): Promise<IIPsecPeerConfig | null> {
 	const resp = await GET_INST<IIPsecPeerConfig>(instance, `/config/ipsec/tunnels/${encodeURIComponent(name)}/peerconfig`);
-	return resp.code === 200 ? resp.data : null;
+	if (resp.code === 404) return null;
+	assertOk(resp, 'Get IPsec Peer Configuration');
+	return resp.data;
 }
 
-export async function request_delete_ipsec_tunnel(instance: IInstance, name: string): Promise<ApiResult> {
-	const resp = await DELETE_INST(instance, `/config/ipsec/tunnels/${encodeURIComponent(name)}`);
-	if (resp.code !== 200 && resp.code !== 204) {
-		return {status: 'error', error: createDetailedErrorMessage(resp, 'IPsec Tunnel Delete')};
-	}
-	return {status: 'success'};
+export async function request_delete_ipsec_tunnel(instance: IInstance, name: string): Promise<OpResult> {
+	return runOp('ipsec.delete_ipsec_tunnel', () => DELETE_INST(instance, `/config/ipsec/tunnels/${encodeURIComponent(name)}`));
 }
 
 //---------------------------------------------------------
@@ -100,12 +89,15 @@ export async function request_delete_ipsec_tunnel(instance: IInstance, name: str
 
 export async function query_get_ipsec_sa_all(instance: IInstance): Promise<IIPsecSA[]> {
 	const resp = await GET_INST<{ipsecSaAttr: IIPsecSA[] | null}>(instance, `/config/ipsec/sas/all`);
+	assertOk(resp, 'Get IPsec Security Associations');
 	return resp.data?.ipsecSaAttr ?? [];
 }
 
 export async function query_get_ipsec_stats(instance: IInstance): Promise<IIPsecStats | null> {
 	const resp = await GET_INST<IIPsecStats>(instance, `/config/ipsec/stats`);
-	return resp.code === 200 ? resp.data : null;
+	if (resp.code === 404) return null;
+	assertOk(resp, 'Get IPsec Statistics');
+	return resp.data;
 }
 
 //---------------------------------------------------------
@@ -118,20 +110,12 @@ export async function query_get_ipsec_certificate_all(instance: IInstance): Prom
 	return resp.data?.ipsecCertificateAttr ?? [];
 }
 
-export async function request_upload_ipsec_certificate(instance: IInstance, data: IIPsecCertificateMod): Promise<ApiResult> {
-	const resp = await POST_INST(instance, `/config/ipsec/certificates`, data);
-	if (resp.code !== 200 && resp.code !== 201 && resp.code !== 204) {
-		return {status: 'error', error: createDetailedErrorMessage(resp, 'IPsec Certificate Upload')};
-	}
-	return {status: 'success'};
+export async function request_upload_ipsec_certificate(instance: IInstance, data: IIPsecCertificateMod): Promise<OpResult> {
+	return runOp('ipsec.upload_ipsec_certificate', () => POST_INST(instance, `/config/ipsec/certificates`, data));
 }
 
-export async function request_delete_ipsec_certificate(instance: IInstance, name: string): Promise<ApiResult> {
-	const resp = await DELETE_INST(instance, `/config/ipsec/certificates/${encodeURIComponent(name)}`);
-	if (resp.code !== 200 && resp.code !== 204) {
-		return {status: 'error', error: createDetailedErrorMessage(resp, 'IPsec Certificate Delete')};
-	}
-	return {status: 'success'};
+export async function request_delete_ipsec_certificate(instance: IInstance, name: string): Promise<OpResult> {
+	return runOp('ipsec.delete_ipsec_certificate', () => DELETE_INST(instance, `/config/ipsec/certificates/${encodeURIComponent(name)}`));
 }
 
 /**
@@ -154,18 +138,10 @@ export async function query_get_ipsec_ca_certificate_all(instance: IInstance): P
 	return resp.data?.ipsecCACertificateAttr ?? [];
 }
 
-export async function request_upload_ipsec_ca_certificate(instance: IInstance, data: IIPsecCACertificateMod): Promise<ApiResult> {
-	const resp = await POST_INST(instance, `/config/ipsec/ca-certificates`, data);
-	if (resp.code !== 200 && resp.code !== 201 && resp.code !== 204) {
-		return {status: 'error', error: createDetailedErrorMessage(resp, 'IPsec CA Certificate Upload')};
-	}
-	return {status: 'success'};
+export async function request_upload_ipsec_ca_certificate(instance: IInstance, data: IIPsecCACertificateMod): Promise<OpResult> {
+	return runOp('ipsec.upload_ipsec_ca_certificate', () => POST_INST(instance, `/config/ipsec/ca-certificates`, data));
 }
 
-export async function request_delete_ipsec_ca_certificate(instance: IInstance, name: string): Promise<ApiResult> {
-	const resp = await DELETE_INST(instance, `/config/ipsec/ca-certificates/${encodeURIComponent(name)}`);
-	if (resp.code !== 200 && resp.code !== 204) {
-		return {status: 'error', error: createDetailedErrorMessage(resp, 'IPsec CA Certificate Delete')};
-	}
-	return {status: 'success'};
+export async function request_delete_ipsec_ca_certificate(instance: IInstance, name: string): Promise<OpResult> {
+	return runOp('ipsec.delete_ipsec_ca_certificate', () => DELETE_INST(instance, `/config/ipsec/ca-certificates/${encodeURIComponent(name)}`));
 }

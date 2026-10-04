@@ -1,0 +1,28 @@
+{
+	// The e2e tree is OUTSIDE the root tsconfig's `include` (which is just
+	// `src`), and `npm run lint` only walks `src` too — so until this config
+	// existed nothing typechecked these files. Playwright transpiles with
+	// esbuild and never type-checks, so a spec could name a helper argument
+	// that does not exist and still "pass": `toolbarButton(page, 'Edit')`
+	// built a locator for an "EditIcon" the product never renders (Edit is
+	// drawn with ModeIcon), which made every absence assertion vacuous and
+	// every presence assertion fail for the wrong reason.
+	//
+	// Run via `npm run typecheck:e2e` (and `npm run typecheck:all`).
+	"compilerOptions": {
+		"target": "ES2022",
+		"lib": ["dom", "dom.iterable", "esnext"],
+		"module": "esnext",
+		"moduleResolution": "node",
+		"skipLibCheck": true,
+		"esModuleInterop": true,
+		"allowSyntheticDefaultImports": true,
+		"resolveJsonModule": true,
+		"isolatedModules": true,
+		"strict": true,
+		"strictNullChecks": true,
+		"forceConsistentCasingInFileNames": true,
+		"noEmit": true
+	},
+	"include": ["."]
+}

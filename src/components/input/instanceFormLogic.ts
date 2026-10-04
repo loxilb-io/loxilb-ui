@@ -322,3 +322,21 @@ export function describe_instance_error(raw: string | undefined): string {
 	if (lower.includes('forbidden')) return 'Your role does not permit managing instances.';
 	return message;
 }
+
+/**
+ * OpResult flavour of describe_instance_error: returns a
+ * locale KEY — the caller renders it through t(). Unlike the legacy helper it
+ * never falls back to raw server prose: unrecognized details
+ * resolve to the result's own mapped localeKey. The duplicate-entry sniffing
+ * inspects rawDetail (diagnostics), because OAM's 409 body still carries the
+ * driver text on older builds.
+ */
+export function describe_instance_op_error(res: {status: string; localeKey: string; rawDetail?: string}): string {
+	const lower = (res.rawDetail ?? '').toLowerCase();
+	if (lower.includes('duplicate') && lower.includes('api_endpoint')) {
+		return 'Another instance is already registered at this protocol/host/port/version.';
+	}
+	if (lower.includes('duplicate') && lower.includes('name')) return 'An instance with this name already exists.';
+	if (res.status === 'denied') return 'Your role does not permit managing instances.';
+	return res.localeKey;
+}

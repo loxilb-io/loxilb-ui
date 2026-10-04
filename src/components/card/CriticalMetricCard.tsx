@@ -11,6 +11,7 @@ import {ITypedLiveMetricsResponse} from 'types/metrics';
 import AnimatedValue from 'components/element/AnimatedValue';
 import RateLineGraph from 'components/element/RateLineGraph';
 import CardBase from './CardBase';
+import MetricScrapeState from './MetricScrapeState';
 
 //---------------------------------------------------------
 // Component Props
@@ -41,12 +42,9 @@ export default function CriticalMetricCard(props: CriticalMetricCardProps) {
 		maxPoints = 60
 	} = props;
 
-	// Get live metrics with polling
-	const {metrics: liveMetrics} = useLiveMetrics(instance, {
-		keyPrefix: 'critical-metrics-realtime',
-		refetchInterval: 10000,
-		extraKey: metricField as string,
-	});
+	// Reads the shared snapshot; every metrics card on screen renders the same
+	// observation, so their numbers cannot disagree.
+	const {metrics: liveMetrics, failure: scrapeFailure, refetch: refetchMetrics} = useLiveMetrics(instance);
 
 	// State to accumulate time series data
 	const [metricHistory, setMetricHistory] = useState<ITimeSeriesPoint<number>[]>([]);
@@ -101,6 +99,10 @@ export default function CriticalMetricCard(props: CriticalMetricCardProps) {
 		values: metricHistory
 	}), [metricHistory, title]);
 
+	// A refused or disabled scrape is not this instance declining to publish a
+	// metric — say which it was, instead of falling through to "not reported".
+	if (scrapeFailure) return <MetricScrapeState title={title} failure={scrapeFailure} onRetry={refetchMetrics} />;
+
 	// First poll still in flight → skeleton, not a blank card.
 	if (!polled && metricHistory.length === 0) {
 		return (
@@ -118,7 +120,7 @@ export default function CriticalMetricCard(props: CriticalMetricCardProps) {
 		return (
 			<CardBase title={title}>
 				<Box display="flex" flexDirection="column" gap={0.5}>
-					<Typography variant="h4" fontWeight="bold" color="text.disabled">
+					<Typography component="p" variant="h4" fontWeight="bold" color="text.disabled">
 						{t('N/A')}
 					</Typography>
 					<Typography variant="caption" color="textSecondary">
@@ -139,7 +141,7 @@ export default function CriticalMetricCard(props: CriticalMetricCardProps) {
 				{/* Current Value and Status */}
 				<Box display="flex" justifyContent="space-between" alignItems="center">
 					<Box>
-						<AnimatedValue variant="h4" color={value_color} value={currentValue.toLocaleString()} />
+						<AnimatedValue component="p" variant="h4" color={value_color} value={currentValue.toLocaleString()} />
 						{description && (
 							<Typography variant="caption" color="textSecondary">
 								{description}

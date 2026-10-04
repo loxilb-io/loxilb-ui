@@ -52,22 +52,24 @@ describe('snapshot mutations (verbatim server errors)', () => {
 	it('request_take_snapshot passes the gateway 502 body through', async () => {
 		mockFetch('{"error":"gateway unreachable: connect: connection refused"}', 502);
 		const res = await request_take_snapshot(1, {name: 'x'});
-		expect(res.status).toBe('error');
-		expect(res.error).toContain('502');
+		expect(res.status).toBe('unavailable');
+		expect(res.httpStatus).toBe(502);
+		expect(res.rawDetail).toContain('connection refused');
 	});
 
 	it('request_take_snapshot returns the created snapshot on 201', async () => {
 		mockFetch('{"id":"s2","name":"x","trigger_type":"manual"}', 201);
 		const res = await request_take_snapshot(1, {name: 'x'});
-		expect(res.status).toBe('success');
-		expect(res.snapshot?.id).toBe('s2');
+		expect(res.status).toBe('confirmed');
+		expect(res.data?.id).toBe('s2');
 	});
 
 	it('request_delete_snapshot surfaces the pinned-refusal error', async () => {
 		mockFetch('{"error":"snapshot is pinned; unpin it or pass force=true"}', 409);
 		const res = await request_delete_snapshot('s1');
-		expect(res.status).toBe('error');
-		expect(res.error).toContain('pinned');
+		expect(res.status).toBe('invalid');
+		// Server detail is diagnostics-only under OpResult (never rendered raw).
+		expect(res.rawDetail).toContain('pinned');
 	});
 });
 
@@ -83,18 +85,18 @@ describe('request_restore_snapshot (the 200-with-failure contract)', () => {
 			}),
 		);
 		const res = await request_restore_snapshot('s1', 'commit');
-		expect(res.status).toBe('success');
-		if (res.status === 'success') {
-			expect(res.outcome.gateway_status).toBe(500);
-			expect(res.outcome.gateway_response?.result).toBe('rolled-back');
+		expect(res.status).toBe('confirmed');
+		if (res.status === 'confirmed') {
+			expect(res.data?.gateway_status).toBe(500);
+			expect(res.data?.gateway_response?.result).toBe('rolled-back');
 		}
 	});
 
 	it('errors when OAM refuses before the gateway leg (integrity 422)', async () => {
 		mockFetch('{"error":"stored snapshot failed integrity verification"}', 422);
 		const res = await request_restore_snapshot('s1', 'dry-run');
-		expect(res.status).toBe('error');
-		if (res.status === 'error') expect(res.error).toContain('integrity');
+		expect(res.status).toBe('invalid');
+		if (res.status === 'invalid') expect(res.rawDetail).toContain('integrity');
 	});
 
 	it('resolves an error result (never rejects) when the OAM host is unreachable', async () => {
@@ -102,7 +104,7 @@ describe('request_restore_snapshot (the 200-with-failure contract)', () => {
 		// the wizard stuck on its non-dismissable committing screen (§9.3 case 3).
 		(global.fetch as Mock).mockRejectedValue(new TypeError('Failed to fetch'));
 		const res = await request_restore_snapshot('s1', 'commit');
-		expect(res.status).toBe('error');
-		if (res.status === 'error') expect(res.error).toMatch(/unreachable|Failed to fetch/);
+		expect(res.status).toBe('unavailable');
+		if (res.status === 'unavailable') expect(res.rawDetail).toMatch(/Failed to fetch/);
 	});
 });

@@ -6,7 +6,7 @@
     "path": "api/swagger.yml",
     "commit": "2d747448",
     "dirty": true,
-    "note": "added 2026-08-13 (backward-compat Phase 1) from the v0.9.8.5 tag checkout; dirty=true is tree-wide (.gitignore/loxilb-ebpf) — api/swagger.yml itself matched HEAD. gateway/oam entries deliberately untouched this round (gateway checkout mid-feature on feat/pii-presidio-integration)"
+    "note": "added 2026-08-13 (backward-compat Phase 1) from the v0.9.8.5 tag checkout; dirty=true is tree-wide (.gitignore/loxilb-ebpf) \u2014 api/swagger.yml itself matched HEAD. gateway/oam entries deliberately untouched this round (gateway checkout mid-feature on feat/pii-presidio-integration)"
   },
   "gateway": {
     "repo": "loxilb-inference-gateway",
@@ -28,5 +28,13 @@
     "sha256": {
       "oam-swagger.json": "263f94fac79d4f58f02ccb057a560c7a35e5810ea50f7ca46728ad3155b31ec8"
     }
+  },
+  "metricManifest": {
+    "repo": "loxilb-inference-gateway",
+    "path": "deploy/monitoring/manifest/metric-manifest.json",
+    "commit": "314fd6e80c77437a6c3f707076e45ba56cccd458",
+    "dirty": false,
+    "vendoredAt": "2026-09-29T13:04:35Z",
+    "note": "vendored verbatim (byte-for-byte upstream); the UI version envelope is generated into src/api/gen/metric-manifest.json by scripts/gen-metric-manifest.mjs (npm run gen:api)"
   }
 }

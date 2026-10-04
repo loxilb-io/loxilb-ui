@@ -157,7 +157,7 @@ test.describe('@loxilb LX-CONTRACT — no gateway-only API surface reaches a lox
 		// dialog reloads a persisted rule and (on loxilb, which has no PATCH)
 		// re-sends the WHOLE body as an upsert.
 		await selectRowByText(page, LB_NAME);
-		await openToolbarDialog(page, 'Mode', 'Edit Load Balancer Rule'); // edit (pencil)
+		await openToolbarDialog(page, 'Edit', 'Edit Load Balancer Rule'); // edit (pencil)
 		await expandSection(page, /^Advanced Settings/);
 		await field(page, 'Inactive Timeout').fill('120');
 		await page.mouse.move(0, 0);

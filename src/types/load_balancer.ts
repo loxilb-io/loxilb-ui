@@ -1,3 +1,4 @@
+import type {GwSchema} from '../api';
 //---------------------------------------------------------
 // Interfaces
 //---------------------------------------------------------
@@ -18,7 +19,27 @@ export interface IMtlsFrontend {
 // Declaration carried on an Inference Gateway fullproxy service. Omission is
 // deliberately distinct from "disabled": omission leaves the backend's
 // X-Api-Key namespace unmanaged, while explicit disabled claims and strips it.
+//
+// The two bearer modes arrived with the JWT feature and both REQUIRE
+// jwt_auth_profile to name a configured profile:
+//   jwt            — an Authorization Bearer JWT decides; X-Api-Key is not consulted.
+//   apikey-or-jwt  — fixed precedence, NOT "try both": a present X-Api-Key
+//                    decides ALONE and its rejection is FINAL with no JWT
+//                    fallback; only a request without the header falls through
+//                    to the Bearer arm, and one carrying neither is refused.
 export type ApiKeyAuthPolicy = 'disabled' | 'required' | 'jwt' | 'apikey-or-jwt';
+
+/** The modes whose Bearer arm needs a profile to point at. */
+export const JWT_AUTH_POLICIES: readonly ApiKeyAuthPolicy[] = ['jwt', 'apikey-or-jwt'];
+
+export function requiresJwtProfile(policy: ApiKeyAuthPolicy | undefined): boolean {
+	return policy !== undefined && JWT_AUTH_POLICIES.includes(policy);
+}
+
+// Declared KV-exact API surface of a strict rule. Absent on a profile-less
+// rule keeps the legacy behavior (both surfaces, unattested); with a bound
+// profile an explicit value must be a subset of the profile's supportedApis.
+export type KvExactApiMode = 'completions' | 'chat' | 'both';
 
 export interface IServiceArguments {
 	name: string;
@@ -59,8 +80,8 @@ export interface IServiceArguments {
 
 	// --- AI gateway: model routing / tracing ---
 	model_name?: string;			// endpoint-pool selector for AI model routing
-	jwt_auth_profile?: string; // configured profile reference for jwt/apikey-or-jwt
-	api_key_auth?: ApiKeyAuthPolicy;	// absent = preserve/unmanaged; disabled = strip; required = enforce + strip
+	api_key_auth?: ApiKeyAuthPolicy;	// absent = preserve/unmanaged; disabled = strip; required = enforce + strip; jwt / apikey-or-jwt = bearer arm
+	jwt_auth_profile?: string;		// profile name the bearer arm resolves against; required by and only valid with the two JWT modes
 	trace_type?: string;			// tracing catalog name for deep inspection
 	session_header_name?: string;	// header carrying the session key (sel=persist)
 	chwbl_prefix_hash_level?: number;	// CHWBL prefix hash level (sel=8)
@@ -85,7 +106,37 @@ export interface IServiceArguments {
 		kvEngineType?: 'vllm' | 'sglang' | 'trtllm' | 'llamacpp';
 		kvDpRankCount?: number;			// SGLang data-parallel rank count (1-8)
 		pdBootstrapPort?: number;		// SGLang P/D bootstrap port (0 = engine default 8998)
+
+		// --- AI gateway: KV-exact model-profile binding (strict rules) ---
+		// Both are immutable after create (delete+recreate to change) and are
+		// scalars by schema — arrays are rejected representations.
+		kvModelProfile?: string;		// published ModelPromptProfile ID; absent = legacy profile-less rule
+		kvExactApiMode?: KvExactApiMode;	// declared API surface; must be a subset of the bound profile's supportedApis
+
+		// --- AI gateway: capacity admission gate (create / replace-POST only) ---
+		// Blank is OMITTED (the gateway's environment or product default applies);
+		// an explicit 0 resets to that default; null is refused. PATCH does not
+		// reach fullproxy rules, so these change only by creating a rule.
+		fc_mode?: GwServiceArguments['fc_mode'];
+		fc_max_outstanding?: number;
+		fc_ep_max_inflight?: number;
+		fc_prefill_max_inflight?: number;	// P/D only
+		fc_decode_max_inflight?: number;	// P/D only
+		fc_max_queue_depth?: number;
+		fc_max_queue_wait_ms?: number;		// required (> 0) whenever a depth is set
+		fc_telemetry_stale_ms?: number;		// P/D only
+		fc_adaptive?: GwServiceArguments['fc_adaptive'];
+		/** Optional: offered only when the live Gateway metadata declares it. */
+		fc_expose_headers?: 'on' | 'off' | 'inherit';
+		fc_warmup_ms?: number;
+		fc_ttft_target_ms?: number;
+		fc_tenant_max_share_pct?: number;
+		fc_effective?: IFcEffective;		// read-only: the gate's resolved state, never sent
 	}
+
+type GwServiceArguments = NonNullable<GwSchema<'LoadbalanceEntry'>['serviceArguments']>;
+/** The admission gate's resolved state on an AI rule's model pool (read-back only). */
+export type IFcEffective = NonNullable<GwServiceArguments['fc_effective']>;
 
 export interface IEndpoint {
 	endpointIP: string;

@@ -5,6 +5,7 @@ import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IDataTableColumnDef} from 'types/global';
 import {IProcessInfo} from 'types/process';
+import {PageDataState} from 'components/state/pageState';
 
 // Stable row id derived from process identity — must match ProcessPage.
 const getHashKey = (item: any) => getStableHash(`${item.pid || ''}_${item.command || ''}`);
@@ -12,8 +13,8 @@ const getHashKey = (item: any) => getStableHash(`${item.pid || ''}_${item.comman
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function ProcessTable(props: {data: IProcessInfo; selected_rows: number[]; onChangeSelectedRows: any; onRefresh?: any; error?: boolean}) {
-	const {data, selected_rows, onChangeSelectedRows, onRefresh, error} = props;
+export default function ProcessTable(props: {data: IProcessInfo; selected_rows: number[]; onChangeSelectedRows: any; onRefresh?: any; state?: PageDataState<unknown>; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onRefresh, state, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'pid', header: 'PID', type: 'mono', tooltip: 'Process ID', width: 'medium'},
@@ -38,5 +39,5 @@ export default function ProcessTable(props: {data: IProcessInfo; selected_rows: 
 		};
 	});
 
-	return <DataTable name={'Process'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onRefresh={onRefresh} error={error} />;
+	return <DataTable name={'Process'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onRefresh={onRefresh} state={state} error={error} />;
 }

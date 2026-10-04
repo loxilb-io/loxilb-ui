@@ -5,12 +5,13 @@ import DataTable from 'components/table/DataTable';
 import {INeighborData} from 'types/device_neighbor';
 import {IDataTableColumnDef} from 'types/global';
 import {getStableHash} from 'common';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function DeviceNeighborTable(props: {data: INeighborData; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onRefresh?: any; error?: boolean}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
+export default function DeviceNeighborTable(props: {data: INeighborData; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onRefresh?: any; state?: PageDataState<unknown>; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, state, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'ipAddress', header: 'IP Address', width: 'wide', type: 'mono', tooltip: 'Assigned IP address for routing or interface use.'},
@@ -44,6 +45,7 @@ export default function DeviceNeighborTable(props: {data: INeighborData; selecte
 			onAdd={onAdd}
 			onDelete={onDelete}
 			onRefresh={onRefresh}
+			state={state}
 			error={error}
 		/>
 	);

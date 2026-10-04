@@ -5,12 +5,13 @@ import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IBgpNeighborState} from 'types/bgp_neighbor';
 import {IDataTableColumnDef} from 'types/global';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function BGPNeighborTable(props: {data: IBgpNeighborState; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; error?: boolean}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, error} = props;
+export default function BGPNeighborTable(props: {data: IBgpNeighborState; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; state?: PageDataState<unknown>; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, state, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'ipAddress', header: 'IP Address', width: 'wide', type: 'mono', tooltip: 'Assigned IP address for routing or interface use.'},
@@ -37,6 +38,6 @@ export default function BGPNeighborTable(props: {data: IBgpNeighborState; select
 	});
 
 	return (
-		<DataTable name={'BGP Neighbor'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} error={error} />
+		<DataTable name={'BGP Neighbor'} columns={cols} rows={rows} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} state={state} error={error} />
 	);
 }

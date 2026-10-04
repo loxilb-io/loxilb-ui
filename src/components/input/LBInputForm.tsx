@@ -5,8 +5,13 @@ import React from 'react';
 import {Alert, Stack, Typography} from '@mui/material';
 import {isValidIPAddress} from 'common';
 import useFormWithParams from 'hooks/inputFormHook';
+import {useInstanceFromURL} from 'hooks/instanceHook';
+import {useInstanceCapabilities} from 'hooks/query/flavorHook';
+import {useModelProfiles} from 'hooks/query/queryHooks';
+import {useGatewayCapabilities} from 'hooks/query/statusHook';
 import {t} from 'i18next';
-import {isAIEngineChange, validateAIConfiguration} from 'types/ai_gateway';
+import {isAIEngineChange, validateAIConfiguration, validateProfileSelection} from 'types/ai_gateway';
+import {lbSourceBudgetNotice, SourceBudgetNotice} from 'types/capability_status';
 import {IServiceConfiguration} from 'types/load_balancer';
 import {AllowedSourcesListInputForm, SecondaryIPListInputForm} from './IPListInputForm';
 import AdvancedSettingsForm from './subforms/AdvancedSettingsForm';
@@ -14,11 +19,24 @@ import AIGatewaySettingsForm from './subforms/AIGatewaySettingsForm';
 import BasicSettingsForm from './subforms/BasicSettingsForm';
 import EndpointListForm from './subforms/EndpointListForm';
 // import HealthCheckForm from './subforms/HealthCheckForm'; // Moved to EndpointListForm
-import SecurityOptionsForm from './subforms/SecurityOptionsForm';
-
 //---------------------------------------------------------
 // Component
 //---------------------------------------------------------
+// A warning only: submit stays enabled and the gateway's 412 stays the authority.
+function SourceBudgetNoticeView({notice}: {notice: SourceBudgetNotice}) {
+	if (notice.kind === 'caption') {
+		return (
+			<Typography variant="caption" color="text.secondary">
+				{t('{{free}} of {{limit}} source-check slots free', {free: notice.free, limit: notice.limit})}
+			</Typography>
+		);
+	}
+	if (notice.kind === 'warning') {
+		return <Alert severity="warning">{notice.reason || t('The gateway reports that the next rule created cannot carry allowed sources.')}</Alert>;
+	}
+	return null;
+}
+
 interface LBInputFormProps {
 	onChange: (data: IServiceConfiguration & { isValid?: boolean; errors?: any }) => void;
 	onValidation?: (isValid: boolean) => void;
@@ -60,6 +78,18 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 
 	// Get params for validation (still use useFormWithParams for param definitions)
 	const {params} = useFormWithParams<IServiceConfiguration>('IServiceConfiguration');
+
+	// Published profile registry for strict-rule pre-flight validation.
+	// Gateway-only endpoint: never fetched for a loxilb instance.
+	const inst = useInstanceFromURL();
+	const caps = useInstanceCapabilities();
+	const profilesQuery = useModelProfiles(caps.resolved && caps.flavor === 'inference-gateway' ? inst : null);
+	// Source-check slot budget (lb_allowed_sources), CREATE only: the verdict is
+	// about the next slot the gateway hands out, never about the rule being
+	// edited (types/capability_status.ts). Gateway-only endpoint, so plain
+	// loxilb never sees the request. The edit path relies on the gateway's 412.
+	const {data: capabilityList} = useGatewayCapabilities(!isEdit && caps.resolved && caps.flavor === 'inference-gateway' ? inst : null);
+	const publishedProfiles = profilesQuery.data?.profiles;
 
 	// Derive validation from formData (no setState-in-effect — that pattern caused
 	// an infinite render loop / "Maximum update depth exceeded"). The gateway
@@ -103,6 +133,18 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 		if (isEdit && isAIEngineChange(initialData?.serviceArguments?.kvEngineType, sa.kvEngineType)) {
 			aiIssues.unshift({field: 'kvEngineType', message: 'The AI engine is immutable; delete and recreate the rule to change it.'});
 		}
+		// Strict-rule profile pre-flight (AC-05): field-level block BEFORE the
+		// POST; the gateway admission stays the final authority. Skipped while
+		// the registry has not answered yet — an in-flight list must not brand
+		// a valid selection "stale"; the submit-time freshness check covers it.
+		if (sa.kvModelProfile && publishedProfiles !== undefined) {
+			aiIssues.push(...validateProfileSelection(sa, publishedProfiles.find(profile => profile.profileId === sa.kvModelProfile)));
+		}
+		// New strict rules declare their API surface explicitly instead
+		// of leaning on the gateway's profile-default resolution.
+		if (!isEdit && sa.kvModelProfile && !sa.kvExactApiMode) {
+			aiIssues.push({field: 'kvExactApiMode', message: 'Select the API surface this strict rule serves.'});
+		}
 		if (aiIssues.length > 0) {
 			e.aiGateway = aiIssues.map(issue => t(issue.message)).join(' ');
 		}
@@ -114,7 +156,7 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 		}
 
 		return {errors: e, isValid: Object.keys(e).length === 0};
-	}, [blockSizeConfirmed, formData, initialData?.serviceArguments?.kvEngineType, isEdit]);
+	}, [blockSizeConfirmed, formData, initialData?.serviceArguments?.kvEngineType, isEdit, publishedProfiles]);
 
 	// Notify the parent via refs so callback identity does not drive the effect
 	// (another loop source). Runs only when the derived state actually changes.
@@ -153,13 +195,17 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 		return null;
 	}
 
+	// No height cap and no inner scroll region: the dialog body (PopUp) is the
+	// single scroll container, capped at 90vh with the title and action buttons
+	// fixed. The old 400px inner cap stacked a second scrollbar inside it and
+	// left most of the viewport unused under this six-section form.
 	return (
-		<Stack width="100%" maxHeight="400px" spacing={2}>
-			<Typography variant="h6">
+		<Stack width="100%" spacing={2}>
+			<Typography variant="h6" component="h2">
 				{isEdit ? t('Edit Load Balancer Rule') : t('Add Load Balancer Rule')}
 			</Typography>
 
-			<Stack width="100%" height="100%" padding="15px 5px" spacing={2} sx={{overflowY: 'auto'}}>
+			<Stack width="100%" padding="15px 5px" spacing={2}>
 				<BasicSettingsForm
 					value={formData?.serviceArguments ?? {}}
 					onChange={handleServiceArguments}
@@ -178,7 +224,12 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 				/>
 				{errors.aiGateway && <Alert severity="error">{errors.aiGateway}</Alert>}
 				<SecondaryIPListInputForm values={formData?.secondaryIPs ?? []} onChange={handleSecondaryIPs} description={params?.secondaryIPs?.description} />
-				<AllowedSourcesListInputForm values={formData?.allowedSources ?? []} onChange={handleAllowedSources} description={params?.allowedSources?.description} />
+				<AllowedSourcesListInputForm
+					values={formData?.allowedSources ?? []}
+					onChange={handleAllowedSources}
+					description={params?.allowedSources?.description}
+					notice={isEdit ? null : <SourceBudgetNoticeView notice={lbSourceBudgetNotice(capabilityList, (formData?.allowedSources ?? []).length > 0)} />}
+				/>
 				<EndpointListForm
 					values={formData?.endpoints ?? []}
 					onChange={handleEndpoints}

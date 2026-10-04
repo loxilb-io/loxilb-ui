@@ -1,10 +1,19 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {ThemeProvider} from '@emotion/react';
-import {createTheme, CssBaseline} from '@mui/material';
-import {createSyncStoragePersister} from '@tanstack/query-sync-storage-persister';
-import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
+// ⚠️⚠️ THE PROVIDER MUST BE MUI'S, NOT EMOTION'S. This imported
+// `ThemeProvider` from '@emotion/react' for a long time, and the difference is
+// invisible until you look for it: emotion's provider feeds the theme to
+// `styled`, so the palette, `styleOverrides` and `variants` all worked — but
+// MUI reads `components.*.defaultProps` from its OWN theme context, which
+// emotion's provider never populates. Every defaultProps block in theme.ts was
+// therefore dead on arrival, silently: `MuiButton.disableElevation` had never
+// once applied, and the Typography variantMapping added for the heading work
+// would not have either. Found while chasing why `subtitle1` still rendered as
+// <h6> on a freshly built page when the same theme mapped it to <p> in a unit
+// test.
+import {createTheme, CssBaseline, ThemeProvider} from '@mui/material';
+import {QueryClientProvider} from '@tanstack/react-query';
 import {persistQueryClient, persistQueryClientRestore} from '@tanstack/react-query-persist-client';
 import {useEffect, useState} from 'react';
 import {BrowserRouter, Outlet, Route, Routes} from 'react-router-dom';
@@ -16,6 +25,7 @@ import {theme_config} from 'theme';
 import Layout from 'components/layout/Layout';
 import NavLayout from 'components/layout/NavLayout';
 import {RequireAuth, RequireFeature} from 'components/layout/RouteGuards';
+import RouteTitle from 'components/layout/RouteTitle';
 import ScrollToTop from 'components/layout/ScrollToTop';
 import PopUp from 'components/modal/PopUp';
 import SetupHandler from 'components/setup/SetupHandler';
@@ -47,7 +57,9 @@ import VLANPage from 'pages/network/VLANPage';
 import VxLANPage from 'pages/network/VXLANPage';
 
 import AIApiKeyPage from 'pages/ai/AIApiKeyPage';
+import JWTAuthProfilePage from 'pages/ai/JWTAuthProfilePage';
 import AITenantRateLimitPage from 'pages/ai/AITenantRateLimitPage';
+import PublishedProfilesPage from 'pages/ai/PublishedProfilesPage';
 import IPsecTunnelPage from 'pages/ipsec/IPsecTunnelPage';
 import IPsecCertificatePage from 'pages/ipsec/IPsecCertificatePage';
 import ConntrackPage from 'pages/traffic/ConntrackPage';
@@ -67,8 +79,17 @@ import ProcessPage from 'pages/status/ProcessPage';
 
 import UserManagementPage from 'pages/managers/UserManagementPage';
 import SnapshotPage from 'pages/maintenance/SnapshotPage';
+import AITrafficPage from 'pages/observability/AITrafficPage';
+import WorkersPage from 'pages/observability/WorkersPage';
+import PdKvPage from 'pages/observability/PdKvPage';
+import SecurityObservabilityPage from 'pages/observability/SecurityPage';
+import QosPage from 'pages/observability/QosPage';
+import PersistencePage from 'pages/observability/PersistencePage';
 
 import {MAX_DURATION_MS} from 'hooks/query/common';
+import {persister, PERSIST_BUSTER, queryClient, shouldPersistQuery} from 'queryClientSingleton';
+import {registerSessionPurge} from 'session/session';
+import {useSessionWatch} from 'session/useSessionWatch';
 import LogPage from 'pages/status/LogPage';
 import 'root.css';
 
@@ -76,8 +97,16 @@ import 'root.css';
 //---------------------------------------------------------
 // Global Instance
 //---------------------------------------------------------
-const queryClient = new QueryClient();
-const persister = createSyncStoragePersister({storage: window.localStorage});
+// both live in one module so the session teardown can purge the
+// PERSISTED cache — clearing only the in-memory client would leave every
+// query's data sitting in localStorage after logout.
+registerSessionPurge(async () => {
+	// Cancel first: a query that resolves after the purge would write the data
+	// straight back into the cache we just cleared.
+	await queryClient.cancelQueries();
+	queryClient.clear();
+	await persister.removeClient();
+});
 
 //---------------------------------------------------------
 // Root Component
@@ -85,13 +114,22 @@ const persister = createSyncStoragePersister({storage: window.localStorage});
 export default function App() {
 	const theme = createTheme(theme_config);
 	const [isReady, setIsReady] = useState(false);
+	useSessionWatch();
 
 	useEffect(() => {
-		persistQueryClientRestore({queryClient, persister}).then(() => {
+		// ⚠️ `buster` and `maxAge` must match on BOTH calls. The restore runs
+		// first and decides what to hydrate; if only the save knew the buster,
+		// the poisoned cache would be read back once before being replaced —
+		// and reading it once is all it takes to crash the page.
+		persistQueryClientRestore({queryClient, persister, maxAge: MAX_DURATION_MS, buster: PERSIST_BUSTER}).then(() => {
 			persistQueryClient({
 				queryClient,
 				persister,
 				maxAge: MAX_DURATION_MS,
+				buster: PERSIST_BUSTER,
+				// Live telemetry is re-read, never remembered — see
+				// queryClientSingleton.ts for why this is load-bearing.
+				dehydrateOptions: {shouldDehydrateQuery: shouldPersistQuery},
 			});
 			setIsReady(true);
 		});
@@ -108,6 +146,7 @@ export default function App() {
 				<QueryClientProvider client={queryClient}>
 					<BrowserRouter basename={root_url}>
 						<ScrollToTop />
+						<RouteTitle />
 						<PopUp />
 						<SetupHandler>
 							<Routes>
@@ -159,7 +198,9 @@ export default function App() {
 									</Route>
 									<Route path="ai" element={<RequireFeature feature="ai" />}>
 										<Route path="apikey" element={<AIApiKeyPage />} />
+										<Route path="jwtauth" element={<JWTAuthProfilePage />} />
 										<Route path="ratelimit" element={<AITenantRateLimitPage />} />
+										<Route path="profiles" element={<PublishedProfilesPage />} />
 									</Route>
 									<Route path="ipsec" element={<RequireFeature feature="ipsec" />}>
 										<Route path="tunnels" element={<IPsecTunnelPage />} />
@@ -178,6 +219,18 @@ export default function App() {
 									</Route>
 									<Route path="maintenance" element={<Outlet />}>
 										<Route path="snapshots" element={<RequireFeature flavor="inference-gateway"><SnapshotPage /></RequireFeature>} />
+									</Route>
+									{/* Observability pages are metric-fed and gateway-only at
+									    launch: the flavor guard answers loading/denied/
+									    unavailable/N-A terminally on direct OSS URLs, and each
+									    page additionally checks its registry entry. */}
+									<Route path="observability" element={<RequireFeature flavor="inference-gateway" />}>
+										<Route path="ai" element={<AITrafficPage />} />
+										<Route path="workers" element={<WorkersPage />} />
+										<Route path="pdkv" element={<PdKvPage />} />
+										<Route path="security" element={<SecurityObservabilityPage />} />
+										<Route path="qos" element={<QosPage />} />
+										<Route path="persistence" element={<PersistencePage />} />
 									</Route>
 									<Route path="settings" element={<InstanceSettingPage />} />
 									<Route path="dashboard" element={<DashboardPage />} />

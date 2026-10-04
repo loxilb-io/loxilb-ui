@@ -5,12 +5,13 @@ import DataTable from 'components/table/DataTable';
 import {IBFDAttribureInfo} from 'types/bfd';
 import {IDataTableColumnDef} from 'types/global';
 import {getStableHash} from 'common';
+import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function BFDTable(props: {data: IBFDAttribureInfo; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onRefresh?: any; error?: boolean}) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, error} = props;
+export default function BFDTable(props: {data: IBFDAttribureInfo; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; onRefresh?: any; state?: PageDataState<unknown>; error?: boolean}) {
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onRefresh, state, error} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'instance', header: 'Instance', width: 'medium', tooltip: 'Displays the instance or node where this service or rule is applied.'},
@@ -41,5 +42,5 @@ export default function BFDTable(props: {data: IBFDAttribureInfo; selected_rows:
 	   : [];
 
 	const name = 'Instance of Bidirectional Forwarding Detection';
-	return <DataTable name={name} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onRefresh={onRefresh} error={error} />;
+	return <DataTable name={name} columns={cols} rows={rows || []} selected_rows={selected_rows} onChangeSelectedRows={onChangeSelectedRows} onAdd={onAdd} onDelete={onDelete} onRefresh={onRefresh} state={state} error={error} />;
 }

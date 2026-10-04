@@ -7,8 +7,20 @@
 # Every listed owner must have write access to the repository, otherwise GitHub ignores
 # them and warns. A team (e.g. @loxilb-io/loxilb-ui-maintainers) may be used instead of
 # individual handles so membership can change without editing this file.
+#
+# Order matters: the LAST matching pattern for a path wins.
 
-*       @backguynn @inhogog2
+# ---------------------------------------------------------------------------
+# Default owners — the loxilb-ui maintainers, plus the loxilb-devel review
+# account, mirroring loxilb-inference-gateway.
+#
+# loxilb-devel is listed HERE ONLY, by the same decision the gateway records.
+# Because the last matching pattern wins, it is auto-requested for paths no
+# narrower pattern below claims — not for the governance paths, which have
+# their own owner lines. Widen it by adding the handle to those lines too;
+# adding it here again will not do it.
+# ---------------------------------------------------------------------------
+*       @backguynn @inhogog2 @loxilb-devel
 
 # CI/CD, release automation, and repo governance are the highest-value tamper
 # targets (a malicious workflow change can exfiltrate secrets or ship a

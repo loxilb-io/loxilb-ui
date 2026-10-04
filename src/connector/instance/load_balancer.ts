@@ -6,7 +6,10 @@ import {serializeAIConfiguration, validateAIConfiguration} from 'types/ai_gatewa
 import {IServiceConfiguration} from 'types/load_balancer';
 import {buildLBDeleteKey, buildLBDeletePath} from 'types/lb_identity';
 import {IInstance} from 'types/oam';
-import {ApiResult, assertOk, createDetailedErrorMessage} from '../fetcher/fetcher_base';
+import {assertOk} from '../fetcher/fetcher_base';
+import {OpResult} from '../fetcher/opResult';
+import {fromNetworkError, fromSimpleResponse} from '../fetcher/opResultAdapter';
+import {STATUS_LOCALE_KEYS} from '../fetcher/opResultCodes';
 import {DELETE_INST, GET_INST, PATCH_INST, POST_INST} from '../fetcher/fetcher_inst';
 import type {GwGetResp} from 'api';
 
@@ -72,7 +75,7 @@ export async function query_get_load_balancer_config_all(instance: IInstance): P
 	return (resp.data?.lbAttr ?? []) as IServiceConfiguration[];
 }
 
-export async function request_create_load_balancer_config(instance: IInstance, data: IServiceConfiguration, flavor: InstanceFlavor): Promise<ApiResult> {
+export async function request_create_load_balancer_config(instance: IInstance, data: IServiceConfiguration, flavor: InstanceFlavor): Promise<OpResult> {
 	// Project FIRST. Gateway-only form state is outside the OSS contract, so it
 	// must neither reach loxilb nor make an otherwise valid OSS create fail
 	// IGW-specific validation. Serialization stays after validation: it
@@ -85,9 +88,14 @@ export async function request_create_load_balancer_config(instance: IInstance, d
 	// must not leave the browser.
 	const aiIssues = validateAIConfiguration(projectedData);
 	if (aiIssues.length > 0) {
+		// Client-side backstop (the form validates inline before this point):
+		// a mapped `invalid`, with the field messages in diagnostics only.
 		return {
-			status: 'error',
-			error: `Invalid AI Gateway configuration: ${aiIssues.map(issue => issue.message).join(' ')}`,
+			status: 'invalid',
+			code: 'lb.create.client_invalid',
+			localeKey: STATUS_LOCALE_KEYS.invalid,
+			retryable: false,
+			rawDetail: aiIssues.map(issue => issue.message).join(' '),
 		};
 	}
 	let cleanedData = cleanNegativeNumbers(serializeAIConfiguration(projectedData));
@@ -117,12 +125,10 @@ export async function request_create_load_balancer_config(instance: IInstance, d
 		};
 	}
 
-	const resp = await POST_INST(instance, `/config/loadbalancer`, cleanedData);
-	if (resp.code !== 200 && resp.code !== 204) {
-		const errorMessage = createDetailedErrorMessage(resp, 'Create Load Balancer');
-		return {status: 'error', error: errorMessage};
-	} else {
-		return {status: 'success'};
+	try {
+		return fromSimpleResponse(await POST_INST(instance, `/config/loadbalancer`, cleanedData), 'lb.create');
+	} catch (error) {
+		return fromNetworkError('lb.create', error);
 	}
 }
 
@@ -138,13 +144,12 @@ export async function request_patch_load_balancer_config(
 	port: number,
 	proto: string,
 	patch: Partial<IServiceConfiguration>,
-): Promise<ApiResult> {
-	const resp = await PATCH_INST(instance, `/config/loadbalancer/externalipaddress/${ip}/port/${port}/protocol/${proto}`, patch);
-	if (resp.code !== 200 && resp.code !== 204) {
-		const errorMessage = createDetailedErrorMessage(resp, 'Load Balancer Patch');
-		return {status: 'error', error: errorMessage};
+): Promise<OpResult> {
+	try {
+		return fromSimpleResponse(await PATCH_INST(instance, `/config/loadbalancer/externalipaddress/${ip}/port/${port}/protocol/${proto}`, patch), 'lb.patch');
+	} catch (error) {
+		return fromNetworkError('lb.patch', error);
 	}
-	return {status: 'success'};
 }
 
 /**
@@ -153,23 +158,22 @@ export async function request_patch_load_balancer_config(
  * rules — the gateway keys those differently — while name-delete works for
  * every mode. Prefer this whenever the rule has a name.
  */
-export async function request_delete_lb_by_name(instance: IInstance, name: string): Promise<ApiResult> {
-	const resp = await DELETE_INST(instance, `/config/loadbalancer/name/${encodeURIComponent(name)}`);
-	if (resp.code !== 200 && resp.code !== 204) {
-		const errorMessage = createDetailedErrorMessage(resp, 'Delete Load Balancer');
-		return {status: 'error', error: errorMessage};
+export async function request_delete_lb_by_name(instance: IInstance, name: string): Promise<OpResult> {
+	try {
+		return fromSimpleResponse(await DELETE_INST(instance, `/config/loadbalancer/name/${encodeURIComponent(name)}`), 'lb.delete');
+	} catch (error) {
+		return fromNetworkError('lb.delete', error);
 	}
-	return {status: 'success'};
 }
 
 /** Delete a nameless rule by the complete key returned by the Gateway. */
 export async function request_delete_lb_by_full_key(
 	instance: IInstance,
 	configuration: IServiceConfiguration,
-): Promise<ApiResult> {
-	const resp = await DELETE_INST(instance, buildLBDeletePath(buildLBDeleteKey(configuration)));
-	if (resp.code !== 200 && resp.code !== 204) {
-		return {status: 'error', error: createDetailedErrorMessage(resp, 'Delete Load Balancer')};
+): Promise<OpResult> {
+	try {
+		return fromSimpleResponse(await DELETE_INST(instance, buildLBDeletePath(buildLBDeleteKey(configuration))), 'lb.delete');
+	} catch (error) {
+		return fromNetworkError('lb.delete', error);
 	}
-	return {status: 'success'};
 }

@@ -1,0 +1,394 @@
+//---------------------------------------------------------
+// Imports
+//---------------------------------------------------------
+import capabilityMap from '../api/gen/loxilb-capability-map.json';
+import {InstanceFlavor} from '../api/capabilities';
+import {isGatewayScrapeFamily} from './metricManifest';
+import {TOKEN_QUOTA_FAMILIES} from './tokenQuota';
+import {ADMISSION_FAMILIES, PROXY_OVERLOAD_FAMILIES} from './aiAdmission';
+import {AUDIT_FAMILIES} from './auditWriter';
+
+//---------------------------------------------------------
+// Observability capability registry (UI-MON-001, UI-MON-011a)
+//---------------------------------------------------------
+// Deny-by-default registry of every observability page and dashboard panel.
+// An entry is applicable only when EVERY requirement it declares is proven by
+// a vendored contract artifact:
+//   - metric families  → the vendored gateway metric manifest
+//                        (class "default" + packaged + known runtime type)
+//   - REST paths       → the generated capability map (a path the map marks
+//                        gateway-only does not exist on plain loxilb)
+//   - flavor           → resolved instance flavor; callers must pass the
+//                        fail-narrow effective flavor (unresolved ⇒ 'loxilb'),
+//                        never a broad fallback
+//   - topology         → an explicit topology input; none exists today, so
+//                        every topology-conditioned entry evaluates unknown
+//                        and unknown is NON-APPLICABLE
+// Anything the registry does not know — an unlisted entry id, an unlisted
+// metric family, an undefined flavor — answers false.
+
+export type ObservabilityEntryId =
+	// Dashboard panels
+	| 'dashboard.commonCards'
+	| 'dashboard.gwAiEvents'
+	| 'dashboard.gwActiveStreams'
+	| 'dashboard.gwWorkerFreshness'
+	| 'dashboard.gwKvExactNonReady'
+	| 'dashboard.gwPersistenceFailures'
+	// Observability pages
+	| 'page.aiTraffic'
+	| 'page.workers'
+	| 'page.pdKv'
+	| 'page.security'
+	| 'page.qos'
+	| 'page.persistence'
+	| 'page.haSync'
+	// Panels embedded in configuration pages, not in the dashboard: an
+	// observability surface that answers a question about the object the page
+	// already manages.
+	| 'panel.jwtKeysetHealth'
+	| 'panel.tokenQuota'
+	// Panels embedded in an observability page but registered on their own,
+	// so a build without their families loses the panel and keeps the page.
+	| 'panel.aiAdmission'
+	| 'panel.proxyOverload'
+	| 'panel.workerScrape'
+	// On the OAM-level System page, for a picked gateway instance.
+	| 'panel.auditWriter';
+
+export interface ITopologyInput {
+	gatewayCount: number;
+}
+
+export interface IObservabilityEntry {
+	id: ObservabilityEntryId;
+	kind: 'page' | 'panel';
+	// 'common' renders on both flavors; 'inference-gateway' only there.
+	flavor: 'common' | 'inference-gateway';
+	// Every family must be on the gateway scrape per the vendored manifest.
+	metricFamilies: readonly string[];
+	// Every path must exist on the instance's flavor per the capability map.
+	restPaths: readonly string[];
+	// When set, the entry additionally needs an explicit topology input
+	// meeting the minimum. No delivery contract exists today (product
+	// handoff), so these entries stay hidden.
+	topology?: {minGatewayCount: number};
+}
+
+//---------------------------------------------------------
+// Family sets (exact manifest names, grouped per the per-page matrix)
+//---------------------------------------------------------
+
+const AI_EVENT_FAMILIES = [
+	// Request outcomes and point-of-denial counters. loxilb_ai_requests_total
+	// counts completed requests (recorded at SSE stream completion or at
+	// response headers, so non-streaming answers too) and, on a gateway with
+	// the `outcome` label, gate denials; the reason families below count each
+	// denial again at its point of denial (see observability/aiRequests).
+	'loxilb_ai_requests_total',
+	'loxilb_ai_rate_limit_hits_total',
+	'loxilb_ai_model_not_allowed_total',
+	'loxilb_ai_token_quota_denied_total',
+] as const;
+
+const AI_TRAFFIC_FAMILIES = [
+	...AI_EVENT_FAMILIES,
+	'loxilb_ai_active_streams',
+	'loxilb_ai_token_quota_cold_open_total',
+	'loxilb_ai_token_quota_utilization',
+	'loxilb_ai_token_quota_limit_tokens',
+	'loxilb_ai_token_quota_model_utilization',
+	'loxilb_ai_token_quota_model_limit_tokens',
+	// The bearer arm's verdict counter (J3). The keyset families are NOT here:
+	// they answer "is this profile working?", which belongs beside the profile
+	// that defines it — see panel.jwtKeysetHealth.
+	'loxilb_ai_jwt_validation_total',
+] as const;
+
+// P/D & KV page. NOT here despite the prefix: the 8 loxilb_pd_ctrl_*
+// families are class "aictrl-bridge", packaged false — they live on the
+// standalone AI controller's scrape, not the gateway's. Likewise the
+// loxilb_kv_fetch_*/loxilb_kv_evictions_*/loxilb_kv_bytes_* families belong
+// to the standalone KV agent and loxilb_kv_agent_up to its health probe.
+const PD_KV_FAMILIES = [
+	// Only what the page still reads. Its breakdowns (tiers by model, KV
+	// blocks, tier-1.5 hits, the P/D robustness counters, subscriber
+	// reconnects) are in Grafana's `loxilb-ai` dashboard, and a family
+	// listed here that no panel reads would still decide applicability.
+	//
+	// ⚠️ Stage 3.4. The three admission families are ONE mechanism with a
+	// two-way fork: `LLB_PD_QUEUE_DEPTH_PER_EP` decides whether a capped pool
+	// sheds immediately (`_shed_total`) or parks and then overflows
+	// (`_queued_total` / `_overflow_shed_total`). The fork is process-global
+	// and env-only, so exactly one shed family can ever increment — they must
+	// be registered and read TOGETHER or a drop becomes invisible.
+	'loxilb_pd_admission_overflow_shed_total',
+	'loxilb_pd_admission_queued_total',
+	'loxilb_pd_admission_shed_total',
+	// Sessions and routing.
+	'loxilb_pd_sessions_active',
+	'loxilb_pd_fallback_to_normal_total',
+	'loxilb_pd_connect_failover_total',
+	// The terminal prefill routing-tier decision (Stage 3.2). Its Tier-0 child
+	// must reconcile with the session-hit counter, which the tier mix panel
+	// checks in page.
+	'loxilb_ai_pd_tier_selected_total',
+	'loxilb_ai_pd_session_hits_total',
+	// KV attestation.
+	'loxilb_ai_kv_attest_state',
+	'loxilb_ai_kv_attest_probe_fail_total',
+	'loxilb_ai_kv_enforcement_fault',
+	// KV subscriber freshness, and the strict ep_idx → address join it lists
+	// stale subscribers by.
+	'loxilb_kv_subscriber_last_event_timestamp_seconds',
+	'loxilb_kv_inventory_fresh',
+	'loxilb_pd_ep_info',
+] as const;
+
+// Security page: real family groups — there is no securityrate-prefixed
+// family and no llamafirewall_*/pii_* family.
+// Only what the page still reads. Passed traffic, byte rates, per-rule and
+// per-reason breakdowns and OPA sync durations are in Grafana's
+// `loxilb-security` dashboard.
+const SECURITY_FAMILIES = [
+	// core security counters
+	'loxilb_security_syn_blocked_total',
+	'loxilb_security_conn_blocked_total',
+	'loxilb_security_udp_blocked_total',
+	// firewall
+	'loxilb_fw_drop_packets_total',
+	'loxilb_firewall_rules',
+	// IP filter: the rule count decides whether an absent hit family is "no rules"
+	'loxilb_ipfilter_blacklist_packets_total',
+	'loxilb_ipfilter_rules',
+	// L4
+	'loxilb_l4_error_events_total',
+	// OPA
+	'loxilb_opa_firewall_rules',
+	'loxilb_opa_circuit_breaker_state',
+	// AI security
+	'loxilb_ai_unmetered_requests_total',
+	'loxilb_ai_policy_store_unavailable_total',
+] as const;
+
+// Only what the page still reads: the per-policer attachment gauge, joined
+// against REST /config/policy. The eight loxilb_proxy_qos_* shaper families
+// are in Grafana's "L7 byte shaper" row.
+const QOS_FAMILIES = ['loxilb_policer_attached'] as const;
+
+// Only what the page still reads. Persist/restore/snapshot breakdowns and
+// restore durations are in Grafana's overview "Persistence" row; the last
+// persist and restore times come from /diagnostics.
+const PERSISTENCE_FAMILIES = [
+	'loxilb_autopersist_consecutive_failures',
+	'loxilb_config_dirty',
+	'loxilb_snapshot_quarantine_total',
+	'loxilb_boot_config_conflict_total',
+] as const;
+
+const HA_SYNC_FAMILIES = [
+	'loxilb_sockproxy_sync_overflow_total',
+	'loxilb_sockproxy_sync_health_reject_total',
+	'loxilb_sockproxy_sync_apply_errors_total',
+	'loxilb_sockproxy_sync_conflict_total',
+	'loxilb_sockproxy_sync_push_latency_seconds',
+	'loxilb_sockproxy_sync_inflight_rpc',
+	'loxilb_sockproxy_sync_drop_total',
+	'loxilb_sockproxy_sync_peer_up',
+	'loxilb_sockproxy_sync_peer_lag_seconds',
+	'loxilb_proxy_conversation_sessions',
+	'loxilb_proxy_conversation_hits_total',
+	'loxilb_proxy_conversation_misses_total',
+	'loxilb_proxy_conversation_ttl_expired_total',
+] as const;
+
+//---------------------------------------------------------
+// Registry
+//---------------------------------------------------------
+
+// Keyset health for the JWT Auth Profiles page (J3). All four are
+// `conditional-with-proven-writer`: they appear once a profile exists, so an
+// empty exposition is a precondition and never a failure. The refresh counter
+// is what separates "still admitting on last-known-good keys" from an outage.
+const JWKS_HEALTH_FAMILIES = [
+	'loxilb_ai_jwks_usable',
+	'loxilb_ai_jwks_keys',
+	'loxilb_ai_jwks_last_success_timestamp_seconds',
+	'loxilb_ai_jwks_refresh_total',
+] as const;
+
+const entries: readonly IObservabilityEntry[] = [
+	{
+		// Existing common dashboard cards; served through the UI-MON-006
+		// compatibility adapter. No gateway-only requirement.
+		id: 'dashboard.commonCards',
+		kind: 'panel', flavor: 'common',
+		metricFamilies: [], restPaths: [],
+	},
+	{
+		id: 'dashboard.gwAiEvents',
+		kind: 'panel', flavor: 'inference-gateway',
+		metricFamilies: AI_EVENT_FAMILIES, restPaths: [],
+	},
+	{
+		id: 'dashboard.gwActiveStreams',
+		kind: 'panel', flavor: 'inference-gateway',
+		metricFamilies: ['loxilb_ai_active_streams'], restPaths: [],
+	},
+	{
+		// REST-fed (C-1): worker/GPU telemetry has no Prometheus families.
+		id: 'dashboard.gwWorkerFreshness',
+		kind: 'panel', flavor: 'inference-gateway',
+		metricFamilies: [], restPaths: ['/config/gpu/status'],
+	},
+	{
+		id: 'dashboard.gwKvExactNonReady',
+		kind: 'panel', flavor: 'inference-gateway',
+		metricFamilies: ['loxilb_ai_kv_attest_state', 'loxilb_ai_kv_enforcement_fault'], restPaths: [],
+	},
+	{
+		// Last-persist timestamp exists only on /diagnostics, not as a metric.
+		id: 'dashboard.gwPersistenceFailures',
+		kind: 'panel', flavor: 'inference-gateway',
+		metricFamilies: ['loxilb_config_dirty', 'loxilb_autopersist_consecutive_failures', 'loxilb_persist_total'],
+		restPaths: ['/diagnostics'],
+	},
+	{
+		// Lives on the JWT Auth Profiles page. `/config/ai/jwtauthprofile` is
+		// declared too: without profiles to configure there is no page to host
+		// this, so the REST surface is a real requirement and not decoration.
+		id: 'panel.jwtKeysetHealth',
+		kind: 'panel', flavor: 'inference-gateway',
+		metricFamilies: JWKS_HEALTH_FAMILIES, restPaths: ['/config/ai/jwtauthprofile'],
+	},
+	{
+		// Lives on the AI Tenant Rate Limits page (Stage 3.6). ⭐ The REST path
+		// is a REAL requirement and not decoration: this panel's whole finding
+		// is whether the quota STORE is answering, and only
+		// `/config/ai/ratelimit/defaults/{scope}` can say. Without it the panel
+		// could report bucket utilization but never distinguish "no quotas
+		// configured" from "quotas silently not being enforced", which is the
+		// only reason it exists.
+		id: 'panel.tokenQuota',
+		kind: 'panel', flavor: 'inference-gateway',
+		metricFamilies: TOKEN_QUOTA_FAMILIES, restPaths: ['/config/ai/ratelimit/defaults/{scope}'],
+	},
+	{
+		// On the AI Traffic page. Registered apart from page.aiTraffic so a
+		// gateway that predates the capacity gate keeps the rest of the page.
+		id: 'panel.aiAdmission',
+		kind: 'panel', flavor: 'inference-gateway',
+		metricFamilies: ADMISSION_FAMILIES, restPaths: [],
+	},
+	{
+		// Process-wide listener signals, shown beside the admission gate: a
+		// connect burst the accept loop cannot drain never reaches the gate.
+		id: 'panel.proxyOverload',
+		kind: 'panel', flavor: 'inference-gateway',
+		metricFamilies: PROXY_OVERLOAD_FAMILIES, restPaths: [],
+	},
+	{
+		// On the Workers page, which is otherwise REST-only. The gateway's own
+		// pull of each engine's /metrics for load-aware P/D selection — a
+		// different path from the pushed worker rows the page lists.
+		id: 'panel.workerScrape',
+		kind: 'panel', flavor: 'inference-gateway',
+		metricFamilies: ['loxilb_ai_worker_scrape_total'], restPaths: [],
+	},
+	{
+		// The System page is OAM-level; this panel brings its own instance
+		// picker and renders only for a resolved inference-gateway instance.
+		id: 'panel.auditWriter',
+		kind: 'panel', flavor: 'inference-gateway',
+		metricFamilies: AUDIT_FAMILIES, restPaths: [],
+	},
+	{
+		id: 'page.aiTraffic',
+		kind: 'page', flavor: 'inference-gateway',
+		metricFamilies: AI_TRAFFIC_FAMILIES, restPaths: [],
+	},
+	{
+		// REST-first page (C-1); the metric families are adjacency only.
+		id: 'page.workers',
+		kind: 'page', flavor: 'inference-gateway',
+		metricFamilies: ['loxilb_pd_kv_blocks', 'loxilb_pd_admission_queued_total', 'loxilb_pd_admission_shed_total'],
+		restPaths: ['/config/worker/metrics', '/config/gpu/status'],
+	},
+	{
+		id: 'page.pdKv',
+		kind: 'page', flavor: 'inference-gateway',
+		metricFamilies: PD_KV_FAMILIES, restPaths: [],
+	},
+	{
+		id: 'page.security',
+		kind: 'page', flavor: 'inference-gateway',
+		metricFamilies: SECURITY_FAMILIES, restPaths: [],
+	},
+	{
+		id: 'page.qos',
+		kind: 'page', flavor: 'inference-gateway',
+		metricFamilies: QOS_FAMILIES, restPaths: [],
+	},
+	{
+		id: 'page.persistence',
+		kind: 'page', flavor: 'inference-gateway',
+		metricFamilies: PERSISTENCE_FAMILIES, restPaths: ['/diagnostics'],
+	},
+	{
+		// Topology-conditioned: the evidenced ProductLock tuple is
+		// single-Gateway, and no ProductLock→UI delivery contract exists yet
+		// (product handoff), so this stays hidden until an explicit topology
+		// input proves gatewayCount > 1.
+		id: 'page.haSync',
+		kind: 'page', flavor: 'inference-gateway',
+		metricFamilies: HA_SYNC_FAMILIES, restPaths: [],
+		topology: {minGatewayCount: 2},
+	},
+];
+
+const byId: ReadonlyMap<string, IObservabilityEntry> = new Map(entries.map(e => [e.id, e]));
+
+export function getObservabilityEntry(id: ObservabilityEntryId): IObservabilityEntry | undefined {
+	return byId.get(id);
+}
+
+export function allObservabilityEntries(): readonly IObservabilityEntry[] {
+	return entries;
+}
+
+const gatewayOnlyPaths: string[] = capabilityMap.gatewayOnlyPaths;
+
+// Whether a REST path exists on the flavor, by the same prefix mechanics as
+// hasFeature. Gateway-only paths are absent on plain loxilb.
+function restPathAvailable(flavor: InstanceFlavor, path: string): boolean {
+	if (flavor === 'inference-gateway') return true;
+	return !gatewayOnlyPaths.some(p => p === path || p.startsWith(`${path}/`));
+}
+
+// Deny-by-default applicability. `flavor` must be the resolved (or
+// fail-narrow effective) instance flavor: pass undefined only when no
+// instance is selected at all — everything is denied then. `topology` is the
+// explicit topology input; omit it while no delivery contract exists and
+// topology-conditioned entries answer false (unknown ⇒ non-applicable).
+export function isEntryApplicable(
+	id: ObservabilityEntryId,
+	flavor: InstanceFlavor | undefined,
+	topology?: ITopologyInput,
+): boolean {
+	const entry = byId.get(id);
+	if (!entry || flavor === undefined) return false;
+	if (entry.flavor === 'inference-gateway' && flavor !== 'inference-gateway') return false;
+	if (!entry.metricFamilies.every(isGatewayScrapeFamily)) return false;
+	if (!entry.restPaths.every(p => restPathAvailable(flavor, p))) return false;
+	if (entry.topology && (topology === undefined || topology.gatewayCount < entry.topology.minGatewayCount)) return false;
+	return true;
+}
+
+// The applicable entry set for a flavor — what the dashboard composer and
+// the layout key-set reconciliation (UI-MON-006) key off.
+export function applicableEntries(
+	flavor: InstanceFlavor | undefined,
+	topology?: ITopologyInput,
+): ObservabilityEntryId[] {
+	return entries.filter(e => isEntryApplicable(e.id, flavor, topology)).map(e => e.id);
+}

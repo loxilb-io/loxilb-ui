@@ -11,6 +11,7 @@ import {useBGPDefinedSets} from 'hooks/query/bgpHooks';
 import {t} from 'i18next';
 import {useRef, useState} from 'react';
 import {IBGPDefinedSetInput, IDefinedSetAttribute, IDefinedSetsInfo} from 'types/bgp_defined_set';
+import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
 // Functional Component
@@ -18,14 +19,21 @@ import {IBGPDefinedSetInput, IDefinedSetAttribute, IDefinedSetsInfo} from 'types
 export default function BGPDefinedSetPage() {
 	const inst = useInstanceFromURL();
 
-	const {data: prefix_data, isError: prefix_error, refetch: refetch_prefix} = useBGPDefinedSets(inst, 'prefix'); // prefixList is avalable
-	const {data: neighbor_data, isError: neighbor_error, refetch: refetch_neighbor} = useBGPDefinedSets(inst, 'neighbor'); // list is avalable
-	const {data: aspath_data, isError: aspath_error, refetch: refetch_aspath} = useBGPDefinedSets(inst, 'aspath'); // list is avalable
-	const {data: community_data, isError: community_error, refetch: refetch_comm} = useBGPDefinedSets(inst, 'community'); // list is avalable
-	const {data: extcommunity_data, isError: extcommunity_error, refetch: refetch_extcomm} = useBGPDefinedSets(inst, 'extcommunity'); // list is avalable
-	const {data: largecommunity_data, isError: largecommunity_error, refetch: refetch_largecomm} = useBGPDefinedSets(inst, 'largecommunity'); // list is avalable
+	const prefix_query = useBGPDefinedSets(inst, 'prefix'); // prefixList is avalable
+	const neighbor_query = useBGPDefinedSets(inst, 'neighbor'); // list is avalable
+	const aspath_query = useBGPDefinedSets(inst, 'aspath'); // list is avalable
+	const community_query = useBGPDefinedSets(inst, 'community'); // list is avalable
+	const extcommunity_query = useBGPDefinedSets(inst, 'extcommunity'); // list is avalable
+	const largecommunity_query = useBGPDefinedSets(inst, 'largecommunity'); // list is avalable
 
-	const isError = prefix_error || neighbor_error || aspath_error || community_error || extcommunity_error || largecommunity_error;
+	const {data: prefix_data, refetch: refetch_prefix} = prefix_query;
+	const {data: neighbor_data, refetch: refetch_neighbor} = neighbor_query;
+	const {data: aspath_data, refetch: refetch_aspath} = aspath_query;
+	const {data: community_data, refetch: refetch_comm} = community_query;
+	const {data: extcommunity_data, refetch: refetch_extcomm} = extcommunity_query;
+	const {data: largecommunity_data, refetch: refetch_largecomm} = largecommunity_query;
+
+	const defined_set_queries = [prefix_query, neighbor_query, aspath_query, community_query, extcommunity_query, largecommunity_query];
 
 	// The gateway response does not carry definedType — each list is tagged
 	// here with the type it was queried by (delete/refetch route on it).
@@ -50,6 +58,23 @@ export default function BGPDefinedSetPage() {
 			...tag_defined_type(largecommunity_data, 'largecommunity'),
 		],
 	};
+
+	// One table, six reads. If any of them failed while the others answered,
+	// the rows on screen are a PARTIAL list — which is not "empty" and not a
+	// clean failure either, so the six collapse into one query-shaped value
+	// and the shared mapper reaches `stale`: the rows stay readable, the page
+	// says they may not match the server, and writes are held. Only when
+	// nothing answered at all does it become a hard failure.
+	const defined_set_state = toPageState(
+		{
+			data: defined_set_queries.some(q => q.data !== undefined) ? set_data.definedsetsAttr : undefined,
+			error: defined_set_queries.find(q => q.error)?.error,
+			// The OLDEST successful read, not the newest: the screen as a whole
+			// is only as current as its stalest part.
+			dataUpdatedAt: Math.min(...defined_set_queries.map(q => q.dataUpdatedAt).filter(t => t > 0), Date.now()),
+		},
+		{op: 'bgp_defined_set.list'},
+	);
 
 	const [selected_rows, set_selected_rows] = useState<number[]>([]);
 	const {openPopUp, enableYes} = usePopUp();
@@ -89,14 +114,14 @@ export default function BGPDefinedSetPage() {
 		// deleted an unrelated entry.
 		const targets = selected_rows.flatMap(hash => set_data.definedsetsAttr.filter(d => getStableHash(d.name) === hash));
 		const results = await Promise.all(targets.map(item => request_delete_defined_set(inst, item.definedType, item.name)));
-		const failures = results.filter(res => res.status === 'error');
+		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
 			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
 		} else if (failures.length < results.length) {
-			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: `${results.length - failures.length} succeeded, ${failures.length} failed: ${failures[0].error}`}), t('OK'));
+			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: t('{{succeeded}} succeeded, {{failed}} failed. {{error}}', {succeeded: results.length - failures.length, failed: failures.length, error: t(failures[0].localeKey)})}), t('OK'));
 		} else {
-			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: failures[0].error}), t('OK'));
+			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: t(failures[0].localeKey)}), t('OK'));
 			return;
 		}
 		set_selected_rows([]);
@@ -126,14 +151,14 @@ export default function BGPDefinedSetPage() {
 				if (!instanceRef.current) return;
 
 				const res = await request_create_defined_set(inst, instanceRef.current);
-				if (res.status === 'success') {
+				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
 					refetch_data(instanceRef.current.definedType);
-				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: res.error}), t('OK'));
+				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: t(res.localeKey)}), t('OK'));
 			},
 			true,
 		);
 	};
 
-	return <BGPDefinedSetTable data={set_data} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} onAdd={handleAdd} onDelete={handleDelete} error={isError} />;
+	return <BGPDefinedSetTable data={set_data} selected_rows={selected_rows} onChangeSelectedRows={set_selected_rows} onAdd={handleAdd} onDelete={handleDelete} state={defined_set_state} />;
 }

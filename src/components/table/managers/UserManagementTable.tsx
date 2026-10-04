@@ -5,6 +5,7 @@ import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IDataTableColumnDef} from 'types/global';
 import {IUser} from 'types/oam';
+import {PageDataState} from 'components/state/pageState';
 import {t} from 'i18next';
 
 //---------------------------------------------------------
@@ -20,13 +21,14 @@ interface UserManagementTableProps {
 	onRefresh?: () => void;
 	currentUserId?: number;
 	isAdmin?: boolean;
+	state?: PageDataState<unknown>;
 }
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
 export default function UserManagementTable(props: UserManagementTableProps) {
-	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onUpdate, onRefresh, currentUserId, isAdmin = false} = props;
+	const {data, selected_rows, onChangeSelectedRows, onAdd, onDelete, onUpdate, onRefresh, isAdmin = false, state} = props;
 
 	const cols: IDataTableColumnDef[] = [
 		{data_key: 'username', header: t('Username'), width: 'wide'},
@@ -79,6 +81,7 @@ export default function UserManagementTable(props: UserManagementTableProps) {
 			onDelete={onDelete}
 			onRefresh={onRefresh}
 			hideCheckbox={!isAdmin}
+			state={state}
 		/>
 	);
 }

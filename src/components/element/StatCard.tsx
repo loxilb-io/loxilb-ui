@@ -25,7 +25,7 @@ export default function StatCard(props: {label: string; value: string | number; 
 					{tooltip && <TooltipMark content={tooltip} />}
 				</Box>
 
-				<AnimatedValue variant="h5" color={color ? `${color}.main` : 'text.primary'} sx={{fontVariantNumeric: 'tabular-nums'}} noWrap value={String(value)} />
+				<AnimatedValue variant="h5" component="p" color={color ? `${color}.main` : 'text.primary'} sx={{fontVariantNumeric: 'tabular-nums'}} noWrap value={String(value)} />
 			</Stack>
 		</Box>
 	);

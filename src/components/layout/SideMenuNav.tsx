@@ -5,6 +5,7 @@ import {Box, styled} from '@mui/material';
 import SideMenu, {SIDE_MENU_RAIL_WIDTH, SIDE_MENU_WIDTH} from 'components/menu/SideMenu';
 import TopNavMenu from 'components/menu/TopNavMenu';
 import useLocalStorageState from 'hooks/localStorageHook';
+import {DEFAULT_SIDE_MENU_OPEN, PREFERENCE_KEYS, isBooleanPreference} from 'preferences';
 import {ReactNode} from 'react';
 import {useLocation} from 'react-router-dom';
 import ScrollableBox from './ScrollableBox';
@@ -40,7 +41,7 @@ const Main = styled(Box, {shouldForwardProp: prop => prop !== 'open'})<{open?: b
 export default function SideMenuNav(props: {children?: ReactNode}) {
 	const {children} = props;
 
-	const [is_open, _] = useLocalStorageState('is_open_side_menu', true);
+	const [is_open, _] = useLocalStorageState(PREFERENCE_KEYS.sideMenuOpen, DEFAULT_SIDE_MENU_OPEN, isBooleanPreference);
 	const cur_location = useLocation();
 	const bgcolor = cur_location.pathname.includes('dashboard') ? 'background.default' : 'white';
 

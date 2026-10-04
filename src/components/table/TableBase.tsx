@@ -11,6 +11,11 @@ import {FOCUS_RING} from 'theme';
 //---------------------------------------------------------
 // Designed empty state: a blank rectangle reads as "broken"; a labeled one
 // reads as "empty on purpose". The caller supplies resource-aware copy.
+// Visual only, deliberately. This renders INSIDE the DataGrid, whose
+// `.MuiDataGrid-main` carries role="grid" — and a grid may contain nothing but
+// row/rowgroup, so a role="status" here is a critical `aria-required-children`
+// violation (WCAG 1.3.1). It was one, and the route-level axe pass caught it.
+// The live region for lives in DataTable instead, outside the grid.
 function EmptyOverlay(props: {label: string}) {
 	return (
 		<Box height="100%" display="flex" flexDirection="column" alignItems="center" justifyContent="center" gap="6px">

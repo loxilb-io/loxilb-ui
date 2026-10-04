@@ -132,14 +132,23 @@ else
 fi
 
 # 8. Internal development tracking IDs in comments/log strings ----------------
-# US-/Phase-/D-/FR-/REQ-/FIX-/T-/Bug tags read as unprofessional in a public
-# repo. scrub-internal-ids.py is comment/string-aware, so code identifiers
-# (e.g. TestPhase4) are ignored; it scans the working tree (== HEAD in CI).
+# Ticket, phase, task and assessment-item tags read as unprofessional in a
+# public repo and mean nothing to a reader outside the project.
+# scrub-internal-ids.py is comment/string-aware, so code identifiers (e.g.
+# TestPhase4) are ignored.
+#
+# Only TRACKED files are scanned. This gate is about what gets published, and
+# an untracked working-tree directory is not published — scanning "." instead
+# would fail on a maintainer's gitignored notes while passing in CI, which is
+# the wrong way round for a gate people are meant to trust.
 if command -v python3 >/dev/null 2>&1; then
-  if idout=$(python3 "$(dirname "$0")/scrub-internal-ids.py" --check .); then
+  SCRUB_FILES=$(git ls-files -- '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' '*.cjs' '*.go' '*.c' '*.h' '*.py' 2>/dev/null)
+  if [ -z "$SCRUB_FILES" ]; then
+    echo "skip: internal-ID check (no tracked source files)"
+  elif idout=$(printf '%s\n' "$SCRUB_FILES" | xargs python3 "$(dirname "$0")/scrub-internal-ids.py" --check); then
     pass "no internal development IDs in comments/strings"
   else
-    fail "internal development tracking IDs in comments/strings (fix: scripts/scrub-internal-ids.py --apply .):"
+    fail "internal development tracking IDs in comments/strings (fix: scripts/scrub-internal-ids.py --apply <files>):"
     printf '%s\n' "$idout" | grep 'internal ID:' | head -10
   fi
 else

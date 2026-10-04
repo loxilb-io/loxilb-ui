@@ -57,7 +57,7 @@ export default function ArchivedLogCard(props: {
 								field: 'download_url',
 								headerName: 'Download',
 								renderCell: (params: {row: {filename: string}}) =>
-									active?.filename === params.row.filename ? <CircularProgress size={16} /> : <SaveAltIcon color={active ? 'disabled' : 'action'} />,
+									active?.filename === params.row.filename ? <CircularProgress size={16} aria-label={t('Loading...')} /> : <SaveAltIcon color={active ? 'disabled' : 'action'} />,
 							},
 						]}
 						rows={log_file_list}

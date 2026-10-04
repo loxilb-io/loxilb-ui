@@ -18,7 +18,7 @@ const producers=[['gateway',model==='general'?'https://github.com/loxilb-io/loxi
   [['api/swagger.yml','gateway-swagger.yml'],['api/swagger-extras.yml','gateway-swagger-extras.yml']]],
  ['oam','https://github.com/loxilb-io/loxilb-oam',[['docs/swagger.json','oam-swagger.json']]]];
 const original=JSON.parse(fs.readFileSync(path.join(root,'api-spec/SOURCES.json'),'utf8'));
-const sources={model,kind:'ExactApiProducerSources',loxilb:original.loxilb};
+const sources={model,kind:'ExactApiProducerSources',loxilb:original.loxilb,...(original.metricManifest ? {metricManifest:original.metricManifest} : {})};
 const output=[];
 for (const [name,origin,files] of producers) {
  const repo=options[`--${name}-repo`], revision=options[`--${name}-revision`];

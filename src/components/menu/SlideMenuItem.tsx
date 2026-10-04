@@ -66,6 +66,7 @@ const { t } = useTranslation();
 				toggleMenuState(combined_path_array, true);
 			}
 		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, []);
 
 	return (
@@ -91,7 +92,14 @@ const { t } = useTranslation();
 					</ListItemIcon>
 				)}
 
-			   <ListItemText primary={t(top_name)} slotProps={{primary: {variant: depth === 0 ? 'subtitle1' : 'subtitle2'}}} />
+			   {/* ⚠️ `component: 'span'` is load-bearing, not cosmetic. MUI maps the
+			       subtitle variants onto <h6>, so every menu entry used to enter the
+			       document as a HEADING — around fifteen of them ahead of any page
+			       content, which is what a screen-reader user met first when cycling
+			       headings. A menu entry is a navigation label; the nav landmark and
+			       list around it already convey that. The variant stays, so nothing
+			       moves on screen. */}
+			   <ListItemText primary={t(top_name)} slotProps={{primary: {variant: depth === 0 ? 'subtitle1' : 'subtitle2', component: 'span'}}} />
 
 				{item.items && item.items.length > 0 && (getMenuState(path) ? <ArrowDropDown /> : <ArrowDropUp />)}
 			</ListItemButton>
