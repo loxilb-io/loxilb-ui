@@ -96,6 +96,7 @@ export interface IServiceArguments {
 	pd_disagg_mode?: boolean;		// vLLM prefill/decode disaggregation
 	pd_cache_aware_mode?: boolean;	// P/D cache-aware routing (requires pd_disagg_mode)
 	pd_session_ttl_sec?: number;	// session stickiness TTL for P/D
+	pd_prefill_timeout_sec?: number;	// P/D prefill wait bound, 0..3600 s (0 = gateway default)
 	pd_cache_threshold?: number;	// P/D cache match threshold (0-100)
 	pd_balance_abs_threshold?: number;	// P/D load-imbalance threshold
 		kvExactMode?: number;			// KV-cache exact routing mode (0, 1, or 3; 2 is reserved)
@@ -132,6 +133,7 @@ export interface IServiceArguments {
 		fc_ttft_target_ms?: number;
 		fc_tenant_max_share_pct?: number;
 		fc_effective?: IFcEffective;		// read-only: the gate's resolved state, never sent
+		half_close_effective?: GwServiceArguments['half_close_effective'];	// read-only: the half-close mode in force, never sent
 	}
 
 type GwServiceArguments = NonNullable<GwSchema<'LoadbalanceEntry'>['serviceArguments']>;

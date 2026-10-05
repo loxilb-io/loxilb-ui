@@ -97,6 +97,7 @@ export default function AIGatewayPanel({serviceArguments}: {serviceArguments: IS
 		serviceArguments.pd_disagg_mode,
 		serviceArguments.pd_cache_aware_mode,
 		serviceArguments.pd_session_ttl_sec,
+		serviceArguments.pd_prefill_timeout_sec,
 		serviceArguments.pd_cache_threshold,
 		serviceArguments.pd_balance_abs_threshold,
 		serviceArguments.kvExactMode,
@@ -185,6 +186,7 @@ export default function AIGatewayPanel({serviceArguments}: {serviceArguments: IS
 						<SingleTextBox label={t('P/D Disaggregation Mode')} value={flag(serviceArguments.pd_disagg_mode)} tooltip={t('Prefill/decode orchestration for the selected engine.')} />
 						<SingleTextBox label={t('P/D Cache-Aware Mode')} value={flag(serviceArguments.pd_cache_aware_mode)} tooltip={t('P/D cache-aware routing.')} />
 						<SingleTextBox label={t('P/D Session TTL (s)')} value={serviceArguments.pd_session_ttl_sec} tooltip={t('Session stickiness TTL for P/D routing.')} />
+						<SingleTextBox label={t('P/D Prefill Timeout (s)')} value={serviceArguments.pd_prefill_timeout_sec || t('Gateway default')} tooltip={t('Longest wait for the prefill stage before 504. 0 or omitted uses the gateway default.')} />
 						<SingleTextBox label={t('P/D Cache Threshold')} value={serviceArguments.pd_cache_threshold} tooltip={t('Cache match threshold.')} />
 						<SingleTextBox label={t('P/D Balance Abs Threshold')} value={serviceArguments.pd_balance_abs_threshold} tooltip={t('Load-imbalance bypass threshold.')} />
 						{engine === 'sglang' && <SingleTextBox label={t('P/D Bootstrap Port')} value={serviceArguments.pdBootstrapPort || 8998} tooltip={t('0 or omitted resolves to SGLang default 8998.')} />}

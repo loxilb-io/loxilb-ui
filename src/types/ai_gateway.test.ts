@@ -220,6 +220,7 @@ describe('AI Gateway validation matrix', () => {
 				backend_keepalive_interval_sec: 1.5,
 				pd_disagg_mode: true,
 				pd_session_ttl_sec: -1,
+				pd_prefill_timeout_sec: 3601,
 				pd_cache_threshold: 101,
 				pd_balance_abs_threshold: 1.5,
 				kvExactMode: 1,
@@ -234,6 +235,7 @@ describe('AI Gateway validation matrix', () => {
 			'max_stream_duration_sec',
 			'backend_keepalive_interval_sec',
 			'pd_session_ttl_sec',
+			'pd_prefill_timeout_sec',
 			'pd_cache_threshold',
 			'pd_balance_abs_threshold',
 			'kvWarmupSec',
@@ -325,6 +327,19 @@ describe('AI Gateway wire serialization', () => {
 		expect(payload.serviceArguments).not.toHaveProperty('kvBlockSize');
 		expect(payload.endpoints[0]).not.toHaveProperty('ep_role');
 		expect(payload.endpoints[0]).not.toHaveProperty('nixl_port');
+	});
+
+	it('keeps the P/D prefill timeout on a P/D rule and drops it when the rule leaves P/D', () => {
+		const pd = serializeAIConfiguration(configuration(
+			{kvEngineType: 'vllm', pd_disagg_mode: true, pd_prefill_timeout_sec: 180},
+			[endpoint({ep_role: 1, nixl_port: 55555}), endpoint({endpointIP: '10.0.0.11', ep_role: 2})],
+		));
+		expect(pd.serviceArguments.pd_prefill_timeout_sec).toBe(180);
+
+		// The gateway refuses a nonzero timeout without pd_disagg_mode, so a
+		// value left over from a P/D rule must not ride along.
+		const plain = serializeAIConfiguration(configuration({pd_prefill_timeout_sec: 180}));
+		expect(plain.serviceArguments).not.toHaveProperty('pd_prefill_timeout_sec');
 	});
 
 	it('omits engine-derived hash and preserves SGLang P/D rank fan-out', () => {
