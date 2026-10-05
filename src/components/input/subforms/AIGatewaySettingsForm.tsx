@@ -401,6 +401,7 @@ export default function AIGatewaySettingsForm(props: {
 							<ParamBox label={t('P/D Cache Threshold')} value={value.pd_cache_threshold ?? ''} onChange={handleChange('pd_cache_threshold')} param_desc={{...params?.pd_cache_threshold, type: 'integer'}} />
 							<ParamBox label={t('P/D Balance Abs Threshold')} value={value.pd_balance_abs_threshold ?? ''} onChange={handleChange('pd_balance_abs_threshold')} param_desc={{...params?.pd_balance_abs_threshold, type: 'integer'}} />
 						</HorizontalStack>
+						<ParamBox label={t('P/D Prefill Timeout (s)')} value={value.pd_prefill_timeout_sec ?? ''} onChange={handleChange('pd_prefill_timeout_sec')} param_desc={{...params?.pd_prefill_timeout_sec, type: 'integer', description: t('Longest wait for the prefill stage before 504, 0 to 3600 seconds. 0 or empty uses the gateway default.')}} />
 						{engine === 'sglang' && (
 							<ParamBox label={t('P/D Bootstrap Port')} value={value.pdBootstrapPort ?? 0} onChange={handleChange('pdBootstrapPort')} param_desc={{...params?.pdBootstrapPort, type: 'integer', description: t("Must match SGLang's disaggregation bootstrap port. 0 uses 8998.")}} />
 						)}

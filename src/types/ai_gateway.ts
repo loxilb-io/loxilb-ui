@@ -76,7 +76,7 @@ export const FC_PD_ONLY_FIELDS: readonly FcNumericField[] = ['fc_prefill_max_inf
  * src/api/contract.test.ts — a new readOnly field fails that test until it is
  * listed here.
  */
-export const READ_ONLY_SERVICE_ARGUMENTS: readonly (keyof IServiceArguments)[] = ['fc_effective'];
+export const READ_ONLY_SERVICE_ARGUMENTS: readonly (keyof IServiceArguments)[] = ['fc_effective', 'half_close_effective'];
 
 /**
  * Whether the gateway runs AI-gateway accounting — and so an admission pool —
@@ -108,6 +108,7 @@ const AI_ONLY_FIELDS: readonly (keyof IServiceArguments)[] = [
 	'pd_disagg_mode',
 	'pd_cache_aware_mode',
 	'pd_session_ttl_sec',
+	'pd_prefill_timeout_sec',
 	'pd_cache_threshold',
 	'pd_balance_abs_threshold',
 	'kvExactMode',
@@ -135,6 +136,7 @@ const KV_FIELDS: readonly (keyof IServiceArguments)[] = [
 const PD_TUNING_FIELDS: readonly (keyof IServiceArguments)[] = [
 	'pd_cache_aware_mode',
 	'pd_session_ttl_sec',
+	'pd_prefill_timeout_sec',
 	'pd_cache_threshold',
 	'pd_balance_abs_threshold',
 ];
@@ -278,6 +280,9 @@ export function validateAIConfiguration(configuration: IServiceConfiguration): A
 	if (topology === 'pd') {
 		if (args.pd_session_ttl_sec !== undefined && !isNonNegativeInteger(args.pd_session_ttl_sec)) {
 			issues.push({field: 'pd_session_ttl_sec', message: 'P/D session TTL must be a non-negative integer.'});
+		}
+		if (args.pd_prefill_timeout_sec !== undefined && (!isNonNegativeInteger(args.pd_prefill_timeout_sec) || args.pd_prefill_timeout_sec > 3600)) {
+			issues.push({field: 'pd_prefill_timeout_sec', message: 'P/D prefill timeout must be an integer between 0 and 3600.'});
 		}
 		if (args.pd_cache_threshold !== undefined && (!isNonNegativeInteger(args.pd_cache_threshold) || args.pd_cache_threshold > 100)) {
 			issues.push({field: 'pd_cache_threshold', message: 'P/D cache threshold must be an integer between 0 and 100.'});
