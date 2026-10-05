@@ -11,7 +11,7 @@
   "gateway": {
     "repo": "loxilb-igw",
     "repository": "https://github.com/netlox-io/loxilb-igw",
-    "commit": "d2339d1daabbcc5e5e4c571f452358960a316ad9",
+    "commit": "d650b579c9fb7f228d3962943404973cf0e8615b",
     "dirty": false,
     "readMode": "immutable-git-blobs",
     "sha256": {

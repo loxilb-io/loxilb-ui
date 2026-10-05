@@ -11,7 +11,7 @@
   "gateway": {
     "repo": "loxilb-inference-gateway",
     "repository": "https://github.com/loxilb-io/loxilb-inference-gateway",
-    "commit": "210f42ad99acf44944b688d7e83f512c060fb9cc",
+    "commit": "9972b0a89bd1690fce9ee1c1c776e3f070b88220",
     "dirty": false,
     "readMode": "immutable-git-blobs",
     "sha256": {
