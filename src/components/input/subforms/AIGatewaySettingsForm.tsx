@@ -16,9 +16,12 @@ import {
 	AIEngine,
 	allowedAIHashes,
 	allowedProfileApiModes,
+	ChwblTuningField,
+	declaredChwblTuningFields,
 	declaredFcFields,
 	effectiveAIHash,
 	isAIService,
+	isChwblSelector,
 	profileAcceptsModel,
 	resolveAIEngine,
 } from 'types/ai_gateway';
@@ -117,6 +120,11 @@ export default function AIGatewaySettingsForm(props: {
 	const exactRouting = topology === 'pd-exact' || topology === 'single-role';
 	const pdTopology = topology === 'pd' || topology === 'pd-exact';
 	const fcDeclared = useMemo(() => declaredFcFields(params), [params]);
+	// Ring tuning: only under the selectors that build a ring, and only the
+	// fields this gateway's own /meta declares.
+	const chwblDeclared = useMemo(() => declaredChwblTuningFields(params), [params]);
+	const offerChwblTuning = (field: ChwblTuningField) =>
+		isL7 && isChwblSelector(value.sel) && chwblDeclared.has(field) && caps.hasField('LoadbalanceEntry.serviceArguments', field);
 	const effectiveHash = effectiveAIHash(engine);
 
 	const engineItems: IEnumItem[] = caps
@@ -408,6 +416,33 @@ export default function AIGatewaySettingsForm(props: {
 				<HorizontalStack>
 					<ParamBox label={t('CHWBL Prefix Hash Flags')} value={value.chwbl_prefix_hash_flags ?? ''} onChange={handleChange('chwbl_prefix_hash_flags')} param_desc={{...params?.chwbl_prefix_hash_flags, type: 'integer'}} disabled={!isL7} />
 				</HorizontalStack>
+				{/* Ring tuning. The inputs start empty and stay off the wire until
+				    the operator fills them: an omitted value resolves on the gateway
+				    (175 / 256 / off on create, the current value on replace). */}
+				{(offerChwblTuning('chwbl_mean_load_factor') || offerChwblTuning('chwbl_replication')) && (
+					<HorizontalStack>
+						{offerChwblTuning('chwbl_mean_load_factor') && (
+							<ParamBox label={t('CHWBL Mean Load Factor (%)')} value={value.chwbl_mean_load_factor ?? ''} onChange={handleChange('chwbl_mean_load_factor')} param_desc={{...params?.chwbl_mean_load_factor, type: 'integer', description: t('How far above the mean load an endpoint may go before the ring moves on to the next one, in percent (100–300). Leave empty for the gateway default, 175.')}} />
+						)}
+						{offerChwblTuning('chwbl_replication') && (
+							<ParamBox label={t('CHWBL Replication')} value={value.chwbl_replication ?? ''} onChange={handleChange('chwbl_replication')} param_desc={{...params?.chwbl_replication, type: 'integer', description: value.sel === 10
+								? t('Total virtual nodes on the hash ring, shared between the positive-weight endpoints (1–1024). It may not be smaller than the number of those endpoints. Leave empty for the gateway default, 256.')
+								: t('Virtual nodes per endpoint on the hash ring (1–1024). Leave empty for the gateway default, 256.')}} />
+						)}
+					</HorizontalStack>
+				)}
+				{offerChwblTuning('chwbl_enable_cache_salt') && (
+					<Stack spacing={1}>
+						<HorizontalStack>
+							<ParamBox label={t('Require cache_salt')} value={value.chwbl_enable_cache_salt ?? false} onChange={handleChange('chwbl_enable_cache_salt')} param_desc={{type: 'boolean', description: t('Require a cache_salt on every request and include it in the hash identity, so requests with different salts do not share a cache key.')}} />
+						</HorizontalStack>
+						{value.chwbl_enable_cache_salt === true && (
+							<Alert severity="warning">
+								{t('This changes what clients must send. Every request to this rule needs a cache_salt: a non-empty string of at most 63 bytes. A request without one is refused with HTTP 400 before it reaches a backend. The salt separates cache keys; it is not authentication and does not isolate tenants.')}
+							</Alert>
+						)}
+					</Stack>
+				)}
 
 				<HorizontalStack>
 					<ParamBox label={t('SSE Mode')} value={value.sse_mode ?? false} onChange={handleChange('sse_mode')} param_desc={{...params?.sse_mode, type: 'boolean', description: t('Suppress idle timeout while an SSE stream is active.')}} disabled={!isL7} />

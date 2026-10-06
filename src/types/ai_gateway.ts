@@ -89,6 +89,30 @@ export function isAIService(args: Pick<IServiceArguments, 'mode' | 'sse_mode' | 
 	return Boolean(args.sse_mode) || Boolean(args.pd_disagg_mode) || (!!args.api_key_auth && args.api_key_auth !== 'disabled');
 }
 
+/** The selectors that build a CHWBL hash ring: chwbl (8) and WRR-hash (10). */
+export function isChwblSelector(sel: IServiceArguments['sel'] | ''): boolean {
+	return sel === 8 || sel === 10;
+}
+
+/**
+ * Ring tuning for the CHWBL selectors. The form shows these only on a
+ * fullproxy rule under sel 8/10, and the gateway refuses a rule that carries
+ * any of them anywhere else — an explicit `false` included, because it tracks
+ * presence, not value. So they are sent only where they apply and only when
+ * the operator set them; an omitted one resolves on the gateway.
+ */
+export const CHWBL_TUNING_FIELDS = ['chwbl_mean_load_factor', 'chwbl_replication', 'chwbl_enable_cache_salt'] as const satisfies readonly (keyof IServiceArguments)[];
+export type ChwblTuningField = typeof CHWBL_TUNING_FIELDS[number];
+
+/**
+ * The tuning fields THIS gateway declares in its /meta. An older gateway
+ * answers 200 to a create carrying one and drops it, which would leave a
+ * control that saves and does nothing (see declaredFcFields).
+ */
+export function declaredChwblTuningFields(params: Record<string, unknown> | undefined): ReadonlySet<ChwblTuningField> {
+	return new Set(CHWBL_TUNING_FIELDS.filter(field => params?.[field] !== undefined));
+}
+
 /** A form value that stands for "nothing declared": omitted on the wire. */
 function isFcBlank(value: unknown): boolean {
 	return value === undefined || value === null || value === '';
@@ -293,7 +317,7 @@ export function validateAIConfiguration(configuration: IServiceConfiguration): A
 	// accepting them there loses operator input without a word, so the form
 	// blocks it honestly instead. '' is the level dropdown's "Not set"
 	// placeholder — a form artifact, never operator intent.
-	const chwblSelector = [8, 10].includes(args.sel ?? 0);
+	const chwblSelector = isChwblSelector(args.sel);
 	if ((hasValue(args.chwbl_prefix_hash_level) || hasValue(args.chwbl_prefix_hash_flags)) && !chwblSelector) {
 		issues.push({field: 'chwbl_prefix_hash_level', message: 'CHWBL prefix hash settings require the chwbl load-balancing algorithm (SEL); clear them or switch the algorithm.'});
 	}
@@ -302,6 +326,26 @@ export function validateAIConfiguration(configuration: IServiceConfiguration): A
 	}
 	if (hasValue(args.chwbl_prefix_hash_flags) && (!isNonNegativeInteger(args.chwbl_prefix_hash_flags) || Number(args.chwbl_prefix_hash_flags) > 255)) {
 		issues.push({field: 'chwbl_prefix_hash_flags', message: 'CHWBL prefix hash flags must be an integer between 0 and 255.'});
+	}
+	// Ring tuning is checked only where it is sent: off the CHWBL selectors
+	// the controls are hidden and the serializer drops whatever the draft still
+	// holds, so an issue there would block submit on a field nobody can see.
+	if (chwblSelector) {
+		const loadFactor = args.chwbl_mean_load_factor;
+		if (hasValue(loadFactor) && (!isPositiveInteger(loadFactor) || loadFactor < 100 || loadFactor > 300)) {
+			issues.push({field: 'chwbl_mean_load_factor', message: 'CHWBL mean load factor must be an integer between 100 and 300.'});
+		}
+		const replication = args.chwbl_replication;
+		if (hasValue(replication) && (!isPositiveInteger(replication) || replication > 1024)) {
+			issues.push({field: 'chwbl_replication', message: 'CHWBL replication must be an integer between 1 and 1024.'});
+		}
+		// Flags 0 means "every input the level allows", cache_salt included.
+		// Explicit flags that leave bit 3 out contradict requiring the salt,
+		// and the gateway refuses the pair.
+		const flags = Number(args.chwbl_prefix_hash_flags);
+		if (args.chwbl_enable_cache_salt === true && hasValue(args.chwbl_prefix_hash_flags) && flags !== 0 && (flags & 0x08) === 0) {
+			issues.push({field: 'chwbl_enable_cache_salt', message: 'Requiring cache_salt needs the cache_salt input (flag bit 3, value 8) in CHWBL prefix hash flags, or flags left at 0.'});
+		}
 	}
 	if (args.max_stream_duration_sec !== undefined && !isNonNegativeInteger(args.max_stream_duration_sec)) {
 		issues.push({field: 'max_stream_duration_sec', message: 'Max stream duration must be a non-negative integer.'});
@@ -462,7 +506,7 @@ export function serializeAIConfiguration(configuration: IServiceConfiguration): 
 	if (serviceArguments.mode !== 4) {
 		// The breaker switch is disabled off fullproxy, so a value left over
 		// from an earlier mode choice in the same draft must not travel.
-		serviceArguments = omitFields(serviceArguments, [...AI_ONLY_FIELDS, 'cb_enable']);
+		serviceArguments = omitFields(serviceArguments, [...AI_ONLY_FIELDS, 'cb_enable', ...CHWBL_TUNING_FIELDS]);
 		endpoints = endpoints.map(stripEndpointAI);
 		return {...configuration, serviceArguments, endpoints};
 	}
@@ -497,6 +541,15 @@ export function serializeAIConfiguration(configuration: IServiceConfiguration): 
 	// wire, not empty (and never the old announce-injected level 1).
 	if (!hasValue(serviceArguments.chwbl_prefix_hash_level)) delete serviceArguments.chwbl_prefix_hash_level;
 	if (!hasValue(serviceArguments.chwbl_prefix_hash_flags)) delete serviceArguments.chwbl_prefix_hash_flags;
+	// Ring tuning: gone entirely off the CHWBL selectors (hidden there, and
+	// refused there by the gateway), and a cleared input is absent, not empty.
+	if (!isChwblSelector(serviceArguments.sel)) {
+		serviceArguments = omitFields(serviceArguments, CHWBL_TUNING_FIELDS);
+	} else {
+		for (const field of CHWBL_TUNING_FIELDS) {
+			if (!hasValue(serviceArguments[field])) delete serviceArguments[field];
+		}
+	}
 	if (topology === 'plain') {
 		serviceArguments = omitFields(serviceArguments, [...KV_FIELDS, 'pd_disagg_mode', ...PD_TUNING_FIELDS, 'pdBootstrapPort']);
 		endpoints = endpoints.map(stripEndpointAI);
