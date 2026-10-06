@@ -9507,22 +9507,22 @@ export interface components {
           /** @description Optional gateway-local static PEM CRL path for leaf-certificate revocation checking on the configured frontend CA path. When empty, the implementation may use a sibling crl.pem beside the CA bundle. It is not automatic CRL retrieval or chain-wide revocation validation. The encoder carries at most 255 bytes; normal GET omits this field. */
           client_crl_path?: string;
         };
-        /** @description Requested backend verification and client-certificate settings for FullProxy re-encryption (mode=4, security=2) with mTLS support. Implementation warning: REST stores and returns this object, but the active create encoder does not wire its verification flag or legacy path/inline material into the backend TLS configuration. The separate configuration bridge has no caller in the reviewed path. These fields therefore do not establish backend authentication, even after a successful POST. Backend cert-ID fields have separate C consumers; their existence does not repair this missing verification wiring. Requested-security fail-closed behavior and material precedence remain pending policy decisions, not supported fallback guarantees. */
+        /** @description Backend TLS request for FullProxy re-encryption (mode=4, security=2). The object carries verify_server_cert only. Backend trust anchors and the backend client identity are named by certificate ID (backend_ca_cert_id, backend_client_cert_id), never by a path or by inline material. In this release backend certificate verification is not available: a POST that sets verify_server_cert to true is refused with 400. The remaining properties are retired. They are kept in the schema only so that a request that still sends one is refused with a 400 that names it; they are never stored and never returned. */
         mtls_backend?: {
           /**
-           * @description Requests backend server-certificate verification. False leaves verification unrequested. Implementation gap - true is stored but does not reach the active backend_verify_cert flag through this intake; it must not be displayed as effective verification.
+           * @description Requests backend server-certificate verification. Not available in this release - POST refuses true with 400. A configuration written by an earlier release that carries true is loaded with the value reset to false and a warning.
            * @default false
            */
           verify_server_cert?: boolean;
-          /** @description Requested gateway-local backend PEM CA bundle path. Stored/read back, but not wired into the active backend TLS material path; see mtls_backend. Omitting it does not by itself establish system-CA verification. */
+          /** @description Retired. POST refuses a nonempty value with 400. Never returned. */
           backend_ca_path?: string;
-          /** @description Requested gateway-local client certificate path for backend mTLS, paired with client_key_path. Stored/read back but not wired into the active backend TLS material path. */
+          /** @description Retired. POST refuses a nonempty value with 400. Never returned. */
           client_cert_path?: string;
-          /** @description Requested gateway-local client private-key path paired with client_cert_path. Stored/read back but not wired into the active backend TLS material path. */
+          /** @description Retired. POST refuses a nonempty value with 400. Never returned. */
           client_key_path?: string;
-          /** @description Requested inline client certificate declared as base64-encoded PEM. Stored/read back but not an effective substitute for a backend client certificate through the current active path. */
+          /** @description Retired. POST refuses a nonempty value with 400. Never returned. */
           client_cert_data?: string;
-          /** @description Requested inline client private key declared as base64-encoded PEM. Stored/read back with the object; active backend material wiring is missing. Treat the input and readback as sensitive key material. */
+          /** @description Retired. POST refuses a nonempty value with 400. Never returned. */
           client_key_data?: string;
         };
         /** @description Identifier of a pre-existing /config/policy to associate after LB creation, when the policy component is available. Empty skips the association. Implementation gaps: association occurs after LB creation, so an association error can leave the LB created; the existing-rule update path does not reach this block, and GET omits the identifier. A failed request is not evidence of an atomic rollback. */
@@ -9542,9 +9542,9 @@ export interface components {
         hsts_include_subdomains?: boolean;
         /** @description Appends preload to the generated HSTS value when hsts_max_age is nonzero and the HTTPS/L7 injection path is active. It does not register the domain in a browser preload list. */
         hsts_preload?: boolean;
-        /** @description Reference used by the backend TLS material resolver for a managed CA bundle. It does not enable verification by itself; mtls_backend has missing verification-flag wiring. The C copy limits IDs to 63 bytes without admission rejection. Missing material can resolve to an empty path and select system CA paths if verification is otherwise enabled. Requested-security fail-closed semantics and material precedence are unresolved; this fallback is not an authenticated-backend guarantee. */
+        /** @description Certificate ID of the CA bundle the backend server certificate is verified against. Not available in this release: POST refuses a nonempty value with 400. */
         backend_ca_cert_id?: string;
-        /** @description Reference for backend client certificate/key material. The resolver consults this ID when it did not obtain client material from the CA-ID directory. Missing material can leave no client certificate; the ID alone does not establish mTLS or server verification. IDs are copied into 63-byte payload capacity without admission rejection. Strict missing-material handling and precedence remain unresolved. */
+        /** @description Certificate ID of the client certificate and key the gateway presents to backends. Not available in this release: POST refuses a nonempty value with 400. */
         backend_client_cert_id?: string;
       };
       /** @description Backend members; the domain accepts 1 through 32 input members. Creation sorts members by IP and updates reconcile existing slots, so input-array order is not a stable L7 backend-reference identity. Implementation warnings: POST/PATCH do not copy httpMethod, urlPath, expectedCodes, httpVersion or domainName into LB members, and GET does not return them. Their presence in this schema does not configure an HTTP monitor. Existing-member reconciliation updates weight but does not copy backup, subnetId or monitorAddress, so their create-time storage does not establish update support. Weight and port narrowing lack original-value range validation. state and counter are derived output and are ignored as configuration input. */
