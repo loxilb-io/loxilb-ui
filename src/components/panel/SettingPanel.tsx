@@ -12,6 +12,43 @@ import {resolveCircuitBreaker} from 'types/ai_gateway';
 import {IServiceArguments} from 'types/load_balancer';
 
 //---------------------------------------------------------
+// Read-back helpers
+//---------------------------------------------------------
+type HalfCloseEffective = NonNullable<IServiceArguments['half_close_effective']>;
+
+/**
+ * The half-close mode in force, with who decided it. The gateway resolves it
+ * from three places — the rule, the process default, and a process-wide block
+ * — so the mode alone would not say why a rule is not holding. A default the
+ * gateway could not apply to this rule carries its own reason, shown verbatim.
+ * A mode or source this UI does not know is passed through, not guessed at.
+ */
+export function halfCloseReadBack(effective: HalfCloseEffective | undefined): string | undefined {
+	if (!effective?.mode) return undefined;
+	const mode = effective.mode === 'hold' ? t('Hold') : effective.mode === 'off' ? t('Off') : effective.mode;
+	if (effective.not_applied) return t('{{mode}} (gateway default not applied: {{reason}})', {mode, reason: effective.not_applied});
+	switch (effective.source) {
+		case 'rule': return t('{{mode}} (set on the rule)', {mode});
+		case 'default': return t('{{mode}} (gateway default)', {mode});
+		case 'blocked': return t('{{mode}} (holds are blocked on this gateway)', {mode});
+		default: return effective.source ? `${mode} (${effective.source})` : mode;
+	}
+}
+
+const SOCKMAP_MODE_NAMES: Record<string, string> = {
+	off: 'Off',
+	both: 'Both directions',
+	request: 'Request only (client to backend)',
+	response: 'Response only (backend to client)',
+};
+
+/** The declared sockmap mode by name; an unknown one is shown as sent. */
+export function sockMapReadBack(mode: IServiceArguments['sockMapMode']): string | undefined {
+	if (!mode) return undefined;
+	return SOCKMAP_MODE_NAMES[mode] ? t(SOCKMAP_MODE_NAMES[mode]) : mode;
+}
+
+//---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
 export default function SettingsPanel(props: {serviceArguments: IServiceArguments}) {
@@ -32,6 +69,11 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 
 	// Absent on non-fullproxy rules; the fields then render as "None".
 	const mtls = serviceArguments.mtls_frontend ?? {};
+
+	// Fullproxy read-backs. A gateway that does not report one gets no row,
+	// rather than an "Off" this UI would be making up.
+	const halfClose = mode === 4 ? halfCloseReadBack(serviceArguments.half_close_effective) : undefined;
+	const sockMap = mode === 4 ? sockMapReadBack(serviceArguments.sockMapMode) : undefined;
 
 	return (
 		<Stack spacing={2}>
@@ -75,6 +117,21 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 					<SingleTextBox label={t('Proxy Protocol v2')} value={serviceArguments.proxyprotocolv2} tooltip='Flag to enable proxy protocol v2' />
 					{/* Fullproxy only, and a read-back: absent means off (see resolveCircuitBreaker). */}
 					{mode === 4 && <SingleTextBox label={t('Circuit Breaker')} value={resolveCircuitBreaker(serviceArguments, true) ? t('Enabled') : t('Disabled')} tooltip={t('Per-endpoint circuit breaker as resolved by the gateway.')} />}
+					{halfClose !== undefined && (
+						<SingleTextBox
+							label={t('Half-Close')}
+							value={halfClose}
+							width={serviceArguments.half_close_effective?.not_applied ? 'wide' : 'normal'}
+							tooltip={t('What the gateway does with a client that shuts down its write side after sending its request: hold keeps it open until the answer is out, off closes it at once. This is the mode in force and where it came from.')}
+						/>
+					)}
+					{sockMap !== undefined && (
+						<SingleTextBox
+							label={t('Sockmap Mode')}
+							value={sockMap}
+							tooltip={t('The sockmap acceleration this rule declares. A declared mode is not proof that traffic is accelerated: the gateway must also be started with sockmap support.')}
+						/>
+					)}
 					{/* Frontend mTLS is TLS configuration, not AI routing, so it belongs
 					    with the L7 proxy settings rather than in the AI Gateway tab. */}
 					<SingleTextBox label={t('Client Cert Mode')} value={mtls.client_cert_mode} tooltip="Client-certificate verification ('disabled', 'optional', or 'required'); fullproxy + TLS only" />

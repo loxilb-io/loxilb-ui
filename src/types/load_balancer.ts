@@ -138,6 +138,7 @@ export interface IServiceArguments {
 		fc_tenant_max_share_pct?: number;
 		fc_effective?: IFcEffective;		// read-only: the gate's resolved state, never sent
 		half_close_effective?: GwServiceArguments['half_close_effective'];	// read-only: the half-close mode in force, never sent
+		sockMapMode?: GwServiceArguments['sockMapMode'];	// declared sockmap acceleration; shown on the rule detail, no form control
 	}
 
 type GwServiceArguments = NonNullable<GwSchema<'LoadbalanceEntry'>['serviceArguments']>;
