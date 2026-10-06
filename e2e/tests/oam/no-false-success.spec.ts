@@ -17,7 +17,7 @@
 //---------------------------------------------------------
 import {Route} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {activeInstance} from '../../helpers/api';
+import {activeInstance, aiNotReadyAllowance, gatewayAIManagementReadiness} from '../../helpers/api';
 import {dialog, dialogButton, dialogTitle, openToolbarDialog} from '../../helpers/dialogs';
 import {field} from '../../helpers/form';
 
@@ -75,7 +75,11 @@ test('batch 1 — instance update answered 500 shows the localized error, never 
 	await expect(dialogTitle(page, 'Success')).toBeHidden();
 });
 
-test('batch 2 — API key create answered 200 {result:"fail"} never renders the reveal dialog', async ({page}) => {
+test('batch 2 — API key create answered 200 {result:"fail"} never renders the reveal dialog', async ({page, consoleGuard}) => {
+	// The page's own list read fails only on a gateway whose AI management store
+	// is not ready, with the status the readiness probe itself got.
+	const notReady = aiNotReadyAllowance(await gatewayAIManagementReadiness());
+	if (notReady) consoleGuard.allowRequest(notReady);
 	await page.route('**/netlox/v1/config/ai/apikey', failWith(200, JSON.stringify({result: 'fail'})));
 
 	await page.goto(`instance/ai/apikey?name=${instName}`);

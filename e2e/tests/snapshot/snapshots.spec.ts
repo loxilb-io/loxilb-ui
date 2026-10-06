@@ -116,7 +116,14 @@ test.describe('@gw Snapshots page (admin)', () => {
 		//   1.4 recovery_dependencies manifest, with a REQUIRED flag
 		//   1.5 generation — monotonic lineage, so "which state is newer" does
 		//       not depend on file mtimes
-		//   1.6 current
+		//   1.6 the last step the 2026-09-22 review covered
+		// Re-verified 2026-10-06 against the same file at `SchemaVersion = "1.9"`:
+		//   1.7 halfclose domain — the process-wide half-close hold settings
+		//   1.8 auditsink domain — audit sinks and the compliance sink
+		//   1.9 halfclose gained defaultMode; the 1.8→1.9 migration is restamp-only
+		// 1.7–1.9 add domains and one field; a build that predates one refuses
+		// the newer document. The restore plan lists domains by the name the
+		// gateway gives, so the new ones need nothing here.
 		// All additive behind the gateway's minor-version gate, which refuses a
 		// newer-minor document rather than silently dropping fields — so the UI
 		// stays correct by leaving that verdict to the gateway (it only
@@ -127,7 +134,9 @@ test.describe('@gw Snapshots page (admin)', () => {
 		// gaps the re-verification found — the UI models neither
 		// `included_domains` nor `recovery_dependencies`, and its restore
 		// result type dropped `warnings` entirely (fixed separately).
-		expect(doc.schema_version).toBe('1.6');
+		// The versions reviewed above; which one a gateway writes depends on its
+		// build. One that is not listed has not been reviewed.
+		expect(['1.6', '1.7', '1.8', '1.9'], 'snapshot schema version reviewed for this UI').toContain(doc.schema_version);
 	});
 
 	test('2. full restore wizard happy path → pre_restore row appears, config restored', async ({page}) => {

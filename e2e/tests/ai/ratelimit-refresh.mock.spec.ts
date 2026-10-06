@@ -42,7 +42,7 @@
 //---------------------------------------------------------
 import type {Page, Route} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {activeInstance} from '../../helpers/api';
+import {activeInstance, aiNotReadyAllowance, gatewayAIManagementReadiness} from '../../helpers/api';
 import {grid, rowByText, toolbarButton} from '../../helpers/table';
 
 const TENANT_SEEDED = 'rl-refresh-seeded';
@@ -104,6 +104,11 @@ test.describe('@gw AI Tenant Rate Limits — Refresh convergence', () => {
 		// The unconfigured-store arm of this test IS a 503, deliberately, served
 		// by the mock on the defaults read — that read and only that one.
 		consoleGuard.allowRequest({status: 503, path: /\/config\/ai\/ratelimit\/defaults\/global$/});
+		// The reads this test does not mock (the per-tenant user overrides) go to
+		// the gateway, and fail only where its AI management store is not ready,
+		// with the status the readiness probe itself got.
+		const notReady = aiNotReadyAllowance(await gatewayAIManagementReadiness());
+		if (notReady) consoleGuard.allowRequest(notReady);
 
 		const state: IMockState = {tenants: [TENANT_SEEDED], apiKeyRequired: false, quotaStoreConfigured: false};
 		await mockPage(page, state);
