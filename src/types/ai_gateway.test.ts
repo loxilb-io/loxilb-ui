@@ -1,5 +1,7 @@
 import {describe, expect, it} from 'vitest';
 import {
+	CHWBL_TUNING_FIELDS,
+	declaredChwblTuningFields,
 	circuitBreakerEditSeed,
 	declaredFcFields,
 	allowedAIHashes,
@@ -211,6 +213,61 @@ describe('AI Gateway validation matrix', () => {
 		expect(kept.chwbl_prefix_hash_level).toBe(2);
 		// Flags 0 is a REAL value (empty bitmask), not "unset".
 		expect(kept.chwbl_prefix_hash_flags).toBe(0);
+	});
+
+	it('bounds CHWBL ring tuning to the gateway ranges under the ring selectors', () => {
+		const tuning = (over: Partial<IServiceArguments>) => issueFields(configuration({sel: 8, ...over}));
+		for (const value of [100, 175, 300]) expect(tuning({chwbl_mean_load_factor: value})).toEqual([]);
+		for (const value of [99, 301, 0, 150.5]) expect(tuning({chwbl_mean_load_factor: value})).toEqual(['chwbl_mean_load_factor']);
+		for (const value of [1, 256, 1024]) expect(tuning({chwbl_replication: value})).toEqual([]);
+		for (const value of [0, 1025, -1, 1.5]) expect(tuning({chwbl_replication: value})).toEqual(['chwbl_replication']);
+		expect(issueFields(configuration({sel: 10, chwbl_mean_load_factor: 301, chwbl_replication: 1025}))).toEqual(['chwbl_mean_load_factor', 'chwbl_replication']);
+		// A cleared input is "not set", not an out-of-range value.
+		expect(tuning({chwbl_mean_load_factor: '' as unknown as number, chwbl_replication: '' as unknown as number})).toEqual([]);
+	});
+
+	it('does not block on ring tuning the form no longer shows', () => {
+		// Off the ring selectors the controls are hidden and the serializer
+		// drops the values, so an issue would name a field nobody can reach.
+		const leftover = {chwbl_mean_load_factor: 999, chwbl_replication: 0, chwbl_enable_cache_salt: true, chwbl_prefix_hash_flags: 1};
+		expect(issueFields(configuration({sel: 0, ...leftover}))).toEqual(['chwbl_prefix_hash_level']);
+		expect(issueFields(configuration({mode: 0, sel: 8, chwbl_mean_load_factor: 999, chwbl_replication: 0, chwbl_enable_cache_salt: true}))).toEqual([]);
+	});
+
+	it('refuses a cache_salt requirement that explicit hash flags leave out', () => {
+		const salted = (flags?: number) => issueFields(configuration({sel: 8, chwbl_enable_cache_salt: true, chwbl_prefix_hash_flags: flags}));
+		// Flags 0 or unset select every input the level allows, cache_salt included.
+		expect(salted()).toEqual([]);
+		expect(salted(0)).toEqual([]);
+		expect(salted(8)).toEqual([]);
+		expect(salted(9)).toEqual([]);
+		expect(salted(1)).toEqual(['chwbl_enable_cache_salt']);
+		expect(salted(23)).toEqual(['chwbl_enable_cache_salt']);
+		expect(issueFields(configuration({sel: 8, chwbl_enable_cache_salt: false, chwbl_prefix_hash_flags: 1}))).toEqual([]);
+		expect(issueFields(configuration({sel: 8, chwbl_prefix_hash_flags: 1}))).toEqual([]);
+	});
+
+	it('sends ring tuning only under a ring selector on fullproxy, and only what was set', () => {
+		const tuning = {chwbl_mean_load_factor: 125, chwbl_replication: 64, chwbl_enable_cache_salt: true};
+		const wire = (over: Partial<IServiceArguments>) => serializeAIConfiguration(configuration(over)).serviceArguments;
+		const carried = (args: IServiceArguments) => Object.keys(args).filter(key => key in tuning);
+
+		for (const sel of [8, 10]) expect(wire({sel, ...tuning})).toMatchObject(tuning);
+		// The gateway refuses ANY of them off sel 8/10 — an explicit false included.
+		for (const sel of [0, 1, 3, 9, undefined]) expect(carried(wire({sel, ...tuning, chwbl_enable_cache_salt: false}))).toEqual([]);
+		expect(carried(wire({mode: 0, sel: 8, ...tuning}))).toEqual([]);
+
+		// Untouched stays absent so the gateway resolves it; a cleared input too.
+		expect(carried(wire({sel: 8}))).toEqual([]);
+		expect(carried(wire({sel: 8, chwbl_mean_load_factor: '' as unknown as number, chwbl_replication: 64}))).toEqual(['chwbl_replication']);
+		// An explicit false is a choice and travels: on a replace, omission keeps the current value.
+		expect(wire({sel: 8, chwbl_enable_cache_salt: false}).chwbl_enable_cache_salt).toBe(false);
+	});
+
+	it('reads the declared ring tuning fields from /meta', () => {
+		expect([...declaredChwblTuningFields(undefined)]).toEqual([]);
+		expect([...declaredChwblTuningFields({chwbl_replication: {type: 'integer'}, chwbl_prefix_hash_level: {}})]).toEqual(['chwbl_replication']);
+		expect([...declaredChwblTuningFields({chwbl_mean_load_factor: {}, chwbl_replication: {}, chwbl_enable_cache_salt: {}})]).toEqual([...CHWBL_TUNING_FIELDS]);
 	});
 
 	it('enforces Swagger bounds for AI numeric fields that are sent', () => {

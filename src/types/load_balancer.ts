@@ -87,6 +87,9 @@ export interface IServiceArguments {
 	session_header_name?: string;	// header carrying the session key (sel=persist)
 	chwbl_prefix_hash_level?: number;	// CHWBL prefix hash level (sel=8)
 	chwbl_prefix_hash_flags?: number;	// CHWBL prefix hash flags
+	chwbl_mean_load_factor?: number;	// bounded-load factor in percent, 100..300 (sel=8/10; omitted = 175)
+	chwbl_replication?: number;		// ring geometry, 1..1024: vnodes per endpoint (sel=8) or total vnode budget (sel=10); omitted = 256
+	chwbl_enable_cache_salt?: boolean;	// require a cache_salt on every request and hash it (sel=8/10)
 
 	// --- AI gateway: SSE streaming ---
 	sse_mode?: boolean;				// SSE streaming mode (suppress idle timeout)
