@@ -8,6 +8,7 @@ import SingleTextBox from 'components/element/SingleTextBox';
 import ValueBunch from 'components/element/ValueBunch';
 import {t} from 'i18next';
 import {IEnumItem} from 'types/global';
+import {resolveCircuitBreaker} from 'types/ai_gateway';
 import {IServiceArguments} from 'types/load_balancer';
 
 //---------------------------------------------------------
@@ -72,6 +73,8 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 					<SingleTextBox label={t('Security')} value={serviceArguments.security} tooltip='Value for Security mode (0-Plain, 1-https/tls, 2-e2ehttps, 0-default) in fullproxy mode'/>
 					<SingleTextBox label={t('Backend Protocol')} value={serviceArguments.backend_protocol} tooltip="Backend protocol capability for ALPN negotiation ('http1', 'http2', or 'both')"/>
 					<SingleTextBox label={t('Proxy Protocol v2')} value={serviceArguments.proxyprotocolv2} tooltip='Flag to enable proxy protocol v2' />
+					{/* Fullproxy only, and a read-back: absent means off (see resolveCircuitBreaker). */}
+					{mode === 4 && <SingleTextBox label={t('Circuit Breaker')} value={resolveCircuitBreaker(serviceArguments, true) ? t('Enabled') : t('Disabled')} tooltip={t('Per-endpoint circuit breaker as resolved by the gateway.')} />}
 					{/* Frontend mTLS is TLS configuration, not AI routing, so it belongs
 					    with the L7 proxy settings rather than in the AI Gateway tab. */}
 					<SingleTextBox label={t('Client Cert Mode')} value={mtls.client_cert_mode} tooltip="Client-certificate verification ('disabled', 'optional', or 'required'); fullproxy + TLS only" />

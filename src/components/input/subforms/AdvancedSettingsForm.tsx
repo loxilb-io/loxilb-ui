@@ -12,13 +12,14 @@ import HorizontalStack from 'components/layout/HorizontalStack';
 import {t} from 'i18next';
 import {useCallback} from 'react';
 import {IEnumItem} from 'types/global';
+import {resolveCircuitBreaker} from 'types/ai_gateway';
 import {IServiceArguments} from 'types/load_balancer';
 
 //---------------------------------------------------------
 // Component
 //---------------------------------------------------------
-export default function AdvancedSettingsForm(props: {value: IServiceArguments; onChange: any; params?: any}) {
-	const {value, onChange, params} = props;
+export default function AdvancedSettingsForm(props: {value: IServiceArguments; onChange: any; params?: any; isEdit?: boolean}) {
+	const {value, onChange, params, isEdit = false} = props;
 
 	// Flavor gating: enum options loxilb hard-rejects (422) disappear, and
 	// write-field groups it silently drops (L7 routing, frontend mTLS) hide
@@ -31,6 +32,10 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 	const security_list: IEnumItem[] = securities.filter(s => allowedSecurity.includes(s.send_value));
 	const hasL7 = caps.hasField(SA, 'path_prefix');
 	const hasMtls = caps.hasField(SA, 'mtls_frontend');
+	// Offered only when THIS gateway's /meta declares the field: an older
+	// gateway answers 200 to a create carrying it and drops it, which would
+	// leave a switch that saves and does nothing (see declaredFcFields).
+	const hasBreaker = caps.hasField(SA, 'cb_enable') && params?.cb_enable !== undefined;
 	const oper_list: IEnumItem[] = opers;
 	const mode_list: IEnumItem[] = modes;
 	const path_match_mode_list: IEnumItem[] = path_match_modes;
@@ -124,6 +129,20 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 								   param_desc={{...params?.backend_protocol, enum: backend_protocol_list, description: t('Backend protocol for ALPN negotiation (http1: HTTP/1.1 only, http2: HTTP/2 only, both: supports both)')}}
 								   disabled={value?.mode !== 4}
 							   />
+					   </HorizontalStack>}
+
+					   {/* Circuit breaker — fullproxy only. The switch shows what the
+					       gateway will resolve (on for P/D, off otherwise) until the
+					       operator chooses; only a choice is sent. Read-only on edit:
+					       a fullproxy rule has no in-place update. */}
+					   {hasBreaker && <HorizontalStack>
+							<ParamBox
+								label={t('Circuit Breaker')}
+								value={value?.mode === 4 && resolveCircuitBreaker(value, isEdit)}
+								onChange={handleChange('cb_enable')}
+								param_desc={{type: 'boolean', description: t('Per-endpoint circuit breaker for fullproxy rules: five consecutive backend connect failures take the endpoint out of selection for 30 seconds, then it is probed. Independent of the health monitor. Left untouched, it is on for P/D rules and off otherwise.')}}
+								disabled={value?.mode !== 4 || isEdit}
+							/>
 					   </HorizontalStack>}
 
 					   {/* Frontend mTLS — client-certificate verification (fullproxy + TLS only) */}

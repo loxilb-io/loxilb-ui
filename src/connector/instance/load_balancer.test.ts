@@ -121,6 +121,20 @@ describe('load-balancer AI wire boundary', () => {
 		expect(payload.endpoints[0]).not.toHaveProperty('ep_role');
 		expect(payload.endpoints[0]).not.toHaveProperty('nixl_port');
 	});
+
+	// An explicit false is the operator switching the breaker OFF on a rule the
+	// gateway would otherwise default it ON for; it must survive every cleaner
+	// between the form and the wire.
+	it('posts an explicit circuit-breaker false to the gateway and never to loxilb OSS', async () => {
+		const data = baseConfiguration();
+		data.serviceArguments.cb_enable = false;
+
+		await request_create_load_balancer_config(instance, data, 'inference-gateway');
+		expect((post.mock.calls[0][2] as IServiceConfiguration).serviceArguments.cb_enable).toBe(false);
+
+		await request_create_load_balancer_config(instance, data, 'loxilb');
+		expect((post.mock.calls[1][2] as IServiceConfiguration).serviceArguments).not.toHaveProperty('cb_enable');
+	});
 });
 
 describe('load-balancer full-key delete boundary', () => {
