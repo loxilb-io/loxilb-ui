@@ -47,6 +47,8 @@ export const CAP_KV_EXACT_VLLM = 'kv_exact_vllm';
  */
 export const REASON_KV_EXACT_SEED_UNSET = 'KV_EXACT_SEED_UNSET';
 export const REASON_KV_EXACT_SEED_TOO_LONG = 'KV_EXACT_SEED_TOO_LONG';
+/** Only ever answered to a read that named a model (`?model_name=`). */
+export const REASON_KV_EXACT_TOKENIZER_UNLOADABLE = 'KV_EXACT_TOKENIZER_UNLOADABLE';
 
 export type CapabilityVerdict =
 	/** The gateway can admit use of this capability right now. */
@@ -102,6 +104,41 @@ export function kvExactVllmVerdict(list: ICapabilityStatus[] | null | undefined)
  */
 export function kvExactAdmissible(verdict: CapabilityVerdict): boolean {
 	return verdict.kind !== 'not-ready';
+}
+
+//---------------------------------------------------------
+// kv_exact_vllm for ONE model — the tokenizer half
+//---------------------------------------------------------
+// Asked with a model name, the gateway also runs the tokenizer check that rule
+// admission runs: can a tokenizer for that model be loaded right now. It is a
+// per-model artifact staged on the gateway, so no request body can supply it.
+//
+// ⚠️ A warning, never a block. A tokenizer can be staged after the read, and
+// nothing tells the UI when that happens; the 412 on submit stays the answer.
+
+export interface KvExactModelNotice {
+	reasonCode: string;
+	/** The gateway's sentence; may be empty. */
+	reason: string;
+}
+
+/**
+ * What the rule form says about the model it currently holds, or `null` to
+ * say nothing.
+ *
+ * @param seed        the model-independent verdict. When it already refuses,
+ *                    the form says so once; the model read repeats that reason.
+ * @param model       the verdict read for `askedName`.
+ * @param askedName   the model name the verdict was read for.
+ * @param currentName the model name in the form now.
+ */
+export function kvExactModelNotice(seed: CapabilityVerdict, model: CapabilityVerdict, askedName: string, currentName: string): KvExactModelNotice | null {
+	// ⭐ An answer about another name says nothing about this one: the operator
+	// kept typing after the read was issued.
+	if (!askedName || askedName !== currentName) return null;
+	if (seed.kind === 'not-ready') return null;
+	if (model.kind !== 'not-ready') return null;
+	return {reasonCode: model.reasonCode, reason: model.reason};
 }
 
 //---------------------------------------------------------

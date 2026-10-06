@@ -76,10 +76,22 @@ export function useLogLevel(instance: IInstance | null) {
  * `/status/capabilities` is gateway-only in the capability map, and a plain
  * loxilb instance must never see the request (request-side contract guard, the
  * same rule the model-profile and JWT-profile reads follow).
+ *
+ * `modelName` reads the verdicts for ONE model under its own key
+ * (['status','capabilities',id,'model',name]). ⚠️ The model-independent call
+ * keeps the key it always had: adding an empty segment to it would move the
+ * entry away from every invalidation written against it. Each new name is a
+ * fresh tokenizer probe on the gateway, so callers pass a settled name, never
+ * one per keystroke.
  */
-export function useGatewayCapabilities(instance: IInstance | null) {
+export function useGatewayCapabilities(instance: IInstance | null, modelName?: string) {
 	const instance_id = instance?.id ? instance.id.toString() : '';
-	return useQueryInstanceData(['status', 'capabilities', instance_id], query_get_capability_status, instance);
+	const name = modelName ?? '';
+	return useQueryInstanceData(
+		name ? ['status', 'capabilities', instance_id, 'model', name] : ['status', 'capabilities', instance_id],
+		name ? (inst: IInstance) => query_get_capability_status(inst, {modelName: name}) : query_get_capability_status,
+		instance,
+	);
 }
 
 /**
@@ -90,7 +102,8 @@ export function useGatewayCapabilities(instance: IInstance | null) {
  * create in the same session is judged against a slot that is already gone.
  * Kept here, next to the hook that builds the key, so the two cannot drift
  * (the full key is ['status','capabilities',id,id]: useQueryInstanceData
- * appends the id again).
+ * appends the id again). The model-specific reads sit under the same prefix
+ * (…,id,'model',name,id), so one invalidation covers them too.
  */
 export function capabilityQueryPrefix(instance: Pick<IInstance, 'id'>): string[] {
 	return ['status', 'capabilities', instance.id.toString()];
@@ -103,8 +116,8 @@ export function capabilityQueryPrefix(instance: Pick<IInstance, 'id'>): string[]
  * yields `unknown`, never `not-ready`. A control must not be withdrawn because
  * we have not finished asking — see the rule in types/capability_status.ts.
  */
-export function useCapabilityVerdict(instance: IInstance | null, name: string): CapabilityVerdict {
-	const {data} = useGatewayCapabilities(instance);
+export function useCapabilityVerdict(instance: IInstance | null, name: string, opts?: {modelName?: string}): CapabilityVerdict {
+	const {data} = useGatewayCapabilities(instance, opts?.modelName);
 	return capabilityVerdict(data, name);
 }
 

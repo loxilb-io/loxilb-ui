@@ -253,6 +253,7 @@
 	"Targets": "Targets",
 	"TeID": "TeID",
 	"The gateway reported no reason for this refusal. Check its launch environment and logs.": "The gateway reported no reason for this refusal. Check its launch environment and logs.",
+	"The gateway reports it would refuse a KV-exact rule for this model right now. Submit is not blocked: the gateway checks again when the rule is sent.": "The gateway reports it would refuse a KV-exact rule for this model right now. Submit is not blocked: the gateway checks again when the rule is sent.",
 	"This gateway is not configured to accept this request. The request is valid; its deployment must change.": "This gateway is not configured to accept this request. The request is valid; its deployment must change.",
 	"This gateway will refuse this rule: KV-exact routing is not available on this deployment, and no field on this form can change that.": "This gateway will refuse this rule: KV-exact routing is not available on this deployment, and no field on this form can change that.",
 	"Timeout": "Timeout",

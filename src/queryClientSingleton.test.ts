@@ -97,6 +97,9 @@ describe('shouldPersistQuery', () => {
 		// the PREVIOUS SESSION's verdict. A gateway relaunched without its seed
 		// could still report `ready`, and every rule built on that is 412'd.
 		expect(shouldPersistQuery(queryOf(['status', 'capabilities', '1', '1']))).toBe(false);
+		// The per-model verdict is the same kind of fact: a tokenizer staged
+		// since the last session must not be reported missing from storage.
+		expect(shouldPersistQuery(queryOf(['status', 'capabilities', '1', 'model', 'org/model', '1']))).toBe(false);
 	});
 
 	it('refuses the instance flavor, which persisted would NEVER be re-probed', () => {

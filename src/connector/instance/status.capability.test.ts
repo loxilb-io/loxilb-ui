@@ -72,6 +72,39 @@ describe('capability status read connector', () => {
 		await expect(query_get_capability_status(instance)).rejects.toMatchObject({status: code});
 	});
 
+	// ⭐ The model-independent request must stay byte-identical: a stray
+	// `?model_name=` is a different question to the gateway, and to every mock
+	// keyed on the bare path.
+	it.each([undefined, {}, {modelName: undefined}, {modelName: ''}])('asks the bare path when no model is named (%j)', async opts => {
+		get.mockResolvedValue({code: 200, data: {capabilities: []}, message: 'OK'});
+		await query_get_capability_status(instance, opts);
+		expect(get).toHaveBeenCalledWith(instance, '/status/capabilities');
+	});
+
+	it('names the model in the query string, encoded', async () => {
+		const entry = {name: CAP_KV_EXACT_VLLM, ready: false, reason_code: 'KV_EXACT_TOKENIZER_UNLOADABLE', reason: 'no tokenizer'};
+		get.mockResolvedValue({code: 200, data: {capabilities: [entry]}, message: 'OK'});
+
+		expect(await query_get_capability_status(instance, {modelName: 'Qwen/Qwen3-32B'})).toEqual([entry]);
+		expect(get).toHaveBeenCalledWith(instance, '/status/capabilities?model_name=Qwen%2FQwen3-32B');
+	});
+
+	it('encodes a name that would otherwise rewrite the query', async () => {
+		get.mockResolvedValue({code: 200, data: {capabilities: []}, message: 'OK'});
+		await query_get_capability_status(instance, {modelName: 'a&b=c #d'});
+		expect(get).toHaveBeenCalledWith(instance, '/status/capabilities?model_name=a%26b%3Dc%20%23d');
+	});
+
+	it('answers 404 with null for a named model too', async () => {
+		get.mockResolvedValue({code: 404, data: {message: 'not found'}, message: 'Not Found'});
+		expect(await query_get_capability_status(instance, {modelName: 'org/model'})).toBeNull();
+	});
+
+	it('re-throws a failed named read instead of reporting unknown', async () => {
+		get.mockResolvedValue({code: 500, data: {message: 'nope'}, message: 'err'});
+		await expect(query_get_capability_status(instance, {modelName: 'org/model'})).rejects.toMatchObject({status: 500});
+	});
+
 	it('re-throws a transport failure untouched', async () => {
 		get.mockRejectedValue(new ApiError('boom', 0));
 		await expect(query_get_capability_status(instance)).rejects.toMatchObject({status: 0, message: 'boom'});

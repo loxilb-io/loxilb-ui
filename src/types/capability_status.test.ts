@@ -10,8 +10,11 @@ import {describe, expect, it} from 'vitest';
 import {
 	CAP_KV_EXACT_VLLM,
 	CAP_LB_ALLOWED_SOURCES,
+	CapabilityVerdict,
+	REASON_KV_EXACT_TOKENIZER_UNLOADABLE,
 	REASON_LB_SOURCE_CHECK_SLOTS_EXHAUSTED,
 	capabilityBudget,
+	kvExactModelNotice,
 	lbSourceBudgetNotice,
 	ICapabilityStatus,
 	REASON_KV_EXACT_SEED_TOO_LONG,
@@ -170,5 +173,52 @@ describe('lbSourceBudgetNotice (the LB create form; a warning, never a block)', 
 
 	it('never shows a negative number of free slots', () => {
 		expect(lbSourceBudgetNotice([{name: CAP_LB_ALLOWED_SOURCES, ready: true, limit: 29, in_use: 31}], false)).toEqual({kind: 'caption', free: 0, limit: 29});
+	});
+});
+
+describe('kvExactModelNotice (one model on the rule form; a warning, never a block)', () => {
+	const READY: CapabilityVerdict = {kind: 'ready'};
+	const NO_TOKENIZER: CapabilityVerdict = {kind: 'not-ready', reasonCode: REASON_KV_EXACT_TOKENIZER_UNLOADABLE, reason: 'no tokenizer for it'};
+	const NO_SEED: CapabilityVerdict = {kind: 'not-ready', reasonCode: 'KV_EXACT_SEED_UNSET', reason: 'no seed'};
+
+	it('reports the refusal for the name it was read for', () => {
+		expect(kvExactModelNotice(READY, NO_TOKENIZER, 'org/m', 'org/m')).toEqual({reasonCode: 'KV_EXACT_TOKENIZER_UNLOADABLE', reason: 'no tokenizer for it'});
+	});
+
+	// The seed verdict is a cached read; when it is merely unknown the model
+	// read is the only one that answered, and its refusal still stands.
+	it.each<CapabilityVerdict['kind']>(['ready', 'unknown'])('reports it when the model-independent verdict is %s', kind => {
+		const seed: CapabilityVerdict = kind === 'ready' ? READY : {kind: 'unknown', why: 'unreadable'};
+		expect(kvExactModelNotice(seed, NO_TOKENIZER, 'org/m', 'org/m')).not.toBeNull();
+	});
+
+	it('says nothing about a name the form no longer holds', () => {
+		expect(kvExactModelNotice(READY, NO_TOKENIZER, 'org/a', 'org/b')).toBeNull();
+		// A prefix is another name, not "close enough".
+		expect(kvExactModelNotice(READY, NO_TOKENIZER, 'org/mo', 'org/model')).toBeNull();
+	});
+
+	it('says nothing when no name was asked about', () => {
+		expect(kvExactModelNotice(READY, NO_TOKENIZER, '', '')).toBeNull();
+	});
+
+	it('says nothing when the gateway already refuses KV-exact outright', () => {
+		expect(kvExactModelNotice(NO_SEED, NO_SEED, 'org/m', 'org/m')).toBeNull();
+		expect(kvExactModelNotice(NO_SEED, NO_TOKENIZER, 'org/m', 'org/m')).toBeNull();
+	});
+
+	it.each<CapabilityVerdict>([
+		{kind: 'ready'},
+		{kind: 'unknown', why: 'endpoint-absent'},
+		{kind: 'unknown', why: 'not-listed'},
+		{kind: 'unknown', why: 'unreadable'},
+	])('says nothing for $kind', model => {
+		expect(kvExactModelNotice(READY, model, 'org/m', 'org/m')).toBeNull();
+	});
+
+	// The seed gone since the cached model-independent read: still a refusal,
+	// still the gateway's sentence.
+	it('passes on a refusal whose code is not the tokenizer one', () => {
+		expect(kvExactModelNotice(READY, NO_SEED, 'org/m', 'org/m')).toEqual({reasonCode: 'KV_EXACT_SEED_UNSET', reason: 'no seed'});
 	});
 });
