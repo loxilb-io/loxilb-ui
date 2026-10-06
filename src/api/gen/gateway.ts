@@ -9507,10 +9507,10 @@ export interface components {
           /** @description Optional gateway-local static PEM CRL path for leaf-certificate revocation checking on the configured frontend CA path. When empty, the implementation may use a sibling crl.pem beside the CA bundle. It is not automatic CRL retrieval or chain-wide revocation validation. The encoder carries at most 255 bytes; normal GET omits this field. */
           client_crl_path?: string;
         };
-        /** @description Backend TLS request for FullProxy re-encryption (mode=4, security=2). The object carries verify_server_cert only. Backend trust anchors and the backend client identity are named by certificate ID (backend_ca_cert_id, backend_client_cert_id), never by a path or by inline material. In this release backend certificate verification is not available: a POST that sets verify_server_cert to true is refused with 400. The remaining properties are retired. They are kept in the schema only so that a request that still sends one is refused with a 400 that names it; they are never stored and never returned. */
+        /** @description Backend TLS request for FullProxy re-encryption (mode=4, security=2). The object carries verify_server_cert only. Backend trust anchors and the backend client identity are named by certificate ID (backend_ca_cert_id, backend_client_cert_id), never by a path or by inline material. The remaining properties are retired. They are kept in the schema only so that a request that still sends one is refused with a 400 that names it; they are never stored and never returned. */
         mtls_backend?: {
           /**
-           * @description Requests backend server-certificate verification. Not available in this release - POST refuses true with 400. A configuration written by an earlier release that carries true is loaded with the value reset to false and a warning.
+           * @description Verifies the certificate of every endpoint the rule connects to. Requires backend_ca_cert_id: the chain must end in that CA bundle, there is no default trust store. The certificate must also name the endpoint: its address as an IP subject alternative name, or backend_tls_server_name as a DNS one when that is set. An endpoint that fails is not connected to. Needs mode=4, security=2 and a build with client-certificate support; otherwise 400. A stored configuration that carries true without a CA ID is loaded with the value reset to false and a warning.
            * @default false
            */
           verify_server_cert?: boolean;
@@ -9542,10 +9542,12 @@ export interface components {
         hsts_include_subdomains?: boolean;
         /** @description Appends preload to the generated HSTS value when hsts_max_age is nonzero and the HTTPS/L7 injection path is active. It does not register the domain in a browser preload list. */
         hsts_preload?: boolean;
-        /** @description Certificate ID of the CA bundle the backend server certificate is verified against. Not available in this release: POST refuses a nonempty value with 400. */
+        /** @description Certificate ID of the CA bundle the backend server certificate is verified against. It must name a /config/cert entry with usage "ca". Required when mtls_backend.verify_server_cert is true, refused with 400 without it. */
         backend_ca_cert_id?: string;
-        /** @description Certificate ID of the client certificate and key the gateway presents to backends. Not available in this release: POST refuses a nonempty value with 400. */
+        /** @description Certificate ID of the client certificate and key the gateway presents to backends that ask for one. It must name a /config/cert entry with usage "client". Without it the gateway presents no certificate. Needs mode=4 and security=2. */
         backend_client_cert_id?: string;
+        /** @description DNS host name sent as SNI to every endpoint of the rule. When mtls_backend.verify_server_cert is true the endpoint's certificate must carry it as a DNS subject alternative name. Empty: no SNI is sent and a verified endpoint must carry its own address. Never derived from the VIP or from a request's Host header. Needs mode=4 and security=2. */
+        backend_tls_server_name?: string;
       };
       /** @description Backend members; the domain accepts 1 through 32 input members. Creation sorts members by IP and updates reconcile existing slots, so input-array order is not a stable L7 backend-reference identity. Implementation warnings: POST/PATCH do not copy httpMethod, urlPath, expectedCodes, httpVersion or domainName into LB members, and GET does not return them. Their presence in this schema does not configure an HTTP monitor. Existing-member reconciliation updates weight but does not copy backup, subnetId or monitorAddress, so their create-time storage does not establish update support. Weight and port narrowing lack original-value range validation. state and counter are derived output and are ignored as configuration input. */
       endpoints?: ({
@@ -11748,11 +11750,17 @@ export interface components {
     };
     /** @description Managed PEM input and partial read model. POST currently returns empty 201, including when it mints an ID; callers cannot obtain that minted handle from the response. PUT uses the path ID and ignores body ID and hostnames. Known lifecycle gaps: duplicate POST persists before rejecting registration and can remove existing material; failed rotation does not roll back files; hostname ownership conflicts and multi-host swaps are not transactional; rotation retains the old hostname set. Do not claim atomic certificate transactions, automatic SAN migration, or verified zero downtime. GET returns no private-key material, although the shared schema still requires keyPem and the generated response can serialize it as null. */
     Cert: {
+      /**
+       * @description What the entry is for, fixed when the ID is created. "server": a listener certificate and key, selected by SNI. "ca": a bundle of CA certificates that backend certificates are verified against; certPem (plus chainPem) is the bundle and keyPem is the empty string. "client": the certificate and key the gateway presents to backends. Only "server" entries are offered to clients. A load-balancer rule refers to a "ca" entry with backend_ca_cert_id and to a "client" entry with backend_client_cert_id; an entry a rule refers to cannot be deleted. Rotating a "ca" or "client" entry with PUT updates every rule that refers to it before the call returns; 400 names the rules whose listener could not load the new material and kept what it had.
+       * @default server
+       * @enum {string}
+       */
+      usage?: "server" | "ca" | "client";
       /** @description Opaque handle, client-supplied or minted when absent/empty on POST. PUT uses the path handle. Current validation permits at most 63 bytes and rejects path separators and any '..' substring; NUL validation is incomplete. Minted handles are currently not returned by POST. */
       certId?: string | null;
       /** @description Leaf certificate PEM required on POST/PUT. The Go handler checks PEM armor; authoritative X.509/key parsing occurs in the OpenSSL loader after persistence. A 400 load failure does not imply transactional rollback of persisted material. */
       certPem: string | null;
-      /** @description Private key in PEM. Required on POST/PUT. Persisted 0600 (key-at-rest). Never returned on GET. */
+      /** @description Private key in PEM on POST/PUT for usage "server" and "client". For usage "ca" the member is still sent and must be the empty string; a key is refused. Persisted 0600 (key-at-rest). Never returned on GET. */
       keyPem: string | null;
       /** @description Optional intermediate-chain PEM appended after the leaf. */
       chainPem?: string;
