@@ -4,6 +4,7 @@ import AdmissionControlForm from 'components/input/subforms/AdmissionControlForm
 import DropDownSelectBox from 'components/element/DropDownSelectBox';
 import ParamBox from 'components/element/ParamBox';
 import HorizontalStack from 'components/layout/HorizontalStack';
+import {useDebouncedValue} from 'hooks/debounceHook';
 import {useInstanceCapabilities} from 'hooks/query/flavorHook';
 import {useCapabilityVerdict} from 'hooks/query/statusHook';
 import {useInstanceFromURL} from 'hooks/instanceHook';
@@ -21,7 +22,7 @@ import {
 	profileAcceptsModel,
 	resolveAIEngine,
 } from 'types/ai_gateway';
-import {CAP_KV_EXACT_VLLM, kvExactAdmissible} from 'types/capability_status';
+import {CAP_KV_EXACT_VLLM, kvExactAdmissible, kvExactModelNotice} from 'types/capability_status';
 import {IEnumItem} from 'types/global';
 import {IServiceArguments, KvExactApiMode, requiresJwtProfile} from 'types/load_balancer';
 
@@ -58,6 +59,9 @@ function currentTopology(value: IServiceArguments): TopologySelection {
 }
 
 const EXACT_TOPOLOGIES: TopologySelection[] = ['pd-exact', 'single-role'];
+
+/** How long the Model Name must rest before the gateway is asked about it. */
+export const MODEL_VERDICT_DEBOUNCE_MS = 600;
 
 /**
  * @param offerExact false only when the gateway has POSITIVELY reported that it
@@ -160,6 +164,17 @@ export default function AIGatewaySettingsForm(props: {
 	const kvExactVerdict = useCapabilityVerdict(hasAiFields && engine === 'vllm' ? inst : null, CAP_KV_EXACT_VLLM);
 	const offerExactTopologies = kvExactAdmissible(kvExactVerdict);
 
+	// ⭐ The other half of the same admission: a tokenizer for THIS model must
+	// be loadable on the gateway. Asked only where it can decide anything — a
+	// vllm rule on an exact topology, with a model name, on a gateway that has
+	// not already refused KV-exact outright — and only for a name that has
+	// stopped changing: every new name is a fresh tokenizer probe over there.
+	const modelName = value.model_name?.trim() ?? '';
+	const settledModelName = useDebouncedValue(modelName, MODEL_VERDICT_DEBOUNCE_MS);
+	const askModelVerdict = hasAiFields && isL7 && engine === 'vllm' && exactRouting && offerExactTopologies && settledModelName !== '';
+	const modelVerdict = useCapabilityVerdict(askModelVerdict ? inst : null, CAP_KV_EXACT_VLLM, {modelName: settledModelName});
+	const modelNotice = kvExactModelNotice(kvExactVerdict, modelVerdict, askModelVerdict ? settledModelName : '', modelName);
+
 	// Configured JWT auth profiles, for the rule-side selector. Gated on a
 	// POSITIVELY identified gateway exactly like the model-profile registry
 	// above — /config/ai/jwtauthprofile is gateway-only, and a loxilb instance
@@ -179,7 +194,6 @@ export default function AIGatewaySettingsForm(props: {
 	];
 	const registry = profilesQuery.data;
 	const profiles = registry?.profiles ?? [];
-	const modelName = value.model_name?.trim() ?? '';
 	// With a model name declared, offer only the profiles that serve it
 	// (base model or allowed alias); without one, offer the whole set. The
 	// profile currently selected always stays listed — dropping it from the
@@ -375,6 +389,18 @@ export default function AIGatewaySettingsForm(props: {
 					<ParamBox label={t('Model Name')} value={value.model_name ?? ''} onChange={handleChange('model_name')} param_desc={{...params?.model_name, description: t('Endpoint-pool selector for AI model routing. Empty selects the wildcard pool.')}} disabled={!isL7} />
 					<ParamBox label={t('Trace Type')} value={value.trace_type ?? ''} onChange={handleChange('trace_type')} param_desc={{...params?.trace_type, description: t('Tracing catalog name for deep inspection.')}} disabled={!isL7} />
 				</HorizontalStack>
+				{modelNotice && (
+					// A warning, and submit stays enabled: what the gateway needs
+					// can be staged after this read, and it checks again on submit.
+					<Alert severity="warning">
+						<Typography variant="body2">
+							{t('The gateway reports it would refuse a KV-exact rule for this model right now. Submit is not blocked: the gateway checks again when the rule is sent.')}
+						</Typography>
+						<Typography variant="body2" sx={{mt: 1, ...(modelNotice.reason ? {fontFamily: 'monospace', whiteSpace: 'pre-wrap'} : {})}}>
+							{modelNotice.reason || t('The gateway reported no reason for this refusal. Check its launch environment and logs.')}
+						</Typography>
+					</Alert>
+				)}
 				<HorizontalStack>
 					<ParamBox label={t('Session Header Name')} value={value.session_header_name ?? ''} onChange={handleChange('session_header_name')} param_desc={{...params?.session_header_name, description: t('Header carrying the session key for persistent routing.')}} disabled={!isL7} />
 					<ParamBox label={t('CHWBL Prefix Hash Level')} value={value.chwbl_prefix_hash_level ?? ''} onChange={handleChange('chwbl_prefix_hash_level')} param_desc={{...params?.chwbl_prefix_hash_level, type: 'integer', enum: chwblLevelItems, description: t('Prefix hash level for the chwbl selector (SEL); leave Not set on other algorithms.')}} disabled={!isL7} />

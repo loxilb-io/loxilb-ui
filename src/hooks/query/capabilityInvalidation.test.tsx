@@ -11,6 +11,7 @@ import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {cleanup, renderHook, waitFor} from '@testing-library/react';
 import type {IInstance} from 'types/oam';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import {query_get_capability_status} from 'connector/instance/status';
 import {capabilityQueryPrefix, useGatewayCapabilities} from './statusHook';
 
 vi.mock('connector/instance/status', () => ({
@@ -52,5 +53,55 @@ describe('capabilityQueryPrefix', () => {
 		await waitFor(() => expect(result.current.isSuccess).toBe(true));
 		await client.invalidateQueries({queryKey: capabilityQueryPrefix(INST_1), refetchType: 'none'});
 		expect(client.getQueryState(['status', 'capabilities', '1', '1'])?.isInvalidated).toBe(true);
+	});
+});
+
+describe('the model-specific capability read', () => {
+	const keys = () => client.getQueryCache().getAll().map(q => q.queryKey);
+
+	it('lives under its own key and leaves the model-independent key where it was', async () => {
+		const {result} = renderHook(() => [useGatewayCapabilities(INST_1).isSuccess, useGatewayCapabilities(INST_1, 'org/model').isSuccess], {wrapper});
+		await waitFor(() => expect(result.current).toEqual([true, true]));
+
+		// Pinned literally: an entry that moves is an entry no existing
+		// invalidation reaches.
+		expect(keys()).toEqual([
+			['status', 'capabilities', '1', '1'],
+			['status', 'capabilities', '1', 'model', 'org/model', '1'],
+		]);
+	});
+
+	it.each([undefined, ''])('a missing model name (%j) is the model-independent read', async name => {
+		const {result} = renderHook(() => useGatewayCapabilities(INST_1, name), {wrapper});
+		await waitFor(() => expect(result.current.isSuccess).toBe(true));
+		expect(keys()).toEqual([['status', 'capabilities', '1', '1']]);
+		expect(vi.mocked(query_get_capability_status).mock.lastCall?.[1]).toBeUndefined();
+	});
+
+	it('asks the connector about that model', async () => {
+		const {result} = renderHook(() => useGatewayCapabilities(INST_1, 'org/model'), {wrapper});
+		await waitFor(() => expect(result.current.isSuccess).toBe(true));
+		expect(vi.mocked(query_get_capability_status).mock.lastCall).toEqual([INST_1, {modelName: 'org/model'}]);
+	});
+
+	it('keeps one entry per model, so an answer cannot land on another name', async () => {
+		const {result} = renderHook(() => [useGatewayCapabilities(INST_1, 'org/a').isSuccess, useGatewayCapabilities(INST_1, 'org/b').isSuccess], {wrapper});
+		await waitFor(() => expect(result.current).toEqual([true, true]));
+		expect(keys()).toEqual([
+			['status', 'capabilities', '1', 'model', 'org/a', '1'],
+			['status', 'capabilities', '1', 'model', 'org/b', '1'],
+		]);
+	});
+
+	it('is covered by the same invalidation prefix, for that instance only', async () => {
+		const {result} = renderHook(
+			() => [useGatewayCapabilities(INST_1, 'org/model').isSuccess, useGatewayCapabilities(INST_2, 'org/model').isSuccess],
+			{wrapper},
+		);
+		await waitFor(() => expect(result.current).toEqual([true, true]));
+
+		await client.invalidateQueries({queryKey: capabilityQueryPrefix(INST_1), refetchType: 'none'});
+		expect(client.getQueryState(['status', 'capabilities', '1', 'model', 'org/model', '1'])?.isInvalidated).toBe(true);
+		expect(client.getQueryState(['status', 'capabilities', '2', 'model', 'org/model', '2'])?.isInvalidated).toBe(false);
 	});
 });

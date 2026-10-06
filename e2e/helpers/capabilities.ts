@@ -92,3 +92,56 @@ export async function mockCapabilitiesSequence(page: Page, bodies: unknown[]): P
 	});
 	return {count: () => calls};
 }
+
+/** The gateway's refusal sentence for a model it has no tokenizer for (common/kv_exact_precondition.go). */
+export const KV_EXACT_TOKENIZER_SENTENCE =
+	'vllm kvExactMode tokenizer is required and must be loadable for model_name (stage /etc/loxilb/tokenizers/<model-slug>/tokenizer.json or bind a model profile before retry)';
+
+export interface ModelCapsAnswer {
+	status?: number;
+	body?: unknown;
+	/** Keep the answer back until `release(model)` — for a read that answers late. */
+	hold?: boolean;
+}
+
+export interface ModelCapsHarness {
+	/** `model_name` of every capability read that ARRIVED, in order; '' is a read that named no model. */
+	requested: () => string[];
+	/** The same, for reads that have been ANSWERED. */
+	answered: () => string[];
+	/** Let a held answer go. */
+	release: (model: string) => void;
+}
+
+/**
+ * Intercept the capability read per `model_name`. The '' entry answers the
+ * model-independent read and any model not listed.
+ */
+export async function mockCapabilitiesByModel(page: Page, byModel: Record<string, ModelCapsAnswer>): Promise<ModelCapsHarness> {
+	const requested: string[] = [];
+	const answered: string[] = [];
+	const gates = new Map<string, {promise: Promise<void>; open: () => void}>();
+	for (const [model, answer] of Object.entries(byModel)) {
+		if (!answer.hold) continue;
+		let open!: () => void;
+		const promise = new Promise<void>(resolve => (open = resolve));
+		gates.set(model, {promise, open});
+	}
+	await page.route(CAPS_RE, async (route: Route) => {
+		const model = new URL(route.request().url()).searchParams.get('model_name') ?? '';
+		requested.push(model);
+		const answer = byModel[model] ?? byModel[''] ?? {};
+		await gates.get(model)?.promise;
+		await route.fulfill({
+			status: answer.status ?? 200,
+			contentType: 'application/json',
+			body: JSON.stringify(answer.body ?? {message: 'not found'}),
+		});
+		answered.push(model);
+	});
+	return {
+		requested: () => [...requested],
+		answered: () => [...answered],
+		release: model => gates.get(model)?.open(),
+	};
+}

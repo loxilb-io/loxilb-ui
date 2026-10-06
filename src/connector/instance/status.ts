@@ -98,10 +98,15 @@ export async function query_get_device_status(instance: IInstance): Promise<ISys
  * capabilities, and swallowing it here would report "unknown" for a gateway
  * that is merely unreachable — hiding a session or availability problem the
  * page needs to show.
+ *
+ * `modelName` asks about ONE model: the `kv_exact_vllm` verdict then also says
+ * whether a tokenizer for it can be loaded. Left out or blank, the request is
+ * the model-independent one, byte for byte.
  */
-export async function query_get_capability_status(instance: IInstance): Promise<ICapabilityStatus[] | null> {
+export async function query_get_capability_status(instance: IInstance, opts?: {modelName?: string}): Promise<ICapabilityStatus[] | null> {
+	const modelName = opts?.modelName ?? '';
 	try {
-		const resp = await GET_INST<GwGetResp<'/status/capabilities'>>(instance, `/status/capabilities`);
+		const resp = await GET_INST<GwGetResp<'/status/capabilities'>>(instance, modelName ? `/status/capabilities?model_name=${encodeURIComponent(modelName)}` : `/status/capabilities`);
 		assertOk(resp, 'Get Capability Status');
 		// `capabilities` is required and non-null upstream ("a null here would
 		// make a client distinguish 'no capabilities gated' from a malformed
