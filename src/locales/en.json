@@ -1281,5 +1281,9 @@
 	"Not verified": "Not verified",
 	"Whether the gateway verifies the certificate of the endpoints it connects to, and against which CA bundle.": "Whether the gateway verifies the certificate of the endpoints it connects to, and against which CA bundle.",
 	"The certificate the gateway presents to endpoints that ask for one.": "The certificate the gateway presents to endpoints that ask for one.",
-	"The DNS name sent as SNI to every endpoint.": "The DNS name sent as SNI to every endpoint."
+	"The DNS name sent as SNI to every endpoint.": "The DNS name sent as SNI to every endpoint.",
+	"This gateway reports it is not ready: {{reasons}}": "This gateway reports it is not ready: {{reasons}}",
+	"This gateway reports it is not ready and gave no reason.": "This gateway reports it is not ready and gave no reason.",
+	"({{n}} more in the gateway diagnostics)": "({{n}} more in the gateway diagnostics)",
+	"This gateway is in maintenance. It refuses configuration changes until an operator ends the maintenance.": "This gateway is in maintenance. It refuses configuration changes until an operator ends the maintenance."
 }

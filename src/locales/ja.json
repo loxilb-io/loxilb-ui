@@ -1281,5 +1281,9 @@
 	"Not verified": "検証なし",
 	"Whether the gateway verifies the certificate of the endpoints it connects to, and against which CA bundle.": "ゲートウェイが接続先エンドポイントの証明書を検証するかどうか、およびどの CA バンドルで検証するかを示します。",
 	"The certificate the gateway presents to endpoints that ask for one.": "証明書を要求するエンドポイントにゲートウェイが提示する証明書です。",
-	"The DNS name sent as SNI to every endpoint.": "すべてのエンドポイントに SNI として送信する DNS 名です。"
+	"The DNS name sent as SNI to every endpoint.": "すべてのエンドポイントに SNI として送信する DNS 名です。",
+	"This gateway reports it is not ready: {{reasons}}": "このゲートウェイは準備ができていないと報告しています: {{reasons}}",
+	"This gateway reports it is not ready and gave no reason.": "このゲートウェイは準備ができていないと報告していますが、理由は示されていません。",
+	"({{n}} more in the gateway diagnostics)": "(ゲートウェイの診断情報にさらに {{n}} 件あります)",
+	"This gateway is in maintenance. It refuses configuration changes until an operator ends the maintenance.": "このゲートウェイはメンテナンス中です。オペレーターがメンテナンスを終了するまで、設定の変更を拒否します。"
 }

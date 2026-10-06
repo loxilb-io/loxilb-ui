@@ -13,6 +13,7 @@ import {
 	GwPersistenceCard,
 	GwWorkerFreshnessCard,
 } from 'components/card/GatewaySummaryCards';
+import GatewayReadinessBanner from 'components/observability/GatewayReadinessBanner';
 import RealTimeRateCard from 'components/card/RealTimeRateCard';
 import CriticalMetricCard from 'components/card/CriticalMetricCard';
 import HealthStatusCard from 'components/card/HealthStatusCard';
@@ -196,6 +197,8 @@ export default function DashboardPage() {
 					{t('Reset Layout')}
 				</Button>
 			</Box>
+
+			<GatewayReadinessBanner instance={inst} active={resolvedFlavor === 'inference-gateway'} />
 
 			{layout && (
 				<ResponsiveGrid

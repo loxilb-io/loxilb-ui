@@ -1281,5 +1281,9 @@
 	"Not verified": "검증 안 함",
 	"Whether the gateway verifies the certificate of the endpoints it connects to, and against which CA bundle.": "게이트웨이가 연결하는 엔드포인트의 인증서를 검증하는지, 그리고 어떤 CA 번들로 검증하는지 나타냅니다.",
 	"The certificate the gateway presents to endpoints that ask for one.": "인증서를 요청하는 엔드포인트에 게이트웨이가 제시하는 인증서입니다.",
-	"The DNS name sent as SNI to every endpoint.": "모든 엔드포인트에 SNI로 보내는 DNS 이름입니다."
+	"The DNS name sent as SNI to every endpoint.": "모든 엔드포인트에 SNI로 보내는 DNS 이름입니다.",
+	"This gateway reports it is not ready: {{reasons}}": "이 게이트웨이가 준비되지 않았다고 보고합니다: {{reasons}}",
+	"This gateway reports it is not ready and gave no reason.": "이 게이트웨이가 준비되지 않았다고 보고하며 사유는 제공하지 않았습니다.",
+	"({{n}} more in the gateway diagnostics)": "(게이트웨이 진단 정보에 {{n}}건 더 있음)",
+	"This gateway is in maintenance. It refuses configuration changes until an operator ends the maintenance.": "이 게이트웨이는 유지보수 상태입니다. 운영자가 유지보수를 종료할 때까지 구성 변경을 거부합니다."
 }
