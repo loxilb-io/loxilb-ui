@@ -1,8 +1,8 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {IServiceConfiguration} from 'types/load_balancer';
 import {IInstance} from 'types/oam';
-import {DELETE_INST, POST_INST} from '../fetcher/fetcher_inst';
-import {request_create_load_balancer_config, request_delete_lb_by_full_key} from './load_balancer';
+import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
+import {query_get_load_balancer_config_all, request_create_load_balancer_config, request_delete_lb_by_full_key, withoutBackendKey} from './load_balancer';
 
 vi.mock('../fetcher/fetcher_inst', () => ({
 	DELETE_INST: vi.fn(),
@@ -173,5 +173,54 @@ describe('load-balancer full-key delete boundary', () => {
 			instance,
 			'/config/loadbalancer/hosturl/api.example.test/externalipaddress/192.0.2.10/port/8000/portmax/8010/protocol/tcp?path_prefix=%2Fv1%2Fchat&path_match_mode=prefix&model_name=llama-3',
 		);
+	});
+});
+
+// A gateway may return an inline backend private key on every rule read. The
+// rule list lives in the query cache, which is written to browser storage, so
+// the key must be gone before the read returns.
+describe('load-balancer read: backend client private key', () => {
+	const get = vi.mocked(GET_INST);
+	// A plain stand-in: the repository's gates refuse anything that looks like
+	// key material or a secret, test fixtures included.
+	const INLINE = 'stand-in for inline key data';
+	const backend = {verify_server_cert: true, backend_ca_path: '/etc/ca.pem', client_cert_path: '/etc/c.pem', client_key_path: '/etc/c.key', client_cert_data: 'Y2VydA=='};
+	const ruleWith = (mtls_backend?: Record<string, unknown>): IServiceConfiguration => {
+		const rule = baseConfiguration();
+		return mtls_backend === undefined ? rule : {...rule, serviceArguments: {...rule.serviceArguments, mtls_backend} as IServiceConfiguration['serviceArguments']};
+	};
+
+	beforeEach(() => {
+		get.mockReset();
+	});
+
+	it('never returns the key from the rule list, on any rule', async () => {
+		get.mockResolvedValue({code: 200, message: '', data: {lbAttr: [ruleWith(), ruleWith({...backend, client_key_data: INLINE}), ruleWith({client_key_data: INLINE})]}} as never);
+		const rules = await query_get_load_balancer_config_all(instance);
+		expect(rules).toHaveLength(3);
+		expect(JSON.stringify(rules)).not.toContain(INLINE);
+		expect(JSON.stringify(rules)).not.toContain('client_key_data');
+	});
+
+	it('keeps everything else as read', () => {
+		const read = ruleWith({...backend, client_key_data: INLINE});
+		const kept = withoutBackendKey(read);
+		expect((kept.serviceArguments as {mtls_backend?: unknown}).mtls_backend).toEqual(backend);
+		expect({...kept, serviceArguments: {...kept.serviceArguments, mtls_backend: undefined}}).toEqual({...read, serviceArguments: {...read.serviceArguments, mtls_backend: undefined}});
+		// The response object itself is not modified.
+		expect((read.serviceArguments as {mtls_backend?: {client_key_data?: string}}).mtls_backend?.client_key_data).toBe(INLINE);
+	});
+
+	it('returns a rule without the key untouched', () => {
+		const plain = ruleWith();
+		const noKey = ruleWith(backend);
+		expect(withoutBackendKey(plain)).toBe(plain);
+		expect(withoutBackendKey(noKey)).toBe(noKey);
+	});
+
+	it('drops an empty key field too, so the name never reaches the cache', () => {
+		const kept = withoutBackendKey(ruleWith({...backend, client_key_data: ''}));
+		expect((kept.serviceArguments as {mtls_backend?: unknown}).mtls_backend).toEqual(backend);
+		expect(JSON.stringify(kept)).not.toContain('client_key_data');
 	});
 });
