@@ -3,14 +3,14 @@
 	"source": {
 		"repo": "loxilb-inference-gateway",
 		"path": "deploy/monitoring/manifest/metric-manifest.json",
-		"commit": "080d8b1b76b7f380d083e19ffb3bc32eb29754fc",
-		"vendoredAt": "2026-10-06T00:02:39Z"
+		"commit": "b2b31f2d30713999e810b69e3f0c310228b740ad",
+		"vendoredAt": "2026-10-06T11:29:30Z"
 	},
 	"manifest": {
 		"schema_version": 1,
 		"provenance": {
-			"generated_at": "2026-10-05T07:35:43+00:00",
-			"source_revision": "81495fb6909c2e86de3798a582b0d56641632ab1"
+			"generated_at": "2026-10-06T06:40:55+00:00",
+			"source_revision": "a30953b44907addfba0b9df8813c226523c001f7"
 		},
 		"contract": {
 			"total": 314,
@@ -30,9 +30,9 @@
 		},
 		"coverage": {
 			"default_families": 258,
-			"default_referenced": 169,
+			"default_referenced": 182,
 			"default_waived": 21,
-			"default_unreferenced": 68,
+			"default_unreferenced": 55,
 			"writer_classified": 258,
 			"writer_unclassified": 0,
 			"writer_unverified": 64
@@ -12691,7 +12691,9 @@
 				"activation": "E",
 				"priority": "diagnostic",
 				"privacy": "none",
-				"consumers": [],
+				"consumers": [
+					"loxilb-l7.json"
+				],
 				"waiver": "",
 				"source": "api/prometheus/halfclose_hold_metrics.go:156",
 				"release_scope": "release",
@@ -12733,7 +12735,9 @@
 				"activation": "P",
 				"priority": "diagnostic",
 				"privacy": "none",
-				"consumers": [],
+				"consumers": [
+					"loxilb-l7.json"
+				],
 				"waiver": "",
 				"source": "api/prometheus/halfclose_metrics.go:180",
 				"release_scope": "release",
@@ -12775,7 +12779,9 @@
 				"activation": "P",
 				"priority": "diagnostic",
 				"privacy": "none",
-				"consumers": [],
+				"consumers": [
+					"loxilb-l7.json"
+				],
 				"waiver": "",
 				"source": "api/prometheus/halfclose_metrics.go:186",
 				"release_scope": "release",
@@ -12814,7 +12820,9 @@
 				"activation": "E",
 				"priority": "diagnostic",
 				"privacy": "none",
-				"consumers": [],
+				"consumers": [
+					"loxilb-l7.json"
+				],
 				"waiver": "",
 				"source": "api/prometheus/halfclose_hold_metrics.go:93",
 				"release_scope": "release",
@@ -12853,7 +12861,10 @@
 				"activation": "E",
 				"priority": "diagnostic",
 				"privacy": "none",
-				"consumers": [],
+				"consumers": [
+					"loxilb-alerts.yml",
+					"loxilb-l7.json"
+				],
 				"waiver": "",
 				"source": "api/prometheus/halfclose_hold_metrics.go:99",
 				"release_scope": "release",
@@ -12892,7 +12903,9 @@
 				"activation": "E",
 				"priority": "diagnostic",
 				"privacy": "none",
-				"consumers": [],
+				"consumers": [
+					"loxilb-l7.json"
+				],
 				"waiver": "",
 				"source": "api/prometheus/halfclose_hold_metrics.go:105",
 				"release_scope": "release",
@@ -12931,7 +12944,10 @@
 				"activation": "E",
 				"priority": "diagnostic",
 				"privacy": "none",
-				"consumers": [],
+				"consumers": [
+					"loxilb-alerts.yml",
+					"loxilb-l7.json"
+				],
 				"waiver": "",
 				"source": "api/prometheus/halfclose_hold_metrics.go:111",
 				"release_scope": "release",
@@ -12970,7 +12986,9 @@
 				"activation": "E",
 				"priority": "diagnostic",
 				"privacy": "none",
-				"consumers": [],
+				"consumers": [
+					"loxilb-l7.json"
+				],
 				"waiver": "",
 				"source": "api/prometheus/halfclose_hold_metrics.go:117",
 				"release_scope": "release",
@@ -13011,7 +13029,9 @@
 				"activation": "P",
 				"priority": "diagnostic",
 				"privacy": "none",
-				"consumers": [],
+				"consumers": [
+					"loxilb-l7.json"
+				],
 				"waiver": "",
 				"source": "api/prometheus/halfclose_hold_metrics.go:132",
 				"release_scope": "release",
@@ -13053,7 +13073,10 @@
 				"activation": "P",
 				"priority": "diagnostic",
 				"privacy": "none",
-				"consumers": [],
+				"consumers": [
+					"loxilb-alerts.yml",
+					"loxilb-l7.json"
+				],
 				"waiver": "",
 				"source": "api/prometheus/halfclose_hold_metrics.go:138",
 				"release_scope": "release",
@@ -13094,7 +13117,9 @@
 				"activation": "P",
 				"priority": "diagnostic",
 				"privacy": "none",
-				"consumers": [],
+				"consumers": [
+					"loxilb-l7.json"
+				],
 				"waiver": "",
 				"source": "api/prometheus/halfclose_hold_metrics.go:144",
 				"release_scope": "release",
@@ -13135,7 +13160,10 @@
 				"activation": "P",
 				"priority": "diagnostic",
 				"privacy": "none",
-				"consumers": [],
+				"consumers": [
+					"loxilb-alerts.yml",
+					"loxilb-l7.json"
+				],
 				"waiver": "",
 				"source": "api/prometheus/halfclose_hold_metrics.go:150",
 				"release_scope": "release",
@@ -13174,7 +13202,9 @@
 				"activation": "E",
 				"priority": "diagnostic",
 				"privacy": "none",
-				"consumers": [],
+				"consumers": [
+					"loxilb-l7.json"
+				],
 				"waiver": "",
 				"source": "api/prometheus/halfclose_hold_metrics.go:126",
 				"release_scope": "release",
