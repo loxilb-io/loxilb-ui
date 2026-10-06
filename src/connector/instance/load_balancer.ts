@@ -66,13 +66,29 @@ function projectOntoFlavor(body: any, flavor: InstanceFlavor): any {
 	};
 }
 
+/**
+ * A rule as read, without the backend client private key.
+ *
+ * A gateway may return `mtls_backend.client_key_data` — an inline private key
+ * — on every rule read. Nothing here shows or uses it, and the rule list is
+ * held in the query cache, which is written to browser storage. So the key is
+ * dropped where the response enters the UI, before anything can cache it.
+ * The rest of `mtls_backend` is kept as read.
+ */
+export function withoutBackendKey(rule: IServiceConfiguration): IServiceConfiguration {
+	const backend = (rule.serviceArguments as {mtls_backend?: unknown} | undefined)?.mtls_backend;
+	if (!backend || typeof backend !== 'object' || !('client_key_data' in backend)) return rule;
+	const {client_key_data, ...kept} = backend as Record<string, unknown>;
+	return {...rule, serviceArguments: {...rule.serviceArguments, mtls_backend: kept} as IServiceConfiguration['serviceArguments']};
+}
+
 //---------------------------------------------------------
 // API Caller Functions
 //---------------------------------------------------------
 export async function query_get_load_balancer_config_all(instance: IInstance): Promise<IServiceConfiguration[]> {
 	const resp = await GET_INST<GwGetResp<'/config/loadbalancer/all'>>(instance, `/config/loadbalancer/all`);
 	assertOk(resp, 'Get Load Balancer');
-	return (resp.data?.lbAttr ?? []) as IServiceConfiguration[];
+	return ((resp.data?.lbAttr ?? []) as IServiceConfiguration[]).map(withoutBackendKey);
 }
 
 export async function request_create_load_balancer_config(instance: IInstance, data: IServiceConfiguration, flavor: InstanceFlavor): Promise<OpResult> {

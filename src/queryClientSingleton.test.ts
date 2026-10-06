@@ -141,4 +141,10 @@ describe('PERSIST_BUSTER', () => {
 		expect(PERSIST_BUSTER).toBeTruthy();
 		expect(PERSIST_BUSTER).not.toBe('');
 	});
+
+	it('is not a value an earlier build stored under', () => {
+		// A cache written under these could hold a backend client private key
+		// inside a cached rule list. Reusing one would hydrate it again.
+		expect(['v2-live-telemetry-excluded']).not.toContain(PERSIST_BUSTER);
+	});
 });

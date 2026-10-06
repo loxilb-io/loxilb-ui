@@ -97,5 +97,9 @@ export function shouldPersistQuery(query: Query): boolean {
  * is the only way to disarm the snapshots already sitting in the localStorage
  * of everyone who ran a build between #91 and this fix. Change it only to
  * invalidate deliberately.
+ *
+ * v3: a rule list cached by an earlier build could hold a backend client
+ * private key as the gateway returned it. The read path now drops the key;
+ * this discards the copies already stored.
  */
-export const PERSIST_BUSTER = 'v2-live-telemetry-excluded';
+export const PERSIST_BUSTER = 'v3-backend-key-excluded';
