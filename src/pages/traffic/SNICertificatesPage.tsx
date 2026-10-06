@@ -20,9 +20,9 @@ import {OpResult} from 'connector/fetcher/opResult';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
 import {useRole} from 'hooks/query/oamHooks';
-import {useSNICertificates} from 'hooks/query/queryHooks';
+import {useMetadata, useSNICertificates} from 'hooks/query/queryHooks';
 import {t} from 'i18next';
-import {Fragment, useRef, useState, useMemo} from 'react';
+import {ComponentProps, Fragment, useRef, useState, useMemo} from 'react';
 import {ICert, ISNICertificateEntry, ISNICertificateListItem} from 'types/security';
 import {toPageState} from 'components/state/pageState';
 
@@ -67,6 +67,21 @@ function DetailPanel(props: {cert: ISNICertificateListItem}) {
 //---------------------------------------------------------
 // Main Page Component
 //---------------------------------------------------------
+/**
+ * The PEM form with the usage choice gated on what THIS gateway declares.
+ *
+ * ⚠️ The vendored spec says what the newest gateway accepts, not this one. A
+ * gateway that predates `usage` stores every entry as a listener certificate,
+ * so the choice is offered only where its own schema has it. The schema is
+ * read here, inside the dialog, so a read that lands after the dialog opened
+ * still brings the choice in; the dialog's contents are fixed when it opens.
+ */
+function GatedCertPemForm(props: Omit<ComponentProps<typeof CertPemForm>, 'usageDeclared'>) {
+	const inst = useInstanceFromURL();
+	const {get_param} = useMetadata(inst, '/config/cert');
+	return <CertPemForm {...props} usageDeclared={get_param(['usage']) !== undefined} />;
+}
+
 export default function SNICertificatesPage() {
 	const inst = useInstanceFromURL();
 	const sni_query = useSNICertificates(inst);
@@ -170,7 +185,7 @@ export default function SNICertificatesPage() {
 		if (!inst) return;
 
 		const pem_form = (
-			<CertPemForm
+			<GatedCertPemForm
 				key={Date.now()}
 				mode={mode}
 				onChange={data => {
@@ -188,7 +203,6 @@ export default function SNICertificatesPage() {
 			async () => {
 				if (!pemFormRef.current) return;
 				const {isValid, ...cert} = pemFormRef.current;
-				if (cert.certId === '') delete cert.certId;
 
 				const res =
 					mode === 'rotate' ? await request_rotate_cert_pem(inst, cert.certId as string, cert) : await request_upload_cert_pem(inst, cert);
