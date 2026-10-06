@@ -22,21 +22,23 @@
     "note": "clean re-vendor via sync-specs.sh --only gateway from a detached checkout; byte-identical to the recorded commit"
   },
   "oam": {
-    "repo": "loxilb-oam",
     "repository": "https://github.com/loxilb-io/loxilb-oam",
-    "commit": "7c295ab1dee185d60fc8e22231ae2cb861ab4cd5",
-    "dirty": false,
     "readMode": "immutable-git-blobs",
     "sha256": {
-      "oam-swagger.json": "263f94fac79d4f58f02ccb057a560c7a35e5810ea50f7ca46728ad3155b31ec8"
-    }
+      "oam-swagger.json": "08273a9f529b129a9806e7c41c3faa35c6960dea306667c221397f27612df86b"
+    },
+    "repo": "loxilb-oam",
+    "path": "docs/swagger.json",
+    "commit": "70a19c3ce0c5c124c52087cc146851d84a23587d",
+    "dirty": false,
+    "note": "vendored verbatim from a clean detached checkout; no source regeneration"
   },
   "metricManifest": {
     "repo": "loxilb-inference-gateway",
     "path": "deploy/monitoring/manifest/metric-manifest.json",
-    "commit": "314fd6e80c77437a6c3f707076e45ba56cccd458",
+    "commit": "080d8b1b76b7f380d083e19ffb3bc32eb29754fc",
     "dirty": false,
-    "vendoredAt": "2026-09-29T13:04:35Z",
+    "vendoredAt": "2026-10-06T00:02:39Z",
     "note": "vendored verbatim (byte-for-byte upstream); the UI version envelope is generated into src/api/gen/metric-manifest.json by scripts/gen-metric-manifest.mjs (npm run gen:api)"
   },
   "vendoredAt": "2026-10-05T14:30:46Z"

@@ -1045,8 +1045,20 @@ export interface paths {
             "application/json": components["schemas"]["models.ErrorResponse"];
           };
         };
+        /** @description LoxiLB instance unreachable, reset, unresolvable, or TLS-rejected */
+        502: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
         /** @description Service Unavailable */
         503: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description The instance did not answer within the proxy timeout */
+        504: {
           content: {
             "application/json": components["schemas"]["models.ErrorResponse"];
           };
@@ -1117,8 +1129,20 @@ export interface paths {
             "application/json": components["schemas"]["models.ErrorResponse"];
           };
         };
+        /** @description LoxiLB instance unreachable, reset, unresolvable, or TLS-rejected */
+        502: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
         /** @description Service Unavailable */
         503: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description The instance did not answer within the proxy timeout */
+        504: {
           content: {
             "application/json": components["schemas"]["models.ErrorResponse"];
           };
@@ -1189,8 +1213,20 @@ export interface paths {
             "application/json": components["schemas"]["models.ErrorResponse"];
           };
         };
+        /** @description LoxiLB instance unreachable, reset, unresolvable, or TLS-rejected */
+        502: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
         /** @description Service Unavailable */
         503: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description The instance did not answer within the proxy timeout */
+        504: {
           content: {
             "application/json": components["schemas"]["models.ErrorResponse"];
           };
@@ -1261,8 +1297,20 @@ export interface paths {
             "application/json": components["schemas"]["models.ErrorResponse"];
           };
         };
+        /** @description LoxiLB instance unreachable, reset, unresolvable, or TLS-rejected */
+        502: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
         /** @description Service Unavailable */
         503: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description The instance did not answer within the proxy timeout */
+        504: {
           content: {
             "application/json": components["schemas"]["models.ErrorResponse"];
           };
@@ -1333,8 +1381,20 @@ export interface paths {
             "application/json": components["schemas"]["models.ErrorResponse"];
           };
         };
+        /** @description LoxiLB instance unreachable, reset, unresolvable, or TLS-rejected */
+        502: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
         /** @description Service Unavailable */
         503: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description The instance did not answer within the proxy timeout */
+        504: {
           content: {
             "application/json": components["schemas"]["models.ErrorResponse"];
           };
@@ -1923,6 +1983,7 @@ export interface components {
       "sub-code"?: number;
     };
     "models.HealthCheckResponse": {
+      gateway_auth_mode?: string;
       status?: string;
     };
     "models.InstanceSnapshot": {

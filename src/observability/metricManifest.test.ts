@@ -78,6 +78,26 @@ import {
 // count `loxilb_ai_admission_tenants_active` (class `default`, packaged,
 // activation `C`, a `desc` gauge pinned from Collect). No existing family
 // changed beyond source line references.
+//
+// 258 (was 231) since the re-vendor to gateway 080d8b1b. The 27 added families
+// are the audit trail's retention loss and per-sink export set
+// (`loxilb_audit_records_lost_to_retention_total`, `loxilb_audit_sink_*`, 8)
+// and the proxy half-close accounting (`loxilb_proxy_halfclose_*`,
+// `loxilb_proxy_client_reset_total`,
+// `loxilb_proxy_response_{first,max}_write_gap_seconds`, 19). Re-verified the
+// same way:
+//   - all 27 are class `default` + packaged;
+//   - the 8 audit families are activation `C`; of the 19 proxy families 9 are
+//     `E` and 10 are `P`. None carries a precondition;
+//   - all 27 are custom-collector (`desc`) families, their types pinned in
+//     DESC_RUNTIME_TYPES from the three collectors' Collect — 16 counters,
+//     8 gauges and 3 histograms (MustNewConstHistogram);
+//   - none of the 231 families already vendored changed type, labels,
+//     activation, precondition or implementation status — source line
+//     references moved, and 6 KV families gained verification evidence;
+//   - no registry entry references the new families, so the per-page family
+//     sets below stay put. Whether the audit panel needs a sink signal is
+//     decided as its own UI work, not in a re-vendor.
 
 describe('vendored envelope', () => {
 	it('carries UI-owned provenance the upstream artifact lacks', () => {
@@ -95,7 +115,7 @@ describe('vendored envelope', () => {
 describe('gateway scrape applicability (class + packaged)', () => {
 	it('marks exactly the packaged default class as gateway-applicable', () => {
 		const applicable = allManifestFamilies().filter(f => isGatewayScrapeFamily(f.name));
-		expect(applicable).toHaveLength(231);
+		expect(applicable).toHaveLength(258);
 		for (const f of applicable) {
 			expect(f.class).toBe('default');
 			expect(f.packaged).toBe(true);
@@ -144,7 +164,7 @@ describe('gateway scrape applicability (class + packaged)', () => {
 });
 
 describe('desc normalization (definition mechanism vs runtime type)', () => {
-	it('pins the 56 custom-collector families to 21 counters + 33 gauges + 2 histograms', () => {
+	it('pins the 83 custom-collector families to 37 counters + 41 gauges + 5 histograms', () => {
 		const desc = allManifestFamilies().filter(f => f.definitionMechanism === 'desc');
 		expect(desc.map(f => f.name).sort()).toEqual([
 			'loxilb_ai_admission_adapt_moves_total',
@@ -182,18 +202,43 @@ describe('desc normalization (definition mechanism vs runtime type)', () => {
 			'loxilb_audit_originator_dropped_total',
 			'loxilb_audit_orphaned_intents_total',
 			'loxilb_audit_records_dropped_total',
+			'loxilb_audit_records_lost_to_retention_total',
 			'loxilb_audit_records_unattributed_total',
 			'loxilb_audit_records_written_total',
 			'loxilb_audit_reserve_breached',
 			'loxilb_audit_result_write_failures_total',
 			'loxilb_audit_segment_seal_failures_total',
 			'loxilb_audit_segments_pruned_total',
+			'loxilb_audit_sink_connected',
+			'loxilb_audit_sink_cursor_lag_bytes',
+			'loxilb_audit_sink_cursor_lag_seconds',
+			'loxilb_audit_sink_export_failures_total',
+			'loxilb_audit_sink_lag_drops_total',
+			'loxilb_audit_sink_poison_total',
+			'loxilb_audit_sink_records_exported_total',
 			'loxilb_audit_sync_failures_total',
 			'loxilb_audit_write_failures_total',
 			'loxilb_audit_writer_panics_total',
 			'loxilb_audit_writer_restarts_total',
 			'loxilb_audit_writer_up',
 			'loxilb_policer_attached',
+			'loxilb_proxy_client_reset_total',
+			'loxilb_proxy_halfclose_accel_early_fin_total',
+			'loxilb_proxy_halfclose_accel_skipped_total',
+			'loxilb_proxy_halfclose_fin_gap_seconds',
+			'loxilb_proxy_halfclose_fin_total',
+			'loxilb_proxy_halfclose_held',
+			'loxilb_proxy_halfclose_held_oldest_seconds',
+			'loxilb_proxy_halfclose_hold_allowed',
+			'loxilb_proxy_halfclose_hold_cap_seconds',
+			'loxilb_proxy_halfclose_hold_default_mode',
+			'loxilb_proxy_halfclose_hold_ended_total',
+			'loxilb_proxy_halfclose_hold_expired_total',
+			'loxilb_proxy_halfclose_hold_refused_total',
+			'loxilb_proxy_halfclose_hold_spurious_wakeups_total',
+			'loxilb_proxy_halfclose_hold_total',
+			'loxilb_proxy_halfclose_tls_fin_total',
+			'loxilb_proxy_halfclose_user_agent_total',
 			'loxilb_proxy_http_ttfb_seconds',
 			'loxilb_proxy_qos_bytes_delayed_total',
 			'loxilb_proxy_qos_bytes_passed_total',
@@ -203,6 +248,8 @@ describe('desc normalization (definition mechanism vs runtime type)', () => {
 			'loxilb_proxy_qos_parked_connections',
 			'loxilb_proxy_qos_parks_total',
 			'loxilb_proxy_qos_tokens_bytes',
+			'loxilb_proxy_response_first_write_gap_seconds',
+			'loxilb_proxy_response_max_write_gap_seconds',
 		]);
 
 		const byType = (t: string) => desc.filter(f => f.runtimeType === t).map(f => f.name).sort();
@@ -215,15 +262,31 @@ describe('desc normalization (definition mechanism vs runtime type)', () => {
 			'loxilb_audit_originator_dropped_total',
 			'loxilb_audit_orphaned_intents_total',
 			'loxilb_audit_records_dropped_total',
+			'loxilb_audit_records_lost_to_retention_total',
 			'loxilb_audit_records_unattributed_total',
 			'loxilb_audit_records_written_total',
 			'loxilb_audit_result_write_failures_total',
 			'loxilb_audit_segment_seal_failures_total',
 			'loxilb_audit_segments_pruned_total',
+			'loxilb_audit_sink_export_failures_total',
+			'loxilb_audit_sink_lag_drops_total',
+			'loxilb_audit_sink_poison_total',
+			'loxilb_audit_sink_records_exported_total',
 			'loxilb_audit_sync_failures_total',
 			'loxilb_audit_write_failures_total',
 			'loxilb_audit_writer_panics_total',
 			'loxilb_audit_writer_restarts_total',
+			'loxilb_proxy_client_reset_total',
+			'loxilb_proxy_halfclose_accel_early_fin_total',
+			'loxilb_proxy_halfclose_accel_skipped_total',
+			'loxilb_proxy_halfclose_fin_total',
+			'loxilb_proxy_halfclose_hold_ended_total',
+			'loxilb_proxy_halfclose_hold_expired_total',
+			'loxilb_proxy_halfclose_hold_refused_total',
+			'loxilb_proxy_halfclose_hold_spurious_wakeups_total',
+			'loxilb_proxy_halfclose_hold_total',
+			'loxilb_proxy_halfclose_tls_fin_total',
+			'loxilb_proxy_halfclose_user_agent_total',
 			'loxilb_proxy_qos_bytes_delayed_total',
 			'loxilb_proxy_qos_bytes_passed_total',
 			'loxilb_proxy_qos_park_seconds_total',
@@ -257,14 +320,28 @@ describe('desc normalization (definition mechanism vs runtime type)', () => {
 			'loxilb_audit_last_heartbeat_timestamp_seconds',
 			'loxilb_audit_last_write_timestamp_seconds',
 			'loxilb_audit_reserve_breached',
+			'loxilb_audit_sink_connected',
+			'loxilb_audit_sink_cursor_lag_bytes',
+			'loxilb_audit_sink_cursor_lag_seconds',
 			'loxilb_audit_writer_up',
 			'loxilb_policer_attached',
+			'loxilb_proxy_halfclose_held',
+			'loxilb_proxy_halfclose_held_oldest_seconds',
+			'loxilb_proxy_halfclose_hold_allowed',
+			'loxilb_proxy_halfclose_hold_cap_seconds',
+			'loxilb_proxy_halfclose_hold_default_mode',
 			'loxilb_proxy_qos_cbs_bytes',
 			'loxilb_proxy_qos_cir_bytes_per_second',
 			'loxilb_proxy_qos_parked_connections',
 			'loxilb_proxy_qos_tokens_bytes',
 		]);
-		expect(byType('histogram')).toEqual(['loxilb_ai_admission_queue_wait_seconds', 'loxilb_proxy_http_ttfb_seconds']);
+		expect(byType('histogram')).toEqual([
+			'loxilb_ai_admission_queue_wait_seconds',
+			'loxilb_proxy_halfclose_fin_gap_seconds',
+			'loxilb_proxy_http_ttfb_seconds',
+			'loxilb_proxy_response_first_write_gap_seconds',
+			'loxilb_proxy_response_max_write_gap_seconds',
+		]);
 	});
 
 	// ---------------------------------------------------------------
