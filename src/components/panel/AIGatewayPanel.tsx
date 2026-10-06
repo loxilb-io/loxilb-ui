@@ -3,7 +3,7 @@ import SingleTextBox from 'components/element/SingleTextBox';
 import ValueBunch from 'components/element/ValueBunch';
 import KvExactStatusPanel from 'components/panel/KvExactStatusPanel';
 import {t} from 'i18next';
-import {effectiveAIHash, isAIService, resolveAIEngine, resolveAITopology} from 'types/ai_gateway';
+import {effectiveAIHash, isAIService, isChwblSelector, resolveAIEngine, resolveAITopology} from 'types/ai_gateway';
 import {IFcEffective, IServiceArguments} from 'types/load_balancer';
 
 function isSet(value: unknown): boolean {
@@ -122,6 +122,7 @@ export default function AIGatewayPanel({serviceArguments}: {serviceArguments: IS
 
 	const engine = resolveAIEngine(serviceArguments.kvEngineType);
 	const topology = resolveAITopology(serviceArguments);
+	const chwblRing = serviceArguments.mode === 4 && isChwblSelector(serviceArguments.sel);
 	const exactMode = serviceArguments.kvExactMode ?? 0;
 	const exactModeValue = t(KV_EXACT_MODES[exactMode] ?? `Unknown (${exactMode})`);
 	const explicitHash = serviceArguments.kvHashAlgo;
@@ -167,6 +168,26 @@ export default function AIGatewayPanel({serviceArguments}: {serviceArguments: IS
 					<SingleTextBox label={t('Session Header Name')} value={serviceArguments.session_header_name} tooltip={t('Header carrying the persistent-routing session key.')} />
 					<SingleTextBox label={t('CHWBL Prefix Hash Level')} value={serviceArguments.chwbl_prefix_hash_level} tooltip={t('CHWBL prefix hash level.')} />
 					<SingleTextBox label={t('CHWBL Prefix Hash Flags')} value={serviceArguments.chwbl_prefix_hash_flags} tooltip={t('CHWBL prefix hash flags.')} />
+					{/* Ring tuning as the gateway resolved it — a row only where it
+					    reports one, so a gateway without the field shows nothing
+					    rather than a default this UI made up. */}
+					{chwblRing && serviceArguments.chwbl_mean_load_factor !== undefined && (
+						<SingleTextBox label={t('CHWBL Mean Load Factor (%)')} value={serviceArguments.chwbl_mean_load_factor} tooltip={t('How far above the mean load an endpoint may go before the ring moves on to the next one.')} />
+					)}
+					{chwblRing && serviceArguments.chwbl_replication !== undefined && (
+						<SingleTextBox
+							label={t('CHWBL Replication')}
+							value={serviceArguments.chwbl_replication}
+							tooltip={serviceArguments.sel === 10 ? t('Total virtual nodes on the hash ring, shared between the positive-weight endpoints.') : t('Virtual nodes per endpoint on the hash ring.')}
+						/>
+					)}
+					{chwblRing && serviceArguments.chwbl_enable_cache_salt !== undefined && (
+						<SingleTextBox
+							label={t('Require cache_salt')}
+							value={serviceArguments.chwbl_enable_cache_salt ? t('Required') : t('Not required')}
+							tooltip={t('When required, a request without a valid cache_salt is refused with HTTP 400 before it reaches a backend.')}
+						/>
+					)}
 				</Grid2>
 			</ValueBunch>
 
