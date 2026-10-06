@@ -3,7 +3,7 @@ import SingleTextBox from 'components/element/SingleTextBox';
 import ValueBunch from 'components/element/ValueBunch';
 import KvExactStatusPanel from 'components/panel/KvExactStatusPanel';
 import {t} from 'i18next';
-import {effectiveAIHash, isAIService, isChwblSelector, resolveAIEngine, resolveAITopology} from 'types/ai_gateway';
+import {CHWBL_TUNING_FIELDS, effectiveAIHash, isAIService, isChwblSelector, resolveAIEngine, resolveAITopology} from 'types/ai_gateway';
 import {IFcEffective, IServiceArguments} from 'types/load_balancer';
 
 function isSet(value: unknown): boolean {
@@ -112,7 +112,12 @@ export default function AIGatewayPanel({serviceArguments}: {serviceArguments: IS
 		serviceArguments.fc_effective,
 	];
 
-	if (!aiValues.some(isSet)) {
+	// Ring tuning is rendered on `!== undefined` (a reported `false` or 0 is a
+	// state), and only on a rule that builds a ring — the gate matches both.
+	const chwblRing = serviceArguments.mode === 4 && isChwblSelector(serviceArguments.sel);
+	const ringTuningReported = chwblRing && CHWBL_TUNING_FIELDS.some(field => serviceArguments[field] !== undefined);
+
+	if (!aiValues.some(isSet) && !ringTuningReported) {
 		return (
 			<Typography variant="body2" color="text.secondary">
 				{t('No AI Gateway features are configured for this rule.')}
@@ -122,7 +127,6 @@ export default function AIGatewayPanel({serviceArguments}: {serviceArguments: IS
 
 	const engine = resolveAIEngine(serviceArguments.kvEngineType);
 	const topology = resolveAITopology(serviceArguments);
-	const chwblRing = serviceArguments.mode === 4 && isChwblSelector(serviceArguments.sel);
 	const exactMode = serviceArguments.kvExactMode ?? 0;
 	const exactModeValue = t(KV_EXACT_MODES[exactMode] ?? `Unknown (${exactMode})`);
 	const explicitHash = serviceArguments.kvHashAlgo;
