@@ -13,6 +13,7 @@ import {t} from 'i18next';
 import {useCallback} from 'react';
 import {IEnumItem} from 'types/global';
 import {resolveCircuitBreaker} from 'types/ai_gateway';
+import {backendTlsApplies, backendTlsDeclared, validateBackendTls} from 'types/backend_tls';
 import {IServiceArguments} from 'types/load_balancer';
 
 //---------------------------------------------------------
@@ -36,6 +37,14 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 	// gateway answers 200 to a create carrying it and drops it, which would
 	// leave a switch that saves and does nothing (see declaredFcFields).
 	const hasBreaker = caps.hasField(SA, 'cb_enable') && params?.cb_enable !== undefined;
+	// Backend TLS — offered only where this gateway's /meta carries the field
+	// that arrived with the feature (see backendTlsDeclared).
+	const hasBackendTls = caps.hasField(SA, 'backend_tls_server_name') && backendTlsDeclared(params);
+	const backendTlsEnabled = backendTlsApplies(value ?? {});
+	const backendTlsIssue = (field: string) => {
+		const issue = validateBackendTls(value ?? {}).find(i => i.field === field);
+		return issue ? t(issue.message) : undefined;
+	};
 	const oper_list: IEnumItem[] = opers;
 	const mode_list: IEnumItem[] = modes;
 	const path_match_mode_list: IEnumItem[] = path_match_modes;
@@ -58,6 +67,15 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 			onChange({mtls_frontend: {...(value?.mtls_frontend ?? {}), [field]: newValue}});
 		},
 		[onChange, value?.mtls_frontend],
+	);
+
+	// Same delta contract for the one live member of mtls_backend; the retired
+	// members a read-back may carry ride along untouched.
+	const handleVerifyBackend = useCallback(
+		(newValue: boolean) => {
+			onChange({mtls_backend: {...(value?.mtls_backend ?? {}), verify_server_cert: newValue}});
+		},
+		[onChange, value?.mtls_backend],
 	);
 
 	// Frontend mTLS applies only to a TLS-terminating fullproxy rule
@@ -176,6 +194,48 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 								onChange={handleMtls('client_cn_pattern')}
 								param_desc={{type: 'string', description: t('Required client CN pattern, wildcards supported (e.g. *.internal.corp.com). Used only when Require Client CN is on.')}}
 								disabled={!mtlsEnabled || !value?.mtls_frontend?.require_client_cn}
+							/>
+					   </HorizontalStack></>}
+					   {/* Backend TLS — the leg to the endpoints (fullproxy + e2ehttps only).
+					       The two IDs name /config/cert entries of usage "ca" and "client",
+					       uploaded on the SNI Certificates page; no list of them exists, so
+					       they are typed. */}
+					   {hasBackendTls && <><HorizontalStack>
+							<ParamBox
+								label={t('Verify Backend Certificate')}
+								value={backendTlsEnabled && Boolean(value?.mtls_backend?.verify_server_cert)}
+								onChange={handleVerifyBackend}
+								param_desc={{type: 'boolean', description: t('Verify the certificate of every endpoint against the backend CA bundle. An endpoint that fails is not connected to. Requires fullproxy with e2ehttps security.')}}
+								disabled={!backendTlsEnabled}
+							/>
+							<ParamBox
+								label={t('Backend CA Cert ID')}
+								value={value?.backend_ca_cert_id ?? ''}
+								onChange={handleChange('backend_ca_cert_id')}
+								param_desc={{type: 'string', description: t('ID of the CA bundle (certificate usage "Backend CA bundle") the endpoint certificates must chain to. Required by verification: there is no default trust store.')}}
+								disabled={!backendTlsEnabled}
+								error={backendTlsIssue('backend_ca_cert_id') !== undefined}
+								helperText={backendTlsIssue('backend_ca_cert_id')}
+							/>
+					   </HorizontalStack>
+					   <HorizontalStack>
+							<ParamBox
+								label={t('Backend Client Cert ID')}
+								value={value?.backend_client_cert_id ?? ''}
+								onChange={handleChange('backend_client_cert_id')}
+								param_desc={{type: 'string', description: t('ID of the certificate and key (certificate usage "Backend client certificate") presented to endpoints that ask for one. Empty presents none.')}}
+								disabled={!backendTlsEnabled}
+								error={backendTlsIssue('backend_client_cert_id') !== undefined}
+								helperText={backendTlsIssue('backend_client_cert_id')}
+							/>
+							<ParamBox
+								label={t('Backend TLS Server Name')}
+								value={value?.backend_tls_server_name ?? ''}
+								onChange={handleChange('backend_tls_server_name')}
+								param_desc={{type: 'string', description: t('DNS name sent as SNI to every endpoint. With verification on, the endpoint certificate must carry it. Empty sends no SNI, and a verified endpoint must carry its own address.')}}
+								disabled={!backendTlsEnabled}
+								error={backendTlsIssue('backend_tls_server_name') !== undefined}
+								helperText={backendTlsIssue('backend_tls_server_name')}
 							/>
 					   </HorizontalStack></>}
 			   </Stack>

@@ -9,6 +9,7 @@ import ValueBunch from 'components/element/ValueBunch';
 import {t} from 'i18next';
 import {IEnumItem} from 'types/global';
 import {resolveCircuitBreaker} from 'types/ai_gateway';
+import {backendTlsApplies, backendTlsRequested} from 'types/backend_tls';
 import {IServiceArguments} from 'types/load_balancer';
 
 //---------------------------------------------------------
@@ -73,6 +74,7 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 	// Fullproxy read-backs. A gateway that does not report one gets no row,
 	// rather than an "Off" this UI would be making up.
 	const halfClose = mode === 4 ? halfCloseReadBack(serviceArguments.half_close_effective) : undefined;
+	const backendTls = backendTlsApplies(serviceArguments) && backendTlsRequested(serviceArguments);
 	const sockMap = mode === 4 ? sockMapReadBack(serviceArguments.sockMapMode) : undefined;
 
 	return (
@@ -134,6 +136,22 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 					)}
 					{/* Frontend mTLS is TLS configuration, not AI routing, so it belongs
 					    with the L7 proxy settings rather than in the AI Gateway tab. */}
+					{/* Backend TLS as the rule declares it. Rows only for a rule that asks
+					    for something: an unauthenticated leg is the default, not a state. */}
+					{backendTls && (
+						<SingleTextBox
+							label={t('Backend Verification')}
+							value={serviceArguments.mtls_backend?.verify_server_cert ? t('Verified against {{ca}}', {ca: serviceArguments.backend_ca_cert_id || '?'}) : t('Not verified')}
+							width="wide"
+							tooltip={t('Whether the gateway verifies the certificate of the endpoints it connects to, and against which CA bundle.')}
+						/>
+					)}
+					{backendTls && serviceArguments.backend_client_cert_id && (
+						<SingleTextBox label={t('Backend Client Cert ID')} value={serviceArguments.backend_client_cert_id} tooltip={t('The certificate the gateway presents to endpoints that ask for one.')} />
+					)}
+					{backendTls && serviceArguments.backend_tls_server_name && (
+						<SingleTextBox label={t('Backend TLS Server Name')} value={serviceArguments.backend_tls_server_name} width="wide" tooltip={t('The DNS name sent as SNI to every endpoint.')} />
+					)}
 					<SingleTextBox label={t('Client Cert Mode')} value={mtls.client_cert_mode} tooltip="Client-certificate verification ('disabled', 'optional', or 'required'); fullproxy + TLS only" />
 					{/* Filesystem paths and CN patterns run long — the wide column keeps
 					    them on one line. */}
