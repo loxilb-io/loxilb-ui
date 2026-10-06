@@ -56,6 +56,63 @@ test('a WRONG dialog fails fast and names what opened, instead of being retried'
 	expect(msg).toContain('NOT the lost-click flake');
 });
 
+/**
+ * The right dialog, opened with its title and no fields: what a form looks
+ * like when the schema read it draws them from fails as it mounts.
+ */
+async function schemalessForm(page: Page, schema: 'answers 502' | 'gets no answer' | 'is not read'): Promise<void> {
+	await page.route('**/meta', route => (schema === 'gets no answer' ? route.abort('connectionrefused') : route.fulfill({status: 502, headers: {'access-control-allow-origin': '*'}, body: ''})));
+	await page.setContent(`
+		<div data-table-bar="Route"><button><svg data-testid="AddIcon"></svg></button></div>
+		<div id="host"></div>
+		<script>
+			document.querySelector('[data-table-bar] button').addEventListener('click', () => {
+				document.querySelector('#host').innerHTML = '<div class="MuiModal-root"><h2>New Route</h2></div>';
+				${schema === 'is not read' ? '' : "fetch('http://oam.test/oam/api/v1/instances/gw/meta').catch(() => {});"}
+			});
+		</script>`);
+}
+
+async function failureOf(run: Promise<unknown>): Promise<string> {
+	try {
+		await run;
+	} catch (err: any) {
+		return err.message;
+	}
+	return '';
+}
+
+test('a form left empty by a failed schema read is reported as the failed read, not as a wrong dialog', async ({page}) => {
+	await schemalessForm(page, 'answers 502');
+	const msg = await failureOf(openToolbarDialog(page, 'Add', page.getByLabel('Destination'), {timeout: 300}));
+	expect(msg).toContain('GET /oam/api/v1/instances/gw/meta answered 502');
+	expect(msg).toContain('"New Route"');
+	expect(msg).toContain('NOT the app opening the wrong dialog');
+	expect(msg).not.toContain('opened the wrong dialog.');
+});
+
+test('a schema read that gets no answer at all is reported the same way', async ({page}) => {
+	await schemalessForm(page, 'gets no answer');
+	const msg = await failureOf(openToolbarDialog(page, 'Add', page.getByLabel('Destination'), {timeout: 300}));
+	expect(msg).toContain('GET /oam/api/v1/instances/gw/meta got no answer');
+	expect(msg).toContain('NOT the app opening the wrong dialog');
+});
+
+test('missing content with no failed schema read is still the wrong dialog', async ({page}) => {
+	// The schema verdict needs evidence: without a failed read the app is
+	// what opened the wrong thing, and the read must not be blamed for it.
+	await schemalessForm(page, 'is not read');
+	const msg = await failureOf(openToolbarDialog(page, 'Add', page.getByLabel('Destination'), {timeout: 300}));
+	expect(msg).toContain('not the expected one');
+	expect(msg).not.toContain('schema read');
+});
+
+test('a failed schema read does not fail a dialog whose expected content is there', async ({page}) => {
+	await schemalessForm(page, 'answers 502');
+	await openToolbarDialog(page, 'Add', 'New Route', {timeout: 300});
+	await expect(dialog(page)).toBeVisible();
+});
+
 test('openDialog also drives a non-toolbar opener', async ({page}) => {
 	await harness(page, 2);
 	await openDialog(page, 'New Route', () => page.locator('[data-table-bar] button').click());
