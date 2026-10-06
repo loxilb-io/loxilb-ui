@@ -1250,5 +1250,15 @@
 	"{{free}} of {{limit}} source-check slots free": "{{free}} of {{limit}} source-check slots free",
 	"The gateway reports that the next rule created cannot carry allowed sources.": "The gateway reports that the next rule created cannot carry allowed sources.",
 	"Admission Response Headers": "Admission Response Headers",
-	"Admission response headers must be on, off, or the gateway default.": "Admission response headers must be on, off, or the gateway default."
+	"Admission response headers must be on, off, or the gateway default.": "Admission response headers must be on, off, or the gateway default.",
+	"Certificate Usage": "Certificate Usage",
+	"Listener certificate (SNI)": "Listener certificate (SNI)",
+	"Backend CA bundle": "Backend CA bundle",
+	"Backend client certificate": "Backend client certificate",
+	"CA Certificate(s) (PEM)": "CA Certificate(s) (PEM)",
+	"More CA Certificates (PEM, optional)": "More CA Certificates (PEM, optional)",
+	"A bundle of CA certificates that a rule verifies its backends against. It holds no private key and is offered to no client. A rule refers to it by this ID.": "A bundle of CA certificates that a rule verifies its backends against. It holds no private key and is offered to no client. A rule refers to it by this ID.",
+	"The certificate and key a rule presents to backends that ask for one. It is offered to no client. A rule refers to it by this ID.": "The certificate and key a rule presents to backends that ask for one. It is offered to no client. A rule refers to it by this ID.",
+	"Replaces the CA bundle under this ID. Every rule that verifies its backends against it is updated before the request returns.": "Replaces the CA bundle under this ID. Every rule that verifies its backends against it is updated before the request returns.",
+	"Replaces the client certificate under this ID. Every rule that presents it to its backends is updated before the request returns.": "Replaces the client certificate under this ID. Every rule that presents it to its backends is updated before the request returns."
 }

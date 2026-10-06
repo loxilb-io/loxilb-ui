@@ -73,10 +73,24 @@ export interface ISNICertificateDeleteRequest {
 // POST/PUT persist PEM under /etc/loxilb/certs/<certId>/ and
 // auto-register the SAN/CN hostnames into the SNI store.
 //---------------------------------------------------------
+/**
+ * What a certificate entry is for, fixed when its ID is created:
+ * `server` a listener certificate selected by SNI, `ca` a bundle a rule
+ * verifies its backends against, `client` the certificate a rule presents to
+ * its backends.
+ */
+export type CertUsage = 'server' | 'ca' | 'client';
+
+/** The usages a load-balancer rule refers to by ID. Neither is offered to clients, so neither has hostnames. */
+export function isBackendCertUsage(usage: CertUsage | undefined): boolean {
+	return usage === 'ca' || usage === 'client';
+}
+
 export interface ICert {
+	usage?: CertUsage; // omitted reads as `server`
 	certId?: string; // opaque handle; server mints one when absent on upload
 	certPem: string;
-	keyPem: string; // never returned by GET
+	keyPem: string; // never returned by GET; the empty string for usage `ca`
 	chainPem?: string;
 	hostnames?: string[]; // output-only, derived from leaf SAN/CN
 }
