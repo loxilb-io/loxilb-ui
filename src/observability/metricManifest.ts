@@ -266,6 +266,43 @@ export const DESC_RUNTIME_TYPES: Readonly<Record<string, RuntimeMetricType>> = {
 	loxilb_audit_segments_pruned_total: 'counter',
 	loxilb_audit_originator_dropped_total: 'counter',
 	loxilb_audit_delegation_lookups_total: 'counter',
+	// Same collector, added at gateway 080d8b1b: the retention loss counter
+	// and the per-sink export set (label `sink`). `sink_connected` is a 0/1
+	// state and the two cursor lags are current distances — gauges.
+	loxilb_audit_records_lost_to_retention_total: 'counter',
+	loxilb_audit_sink_connected: 'gauge',
+	loxilb_audit_sink_records_exported_total: 'counter',
+	loxilb_audit_sink_export_failures_total: 'counter',
+	loxilb_audit_sink_poison_total: 'counter',
+	loxilb_audit_sink_lag_drops_total: 'counter',
+	loxilb_audit_sink_cursor_lag_bytes: 'gauge',
+	loxilb_audit_sink_cursor_lag_seconds: 'gauge',
+	// Half-close collector (api/prometheus/halfclose_metrics.go):
+	// 5 counters + 3 histograms. The three `_seconds` families are emitted
+	// with MustNewConstHistogram, not as gauges.
+	loxilb_proxy_halfclose_fin_gap_seconds: 'histogram',
+	loxilb_proxy_halfclose_fin_total: 'counter',
+	loxilb_proxy_halfclose_accel_early_fin_total: 'counter',
+	loxilb_proxy_halfclose_tls_fin_total: 'counter',
+	loxilb_proxy_client_reset_total: 'counter',
+	loxilb_proxy_halfclose_user_agent_total: 'counter',
+	loxilb_proxy_response_first_write_gap_seconds: 'histogram',
+	loxilb_proxy_response_max_write_gap_seconds: 'histogram',
+	// Half-close hold collector (api/prometheus/halfclose_hold_metrics.go):
+	// 5 gauges + 6 counters. `hold_allowed`, `hold_cap_seconds` and
+	// `hold_default_mode` report configuration, `held` / `held_oldest_seconds`
+	// the current holds — all gauges.
+	loxilb_proxy_halfclose_held: 'gauge',
+	loxilb_proxy_halfclose_held_oldest_seconds: 'gauge',
+	loxilb_proxy_halfclose_hold_allowed: 'gauge',
+	loxilb_proxy_halfclose_hold_cap_seconds: 'gauge',
+	loxilb_proxy_halfclose_hold_default_mode: 'gauge',
+	loxilb_proxy_halfclose_hold_total: 'counter',
+	loxilb_proxy_halfclose_hold_ended_total: 'counter',
+	loxilb_proxy_halfclose_hold_expired_total: 'counter',
+	loxilb_proxy_halfclose_hold_refused_total: 'counter',
+	loxilb_proxy_halfclose_hold_spurious_wakeups_total: 'counter',
+	loxilb_proxy_halfclose_accel_skipped_total: 'counter',
 };
 
 const RUNTIME_TYPES: ReadonlySet<string> = new Set(['counter', 'gauge', 'histogram', 'summary', 'untyped']);

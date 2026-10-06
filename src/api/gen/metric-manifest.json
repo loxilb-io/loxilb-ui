@@ -3,24 +3,24 @@
 	"source": {
 		"repo": "loxilb-inference-gateway",
 		"path": "deploy/monitoring/manifest/metric-manifest.json",
-		"commit": "314fd6e80c77437a6c3f707076e45ba56cccd458",
-		"vendoredAt": "2026-09-29T13:04:35Z"
+		"commit": "080d8b1b76b7f380d083e19ffb3bc32eb29754fc",
+		"vendoredAt": "2026-10-06T00:02:39Z"
 	},
 	"manifest": {
 		"schema_version": 1,
 		"provenance": {
-			"generated_at": "2026-09-29T07:19:36+00:00",
-			"source_revision": "5d7b0619c2715cde2809e7910ff87799d244fc0b"
+			"generated_at": "2026-10-05T07:35:43+00:00",
+			"source_revision": "81495fb6909c2e86de3798a582b0d56641632ab1"
 		},
 		"contract": {
-			"total": 287,
+			"total": 314,
 			"owners": {
-				"loxilb": 264,
+				"loxilb": 291,
 				"loxilb-ai-controller": 19,
 				"loxilb-kv-agent": 4
 			},
 			"classes": {
-				"default": 231,
+				"default": 258,
 				"dpu-doca": 24,
 				"aictrl-bridge": 8,
 				"kv-agent-health": 1,
@@ -29,11 +29,11 @@
 			}
 		},
 		"coverage": {
-			"default_families": 231,
+			"default_families": 258,
 			"default_referenced": 169,
 			"default_waived": 21,
-			"default_unreferenced": 41,
-			"writer_classified": 231,
+			"default_unreferenced": 68,
+			"writer_classified": 258,
 			"writer_unclassified": 0,
 			"writer_unverified": 64
 		},
@@ -927,7 +927,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:258",
+				"source": "api/prometheus/ai_admission_metrics.go:259",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -938,7 +938,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 303,
+						"def_line": 304,
 						"writes": "admissionAdaptMovesDesc",
 						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; each Desc is named at its own MustNewConstMetric call because the extractor resolves the runtime type by reading that call and cannot follow an identifier"
 					},
@@ -946,8 +946,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 344,
-						"call_line": 345,
+						"def_line": 345,
+						"call_line": 346,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -972,7 +972,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:253",
+				"source": "api/prometheus/ai_admission_metrics.go:254",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -983,7 +983,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 303,
+						"def_line": 304,
 						"writes": "admissionAdaptReasonDesc",
 						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; each Desc is named at its own MustNewConstMetric call because the extractor resolves the runtime type by reading that call and cannot follow an identifier"
 					},
@@ -991,8 +991,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 344,
-						"call_line": 345,
+						"def_line": 345,
+						"call_line": 346,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -1020,7 +1020,7 @@
 					"loxilb-alerts.yml"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:248",
+				"source": "api/prometheus/ai_admission_metrics.go:249",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -1031,7 +1031,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 303,
+						"def_line": 304,
 						"writes": "admissionAdaptStateDesc",
 						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; each Desc is named at its own MustNewConstMetric call because the extractor resolves the runtime type by reading that call and cannot follow an identifier"
 					},
@@ -1039,8 +1039,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 344,
-						"call_line": 345,
+						"def_line": 345,
+						"call_line": 346,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -1066,7 +1066,7 @@
 					"loxilb-alerts.yml"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:273",
+				"source": "api/prometheus/ai_admission_metrics.go:274",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -1077,7 +1077,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 303,
+						"def_line": 304,
 						"writes": "admissionAnomaliesDesc",
 						"note": "read from the process-wide fc_anomaly_total counters through proxy_get_fc_anomaly on the same 10s cycle; emitted whether or not any AI service exists"
 					},
@@ -1085,8 +1085,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 344,
-						"call_line": 345,
+						"def_line": 345,
+						"call_line": 346,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -1114,7 +1114,7 @@
 					"loxilb-alerts.yml"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:238",
+				"source": "api/prometheus/ai_admission_metrics.go:239",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -1125,7 +1125,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 303,
+						"def_line": 304,
 						"writes": "admissionDecisionsDesc",
 						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; each Desc is named at its own MustNewConstMetric call because the extractor resolves the runtime type by reading that call and cannot follow an identifier"
 					},
@@ -1133,8 +1133,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 344,
-						"call_line": 345,
+						"def_line": 345,
+						"call_line": 346,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -1160,7 +1160,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:243",
+				"source": "api/prometheus/ai_admission_metrics.go:244",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -1171,7 +1171,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 303,
+						"def_line": 304,
 						"writes": "admissionEffectiveLimitDesc",
 						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; each Desc is named at its own MustNewConstMetric call because the extractor resolves the runtime type by reading that call and cannot follow an identifier"
 					},
@@ -1179,8 +1179,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 344,
-						"call_line": 345,
+						"def_line": 345,
+						"call_line": 346,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -1207,7 +1207,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:218",
+				"source": "api/prometheus/ai_admission_metrics.go:219",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -1218,7 +1218,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 303,
+						"def_line": 304,
 						"writes": "admissionInflightDesc",
 						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; each Desc is named at its own MustNewConstMetric call because the extractor resolves the runtime type by reading that call and cannot follow an identifier"
 					},
@@ -1226,8 +1226,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 344,
-						"call_line": 345,
+						"def_line": 345,
+						"call_line": 346,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -1255,7 +1255,7 @@
 					"loxilb-alerts.yml"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:223",
+				"source": "api/prometheus/ai_admission_metrics.go:224",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -1266,7 +1266,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 303,
+						"def_line": 304,
 						"writes": "admissionLimitDesc",
 						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; each Desc is named at its own MustNewConstMetric call because the extractor resolves the runtime type by reading that call and cannot follow an identifier"
 					},
@@ -1274,8 +1274,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 344,
-						"call_line": 345,
+						"def_line": 345,
+						"call_line": 346,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -1301,7 +1301,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:213",
+				"source": "api/prometheus/ai_admission_metrics.go:214",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -1312,7 +1312,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 303,
+						"def_line": 304,
 						"writes": "admissionModeDesc",
 						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; each Desc is named at its own MustNewConstMetric call because the extractor resolves the runtime type by reading that call and cannot follow an identifier"
 					},
@@ -1320,8 +1320,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 344,
-						"call_line": 345,
+						"def_line": 345,
+						"call_line": 346,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -1347,7 +1347,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:233",
+				"source": "api/prometheus/ai_admission_metrics.go:234",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -1358,7 +1358,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 303,
+						"def_line": 304,
 						"writes": "admissionQueueWaitDesc",
 						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; the C side keeps one count per bucket (fc_qwait_bounds_ms) and Collect converts them to the cumulative form at its MustNewConstHistogram call, which is where the extractor resolves the histogram type"
 					},
@@ -1366,8 +1366,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 344,
-						"call_line": 345,
+						"def_line": 345,
+						"call_line": 346,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -1394,7 +1394,7 @@
 					"loxilb-alerts.yml"
 				],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:228",
+				"source": "api/prometheus/ai_admission_metrics.go:229",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -1405,7 +1405,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 303,
+						"def_line": 304,
 						"writes": "admissionQueuedDesc",
 						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; each Desc is named at its own MustNewConstMetric call because the extractor resolves the runtime type by reading that call and cannot follow an identifier"
 					},
@@ -1413,8 +1413,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 344,
-						"call_line": 345,
+						"def_line": 345,
+						"call_line": 346,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -1438,7 +1438,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:268",
+				"source": "api/prometheus/ai_admission_metrics.go:269",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -1449,7 +1449,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 303,
+						"def_line": 304,
 						"writes": "admissionTenantsDesc",
 						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; each Desc is named at its own MustNewConstMetric call because the extractor resolves the runtime type by reading that call and cannot follow an identifier"
 					},
@@ -1457,8 +1457,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 344,
-						"call_line": 345,
+						"def_line": 345,
+						"call_line": 346,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -1482,7 +1482,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/prometheus/ai_admission_metrics.go:263",
+				"source": "api/prometheus/ai_admission_metrics.go:264",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -1493,7 +1493,7 @@
 						"kind": "method",
 						"receiver": "admissionCollector",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 303,
+						"def_line": 304,
 						"writes": "admissionWarmingDesc",
 						"note": "read from the Go-side store the 10s collection cycle refreshes from proxy_get_fc_stats; each Desc is named at its own MustNewConstMetric call because the extractor resolves the runtime type by reading that call and cannot follow an identifier"
 					},
@@ -1501,8 +1501,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/ai_admission_metrics.go",
-						"def_line": 344,
-						"call_line": 345,
+						"def_line": 345,
+						"call_line": 346,
 						"calls": "admissionCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -1526,7 +1526,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "Info metric (constant 1) for PromQL joins and legend enrichment of engine identity; standalone display would duplicate configuration.",
-				"source": "api/prometheus/sockproxy_metrics.go:412",
+				"source": "api/prometheus/sockproxy_metrics.go:448",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -1536,7 +1536,7 @@
 						"symbol": "SetAiEngineInfo",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 1273,
+						"def_line": 1386,
 						"writes": "aiEngineInfo"
 					},
 					{
@@ -1552,8 +1552,8 @@
 						"symbol": "AddLbRule",
 						"kind": "method",
 						"file": "pkg/loxinet/rules.go",
-						"def_line": 3763,
-						"call_line": 5105,
+						"def_line": 3802,
+						"call_line": 5167,
 						"calls": "LlamacppAdmissionProbe",
 						"receiver": "RuleH"
 					},
@@ -2077,7 +2077,7 @@
 					"loxilb-alerts.yml"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:1599",
+				"source": "api/prometheus/sockproxy_metrics.go:1712",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -2087,21 +2087,21 @@
 						"symbol": "IncKvAttestEcho",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 1665,
+						"def_line": 1778,
 						"writes": "kvAttestEchoTotal"
 					},
 					{
 						"symbol": "runLadder",
 						"kind": "method",
 						"file": "pkg/loxinet/ai_kv_attest.go",
-						"def_line": 563,
-						"call_line": 657,
+						"def_line": 566,
+						"call_line": 660,
 						"calls": "kvAttestEchoFn",
 						"receiver": "kvAttestController",
 						"via": {
 							"var": "kvAttestEchoFn",
 							"file": "pkg/loxinet/ai_kv_attest.go",
-							"line": 278
+							"line": 281
 						},
 						"note": "dispatched through a metric seam variable, so a plain name search finds no caller for the writer at all -- the binding is recorded in via and re-checked on every run; result=\"fail\" here and result=\"ok\" at :661"
 					},
@@ -2110,8 +2110,8 @@
 						"kind": "method",
 						"receiver": "kvAttestController",
 						"file": "pkg/loxinet/ai_kv_attest.go",
-						"def_line": 697,
-						"call_line": 726,
+						"def_line": 700,
+						"call_line": 729,
 						"calls": "runLadder"
 					},
 					{
@@ -2119,8 +2119,8 @@
 						"kind": "method",
 						"receiver": "kvAttestController",
 						"file": "pkg/loxinet/ai_kv_attest.go",
-						"def_line": 458,
-						"call_line": 477,
+						"def_line": 461,
+						"call_line": 480,
 						"calls": "cadenceCheck",
 						"note": "single controller goroutine per rule; its deferred teardown clears this rule's series after the last publish"
 					},
@@ -2128,16 +2128,16 @@
 						"symbol": "KvAttestStart",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_attest.go",
-						"def_line": 326,
-						"call_line": 351,
+						"def_line": 329,
+						"call_line": 354,
 						"calls": "loop"
 					},
 					{
 						"symbol": "kvAttestActivate",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_attest.go",
-						"def_line": 927,
-						"call_line": 934,
+						"def_line": 930,
+						"call_line": 937,
 						"calls": "KvAttestStart"
 					},
 					{
@@ -2154,8 +2154,8 @@
 						"kind": "method",
 						"receiver": "RuleH",
 						"file": "pkg/loxinet/rules.go",
-						"def_line": 3763,
-						"call_line": 4684,
+						"def_line": 3802,
+						"call_line": 4741,
 						"calls": "kvDataplaneContractInstallAsync"
 					},
 					{
@@ -2170,7 +2170,7 @@
 						"note": "the API-hooks implementation behind the LB-rule REST call; the same path replays saved rules at boot from api/loxinlp/nlp.go"
 					}
 				],
-				"verification_evidence": "source re-verification 2026-09-10 (plan Part E, WP-0 burn-down): pkg/loxinet/ai_kv_attest.go:657 and :661 through the kvAttestEchoFn seam bound at :278. WP-6A owns the good-echo/bad-echo pair."
+				"verification_evidence": "source re-verification 2026-09-10 (plan Part E, WP-0 burn-down): pkg/loxinet/ai_kv_attest.go:660 and :664 through the kvAttestEchoFn seam bound at :281. WP-6A owns the good-echo/bad-echo pair."
 			},
 			{
 				"name": "loxilb_ai_kv_attest_probe_fail_total",
@@ -2190,7 +2190,7 @@
 					"loxilb-alerts.yml"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:1591",
+				"source": "api/prometheus/sockproxy_metrics.go:1704",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -2200,21 +2200,21 @@
 						"symbol": "IncKvAttestProbeFail",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 1660,
+						"def_line": 1773,
 						"writes": "kvAttestProbeFailTotal"
 					},
 					{
 						"symbol": "runLadder",
 						"kind": "method",
 						"file": "pkg/loxinet/ai_kv_attest.go",
-						"def_line": 563,
-						"call_line": 620,
+						"def_line": 566,
+						"call_line": 623,
 						"calls": "kvAttestProbeFailFn",
 						"receiver": "kvAttestController",
 						"via": {
 							"var": "kvAttestProbeFailFn",
 							"file": "pkg/loxinet/ai_kv_attest.go",
-							"line": 277
+							"line": 280
 						},
 						"note": "dispatched through a metric seam variable, so a plain name search finds no caller for the writer at all -- the binding is recorded in via and re-checked on every run; five more reason sites at :629, :779, :790, :810 and :816"
 					},
@@ -2223,8 +2223,8 @@
 						"kind": "method",
 						"receiver": "kvAttestController",
 						"file": "pkg/loxinet/ai_kv_attest.go",
-						"def_line": 697,
-						"call_line": 726,
+						"def_line": 700,
+						"call_line": 729,
 						"calls": "runLadder"
 					},
 					{
@@ -2232,8 +2232,8 @@
 						"kind": "method",
 						"receiver": "kvAttestController",
 						"file": "pkg/loxinet/ai_kv_attest.go",
-						"def_line": 458,
-						"call_line": 477,
+						"def_line": 461,
+						"call_line": 480,
 						"calls": "cadenceCheck",
 						"note": "single controller goroutine per rule; its deferred teardown clears this rule's series after the last publish"
 					},
@@ -2241,16 +2241,16 @@
 						"symbol": "KvAttestStart",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_attest.go",
-						"def_line": 326,
-						"call_line": 351,
+						"def_line": 329,
+						"call_line": 354,
 						"calls": "loop"
 					},
 					{
 						"symbol": "kvAttestActivate",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_attest.go",
-						"def_line": 927,
-						"call_line": 934,
+						"def_line": 930,
+						"call_line": 937,
 						"calls": "KvAttestStart"
 					},
 					{
@@ -2267,8 +2267,8 @@
 						"kind": "method",
 						"receiver": "RuleH",
 						"file": "pkg/loxinet/rules.go",
-						"def_line": 3763,
-						"call_line": 4684,
+						"def_line": 3802,
+						"call_line": 4741,
 						"calls": "kvDataplaneContractInstallAsync"
 					},
 					{
@@ -2304,7 +2304,7 @@
 					"loxilb-alerts.yml"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:1572",
+				"source": "api/prometheus/sockproxy_metrics.go:1685",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -2314,7 +2314,7 @@
 						"symbol": "SetKvAttestState",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 1635,
+						"def_line": 1748,
 						"writes": "kvAttestState",
 						"note": "publishes the ladder position; the empty state at :1576 is the teardown clear, not a value"
 					},
@@ -2322,14 +2322,14 @@
 						"symbol": "publish",
 						"kind": "method",
 						"file": "pkg/loxinet/ai_kv_attest.go",
-						"def_line": 498,
-						"call_line": 508,
+						"def_line": 501,
+						"call_line": 511,
 						"calls": "kvAttestStateGaugeFn",
 						"receiver": "kvAttestController",
 						"via": {
 							"var": "kvAttestStateGaugeFn",
 							"file": "pkg/loxinet/ai_kv_attest.go",
-							"line": 275
+							"line": 278
 						},
 						"note": "dispatched through a metric seam variable, so a plain name search finds no caller for the writer at all -- the binding is recorded in via and re-checked on every run"
 					},
@@ -2337,8 +2337,8 @@
 						"symbol": "runLadder",
 						"kind": "method",
 						"file": "pkg/loxinet/ai_kv_attest.go",
-						"def_line": 563,
-						"call_line": 689,
+						"def_line": 566,
+						"call_line": 692,
 						"calls": "publish",
 						"receiver": "kvAttestController"
 					},
@@ -2347,8 +2347,8 @@
 						"kind": "method",
 						"receiver": "kvAttestController",
 						"file": "pkg/loxinet/ai_kv_attest.go",
-						"def_line": 697,
-						"call_line": 726,
+						"def_line": 700,
+						"call_line": 729,
 						"calls": "runLadder"
 					},
 					{
@@ -2356,8 +2356,8 @@
 						"kind": "method",
 						"receiver": "kvAttestController",
 						"file": "pkg/loxinet/ai_kv_attest.go",
-						"def_line": 458,
-						"call_line": 477,
+						"def_line": 461,
+						"call_line": 480,
 						"calls": "cadenceCheck",
 						"note": "single controller goroutine per rule; its deferred teardown clears this rule's series after the last publish"
 					},
@@ -2365,16 +2365,16 @@
 						"symbol": "KvAttestStart",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_attest.go",
-						"def_line": 326,
-						"call_line": 351,
+						"def_line": 329,
+						"call_line": 354,
 						"calls": "loop"
 					},
 					{
 						"symbol": "kvAttestActivate",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_attest.go",
-						"def_line": 927,
-						"call_line": 934,
+						"def_line": 930,
+						"call_line": 937,
 						"calls": "KvAttestStart"
 					},
 					{
@@ -2391,8 +2391,8 @@
 						"kind": "method",
 						"receiver": "RuleH",
 						"file": "pkg/loxinet/rules.go",
-						"def_line": 3763,
-						"call_line": 4684,
+						"def_line": 3802,
+						"call_line": 4741,
 						"calls": "kvDataplaneContractInstallAsync"
 					},
 					{
@@ -2407,7 +2407,7 @@
 						"note": "the API-hooks implementation behind the LB-rule REST call; the same path replays saved rules at boot from api/loxinlp/nlp.go"
 					}
 				],
-				"verification_evidence": "source re-verification 2026-09-10 (plan Part E, WP-0 burn-down): pkg/loxinet/ai_kv_attest.go:508 through the kvAttestStateGaugeFn seam bound at :275. WP-6A owns the pinned profile/artifact digest proof; scenario M11."
+				"verification_evidence": "source re-verification 2026-09-10 (plan Part E, WP-0 burn-down): pkg/loxinet/ai_kv_attest.go:511 through the kvAttestStateGaugeFn seam bound at :278. WP-6A owns the pinned profile/artifact digest proof; scenario M11."
 			},
 			{
 				"name": "loxilb_ai_kv_enforcement_fault",
@@ -2427,7 +2427,7 @@
 					"loxilb-alerts.yml"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:1583",
+				"source": "api/prometheus/sockproxy_metrics.go:1696",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -2437,21 +2437,21 @@
 						"symbol": "SetKvAttestEnforcementFault",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 1651,
+						"def_line": 1764,
 						"writes": "kvAttestEnforcementFault"
 					},
 					{
 						"symbol": "publish",
 						"kind": "method",
 						"file": "pkg/loxinet/ai_kv_attest.go",
-						"def_line": 498,
-						"call_line": 509,
+						"def_line": 501,
+						"call_line": 512,
 						"calls": "kvAttestFaultGaugeFn",
 						"receiver": "kvAttestController",
 						"via": {
 							"var": "kvAttestFaultGaugeFn",
 							"file": "pkg/loxinet/ai_kv_attest.go",
-							"line": 276
+							"line": 279
 						},
 						"note": "dispatched through a metric seam variable, so a plain name search finds no caller for the writer at all -- the binding is recorded in via and re-checked on every run"
 					},
@@ -2459,8 +2459,8 @@
 						"symbol": "runLadder",
 						"kind": "method",
 						"file": "pkg/loxinet/ai_kv_attest.go",
-						"def_line": 563,
-						"call_line": 689,
+						"def_line": 566,
+						"call_line": 692,
 						"calls": "publish",
 						"receiver": "kvAttestController"
 					},
@@ -2469,8 +2469,8 @@
 						"kind": "method",
 						"receiver": "kvAttestController",
 						"file": "pkg/loxinet/ai_kv_attest.go",
-						"def_line": 697,
-						"call_line": 726,
+						"def_line": 700,
+						"call_line": 729,
 						"calls": "runLadder"
 					},
 					{
@@ -2478,8 +2478,8 @@
 						"kind": "method",
 						"receiver": "kvAttestController",
 						"file": "pkg/loxinet/ai_kv_attest.go",
-						"def_line": 458,
-						"call_line": 477,
+						"def_line": 461,
+						"call_line": 480,
 						"calls": "cadenceCheck",
 						"note": "single controller goroutine per rule; its deferred teardown clears this rule's series after the last publish"
 					},
@@ -2487,16 +2487,16 @@
 						"symbol": "KvAttestStart",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_attest.go",
-						"def_line": 326,
-						"call_line": 351,
+						"def_line": 329,
+						"call_line": 354,
 						"calls": "loop"
 					},
 					{
 						"symbol": "kvAttestActivate",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_attest.go",
-						"def_line": 927,
-						"call_line": 934,
+						"def_line": 930,
+						"call_line": 937,
 						"calls": "KvAttestStart"
 					},
 					{
@@ -2513,8 +2513,8 @@
 						"kind": "method",
 						"receiver": "RuleH",
 						"file": "pkg/loxinet/rules.go",
-						"def_line": 3763,
-						"call_line": 4684,
+						"def_line": 3802,
+						"call_line": 4741,
 						"calls": "kvDataplaneContractInstallAsync"
 					},
 					{
@@ -2529,7 +2529,7 @@
 						"note": "the API-hooks implementation behind the LB-rule REST call; the same path replays saved rules at boot from api/loxinlp/nlp.go"
 					}
 				],
-				"verification_evidence": "source re-verification 2026-09-10 (plan Part E, WP-0 burn-down): pkg/loxinet/ai_kv_attest.go:509 through the kvAttestFaultGaugeFn seam bound at :276; fenceAndReattest (:548) reaches the same publish. WP-6A owns the injected-fault proof."
+				"verification_evidence": "source re-verification 2026-09-10 (plan Part E, WP-0 burn-down): pkg/loxinet/ai_kv_attest.go:512 through the kvAttestFaultGaugeFn seam bound at :279; fenceAndReattest (:551) reaches the same publish. WP-6A owns the injected-fault proof."
 			},
 			{
 				"name": "loxilb_ai_kv_trtllm_drain_ownership_fault_total",
@@ -2549,7 +2549,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:1611",
+				"source": "api/prometheus/sockproxy_metrics.go:1724",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -2559,7 +2559,7 @@
 						"symbol": "IncKvTrtllmDrainOwnershipFault",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 1671,
+						"def_line": 1784,
 						"writes": "kvTrtllmDrainOwnFaultTotal"
 					},
 					{
@@ -2589,8 +2589,8 @@
 						"symbol": "runKvSubscriberLoopBinding",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 737,
-						"call_line": 934,
+						"def_line": 743,
+						"call_line": 940,
 						"calls": "Decode",
 						"note": "the decoder is held behind the kvWireDecoder interface, so this call site names the method, not the concrete type"
 					},
@@ -2598,8 +2598,8 @@
 						"symbol": "KvSubscriberStartRank",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1230,
-						"call_line": 1379,
+						"def_line": 1236,
+						"call_line": 1385,
 						"calls": "runKvSubscriberLoopBinding",
 						"note": "one subscriber goroutine per (service, endpoint, rank)"
 					},
@@ -2608,8 +2608,8 @@
 						"kind": "method",
 						"receiver": "RuleH",
 						"file": "pkg/loxinet/rules.go",
-						"def_line": 3763,
-						"call_line": 5062,
+						"def_line": 3802,
+						"call_line": 5124,
 						"calls": "KvSubscriberStartRank"
 					},
 					{
@@ -2641,7 +2641,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:1619",
+				"source": "api/prometheus/sockproxy_metrics.go:1732",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -2651,7 +2651,7 @@
 						"symbol": "IncKvTrtllmDrainOwnershipHeal",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 1676,
+						"def_line": 1789,
 						"writes": "kvTrtllmDrainOwnHealTotal"
 					},
 					{
@@ -2681,16 +2681,16 @@
 						"symbol": "runKvSubscriberLoopBinding",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 737,
-						"call_line": 934,
+						"def_line": 743,
+						"call_line": 940,
 						"calls": "Decode"
 					},
 					{
 						"symbol": "KvSubscriberStartRank",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1230,
-						"call_line": 1379,
+						"def_line": 1236,
+						"call_line": 1385,
 						"calls": "runKvSubscriberLoopBinding",
 						"note": "one subscriber goroutine per (service, endpoint, rank)"
 					},
@@ -2699,8 +2699,8 @@
 						"kind": "method",
 						"receiver": "RuleH",
 						"file": "pkg/loxinet/rules.go",
-						"def_line": 3763,
-						"call_line": 5062,
+						"def_line": 3802,
+						"call_line": 5124,
 						"calls": "KvSubscriberStartRank"
 					},
 					{
@@ -2735,7 +2735,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:424",
+				"source": "api/prometheus/sockproxy_metrics.go:460",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -2745,7 +2745,7 @@
 						"symbol": "IncLlamacppProbeWarning",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 1279,
+						"def_line": 1392,
 						"writes": "llamacppProbeWarnTotal"
 					},
 					{
@@ -2761,8 +2761,8 @@
 						"symbol": "AddLbRule",
 						"kind": "method",
 						"file": "pkg/loxinet/rules.go",
-						"def_line": 3763,
-						"call_line": 5105,
+						"def_line": 3802,
+						"call_line": 5167,
 						"calls": "LlamacppAdmissionProbe",
 						"receiver": "RuleH"
 					},
@@ -4308,8 +4308,8 @@
 						"kind": "method",
 						"receiver": "ruleEnt",
 						"file": "pkg/loxinet/fc_rule.go",
-						"def_line": 149,
-						"call_line": 185,
+						"def_line": 181,
+						"call_line": 217,
 						"calls": "Run",
 						"note": "the scraper goroutine runs while something reads what it scrapes: a rule with pdDisaggMode (the P/D scorers) or an AI-gateway rule whose admission ceiling adapts (fc_adaptive, else LLB_FC_ADAPTIVE); at a hard-coded 10s interval, against each endpoint's own xIP:xPort -- the same port the data connect uses. Restarted when a replace moves the endpoints, stopped when neither reader remains"
 					},
@@ -4318,10 +4318,10 @@
 						"kind": "method",
 						"receiver": "RuleH",
 						"file": "pkg/loxinet/rules.go",
-						"def_line": 3763,
-						"call_line": 5110,
+						"def_line": 3802,
+						"call_line": 5172,
 						"calls": "syncVllmScraper",
-						"note": "on create; the replace path calls it too (rules.go:4689), so a replace that turns adaptation on or off, or moves the endpoints, reaches the scraper"
+						"note": "on create; the replace path calls it too (rules.go:4719), so a replace that turns adaptation on or off, or moves the endpoints, reaches the scraper"
 					},
 					{
 						"symbol": "NetLbRuleAdd",
@@ -4350,7 +4350,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/restapi/handler/audit_metrics.go:98",
+				"source": "api/restapi/handler/audit_metrics.go:100",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -4361,7 +4361,7 @@
 						"kind": "method",
 						"receiver": "auditCollector",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 126,
+						"def_line": 169,
 						"writes": "auditDelegationLookupsDesc",
 						"note": "read from the audit writer's Stats snapshot and the gate's own counters at scrape time; nothing on the write path touches a metric. Emitted from start, at zero, so absence and quiet are distinguishable"
 					},
@@ -4369,8 +4369,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 173,
-						"call_line": 174,
+						"def_line": 245,
+						"call_line": 246,
 						"calls": "auditCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -4391,7 +4391,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/restapi/handler/audit_metrics.go:70",
+				"source": "api/restapi/handler/audit_metrics.go:72",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -4402,7 +4402,7 @@
 						"kind": "method",
 						"receiver": "auditCollector",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 126,
+						"def_line": 169,
 						"writes": "auditLastHeartbeatDesc",
 						"note": "read from the audit writer's Stats snapshot and the gate's own counters at scrape time; nothing on the write path touches a metric. Emitted from start, at zero, so absence and quiet are distinguishable"
 					},
@@ -4410,8 +4410,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 173,
-						"call_line": 174,
+						"def_line": 245,
+						"call_line": 246,
 						"calls": "auditCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -4432,7 +4432,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/restapi/handler/audit_metrics.go:66",
+				"source": "api/restapi/handler/audit_metrics.go:68",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -4443,7 +4443,7 @@
 						"kind": "method",
 						"receiver": "auditCollector",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 126,
+						"def_line": 169,
 						"writes": "auditLastWriteDesc",
 						"note": "read from the audit writer's Stats snapshot and the gate's own counters at scrape time; nothing on the write path touches a metric. Emitted from start, at zero, so absence and quiet are distinguishable"
 					},
@@ -4451,8 +4451,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 173,
-						"call_line": 174,
+						"def_line": 245,
+						"call_line": 246,
 						"calls": "auditCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -4473,7 +4473,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/restapi/handler/audit_metrics.go:54",
+				"source": "api/restapi/handler/audit_metrics.go:56",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -4484,7 +4484,7 @@
 						"kind": "method",
 						"receiver": "auditCollector",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 126,
+						"def_line": 169,
 						"writes": "auditMgmtTimeoutsDesc",
 						"note": "read from the audit writer's Stats snapshot and the gate's own counters at scrape time; nothing on the write path touches a metric. Emitted from start, at zero, so absence and quiet are distinguishable"
 					},
@@ -4492,8 +4492,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 173,
-						"call_line": 174,
+						"def_line": 245,
+						"call_line": 246,
 						"calls": "auditCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -4514,7 +4514,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/restapi/handler/audit_metrics.go:94",
+				"source": "api/restapi/handler/audit_metrics.go:96",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -4525,7 +4525,7 @@
 						"kind": "method",
 						"receiver": "auditCollector",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 126,
+						"def_line": 169,
 						"writes": "auditOriginatorDroppedDesc",
 						"note": "read from the audit writer's Stats snapshot and the gate's own counters at scrape time; nothing on the write path touches a metric. Emitted from start, at zero, so absence and quiet are distinguishable"
 					},
@@ -4533,8 +4533,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 173,
-						"call_line": 174,
+						"def_line": 245,
+						"call_line": 246,
 						"calls": "auditCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -4555,7 +4555,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/restapi/handler/audit_metrics.go:78",
+				"source": "api/restapi/handler/audit_metrics.go:80",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -4566,7 +4566,7 @@
 						"kind": "method",
 						"receiver": "auditCollector",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 126,
+						"def_line": 169,
 						"writes": "auditOrphanedIntentsDesc",
 						"note": "read from the audit writer's Stats snapshot and the gate's own counters at scrape time; nothing on the write path touches a metric. Emitted from start, at zero, so absence and quiet are distinguishable"
 					},
@@ -4574,8 +4574,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 173,
-						"call_line": 174,
+						"def_line": 245,
+						"call_line": 246,
 						"calls": "auditCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -4599,7 +4599,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/restapi/handler/audit_metrics.go:38",
+				"source": "api/restapi/handler/audit_metrics.go:40",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -4610,7 +4610,7 @@
 						"kind": "method",
 						"receiver": "auditCollector",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 126,
+						"def_line": 169,
 						"writes": "auditRecordsDroppedDesc",
 						"note": "read from the audit writer's Stats snapshot and the gate's own counters at scrape time; nothing on the write path touches a metric. Emitted from start, at zero, so absence and quiet are distinguishable"
 					},
@@ -4618,14 +4618,55 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 173,
-						"call_line": 174,
+						"def_line": 245,
+						"call_line": 246,
 						"calls": "auditCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
 					}
 				],
 				"verification_evidence": "api/restapi/handler TestAuditMetricsWithoutWriter and TestAuditMetricsFollowTheWriter compare the collector's exposition against the writer's Stats snapshot with and without a writer installed; the gate tests behind the counters (audit_gate_test.go, audit_originator_test.go) drive the values they read."
+			},
+			{
+				"name": "loxilb_audit_records_lost_to_retention_total",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "counter",
+				"definition_mechanism": "desc",
+				"labels": [],
+				"activation": "C",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/restapi/handler/audit_metrics.go:104",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-static",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "auditCollector",
+						"file": "api/restapi/handler/audit_metrics.go",
+						"def_line": 169,
+						"writes": "auditLostToRetentionDesc",
+						"note": "read from the audit writer's Stats snapshot at scrape time; nothing on the write path touches a metric. Emitted from start, at zero, so absence and quiet are distinguishable"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/restapi/handler/audit_metrics.go",
+						"def_line": 245,
+						"call_line": 246,
+						"calls": "auditCollector",
+						"entry_point": "registry-collector",
+						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
+					}
+				],
+				"verification_evidence": "api/restapi/handler TestAuditMetricsFollowTheSinks reads the family at zero on a fresh trail; pkg/audit TestPruneRecordsWhatASinkWasNeverSent drives the counter behind it."
 			},
 			{
 				"name": "loxilb_audit_records_unattributed_total",
@@ -4640,7 +4681,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/restapi/handler/audit_metrics.go:74",
+				"source": "api/restapi/handler/audit_metrics.go:76",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -4651,7 +4692,7 @@
 						"kind": "method",
 						"receiver": "auditCollector",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 126,
+						"def_line": 169,
 						"writes": "auditUnattributedDesc",
 						"note": "read from the audit writer's Stats snapshot and the gate's own counters at scrape time; nothing on the write path touches a metric. Emitted from start, at zero, so absence and quiet are distinguishable"
 					},
@@ -4659,8 +4700,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 173,
-						"call_line": 174,
+						"def_line": 245,
+						"call_line": 246,
 						"calls": "auditCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -4683,7 +4724,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/restapi/handler/audit_metrics.go:34",
+				"source": "api/restapi/handler/audit_metrics.go:36",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -4694,7 +4735,7 @@
 						"kind": "method",
 						"receiver": "auditCollector",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 126,
+						"def_line": 169,
 						"writes": "auditRecordsWrittenDesc",
 						"note": "read from the audit writer's Stats snapshot and the gate's own counters at scrape time; nothing on the write path touches a metric. Emitted from start, at zero, so absence and quiet are distinguishable"
 					},
@@ -4702,8 +4743,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 173,
-						"call_line": 174,
+						"def_line": 245,
+						"call_line": 246,
 						"calls": "auditCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -4724,7 +4765,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/restapi/handler/audit_metrics.go:90",
+				"source": "api/restapi/handler/audit_metrics.go:92",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -4735,7 +4776,7 @@
 						"kind": "method",
 						"receiver": "auditCollector",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 126,
+						"def_line": 169,
 						"writes": "auditReserveBreachedDesc",
 						"note": "read from the audit writer's Stats snapshot and the gate's own counters at scrape time; nothing on the write path touches a metric. Emitted from start, at zero, so absence and quiet are distinguishable"
 					},
@@ -4743,8 +4784,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 173,
-						"call_line": 174,
+						"def_line": 245,
+						"call_line": 246,
 						"calls": "auditCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -4765,7 +4806,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/restapi/handler/audit_metrics.go:42",
+				"source": "api/restapi/handler/audit_metrics.go:44",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -4776,7 +4817,7 @@
 						"kind": "method",
 						"receiver": "auditCollector",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 126,
+						"def_line": 169,
 						"writes": "auditResultWriteFailuresDesc",
 						"note": "read from the audit writer's Stats snapshot and the gate's own counters at scrape time; nothing on the write path touches a metric. Emitted from start, at zero, so absence and quiet are distinguishable"
 					},
@@ -4784,8 +4825,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 173,
-						"call_line": 174,
+						"def_line": 245,
+						"call_line": 246,
 						"calls": "auditCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -4806,7 +4847,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/restapi/handler/audit_metrics.go:82",
+				"source": "api/restapi/handler/audit_metrics.go:84",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -4817,7 +4858,7 @@
 						"kind": "method",
 						"receiver": "auditCollector",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 126,
+						"def_line": 169,
 						"writes": "auditSealFailuresDesc",
 						"note": "read from the audit writer's Stats snapshot and the gate's own counters at scrape time; nothing on the write path touches a metric. Emitted from start, at zero, so absence and quiet are distinguishable"
 					},
@@ -4825,8 +4866,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 173,
-						"call_line": 174,
+						"def_line": 245,
+						"call_line": 246,
 						"calls": "auditCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -4847,7 +4888,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/restapi/handler/audit_metrics.go:86",
+				"source": "api/restapi/handler/audit_metrics.go:88",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -4858,7 +4899,7 @@
 						"kind": "method",
 						"receiver": "auditCollector",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 126,
+						"def_line": 169,
 						"writes": "auditSegmentsPrunedDesc",
 						"note": "read from the audit writer's Stats snapshot and the gate's own counters at scrape time; nothing on the write path touches a metric. Emitted from start, at zero, so absence and quiet are distinguishable"
 					},
@@ -4866,14 +4907,315 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 173,
-						"call_line": 174,
+						"def_line": 245,
+						"call_line": 246,
 						"calls": "auditCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
 					}
 				],
 				"verification_evidence": "api/restapi/handler TestAuditMetricsWithoutWriter and TestAuditMetricsFollowTheWriter compare the collector's exposition against the writer's Stats snapshot with and without a writer installed; the gate tests behind the counters (audit_gate_test.go, audit_originator_test.go) drive the values they read."
+			},
+			{
+				"name": "loxilb_audit_sink_connected",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "gauge",
+				"definition_mechanism": "desc",
+				"labels": [
+					"sink"
+				],
+				"activation": "C",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/restapi/handler/audit_metrics.go:114",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-static",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "auditCollector",
+						"file": "api/restapi/handler/audit_metrics.go",
+						"def_line": 169,
+						"writes": "auditSinkConnectedDesc",
+						"note": "read at scrape time from each running sink tailer's counters and place, one series per configured sink; the tailers are listed without the sink lock and nothing on the export path touches a metric"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/restapi/handler/audit_metrics.go",
+						"def_line": 245,
+						"call_line": 246,
+						"calls": "auditCollector",
+						"entry_point": "registry-collector",
+						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
+					}
+				],
+				"verification_evidence": "api/restapi/handler TestAuditMetricsFollowTheSinks scrapes the collector with two sinks configured, compares the exported count with the tailer's own, and takes one receiver away to see connected, failures and lag move for that sink alone; pkg/audit TestSinkTailerPlaceSaysHowFarBehindTheSinkIs and TestTrailBytesBehind check the place and the byte count against the files."
+			},
+			{
+				"name": "loxilb_audit_sink_cursor_lag_bytes",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "gauge",
+				"definition_mechanism": "desc",
+				"labels": [
+					"sink"
+				],
+				"activation": "C",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/restapi/handler/audit_metrics.go:134",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-static",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "auditCollector",
+						"file": "api/restapi/handler/audit_metrics.go",
+						"def_line": 169,
+						"writes": "auditSinkLagBytesDesc",
+						"note": "read at scrape time from each running sink tailer's counters and place, one series per configured sink; the tailers are listed without the sink lock and nothing on the export path touches a metric"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/restapi/handler/audit_metrics.go",
+						"def_line": 245,
+						"call_line": 246,
+						"calls": "auditCollector",
+						"entry_point": "registry-collector",
+						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
+					}
+				],
+				"verification_evidence": "api/restapi/handler TestAuditMetricsFollowTheSinks scrapes the collector with two sinks configured, compares the exported count with the tailer's own, and takes one receiver away to see connected, failures and lag move for that sink alone; pkg/audit TestSinkTailerPlaceSaysHowFarBehindTheSinkIs and TestTrailBytesBehind check the place and the byte count against the files."
+			},
+			{
+				"name": "loxilb_audit_sink_cursor_lag_seconds",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "gauge",
+				"definition_mechanism": "desc",
+				"labels": [
+					"sink"
+				],
+				"activation": "C",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/restapi/handler/audit_metrics.go:138",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-static",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "auditCollector",
+						"file": "api/restapi/handler/audit_metrics.go",
+						"def_line": 169,
+						"writes": "auditSinkLagSecondsDesc",
+						"note": "read at scrape time from each running sink tailer's counters and place, one series per configured sink; the tailers are listed without the sink lock and nothing on the export path touches a metric"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/restapi/handler/audit_metrics.go",
+						"def_line": 245,
+						"call_line": 246,
+						"calls": "auditCollector",
+						"entry_point": "registry-collector",
+						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
+					}
+				],
+				"verification_evidence": "api/restapi/handler TestAuditMetricsFollowTheSinks scrapes the collector with two sinks configured, compares the exported count with the tailer's own, and takes one receiver away to see connected, failures and lag move for that sink alone; pkg/audit TestSinkTailerPlaceSaysHowFarBehindTheSinkIs and TestTrailBytesBehind check the place and the byte count against the files."
+			},
+			{
+				"name": "loxilb_audit_sink_export_failures_total",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "counter",
+				"definition_mechanism": "desc",
+				"labels": [
+					"sink"
+				],
+				"activation": "C",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/restapi/handler/audit_metrics.go:122",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-static",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "auditCollector",
+						"file": "api/restapi/handler/audit_metrics.go",
+						"def_line": 169,
+						"writes": "auditSinkExportFailuresDesc",
+						"note": "read at scrape time from each running sink tailer's counters and place, one series per configured sink; the tailers are listed without the sink lock and nothing on the export path touches a metric"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/restapi/handler/audit_metrics.go",
+						"def_line": 245,
+						"call_line": 246,
+						"calls": "auditCollector",
+						"entry_point": "registry-collector",
+						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
+					}
+				],
+				"verification_evidence": "api/restapi/handler TestAuditMetricsFollowTheSinks scrapes the collector with two sinks configured, compares the exported count with the tailer's own, and takes one receiver away to see connected, failures and lag move for that sink alone; pkg/audit TestSinkTailerPlaceSaysHowFarBehindTheSinkIs and TestTrailBytesBehind check the place and the byte count against the files."
+			},
+			{
+				"name": "loxilb_audit_sink_lag_drops_total",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "counter",
+				"definition_mechanism": "desc",
+				"labels": [
+					"sink"
+				],
+				"activation": "C",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/restapi/handler/audit_metrics.go:130",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-static",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "auditCollector",
+						"file": "api/restapi/handler/audit_metrics.go",
+						"def_line": 169,
+						"writes": "auditSinkLagDropsDesc",
+						"note": "read at scrape time from each running sink tailer's counters and place, one series per configured sink; the tailers are listed without the sink lock and nothing on the export path touches a metric"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/restapi/handler/audit_metrics.go",
+						"def_line": 245,
+						"call_line": 246,
+						"calls": "auditCollector",
+						"entry_point": "registry-collector",
+						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
+					}
+				],
+				"verification_evidence": "api/restapi/handler TestAuditMetricsFollowTheSinks scrapes the collector with two sinks configured, compares the exported count with the tailer's own, and takes one receiver away to see connected, failures and lag move for that sink alone; pkg/audit TestSinkTailerPlaceSaysHowFarBehindTheSinkIs and TestTrailBytesBehind check the place and the byte count against the files."
+			},
+			{
+				"name": "loxilb_audit_sink_poison_total",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "counter",
+				"definition_mechanism": "desc",
+				"labels": [
+					"sink"
+				],
+				"activation": "C",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/restapi/handler/audit_metrics.go:126",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-static",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "auditCollector",
+						"file": "api/restapi/handler/audit_metrics.go",
+						"def_line": 169,
+						"writes": "auditSinkPoisonDesc",
+						"note": "read at scrape time from each running sink tailer's counters and place, one series per configured sink; the tailers are listed without the sink lock and nothing on the export path touches a metric"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/restapi/handler/audit_metrics.go",
+						"def_line": 245,
+						"call_line": 246,
+						"calls": "auditCollector",
+						"entry_point": "registry-collector",
+						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
+					}
+				],
+				"verification_evidence": "api/restapi/handler TestAuditMetricsFollowTheSinks scrapes the collector with two sinks configured, compares the exported count with the tailer's own, and takes one receiver away to see connected, failures and lag move for that sink alone; pkg/audit TestSinkTailerPlaceSaysHowFarBehindTheSinkIs and TestTrailBytesBehind check the place and the byte count against the files."
+			},
+			{
+				"name": "loxilb_audit_sink_records_exported_total",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "counter",
+				"definition_mechanism": "desc",
+				"labels": [
+					"sink"
+				],
+				"activation": "C",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/restapi/handler/audit_metrics.go:118",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-static",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "auditCollector",
+						"file": "api/restapi/handler/audit_metrics.go",
+						"def_line": 169,
+						"writes": "auditSinkExportedDesc",
+						"note": "read at scrape time from each running sink tailer's counters and place, one series per configured sink; the tailers are listed without the sink lock and nothing on the export path touches a metric"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/restapi/handler/audit_metrics.go",
+						"def_line": 245,
+						"call_line": 246,
+						"calls": "auditCollector",
+						"entry_point": "registry-collector",
+						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
+					}
+				],
+				"verification_evidence": "api/restapi/handler TestAuditMetricsFollowTheSinks scrapes the collector with two sinks configured, compares the exported count with the tailer's own, and takes one receiver away to see connected, failures and lag move for that sink alone; pkg/audit TestSinkTailerPlaceSaysHowFarBehindTheSinkIs and TestTrailBytesBehind check the place and the byte count against the files."
 			},
 			{
 				"name": "loxilb_audit_sync_failures_total",
@@ -4888,7 +5230,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/restapi/handler/audit_metrics.go:50",
+				"source": "api/restapi/handler/audit_metrics.go:52",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -4899,7 +5241,7 @@
 						"kind": "method",
 						"receiver": "auditCollector",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 126,
+						"def_line": 169,
 						"writes": "auditSyncFailuresDesc",
 						"note": "read from the audit writer's Stats snapshot and the gate's own counters at scrape time; nothing on the write path touches a metric. Emitted from start, at zero, so absence and quiet are distinguishable"
 					},
@@ -4907,8 +5249,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 173,
-						"call_line": 174,
+						"def_line": 245,
+						"call_line": 246,
 						"calls": "auditCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -4929,7 +5271,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/restapi/handler/audit_metrics.go:46",
+				"source": "api/restapi/handler/audit_metrics.go:48",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -4940,7 +5282,7 @@
 						"kind": "method",
 						"receiver": "auditCollector",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 126,
+						"def_line": 169,
 						"writes": "auditWriteFailuresDesc",
 						"note": "read from the audit writer's Stats snapshot and the gate's own counters at scrape time; nothing on the write path touches a metric. Emitted from start, at zero, so absence and quiet are distinguishable"
 					},
@@ -4948,8 +5290,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 173,
-						"call_line": 174,
+						"def_line": 245,
+						"call_line": 246,
 						"calls": "auditCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -4970,7 +5312,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/restapi/handler/audit_metrics.go:58",
+				"source": "api/restapi/handler/audit_metrics.go:60",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -4981,7 +5323,7 @@
 						"kind": "method",
 						"receiver": "auditCollector",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 126,
+						"def_line": 169,
 						"writes": "auditWriterPanicsDesc",
 						"note": "read from the audit writer's Stats snapshot and the gate's own counters at scrape time; nothing on the write path touches a metric. Emitted from start, at zero, so absence and quiet are distinguishable"
 					},
@@ -4989,8 +5331,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 173,
-						"call_line": 174,
+						"def_line": 245,
+						"call_line": 246,
 						"calls": "auditCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -5011,7 +5353,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/restapi/handler/audit_metrics.go:62",
+				"source": "api/restapi/handler/audit_metrics.go:64",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -5022,7 +5364,7 @@
 						"kind": "method",
 						"receiver": "auditCollector",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 126,
+						"def_line": 169,
 						"writes": "auditWriterRestartsDesc",
 						"note": "read from the audit writer's Stats snapshot and the gate's own counters at scrape time; nothing on the write path touches a metric. Emitted from start, at zero, so absence and quiet are distinguishable"
 					},
@@ -5030,8 +5372,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 173,
-						"call_line": 174,
+						"def_line": 245,
+						"call_line": 246,
 						"calls": "auditCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -5052,7 +5394,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/restapi/handler/audit_metrics.go:30",
+				"source": "api/restapi/handler/audit_metrics.go:32",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-static",
@@ -5063,7 +5405,7 @@
 						"kind": "method",
 						"receiver": "auditCollector",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 126,
+						"def_line": 169,
 						"writes": "auditWriterUpDesc",
 						"note": "read from the audit writer's Stats snapshot and the gate's own counters at scrape time; nothing on the write path touches a metric. Emitted from start, at zero, so absence and quiet are distinguishable"
 					},
@@ -5071,8 +5413,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/restapi/handler/audit_metrics.go",
-						"def_line": 173,
-						"call_line": 174,
+						"def_line": 245,
+						"call_line": 246,
 						"calls": "auditCollector",
 						"entry_point": "registry-collector",
 						"note": "registry-mediated dispatch: the link is the receiver type handed to prometheus.MustRegister, not a direct call to Collect"
@@ -5129,7 +5471,7 @@
 						"kind": "func",
 						"file": "api/restapi/configure_loxilb_rest_api.go",
 						"def_line": 72,
-						"call_line": 477,
+						"call_line": 484,
 						"calls": "InitAutoPersist"
 					},
 					{
@@ -5727,8 +6069,8 @@
 						"symbol": "AutoPersistMiddleware",
 						"kind": "func",
 						"file": "api/restapi/handler/snapshot.go",
-						"def_line": 744,
-						"call_line": 753,
+						"def_line": 749,
+						"call_line": 758,
 						"calls": "MarkConfigMutated",
 						"entry_point": "http-handler",
 						"note": "called on every 2xx eligible mutation, including when auto-persist is off -- there the gauge staying at 1 is the operational signal"
@@ -6844,7 +7186,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:551",
+				"source": "api/prometheus/sockproxy_metrics.go:587",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -6854,7 +7196,7 @@
 						"symbol": "IncKvInventoryCapHit",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 1517,
+						"def_line": 1630,
 						"writes": "kvInvCapEvictionsTotal"
 					},
 					{
@@ -6871,16 +7213,16 @@
 						"symbol": "runKvSubscriberLoopBinding",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 737,
-						"call_line": 965,
+						"def_line": 743,
+						"call_line": 971,
 						"calls": "AddBlocks"
 					},
 					{
 						"symbol": "KvSubscriberStartRank",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1230,
-						"call_line": 1379,
+						"def_line": 1236,
+						"call_line": 1385,
 						"calls": "runKvSubscriberLoopBinding",
 						"note": "one subscriber goroutine per (service, endpoint, rank)"
 					},
@@ -6889,8 +7231,8 @@
 						"kind": "method",
 						"receiver": "RuleH",
 						"file": "pkg/loxinet/rules.go",
-						"def_line": 3763,
-						"call_line": 5062,
+						"def_line": 3802,
+						"call_line": 5124,
 						"calls": "KvSubscriberStartRank"
 					},
 					{
@@ -6925,7 +7267,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:509",
+				"source": "api/prometheus/sockproxy_metrics.go:545",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -6935,23 +7277,23 @@
 						"symbol": "SetKvInventoryFresh",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 1489,
+						"def_line": 1602,
 						"writes": "kvInventoryFresh"
 					},
 					{
 						"symbol": "setKvInventoryFreshIfLive",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1096,
-						"call_line": 1102,
+						"def_line": 1102,
+						"call_line": 1108,
 						"calls": "SetKvInventoryFresh"
 					},
 					{
 						"symbol": "runKvSubscriberLoopBinding",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 737,
-						"call_line": 970,
+						"def_line": 743,
+						"call_line": 976,
 						"calls": "setKvInventoryFreshIfLive",
 						"note": "the only site that sets 1; five other sites (:770, :875, :906, :927, :991) clear it, so freshness is asserted by a single positive edge"
 					},
@@ -6959,8 +7301,8 @@
 						"symbol": "KvSubscriberStartRank",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1230,
-						"call_line": 1379,
+						"def_line": 1236,
+						"call_line": 1385,
 						"calls": "runKvSubscriberLoopBinding",
 						"note": "one subscriber goroutine per (service, endpoint, rank)"
 					},
@@ -6969,8 +7311,8 @@
 						"kind": "method",
 						"receiver": "RuleH",
 						"file": "pkg/loxinet/rules.go",
-						"def_line": 3763,
-						"call_line": 5062,
+						"def_line": 3802,
+						"call_line": 5124,
 						"calls": "KvSubscriberStartRank"
 					},
 					{
@@ -7007,7 +7349,7 @@
 					"loxilb-recording.yml"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:468",
+				"source": "api/prometheus/sockproxy_metrics.go:504",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -7017,15 +7359,15 @@
 						"symbol": "SetKvSubscriberConnected",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 1474,
+						"def_line": 1587,
 						"writes": "kvSubscriberConnected"
 					},
 					{
 						"symbol": "setKvConnectedIfLive",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1034,
-						"call_line": 1040,
+						"def_line": 1040,
+						"call_line": 1046,
 						"calls": "SetKvSubscriberConnected",
 						"note": "the IfLive wrapper drops the write once the context is cancelled, so a torn-down subscriber cannot resurrect a cleared series"
 					},
@@ -7033,17 +7375,17 @@
 						"symbol": "runKvSubscriberLoopBinding",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 737,
-						"call_line": 762,
+						"def_line": 743,
+						"call_line": 768,
 						"calls": "setKvConnectedIfLive",
-						"note": "set to 1 on entry and deferred back to 0 at :763"
+						"note": "set to 1 on entry and deferred back to 0 at :769"
 					},
 					{
 						"symbol": "KvSubscriberStartRank",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1230,
-						"call_line": 1379,
+						"def_line": 1236,
+						"call_line": 1385,
 						"calls": "runKvSubscriberLoopBinding",
 						"note": "one subscriber goroutine per (service, endpoint, rank)"
 					},
@@ -7052,8 +7394,8 @@
 						"kind": "method",
 						"receiver": "RuleH",
 						"file": "pkg/loxinet/rules.go",
-						"def_line": 3763,
-						"call_line": 5062,
+						"def_line": 3802,
+						"call_line": 5124,
 						"calls": "KvSubscriberStartRank"
 					},
 					{
@@ -7088,7 +7430,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:494",
+				"source": "api/prometheus/sockproxy_metrics.go:530",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -7098,31 +7440,31 @@
 						"symbol": "SetKvSubscriberLastEvent",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 1481,
+						"def_line": 1594,
 						"writes": "kvSubscriberLastEventTs"
 					},
 					{
 						"symbol": "setKvLastEventIfLive",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1082,
-						"call_line": 1088,
+						"def_line": 1088,
+						"call_line": 1094,
 						"calls": "SetKvSubscriberLastEvent"
 					},
 					{
 						"symbol": "runKvSubscriberLoopBinding",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 737,
-						"call_line": 958,
+						"def_line": 743,
+						"call_line": 964,
 						"calls": "setKvLastEventIfLive"
 					},
 					{
 						"symbol": "KvSubscriberStartRank",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1230,
-						"call_line": 1379,
+						"def_line": 1236,
+						"call_line": 1385,
 						"calls": "runKvSubscriberLoopBinding",
 						"note": "one subscriber goroutine per (service, endpoint, rank)"
 					},
@@ -7131,8 +7473,8 @@
 						"kind": "method",
 						"receiver": "RuleH",
 						"file": "pkg/loxinet/rules.go",
-						"def_line": 3763,
-						"call_line": 5062,
+						"def_line": 3802,
+						"call_line": 5124,
 						"calls": "KvSubscriberStartRank"
 					},
 					{
@@ -7147,7 +7489,7 @@
 						"note": "the API-hooks implementation behind the LB-rule REST call; the same path replays saved rules at boot from api/loxinlp/nlp.go"
 					}
 				],
-				"verification_evidence": "source re-verification 2026-09-10 (plan Part E, WP-0 burn-down): pkg/loxinet/ai_kv_subscriber.go:958 stamps the gauge on each accepted event. Scenario M08 owns the runtime proof; freshness is one of the identities the KV-exact arm must satisfy."
+				"verification_evidence": "source re-verification 2026-09-10 (plan Part E, WP-0 burn-down): pkg/loxinet/ai_kv_subscriber.go:964 stamps the gauge on each accepted event. Scenario M08 owns the runtime proof; freshness is one of the identities the KV-exact arm must satisfy."
 			},
 			{
 				"name": "loxilb_kv_subscriber_reconnect_total",
@@ -7168,7 +7510,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:479",
+				"source": "api/prometheus/sockproxy_metrics.go:515",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -7178,31 +7520,31 @@
 						"symbol": "IncKvSubscriberReconnect",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 1495,
+						"def_line": 1608,
 						"writes": "kvSubscriberReconnectTotal"
 					},
 					{
 						"symbol": "incKvReconnectIfLive",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1048,
-						"call_line": 1054,
+						"def_line": 1054,
+						"call_line": 1060,
 						"calls": "IncKvSubscriberReconnect"
 					},
 					{
 						"symbol": "rebuildKvSubscriber",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1115,
-						"call_line": 1161,
+						"def_line": 1121,
+						"call_line": 1167,
 						"calls": "incKvReconnectIfLive"
 					},
 					{
 						"symbol": "runKvSubscriberLoopBinding",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 737,
-						"call_line": 825,
+						"def_line": 743,
+						"call_line": 831,
 						"calls": "rebuildKvSubscriber",
 						"note": "the loop retries the rebuild until it succeeds, so one publisher outage produces one increment per successful redial, not one per attempt"
 					},
@@ -7210,8 +7552,8 @@
 						"symbol": "KvSubscriberStartRank",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1230,
-						"call_line": 1379,
+						"def_line": 1236,
+						"call_line": 1385,
 						"calls": "runKvSubscriberLoopBinding",
 						"note": "one subscriber goroutine per (service, endpoint, rank)"
 					},
@@ -7220,8 +7562,8 @@
 						"kind": "method",
 						"receiver": "RuleH",
 						"file": "pkg/loxinet/rules.go",
-						"def_line": 3763,
-						"call_line": 5062,
+						"def_line": 3802,
+						"call_line": 5124,
 						"calls": "KvSubscriberStartRank"
 					},
 					{
@@ -7256,7 +7598,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:520",
+				"source": "api/prometheus/sockproxy_metrics.go:556",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -7266,31 +7608,31 @@
 						"symbol": "IncKvSubscriberRecvError",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 1501,
+						"def_line": 1614,
 						"writes": "kvSubscriberRecvErrorTotal"
 					},
 					{
 						"symbol": "incKvRecvErrorIfLive",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1057,
-						"call_line": 1063,
+						"def_line": 1063,
+						"call_line": 1069,
 						"calls": "IncKvSubscriberRecvError"
 					},
 					{
 						"symbol": "runKvSubscriberLoopBinding",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 737,
-						"call_line": 812,
+						"def_line": 743,
+						"call_line": 818,
 						"calls": "incKvRecvErrorIfLive"
 					},
 					{
 						"symbol": "KvSubscriberStartRank",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1230,
-						"call_line": 1379,
+						"def_line": 1236,
+						"call_line": 1385,
 						"calls": "runKvSubscriberLoopBinding",
 						"note": "one subscriber goroutine per (service, endpoint, rank)"
 					},
@@ -7299,8 +7641,8 @@
 						"kind": "method",
 						"receiver": "RuleH",
 						"file": "pkg/loxinet/rules.go",
-						"def_line": 3763,
-						"call_line": 5062,
+						"def_line": 3802,
+						"call_line": 5124,
 						"calls": "KvSubscriberStartRank"
 					},
 					{
@@ -7337,7 +7679,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:536",
+				"source": "api/prometheus/sockproxy_metrics.go:572",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -7347,23 +7689,23 @@
 						"symbol": "IncKvSubscriberWireReject",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 1508,
+						"def_line": 1621,
 						"writes": "kvSubscriberWireRejectTotal"
 					},
 					{
 						"symbol": "incKvWireRejectIfLive",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1069,
-						"call_line": 1075,
+						"def_line": 1075,
+						"call_line": 1081,
 						"calls": "IncKvSubscriberWireReject"
 					},
 					{
 						"symbol": "runKvSubscriberLoopBinding",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 737,
-						"call_line": 937,
+						"def_line": 743,
+						"call_line": 943,
 						"calls": "incKvWireRejectIfLive",
 						"note": "reason-labelled; the rank-mismatch reason is raised separately at :949"
 					},
@@ -7371,8 +7713,8 @@
 						"symbol": "KvSubscriberStartRank",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1230,
-						"call_line": 1379,
+						"def_line": 1236,
+						"call_line": 1385,
 						"calls": "runKvSubscriberLoopBinding",
 						"note": "one subscriber goroutine per (service, endpoint, rank)"
 					},
@@ -7381,8 +7723,8 @@
 						"kind": "method",
 						"receiver": "RuleH",
 						"file": "pkg/loxinet/rules.go",
-						"def_line": 3763,
-						"call_line": 5062,
+						"def_line": 3802,
+						"call_line": 5124,
 						"calls": "KvSubscriberStartRank"
 					},
 					{
@@ -7775,7 +8117,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:732",
+				"source": "api/prometheus/sockproxy_metrics.go:768",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "writer-mapped",
@@ -7785,7 +8127,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "lbSelectFailureShutdownTotal"
 					},
 					{
@@ -8449,7 +8791,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:639",
+				"source": "api/prometheus/sockproxy_metrics.go:675",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -8459,7 +8801,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "pdAdmissionOverflowShedTotal",
 						"note": "family added by the D-8 fix: the C counter pd_admission_overflow_shed_total (sockproxy_pd.c, overflow valve of the bounded-admission layer) existed and incremented before the fix but was read by NOTHING -- pd_admission_stats_get had no case for it, so it never reached the snapshot, the Go registry, or /metrics. With queueing enabled (LLB_PD_QUEUE_DEPTH_PER_EP > 0) the plain shed branch is unreachable and this valve is the ONLY shed that can fire, so before the fix every overload drop on a queueing deployment was invisible"
 					},
@@ -8516,7 +8858,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:627",
+				"source": "api/prometheus/sockproxy_metrics.go:663",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -8526,7 +8868,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "pdAdmissionQueuedTotal"
 					},
 					{
@@ -8582,7 +8924,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:619",
+				"source": "api/prometheus/sockproxy_metrics.go:655",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -8592,7 +8934,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "pdAdmissionShedTotal"
 					},
 					{
@@ -8648,7 +8990,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:354",
+				"source": "api/prometheus/sockproxy_metrics.go:390",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -8658,7 +9000,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "pdCbFlipsTotal"
 					},
 					{
@@ -8714,7 +9056,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:676",
+				"source": "api/prometheus/sockproxy_metrics.go:712",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -8724,7 +9066,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "pdCbProactiveHealTotal"
 					},
 					{
@@ -8780,7 +9122,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:708",
+				"source": "api/prometheus/sockproxy_metrics.go:744",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -8790,7 +9132,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "pdConnectFailoverTotal"
 					},
 					{
@@ -8847,7 +9189,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:724",
+				"source": "api/prometheus/sockproxy_metrics.go:760",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -8857,7 +9199,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "pdConnectRetrySameEpOkTotal",
 						"note": "the success half of the same-endpoint retry pair; retry_total minus this is the failed-retry residual. The gate (sockproxy_ep.c:1053-1070) has three terms and NONE of them reads an engine: ep_cfd < 0 (the initial connect failed), rt_budget > 0 (pd_connect_retry_budget() -- 1 for P/D disagg or KV-exact, 0 for plain LB, a per-rule CONFIG property) and the retry's own connect() >= 0. It is not on the pd_sg_ path at all. The reason it outlived every other pd_* family is narrower than 'hard to reach': no arm had ever produced a connect that FAILS and then SUCCEEDS on the same endpoint, because the retry is in-process and immediate, so the fault has to be count-based at the TCP handshake rather than time-based."
 					},
@@ -8915,7 +9257,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:718",
+				"source": "api/prometheus/sockproxy_metrics.go:754",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -8925,7 +9267,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "pdConnectRetrySameEpTotal"
 					},
 					{
@@ -9158,7 +9500,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:692",
+				"source": "api/prometheus/sockproxy_metrics.go:728",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -9168,7 +9510,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "pdDecodeEpDiedTotal"
 					},
 					{
@@ -9224,7 +9566,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:700",
+				"source": "api/prometheus/sockproxy_metrics.go:736",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -9234,7 +9576,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "pdDecodeZeroByteEofTotal"
 					},
 					{
@@ -9292,7 +9634,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "Info metric (constant 1) mapping ep_idx to endpoint IP for PromQL joins; standalone display would duplicate configuration.",
-				"source": "api/prometheus/sockproxy_metrics.go:400",
+				"source": "api/prometheus/sockproxy_metrics.go:436",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -9302,7 +9644,7 @@
 						"symbol": "SetKvEpInfo",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 1267,
+						"def_line": 1380,
 						"writes": "pdEpInfo",
 						"note": "ClearKvEpInfo (:1215) deletes the child on teardown, so a departed endpoint leaves no stale identity series"
 					},
@@ -9310,16 +9652,16 @@
 						"symbol": "KvSubscriberStartRank",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1230,
-						"call_line": 1273,
+						"def_line": 1236,
+						"call_line": 1279,
 						"calls": "SetKvEpInfo"
 					},
 					{
 						"symbol": "AddLbRule",
 						"kind": "method",
 						"file": "pkg/loxinet/rules.go",
-						"def_line": 3763,
-						"call_line": 5062,
+						"def_line": 3802,
+						"call_line": 5124,
 						"calls": "KvSubscriberStartRank",
 						"receiver": "RuleH"
 					},
@@ -9352,7 +9694,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:362",
+				"source": "api/prometheus/sockproxy_metrics.go:398",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "writer-mapped",
@@ -9362,7 +9704,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "pdFallbackToNormalTotal"
 					},
 					{
@@ -9421,7 +9763,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:372",
+				"source": "api/prometheus/sockproxy_metrics.go:408",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -9431,7 +9773,7 @@
 						"symbol": "SetKvBlocksGauge",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 1237,
+						"def_line": 1350,
 						"writes": "pdKvBlocks"
 					},
 					{
@@ -9457,16 +9799,16 @@
 						"symbol": "runKvSubscriberLoopBinding",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 737,
-						"call_line": 965,
+						"def_line": 743,
+						"call_line": 971,
 						"calls": "AddBlocks"
 					},
 					{
 						"symbol": "KvSubscriberStartRank",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1230,
-						"call_line": 1379,
+						"def_line": 1236,
+						"call_line": 1385,
 						"calls": "runKvSubscriberLoopBinding",
 						"note": "one subscriber goroutine per (service, endpoint, rank)"
 					},
@@ -9475,8 +9817,8 @@
 						"kind": "method",
 						"receiver": "RuleH",
 						"file": "pkg/loxinet/rules.go",
-						"def_line": 3763,
-						"call_line": 5062,
+						"def_line": 3802,
+						"call_line": 5124,
 						"calls": "KvSubscriberStartRank"
 					},
 					{
@@ -9510,7 +9852,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:582",
+				"source": "api/prometheus/sockproxy_metrics.go:618",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -9520,26 +9862,26 @@
 						"symbol": "IncKvTier15ColdSeedCounter",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 1259,
+						"def_line": 1372,
 						"writes": "kvTier15ColdSeedsTotal"
 					},
 					{
 						"symbol": "llb_ai_kv_best_worker",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1856,
-						"call_line": 1995,
+						"def_line": 1862,
+						"call_line": 2001,
 						"calls": "kvColdSeedCounterFn",
 						"via": {
 							"var": "kvColdSeedCounterFn",
 							"file": "pkg/loxinet/ai_kv_subscriber.go",
-							"line": 1616
+							"line": 1622
 						},
 						"entry_point": "cgo-export",
 						"note": "dispatched through a metric seam variable, so a plain name search finds no caller for the writer at all -- the binding is recorded in via and re-checked on every run"
 					}
 				],
-				"verification_evidence": "source re-verification 2026-09-10 (plan Part E, WP-0 burn-down): pkg/loxinet/ai_kv_subscriber.go:1995 through the kvColdSeedCounterFn seam bound at :1616. Scenario M08 owns the runtime proof."
+				"verification_evidence": "source re-verification 2026-09-10 (plan Part E, WP-0 burn-down): pkg/loxinet/ai_kv_subscriber.go:2001 through the kvColdSeedCounterFn seam bound at :1622. Scenario M08 owns the runtime proof."
 			},
 			{
 				"name": "loxilb_pd_kv_tier15_fallthrough_total",
@@ -9556,7 +9898,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:452",
+				"source": "api/prometheus/sockproxy_metrics.go:488",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -9566,7 +9908,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "pdKvT15FallthroughTotal",
 						"note": "the Tier-1.5 identity partner of pd_kv_tier15_hits_total: a KV-exact lookup that found no usable winner and fell through"
 					},
@@ -9625,7 +9967,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:384",
+				"source": "api/prometheus/sockproxy_metrics.go:420",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -9635,15 +9977,15 @@
 						"symbol": "IncKvTier15HitCounter",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 1243,
+						"def_line": 1356,
 						"writes": "pdKvTier15HitsTotal"
 					},
 					{
 						"symbol": "llb_ai_kv_best_worker",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1856,
-						"call_line": 1999,
+						"def_line": 1862,
+						"call_line": 2005,
 						"calls": "IncKvTier15HitCounter",
 						"entry_point": "cgo-export"
 					}
@@ -9667,7 +10009,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:441",
+				"source": "api/prometheus/sockproxy_metrics.go:477",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -9677,7 +10019,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "pdKvT15MissReasonTotal",
 						"note": "the per-reason counts are lifted out of the C snapshot at :1072; package init at :760 pre-creates every reason child first, so the series exist at 0 before any increment"
 					},
@@ -9736,7 +10078,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:567",
+				"source": "api/prometheus/sockproxy_metrics.go:603",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -9746,15 +10088,15 @@
 						"symbol": "IncKvTier15SpillCounter",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 1251,
+						"def_line": 1364,
 						"writes": "kvTier15SpillsTotal"
 					},
 					{
 						"symbol": "llb_ai_kv_best_worker",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1856,
-						"call_line": 1980,
+						"def_line": 1862,
+						"call_line": 1986,
 						"calls": "IncKvTier15SpillCounter",
 						"entry_point": "cgo-export"
 					}
@@ -9779,7 +10121,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:599",
+				"source": "api/prometheus/sockproxy_metrics.go:635",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -9789,20 +10131,20 @@
 						"symbol": "IncKvZeroHitWatchdog",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 1545,
+						"def_line": 1658,
 						"writes": "kvZeroHitWatchdogTotal"
 					},
 					{
 						"symbol": "kvZeroHitWatchdog",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1685,
-						"call_line": 1712,
+						"def_line": 1691,
+						"call_line": 1718,
 						"calls": "kvZeroHitCounterFn",
 						"via": {
 							"var": "kvZeroHitCounterFn",
 							"file": "pkg/loxinet/ai_kv_subscriber.go",
-							"line": 1670
+							"line": 1676
 						},
 						"note": "dispatched through a metric seam variable, so a plain name search finds no caller for the writer at all -- the binding is recorded in via and re-checked on every run"
 					},
@@ -9810,21 +10152,21 @@
 						"symbol": "kvSvcScanInventories",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1725,
-						"call_line": 1815,
+						"def_line": 1731,
+						"call_line": 1821,
 						"calls": "kvZeroHitWatchdog"
 					},
 					{
 						"symbol": "llb_ai_kv_best_worker",
 						"kind": "func",
 						"file": "pkg/loxinet/ai_kv_subscriber.go",
-						"def_line": 1856,
-						"call_line": 1916,
+						"def_line": 1862,
+						"call_line": 1922,
 						"calls": "kvSvcScanInventories",
 						"entry_point": "cgo-export"
 					}
 				],
-				"verification_evidence": "source re-verification 2026-09-10 (plan Part E, WP-0 burn-down): pkg/loxinet/ai_kv_subscriber.go:1712 through the kvZeroHitCounterFn seam bound at :1670. WP-6 owns the injected zero-hit window."
+				"verification_evidence": "source re-verification 2026-09-10 (plan Part E, WP-0 burn-down): pkg/loxinet/ai_kv_subscriber.go:1718 through the kvZeroHitCounterFn seam bound at :1676. WP-6 owns the injected zero-hit window."
 			},
 			{
 				"name": "loxilb_pd_prefill_ep_died_total",
@@ -9842,7 +10184,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:684",
+				"source": "api/prometheus/sockproxy_metrics.go:720",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -9852,7 +10194,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "pdPrefillEpDiedTotal"
 					},
 					{
@@ -9908,7 +10250,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:338",
+				"source": "api/prometheus/sockproxy_metrics.go:374",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -9918,7 +10260,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "pdSessionsActive"
 					},
 					{
@@ -9974,7 +10316,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:748",
+				"source": "api/prometheus/sockproxy_metrics.go:784",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -9984,7 +10326,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "pdSgDecodeCloseDrainTotal",
 						"note": "SGLang-specific in the sense that the C counter only moves on a rule whose kvEngineType is sglang with pd_disagg_mode -- per-rule API fields, NOT a property of the deployment. Proven driven on a CPU mock with no SGLang engine present; on any other dialect this stays 0 while still being exported. The single increment statement is sockproxy_pd_sglang.c:111, reached from THREE callers of pd_sg_close_drain(): sockproxy_http.c:4949 and :4996 pass count_close=1 and are both proven driven; sockproxy_http.c:4408 (pd_cleanup) passes 0 and is the arm's control."
 					},
@@ -10041,7 +10383,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:772",
+				"source": "api/prometheus/sockproxy_metrics.go:808",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -10051,7 +10393,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "pdSgOversizeRejectTotal",
 						"note": "SGLang-specific: the C counter only moves for an SGLang P/D deployment, so on any other engine this stays 0 while still being exported"
 					},
@@ -10108,7 +10450,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:740",
+				"source": "api/prometheus/sockproxy_metrics.go:776",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -10118,7 +10460,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "pdSgPrefillAbortDecodeTotal",
 						"note": "SGLang-specific in the sense that the C counter only moves on a rule whose kvEngineType is sglang with pd_disagg_mode -- per-rule API fields, NOT a property of the deployment. Proven driven on a CPU mock with no SGLang engine present. TWO increment statements, both proven: sockproxy_pd_sglang.c:144 inside pd_sg_abort_pair(), itself reached by three callers that each name themselves in the log line (:350 'prefill error status', sockproxy_http.c:4881 'drain leg death', :956 'pair retry failed'); and sockproxy_health.c:711, the reaper's rendezvous wedge, whose increment sits inside if(pd_sg_active) and whose else logs 'P/D decode first-byte timeout' without counting."
 					},
@@ -10175,7 +10517,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:764",
+				"source": "api/prometheus/sockproxy_metrics.go:800",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -10185,7 +10527,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "pdSgPrefillRejectRelayTotal",
 						"note": "SGLang-specific in the sense that the C counter only moves on a rule whose kvEngineType is sglang -- a per-rule API field, NOT a property of the deployment. Proven driven on a CPU mock with no SGLang engine present; on any other dialect this stays 0 while still being exported."
 					},
@@ -10242,7 +10584,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:756",
+				"source": "api/prometheus/sockproxy_metrics.go:792",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -10252,7 +10594,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "pdSgRoomRetryTotal",
 						"note": "SGLang-specific in the sense that the C counter only moves on a rule whose kvEngineType is sglang -- a per-rule API field, NOT a property of the deployment. Proven driven on a CPU mock with no SGLang engine present; on any other dialect this stays 0 while still being exported."
 					},
@@ -10309,7 +10651,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:346",
+				"source": "api/prometheus/sockproxy_metrics.go:382",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -10319,7 +10661,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "pdTrieNodes",
 						"note": "size of the Tier-1 prefix trie; 0 means the trie is empty, which is a real state and not an absent feature"
 					},
@@ -10376,7 +10718,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:780",
+				"source": "api/prometheus/sockproxy_metrics.go:816",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -10386,7 +10728,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "pdTrtCtxEarlyExitTotal",
 						"note": "single C writer, pd_trt_early_exit_relay in the TRT-LLM dialect module, reached from the sequential prefill-then-decode handler once the buffered context response is parsed. The earlier note on this row read 'SGLang-specific: the C counter only moves for an SGLang P/D deployment' — that was a copy of the pd_sg_* note onto a pd_trt_* row and was wrong twice over: this family is not on the SGLang path at all, and its gate reads no engine internals of any dialect. Driven runtime evidence below."
 					},
@@ -11148,7 +11490,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:662",
+				"source": "api/prometheus/sockproxy_metrics.go:698",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -11158,7 +11500,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "proxyAcceptBlockedTotal"
 					},
 					{
@@ -11215,7 +11557,7 @@
 					"loxilb-alerts.yml"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:668",
+				"source": "api/prometheus/sockproxy_metrics.go:704",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -11225,7 +11567,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "proxyAcceptBound"
 					},
 					{
@@ -11282,7 +11624,7 @@
 					"loxilb-overview.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:222",
+				"source": "api/prometheus/sockproxy_metrics.go:258",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "writer-mapped",
@@ -11292,7 +11634,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "proxyActiveConnections"
 					},
 					{
@@ -11348,7 +11690,7 @@
 					"loxilb-l7.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:230",
+				"source": "api/prometheus/sockproxy_metrics.go:266",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "writer-mapped",
@@ -11358,7 +11700,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "proxyActiveSslConnections"
 					},
 					{
@@ -11414,7 +11756,7 @@
 					"loxilb-l7.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:160",
+				"source": "api/prometheus/sockproxy_metrics.go:196",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "writer-mapped",
@@ -11424,7 +11766,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "proxyCacheBackpressureRatio",
 						"note": "computed as cache_backpressure_active / active_connections, and 0 when there are no connections rather than NaN"
 					},
@@ -11481,7 +11823,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:198",
+				"source": "api/prometheus/sockproxy_metrics.go:234",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "writer-mapped",
@@ -11491,7 +11833,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "proxyCacheBytes"
 					},
 					{
@@ -11547,7 +11889,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:204",
+				"source": "api/prometheus/sockproxy_metrics.go:240",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "writer-mapped",
@@ -11557,7 +11899,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "proxyCacheBytesMaxConn"
 					},
 					{
@@ -11613,7 +11955,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:210",
+				"source": "api/prometheus/sockproxy_metrics.go:246",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "writer-mapped",
@@ -11623,7 +11965,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "proxyCacheConnsQueued"
 					},
 					{
@@ -11679,7 +12021,7 @@
 					"loxilb-l7.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:270",
+				"source": "api/prometheus/sockproxy_metrics.go:306",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "writer-mapped",
@@ -11689,7 +12031,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "proxyCacheDrainPartialTotal"
 					},
 					{
@@ -11745,7 +12087,7 @@
 					"loxilb-l7.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:186",
+				"source": "api/prometheus/sockproxy_metrics.go:222",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "writer-mapped",
@@ -11755,7 +12097,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "proxyCacheHighWaterEventsTotal"
 					},
 					{
@@ -11811,7 +12153,7 @@
 					"loxilb-l7.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:246",
+				"source": "api/prometheus/sockproxy_metrics.go:282",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "writer-mapped",
@@ -11821,7 +12163,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "proxyChunkedResponsesTotal"
 					},
 					{
@@ -11863,6 +12205,45 @@
 				"verification_evidence": "source re-verification 2026-09-10 (plan Part E, WP-0 burn-down): api/prometheus/sockproxy_metrics.go:962, inside the collector goroutine that copies the C proxy_get_metrics() snapshot each period. No test drives the collector and no bed run has checked this family's value; scenario M02 owns the runtime proof."
 			},
 			{
+				"name": "loxilb_proxy_client_reset_total",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "counter",
+				"definition_mechanism": "desc",
+				"labels": [],
+				"activation": "E",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/prometheus/halfclose_metrics.go:204",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-runtime",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "halfCloseCollector",
+						"file": "api/prometheus/halfclose_metrics.go",
+						"def_line": 260,
+						"writes": "proxyClientResetDesc"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/prometheus/halfclose_metrics.go",
+						"def_line": 302,
+						"call_line": 303,
+						"calls": "halfCloseCollector",
+						"entry_point": "registry-collector"
+					}
+				],
+				"verification_evidence": "runtime evidence 2026-09-30/2026-10-01, sockmap-fullproxy bed (kernel 6.11, HAVE_SOCKOPS image built from this branch): a harness drives known client shapes five times each through off/request/response/both rules and reads /metrics before and after, asserting the cells that move and that no other cell does. +5 for clients that send a request and reset 100 ms later (SO_LINGER 0); no FIN is counted for them."
+			},
+			{
 				"name": "loxilb_proxy_context_inflight",
 				"owner": "loxilb",
 				"class": "default",
@@ -11878,7 +12259,7 @@
 					"loxilb-alerts.yml"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:656",
+				"source": "api/prometheus/sockproxy_metrics.go:692",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -11888,7 +12269,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "proxyContextInflight"
 					},
 					{
@@ -11944,7 +12325,7 @@
 					"loxilb-l7.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:172",
+				"source": "api/prometheus/sockproxy_metrics.go:208",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "writer-mapped",
@@ -11954,7 +12335,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "proxyConversationHitsTotal",
 						"note": "counter advanced by the per-period delta of the C-side cumulative value, so a datapath restart cannot replay history as one burst"
 					},
@@ -12011,7 +12392,7 @@
 					"loxilb-l7.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:178",
+				"source": "api/prometheus/sockproxy_metrics.go:214",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "writer-mapped",
@@ -12021,7 +12402,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "proxyConversationMissesTotal"
 					},
 					{
@@ -12077,7 +12458,7 @@
 					"loxilb-l7.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:238",
+				"source": "api/prometheus/sockproxy_metrics.go:274",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "writer-mapped",
@@ -12087,7 +12468,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "proxyConversationSessions"
 					},
 					{
@@ -12143,7 +12524,7 @@
 					"loxilb-l7.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:286",
+				"source": "api/prometheus/sockproxy_metrics.go:322",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "writer-mapped",
@@ -12153,7 +12534,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "proxyConversationTtlExpiredTotal"
 					},
 					{
@@ -12209,7 +12590,7 @@
 					"loxilb-l7.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:278",
+				"source": "api/prometheus/sockproxy_metrics.go:314",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "writer-mapped",
@@ -12219,7 +12600,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "proxyGracefulCloseTotal"
 					},
 					{
@@ -12261,6 +12642,650 @@
 				"verification_evidence": "source re-verification 2026-09-10 (plan Part E, WP-0 burn-down): api/prometheus/sockproxy_metrics.go:972, inside the collector goroutine that copies the C proxy_get_metrics() snapshot each period. No test drives the collector and no bed run has checked this family's value; scenario M02 owns the runtime proof."
 			},
 			{
+				"name": "loxilb_proxy_halfclose_accel_early_fin_total",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "counter",
+				"definition_mechanism": "desc",
+				"labels": [],
+				"activation": "E",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/prometheus/halfclose_metrics.go:192",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-runtime",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "halfCloseCollector",
+						"file": "api/prometheus/halfclose_metrics.go",
+						"def_line": 260,
+						"writes": "halfCloseAccelEarlyFinDesc"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/prometheus/halfclose_metrics.go",
+						"def_line": 302,
+						"call_line": 303,
+						"calls": "halfCloseCollector",
+						"entry_point": "registry-collector"
+					}
+				],
+				"verification_evidence": "runtime evidence 2026-09-30/2026-10-01, sockmap-fullproxy bed (kernel 6.11, HAVE_SOCKOPS image built from this branch): a harness drives known client shapes five times each through off/request/response/both rules and reads /metrics before and after, asserting the cells that move and that no other cell does. +5 on the response-only rule for FINs in one segment with the request and 20 ms after it, +5 on the both rule when the kernel refused the request direction (client no longer established), 0 when both directions were paired."
+			},
+			{
+				"name": "loxilb_proxy_halfclose_accel_skipped_total",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "counter",
+				"definition_mechanism": "desc",
+				"labels": [],
+				"activation": "E",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/prometheus/halfclose_hold_metrics.go:156",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-runtime",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "halfCloseHoldCollector",
+						"file": "api/prometheus/halfclose_hold_metrics.go",
+						"def_line": 182,
+						"writes": "halfCloseAccelSkippedDesc"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/prometheus/halfclose_hold_metrics.go",
+						"def_line": 218,
+						"call_line": 219,
+						"calls": "halfCloseHoldCollector",
+						"entry_point": "registry-collector"
+					}
+				],
+				"verification_evidence": "runtime evidence 2026-10-01/2026-10-02, sockmap-fullproxy bed (kernel 6.11, HAVE_SOCKOPS image built from this branch): a harness drives known half-close shapes through hold rules on the off/request/response/both arms with a 10 s bound, five times each, and reads /metrics before and after, asserting the cells that move and that no other cell does (20 shapes, all pass); a second probe reads the gauges while a client is held. +5 on each of the request, response and both arms when the FIN arrived with the request, before the pairing, and the client then got its answer; 0 when the FIN came 20 ms after."
+			},
+			{
+				"name": "loxilb_proxy_halfclose_fin_gap_seconds",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "histogram",
+				"definition_mechanism": "desc",
+				"labels": [
+					"entry",
+					"stream"
+				],
+				"activation": "P",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/prometheus/halfclose_metrics.go:180",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-runtime",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "halfCloseCollector",
+						"file": "api/prometheus/halfclose_metrics.go",
+						"def_line": 260,
+						"writes": "halfCloseFinGapDesc"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/prometheus/halfclose_metrics.go",
+						"def_line": 302,
+						"call_line": 303,
+						"calls": "halfCloseCollector",
+						"entry_point": "registry-collector"
+					}
+				],
+				"verification_evidence": "runtime evidence 2026-09-30/2026-10-01, sockmap-fullproxy bed (kernel 6.11, HAVE_SOCKOPS image built from this branch): a harness drives known client shapes five times each through off/request/response/both rules and reads /metrics before and after, asserting the cells that move and that no other cell does. Request and FIN in one corked segment: count +5, all at or under 1 ms; FIN 20 ms after the request: +5 at or under 20 ms; and, from the queue and connect-wait baseline harnesses read the same way but without the assertion, FIN while parked in the setup or keep-alive queue: entry setup_park / fc_park, 100 ms shapes at about 93 / 100 ms; FIN during a 200 ms netem'd backend connect: entry connect_wait +20 at or under 20 ms."
+			},
+			{
+				"name": "loxilb_proxy_halfclose_fin_total",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "counter",
+				"definition_mechanism": "desc",
+				"labels": [
+					"entry",
+					"outcome"
+				],
+				"activation": "P",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/prometheus/halfclose_metrics.go:186",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-runtime",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "halfCloseCollector",
+						"file": "api/prometheus/halfclose_metrics.go",
+						"def_line": 260,
+						"writes": "halfCloseFinDesc"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/prometheus/halfclose_metrics.go",
+						"def_line": 302,
+						"call_line": 303,
+						"calls": "halfCloseCollector",
+						"entry_point": "registry-collector"
+					}
+				],
+				"verification_evidence": "runtime evidence 2026-09-30/2026-10-01, sockmap-fullproxy bed (kernel 6.11, HAVE_SOCKOPS image built from this branch): a harness drives known client shapes five times each through off/request/response/both rules and reads /metrics before and after, asserting the cells that move and that no other cell does. outcome owed for half-closes with an answer owed, idle for clients closing after their answer, partial for a FIN behind half a request, accel on response/request/both rules once a verdict entry exists; entries eof, connect_wait, setup_park and fc_park all observed (the last three without the assertion). The layer that passes the EOF branch twice still counts one per FIN."
+			},
+			{
+				"name": "loxilb_proxy_halfclose_held",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "gauge",
+				"definition_mechanism": "desc",
+				"labels": [],
+				"activation": "E",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/prometheus/halfclose_hold_metrics.go:93",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-runtime",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "halfCloseHoldCollector",
+						"file": "api/prometheus/halfclose_hold_metrics.go",
+						"def_line": 182,
+						"writes": "halfCloseHeldDesc"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/prometheus/halfclose_hold_metrics.go",
+						"def_line": 218,
+						"call_line": 219,
+						"calls": "halfCloseHoldCollector",
+						"entry_point": "registry-collector"
+					}
+				],
+				"verification_evidence": "runtime evidence 2026-10-01/2026-10-02, sockmap-fullproxy bed (kernel 6.11, HAVE_SOCKOPS image built from this branch): a harness drives known half-close shapes through hold rules on the off/request/response/both arms with a 10 s bound, five times each, and reads /metrics before and after, asserting the cells that move and that no other cell does (20 shapes, all pass); a second probe reads the gauges while a client is held. 1 while a client that stopped reading was held, 0 once its hold had ended; with new holds blocked the client already held stayed counted until it finished."
+			},
+			{
+				"name": "loxilb_proxy_halfclose_held_oldest_seconds",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "gauge",
+				"definition_mechanism": "desc",
+				"labels": [],
+				"activation": "E",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/prometheus/halfclose_hold_metrics.go:99",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-runtime",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "halfCloseHoldCollector",
+						"file": "api/prometheus/halfclose_hold_metrics.go",
+						"def_line": 182,
+						"writes": "halfCloseHeldOldestDesc"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/prometheus/halfclose_hold_metrics.go",
+						"def_line": 218,
+						"call_line": 219,
+						"calls": "halfCloseHoldCollector",
+						"entry_point": "registry-collector"
+					}
+				],
+				"verification_evidence": "runtime evidence 2026-10-01/2026-10-02, sockmap-fullproxy bed (kernel 6.11, HAVE_SOCKOPS image built from this branch): a harness drives known half-close shapes through hold rules on the off/request/response/both arms with a 10 s bound, five times each, and reads /metrics before and after, asserting the cells that move and that no other cell does (20 shapes, all pass); a second probe reads the gauges while a client is held. 3.98 s thirteen seconds into a hold (the datapath's 1 Hz pass behind the 10 s export), 14.0 s eleven seconds later, 0 after the hold ended."
+			},
+			{
+				"name": "loxilb_proxy_halfclose_hold_allowed",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "gauge",
+				"definition_mechanism": "desc",
+				"labels": [],
+				"activation": "E",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/prometheus/halfclose_hold_metrics.go:105",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-runtime",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "halfCloseHoldCollector",
+						"file": "api/prometheus/halfclose_hold_metrics.go",
+						"def_line": 182,
+						"writes": "halfCloseHoldAllowedDesc"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/prometheus/halfclose_hold_metrics.go",
+						"def_line": 218,
+						"call_line": 219,
+						"calls": "halfCloseHoldCollector",
+						"entry_point": "registry-collector"
+					}
+				],
+				"verification_evidence": "runtime evidence 2026-10-01/2026-10-02, sockmap-fullproxy bed (kernel 6.11, HAVE_SOCKOPS image built from this branch): a harness drives known half-close shapes through hold rules on the off/request/response/both arms with a 10 s bound, five times each, and reads /metrics before and after, asserting the cells that move and that no other cell does (20 shapes, all pass); a second probe reads the gauges while a client is held. 1 by default, 0 after POST /config/halfclose {\"allow\":false}, 1 again once allowed."
+			},
+			{
+				"name": "loxilb_proxy_halfclose_hold_cap_seconds",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "gauge",
+				"definition_mechanism": "desc",
+				"labels": [],
+				"activation": "E",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/prometheus/halfclose_hold_metrics.go:111",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-runtime",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "halfCloseHoldCollector",
+						"file": "api/prometheus/halfclose_hold_metrics.go",
+						"def_line": 182,
+						"writes": "halfCloseHoldCapDesc"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/prometheus/halfclose_hold_metrics.go",
+						"def_line": 218,
+						"call_line": 219,
+						"calls": "halfCloseHoldCollector",
+						"entry_point": "registry-collector"
+					}
+				],
+				"verification_evidence": "runtime evidence 2026-10-01/2026-10-02, sockmap-fullproxy bed (kernel 6.11, HAVE_SOCKOPS image built from this branch): a harness drives known half-close shapes through hold rules on the off/request/response/both arms with a 10 s bound, five times each, and reads /metrics before and after, asserting the cells that move and that no other cell does (20 shapes, all pass); a second probe reads the gauges while a client is held. the bound as set through /config/halfclose: 10, 30, then 240."
+			},
+			{
+				"name": "loxilb_proxy_halfclose_hold_default_mode",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "gauge",
+				"definition_mechanism": "desc",
+				"labels": [],
+				"activation": "E",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/prometheus/halfclose_hold_metrics.go:117",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-runtime",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "halfCloseHoldCollector",
+						"file": "api/prometheus/halfclose_hold_metrics.go",
+						"def_line": 182,
+						"writes": "halfCloseHoldDefaultModeDesc"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/prometheus/halfclose_hold_metrics.go",
+						"def_line": 218,
+						"call_line": 219,
+						"calls": "halfCloseHoldCollector",
+						"entry_point": "registry-collector"
+					}
+				],
+				"verification_evidence": "runtime evidence 2026-10-05, sockmap-fullproxy bed (kernel 6.11, HAVE_SOCKOPS image built from this branch): the harness sets /config/halfclose defaultMode hold, holds a client on a fullproxy rule that leaves its half_close_mode unset, switches the default to off three seconds into the hold and reads /metrics before and after - the gauge goes from 1 to 0 while the client already held runs to the bound (two holds, the only other cells that move are the hold's own); with the default left at hold for five half-closes on the same rule it stays at 1 and every client is answered."
+			},
+			{
+				"name": "loxilb_proxy_halfclose_hold_ended_total",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "counter",
+				"definition_mechanism": "desc",
+				"labels": [
+					"reason"
+				],
+				"activation": "P",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/prometheus/halfclose_hold_metrics.go:132",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-runtime",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "halfCloseHoldCollector",
+						"file": "api/prometheus/halfclose_hold_metrics.go",
+						"def_line": 182,
+						"writes": "halfCloseHoldEndedDesc"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/prometheus/halfclose_hold_metrics.go",
+						"def_line": 218,
+						"call_line": 219,
+						"calls": "halfCloseHoldCollector",
+						"entry_point": "registry-collector"
+					}
+				],
+				"verification_evidence": "runtime evidence 2026-10-01/2026-10-02, sockmap-fullproxy bed (kernel 6.11, HAVE_SOCKOPS image built from this branch): a harness drives known half-close shapes through hold rules on the off/request/response/both arms with a 10 s bound, five times each, and reads /metrics before and after, asserting the cells that move and that no other cell does (20 shapes, all pass); a second probe reads the gauges while a client is held. answered +5 for the request and FIN in one segment, a FIN 20 ms later, a 103 interim answer and a close-delimited answer; backend_first +5 for a backend that left mid-answer; reset +5 for a client that reset 200 ms after its FIN; expired +2 for clients that stopped reading past the bound; released +2 after /config/halfclose/release."
+			},
+			{
+				"name": "loxilb_proxy_halfclose_hold_expired_total",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "counter",
+				"definition_mechanism": "desc",
+				"labels": [
+					"answer_started",
+					"stream"
+				],
+				"activation": "P",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/prometheus/halfclose_hold_metrics.go:138",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-runtime",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "halfCloseHoldCollector",
+						"file": "api/prometheus/halfclose_hold_metrics.go",
+						"def_line": 182,
+						"writes": "halfCloseHoldExpiredDesc"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/prometheus/halfclose_hold_metrics.go",
+						"def_line": 218,
+						"call_line": 219,
+						"calls": "halfCloseHoldCollector",
+						"entry_point": "registry-collector"
+					}
+				],
+				"verification_evidence": "runtime evidence 2026-10-01/2026-10-02, sockmap-fullproxy bed (kernel 6.11, HAVE_SOCKOPS image built from this branch): a harness drives known half-close shapes through hold rules on the off/request/response/both arms with a 10 s bound, five times each, and reads /metrics before and after, asserting the cells that move and that no other cell does (20 shapes, all pass); a second probe reads the gauges while a client is held. answer_started=\"true\",stream=\"unknown\" +2 for clients that stopped reading after their answer began; no other cell moved."
+			},
+			{
+				"name": "loxilb_proxy_halfclose_hold_refused_total",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "counter",
+				"definition_mechanism": "desc",
+				"labels": [
+					"reason"
+				],
+				"activation": "P",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/prometheus/halfclose_hold_metrics.go:144",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-static",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "halfCloseHoldCollector",
+						"file": "api/prometheus/halfclose_hold_metrics.go",
+						"def_line": 182,
+						"writes": "halfCloseHoldRefusedDesc"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/prometheus/halfclose_hold_metrics.go",
+						"def_line": 218,
+						"call_line": 219,
+						"calls": "halfCloseHoldCollector",
+						"entry_point": "registry-collector"
+					}
+				],
+				"verification_evidence": "source verification 2026-10-01: api/prometheus/halfclose_hold_metrics.go emits every series of the family from holdStore at scrape time, at zero until the datapath counts; halfclose_hold_metrics_test.go drives the collector (series per family, labels and values from the store) and the merge (gauges as read, counters never backwards), and pins the end-reason labels against loxilb-ebpf/common/sockproxy_hold_core.h. The C side is sockproxy_hold.c (the hold, its close points, the 1 Hz pass and the pairing check); its pure half is driven by make -C common test_hold. Not yet observed on a bed."
+			},
+			{
+				"name": "loxilb_proxy_halfclose_hold_spurious_wakeups_total",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "counter",
+				"definition_mechanism": "desc",
+				"labels": [
+					"kind"
+				],
+				"activation": "P",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/prometheus/halfclose_hold_metrics.go:150",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-runtime",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "halfCloseHoldCollector",
+						"file": "api/prometheus/halfclose_hold_metrics.go",
+						"def_line": 182,
+						"writes": "halfCloseHoldSpuriousDesc"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/prometheus/halfclose_hold_metrics.go",
+						"def_line": 218,
+						"call_line": 219,
+						"calls": "halfCloseHoldCollector",
+						"entry_point": "registry-collector"
+					}
+				],
+				"verification_evidence": "runtime evidence 2026-10-01/2026-10-02, sockmap-fullproxy bed (kernel 6.11, HAVE_SOCKOPS image built from this branch): a harness drives known half-close shapes through hold rules on the off/request/response/both arms with a 10 s bound, five times each, and reads /metrics before and after, asserting the cells that move and that no other cell does (20 shapes, all pass); a second probe reads the gauges while a client is held. eof_reentry 0 on every shape - it had counted 30 per slow-reader hold before the dispatcher stopped reading held clients, which is how that defect was found; empty_out 1 per hold for a slow reader and for 64 KB chunks 300 ms apart, 0 at 600 ms."
+			},
+			{
+				"name": "loxilb_proxy_halfclose_hold_total",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "counter",
+				"definition_mechanism": "desc",
+				"labels": [],
+				"activation": "E",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/prometheus/halfclose_hold_metrics.go:126",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-runtime",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "halfCloseHoldCollector",
+						"file": "api/prometheus/halfclose_hold_metrics.go",
+						"def_line": 182,
+						"writes": "halfCloseHoldDesc"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/prometheus/halfclose_hold_metrics.go",
+						"def_line": 218,
+						"call_line": 219,
+						"calls": "halfCloseHoldCollector",
+						"entry_point": "registry-collector"
+					}
+				],
+				"verification_evidence": "runtime evidence 2026-10-01/2026-10-02, sockmap-fullproxy bed (kernel 6.11, HAVE_SOCKOPS image built from this branch): a harness drives known half-close shapes through hold rules on the off/request/response/both arms with a 10 s bound, five times each, and reads /metrics before and after, asserting the cells that move and that no other cell does (20 shapes, all pass); a second probe reads the gauges while a client is held. +5 per shape that half-closes with an answer owed on a hold rule; +0 on a rule without half_close_mode, with holds blocked, and on accelerated arms whose FIN came after the pairing."
+			},
+			{
+				"name": "loxilb_proxy_halfclose_tls_fin_total",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "counter",
+				"definition_mechanism": "desc",
+				"labels": [
+					"path",
+					"early_owed"
+				],
+				"activation": "P",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/prometheus/halfclose_metrics.go:198",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-static",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "halfCloseCollector",
+						"file": "api/prometheus/halfclose_metrics.go",
+						"def_line": 260,
+						"writes": "halfCloseTLSFinDesc"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/prometheus/halfclose_metrics.go",
+						"def_line": 302,
+						"call_line": 303,
+						"calls": "halfCloseCollector",
+						"entry_point": "registry-collector"
+					}
+				],
+				"verification_evidence": "source verification 2026-09-30: api/prometheus/halfclose_metrics.go emits every series of the family from halfCloseStore at scrape time, at zero until the datapath counts; halfclose_metrics_test.go drives the collector (series count per family, labels and values from the store) and the merge (torn read clamped, never backwards), and pins the bucket bounds and the label order against loxilb-ebpf/common/sockproxy_hc_core.h. The C side is observation only (sockproxy_hc.c: hooks at the client's FIN, the TLS read exits, the request and response framers and the relay's writes) and its pure half is driven by make -C common test_hc. Not yet observed on a bed."
+			},
+			{
+				"name": "loxilb_proxy_halfclose_user_agent_total",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "counter",
+				"definition_mechanism": "desc",
+				"labels": [
+					"family"
+				],
+				"activation": "P",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/prometheus/halfclose_metrics.go:210",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-runtime",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "halfCloseCollector",
+						"file": "api/prometheus/halfclose_metrics.go",
+						"def_line": 260,
+						"writes": "halfCloseUserAgentDesc"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/prometheus/halfclose_metrics.go",
+						"def_line": 302,
+						"call_line": 303,
+						"calls": "halfCloseCollector",
+						"entry_point": "registry-collector"
+					}
+				],
+				"verification_evidence": "runtime evidence 2026-09-30/2026-10-01, sockmap-fullproxy bed (kernel 6.11, HAVE_SOCKOPS image built from this branch): a harness drives known client shapes five times each through off/request/response/both rules and reads /metrics before and after, asserting the cells that move and that no other cell does. family none +1 per sampled FIN for a client that sends no User-Agent (the harness clients); counted only where fin_gap_seconds samples."
+			},
+			{
 				"name": "loxilb_proxy_header_deadline_drops_total",
 				"owner": "loxilb",
 				"class": "default",
@@ -12273,7 +13298,7 @@
 				"privacy": "none",
 				"consumers": [],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:647",
+				"source": "api/prometheus/sockproxy_metrics.go:683",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "verified-runtime",
@@ -12283,7 +13308,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "proxyHeaderDeadlineDropsTotal"
 					},
 					{
@@ -12339,7 +13364,7 @@
 					"loxilb-l7.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:258",
+				"source": "api/prometheus/sockproxy_metrics.go:294",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "writer-mapped",
@@ -12349,7 +13374,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "proxyHttp2SessionsTotal"
 					},
 					{
@@ -12410,7 +13435,7 @@
 					"loxilb-recording.yml"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:306",
+				"source": "api/prometheus/sockproxy_metrics.go:342",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -12420,7 +13445,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "proxyHttpResponsesByStatus",
 						"note": "one child per status class at :989, with the delta applied at :993"
 					},
@@ -12478,7 +13503,7 @@
 					"loxilb-overview.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:298",
+				"source": "api/prometheus/sockproxy_metrics.go:334",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "writer-mapped",
@@ -12488,7 +13513,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "proxyHttpResponsesTotal"
 					},
 					{
@@ -12545,7 +13570,7 @@
 					"loxilb-l7.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:913",
+				"source": "api/prometheus/sockproxy_metrics.go:949",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "conditional-with-proven-writer",
@@ -12555,7 +13580,7 @@
 						"symbol": "Collect",
 						"kind": "method",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 930,
+						"def_line": 966,
 						"writes": "ttfbDesc",
 						"receiver": "ttfbCollector",
 						"note": "emits a ConstHistogram built from the C-side cumulative buckets rather than observing into a Go histogram, so the exporter cannot double-count what the datapath already counted"
@@ -12564,8 +13589,8 @@
 						"symbol": "init",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 944,
-						"call_line": 945,
+						"def_line": 980,
+						"call_line": 981,
 						"calls": "ttfbCollector",
 						"entry_point": "registry-collector",
 						"note": "registered once with the default registry, the same one the promauto families in this file use"
@@ -12734,7 +13759,7 @@
 					"loxilb-ai.json"
 				],
 				"waiver": "",
-				"source": "api/prometheus/sockproxy_metrics.go:326",
+				"source": "api/prometheus/sockproxy_metrics.go:362",
 				"release_scope": "release",
 				"runtime_scope": "gateway-default",
 				"implementation_status": "writer-mapped",
@@ -12744,7 +13769,7 @@
 						"symbol": "RunSockproxyMetrics",
 						"kind": "func",
 						"file": "api/prometheus/sockproxy_metrics.go",
-						"def_line": 982,
+						"def_line": 1090,
 						"writes": "proxyPdKvParamsOverflowTotal"
 					},
 					{
@@ -13153,6 +14178,88 @@
 					}
 				],
 				"verification_evidence": "metric coverage RCA and plan, section B.5b: bucket level tracked the shaped drive and sat near zero while rate-bound. Sign-off blocked by D-3."
+			},
+			{
+				"name": "loxilb_proxy_response_first_write_gap_seconds",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "histogram",
+				"definition_mechanism": "desc",
+				"labels": [
+					"stream"
+				],
+				"activation": "P",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/prometheus/halfclose_metrics.go:216",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-runtime",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "halfCloseCollector",
+						"file": "api/prometheus/halfclose_metrics.go",
+						"def_line": 260,
+						"writes": "proxyResponseFirstWriteGapDesc"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/prometheus/halfclose_metrics.go",
+						"def_line": 302,
+						"call_line": 303,
+						"calls": "halfCloseCollector",
+						"entry_point": "registry-collector"
+					}
+				],
+				"verification_evidence": "runtime evidence 2026-09-30/2026-10-01, sockmap-fullproxy bed (kernel 6.11, HAVE_SOCKOPS image built from this branch): a harness drives known client shapes five times each through off/request/response/both rules and reads /metrics before and after, asserting the cells that move and that no other cell does. +5 at about 0.1 s for a backend holding the answer 100 ms; samples also for answers the backend ends by closing (close-delimited 64 KB and 4 MB)."
+			},
+			{
+				"name": "loxilb_proxy_response_max_write_gap_seconds",
+				"owner": "loxilb",
+				"class": "default",
+				"packaged": true,
+				"type": "histogram",
+				"definition_mechanism": "desc",
+				"labels": [
+					"stream"
+				],
+				"activation": "P",
+				"priority": "diagnostic",
+				"privacy": "none",
+				"consumers": [],
+				"waiver": "",
+				"source": "api/prometheus/halfclose_metrics.go:222",
+				"release_scope": "release",
+				"runtime_scope": "gateway-default",
+				"implementation_status": "verified-runtime",
+				"activation_precondition": "",
+				"writer_sources": [
+					{
+						"symbol": "Collect",
+						"kind": "method",
+						"receiver": "halfCloseCollector",
+						"file": "api/prometheus/halfclose_metrics.go",
+						"def_line": 260,
+						"writes": "proxyResponseMaxWriteGapDesc"
+					},
+					{
+						"symbol": "init",
+						"kind": "func",
+						"file": "api/prometheus/halfclose_metrics.go",
+						"def_line": 302,
+						"call_line": 303,
+						"calls": "halfCloseCollector",
+						"entry_point": "registry-collector"
+					}
+				],
+				"verification_evidence": "runtime evidence 2026-09-30/2026-10-01, sockmap-fullproxy bed (kernel 6.11, HAVE_SOCKOPS image built from this branch): a harness drives known client shapes five times each through off/request/response/both rules and reads /metrics before and after, asserting the cells that move and that no other cell does. +5 at 0 for answers written at once; +5 at about 3.0 s for a client that stops reading a 4 MB answer for 3 s, with Content-Length and close-delimited alike."
 			},
 			{
 				"name": "loxilb_requests_total",
