@@ -73,6 +73,7 @@ export interface IServiceArguments {
 	path_match_mode?: 'disabled' | 'prefix' | 'exact';	// Path matching mode
 	backend_protocol?: 'http1' | 'http2' | 'both';		// Backend protocol capability for ALPN negotiation
 	mtls_frontend?: IMtlsFrontend;	// Frontend mTLS (client-cert verification); fullproxy + TLS only
+	cb_enable?: boolean;			// per-endpoint circuit breaker; fullproxy only. Absent on create = gateway default (on for P/D, else off); absent on read-back = off
 
 	// NOTE: Octavia lifecycle/limit fields (id, adminStateUp, projectId,
 	// connectionLimit, annotations, timeoutMember*, timeoutTcpInspect) are

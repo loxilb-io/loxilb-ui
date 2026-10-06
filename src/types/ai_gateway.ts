@@ -151,6 +151,38 @@ export function resolveAITopology(args: Pick<IServiceArguments, 'pd_disagg_mode'
 	return 'plain';
 }
 
+/**
+ * The per-endpoint circuit breaker as it is, or will be, in force on a rule.
+ *
+ * The gateway resolves an omitted `cb_enable` when the rule is written: on for
+ * a P/D rule, off otherwise; an explicit value is honoured as given. A draft
+ * therefore shows that same resolution until the operator chooses, so the
+ * switch never claims "off" for a rule that will be created with it on.
+ *
+ * ⚠️ A read-back is not a draft. GET reports the resolved state and omits the
+ * field when the breaker is off — so on a P/D rule created with an explicit
+ * `false`, absence means off, and applying the draft default there would show
+ * a breaker that is not running.
+ */
+export function resolveCircuitBreaker(args: Pick<IServiceArguments, 'cb_enable' | 'pd_disagg_mode'>, readBack: boolean): boolean {
+	if (readBack) return args.cb_enable === true;
+	return args.cb_enable ?? Boolean(args.pd_disagg_mode);
+}
+
+/**
+ * What an edit form seeded from a read-back must carry for the breaker.
+ *
+ * A fullproxy edit can only end as delete + create (a key change). GET omits
+ * `cb_enable` when the breaker is off, and an omitted value on create resolves
+ * to ON for a P/D rule — so the read-back is pinned explicitly, or recreating a
+ * P/D rule whose breaker was switched off would silently switch it back on.
+ * Nothing is pinned off fullproxy, where the field does not apply and an
+ * in-place edit diffs the form against the read-back.
+ */
+export function circuitBreakerEditSeed(readBack: Pick<IServiceArguments, 'mode' | 'cb_enable'> | undefined): Pick<IServiceArguments, 'cb_enable'> {
+	return readBack?.mode === 4 ? {cb_enable: resolveCircuitBreaker(readBack, true)} : {};
+}
+
 export function effectiveAIHash(engine?: IServiceArguments['kvEngineType'] | ''): AIHashAlgorithm | undefined {
 	switch (resolveAIEngine(engine)) {
 		case 'vllm': return 'sha256_cbor';
@@ -428,7 +460,9 @@ export function serializeAIConfiguration(configuration: IServiceConfiguration): 
 	let endpoints = configuration.endpoints.map(endpoint => ({...endpoint}));
 
 	if (serviceArguments.mode !== 4) {
-		serviceArguments = omitFields(serviceArguments, AI_ONLY_FIELDS);
+		// The breaker switch is disabled off fullproxy, so a value left over
+		// from an earlier mode choice in the same draft must not travel.
+		serviceArguments = omitFields(serviceArguments, [...AI_ONLY_FIELDS, 'cb_enable']);
 		endpoints = endpoints.map(stripEndpointAI);
 		return {...configuration, serviceArguments, endpoints};
 	}

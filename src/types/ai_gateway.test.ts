@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import {
+	circuitBreakerEditSeed,
 	declaredFcFields,
 	allowedAIHashes,
 	effectiveAIHash,
@@ -10,6 +11,7 @@ import {
 	isAIEngineChange,
 	resolveAIEngine,
 	resolveAITopology,
+	resolveCircuitBreaker,
 	serializeAIConfiguration,
 	validateAIConfiguration,
 } from './ai_gateway';
@@ -525,5 +527,55 @@ describe('declaredFcFields (what this gateway\'s /meta offers)', () => {
 	it('requires a live field declaration', () => {
 		expect(declaredFcFields({fc_expose_headers: {type: 'string'}}).has('fc_expose_headers')).toBe(true);
 		expect(declaredFcFields({}).has('fc_expose_headers')).toBe(false);
+	});
+});
+
+describe('circuit breaker resolution', () => {
+	it('shows an untouched draft the way the gateway resolves an omitted value', () => {
+		expect(resolveCircuitBreaker({pd_disagg_mode: true}, false)).toBe(true);
+		expect(resolveCircuitBreaker({pd_disagg_mode: false}, false)).toBe(false);
+		expect(resolveCircuitBreaker({}, false)).toBe(false);
+	});
+
+	it('honours an explicit choice against the topology default', () => {
+		expect(resolveCircuitBreaker({pd_disagg_mode: true, cb_enable: false}, false)).toBe(false);
+		expect(resolveCircuitBreaker({pd_disagg_mode: false, cb_enable: true}, false)).toBe(true);
+	});
+
+	// GET omits the field when the breaker is off. A P/D rule created with an
+	// explicit false therefore reads back with no cb_enable at all.
+	it('reads an absent value on a read-back as off, P/D rule included', () => {
+		expect(resolveCircuitBreaker({pd_disagg_mode: true}, true)).toBe(false);
+		expect(resolveCircuitBreaker({pd_disagg_mode: true, cb_enable: true}, true)).toBe(true);
+	});
+
+	it('sends nothing for an untouched draft and keeps an explicit false on the wire', () => {
+		const pd = {kvEngineType: 'vllm', pd_disagg_mode: true} as const;
+		const roles = [endpoint({ep_role: 1}), endpoint({endpointIP: '10.0.0.11', ep_role: 2})];
+		expect(serializeAIConfiguration(configuration(pd, roles)).serviceArguments).not.toHaveProperty('cb_enable');
+		expect(serializeAIConfiguration(configuration({...pd, cb_enable: false}, roles)).serviceArguments.cb_enable).toBe(false);
+		expect(serializeAIConfiguration(configuration({cb_enable: true})).serviceArguments.cb_enable).toBe(true);
+	});
+
+	it('does not carry a choice made under fullproxy onto another mode', () => {
+		expect(serializeAIConfiguration(configuration({mode: 0, cb_enable: true})).serviceArguments).not.toHaveProperty('cb_enable');
+	});
+
+	// Recreating a P/D rule from its read-back: the omitted value would resolve
+	// to ON at the gateway, undoing an explicit off.
+	it('pins the read-back state for a fullproxy edit so a recreate cannot flip it', () => {
+		expect(circuitBreakerEditSeed({mode: 4})).toEqual({cb_enable: false});
+		expect(circuitBreakerEditSeed({mode: 4, cb_enable: true})).toEqual({cb_enable: true});
+		const recreated = serializeAIConfiguration(configuration(
+			{kvEngineType: 'vllm', pd_disagg_mode: true, ...circuitBreakerEditSeed({mode: 4})},
+			[endpoint({ep_role: 1}), endpoint({endpointIP: '10.0.0.11', ep_role: 2})],
+		));
+		expect(recreated.serviceArguments.cb_enable).toBe(false);
+	});
+
+	it('pins nothing off fullproxy, where an in-place edit diffs against the read-back', () => {
+		expect(circuitBreakerEditSeed({mode: 0})).toEqual({});
+		expect(circuitBreakerEditSeed({mode: 0, cb_enable: true})).toEqual({});
+		expect(circuitBreakerEditSeed(undefined)).toEqual({});
 	});
 });

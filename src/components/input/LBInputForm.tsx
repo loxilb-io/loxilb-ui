@@ -10,7 +10,7 @@ import {useInstanceCapabilities} from 'hooks/query/flavorHook';
 import {useModelProfiles} from 'hooks/query/queryHooks';
 import {useGatewayCapabilities} from 'hooks/query/statusHook';
 import {t} from 'i18next';
-import {isAIEngineChange, validateAIConfiguration, validateProfileSelection} from 'types/ai_gateway';
+import {circuitBreakerEditSeed, isAIEngineChange, validateAIConfiguration, validateProfileSelection} from 'types/ai_gateway';
 import {lbSourceBudgetNotice, SourceBudgetNotice} from 'types/capability_status';
 import {IServiceConfiguration} from 'types/load_balancer';
 import {AllowedSourcesListInputForm, SecondaryIPListInputForm} from './IPListInputForm';
@@ -69,6 +69,7 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 			path_prefix: initialData?.serviceArguments?.path_prefix,
 			path_match_mode: initialData?.serviceArguments?.path_match_mode,
 			backend_protocol: initialData?.serviceArguments?.backend_protocol,
+			...(isEdit ? circuitBreakerEditSeed(initialData?.serviceArguments) : {}),
 		},
 		secondaryIPs: initialData?.secondaryIPs || [],
 		allowedSources: initialData?.allowedSources || [],
@@ -213,7 +214,7 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 					isEdit={isEdit}
 				/>
 				{errors.protocol && <Alert severity="warning">{errors.protocol}</Alert>}
-				<AdvancedSettingsForm value={formData?.serviceArguments ?? {}} onChange={handleServiceArguments} params={params?.serviceArguments} />
+				<AdvancedSettingsForm value={formData?.serviceArguments ?? {}} onChange={handleServiceArguments} params={params?.serviceArguments} isEdit={isEdit} />
 				<AIGatewaySettingsForm
 					value={formData?.serviceArguments ?? {}}
 					onChange={handleServiceArguments}
