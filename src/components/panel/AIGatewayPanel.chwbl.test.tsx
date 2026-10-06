@@ -53,6 +53,25 @@ describe('AIGatewayPanel CHWBL ring read-back', () => {
 		expect(shown()).toEqual(['CHWBL Replication']);
 	});
 
+	// The fixture's chwbl_prefix_hash_level is what opened the panel in every
+	// case above. A gateway that reports the ring tuning and no prefix level
+	// must not read as a rule with nothing configured.
+	it('shows the ring tuning when it is the only AI value the gateway reported', () => {
+		render(<AIGatewayPanel serviceArguments={args({...RESOLVED, chwbl_prefix_hash_level: undefined})} />);
+		expect(screen.queryByText('No AI Gateway features are configured for this rule.')).toBeNull();
+		expect(shown()).toEqual(LABELS);
+		cleanup();
+
+		// A reported `false` is a state the panel renders, so it opens the panel too.
+		render(<AIGatewayPanel serviceArguments={args({chwbl_prefix_hash_level: undefined, chwbl_enable_cache_salt: false})} />);
+		expect(valueOf('Require cache_salt')).toBe('Not required');
+	});
+
+	it('still reads as unconfigured when ring tuning sits on a rule that builds no ring', () => {
+		render(<AIGatewayPanel serviceArguments={args({...RESOLVED, chwbl_prefix_hash_level: undefined, sel: 0})} />);
+		expect(screen.getByText('No AI Gateway features are configured for this rule.')).toBeTruthy();
+	});
+
 	it('shows no ring tuning on a rule that builds no ring', () => {
 		render(<AIGatewayPanel serviceArguments={args({...RESOLVED, sel: 0})} />);
 		expect(shown()).toEqual([]);
