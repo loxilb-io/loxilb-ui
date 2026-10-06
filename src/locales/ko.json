@@ -1250,5 +1250,15 @@
 	"{{free}} of {{limit}} source-check slots free": "소스 검사 슬롯 {{limit}}개 중 {{free}}개 사용 가능",
 	"The gateway reports that the next rule created cannot carry allowed sources.": "게이트웨이는 다음에 생성되는 규칙에 허용 소스를 설정할 수 없다고 보고합니다.",
 	"Admission Response Headers": "추론 응답 헤더",
-	"Admission response headers must be on, off, or the gateway default.": "추론 응답 헤더는 on, off 또는 게이트웨이 기본값이어야 합니다."
+	"Admission response headers must be on, off, or the gateway default.": "추론 응답 헤더는 on, off 또는 게이트웨이 기본값이어야 합니다.",
+	"Certificate Usage": "인증서 용도",
+	"Listener certificate (SNI)": "리스너 인증서 (SNI)",
+	"Backend CA bundle": "백엔드 CA 번들",
+	"Backend client certificate": "백엔드 클라이언트 인증서",
+	"CA Certificate(s) (PEM)": "CA 인증서 (PEM)",
+	"More CA Certificates (PEM, optional)": "추가 CA 인증서 (PEM, 선택)",
+	"A bundle of CA certificates that a rule verifies its backends against. It holds no private key and is offered to no client. A rule refers to it by this ID.": "규칙이 백엔드를 검증할 때 사용하는 CA 인증서 번들입니다. 개인 키를 포함하지 않으며 클라이언트에 제공되지 않습니다. 규칙은 이 ID로 참조합니다.",
+	"The certificate and key a rule presents to backends that ask for one. It is offered to no client. A rule refers to it by this ID.": "백엔드가 요청할 때 규칙이 제시하는 인증서와 키입니다. 클라이언트에 제공되지 않습니다. 규칙은 이 ID로 참조합니다.",
+	"Replaces the CA bundle under this ID. Every rule that verifies its backends against it is updated before the request returns.": "이 ID의 CA 번들을 교체합니다. 이 번들로 백엔드를 검증하는 모든 규칙이 요청이 반환되기 전에 갱신됩니다.",
+	"Replaces the client certificate under this ID. Every rule that presents it to its backends is updated before the request returns.": "이 ID의 클라이언트 인증서를 교체합니다. 이 인증서를 백엔드에 제시하는 모든 규칙이 요청이 반환되기 전에 갱신됩니다."
 }
