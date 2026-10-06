@@ -16,6 +16,12 @@ export interface IMtlsFrontend {
 	client_crl_path?: string;			// optional static CRL (PEM) for leaf revocation
 }
 
+// Backend TLS as a rule asks for it. The other members the gateway still
+// returns here are retired: they are neither offered nor read.
+export interface IMtlsBackend {
+	verify_server_cert?: boolean;		// verify every endpoint's certificate against backend_ca_cert_id
+}
+
 // Declaration carried on an Inference Gateway fullproxy service. Omission is
 // deliberately distinct from "disabled": omission leaves the backend's
 // X-Api-Key namespace unmanaged, while explicit disabled claims and strips it.
@@ -73,6 +79,11 @@ export interface IServiceArguments {
 	path_match_mode?: 'disabled' | 'prefix' | 'exact';	// Path matching mode
 	backend_protocol?: 'http1' | 'http2' | 'both';		// Backend protocol capability for ALPN negotiation
 	mtls_frontend?: IMtlsFrontend;	// Frontend mTLS (client-cert verification); fullproxy + TLS only
+	// Backend TLS leg; fullproxy + e2ehttps only (see types/backend_tls.ts).
+	mtls_backend?: IMtlsBackend;
+	backend_ca_cert_id?: string;		// /config/cert entry with usage "ca"; required by verify_server_cert
+	backend_client_cert_id?: string;	// /config/cert entry with usage "client", presented to backends that ask
+	backend_tls_server_name?: string;	// DNS name sent as SNI; a verified endpoint must carry it
 	cb_enable?: boolean;			// per-endpoint circuit breaker; fullproxy only. Absent on create = gateway default (on for P/D, else off); absent on read-back = off
 
 	// NOTE: Octavia lifecycle/limit fields (id, adminStateUp, projectId,

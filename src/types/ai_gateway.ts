@@ -1,4 +1,5 @@
 import type {GwSchema} from 'api';
+import {serializeBackendTls} from './backend_tls';
 import {IEndpoint, IServiceArguments, IServiceConfiguration, KvExactApiMode, requiresJwtProfile} from './load_balancer';
 
 export type AIEngine = NonNullable<IServiceArguments['kvEngineType']>;
@@ -500,7 +501,7 @@ export function serializeAIConfiguration(configuration: IServiceConfiguration): 
 	// Read-only fields arrive through a form seeded from a read-back (the
 	// key-changed "create" edit and the reconcile upsert both copy it). The
 	// gateway ignores them on input; they never go on the wire.
-	let serviceArguments = omitFields({...configuration.serviceArguments}, READ_ONLY_SERVICE_ARGUMENTS);
+	let serviceArguments = serializeBackendTls(omitFields({...configuration.serviceArguments}, READ_ONLY_SERVICE_ARGUMENTS));
 	let endpoints = configuration.endpoints.map(endpoint => ({...endpoint}));
 
 	if (serviceArguments.mode !== 4) {

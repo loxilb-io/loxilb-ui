@@ -3,6 +3,7 @@
 //---------------------------------------------------------
 import {InstanceFlavor, stripGatewayOnlyFields} from 'api/capabilities';
 import {serializeAIConfiguration, validateAIConfiguration} from 'types/ai_gateway';
+import {validateBackendTls} from 'types/backend_tls';
 import {IServiceConfiguration} from 'types/load_balancer';
 import {buildLBDeleteKey, buildLBDeletePath} from 'types/lb_identity';
 import {IInstance} from 'types/oam';
@@ -102,7 +103,7 @@ export async function request_create_load_balancer_config(instance: IInstance, d
 	// Keep the client-side matrix and the final wire payload in one pure policy.
 	// Server validation remains authoritative, but known-invalid combinations
 	// must not leave the browser.
-	const aiIssues = validateAIConfiguration(projectedData);
+	const aiIssues = [...validateAIConfiguration(projectedData), ...validateBackendTls(projectedData.serviceArguments ?? {})];
 	if (aiIssues.length > 0) {
 		// Client-side backstop (the form validates inline before this point):
 		// a mapped `invalid`, with the field messages in diagnostics only.

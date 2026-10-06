@@ -10,6 +10,7 @@ import {useInstanceCapabilities} from 'hooks/query/flavorHook';
 import {useModelProfiles} from 'hooks/query/queryHooks';
 import {useGatewayCapabilities} from 'hooks/query/statusHook';
 import {t} from 'i18next';
+import {validateBackendTls} from 'types/backend_tls';
 import {circuitBreakerEditSeed, isAIEngineChange, validateAIConfiguration, validateProfileSelection} from 'types/ai_gateway';
 import {lbSourceBudgetNotice, SourceBudgetNotice} from 'types/capability_status';
 import {IServiceConfiguration} from 'types/load_balancer';
@@ -130,6 +131,12 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 			if (bad) e.endpoints = t('Each endpoint needs a valid IP, target port (1-65535) and weight (>= 1)');
 		}
 
+		// The same messages are drawn beside the fields (AdvancedSettingsForm);
+		// this entry keeps the submit button off and says why while that
+		// section is folded.
+		const backendTlsIssues = validateBackendTls(sa);
+		if (backendTlsIssues.length > 0) e.backendTls = backendTlsIssues.map(issue => t(issue.message)).join(' ');
+
 		const aiIssues = validateAIConfiguration(formData);
 		if (isEdit && isAIEngineChange(initialData?.serviceArguments?.kvEngineType, sa.kvEngineType)) {
 			aiIssues.unshift({field: 'kvEngineType', message: 'The AI engine is immutable; delete and recreate the rule to change it.'});
@@ -215,6 +222,7 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 				/>
 				{errors.protocol && <Alert severity="warning">{errors.protocol}</Alert>}
 				<AdvancedSettingsForm value={formData?.serviceArguments ?? {}} onChange={handleServiceArguments} params={params?.serviceArguments} isEdit={isEdit} />
+				{errors.backendTls && <Alert severity="error">{errors.backendTls}</Alert>}
 				<AIGatewaySettingsForm
 					value={formData?.serviceArguments ?? {}}
 					onChange={handleServiceArguments}
