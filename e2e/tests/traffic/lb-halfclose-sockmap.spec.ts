@@ -81,7 +81,8 @@ async function expectRow(page: Page, label: string, expected: string | undefined
  * Re-reads the rule list through the toolbar and selects the rule again.
  *
  * A page reload would not do: the list is restored from the persisted query
- * cache and no read is issued, so a stubbed read would never be asked for.
+ * cache and counts as fresh for a few seconds, so a reload inside that window
+ * issues no read and a stubbed one is never asked for.
  */
 async function rereadAndSelect(page: Page, name: string): Promise<void> {
 	await Promise.all([
