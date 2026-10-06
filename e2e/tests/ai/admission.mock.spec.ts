@@ -43,7 +43,10 @@ async function declareAdmission(page: Page, declared: readonly string[] = FC_DEC
 		const meta = await resp.json();
 		const sa = meta['/config/loadbalancer']?.fields?.serviceArguments;
 		if (!sa) throw new Error('/meta has no /config/loadbalancer serviceArguments — the fixture no longer matches the gateway');
-		for (const key of FC_DECLARED) delete sa[key];
+		// Every admission field the gateway declares goes, not only the ones
+		// listed here: a newer gateway declares more, and one left behind keeps
+		// the group on screen in the case that says there is none.
+		for (const key of Object.keys(sa)) if (key.startsWith('fc_')) delete sa[key];
 		for (const key of declared) {
 			sa[key] = key === 'fc_mode' || key === 'fc_adaptive'
 				? {type: 'string', required: false}

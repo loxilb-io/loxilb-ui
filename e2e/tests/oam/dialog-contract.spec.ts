@@ -17,7 +17,7 @@
 //---------------------------------------------------------
 import {Route} from '@playwright/test';
 import {ConsoleGuard, expect, test} from '../../fixtures';
-import {activeInstance, BGP_DISABLED} from '../../helpers/api';
+import {activeInstance, aiNotReadyAllowance, BGP_DISABLED, gatewayAIManagementReadiness} from '../../helpers/api';
 import {dialog, dialogButton, openDialog} from '../../helpers/dialogs';
 import {field} from '../../helpers/form';
 import {toolbarButton} from '../../helpers/table';
@@ -139,6 +139,10 @@ test.describe('the shared confirmation dialog', () => {
 
 test('while the action is in flight the dialog stays up, locked, and Escape is inert', async ({page, consoleGuard}) => {
 	consoleGuard.allowRequest({status: 500, path: /\/config\/ai\/apikey$/});
+	// The page's own list read fails only on a gateway whose AI management store
+	// is not ready, with the status the readiness probe itself got.
+	const notReady = aiNotReadyAllowance(await gatewayAIManagementReadiness());
+	if (notReady) consoleGuard.allowRequest(notReady);
 
 	// The create is answered slowly and then refused, so the gateway is never
 	// asked to make anything: the assertions below all happen inside the delay.
