@@ -101,7 +101,7 @@ export function isChwblSelector(sel: IServiceArguments['sel'] | ''): boolean {
  * presence, not value. So they are sent only where they apply and only when
  * the operator set them; an omitted one resolves on the gateway.
  */
-export const CHWBL_TUNING_FIELDS = ['chwbl_mean_load_factor', 'chwbl_replication', 'chwbl_enable_cache_salt'] as const satisfies readonly (keyof IServiceArguments)[];
+export const CHWBL_TUNING_FIELDS = ['chwbl_mean_load_factor', 'chwbl_replication', 'chwbl_enable_cache_salt'] as const;
 export type ChwblTuningField = typeof CHWBL_TUNING_FIELDS[number];
 
 /**
