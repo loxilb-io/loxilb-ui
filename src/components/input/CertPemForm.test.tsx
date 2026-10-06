@@ -70,7 +70,9 @@ describe('certFormToRequest', () => {
 });
 
 describe('CertPemForm', () => {
-	const type = (label: string, value: string) => fireEvent.change(screen.getByLabelText(new RegExp(`^${label.replace(/[()]/g, '\\$&')}`)), {target: {value}});
+	// A label is matched by its start: a required one is followed by " *".
+	const type = (label: string, value: string) =>
+		fireEvent.change(screen.getByLabelText((text: string) => text.startsWith(label)), {target: {value}});
 	const last = (onChange: ReturnType<typeof vi.fn>) => onChange.mock.calls.at(-1)?.[0];
 
 	async function choose(usage: string) {
