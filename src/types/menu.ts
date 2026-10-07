@@ -89,13 +89,13 @@ export const MENU_LIST: IMenuItem[] = [
 				name: 'Model Profiles',
 				path: 'profiles',
 			},
-			// Tenant Rate Limits hidden (decision 2026-07-17): the gateway's
-			// AI quota API is tenant-mandatory and only active when the gateway
-			// runs with --userservice; page + route stay at /instance/ai/ratelimit.
-			// {
-			// 	name: 'Tenant Rate Limits',
-			// 	path: 'ratelimit',
-			// },
+			// Named for the whole page, which holds tenant, per-user and
+			// default limits. The gateway serves these routes on every launch;
+			// what can be missing is the key store, and the page says so itself.
+			{
+				name: 'Rate Limits',
+				path: 'ratelimit',
+			},
 		],
 	},
 	{

@@ -36,7 +36,7 @@ import {useErrorPopup} from 'hooks/useErrorPopup';
 import {t} from 'i18next';
 import React, {Fragment, useMemo, useRef, useState} from 'react';
 import {IRateLimitDefaultsMod, ITenantRateLimitMod, IUserRateLimitMod} from 'types/ai';
-import {hasRequiredApiKeyPolicy} from 'types/ai_gateway';
+import {declaredCredentials} from 'types/ai_gateway';
 import {toPageState} from 'components/state/pageState';
 
 //---------------------------------------------------------
@@ -500,11 +500,26 @@ export default function AITenantRateLimitPage() {
 		set_selected_defaults_rows([]);
 	};
 
+	// ⚠️ Only a rule list that was actually read can support "no loaded
+	// service …". While it is loading or failed, the page has no evidence
+	// either way and says nothing.
+	const credentials = Array.isArray(loadBalancers) ? declaredCredentials(loadBalancers) : undefined;
+	const noIdentity = credentials !== undefined && !credentials.apiKey && !credentials.jwt;
+	const noUserIdentity = credentials !== undefined && !credentials.jwt;
+
 	return (
 		<Fragment>
-			{rows.length > 0 && !hasRequiredApiKeyPolicy(loadBalancers ?? []) && (
+			{(rows.length > 0 || userRows.length > 0) && noIdentity && (
 				<Alert severity="warning" sx={{mb: 1}}>
-					{t('Tenant quotas are configured, but no loaded service explicitly requires data-plane API keys. Quota enforcement is not proven until a required policy and a live request are verified.')}
+					{t('Tenant or user limits are configured, but no loaded service validates an API key or a JWT. The gateway charges a tenant or user only after it validates a credential, so enforcement is not proven until a service declares such a mode and a live request is verified.')}
+				</Alert>
+			)}
+			{/* A user exists only on the JWT path: a key carries a tenant and
+			    nothing else. Shown apart from the warning above, which already
+			    covers the case where no credential is validated at all. */}
+			{userRows.length > 0 && noUserIdentity && !noIdentity && (
+				<Alert severity="warning" sx={{mb: 1}}>
+					{t('Per-user limits are configured, but no loaded service validates a JWT. A user is identified only from a validated token; a request admitted by an API key is charged to its key and tenant, never to a user.')}
 				</Alert>
 			)}
 			<Stack direction="row" spacing={1} sx={{mb: 1}} alignItems="center">
@@ -544,6 +559,13 @@ export default function AITenantRateLimitPage() {
 					/>
 				</PanelPaper>
 			)}
+
+			{/* ⚠️ Same reason as the per-service note further down: the rows are a
+			    function of what was asked for. A tenant that only ever arrives
+			    in a token is on no API key, so it is never discovered here. */}
+			<Alert severity="info" sx={{mb: 1}}>
+				{t('Tenants cannot be listed by the gateway. This table shows the tenants seen on API keys and those looked up or configured in this session — a tenant that is absent here, such as one identified only by a JWT claim, may still have limits. Look it up by its ID.')}
+			</Alert>
 
 			<TenantRateLimitTable
 				data={rows}
@@ -593,7 +615,7 @@ export default function AITenantRateLimitPage() {
 				    opposite of the truth. */}
 				{effectiveUserTenant && userRows.length === 0 && user_query.isSuccess && (
 					<Alert severity="info">
-						{t('No user in this tenant has an explicit override. Every user is governed by the configured rate-limit defaults, and by nothing if none are set.')}
+						{t('No user in this tenant has an explicit override. Every user is governed by the configured user defaults, if any, and in every case by whatever limits apply to the tenant.')}
 					</Alert>
 				)}
 

@@ -50,6 +50,7 @@ const TENANT_OUT_OF_BAND = 'rl-refresh-out-of-band';
 
 const APIKEY_RE = /\/netlox\/v1\/config\/ai\/apikey(\?.*)?$/;
 const TENANT_RL_RE = /\/netlox\/v1\/config\/ai\/tenant\/ratelimit\/([^/?]+)(\?.*)?$/;
+const USER_RL_LIST_RE = /\/netlox\/v1\/config\/ai\/user\/ratelimit\/([^/?]+)(\?.*)?$/;
 const LB_ALL_RE = /\/netlox\/v1\/config\/loadbalancer\/all(\?.*)?$/;
 const DEFAULTS_GLOBAL_RE = /\/netlox\/v1\/config\/ai\/ratelimit\/defaults\/global(\?.*)?$/;
 
@@ -62,6 +63,11 @@ interface IMockState {
 	tenants: string[];
 	apiKeyRequired: boolean;
 	quotaStoreConfigured: boolean;
+	// Overrides `apiKeyRequired` when set: the exact declaration of the one
+	// loaded service.
+	authMode?: 'disabled' | 'required' | 'jwt' | 'apikey-or-jwt';
+	// Users with an explicit entry, served for every tenant asked about.
+	users?: string[];
 }
 
 async function mockPage(page: Page, state: IMockState) {
@@ -79,8 +85,21 @@ async function mockPage(page: Page, state: IMockState) {
 
 	// Gates the enforcement warning.
 	await page.route(LB_ALL_RE, (route: Route) =>
-		json(route, 200, {lbAttr: state.apiKeyRequired ? [{serviceArguments: {api_key_auth: 'required'}}] : []}),
+		json(route, 200, {
+			lbAttr: state.authMode
+				? [{serviceArguments: {api_key_auth: state.authMode, ...(state.authMode.includes('jwt') ? {jwt_auth_profile: 'idp'} : {})}}]
+				: state.apiKeyRequired ? [{serviceArguments: {api_key_auth: 'required'}}] : [],
+		}),
 	);
+
+	// Only when a test asks for users; otherwise the read goes to the gateway
+	// as before.
+	if (state.users) {
+		await page.route(USER_RL_LIST_RE, (route: Route) => {
+			const tenant_id = decodeURIComponent(USER_RL_LIST_RE.exec(route.request().url())?.[1] ?? '');
+			return json(route, 200, (state.users ?? []).map(user_id => ({tenant_id, user_id, rps: 5, tokens_per_min: 100})));
+		});
+	}
 
 	// ⚠️ 503 `ai_key_store_unconfigured` is the REAL answer on this testbed, so
 	// the starting state is the honest one. The flip to a configured store with
@@ -119,7 +138,7 @@ test.describe('@gw AI Tenant Rate Limits — Refresh convergence', () => {
 		// The page as first painted: one tenant, no required policy, no store.
 		await expect(rowByText(page, TENANT_SEEDED).first()).toBeVisible();
 		await expect(rowByText(page, TENANT_OUT_OF_BAND)).toHaveCount(0);
-		await expect(page.getByText(/no loaded service explicitly requires data-plane API keys/i)).toBeVisible();
+		await expect(page.getByText(/no loaded service validates an API key or a JWT/i)).toBeVisible();
 		await expect(page.getByText('No quota store is configured')).toBeVisible();
 
 		// ── Seed out of band. Another console creates a key for a second
@@ -142,7 +161,7 @@ test.describe('@gw AI Tenant Rate Limits — Refresh convergence', () => {
 
 		// 2. `refetchLb()` — the enforcement warning is gone, because a service
 		//    now requires data-plane API keys.
-		await expect(page.getByText(/no loaded service explicitly requires data-plane API keys/i)).toHaveCount(0);
+		await expect(page.getByText(/no loaded service validates an API key or a JWT/i)).toHaveCount(0);
 
 		// 3. `defaults_query.refetch()` — the quota panel stops reporting a
 		//    missing store. With a positive tenant default and no live bucket
@@ -152,5 +171,49 @@ test.describe('@gw AI Tenant Rate Limits — Refresh convergence', () => {
 
 		// The seeded tenant never disappeared in the process.
 		await expect(rowByText(page, TENANT_SEEDED).first()).toBeVisible();
+	});
+
+	// ⚠️ Driven by Refresh, never by a reload, for the reason given at the top:
+	// each arm asserts only after the row it depends on has been painted, so a
+	// warning that is absent is absent on a page that HAS read the rule list.
+	test('RL-E2E-R2: the enforcement warnings follow the credential each loaded service validates', async ({page, consoleGuard}) => {
+		consoleGuard.allowRequest({status: 503, path: /\/config\/ai\/ratelimit\/defaults\/global$/});
+		const notReady = aiNotReadyAllowance(await gatewayAIManagementReadiness());
+		if (notReady) consoleGuard.allowRequest(notReady);
+
+		const NO_IDENTITY = /no loaded service validates an API key or a JWT/i;
+		const NO_USER_IDENTITY = /no loaded service validates a JWT\./i;
+		const USER = 'rl-warning-user';
+
+		const state: IMockState = {tenants: [TENANT_SEEDED], apiKeyRequired: false, quotaStoreConfigured: false, authMode: 'disabled', users: [USER]};
+		await mockPage(page, state);
+
+		await page.goto(`instance/ai/ratelimit?name=${instName}`);
+		await expect(rowByText(page, TENANT_SEEDED).first()).toBeVisible({timeout: 20_000});
+		// The user table is the second grid on the page; name it.
+		await expect(grid(page, 'AI User Rate Limits').locator('.MuiDataGrid-row').filter({hasText: USER}).first()).toBeVisible({timeout: 20_000});
+
+		// Nothing validates a credential: one warning, and it is the general one.
+		await expect(page.getByText(NO_IDENTITY)).toBeVisible();
+		await expect(page.getByText(NO_USER_IDENTITY)).toHaveCount(0);
+
+		// An API key names a tenant and no user, so the user rows are still inert.
+		state.authMode = 'required';
+		await toolbarButton(page, 'Refresh', 'AI Tenant Rate Limits').click();
+		await expect(page.getByText(NO_USER_IDENTITY)).toBeVisible({timeout: 10_000});
+		await expect(page.getByText(NO_IDENTITY)).toHaveCount(0);
+
+		// A JWT service attributes both. The old check read this as "nothing
+		// enforces" and kept the warning up.
+		state.authMode = 'jwt';
+		await toolbarButton(page, 'Refresh', 'AI Tenant Rate Limits').click();
+		await expect(page.getByText(NO_USER_IDENTITY)).toHaveCount(0, {timeout: 10_000});
+		await expect(page.getByText(NO_IDENTITY)).toHaveCount(0);
+
+		// Back to an API key only: the warning returns, so its absence above was
+		// the JWT declaration and not a read that stopped arriving.
+		state.authMode = 'required';
+		await toolbarButton(page, 'Refresh', 'AI Tenant Rate Limits').click();
+		await expect(page.getByText(NO_USER_IDENTITY)).toBeVisible({timeout: 10_000});
 	});
 });
