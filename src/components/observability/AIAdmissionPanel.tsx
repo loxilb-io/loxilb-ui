@@ -59,7 +59,7 @@ export function AIAdmissionPanel({report}: {report: AiAdmissionReport}) {
 			<Stack spacing={1}>
 				{anomalyAlert}
 				<Alert severity="info">
-					{t('The capacity gate is off on every pool: nothing is bounded, and its counters stay at zero by construction. It is switched on with the LLB_FC_MODE setting (observe or enforce).')}
+					{t('The capacity gate is off on every pool: nothing is bounded, and its counters stay at zero by construction. It is switched on per rule with the rule\'s Admission Mode, or for every rule that declares none with the gateway\'s LLB_FC_MODE setting (observe or enforce).')}
 				</Alert>
 			</Stack>
 		);

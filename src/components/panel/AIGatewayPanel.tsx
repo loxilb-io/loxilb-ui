@@ -22,14 +22,26 @@ function withSource(value: string | number | undefined, source?: string): string
 
 const SOURCE_NAMES: Record<string, string> = {rule: 'rule', env: 'environment', default: 'default'};
 
-function ceiling(value?: number): string | number | undefined {
+function ceiling(value: number): string | number {
 	return value === 0 ? t('Unlimited') : value;
 }
 
+// These members are in `fc_effective` since the first gateway build that
+// reports it, and the gateway fills every one from the data plane on each
+// read. Its JSON drops a zero. So on a reported state an absent one of THESE
+// is zero — "unlimited" for a ceiling, "none" for the queue, nothing
+// executing or waiting — and is shown as that, not as a blank. An absent
+// member outside this set is one the build does not report.
+type FcBaseMember = 'max_outstanding' | 'ep_max_inflight' | 'prefill_max_inflight' | 'decode_max_inflight' | 'queue_depth' | 'queue_wait_ms' | 'inflight' | 'queued';
+
+function base(effective: IFcEffective, member: FcBaseMember): number {
+	return effective[member] ?? 0;
+}
+
 // ⚠️ Compact on purpose (observability scope): what is in force and who set
-// it, plus the two states an operator must act on. Pool trends, per-tenant and
-// per-endpoint detail stay in Grafana.
-function AdmissionReadBack({effective}: {effective?: IFcEffective}) {
+// it, what the pool holds now, plus the two states an operator must act on.
+// Pool trends, per-tenant and per-endpoint detail stay in Grafana.
+function AdmissionReadBack({effective, pd, readAtMs}: {effective?: IFcEffective; pd: boolean; readAtMs?: number}) {
 	if (!effective) {
 		// Absent is not "off": the gateway reports it only where its data plane
 		// can read the pool state, so say what we know.
@@ -41,11 +53,14 @@ function AdmissionReadBack({effective}: {effective?: IFcEffective}) {
 	}
 	const source = effective.source ?? {};
 	const adaptive = effective.adaptive === 'on';
-	const inForce = adaptive ? effective.effective_max_outstanding : effective.max_outstanding;
-	const depth = effective.queue_depth;
-	const queue = depth === undefined ? undefined : depth === 0 ? t('None (over the ceiling is refused)') : `${depth} / ${effective.queue_wait_ms ?? '?'} ms`;
+	const declaredCeiling = base(effective, 'max_outstanding');
+	const inForce = adaptive ? effective.effective_max_outstanding ?? 0 : declaredCeiling;
+	const depth = base(effective, 'queue_depth');
+	const queue = depth === 0 ? t('None (over the ceiling is refused)') : `${depth} / ${base(effective, 'queue_wait_ms')} ms`;
+	const queued = base(effective, 'queued');
 	const share = effective.tenant_max_share_pct;
 	const held = effective.adapt_state === 'tightened' || effective.adapt_state === 'frozen';
+	const readAt = readAtMs ? new Date(readAtMs).toLocaleTimeString() : undefined;
 
 	return (
 		<ValueBunch name={t('Admission Control')}>
@@ -55,22 +70,40 @@ function AdmissionReadBack({effective}: {effective?: IFcEffective}) {
 						{t('The adaptive ceiling is {{state}} at {{limit}} of {{max}} (reason: {{reason}}).', {
 							state: effective.adapt_state,
 							limit: effective.effective_max_outstanding ?? '?',
-							max: effective.max_outstanding ?? '?',
+							max: declaredCeiling,
 							reason: effective.adapt_reason ?? t('not reported'),
 						})}
 					</Alert>
 				)}
-				{(effective.queued ?? 0) > 0 && (
-					<Alert severity="info">{t('{{count}} requests are waiting for capacity.', {count: effective.queued})}</Alert>
+				{queued > 0 && (
+					<Alert severity="info">{t('{{count}} requests are waiting for capacity.', {count: queued})}</Alert>
 				)}
 				<Grid2 container spacing={2}>
 					<SingleTextBox label={t('Admission Mode')} value={withSource(effective.mode, source.mode)} tooltip={t('The gate mode in force on the pool, and where it came from: the rule, the gateway environment, or the default.')} />
 					<SingleTextBox label={t('Ceiling in Force')} value={withSource(ceiling(inForce), source.max_outstanding)} tooltip={t('Executing inference requests the pool admits now. Below the declared ceiling while an adaptive pool is tightened.')} />
+					<SingleTextBox label={t('Executing Now')} value={base(effective, 'inflight')} tooltip={t('Inference requests executing on the pool when the rule list was read.')} />
+					<SingleTextBox label={t('Waiting Now')} value={queued} tooltip={t('Inference requests waiting for capacity when the rule list was read.')} />
 					<SingleTextBox label={t('Queue (depth / wait)')} value={withSource(queue, source.queue_depth)} tooltip={t('Requests that may wait for capacity, and how long.')} />
+					{pd ? (
+						<>
+							<SingleTextBox label={t('Prefill Endpoint Ceiling')} value={withSource(ceiling(base(effective, 'prefill_max_inflight')), source.prefill_max_inflight)} tooltip={t('Executing prefill legs one endpoint admits.')} />
+							<SingleTextBox label={t('Decode Endpoint Ceiling')} value={withSource(ceiling(base(effective, 'decode_max_inflight')), source.decode_max_inflight)} tooltip={t('Executing decode legs one endpoint admits.')} />
+						</>
+					) : (
+						<SingleTextBox label={t('Endpoint Ceiling')} value={withSource(ceiling(base(effective, 'ep_max_inflight')), source.ep_max_inflight)} tooltip={t('Executing inference requests one endpoint admits.')} />
+					)}
 					{share !== undefined && share !== 0 && share !== 100 && (
 						<SingleTextBox label={t('Tenant Max Share (%)')} value={withSource(share, source.tenant_max_share_pct)} tooltip={t('The most of the ceiling and of the queue one tenant may hold.')} />
 					)}
 				</Grid2>
+				{/* The counts are one read of a pool that moves with traffic, and
+				    this list is not polled: say when. A read that failed since is
+				    the page's "Out of date" banner to report. */}
+				{readAt && (
+					<Typography variant="caption" color="text.secondary">
+						{t('Executing and waiting are as read at {{time}} and move with traffic. Refresh the list to read them again.', {time: readAt})}
+					</Typography>
+				)}
 			</Stack>
 		</ValueBunch>
 	);
@@ -82,7 +115,7 @@ const KV_EXACT_MODES: Record<number, string> = {
 	3: 'Single-role exact',
 };
 
-export default function AIGatewayPanel({serviceArguments}: {serviceArguments: IServiceArguments}) {
+export default function AIGatewayPanel({serviceArguments, readAtMs}: {serviceArguments: IServiceArguments; readAtMs?: number}) {
 	const aiValues = [
 		serviceArguments.kvEngineType,
 		serviceArguments.model_name,
@@ -203,7 +236,7 @@ export default function AIGatewayPanel({serviceArguments}: {serviceArguments: IS
 				</Grid2>
 			</ValueBunch>
 
-			{isAIService(serviceArguments) && <AdmissionReadBack effective={serviceArguments.fc_effective} />}
+			{isAIService(serviceArguments) && <AdmissionReadBack effective={serviceArguments.fc_effective} pd={topology === 'pd'} readAtMs={readAtMs} />}
 
 			{topology === 'pd' && (
 				<ValueBunch name={t('Prefill / Decode Disaggregation')}>

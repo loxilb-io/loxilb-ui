@@ -100,12 +100,17 @@ export default function AdmissionControlForm(props: {
 			</Button>
 			<Collapse in={open} unmountOnExit={false}>
 				<Stack spacing={2}>
+					{/* What a blank means differs between the two writes: a create runs
+					    an undeclared field on the gateway default, a replace keeps what
+					    the rule already has. 0 is a value of its own on both. */}
 					<Typography variant="caption" color="text.secondary">
-						{t('Blank uses the gateway default (its launch environment, else the product default). 0 also resets a field to that default.')}
+						{isEdit
+							? t('On an existing rule a blank number is not sent and the rule keeps the value it has. Enter 0 to return a field to the gateway default (its launch environment, else the product default). A selector set to "Gateway default" returns to that default.')
+							: t('A blank field is not sent, and the gateway default applies (its launch environment, else the product default). 0 is sent and selects the same default: it does not mean unlimited or none.')}
 					</Typography>
-					{isEdit && (
-						<Typography variant="caption" color="warning.main">
-							{t('Admission control on an existing fullproxy rule cannot be changed in place. Create a replacement rule with a different VIP, port, or protocol.')}
+					{declared.has('fc_mode') && (
+						<Typography variant="caption" color="text.secondary">
+							{t('The mode set here is the rule\'s own and comes before the gateway-wide setting: a rule can enforce, observe or switch the gate off whatever LLB_FC_MODE says.')}
 						</Typography>
 					)}
 					<HorizontalStack>

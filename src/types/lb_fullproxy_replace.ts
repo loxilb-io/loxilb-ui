@@ -119,6 +119,33 @@ export function planFullproxyReplace(change: FullproxyChangeSet): FullproxyRepla
 	return inPlaceOnly || consistentHash ? {kind: 'apply', fields} : {kind: 'recreate', fields};
 }
 
+// Admission members whose "not declared" the gateway spells `inherit`.
+const INHERITABLE_FIELDS: ReadonlySet<string> = new Set(['fc_mode', 'fc_adaptive', 'fc_expose_headers']);
+
+const isBlank = (value: unknown) => value === undefined || value === null || value === '';
+
+/**
+ * The form's changes, as a replace can carry them.
+ *
+ * On a replace the gateway KEEPS an admission value the body leaves out, so
+ * a field the operator blanked is not a request to clear it:
+ *   - a mode, adaptive or response-header choice returned to "Gateway
+ *     default" is sent as `inherit`, the gateway's word for it;
+ *   - a blanked number is no change at all. The gateway's way back to its
+ *     default there is an explicit 0, and the form does not turn a blank
+ *     into one.
+ * Without this a blanked field was sent as an omission, the rule kept its
+ * value, and the read-back reported the write as not applied.
+ */
+export function fullproxyReplaceableChanges(patch: Record<string, unknown>): Record<string, unknown> {
+	const out: Record<string, unknown> = {};
+	for (const [field, value] of Object.entries(patch)) {
+		if (!field.startsWith('fc_') || !isBlank(value)) out[field] = value;
+		else if (INHERITABLE_FIELDS.has(field)) out[field] = 'inherit';
+	}
+	return out;
+}
+
 export interface FullproxyEdit {
 	/** The changed `serviceArguments` members, with their new values. */
 	argumentsPatch: Partial<IServiceArguments>;
