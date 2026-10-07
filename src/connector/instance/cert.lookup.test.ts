@@ -12,7 +12,7 @@
 //---------------------------------------------------------
 import {afterEach, beforeEach, describe, expect, it, vi, type Mock} from 'vitest';
 import {IInstance} from 'types/oam';
-import {confirm_cert_material, lookup_cert, summarizeCert} from './cert';
+import {confirm_cert_material, createdCertId, lookup_cert, request_upload_cert_pem, summarizeCert} from './cert';
 
 const INST = {id: 1, name: 'gw-1'} as IInstance;
 
@@ -124,5 +124,30 @@ describe('confirm_cert_material', () => {
 		const failed = await confirm_cert_material(INST, 'c', LEAF);
 		expect(failed.kind).toBe('error');
 		expect(JSON.stringify(failed)).not.toContain('TUlJQ2xlYWY');
+	});
+});
+
+describe('the ID a create answers with', () => {
+	const upload = () => request_upload_cert_pem(INST, {usage: 'server', certPem: LEAF, keyPem: '', chainPem: ''} as never);
+
+	it('is the one in the 201 body', async () => {
+		mockFetch({certId: 'cert-7f3a'}, 201);
+		const result = await upload();
+		expect(result.status).toBe('confirmed');
+		expect(createdCertId(result)).toBe('cert-7f3a');
+	});
+
+	it('is empty for a gateway that answers a create with an empty body', async () => {
+		mockFetch(null, 201);
+		const result = await upload();
+		expect(result.status).toBe('confirmed');
+		expect(createdCertId(result)).toBe('');
+	});
+
+	it('is empty when the answer carries something that is not an ID', () => {
+		const answered = (data: unknown) => ({status: 'confirmed', code: 'x', localeKey: 'x', retryable: false, data}) as never;
+		expect(createdCertId(answered({certId: 7}))).toBe('');
+		expect(createdCertId(answered('cert-7f3a'))).toBe('');
+		expect(createdCertId(answered({certId: '  '}))).toBe('');
 	});
 });

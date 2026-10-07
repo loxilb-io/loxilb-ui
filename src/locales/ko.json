@@ -1339,6 +1339,7 @@
 	"Used for the backend leg of: {{rules}}. The gateway refuses to delete a certificate that a rule uses; remove it from the rule first.": "다음 규칙의 백엔드 구간에서 사용 중입니다: {{rules}}. 게이트웨이는 규칙이 사용하는 인증서의 삭제를 거부하므로, 먼저 규칙에서 제거하세요.",
 	"No loaded rule names this ID for its backend leg. The gateway checks again when the delete is sent.": "불러온 규칙 중 백엔드 구간에 이 ID를 지정한 규칙이 없습니다. 삭제 요청 시 게이트웨이가 다시 확인합니다.",
 	"Certificate uploaded. No ID was given, so the gateway chose one and does not report it: the entry cannot be looked up from here. Its hostnames appear in the table.": "인증서를 업로드했습니다. ID를 지정하지 않아 게이트웨이가 ID를 정했으며 이를 알려주지 않으므로, 여기서는 항목을 조회할 수 없습니다. 호스트 이름은 표에 표시됩니다.",
+	"Certificate uploaded. No ID was given, so the gateway chose \"{{id}}\": the certificate stored under that ID is the one submitted. Keep the ID; it is what rotates or deletes the certificate.": "인증서를 업로드했습니다. ID를 지정하지 않아 게이트웨이가 \"{{id}}\"을(를) 정했습니다: 이 ID로 저장된 인증서가 제출한 인증서와 같습니다. 이 ID를 보관하세요. 인증서를 교체하거나 삭제할 때 사용합니다.",
 	"Certificate \"{{id}}\" was rotated: the certificate stored under the ID is the one submitted. This confirms what is stored, not that traffic is using it.": "인증서 \"{{id}}\"을(를) 교체했습니다: 이 ID로 저장된 인증서가 제출한 인증서와 같습니다. 이는 저장된 내용을 확인한 것이며, 트래픽이 이를 사용 중이라는 뜻은 아닙니다.",
 	"Certificate \"{{id}}\" was uploaded: the certificate stored under the ID is the one submitted.": "인증서 \"{{id}}\"을(를) 업로드했습니다: 이 ID로 저장된 인증서가 제출한 인증서와 같습니다.",
 	"The request was accepted, but the certificate stored under \"{{id}}\" is not the one submitted.": "요청은 수락되었지만 \"{{id}}\"(으)로 저장된 인증서가 제출한 인증서와 다릅니다.",

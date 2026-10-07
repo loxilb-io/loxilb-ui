@@ -12,10 +12,24 @@ import {fromNetworkError, fromSimpleResponse, runOp} from '../fetcher/opResultAd
 // Inline-PEM certificate store (/config/cert, certId-keyed)
 //---------------------------------------------------------
 
+/** What the gateway answers a create with: the ID the certificate is stored under. */
+export type CertCreated = {certId?: string};
+
 /** Upload inline PEM material; the server mints a certId when none is given
  *  and auto-registers the leaf cert's SAN/CN hostnames into the SNI store. */
-export async function request_upload_cert_pem(instance: IInstance, data: ICert): Promise<OpResult> {
-	return runOp('cert.upload_cert_pem', () => POST_INST(instance, `/config/cert`, data));
+export async function request_upload_cert_pem(instance: IInstance, data: ICert): Promise<OpResult<CertCreated>> {
+	return runOp<CertCreated>('cert.upload_cert_pem', () => POST_INST(instance, `/config/cert`, data));
+}
+
+/**
+ * The ID an accepted create stored the certificate under, as the gateway
+ * answered it: the one the request named, or the one the gateway minted.
+ * Empty when the answer carries none, as from a gateway that answers a create
+ * with an empty body.
+ */
+export function createdCertId(result: OpResult<unknown>): string {
+	const id = (result.data as CertCreated | null | undefined)?.certId;
+	return typeof id === 'string' ? id.trim() : '';
 }
 
 /** Rotation: swap new PEM material under the SAME certId. */

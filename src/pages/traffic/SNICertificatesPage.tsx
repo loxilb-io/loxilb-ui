@@ -16,7 +16,7 @@ import LowerSection from 'components/layout/LowerSection';
 import SubTitlePannel from 'components/layout/SubTitlePannel';
 import SNICertificatesTable from 'components/table/traffic/SNICertificatesTable';
 import CertLookupPanel from 'components/panel/CertLookupPanel';
-import {confirm_cert_material, lookup_cert, request_delete_cert_pem, request_rotate_cert_pem, request_upload_cert_pem} from 'connector/instance/cert';
+import {confirm_cert_material, createdCertId, lookup_cert, request_delete_cert_pem, request_rotate_cert_pem, request_upload_cert_pem} from 'connector/instance/cert';
 import {request_register_sni_certificate, request_unregister_sni_certificate} from 'connector/instance/sni_certificates';
 import {OpResult} from 'connector/fetcher/opResult';
 import {useInstanceFromURL} from 'hooks/instanceHook';
@@ -263,9 +263,11 @@ export default function SNICertificatesPage() {
 					if (mode === 'rotate') queryClient.invalidateQueries({predicate: query => query.queryKey.includes('lb_data')});
 
 					// The request was accepted; what is stored is a second question,
-					// answered by reading the entry back. Without an ID there is
-					// nothing to read: the gateway chooses one and does not return it.
-					const id = (cert.certId ?? '').trim();
+					// answered by reading the entry back. When the request named no
+					// ID the gateway chose one and answers with it; a gateway that
+					// answers with an empty body leaves nothing to read.
+					const named = (cert.certId ?? '').trim();
+					const id = named || (mode === 'upload' ? createdCertId(res) : '');
 					if (id === '') {
 						openPopUp(t('Success'), t('Certificate uploaded. No ID was given, so the gateway chose one and does not report it: the entry cannot be looked up from here. Its hostnames appear in the table.'), t('OK'));
 						return;
@@ -276,7 +278,9 @@ export default function SNICertificatesPage() {
 							t('Success'),
 							mode === 'rotate'
 								? t('Certificate "{{id}}" was rotated: the certificate stored under the ID is the one submitted. This confirms what is stored, not that traffic is using it.', {id})
-								: t('Certificate "{{id}}" was uploaded: the certificate stored under the ID is the one submitted.', {id}),
+								: named === ''
+									? t('Certificate uploaded. No ID was given, so the gateway chose "{{id}}": the certificate stored under that ID is the one submitted. Keep the ID; it is what rotates or deletes the certificate.', {id})
+									: t('Certificate "{{id}}" was uploaded: the certificate stored under the ID is the one submitted.', {id}),
 							t('OK'),
 						);
 					} else if (stored.kind === 'found') {

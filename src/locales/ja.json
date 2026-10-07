@@ -1339,6 +1339,7 @@
 	"Used for the backend leg of: {{rules}}. The gateway refuses to delete a certificate that a rule uses; remove it from the rule first.": "次のルールのバックエンド区間で使用中です: {{rules}}。ゲートウェイはルールが使用している証明書の削除を拒否するため、先にルールから外してください。",
 	"No loaded rule names this ID for its backend leg. The gateway checks again when the delete is sent.": "読み込まれたルールのうち、バックエンド区間にこの ID を指定しているものはありません。削除送信時にゲートウェイが再度確認します。",
 	"Certificate uploaded. No ID was given, so the gateway chose one and does not report it: the entry cannot be looked up from here. Its hostnames appear in the table.": "証明書をアップロードしました。ID が指定されなかったためゲートウェイが ID を決めましたが、その ID は報告されないため、ここからエントリを検索することはできません。ホスト名は表に表示されます。",
+	"Certificate uploaded. No ID was given, so the gateway chose \"{{id}}\": the certificate stored under that ID is the one submitted. Keep the ID; it is what rotates or deletes the certificate.": "証明書をアップロードしました。ID が指定されなかったためゲートウェイが \"{{id}}\" を決めました: この ID で保存されている証明書は送信したものと同じです。この ID を控えてください。証明書のローテーションと削除に使用します。",
 	"Certificate \"{{id}}\" was rotated: the certificate stored under the ID is the one submitted. This confirms what is stored, not that traffic is using it.": "証明書 \"{{id}}\" をローテーションしました: この ID で保存されている証明書は送信したものと同じです。これは保存内容の確認であり、トラフィックがそれを使用していることを示すものではありません。",
 	"Certificate \"{{id}}\" was uploaded: the certificate stored under the ID is the one submitted.": "証明書 \"{{id}}\" をアップロードしました: この ID で保存されている証明書は送信したものと同じです。",
 	"The request was accepted, but the certificate stored under \"{{id}}\" is not the one submitted.": "リクエストは受理されましたが、\"{{id}}\" で保存されている証明書は送信したものと異なります。",
