@@ -507,6 +507,24 @@ describe('admission serialization (blank is omitted, never 0 or null)', () => {
 	});
 });
 
+describe('backend TLS read-back serialization', () => {
+	it('never sends the read-only backend_tls_effective, whatever the rule shape', () => {
+		const backend_tls_effective = {status: 'applied', verify: true, ca: 'backend-ca', client_cert: true, client_cert_id: 'gateway-client', server_name: 'backend.internal', generation: 2} as any;
+		const verified = {security: 2, mtls_backend: {verify_server_cert: true}, backend_ca_cert_id: 'backend-ca', backend_client_cert_id: 'gateway-client', backend_tls_server_name: 'backend.internal'} as Partial<IServiceArguments>;
+		for (const config of [
+			configuration({...verified, backend_tls_effective}),
+			sse({...verified, backend_tls_effective}),
+			pd({backend_tls_effective}),
+			configuration({mode: 0, backend_tls_effective}),
+			configuration({backend_tls_effective}),
+		]) {
+			expect(wire(config)).not.toHaveProperty('backend_tls_effective');
+		}
+		// The policy the rule asks for is not what is dropped.
+		expect(wire(configuration({...verified, backend_tls_effective}))).toMatchObject({backend_ca_cert_id: 'backend-ca', backend_client_cert_id: 'gateway-client'});
+	});
+});
+
 describe('admission validation (mirrors the gateway refusals)', () => {
 	it('accepts every numeric field at 0 and at its maximum', () => {
 		const atMax = Object.fromEntries(Object.entries(FC_NUMERIC_MAX)) as Partial<IServiceArguments>;
