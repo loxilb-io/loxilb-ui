@@ -77,7 +77,7 @@ export const FC_PD_ONLY_FIELDS: readonly FcNumericField[] = ['fc_prefill_max_inf
  * src/api/contract.test.ts — a new readOnly field fails that test until it is
  * listed here.
  */
-export const READ_ONLY_SERVICE_ARGUMENTS: readonly (keyof IServiceArguments)[] = ['fc_effective', 'half_close_effective'];
+export const READ_ONLY_SERVICE_ARGUMENTS: readonly (keyof IServiceArguments)[] = ['fc_effective', 'half_close_effective', 'backend_tls_effective'];
 
 /**
  * Whether the gateway runs AI-gateway accounting — and so an admission pool —
