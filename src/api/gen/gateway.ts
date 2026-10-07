@@ -8433,14 +8433,14 @@ export interface components {
     /** @description Whether one optional capability can be served, and when it cannot, a stable code and the operator-facing reason. */
     CapabilityStatus: {
       /**
-       * @description Stable capability identifier. Deliberately not an enum: a build that gains a capability must not become unparseable to an older client. Known values - "kv_exact_vllm": admission of vLLM KV-exact (Tier 1.5) rules, kvExactMode 1 or 3 with kvEngineType vllm; "lb_allowed_sources": admission of allowedSources on the next load-balancer rule created.
+       * @description Stable capability identifier. Deliberately not an enum: a build that gains a capability must not become unparseable to an older client. Known values - "kv_exact_vllm": admission of vLLM KV-exact (Tier 1.5) rules, kvExactMode 1 or 3 with kvEngineType vllm; "lb_allowed_sources": admission of allowedSources on the next load-balancer rule created; "backend_tls_verify": admission of mtls_backend.verify_server_cert, backend_ca_cert_id, backend_client_cert_id and backend_tls_server_name on a load-balancer rule.
        * @example kv_exact_vllm
        */
       name: string;
       /** @description True when this Gateway can currently admit use of the capability. False means every attempt is refused with 412 until the deployment is changed - no request body can satisfy it. For kv_exact_vllm the verdict is complete for a model only when the request carried model_name; without it the tokenizer precondition is not evaluated. */
       ready: boolean;
       /**
-       * @description Stable machine-readable code for why the capability is not ready, for clients that must branch without matching prose. Absent when ready. Known values - "KV_EXACT_SEED_UNSET": the Gateway was launched without a non-empty LLB_KV_NONE_HASH_SEED; "KV_EXACT_SEED_TOO_LONG": the seed exceeds the 23-byte representable bound; "KV_EXACT_TOKENIZER_UNLOADABLE": no tokenizer can be loaded for the model_name asked about (nothing staged under /etc/loxilb/tokenizers/<model-slug>/ and no published model profile carries one); "LB_SOURCE_CHECK_SLOTS_EXHAUSTED": every load-balancer rule slot able to carry source checks is held by an existing rule; "LB_RULES_UNAVAILABLE": this Gateway is not serving load-balancer rules (bgp-only mode).
+       * @description Stable machine-readable code for why the capability is not ready, for clients that must branch without matching prose. Absent when ready. Known values - "KV_EXACT_SEED_UNSET": the Gateway was launched without a non-empty LLB_KV_NONE_HASH_SEED; "KV_EXACT_SEED_TOO_LONG": the seed exceeds the 23-byte representable bound; "KV_EXACT_TOKENIZER_UNLOADABLE": no tokenizer can be loaded for the model_name asked about (nothing staged under /etc/loxilb/tokenizers/<model-slug>/ and no published model profile carries one); "LB_SOURCE_CHECK_SLOTS_EXHAUSTED": every load-balancer rule slot able to carry source checks is held by an existing rule; "LB_RULES_UNAVAILABLE": this Gateway is not serving load-balancer rules (bgp-only mode); "BACKEND_TLS_NOT_BUILT": this Gateway was built without client-certificate support.
        * @example KV_EXACT_SEED_UNSET
        */
       reason_code?: string;
@@ -9548,6 +9548,26 @@ export interface components {
         backend_client_cert_id?: string;
         /** @description DNS host name sent as SNI to every endpoint of the rule. When mtls_backend.verify_server_cert is true the endpoint's certificate must carry it as a DNS subject alternative name. Empty: no SNI is sent and a verified endpoint must carry its own address. Never derived from the VIP or from a request's Host header. Needs mode=4 and security=2. */
         backend_tls_server_name?: string;
+        /** @description What the data plane has installed for the TLS leg to the endpoints, beside what the rule asks for in mtls_backend.verify_server_cert, backend_ca_cert_id, backend_client_cert_id and backend_tls_server_name. Present on GET for mode=4 rules with security=2; ignored on input. Every member but status describes the installed policy, never the request. It is the policy new backend connections are made under, and does not say that any connection was verified. The listener of an address, port and protocol has one such policy, so rules that share a listener report the same one. */
+        backend_tls_effective?: {
+          /**
+           * @description applied: the listener runs what the rule asks for. pending: the rule has no listener in the data plane yet and nothing is installed. failed: the listener runs something else than the rule asks for, which the other members describe; this is the state of a rule whose listener could not load a certificate replaced under the same ID, and of a restored rule that disagrees with the rules on its listener. unsupported: this Gateway was built without client-certificate support, see the backend_tls_verify capability; the leg is TLS without verification or a client certificate.
+           * @enum {string}
+           */
+          readonly status?: "applied" | "pending" | "failed" | "unsupported";
+          /** @description Endpoint certificates are verified. Always present, false included. */
+          readonly verify?: boolean;
+          /** @description Certificate ID of the CA bundle in use, or "none". */
+          readonly ca?: string;
+          /** @description A client certificate is presented to endpoints. Always present, false included. */
+          readonly client_cert?: boolean;
+          /** @description Certificate ID of that client certificate. Absent when none is presented. */
+          readonly client_cert_id?: string;
+          /** @description The name sent as SNI and expected of an endpoint's certificate. Absent when the endpoint address is expected. */
+          readonly server_name?: string;
+          /** @description How many times the listener's backend context was replaced in place since the listener was created. */
+          readonly generation?: number;
+        };
       };
       /** @description Backend members; the domain accepts 1 through 32 input members. Creation sorts members by IP and updates reconcile existing slots, so input-array order is not a stable L7 backend-reference identity. Implementation warnings: POST/PATCH do not copy httpMethod, urlPath, expectedCodes, httpVersion or domainName into LB members, and GET does not return them. Their presence in this schema does not configure an HTTP monitor. Existing-member reconciliation updates weight but does not copy backup, subnetId or monitorAddress, so their create-time storage does not establish update support. Weight and port narrowing lack original-value range validation. state and counter are derived output and are ignored as configuration input. */
       endpoints?: ({
