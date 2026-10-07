@@ -96,6 +96,19 @@ describe('backend TLS group', () => {
 		expect(onChange).toHaveBeenLastCalledWith({mtls_backend: {client_cert_path: '/old/path', verify_server_cert: true}});
 	});
 
+	it('offers a check of each typed ID, and only where there is an ID to check', () => {
+		// By text, as `control` above: the section is a collapsed accordion.
+		const check = (name: string) => screen.getByText(name).closest('button') as HTMLButtonElement;
+		renderForm(args({backend_ca_cert_id: 'backend-ca'}));
+		expect(check('Check Backend CA Cert ID').disabled).toBe(false);
+		expect(check('Check Backend Client Cert ID').disabled).toBe(true);
+		cleanup();
+
+		// Off the re-encrypting leg the IDs are not in force, and are not checked.
+		renderForm(args({security: 1, backend_ca_cert_id: 'backend-ca'}));
+		expect(check('Check Backend CA Cert ID').disabled).toBe(true);
+	});
+
 	it('says beside the field what the gateway would refuse', () => {
 		renderForm(args({mtls_backend: {verify_server_cert: true}}));
 		expect(screen.getByText('Backend verification needs a CA certificate ID: there is no default trust store.')).toBeTruthy();
