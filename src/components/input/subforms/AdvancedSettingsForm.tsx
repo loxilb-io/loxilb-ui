@@ -7,6 +7,7 @@ import path_match_modes from 'assets/json/path_match_modes.json';
 import backend_protocols from 'assets/json/backend_protocols.json';
 import AccordionBox from 'components/element/AccordionBox';
 import ParamBox from 'components/element/ParamBox';
+import CertIdUsageCheck from 'components/input/CertIdUsageCheck';
 import {useInstanceCapabilities} from 'hooks/query/flavorHook';
 import HorizontalStack from 'components/layout/HorizontalStack';
 import {t} from 'i18next';
@@ -237,6 +238,10 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 								error={backendTlsIssue('backend_tls_server_name') !== undefined}
 								helperText={backendTlsIssue('backend_tls_server_name')}
 							/>
+					   </HorizontalStack>
+					   <HorizontalStack>
+							<CertIdUsageCheck label={t('Check Backend CA Cert ID')} certId={value?.backend_ca_cert_id} expected="ca" disabled={!backendTlsEnabled} />
+							<CertIdUsageCheck label={t('Check Backend Client Cert ID')} certId={value?.backend_client_cert_id} expected="client" disabled={!backendTlsEnabled} />
 					   </HorizontalStack></>}
 			   </Stack>
 	   </AccordionBox>
