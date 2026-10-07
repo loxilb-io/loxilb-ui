@@ -78,6 +78,7 @@ import HAPage from 'pages/status/HAPage';
 import ProcessPage from 'pages/status/ProcessPage';
 
 import UserManagementPage from 'pages/managers/UserManagementPage';
+import MaintenancePage from 'pages/maintenance/MaintenancePage';
 import SnapshotPage from 'pages/maintenance/SnapshotPage';
 import AITrafficPage from 'pages/observability/AITrafficPage';
 import WorkersPage from 'pages/observability/WorkersPage';
@@ -218,6 +219,7 @@ export default function App() {
 										<Route path="logs" element={<LogPage />} />
 									</Route>
 									<Route path="maintenance" element={<Outlet />}>
+										<Route path="operator" element={<RequireFeature flavor="inference-gateway"><MaintenancePage /></RequireFeature>} />
 										<Route path="snapshots" element={<RequireFeature flavor="inference-gateway"><SnapshotPage /></RequireFeature>} />
 									</Route>
 									{/* Observability pages are metric-fed and gateway-only at

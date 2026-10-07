@@ -48,7 +48,11 @@ export const persister = createSyncStoragePersister({storage: window.localStorag
 // `audit` (the System page's /audit/status + /audit/sink read) joins them for
 // the same reason: it renders urgent alerts only (a disconnected sink, an
 // orphaned intent), and a restored one would raise yesterday's alert as today's.
-const LIVE_TELEMETRY_KEYS: readonly string[] = ['metrics-snapshot', 'worker-metrics', 'gpu-status', 'diagnostics', 'audit'];
+//
+// `maintenance` is the same again, and worse: a restored read would say the
+// gateway is active, or draining, on the word of a session that has ended, and
+// offer Enter or Resume on it.
+const LIVE_TELEMETRY_KEYS: readonly string[] = ['metrics-snapshot', 'worker-metrics', 'gpu-status', 'diagnostics', 'audit', 'maintenance'];
 
 //---------------------------------------------------------
 // Deployment state — a second reason, not a second instance of the first
