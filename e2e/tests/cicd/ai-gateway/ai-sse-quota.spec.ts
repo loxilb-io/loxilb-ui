@@ -9,17 +9,21 @@
 // round-trip via REST. Live SSE/data-plane policy proof is a separate gate.
 //---------------------------------------------------------
 import {test} from '../../../fixtures';
-import {activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
+import {fullproxyVip, activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
 import {cleanupLbByName, LbRecipe, runLbScenario} from '../_recipes';
+
+// A fullproxy rule is a listener the gateway binds, so its VIP is an address
+// of the gateway (helpers/api.ts, fullproxyVip).
+const FP_VIP = fullproxyVip();
 
 // LB rule 1/3: SSE mode + short stream cap + backend keepalive.
 const sse: LbRecipe = {
 	cicd: 'cicd/ai-sse-quota',
 	name: 'e2e-cicd-ai-sse',
-	vip: '203.0.113.102',
-	port: '2020',
+	vip: FP_VIP,
+	port: '20102',
 	mode: 'fullproxy',
-	host: '203.0.113.102',
+	host: FP_VIP,
 	pathPrefix: '/',
 	pathMatchMode: 'prefix',
 	ai: {modelName: 'sse-test', sseMode: true, maxStreamDurationSec: '30', backendKeepaliveIntervalSec: '60'},
@@ -30,10 +34,10 @@ const sse: LbRecipe = {
 const nosse: LbRecipe = {
 	cicd: 'cicd/ai-sse-quota',
 	name: 'e2e-cicd-ai-nosse',
-	vip: '203.0.113.103',
-	port: '2021',
+	vip: FP_VIP,
+	port: '20103',
 	mode: 'fullproxy',
-	host: '203.0.113.103',
+	host: FP_VIP,
 	pathPrefix: '/',
 	pathMatchMode: 'prefix',
 	ai: {modelName: 'nosse-test'},

@@ -18,10 +18,14 @@
 //---------------------------------------------------------
 import {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {activeInstance, gatewayHeldAddress, gatewayKvExactReadiness, gw, KvExactReadiness, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
+import {activeInstance, fullproxyVip, gatewayKvExactReadiness, gw, KvExactReadiness, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
 import {confirmDelete, dialog, dialogButton, dialogTitle, expectErrorAndDismiss, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 import {refreshUntilGone, refreshUntilRow, rowByText, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 import {lbRuleRowId} from '../../../src/types/lb_identity';
+
+// A fullproxy rule is a listener the gateway binds, so its VIP is an address
+// of the gateway (helpers/api.ts, fullproxyVip).
+const FP_VIP = fullproxyVip();
 
 const LB_PATH = '/config/loadbalancer';
 // 8080 is commonly reserved by a co-hosted OAM and is intentionally rejected
@@ -273,7 +277,7 @@ test.describe('LB Rule page CRUD', () => {
 
 	test('@gw C-adv-l7: fullproxy + host/path/backend-protocol/llm-type', async ({page}) => {
 		await openAddDialog(page);
-		await fillBasics(page, 'e2e-lb-l7', '203.0.113.50', '8443');
+		await fillBasics(page, 'e2e-lb-l7', FP_VIP, '8443');
 		await expandSection(page, ADVANCED);
 		await selectOption(page, 'Mode', 'fullproxy');
 		await field(page, 'Host').fill('e2e.example.com');
@@ -295,7 +299,7 @@ test.describe('LB Rule page CRUD', () => {
 
 	test('@gw C-aigw-stream: SSE streaming fields land verbatim', async ({page}) => {
 		await openAddDialog(page);
-		await fillBasics(page, 'e2e-lb-sse', '203.0.113.51', '8444');
+		await fillBasics(page, 'e2e-lb-sse', FP_VIP, '8444');
 		await expandSection(page, ADVANCED);
 		await selectOption(page, 'Mode', 'fullproxy');
 		await expandSection(page, AIGW);
@@ -325,9 +329,9 @@ test.describe('LB Rule page CRUD', () => {
 		// names and had been red on main ever since, which is also why the read-
 		// only AIGatewayPanel was still using them (now aligned).
 		const cases = [
-			{label: 'Unmanaged (no policy)', name: 'e2e-lb-auth-absent', vip: '203.0.113.71', expected: undefined},
-			{label: 'Disabled (strip header)', name: 'e2e-lb-auth-disabled', vip: '203.0.113.72', expected: 'disabled'},
-			{label: 'Required (enforce and strip)', name: 'e2e-lb-auth-required', vip: '203.0.113.73', expected: 'required'},
+			{label: 'Unmanaged (no policy)', name: 'e2e-lb-auth-absent', vip: FP_VIP, expected: undefined},
+			{label: 'Disabled (strip header)', name: 'e2e-lb-auth-disabled', vip: FP_VIP, expected: 'disabled'},
+			{label: 'Required (enforce and strip)', name: 'e2e-lb-auth-required', vip: FP_VIP, expected: 'required'},
 		] as const;
 
 		for (const [index, policy] of cases.entries()) {
@@ -357,8 +361,7 @@ test.describe('LB Rule page CRUD', () => {
 	test('@gw E-aigw-auth-policy: no-op preserves required; a same-key fullproxy policy change replaces the rule after asking', async ({page}) => {
 		// A fullproxy rule is a listener the gateway binds: the VIP must be one
 		// of its own addresses, or the data plane does not install the rule.
-		const vip = await gatewayHeldAddress();
-		test.skip(!vip, 'the gateway reports no address of its own to bind a fullproxy listener on');
+		const vip = FP_VIP;
 		const name = 'e2e-lb-auth-edit';
 		const create = await gw('POST', LB_PATH, {
 			serviceArguments: {
@@ -419,8 +422,7 @@ test.describe('LB Rule page CRUD', () => {
 	});
 
 	test('@gw E-fullproxy-endpoint: an endpoint is changed and rolled back on the same fullproxy rule', async ({page}) => {
-		const vip = await gatewayHeldAddress();
-		test.skip(!vip, 'the gateway reports no address of its own to bind a fullproxy listener on');
+		const vip = FP_VIP;
 		const name = 'e2e-lb-fp-endpoint';
 		const sibling = 'e2e-lb-fp-sibling';
 		// Two rules on one listener, told apart by host only.
@@ -462,7 +464,7 @@ test.describe('LB Rule page CRUD', () => {
 
 	test('@gw C-aigw-pd: prefill/decode disaggregation incl. per-endpoint roles', async ({page}) => {
 		await openAddDialog(page);
-		await fillBasics(page, 'e2e-lb-pd', '203.0.113.52', '8445');
+		await fillBasics(page, 'e2e-lb-pd', FP_VIP, '8445');
 		await expandSection(page, ADVANCED);
 		await selectOption(page, 'Mode', 'fullproxy');
 		await expandSection(page, AIGW);

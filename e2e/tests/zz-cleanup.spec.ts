@@ -67,7 +67,7 @@ test.describe.serial('zz — cleanup & leak detector', () => {
 			return [a.minSourcePort, a.maxSourcePort, a.minDestinationPort, a.maxDestinationPort].some(v => v !== undefined && v !== null && v !== 0);
 		};
 
-		await scan('/config/loadbalancer/all', 'lbAttr', r => isE2eMarked(r.serviceArguments?.name) || isE2eMarked(r.serviceArguments?.externalIP), r => r.serviceArguments?.name ?? r.serviceArguments?.externalIP);
+		await scan('/config/loadbalancer/all', 'lbAttr', api.isE2eLbRule, r => r.serviceArguments?.name || r.serviceArguments?.externalIP);
 		await scan('/config/firewall/all', 'fwAttr', r => isE2eMarked(r.ruleArguments?.sourceIP) || isE2eMarked(r.ruleArguments?.destinationIP), r => JSON.stringify(r.ruleArguments), hasPortRange);
 		await scan('/config/endpoint/all', 'Attr', e => isE2eMarked(e.name) || isE2eMarked(e.hostName), e => e.name ?? e.hostName);
 		await scan('/config/ipfilter/all', 'ipFilterAttr', r => isE2eMarked(r.cidr), r => r.cidr);

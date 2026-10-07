@@ -20,9 +20,13 @@
 //---------------------------------------------------------
 import type {Page, Route} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {activeInstance, gw, gwJson, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
+import {activeInstance, fullproxyVip, gw, gwJson, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
 import {detailCaption, detailValue} from '../../helpers/detail';
 import {refreshUntilRow, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
+
+// A fullproxy rule is a listener the gateway binds, so its VIP is an address
+// of the gateway (helpers/api.ts, fullproxyVip).
+const FP_VIP = fullproxyVip();
 
 const LB_PATH = '/config/loadbalancer';
 const LB_ALL_RE = /\/netlox\/v1\/config\/loadbalancer\/all(\?.*)?$/;
@@ -119,7 +123,7 @@ test.describe('LB rule half-close and sockmap read-back', () => {
 
 	test('@gw HC-fullproxy: a fullproxy rule shows exactly what the gateway reports, and no row for what it does not', async ({page}) => {
 		const name = 'e2e-lb-hc-fp';
-		await seedRule({name, externalIP: '203.0.113.201', port: 8601, mode: 4}, [endpoint(201)]);
+		await seedRule({name, externalIP: FP_VIP, port: 8601, mode: 4}, [endpoint(201)]);
 		const stored = await storedRule(name);
 		const effective: HalfCloseEffective | undefined = stored.half_close_effective;
 
@@ -130,7 +134,7 @@ test.describe('LB rule half-close and sockmap read-back', () => {
 
 	test('@gw HC-rule: a mode set on the rule reads back as the rule\'s own choice', async ({page}) => {
 		const name = 'e2e-lb-hc-rule';
-		await seedRule({name, externalIP: '203.0.113.202', port: 8602, mode: 4, half_close_mode: 'hold'}, [endpoint(202)]);
+		await seedRule({name, externalIP: FP_VIP, port: 8602, mode: 4, half_close_mode: 'hold'}, [endpoint(202)]);
 		const effective: HalfCloseEffective | undefined = (await storedRule(name)).half_close_effective;
 		test.skip(!effective?.mode, 'this gateway does not report half_close_effective');
 
@@ -143,7 +147,7 @@ test.describe('LB rule half-close and sockmap read-back', () => {
 
 	test('@gw HC-pd: a P/D rule shows why the gateway default is not applied to it', async ({page}) => {
 		const name = 'e2e-lb-hc-pd';
-		await seedRule({name, externalIP: '203.0.113.203', port: 8603, mode: 4, pd_disagg_mode: true}, [endpoint(203, 1), endpoint(204, 2)]);
+		await seedRule({name, externalIP: FP_VIP, port: 8603, mode: 4, pd_disagg_mode: true}, [endpoint(203, 1), endpoint(204, 2)]);
 		const effective: HalfCloseEffective | undefined = (await storedRule(name)).half_close_effective;
 		test.skip(!effective?.mode, 'this gateway does not report half_close_effective');
 		test.skip(!effective?.not_applied, `this gateway applies its default to a P/D rule (${JSON.stringify(effective)})`);
@@ -155,7 +159,7 @@ test.describe('LB rule half-close and sockmap read-back', () => {
 
 	test('@gw HC-states: every reported state is shown as reported, known or not', async ({page}) => {
 		const name = 'e2e-lb-hc-states';
-		await seedRule({name, externalIP: '203.0.113.205', port: 8605, mode: 4}, [endpoint(205)]);
+		await seedRule({name, externalIP: FP_VIP, port: 8605, mode: 4}, [endpoint(205)]);
 		await refreshUntilRow(page, name);
 
 		// One stubbed read: the gateway's own list, with this rule's two

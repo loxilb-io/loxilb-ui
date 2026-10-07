@@ -33,6 +33,7 @@ import {
 	activeInstance,
 	AIManagementReadiness,
 	E2E_PREFIX,
+	fullproxyVip,
 	gatewayExportsJwksGauges,
 	gatewayJwtAuthReadiness,
 	gw,
@@ -44,6 +45,10 @@ import {
 import {confirmDelete, dialog, dialogButton, dialogTitle, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 import {field} from '../../helpers/form';
 import {grid, refreshUntilRow, rowByText, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
+
+// A fullproxy rule is a listener the gateway binds, so its VIP is an address
+// of the gateway (helpers/api.ts, fullproxyVip).
+const FP_VIP = fullproxyVip();
 
 const LB_PATH = '/config/loadbalancer';
 // 8080 is claimed by the co-hosted OAM and rejected by the gateway's
@@ -330,7 +335,7 @@ test.describe('@gw AI JWT auth profiles', () => {
 		// ⚠️ Deliberately NAMELESS. A live gateway carried four unnamed rules out
 		// of five, and a refusal built from the rule name alone renders
 		// "referenced by 1 LB rule(s): ." — an identifier that names nothing.
-		await apiCreateBoundRule({name: '', externalIP: '203.0.113.61'});
+		await apiCreateBoundRule({name: '', externalIP: FP_VIP});
 
 		// ⚠️ Deliberately NO page.reload(). This page was painted before either
 		// object existed, which is precisely the operator's situation when a rule
@@ -356,7 +361,7 @@ test.describe('@gw AI JWT auth profiles', () => {
 		// predict whether a delete will be refused — and this loop then fails.
 		await expect(async () => {
 			await toolbarButton(page, 'Refresh').click();
-			await expect(rowByText(page, PROFILE).first()).toContainText(`203.0.113.61:${LB_PORT}`, {timeout: 3_000});
+			await expect(rowByText(page, PROFILE).first()).toContainText(`${FP_VIP}:${LB_PORT}`, {timeout: 3_000});
 		}).toPass({timeout: 30_000});
 
 		await selectRowByText(page, PROFILE);
@@ -374,7 +379,7 @@ test.describe('@gw AI JWT auth profiles', () => {
 		// VIP:port is the gateway's OWN vocabulary — its 409 reads
 		// "referenced by rule(s): 203.0.113.61:18443" — so the pre-check and the
 		// server point at the same rule the same way.
-		await expect(err, 'an unnamed rule is still identified').toContainText(`203.0.113.61:${LB_PORT}`);
+		await expect(err, 'an unnamed rule is still identified').toContainText(`${FP_VIP}:${LB_PORT}`);
 		// J-E2E-5: a fullproxy rule cannot be edited in place, so "detach it"
 		// names a control the product does not offer.
 		await expect(err, 'the advice must be one the UI can actually carry out').not.toContainText(/detach/i);
@@ -465,14 +470,14 @@ test.describe('@gw AI JWT auth profiles', () => {
 	test('the gateway itself refuses with 409 — the contract the UI race branch depends on', async () => {
 		test.skip(!readiness.ready, readiness.reason);
 		await apiCreateProfile();
-		await apiCreateBoundRule({name: 'e2e-jwt-bound', externalIP: '203.0.113.62'});
+		await apiCreateBoundRule({name: 'e2e-jwt-bound', externalIP: FP_VIP});
 
 		// The UI's pre-check can always be raced by a rule created after its read,
 		// so the 409 branch is reachable in production. Pin the status it keys on.
 		const resp = await gw('DELETE', `${JWTPROFILE_PATH}/${encodeURIComponent(PROFILE)}`);
 		expect(resp.status, 'a referenced profile is refused with 409').toBe(409);
 		const text = await resp.text();
-		expect(text, 'the refusal identifies the blocking rule').toContain('203.0.113.62');
+		expect(text, 'the refusal identifies the blocking rule').toContain(FP_VIP);
 
 		// And it becomes deletable once the rule is gone — proving the refusal was
 		// the reference and not a permanently undeletable profile.

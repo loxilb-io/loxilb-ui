@@ -9,18 +9,22 @@
 // validated, so a dropped/coerced 8:2 weight is caught.
 //---------------------------------------------------------
 import {test} from '../../../fixtures';
-import {activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
+import {fullproxyVip, activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
 import {cleanupLbByName, LbRecipe, runLbScenario} from '../_recipes';
+
+// A fullproxy rule is a listener the gateway binds, so its VIP is an address
+// of the gateway (helpers/api.ts, fullproxyVip).
+const FP_VIP = fullproxyVip();
 
 const recipe: LbRecipe = {
 	cicd: 'cicd/vllm-fullproxy-wrr',
 	name: 'e2e-cicd-ai-wrr',
-	vip: '203.0.113.107',
-	port: '2020',
+	vip: FP_VIP,
+	port: '20107',
 	mode: 'fullproxy',
 	sel: 'chwbl',
 	security: 'https',
-	host: '203.0.113.107',
+	host: FP_VIP,
 	ai: {chwblPrefixHashLevel: '1'},
 	endpoints: [
 		{ip: '198.51.100.1', targetPort: '8000', weight: '8'},

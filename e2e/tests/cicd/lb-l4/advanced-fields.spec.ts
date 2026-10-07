@@ -10,8 +10,12 @@
 // P6 tunnel/egress feature; it is validated there.
 //---------------------------------------------------------
 import {test} from '../../../fixtures';
-import {activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
+import {activeInstance, fullproxyVip, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
 import {cleanupLbByName, LbRecipe, runLbScenario} from '../_recipes';
+
+// A fullproxy rule is a listener the gateway binds, so its VIP is an address
+// of the gateway (helpers/api.ts, fullproxyVip).
+const FP_VIP = fullproxyVip();
 
 // fullnat rule setting SNAT + private-IP + proxyprotocolv2 + block all at
 // once — proves the re-enabled controls each reach the POST body (UI wiring)
@@ -47,8 +51,8 @@ const fullnat: LbRecipe = {
 const fullproxy: LbRecipe = {
 	cicd: 'P2/advanced-fullproxy-security',
 	name: 'e2e-cicd-adv-fullproxy',
-	vip: '203.0.113.52',
-	port: '18052',
+	vip: FP_VIP,
+	port: '20052',
 	protocol: 'tcp',
 	mode: 'fullproxy',
 	security: 'https',

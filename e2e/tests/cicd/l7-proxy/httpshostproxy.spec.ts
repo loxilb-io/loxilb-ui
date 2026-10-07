@@ -5,14 +5,18 @@
 //   fullproxy → Security=https → Host=loxilb.io) and validates REST read-back.
 //---------------------------------------------------------
 import {test} from '../../../fixtures';
-import {activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
+import {fullproxyVip, activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
 import {cleanupLbByName, LbRecipe, runLbScenario} from '../_recipes';
+
+// A fullproxy rule is a listener the gateway binds, so its VIP is an address
+// of the gateway (helpers/api.ts, fullproxyVip).
+const FP_VIP = fullproxyVip();
 
 const recipe: LbRecipe = {
 	cicd: 'cicd/httpshostproxy',
 	name: 'e2e-cicd-httpshostproxy',
-	vip: '203.0.113.64',
-	port: '2020',
+	vip: FP_VIP,
+	port: '20064',
 	protocol: 'tcp',
 	mode: 'fullproxy',
 	security: 'https',

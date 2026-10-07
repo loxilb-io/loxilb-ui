@@ -14,20 +14,25 @@
 // original and the real datapath semantics.
 //---------------------------------------------------------
 import {test} from '../../../fixtures';
-import {activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
+import {fullproxyVip, activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
 import {cleanupLbByName, LbRecipe, runLbScenario, SecurityName} from '../_recipes';
+
+// A fullproxy rule is a listener the gateway binds, so its VIP is an address
+// of the gateway (helpers/api.ts, fullproxyVip).
+const FP_VIP = fullproxyVip();
 
 interface ProxyMode {
 	cicd: string;
 	slug: string;
 	vip: string;
+	port: string;
 	security?: SecurityName;
 }
 
 const modes: ProxyMode[] = [
-	{cicd: 'cicd/vllm-httpproxy', slug: 'plain', vip: '203.0.113.104'}, // HTTP → security omitted (Plain=0)
-	{cicd: 'cicd/vllm-fullproxy', slug: 'https', vip: '203.0.113.105', security: 'https'},
-	{cicd: 'cicd/mcp-e2ehttps', slug: 'e2ehttps', vip: '203.0.113.106', security: 'e2ehttps'},
+	{cicd: 'cicd/vllm-httpproxy', slug: 'plain', vip: FP_VIP, port: '20104'}, // HTTP → security omitted (Plain=0)
+	{cicd: 'cicd/vllm-fullproxy', slug: 'https', vip: FP_VIP, port: '20105', security: 'https'},
+	{cicd: 'cicd/mcp-e2ehttps', slug: 'e2ehttps', vip: FP_VIP, port: '20106', security: 'e2ehttps'},
 ];
 
 function recipe(m: ProxyMode): LbRecipe {
@@ -35,7 +40,7 @@ function recipe(m: ProxyMode): LbRecipe {
 		cicd: m.cicd,
 		name: `e2e-cicd-ai-proxy-${m.slug}`,
 		vip: m.vip,
-		port: '2020',
+		port: m.port,
 		mode: 'fullproxy',
 		host: m.vip,
 		security: m.security,

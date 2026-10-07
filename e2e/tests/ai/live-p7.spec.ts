@@ -22,7 +22,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {activeInstance, gw, gwJson} from '../../helpers/api';
+import {activeInstance, fullproxyVip, gw, gwJson} from '../../helpers/api';
 import {cleanupLbByName, driveLbCreate, LbRecipe} from '../cicd/_recipes';
 import {rowByText, showAllRows, toolbarButton} from '../../helpers/table';
 import {confirmDelete, dialog, dialogButton} from '../../helpers/dialogs';
@@ -36,13 +36,17 @@ const PROFILES_PATH = '/config/ai/model-profiles';
 const FIXTURE_PROFILE = 'qwen3-06b-completions-v1';
 const FIXTURE_MODEL = 'Qwen/Qwen3-0.6B';
 
+// A fullproxy rule is a listener the gateway binds, so its VIP is an address
+// of the gateway (helpers/api.ts, fullproxyVip).
+const FP_VIP = fullproxyVip();
+
 const RULE: LbRecipe = {
 	cicd: 'live-p7 (not a cicd port)',
 	name: 'e2e-mp-live-p7',
-	vip: '192.0.2.77',
+	vip: FP_VIP,
 	port: '18077',
 	mode: 'fullproxy',
-	host: '192.0.2.77',
+	host: FP_VIP,
 	// kvBlockSize matters twice: it is realistic for a KV-exact rule, and the
 	// recipe driver checks the mandatory Block/Page Size confirmation only
 	// when it is set (kvExactMode 1/3 refuses Create unconfirmed).

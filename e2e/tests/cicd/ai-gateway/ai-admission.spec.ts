@@ -14,19 +14,23 @@
 // than asserting against a gateway that cannot store the fields.
 //---------------------------------------------------------
 import {expect, test} from '../../../fixtures';
-import {activeInstance, gwJson, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
+import {fullproxyVip, activeInstance, gwJson, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
 import {rowByText} from '../../../helpers/table';
 import {cleanupLbByName, LB_PATH, LbRecipe, runLbScenario} from '../_recipes';
+
+// A fullproxy rule is a listener the gateway binds, so its VIP is an address
+// of the gateway (helpers/api.ts, fullproxyVip).
+const FP_VIP = fullproxyVip();
 
 const LB_ALL = `${LB_PATH}/all`;
 
 const declared: LbRecipe = {
 	cicd: 'cicd/ai-admission',
 	name: 'e2e-cicd-ai-adm',
-	vip: '203.0.113.110',
-	port: '2030',
+	vip: FP_VIP,
+	port: '20110',
 	mode: 'fullproxy',
-	host: '203.0.113.110',
+	host: FP_VIP,
 	pathPrefix: '/',
 	pathMatchMode: 'prefix',
 	ai: {modelName: 'adm-test', sseMode: true, fcMode: 'observe', fcMaxOutstanding: '64', fcMaxQueueDepth: '8', fcMaxQueueWaitMs: '2000'},
@@ -36,10 +40,10 @@ const declared: LbRecipe = {
 const untouched: LbRecipe = {
 	cicd: 'cicd/ai-admission',
 	name: 'e2e-cicd-ai-adm-default',
-	vip: '203.0.113.111',
-	port: '2031',
+	vip: FP_VIP,
+	port: '20111',
 	mode: 'fullproxy',
-	host: '203.0.113.111',
+	host: FP_VIP,
 	pathPrefix: '/',
 	pathMatchMode: 'prefix',
 	ai: {modelName: 'adm-default', sseMode: true},
