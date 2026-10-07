@@ -34,7 +34,7 @@ import {Fragment, useCallback, useEffect, useMemo, useRef, useState} from 'react
 import {useSearchParams} from 'react-router-dom';
 import {IEndpoint, ILBData, IServiceConfiguration} from 'types/load_balancer';
 import {lbRuleRowId} from 'types/lb_identity';
-import {buildFullproxyReplaceBody, changedFullproxyIdentity, FullproxyReplacePlan, planFullproxyReplace} from 'types/lb_fullproxy_replace';
+import {buildFullproxyReplaceBody, changedFullproxyIdentity, fullproxyReplaceableChanges, FullproxyReplacePlan, planFullproxyReplace} from 'types/lb_fullproxy_replace';
 import {IMirrorConfiguration} from 'types/mirror';
 import {buildQoSRuleTarget, IPolicyConfiguration} from 'types/qos';
 import {toPageState} from 'components/state/pageState';
@@ -411,7 +411,8 @@ export default function LBRulePage() {
 					res = await request_create_load_balancer_config(inst, serviceConfig, effectiveFlavor);
 				} else {
 					// Change detection shared by both update strategies.
-					const saPatch = lbServiceArgumentsPatch(sa, osa);
+					const formPatch = lbServiceArgumentsPatch(sa, osa);
+					const saPatch = editStrategy === 'replace-fullproxy' ? fullproxyReplaceableChanges(formPatch) : formPatch;
 					const endpointsChanged = JSON.stringify(serviceConfig.endpoints) !== JSON.stringify(editableEndpoints);
 					// Read-back reports empty lists as null; the form emits [] —
 					// normalize both sides so that difference is not a "change".
@@ -663,7 +664,7 @@ export default function LBRulePage() {
 						{cur_tab_idx === 4 && rule_name && <ConntrackTablePanel lb_name={rule_name} />}
 							{cur_tab_idx === 5 && lb_target && <QoSPanel data={qos_info} lb_target={lb_target} />}
 						{cur_tab_idx === 6 && rule_name && <MirrorPanel data={mirror_info} lb_name={rule_name} />}
-						{cur_tab_idx === 7 && <AIGatewayPanel serviceArguments={selectedItem.serviceArguments} />}
+						{cur_tab_idx === 7 && <AIGatewayPanel serviceArguments={selectedItem.serviceArguments} readAtMs={lb_query.dataUpdatedAt} />}
 					</Stack>
 				</LowerSection>
 			)}

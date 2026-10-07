@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {buildFullproxyReplaceBody, changedFullproxyIdentity, FULLPROXY_IN_PLACE_FIELDS, FullproxyChangeSet, planFullproxyReplace} from './lb_fullproxy_replace';
+import {buildFullproxyReplaceBody, changedFullproxyIdentity, FULLPROXY_IN_PLACE_FIELDS, fullproxyReplaceableChanges, FullproxyChangeSet, planFullproxyReplace} from './lb_fullproxy_replace';
 import {LB_FIELD_CONFIRMATION} from 'hooks/query/lbRuleApplied';
 import {IServiceConfiguration} from './load_balancer';
 
@@ -147,5 +147,33 @@ describe('the body of a fullproxy replace', () => {
 		const body = buildFullproxyReplaceBody(fresh, {argumentsPatch: {}, endpoints, allowedSources: []});
 		expect(body.endpoints).toBe(endpoints);
 		expect(body.allowedSources).toEqual([]);
+	});
+});
+
+// On a replace the gateway keeps an admission value the body leaves out, so
+// an omission cannot carry "the operator cleared this".
+describe('a blanked admission field on a replace', () => {
+	it('sends a selector returned to the gateway default as inherit', () => {
+		expect(fullproxyReplaceableChanges({fc_mode: undefined, fc_adaptive: '', fc_expose_headers: undefined})).toEqual({
+			fc_mode: 'inherit',
+			fc_adaptive: 'inherit',
+			fc_expose_headers: 'inherit',
+		});
+	});
+
+	it('drops a blanked number: it is no change, and never becomes a 0', () => {
+		const changes = fullproxyReplaceableChanges({fc_max_outstanding: undefined, fc_max_queue_depth: ''});
+		expect(changes).toEqual({});
+		expect(Object.keys(changes)).toEqual([]);
+	});
+
+	it('keeps every value the operator gave, an explicit 0 included', () => {
+		expect(fullproxyReplaceableChanges({fc_max_outstanding: 0, fc_mode: 'off', fc_max_queue_depth: 8})).toEqual({fc_max_outstanding: 0, fc_mode: 'off', fc_max_queue_depth: 8});
+	});
+
+	it('leaves a blank on any other field as the form gave it', () => {
+		const changes = fullproxyReplaceableChanges({host: '', model_name: undefined, half_close_mode: undefined});
+		expect(Object.keys(changes).sort()).toEqual(['half_close_mode', 'host', 'model_name']);
+		expect(changes.host).toBe('');
 	});
 });

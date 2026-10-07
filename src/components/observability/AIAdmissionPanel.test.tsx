@@ -36,6 +36,8 @@ describe('AIAdmissionPanel', () => {
 	it('says an all-off gate is off and prints none of its structural zeros', () => {
 		render(<AIAdmissionPanel report={ok([pool({mode: 'off'})])} />);
 		expect(screen.getByText(/The capacity gate is off on every pool/)).toBeTruthy();
+		// A rule's own mode switches the gate on too; the process setting is not the only way.
+		expect(screen.getByText(/switched on per rule with the rule's Admission Mode, or for every rule that declares none with the gateway's LLB_FC_MODE setting/)).toBeTruthy();
 		expect(screen.queryByText('Refusal decisions')).toBeNull();
 		expect(screen.queryByText('Gated pools')).toBeNull();
 	});

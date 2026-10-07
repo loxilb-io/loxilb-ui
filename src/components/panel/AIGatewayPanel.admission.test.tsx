@@ -36,6 +36,16 @@ const healthy: IFcEffective = {
 
 afterEach(cleanup);
 
+// A fixed instant: the panel formats it, the test formats the same number.
+const READ_AT = 1_780_000_000_000;
+
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** The value under a label: SingleTextBox renders the label, then its value. */
+function valueOf(label: string): string | null | undefined {
+	return screen.getByText(label, {exact: true}).closest('.MuiStack-root')?.querySelector('.MuiTypography-body2')?.textContent;
+}
+
 describe('AIGatewayPanel admission read-back', () => {
 	it('shows the values in force with their source, and no alert for a healthy pool', () => {
 		render(<AIGatewayPanel serviceArguments={args({fc_effective: healthy})} />);
@@ -72,9 +82,46 @@ describe('AIGatewayPanel admission read-back', () => {
 		expect(screen.queryByText('Admission Control')).toBeNull();
 	});
 
-	it('shows 0 as "Unlimited" and a zero queue depth as refusal, not as a number', () => {
-		render(<AIGatewayPanel serviceArguments={args({fc_effective: {...healthy, max_outstanding: 0, queue_depth: 0}})} />);
+	// The gateway's JSON drops a zero, so this is what an unlimited ceiling, a
+	// pool with no queue and an idle pool actually look like on the wire.
+	it('reads a base member the gateway left out as zero: unlimited, no queue, nothing executing', () => {
+		const {max_outstanding, queue_depth, queue_wait_ms, inflight, queued, ...rest} = healthy;
+		render(<AIGatewayPanel serviceArguments={args({fc_effective: rest})} />);
 		expect(screen.getByText('Unlimited (rule)')).toBeTruthy();
 		expect(screen.getByText('None (over the ceiling is refused) (environment)')).toBeTruthy();
+		expect(valueOf('Executing Now')).toBe('0');
+		expect(valueOf('Waiting Now')).toBe('0');
+		// Not the blank a missing value renders as.
+		expect(valueOf('Ceiling in Force')).toBe('Unlimited (rule)');
+	});
+
+	it('always shows what the pool holds now, queued or not', () => {
+		render(<AIGatewayPanel serviceArguments={args({fc_effective: healthy})} />);
+		expect(valueOf('Executing Now')).toBe('3');
+		expect(valueOf('Waiting Now')).toBe('0');
+	});
+
+	it('shows the endpoint ceiling that applies: the normal role, or prefill and decode on a P/D rule', () => {
+		const effective: IFcEffective = {...healthy, ep_max_inflight: 4, prefill_max_inflight: 2, source: {...healthy.source, ep_max_inflight: 'env', prefill_max_inflight: 'rule', decode_max_inflight: 'default'}};
+		const {unmount} = render(<AIGatewayPanel serviceArguments={args({fc_effective: effective})} />);
+		expect(valueOf('Endpoint Ceiling')).toBe('4 (environment)');
+		expect(screen.queryByText('Prefill Endpoint Ceiling')).toBeNull();
+		unmount();
+
+		render(<AIGatewayPanel serviceArguments={args({pd_disagg_mode: true, fc_effective: effective})} />);
+		expect(valueOf('Prefill Endpoint Ceiling')).toBe('2 (rule)');
+		// Left out by the gateway: zero, which on a ceiling is "unlimited".
+		expect(valueOf('Decode Endpoint Ceiling')).toBe('Unlimited (default)');
+		expect(screen.queryByText('Endpoint Ceiling')).toBeNull();
+	});
+
+	it('says when the counts were read, and that they move; nothing when the read time is unknown', () => {
+		render(<AIGatewayPanel serviceArguments={args({fc_effective: healthy})} readAtMs={READ_AT} />);
+		expect(screen.getByText(new RegExp(`as read at ${escapeRegExp(new Date(READ_AT).toLocaleTimeString())} and move with traffic`))).toBeTruthy();
+		expect(screen.queryByRole('alert')).toBeNull();
+		cleanup();
+
+		render(<AIGatewayPanel serviceArguments={args({fc_effective: healthy})} />);
+		expect(screen.queryByText(/move with traffic/)).toBeNull();
 	});
 });

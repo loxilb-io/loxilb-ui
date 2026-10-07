@@ -225,6 +225,50 @@ test.describe('@gw AI admission control — mock contract', () => {
 		await expect(page.getByText(/^off\b/)).toHaveCount(0);
 	});
 
+	test('ADM-E2E-11: the detail shows what the pool holds now, reads a member the gateway left out as zero, and says when it was read', async ({page}) => {
+		// As the gateway serializes it: a zero is left out. An unlimited
+		// ceiling, a pool with no queue and an idle pool carry no member at all.
+		await openAIDetail(page, aiRule({
+			fc_effective: {mode: 'enforce', adaptive: 'off', adapt_state: 'off', source: {mode: 'env', max_outstanding: 'default', queue_depth: 'default', ep_max_inflight: 'default'}},
+		}));
+		const valueOf = (label: string) => page.getByText(label, {exact: true}).locator('xpath=ancestor::div[contains(@class,"MuiStack-root")][1]').locator('p');
+		await expect(valueOf('Ceiling in Force')).toHaveText('Unlimited (default)');
+		await expect(valueOf('Endpoint Ceiling')).toHaveText('Unlimited (default)');
+		await expect(valueOf('Queue (depth / wait)')).toHaveText('None (over the ceiling is refused) (default)');
+		await expect(valueOf('Executing Now')).toHaveText('0');
+		await expect(valueOf('Waiting Now')).toHaveText('0');
+		await expect(page.getByText(/Executing and waiting are as read at .+ and move with traffic/)).toBeVisible();
+	});
+
+	test('ADM-E2E-12: on an existing rule a mode returned to the gateway default is sent as inherit, and a blanked number is no change', async ({page}) => {
+		await mockRuleList(page, [aiRule()]);
+		const writes = await recordWrites(page);
+		await page.goto(`instance/traffic/lb?name=${instName}`);
+		await selectRowByText(page, AI_RULE);
+		await openToolbarDialog(page, 'Edit', 'Edit Load Balancer Rule');
+		let aigw = await expandSection(page, /^AI Gateway/);
+		await expect(aigw.getByText(/a blank number is not sent and the rule keeps the value it has/)).toBeVisible();
+		await expect(aigw.getByText(/cannot be changed in place/)).toHaveCount(0);
+
+		// A blank alone asks for nothing the gateway would do.
+		await field(page, 'Max Outstanding', aigw).fill('');
+		await dialogButton(page, 'Update').click();
+		await expect(page.getByText('No changes to apply.')).toBeVisible({timeout: 20_000});
+		expect(writes).toHaveLength(0);
+		await dialogButton(page, 'OK').click();
+
+		await selectRowByText(page, AI_RULE);
+		await openToolbarDialog(page, 'Edit', 'Edit Load Balancer Rule');
+		aigw = await expandSection(page, /^AI Gateway/);
+		await selectOption(page, 'Admission Mode', 'Gateway default');
+		await dialogButton(page, 'Update').click();
+		await expect.poll(() => writes.length, {timeout: 20_000}).toBe(1);
+		const body = writes[0].postDataJSON();
+		// An omission would leave `observe` stored.
+		expect(body.serviceArguments.fc_mode).toBe('inherit');
+		expect(body.serviceArguments.fc_max_outstanding).toBe(64);
+	});
+
 	test('ADM-E2E-05: an admission change on an existing AI rule is sent as a whole-rule POST, without the read-back counters', async ({page}) => {
 		await mockRuleList(page, [aiRule()]);
 		const writes = await recordWrites(page);

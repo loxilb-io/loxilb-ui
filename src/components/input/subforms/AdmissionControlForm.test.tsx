@@ -103,7 +103,29 @@ describe('AdmissionControlForm', () => {
 		expect(screen.getByRole('button', {name: 'Admission Control'}).getAttribute('aria-expanded')).toBe('true');
 		expect((box('Max Outstanding') as HTMLInputElement).value).toBe('64');
 		expect((box('Queue Wait (ms)') as HTMLInputElement).value).toBe('2000');
-		expect(screen.getByText(/cannot be changed in place/)).toBeTruthy();
+		// An admission change on an existing rule is applied by a replace: the
+		// form must not send the operator off to build a second rule.
+		expect(screen.queryByText(/cannot be changed in place/)).toBeNull();
+	});
+
+	it('says what a blank does on each write: the default on a create, the stored value on an existing rule', () => {
+		const {unmount} = render(<AdmissionControlForm value={args({fc_mode: 'observe'})} onChange={vi.fn()} pdTopology={false} isEdit={false} declared={new Set(FC_FIELDS)} />);
+		expect(screen.getByText(/A blank field is not sent, and the gateway default applies/)).toBeTruthy();
+		expect(screen.getByText(/0 is sent and selects the same default: it does not mean unlimited or none/)).toBeTruthy();
+		unmount();
+
+		renderForm(args({fc_mode: 'observe'}), {isEdit: true});
+		expect(screen.getByText(/a blank number is not sent and the rule keeps the value it has. Enter 0 to return a field to the gateway default/)).toBeTruthy();
+		expect(screen.queryByText(/A blank field is not sent, and the gateway default applies/)).toBeNull();
+	});
+
+	it('says the rule\'s own mode comes before the gateway-wide one, only where the gateway takes a mode', () => {
+		const {unmount} = render(<AdmissionControlForm value={args({fc_mode: 'observe'})} onChange={vi.fn()} pdTopology={false} isEdit={false} declared={new Set(FC_FIELDS)} />);
+		expect(screen.getByText(/a rule can enforce, observe or switch the gate off whatever LLB_FC_MODE says/)).toBeTruthy();
+		unmount();
+
+		renderForm(args({fc_max_outstanding: 8}), {declared: ['fc_max_outstanding']});
+		expect(screen.queryByText(/LLB_FC_MODE/)).toBeNull();
 	});
 
 	it('starts collapsed on a rule that declares nothing', () => {
