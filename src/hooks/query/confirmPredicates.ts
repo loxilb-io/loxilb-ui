@@ -30,7 +30,38 @@
 //   discriminators were specified. That is tight enough that a peer cannot
 //   confirm someone else's write, and loose enough that a server default
 //   cannot hide one.
+//
+//   APPLIED (create/update, by value) — being listed is not enough when the
+//   row was there before the write: an existing rule, tenant, user or profile
+//   satisfies APPEARED however stale its values are. An APPLIED predicate
+//   also compares what was sent, each field the way its endpoint returns it.
+//   The rule one lives in lbRuleApplied.ts; the rest are below.
+//
+// What each confirmation reads. A confirmation is a read of the target of the
+// write and nothing wider, so an operator can tell which state it touched:
+//
+//   LB rule create / update / delete      GET /config/loadbalancer/all
+//   endpoint create / delete              GET /config/endpoint/all
+//   API key create / patch / delete       GET /config/ai/apikey
+//   tenant quota upsert                   GET /config/ai/tenant/ratelimit/{tenant_id}
+//                                         — that tenant only; the table's own
+//                                         read of the tenants already on screen
+//                                         follows once, afterwards
+//   user quota upsert                     GET /config/ai/user/ratelimit/{tenant_id}/{user_id}
+//                                         — that user only; then the tenant's
+//                                         user list once
+//   user quota delete                     GET /config/ai/user/ratelimit/{tenant_id}
+//   quota defaults upsert / delete        GET /config/ai/ratelimit/defaults/{scope}
+//                                         for the rows already on screen
+//   JWT profile upsert / delete           GET /config/ai/jwtauthprofile
+//
+// None of them reads a tenant, user, rule or profile other than the one that
+// was written, apart from the list the page was already showing. None of them
+// observes the data plane: a confirmed write is stored configuration, not an
+// installed policy and not a served request.
 //---------------------------------------------------------
+import {ITenantRateLimitMod, IUserRateLimitMod, normalizeTenantRateLimit, normalizeUserRateLimit} from 'types/ai';
+import {IJWTAuthProfileEntry, JWT_PROFILE_DEFAULTS} from 'types/ai_jwt';
 import {IEndpointItem} from 'types/endpoint';
 import {canonicalLBRuleIdentity} from 'types/lb_identity';
 import {IServiceArguments, IServiceConfiguration} from 'types/load_balancer';
@@ -96,6 +127,37 @@ export const endpointAppeared =
 		rows.some(r => (r.hostName ?? '') === submitted.hostName && (!submitted.name || r.name === submitted.name));
 
 //---------------------------------------------------------
+// Shared canonical forms for the quota reads
+//---------------------------------------------------------
+
+/** A count as the quota endpoints mean it: absent, null and 0 are one value. */
+const sameCount = (asked: number | null | undefined, served: number | null | undefined): boolean => (asked ?? 0) === (served ?? 0);
+
+type ModelQuotaRow = {model?: string; tokens_per_min?: number | null} | null;
+
+/**
+ * Model quotas as a map, so order never matters. A row that is not a positive
+ * quota is no quota on these endpoints (zero removes it) and is left out —
+ * unless `keepRemovals` asks for it as an explicit 0, which is how a tenant
+ * upsert names a model it wants removed.
+ */
+function modelQuotas(rows: readonly ModelQuotaRow[] | null | undefined, keepRemovals = false): Map<string, number> {
+	const out = new Map<string, number>();
+	for (const row of rows ?? []) {
+		const model = (row?.model ?? '').trim();
+		if (model === '') continue;
+		const tpm = row?.tokens_per_min ?? 0;
+		if (tpm > 0) out.set(model, tpm);
+		else if (keepRemovals) out.set(model, 0);
+		else out.delete(model);
+	}
+	return out;
+}
+
+type ServedTenantRateLimit = {tenant_id?: string; rps?: number | null; tokens_per_min?: number | null; burst_pct?: number | null; model_limits?: ModelQuotaRow[] | null};
+type ServedUserRateLimit = {tenant_id?: string; user_id?: string; rps?: number | null; burst_size?: number | null; tokens_per_min?: number | null; model_limits?: ModelQuotaRow[] | null};
+
+//---------------------------------------------------------
 // AI API keys / tenant rate limits
 //---------------------------------------------------------
 
@@ -115,11 +177,39 @@ export const apiKeysGone =
 		return deletedKeyIds.every(id => !present.has(id));
 	};
 
-/** One rate-limit row per tenant, so the tenant id is the whole identity. */
-export const tenantRateLimitAppeared =
-	(tenantId: string) =>
-	(rows: {tenant_id?: string}[]): boolean =>
-		rows.some(r => r.tenant_id === tenantId);
+/**
+ * A tenant upsert landed: the tenant's own read now carries what was sent.
+ *
+ * The read is the INDIVIDUAL `GET …/tenant/ratelimit/{tenant_id}`, so `null`
+ * (its 404) means the entry is not there and never confirms.
+ *
+ * The two halves of the body have different write semantics, and each is
+ * compared the way it was written:
+ *
+ *   rps, tokens_per_min, burst_pct — REPLACED by every POST ("omission becomes
+ *   zero"), and stored as sent. All three are compared, absent equal to 0 on
+ *   both sides.
+ *
+ *   model_limits — each supplied row is its own upsert or removal, and a model
+ *   the body does not name is left alone. So only the NAMED models are
+ *   compared: a positive quota must read back equal, a zero (the tombstone an
+ *   edit appends for a removed row) must read back absent. A model this write
+ *   never mentioned is someone else's state and is not looked at.
+ */
+export const tenantRateLimitApplied =
+	(submitted: ITenantRateLimitMod) =>
+	(served: ServedTenantRateLimit | null): boolean => {
+		const want = normalizeTenantRateLimit(submitted);
+		if (!served || served.tenant_id !== want.tenant_id) return false;
+		if (!sameCount(want.rps, served.rps)) return false;
+		if (!sameCount(want.tokens_per_min, served.tokens_per_min)) return false;
+		if (!sameCount(want.burst_pct, served.burst_pct)) return false;
+
+		const servedQuota = modelQuotas(served.model_limits);
+		// Rows are applied in order and the last one wins, so the last row for
+		// a model is the one that was asked for.
+		return Array.from(modelQuotas(want.model_limits, true)).every(([model, asked]) => (servedQuota.get(model) ?? 0) === asked);
+	};
 
 /**
  * A patch landed on an API key: every field the operator actually CHANGED now
@@ -165,17 +255,32 @@ export const apiKeyPatchApplied =
 //---------------------------------------------------------
 // Per-user rate limits (Stage 4.2)
 //---------------------------------------------------------
-// The list is already scoped to one tenant, so the user id is the whole
-// identity within it. Both predicates are deliberately existence-only: the
-// gateway omits zero-valued fields from its read-back (proven on the API-key
-// path), so comparing VALUES here would make a landed write look absent
-// exactly when the operator set a limit to zero-means-inherit.
+// The list is scoped to one tenant and its rows carry NO model limits, so it
+// can prove that an entry is gone but not what an entry holds. An upsert is
+// therefore confirmed on the per-user read, a delete on the list.
 
-/** The user now has an explicit entry. */
-export const userRateLimitAppeared =
-	(userId: string) =>
-	(rows: {user_id?: string}[]): boolean =>
-		rows.some(r => r.user_id === userId);
+/**
+ * A user upsert landed: the user's own read now carries what was sent.
+ *
+ * The POST replaces the entry AND its model rows as a set, so everything in
+ * the body was asserted by this write: the three aggregate fields are compared
+ * (absent equal to 0 — a zero field falls through the ladder and is stored as
+ * sent), and the model quotas must match as a whole set, in any order. A model
+ * row left over from before the write means the replace did not land.
+ */
+export const userRateLimitApplied =
+	(submitted: IUserRateLimitMod) =>
+	(served: ServedUserRateLimit | null): boolean => {
+		const want = normalizeUserRateLimit(submitted);
+		if (!served || served.user_id !== want.user_id || served.tenant_id !== want.tenant_id) return false;
+		if (!sameCount(want.rps, served.rps)) return false;
+		if (!sameCount(want.burst_size, served.burst_size)) return false;
+		if (!sameCount(want.tokens_per_min, served.tokens_per_min)) return false;
+
+		const asked = modelQuotas(want.model_limits);
+		const got = modelQuotas(served.model_limits);
+		return asked.size === got.size && Array.from(asked).every(([model, tpm]) => got.get(model) === tpm);
+	};
 
 /**
  * The user's explicit entry is gone, so they have fallen back to the
@@ -242,3 +347,67 @@ export const rateLimitDefaultsGone =
 	(scope: string, ruleIdent?: string) =>
 	(rows: {scope?: string; rule_ident?: string}[]): boolean =>
 		!rows.some(sameDefaultsRow(scope, ruleIdent));
+
+//---------------------------------------------------------
+// JWT auth profiles
+//---------------------------------------------------------
+// The POST is create-or-replace of the WHOLE entry, so every field is asserted
+// by the write and every field is compared.
+//
+// "Absent" and "the documented default" are one configuration on this entry —
+// the contract says so outright ("zero or absent numeric fields select the
+// documented defaults; there is no field where zero is a meaningful
+// non-default") — so both sides are reduced to the value the gateway would
+// act on before they are compared. That keeps a profile sent without
+// `leeway_sec` equal to one read back with 0, with nothing, or with 30.
+//
+// Two fields have NO default to fold into, because empty is itself a
+// security-relevant setting: empty `audiences` skips the audience check and
+// empty `default_tenant` denies tokens with no tenant claim. They are compared
+// as they stand, with `null` (a nil Go slice) equal to `[]` and nothing else.
+
+const sortedList = (list: readonly string[] | null | undefined): string => JSON.stringify([...(list ?? [])].sort());
+
+/** A profile reduced to what the gateway acts on, as one comparable string. */
+function effectiveJwtProfile(profile: IJWTAuthProfileEntry): string {
+	const text = (value: string | undefined, fallback = ''): string => {
+		const trimmed = (value ?? '').trim();
+		return trimmed === '' ? fallback : trimmed;
+	};
+	const seconds = (value: number | undefined, fallback: number): number => (typeof value === 'number' && value > 0 ? value : fallback);
+	const algs = profile.algs ?? [];
+	return JSON.stringify([
+		text(profile.name),
+		text(profile.issuer),
+		text(profile.jwks_url),
+		sortedList(profile.audiences),
+		sortedList(algs.length > 0 ? algs : JWT_PROFILE_DEFAULTS.algs),
+		seconds(profile.leeway_sec, JWT_PROFILE_DEFAULTS.leeway_sec),
+		seconds(profile.refresh_sec, JWT_PROFILE_DEFAULTS.refresh_sec),
+		text(profile.tenant_claim, JWT_PROFILE_DEFAULTS.tenant_claim),
+		text(profile.user_claim, JWT_PROFILE_DEFAULTS.user_claim),
+		text(profile.models_claim),
+		text(profile.roles_claim, JWT_PROFILE_DEFAULTS.roles_claim),
+		text(profile.model_role_prefix, JWT_PROFILE_DEFAULTS.model_role_prefix),
+		text(profile.username_claim, JWT_PROFILE_DEFAULTS.username_claim),
+		text(profile.model_authz, JWT_PROFILE_DEFAULTS.model_authz),
+		profile.default_tenant ?? '',
+		profile.forward_identity === true,
+		profile.authorization_passthrough === true,
+	]);
+}
+
+/** The profile reads back under its name with the configuration that was sent. */
+export const jwtProfileApplied =
+	(submitted: IJWTAuthProfileEntry) =>
+	(rows: IJWTAuthProfileEntry[]): boolean => {
+		const name = (submitted.name ?? '').trim();
+		const row = rows.find(r => r.name === name);
+		return row !== undefined && effectiveJwtProfile(row) === effectiveJwtProfile(submitted);
+	};
+
+/** No profile is listed under exactly this name. Absence IS the confirmation. */
+export const jwtProfileGone =
+	(name: string) =>
+	(rows: {name?: string}[]): boolean =>
+		!rows.some(r => r.name === name);

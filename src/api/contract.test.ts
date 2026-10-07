@@ -3,6 +3,7 @@ import path from 'node:path';
 import {describe, expect, it} from 'vitest';
 import YAML from 'yaml';
 import {FC_FIELDS, FC_NUMERIC_MAX, READ_ONLY_SERVICE_ARGUMENTS} from 'types/ai_gateway';
+import {LB_FIELD_CONFIRMATION} from 'hooks/query/lbRuleApplied';
 
 // Backward-compatibility contract between this UI and the vendored backend
 // specs (api-spec/*). When a new loxilb-inference-gateway or oam-loxilb
@@ -230,6 +231,19 @@ describe('gateway spec contract — models the UI depends on', () => {
 		const serviceArguments = gateway.definitions.LoadbalanceEntry.properties.serviceArguments.properties;
 		const readOnly = Object.entries<any>(serviceArguments).filter(([, schema]) => schema.readOnly).map(([name]) => name);
 		expect([...READ_ONLY_SERVICE_ARGUMENTS].sort()).toEqual(readOnly.sort());
+	});
+
+	// The read-back confirmation of a rule write compares each field the way
+	// the gateway returns it. A new serviceArguments property fails here until
+	// someone decides how (or whether) it can be confirmed; a removed one fails
+	// until its entry is dropped.
+	it('every serviceArguments property has a read-back confirmation rule', () => {
+		const serviceArguments = gateway.definitions.LoadbalanceEntry.properties.serviceArguments.properties;
+		expect(Object.keys(LB_FIELD_CONFIRMATION).sort()).toEqual(Object.keys(serviceArguments).sort());
+	});
+
+	it('a read-only serviceArguments property is never part of a write confirmation', () => {
+		for (const field of READ_ONLY_SERVICE_ARGUMENTS) expect(LB_FIELD_CONFIRMATION[field].kind, field).toBe('skip');
 	});
 
 	// The admission form and serializer know these fields by name. A new fc_*

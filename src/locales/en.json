@@ -776,6 +776,7 @@
 	"{{succeeded}} succeeded, {{failed}} failed. {{error}}": "{{succeeded}} succeeded, {{failed}} failed. {{error}}",
 	"Submitted": "Submitted",
 	"The gateway accepted the change, but it has not appeared yet. Refresh to check again.": "The gateway accepted the change, but it has not appeared yet. Refresh to check again.",
+	"The gateway accepted the change, but it could not be read back to confirm it. Refresh to check again.": "The gateway accepted the change, but it could not be read back to confirm it. Refresh to check again.",
 	"Your session expired. Please sign in again.": "Your session expired. Please sign in again.",
 	"You were signed out after a period of inactivity. Please sign in again.": "You were signed out after a period of inactivity. Please sign in again.",
 	"Your session ended. Please sign in again.": "Your session ended. Please sign in again.",

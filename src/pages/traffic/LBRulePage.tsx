@@ -15,7 +15,7 @@ import QoSPanel from 'components/panel/QOSPanel';
 import SecondaryIPsPanel from 'components/panel/SecondaryIPPanel';
 import SettingsPanel from 'components/panel/SettingPanel';
 import LBTable from 'components/table/traffic/LBTable';
-import {query_get_load_balancer_config_all, request_create_load_balancer_config, request_delete_lb_by_full_key, request_delete_lb_by_name, request_patch_load_balancer_config} from 'connector/instance/load_balancer';
+import {buildLBCreateBody, query_get_load_balancer_config_all, request_create_load_balancer_config, request_delete_lb_by_full_key, request_delete_lb_by_name, request_patch_load_balancer_config} from 'connector/instance/load_balancer';
 import {query_get_model_profile} from 'connector/instance/model_profile';
 import {useQueryClient} from '@tanstack/react-query';
 import {useInstanceFromURL} from 'hooks/instanceHook';
@@ -28,6 +28,7 @@ import {fromQueryRefetch} from 'hooks/query/reconcile';
 import {capabilityQueryPrefix} from 'hooks/query/statusHook';
 import {useReconcileReporter} from 'hooks/query/reconcileReport';
 import {lbRuleAppeared, lbRulesGone} from 'hooks/query/confirmPredicates';
+import {lbRuleApplied, lbRuleIdentityArguments, LBRuleSubmission} from 'hooks/query/lbRuleApplied';
 import {t} from 'i18next';
 import {Fragment, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {useSearchParams} from 'react-router-dom';
@@ -157,6 +158,16 @@ export default function LBRulePage() {
 	const {errorPopup, showAddError, showUpdateError, showDeleteError, closeErrorPopup} = useErrorPopup();
 	const {report, reconcile} = useReconcileReporter();
 
+	// A write is confirmed by reading the rule back. On the gateway the values
+	// are compared too, against the body that actually went on the wire; the
+	// field-by-field rules were read from the gateway's own source. Upstream
+	// loxilb is a different server, so there the rule's identity is the check.
+	const confirmRuleWritten = useCallback(
+		(written: IServiceConfiguration) =>
+			effectiveFlavor === 'inference-gateway' ? lbRuleApplied(buildLBCreateBody(written, effectiveFlavor)) : lbRuleAppeared(written),
+		[effectiveFlavor],
+	);
+
 	// Every LB create and delete moves the source-check slot budget
 	// (lb_allowed_sources), so the capability read is re-asked after any write
 	// here. A failed write moved nothing; re-asking then is harmless and keeps
@@ -263,7 +274,7 @@ export default function LBRulePage() {
 				const res = await request_create_load_balancer_config(inst, submitted, effectiveFlavor);
 				invalidateCapabilities();
 				if (res.status === 'confirmed') {
-					await report({refetch: fromQueryRefetch(refetch), confirm: lbRuleAppeared(submitted)}, t('Added successfully.'));
+					await report({refetch: fromQueryRefetch(refetch), confirm: confirmRuleWritten(submitted)}, t('Added successfully.'));
 				} else {
 					// Localized mapped message; raw prose stays in diagnostics —
 					// except on a 412, where the gateway's sentence is the only
@@ -293,7 +304,7 @@ export default function LBRulePage() {
 	// an IGW dialog cannot submit through the initial OSS-safe projection and
 	// silently strip the Gateway-only fields the operator just entered.
 	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
-	}, [inst, caps.resolved, effectiveFlavor, showAddError, refetch, enableYes, queryClient, invalidateCapabilities]);
+	}, [inst, caps.resolved, effectiveFlavor, showAddError, refetch, enableYes, queryClient, invalidateCapabilities, confirmRuleWritten]);
 
 	// The table's Add button passes its click event — keep the seeded reopen
 	// path (AC-06 draft preservation) out of that signature.
@@ -359,6 +370,9 @@ export default function LBRulePage() {
 				});
 
 				let res;
+				// What the read-back is held to: the body of whichever write
+				// this edit turns into.
+				let confirm = confirmRuleWritten(serviceConfig);
 				if (editStrategy === 'create') {
 					// The VIP/port/proto composite key is immutable under PATCH —
 					// changing it means a different rule, so fall back to re-POST.
@@ -403,6 +417,11 @@ export default function LBRulePage() {
 						if (secondaryChanged) patch.secondaryIPs = serviceConfig.secondaryIPs;
 						if (allowedChanged) patch.allowedSources = serviceConfig.allowedSources;
 						res = await request_patch_load_balancer_config(inst, osa.externalIP, osa.port, osa.protocol, patch);
+						// The patch names the rule by its tuple and carries only
+						// what changed, so that is all the read-back can be held
+						// to: the row as selected, with the patched members on it.
+						const patched: LBRuleSubmission = {...patch, serviceArguments: {...lbRuleIdentityArguments(osa), ...saPatch} as IServiceConfiguration['serviceArguments']};
+						confirm = lbRuleApplied(patched, {write: 'patch'});
 					} else {
 						// Upstream loxilb has no in-place update for serviceArguments:
 						// a re-POST reconciles ONLY the endpoint set and 409s
@@ -438,6 +457,7 @@ export default function LBRulePage() {
 							}
 						}
 						res = await request_create_load_balancer_config(inst, upsert, effectiveFlavor);
+						confirm = confirmRuleWritten(upsert);
 					}
 				}
 				// A key-changed edit creates a rule and the upsert deletes and
@@ -446,7 +466,7 @@ export default function LBRulePage() {
 				if (res.status === 'confirmed') {
 					// The delete+re-create strategy can move the rule's key, so
 					// confirm against the EDITED identity, not the original row.
-					await report({refetch: fromQueryRefetch(refetch), confirm: lbRuleAppeared(serviceConfig)}, t('Load balancer rule updated successfully.'));
+					await report({refetch: fromQueryRefetch(refetch), confirm}, t('Load balancer rule updated successfully.'));
 				} else {
 					// Localized mapped message; raw prose stays in diagnostics —
 					// except on a 412, as on create: a PATCH adding allowedSources
@@ -461,7 +481,7 @@ export default function LBRulePage() {
 			{size: 'wide'},
 		);
 	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
-	}, [inst, caps, selectedItem, showUpdateError, refetch, enableYes, invalidateCapabilities]);
+	}, [inst, caps, selectedItem, showUpdateError, refetch, enableYes, invalidateCapabilities, confirmRuleWritten]);
 
 	const handleRefresh = () => {
 		set_selected_rows([]);

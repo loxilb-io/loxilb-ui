@@ -776,6 +776,7 @@
 	"{{succeeded}} succeeded, {{failed}} failed. {{error}}": "{{succeeded}}件成功、{{failed}}件失敗。{{error}}",
 	"Submitted": "送信済み",
 	"The gateway accepted the change, but it has not appeared yet. Refresh to check again.": "ゲートウェイは変更を受け付けましたが、まだ一覧に反映されていません。再読み込みして確認してください。",
+	"The gateway accepted the change, but it could not be read back to confirm it. Refresh to check again.": "ゲートウェイは変更を受け付けましたが、確認のための再読み込みに失敗しました。再読み込みして確認してください。",
 	"Your session expired. Please sign in again.": "セッションの有効期限が切れました。もう一度サインインしてください。",
 	"You were signed out after a period of inactivity. Please sign in again.": "一定時間操作がなかったため、サインアウトされました。もう一度サインインしてください。",
 	"Your session ended. Please sign in again.": "セッションが終了しました。もう一度サインインしてください。",

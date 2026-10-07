@@ -161,14 +161,15 @@ test.describe('@gw LB source-check slot budget — mock contract', () => {
 
 	test('SRC-E2E-05: after a confirmed create, reopening Add shows the re-asked budget', async ({page}) => {
 		const caps = await mockCapabilitiesSequence(page, [ready(20), ready(21)]);
-		// The create is confirmed by the rule appearing in the list.
-		let created = false;
-		await page.route(LB_ALL_RE, (route: Route) => {
-			const lbAttr = created ? [{...L4_RULE, serviceArguments: {...L4_RULE.serviceArguments, name: 'e2e-src-new', externalIP: '192.0.2.72', port: 18072}, allowedSources: [{prefix: SOURCE}]}] : [];
-			return route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({lbAttr})});
-		});
+		// The create is confirmed by the rule reading back with the values that
+		// were sent, so the list serves what the POST carried — the way a
+		// gateway that stored it would.
+		let created: unknown = null;
+		await page.route(LB_ALL_RE, (route: Route) =>
+			route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({lbAttr: created ? [created] : []})}),
+		);
 		await page.route(LB_WRITE_RE, (route: Route) => {
-			created = true;
+			created = route.request().postDataJSON();
 			return route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({code: 200, result: 'Success'})});
 		});
 		await page.goto(`instance/traffic/lb?name=${instName}`);

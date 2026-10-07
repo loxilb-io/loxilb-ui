@@ -22,7 +22,18 @@
 import {describe, expect, it} from 'vitest';
 import {IServiceConfiguration} from 'types/load_balancer';
 import {IEndpointItem} from 'types/endpoint';
-import {endpointAppeared, endpointsGone, lbRuleAppeared, lbRulesGone, rateLimitDefaultsApplied, rateLimitDefaultsGone} from 'hooks/query/confirmPredicates';
+import {
+	endpointAppeared,
+	endpointsGone,
+	jwtProfileApplied,
+	jwtProfileGone,
+	lbRuleAppeared,
+	lbRulesGone,
+	rateLimitDefaultsApplied,
+	rateLimitDefaultsGone,
+	tenantRateLimitApplied,
+	userRateLimitApplied,
+} from 'hooks/query/confirmPredicates';
 
 const lb = (args: Record<string, unknown>): IServiceConfiguration =>
 	({serviceArguments: {externalIP: '203.0.113.75', port: 8475, protocol: 'tcp', ...args}, endpoints: [], secondaryIPs: [], allowedSources: []}) as unknown as IServiceConfiguration;
@@ -127,5 +138,130 @@ describe('rate-limit defaults predicates (Stage 4.2b)', () => {
 		// A surviving sibling service must not confirm this one's removal.
 		expect(rateLimitDefaultsGone('rule', 'svc-1')([{scope: 'rule', rule_ident: 'svc-2'}])).toBe(true);
 		expect(rateLimitDefaultsGone('rule', 'svc-1')([{scope: 'rule', rule_ident: 'svc-1'}])).toBe(false);
+	});
+});
+
+describe('tenant quota is confirmed by value, on the tenant\'s own read', () => {
+	const sent = {tenant_id: 'acme', rps: 50, tokens_per_min: 60000, burst_pct: 0, model_limits: [{model: 'gpt-large', tokens_per_min: 9000}]};
+
+	it('an existing entry still holding the old numbers does not confirm an update', () => {
+		const stale = {tenant_id: 'acme', rps: 10, tokens_per_min: 60000, model_limits: [{model: 'gpt-large', tokens_per_min: 9000}]};
+		expect(tenantRateLimitApplied(sent)(stale)).toBe(false);
+	});
+
+	it('an existing entry still holding the old model quota does not confirm an update', () => {
+		const stale = {tenant_id: 'acme', rps: 50, tokens_per_min: 60000, model_limits: [{model: 'gpt-large', tokens_per_min: 100}]};
+		expect(tenantRateLimitApplied(sent)(stale)).toBe(false);
+	});
+
+	it('confirms when the zero it sent reads back absent and the model list is in another order', () => {
+		const both = {...sent, model_limits: [{model: 'gpt-large', tokens_per_min: 9000}, {model: 'gpt-small', tokens_per_min: 500}]};
+		const served = {tenant_id: 'acme', rps: 50, tokens_per_min: 60000, model_limits: [{model: 'gpt-small', tokens_per_min: 500}, {model: 'gpt-large', tokens_per_min: 9000}]};
+		expect(tenantRateLimitApplied(both)(served)).toBe(true);
+	});
+
+	it('a model the write did not name is left out of the comparison, because the upsert leaves it alone', () => {
+		const served = {tenant_id: 'acme', rps: 50, tokens_per_min: 60000, model_limits: [{model: 'gpt-large', tokens_per_min: 9000}, {model: 'untouched', tokens_per_min: 1}]};
+		expect(tenantRateLimitApplied(sent)(served)).toBe(true);
+	});
+
+	it('a removal sent as a zero quota confirms only once that model is gone', () => {
+		const removal = {tenant_id: 'acme', rps: 50, tokens_per_min: 60000, model_limits: [{model: 'gpt-large', tokens_per_min: 0}]};
+		const stillThere = {tenant_id: 'acme', rps: 50, tokens_per_min: 60000, model_limits: [{model: 'gpt-large', tokens_per_min: 9000}]};
+		const gone = {tenant_id: 'acme', rps: 50, tokens_per_min: 60000, model_limits: null};
+		expect(tenantRateLimitApplied(removal)(stillThere)).toBe(false);
+		expect(tenantRateLimitApplied(removal)(gone)).toBe(true);
+	});
+
+	it('a burst percentage that did not change is not confirmed', () => {
+		const served = {tenant_id: 'acme', rps: 50, tokens_per_min: 60000, burst_pct: 150, model_limits: [{model: 'gpt-large', tokens_per_min: 9000}]};
+		expect(tenantRateLimitApplied(sent)(served)).toBe(false);
+	});
+
+	it('a missing entry (the read answered 404) never confirms', () => {
+		expect(tenantRateLimitApplied(sent)(null)).toBe(false);
+	});
+
+	it('compares the identifier the connector sends, which is trimmed', () => {
+		const served = {tenant_id: 'acme', rps: 50, tokens_per_min: 60000, model_limits: [{model: 'gpt-large', tokens_per_min: 9000}]};
+		expect(tenantRateLimitApplied({...sent, tenant_id: ' acme '})(served)).toBe(true);
+	});
+});
+
+describe('user quota is confirmed by value, on the user\'s own read', () => {
+	const sent = {tenant_id: 'acme', user_id: 'alice', rps: 5, burst_size: 0, tokens_per_min: 0, model_limits: [{model: 'gpt-large', tokens_per_min: 700}]};
+	const landed = {tenant_id: 'acme', user_id: 'alice', rps: 5, model_limits: [{model: 'gpt-large', tokens_per_min: 700}]};
+
+	it('confirms a landed write whose zero fields read back absent', () => {
+		expect(userRateLimitApplied(sent)(landed)).toBe(true);
+	});
+
+	it('an existing entry still holding the old numbers does not confirm an update', () => {
+		expect(userRateLimitApplied(sent)({...landed, rps: 1})).toBe(false);
+		expect(userRateLimitApplied(sent)({...landed, tokens_per_min: 4000})).toBe(false);
+	});
+
+	it('a model row that should have been replaced away does not confirm', () => {
+		// The model set is replaced as a whole, so a survivor means the replace has not landed.
+		const survivor = {...landed, model_limits: [{model: 'gpt-large', tokens_per_min: 700}, {model: 'old-model', tokens_per_min: 10}]};
+		expect(userRateLimitApplied(sent)(survivor)).toBe(false);
+	});
+
+	it('clearing every model row confirms on null as well as on an empty list', () => {
+		const cleared = {...sent, model_limits: []};
+		expect(userRateLimitApplied(cleared)({tenant_id: 'acme', user_id: 'alice', rps: 5, model_limits: null})).toBe(true);
+		expect(userRateLimitApplied(cleared)({tenant_id: 'acme', user_id: 'alice', rps: 5, model_limits: []})).toBe(true);
+		expect(userRateLimitApplied(cleared)(landed)).toBe(false);
+	});
+
+	it('another user, or the same user under another tenant, never confirms', () => {
+		expect(userRateLimitApplied(sent)({...landed, user_id: 'bob'})).toBe(false);
+		expect(userRateLimitApplied(sent)({...landed, tenant_id: 'other'})).toBe(false);
+		expect(userRateLimitApplied(sent)(null)).toBe(false);
+	});
+});
+
+describe('JWT profile is confirmed by value', () => {
+	const sent = {name: 'keycloak', issuer: 'https://idp.example/realms/a', audiences: ['api', 'web'], model_authz: 'allow-all' as const, default_tenant: '', forward_identity: true};
+
+	it('an existing profile still holding the old issuer does not confirm a replace', () => {
+		expect(jwtProfileApplied(sent)([{...sent, issuer: 'https://idp.example/realms/OLD'}])).toBe(false);
+	});
+
+	it.each([
+		['audiences', {audiences: ['api']}],
+		['algs', {algs: ['RS512']}],
+		['leeway_sec', {leeway_sec: 120}],
+		['tenant_claim', {tenant_claim: 'org'}],
+		['models_claim', {models_claim: 'models'}],
+		['model_authz', {model_authz: 'claims-required' as const}],
+		['default_tenant', {default_tenant: 'fallback'}],
+		['forward_identity', {forward_identity: false}],
+		['authorization_passthrough', {authorization_passthrough: true}],
+	])('a stale %s does not confirm', (_field, stale) => {
+		expect(jwtProfileApplied(sent)([{...sent, ...stale}])).toBe(false);
+	});
+
+	it('a field left to its default confirms whether the gateway answers nothing, zero, null or the default itself', () => {
+		const zeros = {...sent, leeway_sec: 0, refresh_sec: 0, algs: null as unknown as string[], jwks_url: '', tenant_claim: ''};
+		const spelled = {...sent, leeway_sec: 30, refresh_sec: 3600, algs: ['ES256', 'RS256'], tenant_claim: 'tenant_id', user_claim: 'sub', forward_identity: true, authorization_passthrough: false};
+		expect(jwtProfileApplied(sent)([zeros])).toBe(true);
+		expect(jwtProfileApplied(sent)([spelled])).toBe(true);
+	});
+
+	it('an audience list in another order confirms; an emptied one does not', () => {
+		expect(jwtProfileApplied(sent)([{...sent, audiences: ['web', 'api']}])).toBe(true);
+		// Empty audiences SKIPS the audience check: never equal to a non-empty list.
+		expect(jwtProfileApplied(sent)([{...sent, audiences: null as unknown as string[]}])).toBe(false);
+		expect(jwtProfileApplied({...sent, audiences: []})([{...sent, audiences: null as unknown as string[]}])).toBe(true);
+	});
+
+	it('another profile with the same configuration does not confirm this name', () => {
+		expect(jwtProfileApplied(sent)([{...sent, name: 'keycloak-2'}])).toBe(false);
+	});
+
+	it('a delete is confirmed by the exact name being absent, not by a similar one', () => {
+		expect(jwtProfileGone('keycloak')([{name: 'keycloak-2'}, {name: 'Keycloak'}])).toBe(true);
+		expect(jwtProfileGone('keycloak')([{name: 'keycloak'}])).toBe(false);
 	});
 });
