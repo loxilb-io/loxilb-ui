@@ -279,6 +279,12 @@ export const MENU_LIST: IMenuItem[] = [
 				path: 'snapshots',
 				requiresFlavor: 'inference-gateway',
 			},
+			{
+				// Enter, read back and leave the gateway's operator maintenance.
+				name: 'Operator Maintenance',
+				path: 'operator',
+				requiresFlavor: 'inference-gateway',
+			},
 		],
 	},
 	{

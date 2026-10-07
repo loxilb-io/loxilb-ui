@@ -89,6 +89,12 @@ describe('shouldPersistQuery', () => {
 		expect(shouldPersistQuery(queryOf(['status', 'audit', 1]))).toBe(false);
 	});
 
+	it('refuses the maintenance read, which decides whether Enter or Resume is offered', () => {
+		// A restored "active" would offer Enter on a gateway another operator
+		// has since put into maintenance.
+		expect(shouldPersistQuery(queryOf(['instance', 'maintenance', 1]))).toBe(false);
+	});
+
 	it('refuses the capability verdict, because a FAILED read must read as unknown', () => {
 		// `useCapabilityVerdict` states: an unread query — including a read that
 		// FAILED — yields `unknown`, never `not-ready`, because `not-ready`
