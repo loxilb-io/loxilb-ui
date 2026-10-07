@@ -15,16 +15,20 @@
 // the expressible KV surface below is what this spec proves.
 //---------------------------------------------------------
 import {test} from '../../../fixtures';
-import {activeInstance, gatewayKvExactReadiness, KvExactReadiness, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
+import {activeInstance, fullproxyVip, gatewayKvExactReadiness, KvExactReadiness, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
 import {cleanupLbByName, LbRecipe, runLbScenario} from '../_recipes';
+
+// A fullproxy rule is a listener the gateway binds, so its VIP is an address
+// of the gateway (helpers/api.ts, fullproxyVip).
+const FP_VIP = fullproxyVip();
 
 const recipe: LbRecipe = {
 	cicd: 'cicd/vllm-kvcache-routing-cpu',
 	name: 'e2e-cicd-ai-kvcache',
-	vip: '203.0.113.108',
-	port: '2020',
+	vip: FP_VIP,
+	port: '20108',
 	mode: 'fullproxy',
-	host: '203.0.113.108',
+	host: FP_VIP,
 	// modelName: the gateway admits NO kvExactMode rule without model_name
 	// ("must equal the served model and staged tokenizer identity" — admission
 	// present since the pinned contract revision). Qwen3-0.6B is the cicd

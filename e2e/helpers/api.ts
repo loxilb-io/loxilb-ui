@@ -181,6 +181,48 @@ export async function gatewayHeldAddress(): Promise<string | undefined> {
 	return undefined;
 }
 
+const GATEWAY_VIP_STATE = path.resolve(__dirname, '../../.auth/gateway-vip.json');
+
+/**
+ * Stores the address `gatewayHeldAddress()` finds, for `fullproxyVip()` to
+ * read. Called once per run by the setup project, after the admin login.
+ */
+export async function recordGatewayHeldAddress(): Promise<string | undefined> {
+	const address = await gatewayHeldAddress().catch(() => undefined);
+	fs.mkdirSync(path.dirname(GATEWAY_VIP_STATE), {recursive: true});
+	fs.writeFileSync(GATEWAY_VIP_STATE, JSON.stringify({address: address ?? null}));
+	return address;
+}
+
+/**
+ * The VIP every fullproxy (mode 4) fixture uses: an address of the gateway.
+ *
+ * SYNCHRONOUS on purpose, so a recipe table at module scope can hold it. The
+ * value comes from the file the setup project wrote for THIS run, or from
+ * `E2E_GATEWAY_VIP`.
+ *
+ * ⚠️ Never put it in a test title. Playwright lists the tests before the
+ * setup project has run and runs them after, so the two readings can differ;
+ * a title built from it would name a test the worker cannot find.
+ *
+ * ⚠️ All fullproxy fixtures now share ONE address, so two rules that exist at
+ * the same time must differ by port, host, path or model.
+ *
+ * With no address known it answers a documentation address, on which the
+ * gateway refuses the create with its own message — a fixture that cannot
+ * work fails where the reason is stated, not on a later assertion.
+ */
+export function fullproxyVip(): string {
+	if (process.env.E2E_GATEWAY_VIP) return process.env.E2E_GATEWAY_VIP;
+	try {
+		const {address} = JSON.parse(fs.readFileSync(GATEWAY_VIP_STATE, 'utf-8')) as {address?: string | null};
+		if (address) return address;
+	} catch {
+		// Not written yet (test listing) or no gateway leg in this run.
+	}
+	return '192.0.2.254';
+}
+
 export async function gwJson<T = any>(apiPath: string): Promise<T> {
 	const resp = await gw('GET', apiPath);
 	if (!resp.ok) throw new Error(`GET ${apiPath} failed: ${resp.status}`);
@@ -710,7 +752,9 @@ async function kvExactReadinessFromCapabilities(): Promise<KvExactReadiness | nu
 async function kvExactReadinessFromWriteProbe(): Promise<KvExactReadiness> {
 	const probe = {
 		serviceArguments: {
-			name: 'e2e-kv-readiness-probe', externalIP: '203.0.113.250', port: 8250,
+			// On the gateway's own address: anywhere else the data plane refuses
+			// the rule for the address, and that 400 says nothing about KV-exact.
+			name: 'e2e-kv-readiness-probe', externalIP: fullproxyVip(), port: 18250,
 			protocol: 'tcp', sel: 0, mode: 4, model_name: 'Qwen/Qwen3-0.6B', kvExactMode: 3,
 		},
 		endpoints: [{endpointIP: '198.51.100.250', targetPort: 8250, weight: 1}],
@@ -946,7 +990,25 @@ export async function sweepInstances(): Promise<number> {
 	return removed;
 }
 
-/** Deletes every LB rule with an e2e- name or documentation-range VIP. */
+/**
+ * A rule this suite made, for the sweep: an `e2e-` name or a
+ * documentation-range VIP — or, for a fullproxy fixture, the gateway's own
+ * address with nothing but documentation-range backends.
+ *
+ * ⚠️ The third arm exists because fullproxy fixtures sit on a REAL address
+ * (`fullproxyVip`), so the VIP no longer marks them, and one of them is
+ * created without a name on purpose. The address alone must never be the
+ * mark: an operator's rule can live on it. Backends in a documentation range
+ * are what only a fixture has.
+ */
+export function isE2eLbRule(rule: any): boolean {
+	const sa = rule?.serviceArguments ?? {};
+	if (isE2eMarked(sa.name) || isE2eMarked(sa.externalIP)) return true;
+	const endpoints: any[] = rule?.endpoints ?? [];
+	return sa.externalIP === fullproxyVip() && endpoints.length > 0 && endpoints.every(endpoint => isDocAddr(endpoint?.endpointIP));
+}
+
+/** Deletes every LB rule this suite made (see `isE2eLbRule`). */
 export async function sweepLbRules(): Promise<number> {
 	let removed = 0;
 	// A successful delete response does not guarantee that the subsequent
@@ -957,10 +1019,7 @@ export async function sweepLbRules(): Promise<number> {
 		const resp = await gw('GET', '/config/loadbalancer/all');
 		if (!resp.ok) return removed;
 		const data = await resp.json();
-		const marked = (data.lbAttr ?? []).filter((rule: any) => {
-			const sa = rule.serviceArguments ?? {};
-			return isE2eMarked(sa.name) || isE2eMarked(sa.externalIP);
-		});
+		const marked = (data.lbAttr ?? []).filter(isE2eLbRule);
 		if (marked.length === 0) return removed;
 
 		for (const rule of marked) {
@@ -980,10 +1039,7 @@ export async function sweepLbRules(): Promise<number> {
 	const finalResp = await gw('GET', '/config/loadbalancer/all');
 	if (!finalResp.ok) throw new Error(`LB cleanup verification failed: GET /config/loadbalancer/all returned ${finalResp.status}`);
 	const finalData = await finalResp.json();
-	const survivors = (finalData.lbAttr ?? []).filter((rule: any) => {
-		const sa = rule.serviceArguments ?? {};
-		return isE2eMarked(sa.name) || isE2eMarked(sa.externalIP);
-	});
+	const survivors = (finalData.lbAttr ?? []).filter(isE2eLbRule);
 	if (survivors.length > 0) {
 		const identities = survivors.map((rule: any) => rule.serviceArguments?.name || rule.serviceArguments?.externalIP || '(unknown)').join(', ');
 		throw new Error(`LB cleanup did not converge; refusing to run mutating tests with ${survivors.length} marked rule(s) still present: ${identities}`);

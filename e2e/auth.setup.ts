@@ -14,6 +14,7 @@
 import {expect, test as setup} from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
+import {recordGatewayHeldAddress} from './helpers/api';
 
 const AUTH_DIR = path.resolve(__dirname, '../.auth');
 // Environment-only, like every address/credential in this suite — the repo
@@ -156,6 +157,15 @@ setup('authenticate as admin', async ({page}) => {
 			}
 		}
 	}
+});
+
+// Fullproxy fixtures need a VIP the gateway holds (see `fullproxyVip`). Found
+// here, once, because it takes the admin token and has to be on disk before
+// any spec's worker loads. The loxilb leg has no such fixtures.
+setup('find a gateway address for fullproxy fixtures', async () => {
+	setup.skip(process.env.E2E_FLAVOR === 'loxilb', 'gateway leg only');
+	const address = await recordGatewayHeldAddress();
+	console.log(`fullproxy fixture VIP: ${address ?? 'none found — fullproxy creates will be refused'}`);
 });
 
 setup('authenticate as operator', async ({page}) => {

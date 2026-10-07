@@ -21,11 +21,15 @@
 //---------------------------------------------------------
 import type {Page, Route} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {activeInstance, gw, gwJson, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
+import {activeInstance, fullproxyVip, gw, gwJson, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
 import {detailCaption, detailValue} from '../../helpers/detail';
 import {dialog, dialogButton, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 import {expandSection, field} from '../../helpers/form';
 import {refreshUntilRow, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
+
+// A fullproxy rule is a listener the gateway binds, so its VIP is an address
+// of the gateway (helpers/api.ts, fullproxyVip).
+const FP_VIP = fullproxyVip();
 
 const LB_PATH = '/config/loadbalancer';
 const META_RE = /\/netlox\/v1\/meta(\?.*)?$/;
@@ -129,7 +133,7 @@ test.describe('LB rule CHWBL ring tuning', () => {
 	test('@gw CH-default: an untouched chwbl rule sends no tuning and the detail shows what the gateway resolved', async ({page}) => {
 		test.skip(!declared, 'this gateway does not declare the CHWBL tuning fields in /meta');
 		const name = 'e2e-lb-ch-default';
-		await openChwblDraft(page, name, '203.0.113.191', '8591');
+		await openChwblDraft(page, name, FP_VIP, '8591');
 		// The inputs start empty: nothing here is a value the operator chose.
 		await expect(field(page, LOAD_FACTOR)).toHaveValue('');
 		await expect(field(page, REPLICATION)).toHaveValue('');
@@ -155,7 +159,7 @@ test.describe('LB rule CHWBL ring tuning', () => {
 	test('@gw CH-set: chosen values are sent, stored and read back, and requiring the salt warns first', async ({page}) => {
 		test.skip(!declared, 'this gateway does not declare the CHWBL tuning fields in /meta');
 		const name = 'e2e-lb-ch-set';
-		await openChwblDraft(page, name, '203.0.113.192', '8592');
+		await openChwblDraft(page, name, FP_VIP, '8592');
 		await field(page, LOAD_FACTOR).fill('125');
 		await field(page, REPLICATION).fill('64');
 		await field(page, SALT).check();
@@ -176,7 +180,7 @@ test.describe('LB rule CHWBL ring tuning', () => {
 	test('@gw CH-sel-away: values typed under chwbl do not travel once the selector moves away', async ({page}) => {
 		test.skip(!declared, 'this gateway does not declare the CHWBL tuning fields in /meta');
 		const name = 'e2e-lb-ch-away';
-		await openChwblDraft(page, name, '203.0.113.193', '8593');
+		await openChwblDraft(page, name, FP_VIP, '8593');
 		await field(page, LOAD_FACTOR).fill('125');
 		await field(page, REPLICATION).fill('64');
 		await field(page, SALT).check();
@@ -209,7 +213,7 @@ test.describe('LB rule CHWBL ring tuning', () => {
 			if (request.method() !== 'GET' && request.url().includes(`/netlox/v1${LB_PATH}`)) writes.push(`${request.method()} ${request.url()}`);
 		});
 
-		await openChwblDraft(page, name, '203.0.113.194', '8594');
+		await openChwblDraft(page, name, FP_VIP, '8594');
 		await addEndpoint(page, '198.51.100.194');
 		const create = dialogButton(page, 'Create');
 		await expect(create, 'the draft is submittable before a bad value goes in').toBeEnabled();
@@ -255,7 +259,7 @@ test.describe('LB rule CHWBL ring tuning', () => {
 		await page.reload();
 		await expect(toolbarButton(page, 'Add')).toBeVisible({timeout: 20_000});
 
-		await openChwblDraft(page, 'e2e-lb-ch-meta', '203.0.113.195', '8595');
+		await openChwblDraft(page, 'e2e-lb-ch-meta', FP_VIP, '8595');
 		await expect(field(page, 'CHWBL Prefix Hash Flags')).toBeVisible();
 		await expect(field(page, REPLICATION)).toHaveCount(0);
 		if (declared) {
