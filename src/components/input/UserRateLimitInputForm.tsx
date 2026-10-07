@@ -160,7 +160,7 @@ export default function UserRateLimitInputForm({onChange, value, identityLocked}
 						value={draft.user_id}
 						onChange={update('user_id')}
 						disabled={identityLocked}
-						param_desc={{type: 'string', description: "The verified identity's subject, as the gateway attributes it from a validated bearer token. Cannot contain \"|\" or begin with a reserved rate-limit scope prefix.", required: true}}
+						param_desc={{type: 'string', description: "The user claim of a validated bearer token: sub, unless the JWT auth profile names another claim. A request admitted by an API key carries no user. Cannot contain \"|\" or begin with a reserved rate-limit scope prefix.", required: true}}
 					/>
 				</Grid2>
 

@@ -9,7 +9,7 @@ import {
 	FC_FIELDS,
 	FC_NUMERIC_MAX,
 	isAIService,
-	hasRequiredApiKeyPolicy,
+	declaredCredentials,
 	isAIEngineChange,
 	resolveAIEngine,
 	resolveAITopology,
@@ -50,9 +50,33 @@ const issueFields = (config: IServiceConfiguration): string[] =>
 	validateAIConfiguration(config).map(issue => issue.field);
 
 describe('AI Gateway engine policy', () => {
-	it('detects only an explicit required API-key declaration as enforced configuration', () => {
-		expect(hasRequiredApiKeyPolicy([configuration({api_key_auth: 'required'})])).toBe(true);
-		expect(hasRequiredApiKeyPolicy([configuration(), configuration({api_key_auth: 'disabled'})])).toBe(false);
+	describe('credentials the loaded services validate', () => {
+		it('counts nothing for an omitted or disabled declaration', () => {
+			expect(declaredCredentials()).toEqual({apiKey: false, jwt: false});
+			expect(declaredCredentials([configuration(), configuration({api_key_auth: 'disabled'})])).toEqual({apiKey: false, jwt: false});
+		});
+
+		it('counts required as an API key only', () => {
+			expect(declaredCredentials([configuration({api_key_auth: 'required'})])).toEqual({apiKey: true, jwt: false});
+		});
+
+		// The defect this replaces: a JWT service attributes tenants AND users,
+		// and the old check read it as "nothing enforces".
+		it('counts jwt as a token only — X-Api-Key is not consulted in that mode', () => {
+			expect(declaredCredentials([configuration({api_key_auth: 'jwt', jwt_auth_profile: 'idp'})])).toEqual({apiKey: false, jwt: true});
+		});
+
+		it('counts apikey-or-jwt as both', () => {
+			expect(declaredCredentials([configuration({api_key_auth: 'apikey-or-jwt', jwt_auth_profile: 'idp'})])).toEqual({apiKey: true, jwt: true});
+		});
+
+		it('adds up across services', () => {
+			expect(declaredCredentials([
+				configuration({api_key_auth: 'disabled'}),
+				configuration({api_key_auth: 'required'}),
+				configuration({api_key_auth: 'jwt', jwt_auth_profile: 'idp'}),
+			])).toEqual({apiKey: true, jwt: true});
+		});
 	});
 
 	it('resolves the legacy empty engine as vLLM', () => {

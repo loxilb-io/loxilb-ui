@@ -114,6 +114,11 @@ export default function TenantRateLimitInputForm({onChange, value}: TenantRateLi
 	return (
 		<NewBox item_name={t('AI Tenant Rate Limit')}>
 			<Stack spacing={3}>
+				{/* The write contract, stated once: the three aggregate fields
+				    travel together, and there is no way to delete the entry. */}
+				<Alert severity="info">
+					{t('Applying replaces this tenant\'s requests per second, tokens per minute and burst together. Per-model quotas are written one model at a time, so removing a row here deletes that model\'s quota. A tenant entry cannot be deleted; set both limits to 0 to return the tenant to the configured defaults.')}
+				</Alert>
 				<ParamBox
 					label={t('Tenant ID')}
 					value={draft.tenant_id}
@@ -128,14 +133,14 @@ export default function TenantRateLimitInputForm({onChange, value}: TenantRateLi
 						onChange={updateField('rps')}
 						// Keep the raw draft: the shared integer control clamps negatives to
 						// zero, which would silently turn invalid operator input into
-						// "unlimited" before this form can reject it.
-						param_desc={{type: 'string', description: t('Maximum requests per second for the tenant. Enter digits only; 0 means unlimited.')}}
+						// "no limit on this row" before this form can reject it.
+						param_desc={{type: 'string', description: t('Requests per second for the tenant. Enter digits only. 0 sets no limit on this row: the configured tenant default applies if there is one, and the tenant is unlimited only if there is none.')}}
 					/>
 					<ParamBox
 						label={t('Tokens / Minute')}
 						value={draft.tokens_per_min}
 						onChange={updateField('tokens_per_min')}
-						param_desc={{type: 'string', description: t('Maximum tokens per minute for the tenant. Enter digits only; 0 means unlimited.')}}
+						param_desc={{type: 'string', description: t('Tokens per minute for the tenant. Enter digits only. 0 sets no limit on this row: the configured tenant default applies if there is one, and the tenant is unlimited only if there is none.')}}
 					/>
 					<ParamBox
 						label={t('Burst Percentage')}
@@ -148,7 +153,7 @@ export default function TenantRateLimitInputForm({onChange, value}: TenantRateLi
 				<Stack spacing={1}>
 					<Typography variant="subtitle2">{t('Per-model token quotas')}</Typography>
 					<Typography variant="caption" color="text.secondary">
-						{t('Model names must be unique. A model value of 0 removes that model-specific quota.')}
+						{t('Model names must be unique. A model value of 0 removes that model-specific quota. A model quota has no default: without a row, only the limits on the tenant as a whole apply to that model.')}
 					</Typography>
 					{draft.model_limits.map((limit, index) => (
 						<Stack key={index} direction="row" spacing={1} alignItems="flex-start">

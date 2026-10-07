@@ -1,5 +1,5 @@
 //---------------------------------------------------------
-// AI Gateway — Tenant Rate Limits page spec. Menu-hidden route
+// AI Gateway — Rate Limits page spec (menu AI Gateway → Rate Limits), route
 // instance/ai/ratelimit.
 //
 // Render, the no-DELETE contract, and client-side validation always run.

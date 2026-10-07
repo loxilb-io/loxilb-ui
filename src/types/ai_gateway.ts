@@ -221,8 +221,27 @@ export function allowedAIHashes(engine?: IServiceArguments['kvEngineType'] | '')
 	return HASHES_BY_ENGINE[resolveAIEngine(engine)];
 }
 
-export function hasRequiredApiKeyPolicy(configurations: readonly IServiceConfiguration[] = []): boolean {
-	return configurations.some(configuration => configuration.serviceArguments.api_key_auth === 'required');
+/**
+ * Which credentials the loaded services validate before dispatch. A request is
+ * attributed to a tenant or user only through a credential the gateway has
+ * validated, so a service in neither set can never charge an identity's quota.
+ *
+ * ⚠️ This reads DECLARATIONS. A declared mode does not show that the key store
+ * answers, that a profile's keys resolve, or that a request was ever refused.
+ */
+export interface DeclaredCredentials {
+	/** `required` or `apikey-or-jwt`: an X-Api-Key is validated. */
+	apiKey: boolean;
+	/** `jwt` or `apikey-or-jwt`: a Bearer token is validated against a profile. */
+	jwt: boolean;
+}
+
+export function declaredCredentials(configurations: readonly IServiceConfiguration[] = []): DeclaredCredentials {
+	const policies = configurations.map(configuration => configuration.serviceArguments.api_key_auth);
+	return {
+		apiKey: policies.some(policy => policy === 'required' || policy === 'apikey-or-jwt'),
+		jwt: policies.some(policy => requiresJwtProfile(policy)),
+	};
 }
 
 export function isAIEngineChange(
