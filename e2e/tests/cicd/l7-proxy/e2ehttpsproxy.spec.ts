@@ -10,18 +10,22 @@
 // silently degrades it to plain. This matches the cicd config.sh original.
 //---------------------------------------------------------
 import {test} from '../../../fixtures';
-import {activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
+import {fullproxyVip, activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
 import {cleanupLbByName, LbRecipe, runLbScenario} from '../_recipes';
+
+// A fullproxy rule is a listener the gateway binds, so its VIP is an address
+// of the gateway (helpers/api.ts, fullproxyVip).
+const FP_VIP = fullproxyVip();
 
 const recipe: LbRecipe = {
 	cicd: 'cicd/e2ehttpsproxy',
 	name: 'e2e-cicd-e2ehttpsproxy',
-	vip: '203.0.113.65',
-	port: '2020',
+	vip: FP_VIP,
+	port: '20065',
 	protocol: 'tcp',
 	mode: 'fullproxy',
 	security: 'e2ehttps',
-	host: '203.0.113.65',
+	host: FP_VIP,
 	endpoints: [
 		{ip: '198.51.100.1', targetPort: '8080'},
 		{ip: '198.51.100.2', targetPort: '8080'},

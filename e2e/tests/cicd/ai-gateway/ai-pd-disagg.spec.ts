@@ -10,18 +10,22 @@
 // — verified live). No mock vLLM, no live prefill/decode traffic.
 //---------------------------------------------------------
 import {expect, test} from '../../../fixtures';
-import {activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
+import {fullproxyVip, activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
 import {selectRowByText} from '../../../helpers/table';
 import {cleanupLbByName, LbRecipe, runLbScenario} from '../_recipes';
+
+// A fullproxy rule is a listener the gateway binds, so its VIP is an address
+// of the gateway (helpers/api.ts, fullproxyVip).
+const FP_VIP = fullproxyVip();
 
 const recipe: LbRecipe = {
 	cicd: 'cicd/vllm-pd-disagg',
 	name: 'e2e-cicd-ai-pd',
-	vip: '203.0.113.109',
-	port: '2020',
+	vip: FP_VIP,
+	port: '20109',
 	mode: 'fullproxy',
 	security: 'https',
-	host: '203.0.113.109',
+	host: FP_VIP,
 	ai: {pdDisaggMode: true, pdCacheAwareMode: true, sseMode: true},
 	endpoints: [
 		{ip: '198.51.100.61', targetPort: '8000', epRole: 'prefill', nixlPort: '9001'},

@@ -9,8 +9,12 @@
 // round-trip via REST. No MCP server, no live session.
 //---------------------------------------------------------
 import {test} from '../../../fixtures';
-import {activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
+import {fullproxyVip, activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
 import {cleanupLbByName, LbRecipe, runLbScenario, SelName} from '../_recipes';
+
+// A fullproxy rule is a listener the gateway binds, so its VIP is an address
+// of the gateway (helpers/api.ts, fullproxyVip).
+const FP_VIP = fullproxyVip();
 
 interface McpMode {
 	slug: string;
@@ -20,8 +24,8 @@ interface McpMode {
 }
 
 const modes: McpMode[] = [
-	{slug: 'rr', vip: '203.0.113.110', port: '2020', sel: 'rr'},
-	{slug: 'persist', vip: '203.0.113.111', port: '2021', sel: 'persist'},
+	{slug: 'rr', vip: FP_VIP, port: '21110', sel: 'rr'},
+	{slug: 'persist', vip: FP_VIP, port: '21111', sel: 'persist'},
 ];
 
 function recipe(m: McpMode): LbRecipe {

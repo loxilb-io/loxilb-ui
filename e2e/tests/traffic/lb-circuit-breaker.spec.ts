@@ -18,11 +18,15 @@
 //---------------------------------------------------------
 import type {Page, Route} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {activeInstance, gw, gwJson, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
+import {activeInstance, fullproxyVip, gw, gwJson, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
 import {detailCaption, detailValue} from '../../helpers/detail';
 import {dialog, dialogButton, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 import {expandSection, field} from '../../helpers/form';
 import {refreshUntilRow, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
+
+// A fullproxy rule is a listener the gateway binds, so its VIP is an address
+// of the gateway (helpers/api.ts, fullproxyVip).
+const FP_VIP = fullproxyVip();
 
 const LB_PATH = '/config/loadbalancer';
 const META_RE = /\/netlox\/v1\/meta(\?.*)?$/;
@@ -122,7 +126,7 @@ test.describe('LB rule circuit breaker', () => {
 	test('@gw CB-default-pd: an untouched P/D rule shows the breaker on, sends nothing, and reads back Enabled', async ({page}) => {
 		test.skip(!declared, 'this gateway does not declare cb_enable in /meta');
 		const name = 'e2e-lb-cb-pd';
-		await openFullproxyDraft(page, name, '203.0.113.181', '8581');
+		await openFullproxyDraft(page, name, FP_VIP, '8581');
 		// Plain fullproxy first: the displayed default follows the topology.
 		await expect(field(page, BREAKER)).not.toBeChecked();
 		await makePd(page, 181);
@@ -139,7 +143,7 @@ test.describe('LB rule circuit breaker', () => {
 	test('@gw CB-off-pd: switching a P/D rule off sends false and reads back Disabled, not the P/D default', async ({page}) => {
 		test.skip(!declared, 'this gateway does not declare cb_enable in /meta');
 		const name = 'e2e-lb-cb-pd-off';
-		await openFullproxyDraft(page, name, '203.0.113.182', '8582');
+		await openFullproxyDraft(page, name, FP_VIP, '8582');
 		await makePd(page, 183);
 		await field(page, BREAKER).uncheck();
 
@@ -154,7 +158,7 @@ test.describe('LB rule circuit breaker', () => {
 	test('@gw CB-plain: an untouched plain fullproxy rule sends nothing and reads back Disabled', async ({page}) => {
 		test.skip(!declared, 'this gateway does not declare cb_enable in /meta');
 		const name = 'e2e-lb-cb-plain';
-		await openFullproxyDraft(page, name, '203.0.113.185', '8585');
+		await openFullproxyDraft(page, name, FP_VIP, '8585');
 		await expect(field(page, BREAKER)).not.toBeChecked();
 		await addEndpoint(page, 0, '198.51.100.185', '9000');
 
@@ -167,7 +171,7 @@ test.describe('LB rule circuit breaker', () => {
 	test('@gw CB-plain-on: an explicit on is honoured on a rule whose default is off', async ({page}) => {
 		test.skip(!declared, 'this gateway does not declare cb_enable in /meta');
 		const name = 'e2e-lb-cb-plain-on';
-		await openFullproxyDraft(page, name, '203.0.113.186', '8586');
+		await openFullproxyDraft(page, name, FP_VIP, '8586');
 		await field(page, BREAKER).check();
 		await addEndpoint(page, 0, '198.51.100.186', '9000');
 
@@ -180,7 +184,7 @@ test.describe('LB rule circuit breaker', () => {
 	test('@gw CB-mode: the switch is locked off fullproxy, and a choice made under fullproxy does not travel', async ({page}) => {
 		test.skip(!declared, 'this gateway does not declare cb_enable in /meta');
 		const name = 'e2e-lb-cb-dnat';
-		await openFullproxyDraft(page, name, '203.0.113.187', '8587');
+		await openFullproxyDraft(page, name, FP_VIP, '8587');
 		await field(page, BREAKER).check();
 		await selectOption(page, 'Mode', 'dnat');
 		await expect(field(page, BREAKER)).toBeDisabled();
@@ -202,7 +206,7 @@ test.describe('LB rule circuit breaker', () => {
 		test.skip(!declared, 'this gateway does not declare cb_enable in /meta');
 		const name = 'e2e-lb-cb-edit';
 		const create = await gw('POST', LB_PATH, {
-			serviceArguments: {name, externalIP: '203.0.113.188', port: 8588, protocol: 'tcp', sel: 0, mode: 4, pd_disagg_mode: true, cb_enable: false},
+			serviceArguments: {name, externalIP: FP_VIP, port: 8588, protocol: 'tcp', sel: 0, mode: 4, pd_disagg_mode: true, cb_enable: false},
 			endpoints: [
 				{endpointIP: '198.51.100.188', targetPort: 9000, weight: 1, ep_role: 1},
 				{endpointIP: '198.51.100.189', targetPort: 9000, weight: 1, ep_role: 2},
@@ -241,7 +245,7 @@ test.describe('LB rule circuit breaker', () => {
 		await page.reload();
 		await expect(toolbarButton(page, 'Add')).toBeVisible({timeout: 20_000});
 
-		await openFullproxyDraft(page, 'e2e-lb-cb-meta', '203.0.113.189', '8589');
+		await openFullproxyDraft(page, 'e2e-lb-cb-meta', FP_VIP, '8589');
 		// A neighbouring control proves the section rendered before the absence is asserted.
 		await expect(field(page, 'Inactive Timeout')).toBeVisible();
 		await expect(field(page, BREAKER)).toHaveCount(0);

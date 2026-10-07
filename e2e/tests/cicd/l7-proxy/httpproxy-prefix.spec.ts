@@ -5,17 +5,21 @@
 //   fullproxy → Path Match Mode + Path Prefix) and validates REST read-back.
 //---------------------------------------------------------
 import {test} from '../../../fixtures';
-import {activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
+import {fullproxyVip, activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
 import {cleanupLbByName, LbRecipe, runLbScenario} from '../_recipes';
+
+// A fullproxy rule is a listener the gateway binds, so its VIP is an address
+// of the gateway (helpers/api.ts, fullproxyVip).
+const FP_VIP = fullproxyVip();
 
 const recipe: LbRecipe = {
 	cicd: 'cicd/httpproxy-prefix',
 	name: 'e2e-cicd-httpproxy-prefix',
-	vip: '203.0.113.61',
-	port: '2020',
+	vip: FP_VIP,
+	port: '20061',
 	protocol: 'tcp',
 	mode: 'fullproxy',
-	host: '203.0.113.61',
+	host: FP_VIP,
 	pathPrefix: '/v1/users',
 	pathMatchMode: 'prefix',
 	endpoints: [

@@ -13,18 +13,22 @@
 // old swagger description calling 2 "tls" was the documented spec bug).
 //---------------------------------------------------------
 import {test} from '../../../fixtures';
-import {activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
+import {fullproxyVip, activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
 import {cleanupLbByName, LbRecipe, runLbScenario} from '../_recipes';
+
+// A fullproxy rule is a listener the gateway binds, so its VIP is an address
+// of the gateway (helpers/api.ts, fullproxyVip).
+const FP_VIP = fullproxyVip();
 
 const recipe: LbRecipe = {
 	cicd: 'cicd/e2ehttpsproxy-grpc',
 	name: 'e2e-cicd-e2ehttpsproxy-grpc',
-	vip: '203.0.113.72',
-	port: '2022',
+	vip: FP_VIP,
+	port: '20072',
 	protocol: 'tcp',
 	mode: 'fullproxy',
 	security: 'e2ehttps',
-	host: '203.0.113.72',
+	host: FP_VIP,
 	backendProtocol: 'http2',
 	endpoints: [
 		{ip: '198.51.100.1', targetPort: '8080'},
