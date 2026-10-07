@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {Grid2, Stack} from '@mui/material';
+import {Alert, Grid2, Stack} from '@mui/material';
 import modes from 'assets/json/modes.json';
 import sels from 'assets/json/sels.json';
 import SingleTextBox from 'components/element/SingleTextBox';
@@ -33,6 +33,48 @@ export function halfCloseReadBack(effective: HalfCloseEffective | undefined): st
 		case 'default': return t('{{mode}} (gateway default)', {mode});
 		case 'blocked': return t('{{mode}} (holds are blocked on this gateway)', {mode});
 		default: return effective.source ? `${mode} (${effective.source})` : mode;
+	}
+}
+
+type BackendTlsEffective = NonNullable<IServiceArguments['backend_tls_effective']>;
+
+export interface BackendTlsInstalledState {
+	severity: 'success' | 'info' | 'warning' | 'error';
+	message: string;
+	/** Whether the other members describe a policy a listener runs. */
+	hasPolicy: boolean;
+}
+
+/**
+ * What the listener has installed for the TLS leg to the endpoints, as the
+ * gateway reports it beside what the rule asks for. Only `applied` says the
+ * two agree, and even that is the policy new connections are made under, not
+ * a verified connection. `pending` and `unsupported` carry filler members —
+ * nothing is installed, or nothing can be — so they describe no policy. A
+ * gateway that reports nothing is said to report nothing: an older build
+ * leaves the field out, and "not verified" would be this UI making it up.
+ */
+export function backendTlsInstalledState(effective: BackendTlsEffective | undefined): BackendTlsInstalledState {
+	if (!effective) {
+		return {severity: 'info', hasPolicy: false, message: t('Not reported: this gateway does not say what the listener has installed. The requested settings above are what the rule asks for, not what is in force.')};
+	}
+	switch (effective.status) {
+		case 'applied':
+			return {severity: 'success', hasPolicy: true, message: t('Applied: the listener runs the backend TLS policy this rule asks for. New connections to endpoints are made under it; this does not say that any connection was verified.')};
+		case 'pending':
+			return {severity: 'warning', hasPolicy: false, message: t('Pending: the rule has no listener in the data plane yet. No backend TLS policy is installed.')};
+		case 'failed':
+			return {severity: 'error', hasPolicy: true, message: t('Failed: the listener runs a different backend TLS policy than this rule asks for. The values below are what is installed.')};
+		case 'unsupported':
+			return {severity: 'warning', hasPolicy: false, message: t('Unsupported: this gateway was built without client-certificate support. The leg to the endpoints is TLS without verification or a client certificate, whatever the rule asks for.')};
+		default:
+			return {
+				severity: 'warning',
+				hasPolicy: true,
+				message: effective.status
+					? t('The gateway reported a status this UI does not know: {{status}}. The values below are shown as reported.', {status: effective.status})
+					: t('The gateway reported an installed policy without a status. The values below are shown as reported.'),
+			};
 	}
 }
 
@@ -74,7 +116,10 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 	// Fullproxy read-backs. A gateway that does not report one gets no row,
 	// rather than an "Off" this UI would be making up.
 	const halfClose = mode === 4 ? halfCloseReadBack(serviceArguments.half_close_effective) : undefined;
-	const backendTls = backendTlsApplies(serviceArguments) && backendTlsRequested(serviceArguments);
+	const backendTlsLeg = backendTlsApplies(serviceArguments);
+	const backendTls = backendTlsLeg && backendTlsRequested(serviceArguments);
+	const installed = serviceArguments.backend_tls_effective;
+	const installedState = backendTlsInstalledState(installed);
 	const sockMap = mode === 4 ? sockMapReadBack(serviceArguments.sockMapMode) : undefined;
 
 	return (
@@ -137,20 +182,22 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 					{/* Frontend mTLS is TLS configuration, not AI routing, so it belongs
 					    with the L7 proxy settings rather than in the AI Gateway tab. */}
 					{/* Backend TLS as the rule declares it. Rows only for a rule that asks
-					    for something: an unauthenticated leg is the default, not a state. */}
+					    for something: an unauthenticated leg is the default, not a state.
+					    Labelled as requested — what the listener runs is reported apart,
+					    in its own section below. */}
 					{backendTls && (
 						<SingleTextBox
-							label={t('Backend Verification')}
-							value={serviceArguments.mtls_backend?.verify_server_cert ? t('Verified against {{ca}}', {ca: serviceArguments.backend_ca_cert_id || '?'}) : t('Not verified')}
+							label={t('Requested Backend Verification')}
+							value={serviceArguments.mtls_backend?.verify_server_cert ? t('Verify against {{ca}}', {ca: serviceArguments.backend_ca_cert_id || '?'}) : t('No verification requested')}
 							width="wide"
-							tooltip={t('Whether the gateway verifies the certificate of the endpoints it connects to, and against which CA bundle.')}
+							tooltip={t('Whether the rule asks the gateway to verify the certificate of the endpoints it connects to, and against which CA bundle. What the listener has installed is shown separately.')}
 						/>
 					)}
 					{backendTls && serviceArguments.backend_client_cert_id && (
-						<SingleTextBox label={t('Backend Client Cert ID')} value={serviceArguments.backend_client_cert_id} tooltip={t('The certificate the gateway presents to endpoints that ask for one.')} />
+						<SingleTextBox label={t('Requested Backend Client Cert ID')} value={serviceArguments.backend_client_cert_id} tooltip={t('The certificate the rule asks the gateway to present to endpoints that ask for one.')} />
 					)}
 					{backendTls && serviceArguments.backend_tls_server_name && (
-						<SingleTextBox label={t('Backend TLS Server Name')} value={serviceArguments.backend_tls_server_name} width="wide" tooltip={t('The DNS name sent as SNI to every endpoint.')} />
+						<SingleTextBox label={t('Requested Backend TLS Server Name')} value={serviceArguments.backend_tls_server_name} width="wide" tooltip={t('The DNS name the rule asks the gateway to send as SNI to every endpoint.')} />
 					)}
 					<SingleTextBox label={t('Client Cert Mode')} value={mtls.client_cert_mode} tooltip="Client-certificate verification ('disabled', 'optional', or 'required'); fullproxy + TLS only" />
 					{/* Filesystem paths and CN patterns run long — the wide column keeps
@@ -162,6 +209,50 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 					<SingleTextBox label={t('Client CRL Path')} value={mtls.client_crl_path} width="wide" tooltip='Optional static CRL (PEM) for leaf-certificate revocation' />
 				</Grid2>
 			</ValueBunch>
+			{/* The re-encrypting leg only (fullproxy with e2ehttps): no other rule has
+			    a backend TLS policy, so no other rule gets the section. */}
+			{backendTlsLeg && (
+				<ValueBunch name={t('Installed Backend TLS')}>
+					<Stack spacing={1.5} width="100%">
+						<Alert severity={installedState.severity}>{installedState.message}</Alert>
+						<Grid2 container spacing={2}>
+							<SingleTextBox
+								label={t('Listener')}
+								value={`${serviceArguments.externalIP}:${serviceArguments.port}/${serviceArguments.protocol}`}
+								tooltip={t('A listener has one backend TLS policy. Every rule on the same address, port and protocol reports the same one.')}
+							/>
+							{installed && installedState.hasPolicy && (
+								<>
+									<SingleTextBox
+										label={t('Installed Verification')}
+										value={typeof installed.verify !== 'boolean' ? t('Not reported') : installed.verify ? t('Endpoint certificates are verified') : t('Not verified')}
+										width="wide"
+										tooltip={t('Whether the listener verifies the certificate of the endpoints it connects to.')}
+									/>
+									<SingleTextBox label={t('Installed CA Bundle')} value={installed.ca ?? t('Not reported')} tooltip={t('Certificate ID of the CA bundle the listener uses, or "none".')} />
+									<SingleTextBox
+										label={t('Installed Client Certificate')}
+										value={typeof installed.client_cert !== 'boolean' ? t('Not reported') : installed.client_cert ? t('Presented') : t('Not presented')}
+										tooltip={t('Whether the listener presents a client certificate to endpoints that ask for one.')}
+									/>
+									{installed.client_cert_id && <SingleTextBox label={t('Installed Client Cert ID')} value={installed.client_cert_id} />}
+									<SingleTextBox
+										label={t('Installed Server Name')}
+										value={installed.server_name || t('Endpoint address')}
+										width="wide"
+										tooltip={t('The name the listener sends as SNI and expects of an endpoint certificate. Without one, the endpoint address is expected.')}
+									/>
+									<SingleTextBox
+										label={t('Policy Generation')}
+										value={installed.generation ?? t('Not reported')}
+										tooltip={t('How many times the backend TLS policy of this listener was replaced in place since the listener was created.')}
+									/>
+								</>
+							)}
+						</Grid2>
+					</Stack>
+				</ValueBunch>
+			)}
 			<ValueBunch name={t('Kubernetes Information')}>
 				<Grid2 container spacing={2}>
 					<SingleTextBox label={t('Managed')} value={serviceArguments.managed ?? false} tooltip='Kubernetes Load Balancer externally managed rule or not' />					
