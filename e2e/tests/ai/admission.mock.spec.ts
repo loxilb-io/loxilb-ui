@@ -2,10 +2,11 @@
 // Capacity admission control (fc_*) on AI rules — mock contract layer
 // (ADM-E2E-01..06, 09).
 //---------------------------------------------------------
-// Admission fields are written only by a create: the gateway's LB PATCH does
-// not apply them and does not reach fullproxy rules at all. So the form sets
-// them on create (and on the key-changed "create" edit), an in-place edit of an
-// AI rule stays blocked, and the read-back shows what is in force.
+// Admission fields are written by a POST of the whole rule: the gateway's LB
+// PATCH does not apply them and does not reach fullproxy rules at all. So the
+// form sets them on create, an edit of an existing AI rule sends the whole rule
+// again (the gateway applies an admission-only change to the running listener),
+// and the read-back shows what is in force.
 //
 // ⭐ Only the rule list, the LB writes and the admission part of `/meta` are
 // intercepted. `/version` and the rest of `/meta` stay real, so the flavor gate
@@ -224,7 +225,7 @@ test.describe('@gw AI admission control — mock contract', () => {
 		await expect(page.getByText(/^off\b/)).toHaveCount(0);
 	});
 
-	test('ADM-E2E-05: an admission change on an existing AI rule is named in the block, and nothing is sent', async ({page}) => {
+	test('ADM-E2E-05: an admission change on an existing AI rule is sent as a whole-rule POST, without the read-back counters', async ({page}) => {
 		await mockRuleList(page, [aiRule()]);
 		const writes = await recordWrites(page);
 		await page.goto(`instance/traffic/lb?name=${instName}`);
@@ -235,11 +236,16 @@ test.describe('@gw AI admission control — mock contract', () => {
 		await expect(field(page, 'Max Outstanding', aigw)).toHaveValue('64');
 		await field(page, 'Max Outstanding', aigw).fill('32');
 		await dialogButton(page, 'Update').click();
-		await expect(page.getByText(/Fullproxy \(mode 4\) rules cannot be updated in place/)).toBeVisible();
-		await expect(page.getByText(/serviceArguments\.fc_max_outstanding/)).toBeVisible();
+		await expect.poll(() => writes.length, {timeout: 20_000}).toBe(1);
+		// The POST, never the tuple PATCH — the gateway refuses that on mode 4.
+		expect(writes[0].method()).toBe('POST');
+		const body = writes[0].postDataJSON();
+		expect(body.serviceArguments).toMatchObject({name: AI_RULE, model_name: 'adm-model', fc_mode: 'observe', fc_max_outstanding: 32, fc_max_queue_depth: 8});
 		// fc_effective is a read-back of live counters, never an operator change.
-		await expect(page.getByText(/fc_effective/)).toHaveCount(0);
-		expect(writes).toHaveLength(0);
+		expect(body.serviceArguments).not.toHaveProperty('fc_effective');
+		// An admission-only change is applied to the running listener, so
+		// there is no re-creation to ask about.
+		await expect(page.getByText(/removing the listener/)).toHaveCount(0);
 	});
 
 	test('ADM-E2E-06: a gateway 400 on the admission fields is an invalid request, not a precondition', async ({page, consoleGuard}) => {

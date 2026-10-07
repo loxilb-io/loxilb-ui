@@ -4,7 +4,7 @@ import {lbRuleRowId} from 'types/lb_identity';
 import {IServiceConfiguration} from 'types/load_balancer';
 
 describe('selectLBEditStrategy', () => {
-	it('blocks same-key fullproxy edits instead of selecting the L4 merge PATCH route', () => {
+	it('replaces a same-key fullproxy rule on the gateway instead of selecting the L4 merge PATCH route', () => {
 		expect(
 			selectLBEditStrategy({
 				keyChanged: false,
@@ -12,7 +12,13 @@ describe('selectLBEditStrategy', () => {
 				mode: 4,
 				canMergePatch: true,
 			}),
-		).toBe('block-fullproxy');
+		).toBe('replace-fullproxy');
+	});
+
+	// Upstream loxilb has no replace for a fullproxy rule, and a client-side
+	// delete + create would interrupt traffic without saying so.
+	it('still blocks a same-key fullproxy edit where the gateway replace is not available', () => {
+		expect(selectLBEditStrategy({keyChanged: false, hasCompositeKey: true, mode: 4, canMergePatch: false})).toBe('block-fullproxy');
 	});
 
 	it('preserves merge PATCH for ordinary L4 edits when the capability is available', () => {
@@ -79,13 +85,13 @@ describe('lbServiceArgumentsPatch', () => {
 		expect(lbServiceArgumentsPatch({...readBack, mtls_frontend: required}, readBack)).toEqual({mtls_frontend: required});
 	});
 
-	// A mode-4 edit that keeps the key is blocked, and the block message names
-	// every changed field from this diff — so an fc_* change must appear in it,
-	// and the read-back's fc_effective (live counters) must not.
+	// A mode-4 edit that keeps the key is a replace built from this diff — so
+	// an fc_* change must appear in it, and the read-back's fc_effective (live
+	// counters) must not.
 	it('names an admission change on a fullproxy rule, and never the read-only fc_effective', () => {
 		const ai = {...readBack, mode: 4, sse_mode: true, fc_mode: 'observe', fc_max_outstanding: 64};
 		expect(lbServiceArgumentsPatch({...ai, fc_effective: {...readBack.fc_effective}, fc_max_outstanding: 32}, ai)).toEqual({fc_max_outstanding: 32});
-		expect(selectLBEditStrategy({keyChanged: false, hasCompositeKey: true, mode: 4, canMergePatch: true})).toBe('block-fullproxy');
+		expect(selectLBEditStrategy({keyChanged: false, hasCompositeKey: true, mode: 4, canMergePatch: true})).toBe('replace-fullproxy');
 	});
 
 	it('does not count a cleared admission field over an absent read-back as a change', () => {

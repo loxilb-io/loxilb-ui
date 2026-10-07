@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {Stack} from '@mui/material';
+import {Stack, Typography} from '@mui/material';
 import SubTabs from 'components/element/SubTabs';
 import LBInputForm from 'components/input/LBInputForm';
 import LowerSection from 'components/layout/LowerSection';
@@ -34,12 +34,13 @@ import {Fragment, useCallback, useEffect, useMemo, useRef, useState} from 'react
 import {useSearchParams} from 'react-router-dom';
 import {IEndpoint, ILBData, IServiceConfiguration} from 'types/load_balancer';
 import {lbRuleRowId} from 'types/lb_identity';
+import {buildFullproxyReplaceBody, changedFullproxyIdentity, FullproxyReplacePlan, planFullproxyReplace} from 'types/lb_fullproxy_replace';
 import {IMirrorConfiguration} from 'types/mirror';
 import {buildQoSRuleTarget, IPolicyConfiguration} from 'types/qos';
 import {toPageState} from 'components/state/pageState';
 import {isPreconditionFailure, opErrorText} from 'connector/fetcher/opResultText';
 
-export type LBEditStrategy = 'create' | 'merge-patch' | 'reconcile' | 'block-fullproxy';
+export type LBEditStrategy = 'create' | 'merge-patch' | 'reconcile' | 'replace-fullproxy' | 'block-fullproxy';
 
 export function selectLBEditStrategy({
 	keyChanged,
@@ -54,9 +55,11 @@ export function selectLBEditStrategy({
 }): LBEditStrategy {
 	if (keyChanged || !hasCompositeKey) return 'create';
 	// The Gateway registers the tuple PATCH route for L4 rules, but explicitly
-	// rejects fullproxy/L7 rules (mode 4). Those rules have no safe in-place
-	// update operation: delete + create would interrupt active AI traffic.
-	if (mode === 4) return 'block-fullproxy';
+	// rejects fullproxy/L7 rules (mode 4). What it does take for them is a POST
+	// of the whole rule on the same identity, which it treats as a replace.
+	// Upstream loxilb has neither, so a fullproxy edit stays blocked there: a
+	// client-side delete + create would interrupt traffic unannounced.
+	if (mode === 4) return canMergePatch ? 'replace-fullproxy' : 'block-fullproxy';
 	return canMergePatch ? 'merge-patch' : 'reconcile';
 }
 
@@ -90,6 +93,29 @@ const isFormDefault = (key: string, value: unknown): boolean => {
 	}
 	return false;
 };
+
+/** Why the gateway cannot make a change on an existing fullproxy rule. */
+function fullproxyRefusalText(plan: Extract<FullproxyReplacePlan, {kind: 'refused'}>): string {
+	switch (plan.reason) {
+		case 'rename':
+			return t('The gateway does not rename an existing fullproxy rule: it would re-create the listener and keep the old name. Nothing was sent. To use another name, create a new rule and remove this one.');
+		case 'secondary-ips':
+			return t('The gateway refuses a change to the secondary IPs of an existing rule. Nothing was sent.');
+		case 'mtls-frontend-only':
+			return t('The gateway does not act on a change to frontend mTLS alone on an existing fullproxy rule: it answers that nothing changed. Nothing was sent. The setting is stored only together with another change that re-creates the listener.');
+	}
+}
+
+/**
+ * What the rule list shows after a write the gateway did not accept. Only
+ * what was read: a rule that is listed is not thereby a rule that serves.
+ */
+function observedRuleText(rows: IServiceConfiguration[] | undefined, listed: (rows: IServiceConfiguration[]) => boolean, applied: (rows: IServiceConfiguration[]) => boolean): string {
+	if (!rows) return t('The rule could not be read back, so its current state is unknown.');
+	if (applied(rows)) return t('The rule reads back with the submitted values even though the gateway reported a failure.');
+	if (listed(rows)) return t('The rule is still listed and does not hold the submitted values.');
+	return t('The rule is no longer listed on the gateway.');
+}
 
 export function lbServiceArgumentsPatch(edited: Record<string, any>, readBack: Record<string, any>): Record<string, any> {
 	const patch: Record<string, any> = {};
@@ -312,10 +338,11 @@ export default function LBRulePage() {
 
 	// Update handler for LB rules
 	const updateFormRef = useRef<(IServiceConfiguration & {isValid?: boolean; errors?: any}) | null>(null);
-	const handleUpdate = useCallback(() => {
-		if (!inst || !caps.resolved || !selectedItem) return;
-
-		const selectedLB = selectedItem;
+	// `draft` reopens the dialog on what the operator had entered, after a
+	// write that did not go through. Changes are still measured against the
+	// rule as selected, never against the draft.
+	const openUpdateDialog = useCallback(function openUpdateDialog(selectedLB: IServiceConfiguration, draft?: IServiceConfiguration) {
+		if (!inst || !caps.resolved) return;
 
 		// Convert selected LB rule to format expected by LBInputForm
 		// Exclude fields that are "Not required in Edit" (managed, state, counter)
@@ -335,7 +362,7 @@ export default function LBRulePage() {
 		const update_form = (
 			<LBInputForm
 				key={Date.now()}
-				initialData={formData}
+				initialData={draft ?? formData}
 				isEdit={true}
 				onChange={data => {
 					updateFormRef.current = data;
@@ -357,11 +384,13 @@ export default function LBRulePage() {
 
 				const osa = selectedLB.serviceArguments;
 				const sa = serviceConfig.serviceArguments ?? ({} as any);
-				const keyChanged = sa.externalIP !== osa.externalIP || sa.port !== osa.port || sa.protocol !== osa.protocol;
-
 				// PATCH on the per-VIP path is gateway-only; upstream loxilb
 				// answers 405 (capability map, gatewayOnlyMethods).
 				const canMergePatch = caps.hasMethod('patch', '/config/loadbalancer/externalipaddress/{ip_address}/port/{port}/protocol/{proto}');
+				// A gateway fullproxy rule is keyed by more than its tuple: a
+				// different host, path or model names a different rule too.
+				const identityChanged = osa.mode === 4 && canMergePatch && changedFullproxyIdentity(sa, osa).length > 0;
+				const keyChanged = sa.externalIP !== osa.externalIP || sa.port !== osa.port || sa.protocol !== osa.protocol || identityChanged;
 				const editStrategy = selectLBEditStrategy({
 					keyChanged,
 					hasCompositeKey: Boolean(osa.externalIP && osa.port != null && osa.protocol),
@@ -373,7 +402,10 @@ export default function LBRulePage() {
 				// What the read-back is held to: the body of whichever write
 				// this edit turns into.
 				let confirm = confirmRuleWritten(serviceConfig);
+				let successText = t('Load balancer rule updated successfully.');
 				if (editStrategy === 'create') {
+					// The write below adds a rule; it removes nothing.
+					if (keyChanged) successText = t('A separate rule was created under the new identity. The rule that was selected is unchanged.');
 					// The VIP/port/proto composite key is immutable under PATCH —
 					// changing it means a different rule, so fall back to re-POST.
 					res = await request_create_load_balancer_config(inst, serviceConfig, effectiveFlavor);
@@ -406,6 +438,103 @@ export default function LBRulePage() {
 									{fields: changedFields.join(', ')},
 								),
 							);
+						return;
+					}
+
+					if (editStrategy === 'replace-fullproxy') {
+						const plan = planFullproxyReplace({
+							changedArguments: Object.keys(saPatch),
+							endpointsChanged,
+							secondaryChanged,
+							allowedChanged,
+							selectors: [osa.sel, sa.sel],
+						});
+						if (plan.kind === 'none') return;
+						if (plan.kind === 'refused') {
+							showUpdateError('load balancer rule', fullproxyRefusalText(plan));
+							openUpdateDialog(selectedLB, serviceConfig);
+							return;
+						}
+
+						// The replace carries the WHOLE rule and clears what it
+						// leaves out, so it is built on the rule as it is NOW —
+						// found by its full identity, never by VIP and port, which
+						// a sibling host, path or model rule shares.
+						let fresh: IServiceConfiguration | undefined;
+						try {
+							fresh = (await query_get_load_balancer_config_all(inst)).find(lb => lbRuleRowId(lb) === lbRuleRowId(selectedLB));
+						} catch {
+							showUpdateError('load balancer rule', t('The rule could not be read from the gateway before the change, so nothing was sent. Try again.'));
+							openUpdateDialog(selectedLB, serviceConfig);
+							return;
+						}
+						if (!fresh) {
+							showUpdateError('load balancer rule', t('This rule is no longer on the gateway as it was selected: it was removed or its identity changed. Nothing was sent. Refresh the list and start the edit again.'));
+							void refetch();
+							return;
+						}
+
+						const upsert = buildFullproxyReplaceBody(fresh, {
+							argumentsPatch: saPatch,
+							endpoints: endpointsChanged ? serviceConfig.endpoints : undefined,
+							secondaryIPs: undefined,
+							allowedSources: allowedChanged ? serviceConfig.allowedSources : undefined,
+						});
+						const applied = confirmRuleWritten(upsert);
+
+						const send = async () => {
+							const sent = await request_create_load_balancer_config(inst, upsert, effectiveFlavor);
+							invalidateCapabilities();
+							if (sent.status === 'confirmed') {
+								await report(
+									{refetch: fromQueryRefetch(refetch), confirm: applied},
+									plan.kind === 'recreate' ? t('Listener re-created. The rule reads back with the submitted values.') : t('Load balancer rule updated successfully.'),
+								);
+								return;
+							}
+							// Read the rule back before saying anything about it.
+							const rows = await fromQueryRefetch(refetch)().catch(() => undefined);
+							if (sent.httpStatus === 409 && rows && applied(rows)) {
+								// The gateway answers 409 to a replace it finds no
+								// change in. That is only good news if the rule
+								// really holds what was asked for.
+								openPopUp(t('Success'), t('The gateway reported no change, and the rule already reads back with these values.'), t('OK'));
+								return;
+							}
+							showUpdateError(
+								'load balancer rule',
+								sent.httpStatus === 409
+									? t('The gateway found nothing in this request that it acts on, and the rule does not hold the submitted values. Changed fields: {{fields}}.', {fields: plan.fields.join(', ')})
+									: `${opErrorText(sent).replace(/[.\s]+$/, '')}. ${observedRuleText(rows, lbRuleAppeared(upsert), applied)}`,
+							);
+							openUpdateDialog(selectedLB, serviceConfig);
+						};
+
+						if (plan.kind === 'recreate') {
+							// Asked BEFORE the write: the interruption is the
+							// operator's decision, and "Back" returns their input.
+							openPopUp(
+								t('Re-create listener'),
+								<Stack spacing={1}>
+									<Typography variant="body2">
+										{t('The gateway applies this change by removing the listener of this rule and building it again. Connections and requests on that listener are interrupted, including requests waiting in its queue.')}
+									</Typography>
+									<Typography variant="body2">
+										{t('If the gateway does not accept the change, the rule is read back and what is found is reported.')}
+									</Typography>
+									<Typography variant="body2" color="text.secondary">
+										{t('Changed fields: {{fields}}.', {fields: plan.fields.join(', ')})}
+									</Typography>
+								</Stack>,
+								t('Re-create listener'),
+								t('Back to the form'),
+								send,
+								false,
+								{handle_no: () => openUpdateDialog(selectedLB, serviceConfig)},
+							);
+							return;
+						}
+						await send();
 						return;
 					}
 
@@ -466,7 +595,7 @@ export default function LBRulePage() {
 				if (res.status === 'confirmed') {
 					// The delete+re-create strategy can move the rule's key, so
 					// confirm against the EDITED identity, not the original row.
-					await report({refetch: fromQueryRefetch(refetch), confirm}, t('Load balancer rule updated successfully.'));
+					await report({refetch: fromQueryRefetch(refetch), confirm}, successText);
 				} else {
 					// Localized mapped message; raw prose stays in diagnostics —
 					// except on a 412, as on create: a PATCH adding allowedSources
@@ -481,7 +610,11 @@ export default function LBRulePage() {
 			{size: 'wide'},
 		);
 	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
-	}, [inst, caps, selectedItem, showUpdateError, refetch, enableYes, invalidateCapabilities, confirmRuleWritten]);
+	}, [inst, caps, showUpdateError, refetch, enableYes, invalidateCapabilities, confirmRuleWritten]);
+
+	const handleUpdate = useCallback(() => {
+		if (selectedItem) openUpdateDialog(selectedItem);
+	}, [selectedItem, openUpdateDialog]);
 
 	const handleRefresh = () => {
 		set_selected_rows([]);
