@@ -12,12 +12,12 @@
     "repository": "https://github.com/loxilb-io/loxilb-inference-gateway",
     "readMode": "immutable-git-blobs",
     "sha256": {
-      "gateway-swagger.yml": "fdf763fa8ed8a6524db34806354b4bdd090f441e21ee68f6354bac78c460e2cd",
+      "gateway-swagger.yml": "9932ef4a04644b5631c47102bc4bdce519c1a4fa4acedde542812aeb51aad0d5",
       "gateway-swagger-extras.yml": "5e36fc44f7bcae7588611893ef158e68e0f26c2a0e67d0a9fc719ab3c026c3bc"
     },
     "repo": "loxilb-inference-gateway",
     "path": "api/swagger.yml + api/swagger-extras.yml",
-    "commit": "64540feb8fda7f295de7a78a74cc754a223362ab",
+    "commit": "6af1dc1c4258c360449b93f5c5ec68a62334a5da",
     "dirty": false,
     "note": "clean re-vendor via sync-specs.sh --only gateway from a detached checkout; byte-identical to the recorded commit"
   },
@@ -36,10 +36,10 @@
   "metricManifest": {
     "repo": "loxilb-inference-gateway",
     "path": "deploy/monitoring/manifest/metric-manifest.json",
-    "commit": "64540feb8fda7f295de7a78a74cc754a223362ab",
+    "commit": "6af1dc1c4258c360449b93f5c5ec68a62334a5da",
     "dirty": false,
-    "vendoredAt": "2026-10-07T00:20:05Z",
+    "vendoredAt": "2026-10-07T22:21:37Z",
     "note": "vendored verbatim (byte-for-byte upstream); the UI version envelope is generated into src/api/gen/metric-manifest.json by scripts/gen-metric-manifest.mjs (npm run gen:api)"
   },
-  "vendoredAt": "2026-10-07T00:20:04Z"
+  "vendoredAt": "2026-10-07T22:21:37Z"
 }
