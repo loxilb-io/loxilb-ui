@@ -26,6 +26,9 @@ vi.mock('hooks/query/flavorHook', () => ({
 	}),
 }));
 
+// The ID checks beside the two certificate IDs read the instance from the URL.
+vi.mock('hooks/instanceHook', () => ({useInstanceFromURL: () => ({id: 1, name: 'gw'})}));
+
 // What a gateway with the feature declares; one from before it has the two IDs only.
 const DECLARED = {backend_ca_cert_id: {type: 'string'}, backend_client_cert_id: {type: 'string'}, backend_tls_server_name: {type: 'string'}};
 const BEFORE_FEATURE = {backend_ca_cert_id: {type: 'string'}, backend_client_cert_id: {type: 'string'}};

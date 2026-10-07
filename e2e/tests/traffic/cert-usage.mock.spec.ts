@@ -18,6 +18,7 @@ import {field} from '../../helpers/form';
 
 const META_RE = /\/netlox\/v1\/meta(\?.*)?$/;
 const CERT_POST_RE = /\/netlox\/v1\/config\/cert$/;
+const CERT_GET_RE = /\/netlox\/v1\/config\/cert\/[^/]+$/;
 
 const CERT = '-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----';
 // Armor only: the form checks the armor line and the request is never sent on.
@@ -47,6 +48,15 @@ async function captureUpload(page: Page): Promise<{bodies: unknown[]}> {
 		if (route.request().method() !== 'POST') return route.fallback();
 		bodies.push(route.request().postDataJSON());
 		await route.fulfill({status: 201, contentType: 'application/json', body: '{}'});
+	});
+	// An upload under a chosen ID is confirmed by reading the entry back. The
+	// gateway under test stores nothing from the stubbed POST, so the read is
+	// answered here with what was sent — less the key, as the gateway does.
+	await page.route(CERT_GET_RE, async (route: Route) => {
+		if (route.request().method() !== 'GET') return route.fallback();
+		const sent = bodies[bodies.length - 1] as {usage?: string; certId?: string; certPem?: string} | undefined;
+		if (!sent) return route.fulfill({status: 404, body: ''});
+		await route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({certId: sent.certId, usage: sent.usage ?? 'server', certPem: sent.certPem, hostnames: []})});
 	});
 	return {bodies};
 }
