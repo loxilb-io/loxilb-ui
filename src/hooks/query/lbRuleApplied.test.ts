@@ -92,8 +92,48 @@ describe('a landed rule write is confirmed despite how the gateway shapes its an
 	});
 
 	it('does not hold the gateway to fields it accepts and never returns', () => {
-		const withWriteOnly = sent({tls_versions: ['TLSv1.3'], alpn_protocols: ['h2'], hsts_max_age: 600, privateIP: '10.9.9.9', mtls_frontend: undefined});
+		const withWriteOnly = sent({privateIP: '10.9.9.9', oper: 1, vip_qos_policy_id: 'gold', mtls_frontend: undefined});
 		expect(lbRuleApplied(withWriteOnly)([servedRule])).toBe(true);
+	});
+
+	describe('member timeouts, TLS hardening and the client CRL path', () => {
+		const hardening = {
+			timeoutMemberConnect: 800,
+			timeoutMemberData: 30000,
+			timeoutTcpInspect: 5000,
+			alpn_protocols: ['h2', 'http/1.1'],
+			tls_ciphers: 'TLS_AES_256_GCM_SHA384:ECDHE-RSA-AES256-GCM-SHA384',
+			tls_versions: ['TLSv1.2', 'TLSv1.3'],
+			hsts_max_age: 600,
+			hsts_include_subdomains: true,
+			hsts_preload: true,
+		};
+		const served = (args: Record<string, unknown>) => rule({...servedArgs, ...args}, {endpoints: servedRule.endpoints, secondaryIPs: null, allowedSources: null});
+
+		it('confirms them when they read back as sent', () => {
+			expect(lbRuleApplied(sent(hardening))([served(hardening)])).toBe(true);
+		});
+
+		it.each(Object.keys(hardening))('does not confirm %s against a rule that reads back without it', field => {
+			const {[field]: _left, ...others} = hardening as Record<string, unknown>;
+			expect(lbRuleApplied(sent(hardening))([served(others)])).toBe(false);
+		});
+
+		it('does not confirm a value that reads back changed', () => {
+			expect(lbRuleApplied(sent(hardening))([served({...hardening, tls_versions: ['TLSv1.3']})])).toBe(false);
+			expect(lbRuleApplied(sent(hardening))([served({...hardening, hsts_max_age: 300})])).toBe(false);
+		});
+
+		it('confirms zeros and empty lists against a rule that stores none of them', () => {
+			const zeros = {timeoutMemberConnect: 0, alpn_protocols: [], tls_ciphers: '', tls_versions: [], hsts_max_age: 0, hsts_include_subdomains: false};
+			expect(lbRuleApplied(sent(zeros))([servedRule])).toBe(true);
+		});
+
+		it('holds the client CRL path to what was sent', () => {
+			const mtls = {client_cert_mode: 'require', client_ca_path: '/opt/loxilb/cert/ca.crt', client_crl_path: '/opt/loxilb/cert/ca.crl'};
+			expect(lbRuleApplied(sent({mtls_frontend: mtls}))([served({mtls_frontend: mtls})])).toBe(true);
+			expect(lbRuleApplied(sent({mtls_frontend: mtls}))([served({mtls_frontend: {...mtls, client_crl_path: undefined}})])).toBe(false);
+		});
 	});
 
 	it('confirms source prefixes that read back as their network, in any order', () => {

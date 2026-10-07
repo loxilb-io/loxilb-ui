@@ -161,7 +161,35 @@ describe('upload and rotation', () => {
 		expect(text(last())).toContain(expected);
 	});
 
-	it('says an upload without an ID cannot be looked up, and reads nothing', async () => {
+	it('reads an upload without an ID back under the ID the gateway answered, and shows that ID', async () => {
+		state.upload.mockResolvedValue({...OK, data: {certId: 'cert-7f3a'}});
+		state.confirm.mockResolvedValue({kind: 'found', cert: {...SUMMARY, certId: 'cert-7f3a'}, material: 'match'});
+		render(<SNICertificatesPage />);
+		await submitPem('Upload PEM', {});
+		expect(state.confirm).toHaveBeenCalledWith({id: 5, name: 'gw'}, 'cert-7f3a', CERT_PEM);
+		expect(last().title).toBe('Success');
+		expect(text(last())).toContain('the gateway chose "cert-7f3a"');
+	});
+
+	it('does not call an upload without an ID a success when the answered ID holds nothing', async () => {
+		state.upload.mockResolvedValue({...OK, data: {certId: 'cert-7f3a'}});
+		state.confirm.mockResolvedValue({kind: 'absent'});
+		render(<SNICertificatesPage />);
+		await submitPem('Upload PEM', {});
+		expect(last().title).toBe('Warning');
+		expect(text(last())).toContain('nothing is stored under "cert-7f3a"');
+	});
+
+	it('reads back under the ID that was named, whatever the answer carries', async () => {
+		state.upload.mockResolvedValue({...OK, data: {certId: 'another'}});
+		state.confirm.mockResolvedValue({kind: 'found', cert: SUMMARY, material: 'match'});
+		render(<SNICertificatesPage />);
+		await submitPem('Upload PEM', {usage: 'ca', certId: 'backend-ca'});
+		expect(state.confirm).toHaveBeenCalledWith({id: 5, name: 'gw'}, 'backend-ca', CERT_PEM);
+		expect(text(last())).toContain('"backend-ca" was uploaded');
+	});
+
+	it('says an upload without an ID cannot be looked up when the gateway answers with no ID, and reads nothing', async () => {
 		state.upload.mockResolvedValue(OK);
 		render(<SNICertificatesPage />);
 		await submitPem('Upload PEM', {});

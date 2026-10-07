@@ -116,6 +116,15 @@ export const LB_FIELD_CONFIRMATION: Readonly<Record<string, LBFieldConfirmation>
 	backend_ca_cert_id: echo,
 	backend_client_cert_id: echo,
 	backend_tls_server_name: echo,
+	timeoutMemberConnect: echo,
+	timeoutMemberData: echo,
+	timeoutTcpInspect: echo,
+	alpn_protocols: echo,
+	tls_ciphers: echo,
+	tls_versions: echo,
+	hsts_max_age: echo,
+	hsts_include_subdomains: echo,
+	hsts_preload: echo,
 
 	// Stored as sent; the named value is what "left out" means.
 	fc_mode: {kind: 'echo', absentAs: 'inherit'},
@@ -128,8 +137,7 @@ export const LB_FIELD_CONFIRMATION: Readonly<Record<string, LBFieldConfirmation>
 	// Zero asks for the protocol's default timeout, which then reads back.
 	inactiveTimeOut: {kind: 'nonzero'},
 
-	// `client_crl_path` is stored and never returned.
-	mtls_frontend: {kind: 'members', members: ['client_cert_mode', 'client_ca_path', 'client_ca_cert_data', 'require_client_cn', 'client_cn_pattern']},
+	mtls_frontend: {kind: 'members', members: ['client_cert_mode', 'client_ca_path', 'client_ca_cert_data', 'require_client_cn', 'client_cn_pattern', 'client_crl_path']},
 	// The path and inline-key members are refused by the gateway, never stored.
 	mtls_backend: {kind: 'members', members: ['verify_server_cert']},
 
@@ -144,16 +152,7 @@ export const LB_FIELD_CONFIRMATION: Readonly<Record<string, LBFieldConfirmation>
 	session_header_name: skip('returned only for the round-robin selectors'),
 	privateIP: skip(WRITE_ONLY),
 	oper: skip(WRITE_ONLY),
-	timeoutMemberConnect: skip(WRITE_ONLY),
-	timeoutMemberData: skip(WRITE_ONLY),
-	timeoutTcpInspect: skip(WRITE_ONLY),
 	vip_qos_policy_id: skip(WRITE_ONLY),
-	alpn_protocols: skip(WRITE_ONLY),
-	tls_ciphers: skip(WRITE_ONLY),
-	tls_versions: skip(WRITE_ONLY),
-	hsts_max_age: skip(WRITE_ONLY),
-	hsts_include_subdomains: skip(WRITE_ONLY),
-	hsts_preload: skip(WRITE_ONLY),
 	fc_effective: skip(READ_ONLY),
 	half_close_effective: skip(READ_ONLY),
 	backend_tls_effective: skip(READ_ONLY),

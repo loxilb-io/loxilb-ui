@@ -523,7 +523,7 @@ export interface paths {
   "/config/loadbalancer": {
     /**
      * Create a new Load balancer service
-     * @description Create a new load balancer service. A well-formed request can still be refused by this Gateway's own deployment state with 412 - a vLLM KV-exact rule without the launch seed or without a loadable tokenizer for its model_name, or allowedSources on a rule allocated a slot past the source-check range - and no request body can satisfy such a refusal; GET /status/capabilities reports the same verdicts before submission.
+     * @description Create a new load balancer service. A well-formed request can still be refused by this Gateway's own deployment state with 412 - a vLLM KV-exact rule without the launch seed or without a loadable tokenizer for its model_name, or allowedSources on a rule allocated a slot past the source-check range - and no request body can satisfy such a refusal; GET /status/capabilities reports the same verdicts before submission. A request for a rule that exists replaces it: a request that changes nothing is answered 409 lbrule-exists, and a field the request omits takes its default, except the fields a replace keeps when omitted - id, the administrative state, projectId, annotations, the secondary VIPs, api_key_auth, backend_protocol, half_close_mode, the fc_ fields, pd_cache_threshold and pd_balance_abs_threshold. A replace of a FullProxy rule keeps the listening socket. Unless the change is one the rule takes in place, its endpoint pool is built again: the requests waiting in its capacity queue are ended, and its session and conversation affinity and its counts start over.
      */
     post: {
       /** @description Attributes for load balance service */
@@ -4539,7 +4539,7 @@ export interface paths {
   "/maintenance": {
     /**
      * Operator maintenance state with drain read-back
-     * @description Reports an ephemeral operator maintenance episode, its management-write gate and drain observations. The episode does not itself refuse new inference traffic. The in-flight count covers SSE streams, not all requests; elapsed time and deadline overrun do not prove a completed traffic drain.
+     * @description Reports an ephemeral operator maintenance episode, its management-write gate and drain observations. On a gateway whose data path is attached the episode also refuses new inference requests, and refusing_new_inference reports whether it does; on a management plane with no data path behind it, it does not. The in-flight count covers SSE streams, not all requests; elapsed time and deadline overrun do not prove a completed traffic drain.
      */
     get: {
       responses: {
@@ -7779,7 +7779,7 @@ export interface paths {
     get: operations["GetAuditPolicy"];
     /**
      * Change the audit policy
-     * @description Replaces the runtime-changeable audit policy. The change is itself audited before it is applied, like any other management mutation. A value below the deployment profile's floor is refused for every caller, the gateway administrator included, and the refusal names the fields. That refusal answers 400, not 403: the caller was authorized and the values were not acceptable, and a 403 here would be recorded as an authorization denial rather than as the refused policy change it is. Lowering a retention target never deletes segments already on disk: they keep the terms they were sealed under, and only what is sealed afterwards is subject to the shorter one.
+     * @description Replaces the runtime-changeable audit policy. The change is itself audited before it is applied, like any other management mutation. A value below the deployment profile's floor is refused for every caller, the gateway administrator included, and the refusal names the fields. That refusal answers 400, not 403: the caller was authorized and the values were not acceptable, and a 403 here would be recorded as an authorization denial rather than as the refused policy change it is. Lowering a retention target never deletes segments already on disk: they keep the terms they were sealed under, and only what is sealed afterwards is subject to the shorter one. The body replaces the whole policy: a field left out is set to its zero value, which for a retention limit means no limit, and is not kept from the policy before. The policy is held in memory only. It is not part of the persisted configuration document, unlike the sinks, and a restart brings back the values the gateway starts with: its startup segment limits and no retention limit. A deployment that needs a policy to hold across restarts applies the whole of it again after every start, and reads it back.
      */
     post: operations["PostAuditPolicy"];
   };
@@ -7791,7 +7791,7 @@ export interface paths {
     get: operations["GetAuditSink"];
     /**
      * Configure the audit sink
-     * @description Configures the remote syslog sink. The receiver's certificate is always verified against the configured bundle; there is no mode that disables verification, and a configuration without a bundle is refused. The change is audited like any other management mutation.
+     * @description Configures the remote syslog sink. The receiver's certificate is always verified against the configured bundle; there is no mode that disables verification, and a configuration without a bundle is refused. The change is audited like any other management mutation. Syslog over TLS carries no acknowledgement from the receiver, so what the sink can know is what the receiver's transport has acknowledged. A record is behind the sink once it has been written to the session; records written and not yet acknowledged are remembered with the sink's place in the trail, and are sent again after the session fails and after a restart of the gateway, orderly or not. A receiver therefore sees a record at least once up to its own transport and may see it more than once, and removes repeats by (instance_id, boot_id, seq). What a receiver has acknowledged and then loses before storing it is covered only by the fixed number of records sent again after a session that failed, and not across a restart of the gateway.
      */
     post: operations["PostAuditSink"];
   };
@@ -9136,7 +9136,7 @@ export interface components {
         /** @description Tracing catalog name, for example v1, anthropic or default. The domain resolves and maps it for the FullProxy tracing path when the catalog component is available. A configured name alone does not prove capture or parser execution. */
         trace_type?: string;
         /**
-         * @description FullProxy HTTP capability - http1 selects HTTP/1.1, http2 selects HTTP/2, and both prefers HTTP/2 with HTTP/1.1 fallback. The capability is shared by listener/backend ALPN configuration; recognized alpn_protocols values override it. GET reports this field only for FullProxy.
+         * @description FullProxy HTTP capability - http1 selects HTTP/1.1, http2 selects HTTP/2, and both prefers HTTP/2 with HTTP/1.1 fallback. The capability is shared by listener/backend ALPN configuration; recognized alpn_protocols values override it. The default applies to a new rule; a replace that omits the field keeps the value the rule has. GET reports this field only for FullProxy.
          * @default http1
          * @enum {string}
          */
@@ -11424,7 +11424,7 @@ export interface components {
       name?: string;
       /** @description The sink that receives every record. */
       compliance?: boolean;
-      /** @description starting, connected, disconnected, stalled or stopped. */
+      /** @description starting, connected, disconnected, stalled or stopped. connected says the last record offered was written to a session the receiver has not closed. It does not say the receiver has stored it: a receiver that stops answering without closing is found only when the transport gives up on it, some seconds later. */
       state?: string;
       cursor?: components["schemas"]["AuditSinkCursor"];
       /** @description The sink has reached the segment being written. When false it is still reading sealed segments and lag_records does not apply. */
@@ -11768,7 +11768,12 @@ export interface components {
       /** @description Optional directory on the gateway node containing server.crt and server.key; omitted uses the hostname-relative location under /opt/loxilb/cert. This is not a client-side path or upload. The registration loader is invoked with mTLS disabled, so rootCA.crt alone does not enable client-certificate enforcement. */
       certPath?: string;
     };
-    /** @description Managed PEM input and partial read model. POST currently returns empty 201, including when it mints an ID; callers cannot obtain that minted handle from the response. PUT uses the path ID and ignores body ID and hostnames. Known lifecycle gaps: duplicate POST persists before rejecting registration and can remove existing material; failed rotation does not roll back files; hostname ownership conflicts and multi-host swaps are not transactional; rotation retains the old hostname set. Do not claim atomic certificate transactions, automatic SAN migration, or verified zero downtime. GET returns no private-key material, although the shared schema still requires keyPem and the generated response can serialize it as null. */
+    /** @description The handle of a certificate that was created. */
+    CertCreated: {
+      /** @description The ID the certificate is stored under - the one the request named, or the one the server minted when it named none. It is the handle for rotate and delete, and what a load-balancer rule refers to. */
+      certId: string;
+    };
+    /** @description Managed PEM input and partial read model. POST answers 201 with the certId in the body, including when it mints one. PUT uses the path ID and ignores body ID and hostnames. Known lifecycle gaps: duplicate POST persists before rejecting registration and can remove existing material; failed rotation does not roll back files; hostname ownership conflicts and multi-host swaps are not transactional; rotation retains the old hostname set. Do not claim atomic certificate transactions, automatic SAN migration, or verified zero downtime. GET returns no private-key material, although the shared schema still requires keyPem and the generated response can serialize it as null. */
     Cert: {
       /**
        * @description What the entry is for, fixed when the ID is created. "server": a listener certificate and key, selected by SNI. "ca": a bundle of CA certificates that backend certificates are verified against; certPem (plus chainPem) is the bundle and keyPem is the empty string. "client": the certificate and key the gateway presents to backends. Only "server" entries are offered to clients. A load-balancer rule refers to a "ca" entry with backend_ca_cert_id and to a "client" entry with backend_client_cert_id; an entry a rule refers to cannot be deleted. Rotating a "ca" or "client" entry with PUT updates every rule that refers to it before the call returns; 400 names the rules whose listener could not load the new material and kept what it had.
@@ -13311,9 +13316,11 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Created */
+      /** @description Created. The body carries the certId the certificate is stored under. */
       201: {
-        content: never;
+        content: {
+          "application/json": components["schemas"]["CertCreated"];
+        };
       };
       /** @description Malformed PEM / missing material */
       400: {
@@ -14500,7 +14507,7 @@ export interface operations {
   };
   /**
    * Change the audit policy
-   * @description Replaces the runtime-changeable audit policy. The change is itself audited before it is applied, like any other management mutation. A value below the deployment profile's floor is refused for every caller, the gateway administrator included, and the refusal names the fields. That refusal answers 400, not 403: the caller was authorized and the values were not acceptable, and a 403 here would be recorded as an authorization denial rather than as the refused policy change it is. Lowering a retention target never deletes segments already on disk: they keep the terms they were sealed under, and only what is sealed afterwards is subject to the shorter one.
+   * @description Replaces the runtime-changeable audit policy. The change is itself audited before it is applied, like any other management mutation. A value below the deployment profile's floor is refused for every caller, the gateway administrator included, and the refusal names the fields. That refusal answers 400, not 403: the caller was authorized and the values were not acceptable, and a 403 here would be recorded as an authorization denial rather than as the refused policy change it is. Lowering a retention target never deletes segments already on disk: they keep the terms they were sealed under, and only what is sealed afterwards is subject to the shorter one. The body replaces the whole policy: a field left out is set to its zero value, which for a retention limit means no limit, and is not kept from the policy before. The policy is held in memory only. It is not part of the persisted configuration document, unlike the sinks, and a restart brings back the values the gateway starts with: its startup segment limits and no retention limit. A deployment that needs a policy to hold across restarts applies the whole of it again after every start, and reads it back.
    */
   PostAuditPolicy: {
     /** @description The policy to apply */
@@ -14539,7 +14546,7 @@ export interface operations {
   };
   /**
    * Configure the audit sink
-   * @description Configures the remote syslog sink. The receiver's certificate is always verified against the configured bundle; there is no mode that disables verification, and a configuration without a bundle is refused. The change is audited like any other management mutation.
+   * @description Configures the remote syslog sink. The receiver's certificate is always verified against the configured bundle; there is no mode that disables verification, and a configuration without a bundle is refused. The change is audited like any other management mutation. Syslog over TLS carries no acknowledgement from the receiver, so what the sink can know is what the receiver's transport has acknowledged. A record is behind the sink once it has been written to the session; records written and not yet acknowledged are remembered with the sink's place in the trail, and are sent again after the session fails and after a restart of the gateway, orderly or not. A receiver therefore sees a record at least once up to its own transport and may see it more than once, and removes repeats by (instance_id, boot_id, seq). What a receiver has acknowledged and then loses before storing it is covered only by the fixed number of records sent again after a session that failed, and not across a restart of the gateway.
    */
   PostAuditSink: {
     /** @description The sink configuration to apply */
