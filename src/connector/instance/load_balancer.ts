@@ -83,6 +83,51 @@ export function withoutBackendKey(rule: IServiceConfiguration): IServiceConfigur
 	return {...rule, serviceArguments: {...rule.serviceArguments, mtls_backend: kept} as IServiceConfiguration['serviceArguments']};
 }
 
+/** The last step before the wire: a projected rule as the POST body. */
+function serializeLBCreateBody(projected: any): any {
+	let cleanedData = cleanNegativeNumbers(serializeAIConfiguration(projected));
+
+	// Clean up probe values according to serviceArguments.monitor value
+	// If monitor is false, remove probetype, probeport, probereq, proberesp, probeTimeout, probeRetries
+	if (cleanedData.serviceArguments && !cleanedData.serviceArguments.monitor) {
+		const {probetype, probeport, probereq, proberesp, probeTimeout, probeRetries, ...serviceArgs} = cleanedData.serviceArguments;
+		cleanedData = {
+			...cleanedData,
+			serviceArguments: serviceArgs
+		};
+	}
+
+	// Drop mtls_frontend when client-cert verification is off. The Client Cert
+	// Mode dropdown auto-defaults to 'disabled' on mount (ParamBox enum default),
+	// so without this every rule — including non-TLS/dnat rules the gateway
+	// rejects mtls_frontend on — would carry an inert mtls_frontend. 'disabled'
+	// is the gateway's own default (no verification), so stripping it is a no-op
+	// semantically and keeps the payload clean.
+	const mf = cleanedData.serviceArguments?.mtls_frontend;
+	if (mf && (!mf.client_cert_mode || mf.client_cert_mode === 'disabled')) {
+		const {mtls_frontend, ...serviceArgs} = cleanedData.serviceArguments;
+		cleanedData = {
+			...cleanedData,
+			serviceArguments: serviceArgs
+		};
+	}
+
+	return cleanedData;
+}
+
+/**
+ * The body `request_create_load_balancer_config` sends for this rule.
+ *
+ * The form's state and the request are not the same object: fields are
+ * projected onto the flavor, normalised, and dropped on the way out. A caller
+ * that needs to check what was written — the read-back confirmation — must
+ * compare against this, or it would hold the gateway to fields it was never
+ * sent.
+ */
+export function buildLBCreateBody(data: IServiceConfiguration, flavor: InstanceFlavor): IServiceConfiguration {
+	return serializeLBCreateBody(projectOntoFlavor(data, flavor));
+}
+
 //---------------------------------------------------------
 // API Caller Functions
 //---------------------------------------------------------
@@ -115,32 +160,7 @@ export async function request_create_load_balancer_config(instance: IInstance, d
 			rawDetail: aiIssues.map(issue => issue.message).join(' '),
 		};
 	}
-	let cleanedData = cleanNegativeNumbers(serializeAIConfiguration(projectedData));
-
-	// Clean up probe values according to serviceArguments.monitor value
-	// If monitor is false, remove probetype, probeport, probereq, proberesp, probeTimeout, probeRetries
-	if (cleanedData.serviceArguments && !cleanedData.serviceArguments.monitor) {
-		const {probetype, probeport, probereq, proberesp, probeTimeout, probeRetries, ...serviceArgs} = cleanedData.serviceArguments;
-		cleanedData = {
-			...cleanedData,
-			serviceArguments: serviceArgs
-		};
-	}
-
-	// Drop mtls_frontend when client-cert verification is off. The Client Cert
-	// Mode dropdown auto-defaults to 'disabled' on mount (ParamBox enum default),
-	// so without this every rule — including non-TLS/dnat rules the gateway
-	// rejects mtls_frontend on — would carry an inert mtls_frontend. 'disabled'
-	// is the gateway's own default (no verification), so stripping it is a no-op
-	// semantically and keeps the payload clean.
-	const mf = cleanedData.serviceArguments?.mtls_frontend;
-	if (mf && (!mf.client_cert_mode || mf.client_cert_mode === 'disabled')) {
-		const {mtls_frontend, ...serviceArgs} = cleanedData.serviceArguments;
-		cleanedData = {
-			...cleanedData,
-			serviceArguments: serviceArgs
-		};
-	}
+	const cleanedData = serializeLBCreateBody(projectedData);
 
 	try {
 		return fromSimpleResponse(await POST_INST(instance, `/config/loadbalancer`, cleanedData), 'lb.create');

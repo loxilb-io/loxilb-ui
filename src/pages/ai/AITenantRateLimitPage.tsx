@@ -31,7 +31,7 @@ import {
 import {useQueryInstanceData} from 'hooks/query/common';
 import {fromQueryRefetch} from 'hooks/query/reconcile';
 import {useReconcileReporter} from 'hooks/query/reconcileReport';
-import {rateLimitDefaultsApplied, rateLimitDefaultsGone, tenantRateLimitAppeared, userRateLimitAppeared, userRateLimitGone} from 'hooks/query/confirmPredicates';
+import {rateLimitDefaultsApplied, rateLimitDefaultsGone, tenantRateLimitApplied, userRateLimitApplied, userRateLimitGone} from 'hooks/query/confirmPredicates';
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {t} from 'i18next';
 import React, {Fragment, useMemo, useRef, useState} from 'react';
@@ -263,12 +263,16 @@ export default function AITenantRateLimitPage() {
 			async () => {
 				if (!formRef.current) return;
 
-				const tenantId = formRef.current.tenant_id;
-				const res = await request_set_tenant_ratelimit(inst, formRef.current);
+				const submitted = formRef.current;
+				const tenantId = submitted.tenant_id.trim();
+				const res = await request_set_tenant_ratelimit(inst, submitted);
 				if (res.status === 'confirmed') {
 					rememberTenant(tenantId);
 					set_selected_rows([]);
-					await report({refetch: fromQueryRefetch(refetch), confirm: tenantRateLimitAppeared(tenantId)}, t('Applied successfully.'));
+					// Confirmed on this tenant's own read, value by value. The
+					// table is re-read once afterwards, whatever the outcome.
+					await report({refetch: () => query_get_tenant_ratelimit(inst, tenantId), confirm: tenantRateLimitApplied(submitted)}, t('Applied successfully.'));
+					void refetch();
 				} else showAddError('AI tenant rate limit', t(res.localeKey));
 			},
 			true,
@@ -323,7 +327,14 @@ export default function AITenantRateLimitPage() {
 				set_selected_user_rows([]);
 				if (res.status === 'confirmed') {
 					rememberTenant(payload.tenant_id);
-					await report({refetch: fromQueryRefetch(user_query.refetch), confirm: userRateLimitAppeared(payload.user_id)}, t('Applied successfully.'));
+					// The list omits model limits, so only this user's own read
+					// can show what was stored. The table is re-read once
+					// afterwards, whatever the outcome.
+					await report(
+						{refetch: () => query_get_user_ratelimit(inst, payload.tenant_id.trim(), payload.user_id.trim()), confirm: userRateLimitApplied(payload)},
+						t('Applied successfully.'),
+					);
+					void user_query.refetch();
 				} else showAddError('AI user rate limit', t(res.localeKey));
 			},
 			true,

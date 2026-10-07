@@ -62,8 +62,14 @@ export interface ReconcileSpec<T> {
  * Adapts react-query's `refetch` handle to a `ReconcileSpec.refetch`. Kept
  * here so the eleven call sites do not each re-derive the same unwrapping.
  */
-export function fromQueryRefetch<T>(refetch: () => Promise<{data?: T}>): () => Promise<T | undefined> {
-	return async () => (await refetch()).data;
+export function fromQueryRefetch<T>(refetch: () => Promise<{data?: T; isError?: boolean}>): () => Promise<T | undefined> {
+	return async () => {
+		// A failed refetch still resolves, and still carries the data of the
+		// last read that worked. That is the state from BEFORE the write, so it
+		// is reported as "no read" rather than handed to a predicate.
+		const result = await refetch();
+		return result.isError ? undefined : result.data;
+	};
 }
 
 /** Resolves after `ms`, or immediately once `signal` aborts. */

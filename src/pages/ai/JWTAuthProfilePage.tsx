@@ -33,6 +33,7 @@ import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
 import {jwksHealthFor} from 'observability/jwtAuth';
 import {rateMaxGapMs} from 'observability/snapshotRates';
 import {useObservabilityApplicable} from 'pages/observability/common';
+import {jwtProfileApplied, jwtProfileGone} from 'hooks/query/confirmPredicates';
 import {fromQueryRefetch} from 'hooks/query/reconcile';
 import {useReconcileReporter} from 'hooks/query/reconcileReport';
 import {useErrorPopup} from 'hooks/useErrorPopup';
@@ -152,7 +153,7 @@ export default function JWTAuthProfilePage() {
 				const res = await request_upsert_jwtauthprofile(inst, request);
 				if (res.status === 'confirmed') {
 					set_selected_rows([]);
-					await report({refetch: fromQueryRefetch(refetch)}, t('Saved successfully.'));
+					await report({refetch: fromQueryRefetch(refetch), confirm: jwtProfileApplied(request)}, t('Saved successfully.'));
 					return;
 				}
 				showAddError('JWT auth profile', t(res.localeKey));
@@ -189,7 +190,7 @@ export default function JWTAuthProfilePage() {
 		const res = await request_delete_jwtauthprofile(inst, name);
 		if (res.status === 'confirmed') {
 			set_selected_rows([]);
-			await report({refetch: fromQueryRefetch(refetch)}, t('Deleted {{count}} item(s) successfully.', {count: 1}));
+			await report({refetch: fromQueryRefetch(refetch), confirm: jwtProfileGone(name)}, t('Deleted {{count}} item(s) successfully.', {count: 1}));
 			return;
 		}
 		// A 409 that arrives anyway means a rule referenced it between the read
