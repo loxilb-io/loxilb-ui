@@ -157,6 +157,30 @@ export async function gw(method: string, apiPath: string, body?: unknown): Promi
 	});
 }
 
+/**
+ * An IPv4 address the gateway itself holds, for a fullproxy (mode 4) rule.
+ *
+ * A fullproxy rule is a listener the gateway binds, so its VIP has to be an
+ * address of the gateway: on any other address the data plane does not install
+ * the rule and the create is refused. `E2E_GATEWAY_VIP` names one explicitly;
+ * otherwise the first address on a real interface is taken. `undefined` means
+ * the gateway reported none, and the caller skips.
+ */
+export async function gatewayHeldAddress(): Promise<string | undefined> {
+	if (process.env.E2E_GATEWAY_VIP) return process.env.E2E_GATEWAY_VIP;
+	const resp = await gw('GET', '/config/ipv4address/all');
+	if (!resp.ok) return undefined;
+	const body = (await resp.json()) as {ipAttr?: {dev?: string; ipAddress?: string[]}[]};
+	for (const entry of body.ipAttr ?? []) {
+		// Loopback is not reachable, and an `llb-rule-` device is an address
+		// another rule put there and will take away again.
+		if (!entry.dev || entry.dev === 'lo' || entry.dev.startsWith('llb-rule-')) continue;
+		const address = (entry.ipAddress ?? []).map(cidr => cidr.split('/')[0]).find(ip => /^\d+\.\d+\.\d+\.\d+$/.test(ip) && !ip.startsWith('127.'));
+		if (address) return address;
+	}
+	return undefined;
+}
+
 export async function gwJson<T = any>(apiPath: string): Promise<T> {
 	const resp = await gw('GET', apiPath);
 	if (!resp.ok) throw new Error(`GET ${apiPath} failed: ${resp.status}`);

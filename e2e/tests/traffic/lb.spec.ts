@@ -18,8 +18,8 @@
 //---------------------------------------------------------
 import {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {activeInstance, gatewayKvExactReadiness, gw, KvExactReadiness, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
-import {confirmDelete, dialog, dialogButton, expectErrorAndDismiss, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
+import {activeInstance, gatewayHeldAddress, gatewayKvExactReadiness, gw, KvExactReadiness, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
+import {confirmDelete, dialog, dialogButton, dialogTitle, expectErrorAndDismiss, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 import {refreshUntilGone, refreshUntilRow, rowByText, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 import {lbRuleRowId} from '../../../src/types/lb_identity';
 
@@ -354,11 +354,15 @@ test.describe('LB Rule page CRUD', () => {
 		}
 	});
 
-	test('@gw E-aigw-auth-policy: no-op preserves required; same-key fullproxy policy change is blocked', async ({page}) => {
+	test('@gw E-aigw-auth-policy: no-op preserves required; a same-key fullproxy policy change replaces the rule after asking', async ({page}) => {
+		// A fullproxy rule is a listener the gateway binds: the VIP must be one
+		// of its own addresses, or the data plane does not install the rule.
+		const vip = await gatewayHeldAddress();
+		test.skip(!vip, 'the gateway reports no address of its own to bind a fullproxy listener on');
 		const name = 'e2e-lb-auth-edit';
 		const create = await gw('POST', LB_PATH, {
 			serviceArguments: {
-				name, externalIP: '203.0.113.74', port: 8474, protocol: 'tcp', sel: 0, mode: 4,
+				name, externalIP: vip, port: 18474, protocol: 'tcp', sel: 0, mode: 4,
 				api_key_auth: 'required',
 			},
 			endpoints: [{endpointIP: '198.51.100.74', targetPort: 8474, weight: 1}],
@@ -366,8 +370,11 @@ test.describe('LB Rule page CRUD', () => {
 		expect(create.status).toBeLessThan(300);
 		await refreshUntilRow(page, name);
 		let patchRequests = 0;
+		let deleteRequests = 0;
 		page.on('request', request => {
-			if (request.method() === 'PATCH' && request.url().includes('/config/loadbalancer/externalipaddress/203.0.113.74/')) patchRequests++;
+			if (!request.url().includes('/config/loadbalancer/')) return;
+			if (request.method() === 'PATCH') patchRequests++;
+			if (request.method() === 'DELETE') deleteRequests++;
 		});
 
 		// Submitting the read-back form untouched is a true no-op. In particular,
@@ -381,10 +388,10 @@ test.describe('LB Rule page CRUD', () => {
 		expect((list.lbAttr ?? []).find((rule: any) => rule.serviceArguments?.name === name)?.serviceArguments?.api_key_auth).toBe('required');
 		expect(patchRequests).toBe(0);
 
-		// The current Gateway contract rejects every same-key fullproxy update.
-		// The UI must stop before the network and explain the safe replacement
-		// workflow rather than sending an impossible PATCH or doing disruptive
-		// delete-and-recreate behind the operator's back.
+		// The gateway changes a fullproxy rule through a POST of the whole rule
+		// on the same identity. A credential policy change makes it re-create
+		// the listener, so the page asks first — and it is the gateway that
+		// re-creates it: no PATCH (refused on mode 4) and no client-side delete.
 		await refreshUntilRow(page, name);
 		await selectRowByText(page, name);
 		await openToolbarDialog(page, 'Edit', 'Edit Load Balancer Rule');
@@ -392,11 +399,65 @@ test.describe('LB Rule page CRUD', () => {
 		await expandSection(page, AIGW);
 		await selectOption(page, 'Data-plane Credential Policy', 'Disabled (strip header)');
 		await dialogButton(page, 'Update').click();
-		await expect(dialog(page).getByText(/Fullproxy \(mode 4\) rules cannot be updated in place/)).toBeVisible();
-		await expectErrorAndDismiss(page);
-		expect(patchRequests).toBe(0);
+		await expect(dialogTitle(page, 'Re-create listener')).toBeVisible();
+		await expect(dialog(page).getByText(/serviceArguments\.api_key_auth/)).toBeVisible();
+		// Nothing was written while the question stands.
 		list = await (await gw('GET', `${LB_PATH}/all`)).json();
 		expect((list.lbAttr ?? []).find((rule: any) => rule.serviceArguments?.name === name)?.serviceArguments?.api_key_auth).toBe('required');
+
+		await dialogButton(page, 'Re-create listener').click();
+		await expect(dialog(page).getByText('Listener re-created. The rule reads back with the submitted values.')).toBeVisible({timeout: 20_000});
+		await dialogButton(page, 'OK').click();
+		expect(patchRequests).toBe(0);
+		expect(deleteRequests).toBe(0);
+		list = await (await gw('GET', `${LB_PATH}/all`)).json();
+		const stored = (list.lbAttr ?? []).find((rule: any) => rule.serviceArguments?.name === name);
+		expect(stored?.serviceArguments?.api_key_auth).toBe('disabled');
+		// The whole rule travelled: what the edit did not touch is still there.
+		expect(stored?.serviceArguments).toMatchObject({externalIP: vip, port: 18474, mode: 4});
+		expect(stored?.endpoints?.map((ep: any) => `${ep.endpointIP}:${ep.targetPort}`)).toEqual(['198.51.100.74:8474']);
+	});
+
+	test('@gw E-fullproxy-endpoint: an endpoint is changed and rolled back on the same fullproxy rule', async ({page}) => {
+		const vip = await gatewayHeldAddress();
+		test.skip(!vip, 'the gateway reports no address of its own to bind a fullproxy listener on');
+		const name = 'e2e-lb-fp-endpoint';
+		const sibling = 'e2e-lb-fp-sibling';
+		// Two rules on one listener, told apart by host only.
+		for (const [ruleName, host, target] of [[name, 'a.e2e.example', 8475], [sibling, 'b.e2e.example', 8476]] as const) {
+			const create = await gw('POST', LB_PATH, {
+				serviceArguments: {name: ruleName, externalIP: vip, port: 18475, protocol: 'tcp', sel: 0, mode: 4, host},
+				endpoints: [{endpointIP: '198.51.100.75', targetPort: target, weight: 1}],
+			});
+			expect(create.status, `${ruleName} create`).toBeLessThan(300);
+		}
+		const endpointsOf = async (ruleName: string): Promise<string[]> => {
+			const all = await (await gw('GET', `${LB_PATH}/all`)).json();
+			const found = (all.lbAttr ?? []).find((rule: any) => rule.serviceArguments?.name === ruleName);
+			return (found?.endpoints ?? []).filter((ep: any) => ep.state !== 'inactive').map((ep: any) => `${ep.endpointIP}:${ep.targetPort}`).sort();
+		};
+
+		const moveEndpointTo = async (port: string) => {
+			await refreshUntilRow(page, name);
+			await selectRowByText(page, name);
+			await openToolbarDialog(page, 'Edit', 'Edit Load Balancer Rule');
+			const eps = await expandSection(page, ENDPOINTS);
+			await field(page, 'Target Port', eps).first().fill(port);
+			await dialogButton(page, 'Update').click();
+			await expect(dialogTitle(page, 'Re-create listener')).toBeVisible();
+			await dialogButton(page, 'Re-create listener').click();
+			await expect(dialog(page).getByText('Listener re-created. The rule reads back with the submitted values.')).toBeVisible({timeout: 20_000});
+			await dialogButton(page, 'OK').click();
+		};
+
+		await moveEndpointTo('8477');
+		expect(await endpointsOf(name)).toEqual(['198.51.100.75:8477']);
+		expect(await endpointsOf(sibling), 'the sibling host rule is untouched').toEqual(['198.51.100.75:8476']);
+
+		// And back, on the same rule.
+		await moveEndpointTo('8475');
+		expect(await endpointsOf(name)).toEqual(['198.51.100.75:8475']);
+		expect(await endpointsOf(sibling)).toEqual(['198.51.100.75:8476']);
 	});
 
 	test('@gw C-aigw-pd: prefill/decode disaggregation incl. per-endpoint roles', async ({page}) => {
