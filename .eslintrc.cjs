@@ -1,11 +1,5 @@
-// Lint gate (npm run lint). Uses the toolchain react-scripts already ships:
-// eslint-config-react-app (react, react-hooks, @typescript-eslint, a11y
-// subset) plus the full jsx-a11y recommended set on top.
-//
-// NOTE: the presence of this file also activates CRA's build-time ESLint
-// (eslint-webpack-plugin), so `npm run build` surfaces the same findings —
-// and fails on them once CI=true. Keep `npm run lint` and the build in
-// agreement: this one config is the single source of truth.
+// Shared lint gate, explicitly installed independently from the app bundler.
+// npm run build also runs this same lint and TypeScript check.
 module.exports = {
 	root: true,
 	extends: ['react-app', 'plugin:jsx-a11y/recommended'],

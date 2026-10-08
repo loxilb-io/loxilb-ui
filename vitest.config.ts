@@ -1,8 +1,7 @@
 import tsconfigPaths from 'vite-tsconfig-paths';
 import {defineConfig} from 'vitest/config';
 
-// Vitest runs standalone next to the CRA build (react-scripts owns the app
-// bundle until the H7 Vite migration). tsconfigPaths resolves the
+// Vitest runs alongside the Vite application build. tsconfigPaths resolves the
 // baseUrl-style absolute imports ('common', 'types/...', 'api', ...).
 export default defineConfig({
 	plugins: [tsconfigPaths()],

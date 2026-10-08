@@ -118,7 +118,7 @@ export default defineConfig({
 		: {
 				// HTTP on purpose: the OAM endpoint is plain http, and an https dev
 				// server would hit the browser's mixed-content block.
-				command: `PORT=${UI_PORT} HTTPS=false BROWSER=none WDS_SOCKET_PORT=0 dotenv -e .env.development react-scripts start`,
+				command: `PORT=${UI_PORT} npm start`,
 				url: `http://localhost:${UI_PORT}/netlox/`,
 				reuseExistingServer: true,
 				timeout: 180_000,
