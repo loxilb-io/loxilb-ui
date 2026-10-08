@@ -20,7 +20,7 @@ import type {Page, Request, Route} from '@playwright/test';
 import {expect, test} from '../../fixtures';
 import {activeInstance} from '../../helpers/api';
 import {mockKvExactReady} from '../../helpers/capabilities';
-import {dialogButton, dialogTitle, openToolbarDialog} from '../../helpers/dialogs';
+import {dialogButton, dialogTitle, openToolbarDialog, selectOption} from '../../helpers/dialogs';
 import {expandSection, field} from '../../helpers/form';
 import {selectRowByText} from '../../helpers/table';
 
@@ -97,7 +97,7 @@ async function openEdit(page: Page, name = RULE): Promise<void> {
 	await openToolbarDialog(page, 'Edit', 'Edit Load Balancer Rule');
 }
 
-/** An admission field: the gateway applies it to the running listener. */
+/** An admission field: the gateway applies it to the rule as it runs. */
 async function changeMaxOutstanding(page: Page, value: string): Promise<void> {
 	const aigw = await expandSection(page, /^AI Gateway/);
 	const toggle = aigw.getByRole('button', {name: 'Admission Control'});
@@ -105,7 +105,7 @@ async function changeMaxOutstanding(page: Page, value: string): Promise<void> {
 	await field(page, 'Max Outstanding', aigw).fill(value);
 }
 
-/** An endpoint: the gateway re-creates the listener for it. */
+/** An endpoint: the gateway builds the endpoint pool again for it. */
 async function changeEndpointPort(page: Page, value: string): Promise<void> {
 	const eps = await expandSection(page, /^Endpoints$/);
 	await field(page, 'Target Port', eps).first().fill(value);
@@ -129,7 +129,7 @@ test.describe('@gw Fullproxy rule replace — mock contract', () => {
 		await dialogButton(page, 'Update').click();
 
 		await expect(page.getByText('Load balancer rule updated successfully.')).toBeVisible({timeout: 20_000});
-		await expect(page.getByText(/removing the listener/)).toHaveCount(0);
+		await expect(page.getByText(/builds its endpoint pool again/)).toHaveCount(0);
 
 		// One write, and it is the POST: never the tuple PATCH, never a DELETE.
 		expect(server.writes.map(request => request.method())).toEqual(['POST']);
@@ -159,15 +159,15 @@ test.describe('@gw Fullproxy rule replace — mock contract', () => {
 		expect(posts(server)[0].postDataJSON().serviceArguments).toMatchObject({fc_max_outstanding: 16, max_stream_duration_sec: 900});
 	});
 
-	test('FPR-E2E-03: an endpoint change asks before re-creating the listener, and Back returns the input', async ({page}) => {
+	test('FPR-E2E-03: an endpoint change asks before rebuilding the endpoint pool, and Back returns the input', async ({page}) => {
 		const server = await serve(page, [rule(), sibling()]);
 		await openEdit(page);
 		await changeEndpointPort(page, '9002');
 		await dialogButton(page, 'Update').click();
 
 		// Asked first; nothing is on the wire yet.
-		await expect(dialogTitle(page, 'Re-create listener')).toBeVisible({timeout: 20_000});
-		await expect(page.getByText(/removing the listener of this rule and building it again/)).toBeVisible();
+		await expect(dialogTitle(page, 'Rebuild endpoint pool')).toBeVisible({timeout: 20_000});
+		await expect(page.getByText(/builds its endpoint pool again/)).toBeVisible();
 		await expect(page.getByText('Changed fields: endpoints.')).toBeVisible();
 		expect(server.writes).toHaveLength(0);
 
@@ -180,8 +180,8 @@ test.describe('@gw Fullproxy rule replace — mock contract', () => {
 
 		// Through this time.
 		await dialogButton(page, 'Update').click();
-		await dialogButton(page, 'Re-create listener').click();
-		await expect(page.getByText('Listener re-created. The rule reads back with the submitted values.')).toBeVisible({timeout: 20_000});
+		await dialogButton(page, 'Rebuild endpoint pool').click();
+		await expect(page.getByText('Endpoint pool rebuilt. The rule reads back with the submitted values.')).toBeVisible({timeout: 20_000});
 		expect(server.writes.map(request => request.method())).toEqual(['POST']);
 		expect(posts(server)[0].postDataJSON().endpoints).toEqual([{endpointIP: '198.51.100.81', targetPort: 9002, weight: 1}]);
 		expect(server.rules.find(r => r.serviceArguments.name === SIBLING)?.endpoints[0].targetPort).toBe(9001);
@@ -223,13 +223,13 @@ test.describe('@gw Fullproxy rule replace — mock contract', () => {
 		await openEdit(page);
 		await changeEndpointPort(page, '9003');
 		await dialogButton(page, 'Update').click();
-		await expect(dialogTitle(page, 'Re-create listener')).toBeVisible({timeout: 20_000});
+		await expect(dialogTitle(page, 'Rebuild endpoint pool')).toBeVisible({timeout: 20_000});
 
 		// The gateway refuses, and the rule is gone from its list afterwards.
 		server.answer = {status: 412, body: {code: 412, message: 'Server precondition not met for API call', result: SENTENCE}, store: false};
 		server.dropOnWrite = true;
 		const readsBefore = server.listReads;
-		await dialogButton(page, 'Re-create listener').click();
+		await dialogButton(page, 'Rebuild endpoint pool').click();
 
 		await expect(page.getByText(SENTENCE, {exact: false})).toBeVisible({timeout: 20_000});
 		// What was read, and only that — and it WAS read after the write.
@@ -242,6 +242,28 @@ test.describe('@gw Fullproxy rule replace — mock contract', () => {
 		await expect(dialogTitle(page, 'Edit Load Balancer Rule')).toBeVisible();
 		const eps = await expandSection(page, /^Endpoints$/);
 		await expect(field(page, 'Target Port', eps).first()).toHaveValue('9003');
+	});
+
+	test('FPR-E2E-07: a frontend mTLS change alone is sent, after asking', async ({page}) => {
+		const server = await serve(page, [rule({security: 1, mtls_frontend: {client_cert_mode: 'optional'}}), sibling()]);
+		await openEdit(page);
+		await expandSection(page, /^Advanced Settings/);
+		await selectOption(page, 'Client Cert Mode', 'required');
+		await dialogButton(page, 'Update').click();
+
+		// The gateway acts on this change by itself, so it is neither held back
+		// nor sent without the question every pool rebuild is asked with.
+		await expect(dialogTitle(page, 'Rebuild endpoint pool')).toBeVisible({timeout: 20_000});
+		await expect(page.getByText('Changed fields: serviceArguments.mtls_frontend.')).toBeVisible();
+		expect(server.writes).toHaveLength(0);
+
+		await dialogButton(page, 'Rebuild endpoint pool').click();
+		await expect(page.getByText('Endpoint pool rebuilt. The rule reads back with the submitted values.')).toBeVisible({timeout: 20_000});
+		expect(server.writes.map(request => request.method())).toEqual(['POST']);
+		const sent = posts(server)[0].postDataJSON().serviceArguments;
+		expect(sent.mtls_frontend).toMatchObject({client_cert_mode: 'required'});
+		// The rest of the rule travelled with it.
+		expect(sent).toMatchObject({name: RULE, host: 'a.example', security: 1, max_stream_duration_sec: 600});
 	});
 
 	test('FPR-E2E-06: a rule that vanished after the list was read is not written', async ({page}) => {

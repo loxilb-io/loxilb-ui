@@ -12,7 +12,7 @@ const change = (over: Partial<FullproxyChangeSet> = {}): FullproxyChangeSet => (
 	...over,
 });
 
-describe('what a fullproxy replace does to the listener', () => {
+describe('what a fullproxy replace does to the running rule', () => {
 	it('is nothing when nothing changed', () => {
 		expect(planFullproxyReplace(change())).toEqual({kind: 'none'});
 	});
@@ -23,13 +23,13 @@ describe('what a fullproxy replace does to the listener', () => {
 	});
 
 	// The gateway takes the in-place road only when NOTHING else changed.
-	it('re-creates the listener as soon as one other field rides along', () => {
+	it('builds the endpoint pool again as soon as one other field rides along', () => {
 		expect(planFullproxyReplace(change({changedArguments: ['fc_max_outstanding', 'max_stream_duration_sec']})).kind).toBe('recreate');
 		expect(planFullproxyReplace(change({changedArguments: ['backend_protocol']})).kind).toBe('recreate');
 		expect(planFullproxyReplace(change({changedArguments: ['api_key_auth', 'jwt_auth_profile']})).kind).toBe('recreate');
 	});
 
-	it('re-creates the listener for an endpoint or allowed-source change, even alongside an in-place field', () => {
+	it('builds the endpoint pool again for an endpoint or allowed-source change, even alongside an in-place field', () => {
 		expect(planFullproxyReplace(change({endpointsChanged: true})).kind).toBe('recreate');
 		expect(planFullproxyReplace(change({allowedChanged: true})).kind).toBe('recreate');
 		expect(planFullproxyReplace(change({changedArguments: ['fc_mode'], endpointsChanged: true})).kind).toBe('recreate');
@@ -48,23 +48,21 @@ describe('what a fullproxy replace does to the listener', () => {
 	});
 
 	describe('changes the gateway cannot make on an existing rule', () => {
-		it('refuses a frontend mTLS change that travels alone', () => {
-			expect(planFullproxyReplace(change({changedArguments: ['mtls_frontend']}))).toMatchObject({kind: 'refused', reason: 'mtls-frontend-only'});
-		});
-
-		// With another change the gateway stores it as a side effect.
-		it('lets a frontend mTLS change through when something else re-creates the listener', () => {
-			expect(planFullproxyReplace(change({changedArguments: ['mtls_frontend', 'backend_protocol']})).kind).toBe('recreate');
-			expect(planFullproxyReplace(change({changedArguments: ['mtls_frontend'], endpointsChanged: true})).kind).toBe('recreate');
-		});
-
-		it('refuses a rename, with or without other changes', () => {
-			expect(planFullproxyReplace(change({changedArguments: ['name']}))).toMatchObject({kind: 'refused', reason: 'rename'});
-			expect(planFullproxyReplace(change({changedArguments: ['name', 'fc_mode'], endpointsChanged: true}))).toMatchObject({kind: 'refused', reason: 'rename'});
-		});
-
 		it('refuses a secondary IP change before anything else', () => {
 			expect(planFullproxyReplace(change({changedArguments: ['name'], secondaryChanged: true}))).toMatchObject({kind: 'refused', reason: 'secondary-ips'});
+		});
+	});
+
+	describe('changes the gateway makes by building the endpoint pool again', () => {
+		// The gateway assigns the name on a replace; the form does not offer the
+		// field on an existing rule, and a name that arrives is not held back.
+		it('carries a new name', () => {
+			expect(planFullproxyReplace(change({changedArguments: ['name']}))).toEqual({kind: 'recreate', fields: ['serviceArguments.name']});
+		});
+
+		it('changes frontend mTLS, alone or with something else', () => {
+			expect(planFullproxyReplace(change({changedArguments: ['mtls_frontend']}))).toEqual({kind: 'recreate', fields: ['serviceArguments.mtls_frontend']});
+			expect(planFullproxyReplace(change({changedArguments: ['mtls_frontend', 'backend_protocol']})).kind).toBe('recreate');
 		});
 	});
 

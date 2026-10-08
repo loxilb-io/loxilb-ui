@@ -289,7 +289,7 @@ test.describe('@gw AI admission control — mock contract', () => {
 		expect(body.serviceArguments).not.toHaveProperty('fc_effective');
 		// An admission-only change is applied to the running listener, so
 		// there is no re-creation to ask about.
-		await expect(page.getByText(/removing the listener/)).toHaveCount(0);
+		await expect(page.getByText(/builds its endpoint pool again/)).toHaveCount(0);
 	});
 
 	test('ADM-E2E-06: a gateway 400 on the admission fields is an invalid request, not a precondition', async ({page, consoleGuard}) => {

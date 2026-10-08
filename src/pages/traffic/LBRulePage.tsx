@@ -97,12 +97,8 @@ const isFormDefault = (key: string, value: unknown): boolean => {
 /** Why the gateway cannot make a change on an existing fullproxy rule. */
 function fullproxyRefusalText(plan: Extract<FullproxyReplacePlan, {kind: 'refused'}>): string {
 	switch (plan.reason) {
-		case 'rename':
-			return t('The gateway does not rename an existing fullproxy rule: it would re-create the listener and keep the old name. Nothing was sent. To use another name, create a new rule and remove this one.');
 		case 'secondary-ips':
 			return t('The gateway refuses a change to the secondary IPs of an existing rule. Nothing was sent.');
-		case 'mtls-frontend-only':
-			return t('The gateway does not act on a change to frontend mTLS alone on an existing fullproxy rule: it answers that nothing changed. Nothing was sent. The setting is stored only together with another change that re-creates the listener.');
 	}
 }
 
@@ -345,8 +341,11 @@ export default function LBRulePage() {
 		if (!inst || !caps.resolved) return;
 
 		// Convert selected LB rule to format expected by LBInputForm
-		// Exclude fields that are "Not required in Edit" (managed, state, counter)
-		const {managed, security, ...editableServiceArguments} = selectedLB.serviceArguments;
+		// Exclude fields that are "Not required in Edit" (managed, state, counter).
+		// `security` stays: it cannot be changed here and is never sent as a
+		// change, but the frontend mTLS and backend TLS controls are offered
+		// by it, and without it they are locked on every existing rule.
+		const {managed, ...editableServiceArguments} = selectedLB.serviceArguments;
 		const editableEndpoints = selectedLB.endpoints.map(endpoint => {
 			const {state, counter, ...editableEndpoint} = endpoint;
 			return editableEndpoint;
@@ -489,7 +488,7 @@ export default function LBRulePage() {
 							if (sent.status === 'confirmed') {
 								await report(
 									{refetch: fromQueryRefetch(refetch), confirm: applied},
-									plan.kind === 'recreate' ? t('Listener re-created. The rule reads back with the submitted values.') : t('Load balancer rule updated successfully.'),
+									plan.kind === 'recreate' ? t('Endpoint pool rebuilt. The rule reads back with the submitted values.') : t('Load balancer rule updated successfully.'),
 								);
 								return;
 							}
@@ -515,10 +514,10 @@ export default function LBRulePage() {
 							// Asked BEFORE the write: the interruption is the
 							// operator's decision, and "Back" returns their input.
 							openPopUp(
-								t('Re-create listener'),
+								t('Rebuild endpoint pool'),
 								<Stack spacing={1}>
 									<Typography variant="body2">
-										{t('The gateway applies this change by removing the listener of this rule and building it again. Connections and requests on that listener are interrupted, including requests waiting in its queue.')}
+										{t('The gateway keeps the listening socket of this rule and builds its endpoint pool again. Requests waiting in its queue are ended, and its session and conversation affinity and its counts start over.')}
 									</Typography>
 									<Typography variant="body2">
 										{t('If the gateway does not accept the change, the rule is read back and what is found is reported.')}
@@ -527,7 +526,7 @@ export default function LBRulePage() {
 										{t('Changed fields: {{fields}}.', {fields: plan.fields.join(', ')})}
 									</Typography>
 								</Stack>,
-								t('Re-create listener'),
+								t('Rebuild endpoint pool'),
 								t('Back to the form'),
 								send,
 								false,

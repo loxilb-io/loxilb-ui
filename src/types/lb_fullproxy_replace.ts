@@ -3,9 +3,11 @@
 //
 // The gateway has one write for it: a POST of the WHOLE rule on the same
 // identity, which it treats as a replace. The tuple PATCH refuses mode 4.
-// What the replace does to the running listener depends on what changed, and
-// the gateway does not report which it did — so the split below mirrors its
-// change detection, read from the gateway source. It decides what the
+// What the replace does to the running rule depends on what changed, and the
+// gateway does not report which it did — so the split below mirrors its
+// change detection, read from the gateway source. The listening socket is
+// kept either way; a change the rule does not take in place builds its
+// endpoint pool again. It decides what the
 // operator is told BEFORE the write and never what is sent: the request is
 // the same whole rule either way, so a gateway that later moves a field
 // between the two groups makes a warning wrong, not a write.
@@ -14,7 +16,7 @@ import {IEndpoint, IServiceArguments, IServiceConfiguration} from './load_balanc
 import {isChwblSelector, READ_ONLY_SERVICE_ARGUMENTS} from './ai_gateway';
 
 /**
- * Applied to the running listener when nothing outside this set changed: the
+ * Applied to the running rule when nothing outside this set changed: the
  * admission gate, the half-close mode, and the backend TLS policy.
  */
 export const FULLPROXY_IN_PLACE_FIELDS: ReadonlySet<string> = new Set([
@@ -74,12 +76,12 @@ export function changedFullproxyIdentity(edited: Partial<IServiceArguments>, ori
 export type FullproxyReplacePlan =
 	/** Nothing changed. */
 	| {kind: 'none'}
-	/** The gateway keeps the listener and applies the change to it. */
+	/** The gateway applies the change to the rule as it runs. */
 	| {kind: 'apply'; fields: string[]}
-	/** The gateway removes the listener and builds it again. */
+	/** The gateway builds the endpoint pool of the rule again. */
 	| {kind: 'recreate'; fields: string[]}
 	/** The gateway has no way to make this change on an existing rule. */
-	| {kind: 'refused'; reason: 'rename' | 'secondary-ips' | 'mtls-frontend-only'; fields: string[]};
+	| {kind: 'refused'; reason: 'secondary-ips'; fields: string[]};
 
 export interface FullproxyChangeSet {
 	/** `serviceArguments` members that differ from the rule as read. */
@@ -106,15 +108,9 @@ export function planFullproxyReplace(change: FullproxyChangeSet): FullproxyRepla
 
 	// Refused outright, whatever else the request carries.
 	if (change.secondaryChanged) return {kind: 'refused', reason: 'secondary-ips', fields};
-	// Accepted, the listener is rebuilt, and the rule keeps its old name: the
-	// request would cost an interruption and change nothing it asked for.
-	if (change.changedArguments.includes('name')) return {kind: 'refused', reason: 'rename', fields};
-	// Stored only as a side effect of another change; alone it is answered as
-	// "nothing changed".
-	if (fields.length === 1 && change.changedArguments[0] === 'mtls_frontend') return {kind: 'refused', reason: 'mtls-frontend-only', fields};
 
 	const inPlaceOnly = !change.endpointsChanged && !change.allowedChanged && change.changedArguments.every(field => FULLPROXY_IN_PLACE_FIELDS.has(field));
-	// A consistent-hash rule is reconciled without removing its listener.
+	// A consistent-hash rule is reconciled without building its pool again.
 	const consistentHash = change.selectors.some(selector => isChwblSelector(selector as IServiceArguments['sel']));
 	return inPlaceOnly || consistentHash ? {kind: 'apply', fields} : {kind: 'recreate', fields};
 }
