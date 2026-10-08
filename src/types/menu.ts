@@ -12,7 +12,7 @@ import WysiwygIcon from '@mui/icons-material/Wysiwyg';
 import SecurityIcon from '@mui/icons-material/Security';
 import {SvgIconTypeMap} from '@mui/material';
 import {OverridableComponent} from '@mui/material/OverridableComponent';
-import {LOG_READER_ROLES} from 'types/role';
+import {AUDIT_SINK_READER_ROLES, LOG_READER_ROLES} from 'types/role';
 import type {InstanceFeature, InstanceFlavor} from 'api/capabilities';
 
 //---------------------------------------------------------
@@ -286,6 +286,14 @@ export const MENU_LIST: IMenuItem[] = [
 				name: 'Operator Maintenance',
 				path: 'operator',
 				requiresFlavor: 'inference-gateway',
+			},
+			{
+				// What the audit trail keeps and where it is sent. A viewer is
+				// refused every read the page makes but one.
+				name: 'Audit Trail',
+				path: 'audit',
+				requiresFlavor: 'inference-gateway',
+				roles: AUDIT_SINK_READER_ROLES,
 			},
 		],
 	},
