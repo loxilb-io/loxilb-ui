@@ -266,6 +266,22 @@ test.describe('@gw Fullproxy rule replace — mock contract', () => {
 		expect(sent).toMatchObject({name: RULE, host: 'a.example', security: 1, max_stream_duration_sec: 600});
 	});
 
+	test('FPR-E2E-08: a backend CA on an existing re-encrypting rule is sent, with no question', async ({page}) => {
+		const server = await serve(page, [rule({security: 2}), sibling()]);
+		await openEdit(page);
+		const advanced = await expandSection(page, /^Advanced Settings/);
+		// A CA bundle is asked for by verification, and only by it.
+		await field(page, 'Verify Backend Certificate', advanced).check();
+		await field(page, 'Backend CA Cert ID', advanced).fill('backend-ca');
+		await dialogButton(page, 'Update').click();
+
+		// The rule takes a backend TLS change in place.
+		await expect(page.getByText('Load balancer rule updated successfully.')).toBeVisible({timeout: 20_000});
+		await expect(page.getByText(/builds its endpoint pool again/)).toHaveCount(0);
+		expect(server.writes.map(request => request.method())).toEqual(['POST']);
+		expect(posts(server)[0].postDataJSON().serviceArguments).toMatchObject({name: RULE, security: 2, backend_ca_cert_id: 'backend-ca', mtls_backend: {verify_server_cert: true}});
+	});
+
 	test('FPR-E2E-06: a rule that vanished after the list was read is not written', async ({page}) => {
 		const server = await serve(page, [rule(), sibling()]);
 		await openEdit(page);
