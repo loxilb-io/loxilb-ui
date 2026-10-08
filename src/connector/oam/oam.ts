@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {parse_log_lines} from 'common';
+import {get_local_storage, parse_log_lines} from 'common';
 import {ILog, ILogArchiveList} from 'types/log';
 import {IInstance, IInstanceInput, IUser} from 'types/oam';
 import {ISetupStatus, IUpdateAdminRequest, IUpdateAdminResponse} from 'types/setup';
@@ -63,10 +63,17 @@ export async function preflight_oam(timeout_ms = 4000): Promise<OamReachability>
 // user out of the UI (the server additionally revokes the token so it cannot
 // be replayed).
 export async function request_logout(): Promise<void> {
+	const token = get_local_storage('access_token');
+	if (!token) return;
 	try {
-		await POST_OAM(`/logout`, {});
+		await fetch(`${getApiBaseUrl()}/logout`, {
+			method: 'POST',
+			headers: {'Content-Type': 'application/json', Authorization: `Bearer ${token}`},
+			body: '{}',
+			keepalive: true,
+		});
 	} catch {
-		// ignore — local logout proceeds
+		// Local teardown remains authoritative for the browser.
 	}
 }
 
