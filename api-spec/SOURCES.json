@@ -12,12 +12,12 @@
     "repository": "https://github.com/loxilb-io/loxilb-inference-gateway",
     "readMode": "immutable-git-blobs",
     "sha256": {
-      "gateway-swagger.yml": "9932ef4a04644b5631c47102bc4bdce519c1a4fa4acedde542812aeb51aad0d5",
+      "gateway-swagger.yml": "eb702bffe4aeacc00810a9729a96440e054c97f05d70158a2d87e1a80b8d5635",
       "gateway-swagger-extras.yml": "5e36fc44f7bcae7588611893ef158e68e0f26c2a0e67d0a9fc719ab3c026c3bc"
     },
     "repo": "loxilb-inference-gateway",
     "path": "api/swagger.yml + api/swagger-extras.yml",
-    "commit": "6af1dc1c4258c360449b93f5c5ec68a62334a5da",
+    "commit": "b3a33d3ca329d0d8ae2f0631cde18ca6141ceb73",
     "dirty": false,
     "note": "clean re-vendor via sync-specs.sh --only gateway from a detached checkout; byte-identical to the recorded commit"
   },
@@ -25,21 +25,21 @@
     "repository": "https://github.com/loxilb-io/loxilb-oam",
     "readMode": "immutable-git-blobs",
     "sha256": {
-      "oam-swagger.json": "08273a9f529b129a9806e7c41c3faa35c6960dea306667c221397f27612df86b"
+      "oam-swagger.json": "f2ca295d815bb938a3bc7818c7773b380bd6253c4b47e55eb80b90ad0229c50d"
     },
     "repo": "loxilb-oam",
     "path": "docs/swagger.json",
-    "commit": "70a19c3ce0c5c124c52087cc146851d84a23587d",
+    "commit": "52da977d34efc9f3c574a8f0c653e14ab8240565",
     "dirty": false,
     "note": "vendored verbatim from a clean detached checkout; no source regeneration"
   },
   "metricManifest": {
     "repo": "loxilb-inference-gateway",
     "path": "deploy/monitoring/manifest/metric-manifest.json",
-    "commit": "6af1dc1c4258c360449b93f5c5ec68a62334a5da",
+    "commit": "b3a33d3ca329d0d8ae2f0631cde18ca6141ceb73",
     "dirty": false,
-    "vendoredAt": "2026-10-07T22:21:37Z",
+    "vendoredAt": "2026-10-08T00:20:51Z",
     "note": "vendored verbatim (byte-for-byte upstream); the UI version envelope is generated into src/api/gen/metric-manifest.json by scripts/gen-metric-manifest.mjs (npm run gen:api)"
   },
-  "vendoredAt": "2026-10-07T22:21:37Z"
+  "vendoredAt": "2026-10-08T00:20:51Z"
 }

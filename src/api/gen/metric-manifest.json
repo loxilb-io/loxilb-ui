@@ -3,8 +3,8 @@
 	"source": {
 		"repo": "loxilb-inference-gateway",
 		"path": "deploy/monitoring/manifest/metric-manifest.json",
-		"commit": "6af1dc1c4258c360449b93f5c5ec68a62334a5da",
-		"vendoredAt": "2026-10-07T22:21:37Z"
+		"commit": "b3a33d3ca329d0d8ae2f0631cde18ca6141ceb73",
+		"vendoredAt": "2026-10-08T00:20:51Z"
 	},
 	"manifest": {
 		"schema_version": 1,

@@ -1392,7 +1392,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Forwards HTTP requests to the specified LoxiLB instance",
+                "description": "Forwards HTTP requests to the specified LoxiLB instance. Authorization depends on the method and on the Gateway path: see docs/proxy-functionality.md. A path with dot segments, empty segments or an encoded separator is refused with 400.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1450,6 +1450,12 @@
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "405": {
+                        "description": "The proxy does not forward this method",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -1492,7 +1498,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Forwards HTTP requests to the specified LoxiLB instance",
+                "description": "Forwards HTTP requests to the specified LoxiLB instance. Authorization depends on the method and on the Gateway path: see docs/proxy-functionality.md. A path with dot segments, empty segments or an encoded separator is refused with 400.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1550,6 +1556,12 @@
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "405": {
+                        "description": "The proxy does not forward this method",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -1592,7 +1604,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Forwards HTTP requests to the specified LoxiLB instance",
+                "description": "Forwards HTTP requests to the specified LoxiLB instance. Authorization depends on the method and on the Gateway path: see docs/proxy-functionality.md. A path with dot segments, empty segments or an encoded separator is refused with 400.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1650,6 +1662,12 @@
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "405": {
+                        "description": "The proxy does not forward this method",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -1692,7 +1710,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Forwards HTTP requests to the specified LoxiLB instance",
+                "description": "Forwards HTTP requests to the specified LoxiLB instance. Authorization depends on the method and on the Gateway path: see docs/proxy-functionality.md. A path with dot segments, empty segments or an encoded separator is refused with 400.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1750,6 +1768,12 @@
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "405": {
+                        "description": "The proxy does not forward this method",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -1792,7 +1816,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Forwards HTTP requests to the specified LoxiLB instance",
+                "description": "Forwards HTTP requests to the specified LoxiLB instance. Authorization depends on the method and on the Gateway path: see docs/proxy-functionality.md. A path with dot segments, empty segments or an encoded separator is refused with 400.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1850,6 +1874,12 @@
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "405": {
+                        "description": "The proxy does not forward this method",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -2237,7 +2267,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Default mode is dry-run: the gateway validates and returns its plan without mutating anything. Commit first takes an automatic pre_restore safety snapshot of the target, then applies. The gateway's response is returned verbatim in gateway_response. Cross-instance restore is allowed and flagged with cross_instance=true.",
+                "description": "Default mode is dry-run: the gateway validates and returns its plan without mutating anything. Commit first takes an automatic pre_restore safety snapshot of the target (always a full capture), then applies. Cross-instance restore is allowed and flagged with cross_instance=true.\n\ncomponents limits the restore to the named snapshot domains, which the gateway replaces (it does not merge). Omit it to restore everything the document covers. When present it must name at least one domain; an empty list, a malformed or repeated name, or a domain the document's included_domains does not list is refused with 400 before the gateway is called. Send the same components for the dry-run and for the commit. To undo a selected restore, restore the pre_restore snapshot with the same components.\n\nReading the answer: 200 means the gateway answered, whatever it said. gateway_status is the gateway's HTTP status and gateway_response its body verbatim, so a refused or rolled-back restore is a 200 here with the refusal inside. For a commit, read gateway_response.result (ok, rolled-back, ROLLBACK-FAILED) and gateway_response.persisted: a restore can be applied and still report persisted=false. Any other status means OAM stopped before or while reaching the gateway. When the gateway sent Retry-After (for example 503 while another restore holds its configuration gate), it is relayed as this response's Retry-After header and as gateway_retry_after.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2264,7 +2294,7 @@
                         "required": true
                     },
                     {
-                        "description": "mode: dry-run (default) | commit; optional target_instance_id",
+                        "description": "mode: dry-run (default) | commit; optional target_instance_id; optional components",
                         "name": "request",
                         "in": "body",
                         "schema": {
@@ -2311,6 +2341,12 @@
                     },
                     "502": {
                         "description": "Gateway unreachable (connection error passed through verbatim)",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "OAM's gateway service identity is unavailable",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -2581,9 +2617,1110 @@
                     }
                 }
             }
+        },
+        "/oam/v1/appliance/capabilities": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "For each whole-Appliance action, reports three independent facts: whether the host adapter supports it, whether it can run now (and if not, why), and whether the caller's role may request it. A deployment with no host adapter reports every action as unsupported with HOST_NOT_CONFIGURED. Contract appliance-ops/v1alpha1 — subject to change.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "appliance"
+                ],
+                "summary": "Appliance capabilities (alpha)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.Capabilities"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/oam/v1/appliance/operations": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Newest first. `items` is always an array. Pass `next_cursor` back as `cursor` for the next page.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "appliance"
+                ],
+                "summary": "List Appliance operations (alpha)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size, 1-100 (default 20)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "next_cursor of the previous page",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only operations in this state",
+                        "name": "state",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only operations of this type",
+                        "name": "type",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.OperationList"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Validates the request with the host adapter and records the plan. Nothing is executed. Repeating the request with the same Idempotency-Key returns the same operation (200); the same key with a different request is a conflict (409). The caller's role must hold the capability for the operation type. A plan expires 15 minutes after it is made. Contract appliance-ops/v1alpha1 — subject to change.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "appliance"
+                ],
+                "summary": "Plan an Appliance operation (alpha)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "16-128 printable ASCII characters, unique per intended operation",
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "What to plan",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/appliance.PlanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The operation this key already created",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.Operation"
+                        }
+                    },
+                    "201": {
+                        "description": "Planned",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.Operation"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "422": {
+                        "description": "The host adapter rejected the request",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "501": {
+                        "description": "No host adapter in this deployment",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "502": {
+                        "description": "The host adapter did not answer",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/oam/v1/appliance/operations/{operation_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns one operation. The plan — what it would touch and the artifacts involved — is included only for callers whose role may run that operation type; for others `redacted` is true.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "appliance"
+                ],
+                "summary": "Read an Appliance operation (alpha)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Operation ID",
+                        "name": "operation_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.Operation"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/oam/v1/appliance/operations/{operation_id}/authorize": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Verifies the caller's current password and returns a one-use challenge for submitting this operation. The challenge is bound to the operation, its plan, the installation, the caller and the caller's session; it expires after 5 minutes or with the plan, whichever is sooner, and authorizing again replaces it. The operation moves to AWAITING_AUTHORIZATION and occupies the installation until it is submitted, cancelled or expires. Failed passwords count toward the same lockout as failed logins. Operations that do not require reauthentication (backup) are refused with AUTHORIZATION_NOT_REQUIRED.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "appliance"
+                ],
+                "summary": "Authorize a destructive Appliance operation (alpha)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Operation ID",
+                        "name": "operation_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "The caller's current password",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/appliance.AuthorizeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.Challenge"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "401": {
+                        "description": "REAUTHENTICATION_FAILED: wrong password",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "403": {
+                        "description": "PERMISSION_DENIED, or REAUTHENTICATION_REQUIRED for a session that predates session identifiers",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "409": {
+                        "description": "OPERATION_CONFLICT, OPERATION_STATE_INVALID or AUTHORIZATION_NOT_REQUIRED",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "410": {
+                        "description": "PLAN_EXPIRED",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "429": {
+                        "description": "TOO_MANY_ATTEMPTS",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/oam/v1/appliance/operations/{operation_id}/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Before submission cancelling always succeeds. After, the host adapter decides: it refuses once the operation has passed its irreversible phase (`cancellable` false). Cancelling a cancelled operation returns it unchanged.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "appliance"
+                ],
+                "summary": "Cancel an Appliance operation (alpha)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Operation ID",
+                        "name": "operation_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.Operation"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "409": {
+                        "description": "OPERATION_NOT_CANCELLABLE or OPERATION_STATE_INVALID",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "502": {
+                        "description": "The host adapter did not answer",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/oam/v1/appliance/operations/{operation_id}/reconcile": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "OAM follows submitted operations on its own; this asks it to read the host adapter's journal for one operation now and returns the result. It never causes anything to be executed twice. If the adapter does not answer, the operation is returned as last known with `stale` true.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "appliance"
+                ],
+                "summary": "Re-read an Appliance operation from the host adapter (alpha)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Operation ID",
+                        "name": "operation_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.Operation"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/oam/v1/appliance/operations/{operation_id}/submit": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Hands a planned operation to the host adapter. `plan_hash` must be the plan the caller reviewed. An operation that requires reauthentication must have been authorized and must present its challenge, which is consumed. Only one operation can be active per installation. The answer is 202 with the operation as it stands; follow it with GET. Submitting an operation that was already submitted returns it unchanged. If the host adapter could not be reached the operation stays QUEUED with `stale` true and OAM delivers it when the adapter answers; it is never executed twice.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "appliance"
+                ],
+                "summary": "Submit an Appliance operation for execution (alpha)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Operation ID",
+                        "name": "operation_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "The plan being submitted and, when required, its challenge",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/appliance.SubmitRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.Operation"
+                        }
+                    },
+                    "400": {
+                        "description": "INVALID_REQUEST or CHALLENGE_REQUIRED",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "403": {
+                        "description": "PERMISSION_DENIED, CHALLENGE_MISMATCH or REAUTHENTICATION_REQUIRED",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "409": {
+                        "description": "OPERATION_CONFLICT, OPERATION_STATE_INVALID, PLAN_STALE or CHALLENGE_CONSUMED",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "410": {
+                        "description": "PLAN_EXPIRED or CHALLENGE_EXPIRED",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/oam/v1/appliance/status": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Product identity (from the host adapter, when there is one), each component's version with separately observed liveness and readiness, and OAM's database schema version. A component that could not be observed is \"unknown\" and stale, never ready. Contract appliance-ops/v1alpha1 — subject to change.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "appliance"
+                ],
+                "summary": "Appliance status (alpha)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.Status"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/appliance.ErrorBody"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "appliance.Action": {
+            "type": "string",
+            "enum": [
+                "backup",
+                "restore",
+                "update",
+                "rollback",
+                "reset",
+                "diagnostics"
+            ],
+            "x-enum-varnames": [
+                "ActionBackup",
+                "ActionRestore",
+                "ActionUpdate",
+                "ActionRollback",
+                "ActionReset",
+                "ActionDiagnostics"
+            ]
+        },
+        "appliance.ActionCapability": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "$ref": "#/definitions/appliance.Action"
+                },
+                "available": {
+                    "description": "Available: it can be executed now.",
+                    "type": "boolean"
+                },
+                "permitted": {
+                    "description": "Permitted: the caller's role may request it. Independent of the above.",
+                    "type": "boolean"
+                },
+                "requires_reauthentication": {
+                    "description": "RequiresReauthentication: executing it needs a fresh password check.",
+                    "type": "boolean"
+                },
+                "supported": {
+                    "description": "Supported: the host adapter implements the action in a contract\nversion OAM speaks.",
+                    "type": "boolean"
+                },
+                "unavailable_reason": {
+                    "description": "UnavailableReason is set exactly when Available is false.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/appliance.UnavailableReason"
+                        }
+                    ]
+                }
+            }
+        },
+        "appliance.AuthorizeRequest": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "description": "Password is the caller's current password. It is verified and\ndiscarded; it is never stored or logged.",
+                    "type": "string"
+                }
+            }
+        },
+        "appliance.Capabilities": {
+            "type": "object",
+            "properties": {
+                "actions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/appliance.ActionCapability"
+                    }
+                },
+                "host_configured": {
+                    "type": "boolean"
+                },
+                "host_contract_versions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "host_fixture": {
+                    "description": "HostFixture is true when the host adapter declares itself a test\nfixture. Nothing a fixture reports describes a real installation.",
+                    "type": "boolean"
+                },
+                "observed_at": {
+                    "type": "string"
+                },
+                "schema_version": {
+                    "type": "string"
+                }
+            }
+        },
+        "appliance.Challenge": {
+            "type": "object",
+            "properties": {
+                "challenge": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "operation_id": {
+                    "type": "string"
+                },
+                "plan_hash": {
+                    "type": "string"
+                }
+            }
+        },
+        "appliance.Component": {
+            "type": "object",
+            "properties": {
+                "digest": {
+                    "type": "string"
+                },
+                "liveness": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "observed_at": {
+                    "type": "string"
+                },
+                "readiness": {
+                    "type": "string"
+                },
+                "stale": {
+                    "description": "Stale: the observation could not be refreshed for this response.",
+                    "type": "boolean"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "appliance.DatabaseStatus": {
+            "type": "object",
+            "properties": {
+                "adopted": {
+                    "type": "boolean"
+                },
+                "applied_at": {
+                    "type": "string"
+                },
+                "latest_migration": {
+                    "type": "string"
+                },
+                "schema_version": {
+                    "description": "SchemaVersion is 0 when the schema is not tracked (OAM_DB_MIGRATE=off\non a database that was never migrated by the server).",
+                    "type": "integer"
+                }
+            }
+        },
+        "appliance.ErrorBody": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "operation_id": {
+                    "type": "string"
+                },
+                "origin": {
+                    "type": "string"
+                },
+                "recovery": {
+                    "$ref": "#/definitions/appliance.Recovery"
+                },
+                "request_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "appliance.Operation": {
+            "type": "object",
+            "properties": {
+                "actor": {
+                    "type": "string"
+                },
+                "cancellable": {
+                    "description": "Cancellable: a cancel request would be accepted now. Decided by OAM\nbefore submission and by the host adapter after.",
+                    "type": "boolean"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "error_code": {
+                    "type": "string"
+                },
+                "error_origin": {
+                    "type": "string"
+                },
+                "finished_at": {
+                    "type": "string"
+                },
+                "host_fixture": {
+                    "description": "HostFixture: the plan came from a fixture host adapter and describes\nnothing real.",
+                    "type": "boolean"
+                },
+                "host_generation": {
+                    "description": "HostGeneration is the host journal generation this operation reflects;\n0 until the host has reported on it.",
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "installation_id": {
+                    "type": "string"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "note": {
+                    "type": "string"
+                },
+                "phase": {
+                    "type": "string"
+                },
+                "plan": {
+                    "$ref": "#/definitions/appliance.Plan"
+                },
+                "plan_expires_at": {
+                    "type": "string"
+                },
+                "plan_hash": {
+                    "description": "PlanHash and Plan are present only for callers permitted to run this\ntype of operation; Redacted is true when they were withheld.",
+                    "type": "string"
+                },
+                "reconciliation": {
+                    "type": "string"
+                },
+                "redacted": {
+                    "type": "boolean"
+                },
+                "request_id": {
+                    "type": "string"
+                },
+                "requires_reauthentication": {
+                    "type": "boolean"
+                },
+                "schema_version": {
+                    "type": "string"
+                },
+                "stale": {
+                    "description": "Stale: the host could not be read at the last attempt, so State may be\nout of date.",
+                    "type": "boolean"
+                },
+                "state": {
+                    "$ref": "#/definitions/appliance.OperationState"
+                },
+                "submitted_at": {
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/appliance.OperationType"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "appliance.OperationList": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/appliance.Operation"
+                    }
+                },
+                "next_cursor": {
+                    "description": "NextCursor is passed back as `cursor` for the next page; absent on the\nlast one.",
+                    "type": "string"
+                },
+                "schema_version": {
+                    "type": "string"
+                }
+            }
+        },
+        "appliance.OperationState": {
+            "type": "string",
+            "enum": [
+                "PLANNED",
+                "AWAITING_AUTHORIZATION",
+                "QUEUED",
+                "RUNNING",
+                "VERIFYING",
+                "SUCCEEDED",
+                "FAILED",
+                "COMPENSATING",
+                "ROLLED_BACK",
+                "RECOVERY_REQUIRED",
+                "CANCELLED"
+            ],
+            "x-enum-varnames": [
+                "StatePlanned",
+                "StateAwaitingAuthorization",
+                "StateQueued",
+                "StateRunning",
+                "StateVerifying",
+                "StateSucceeded",
+                "StateFailed",
+                "StateCompensating",
+                "StateRolledBack",
+                "StateRecoveryRequired",
+                "StateCancelled"
+            ]
+        },
+        "appliance.OperationType": {
+            "type": "string",
+            "enum": [
+                "backup",
+                "restore",
+                "update",
+                "rollback",
+                "reset"
+            ],
+            "x-enum-varnames": [
+                "OperationBackup",
+                "OperationRestore",
+                "OperationUpdate",
+                "OperationRollback",
+                "OperationReset"
+            ]
+        },
+        "appliance.Plan": {
+            "type": "object",
+            "properties": {
+                "affected_resources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "archive_digest": {
+                    "type": "string"
+                },
+                "compatibility": {
+                    "type": "string"
+                },
+                "current_release_digest": {
+                    "type": "string"
+                },
+                "irreversible_after_phase": {
+                    "description": "IrreversibleAfterPhase is the phase after which cancellation is refused.",
+                    "type": "string"
+                },
+                "target_release_digest": {
+                    "type": "string"
+                }
+            }
+        },
+        "appliance.PlanRequest": {
+            "type": "object",
+            "properties": {
+                "archive_ref": {
+                    "description": "ArchiveRef names a backup archive the host has admitted. Required for\nrestore, refused otherwise.",
+                    "type": "string"
+                },
+                "note": {
+                    "description": "Note is free text for the audit trail.",
+                    "type": "string"
+                },
+                "schema_version": {
+                    "type": "string"
+                },
+                "target_release_ref": {
+                    "description": "TargetReleaseRef names a release the host has admitted. Required for\nupdate, refused otherwise.",
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/appliance.OperationType"
+                }
+            }
+        },
+        "appliance.Product": {
+            "type": "object",
+            "properties": {
+                "fixture": {
+                    "type": "boolean"
+                },
+                "installation_id": {
+                    "type": "string"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "release_digest": {
+                    "type": "string"
+                },
+                "release_version": {
+                    "type": "string"
+                }
+            }
+        },
+        "appliance.Recovery": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "operation_id": {
+                    "description": "OperationID names the operation to wait for, with WAIT_FOR_OPERATION.",
+                    "type": "string"
+                }
+            }
+        },
+        "appliance.Status": {
+            "type": "object",
+            "properties": {
+                "components": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/appliance.Component"
+                    }
+                },
+                "database": {
+                    "$ref": "#/definitions/appliance.DatabaseStatus"
+                },
+                "product": {
+                    "$ref": "#/definitions/appliance.Product"
+                },
+                "schema_version": {
+                    "type": "string"
+                }
+            }
+        },
+        "appliance.SubmitRequest": {
+            "type": "object",
+            "properties": {
+                "challenge": {
+                    "description": "Challenge is the value Authorize returned. Required for an operation\nthat requires reauthentication, ignored otherwise.",
+                    "type": "string"
+                },
+                "plan_hash": {
+                    "description": "PlanHash is the plan the caller reviewed.",
+                    "type": "string"
+                }
+            }
+        },
+        "appliance.UnavailableReason": {
+            "type": "string",
+            "enum": [
+                "HOST_NOT_CONFIGURED",
+                "HOST_UNREACHABLE",
+                "HOST_UNSUPPORTED",
+                "SCHEMA_MISMATCH",
+                "OPERATION_IN_PROGRESS",
+                "RECOVERY_REQUIRED"
+            ],
+            "x-enum-varnames": [
+                "ReasonHostNotConfigured",
+                "ReasonHostUnreachable",
+                "ReasonHostUnsupported",
+                "ReasonSchemaMismatch",
+                "ReasonOperationInProgress",
+                "ReasonRecoveryRequired"
+            ]
+        },
         "models.AcknowledgeRequest": {
             "type": "object",
             "required": [
@@ -2828,6 +3965,13 @@
                 },
                 "instance_id": {
                     "type": "integer"
+                },
+                "last_restore_components": {
+                    "description": "LastRestoreComponents is the domain selection of the most recent\nrestore attempt; absent when it restored the whole document. Like the\nresponse, only populated on the single-snapshot GET.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "last_restore_response": {
                     "description": "LastRestoreResponse is the full gateway response JSON of the most\nrecent restore attempt (the audit record). Only populated on the\nsingle-snapshot GET, not in lists.",
@@ -3082,11 +4226,22 @@
         "models.RestoreOutcome": {
             "type": "object",
             "properties": {
+                "components": {
+                    "description": "the selection sent to the gateway; absent = whole document",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "cross_instance": {
                     "type": "boolean"
                 },
                 "gateway_response": {
                     "type": "object"
+                },
+                "gateway_retry_after": {
+                    "description": "GatewayRetryAfter is the gateway's Retry-After header, when it sent\none; the handler relays it as the response's own Retry-After.",
+                    "type": "string"
                 },
                 "gateway_status": {
                     "type": "integer"
@@ -3109,6 +4264,13 @@
         "models.RestoreSnapshotRequest": {
             "type": "object",
             "properties": {
+                "components": {
+                    "description": "Components limits the restore to the named snapshot domains (for\nexample [\"auditsink\"]). The gateway wipes and applies those domains\nonly; it replaces their state, it does not merge. Absent restores\neverything the document covers. When present it must name at least\none domain: an empty list is refused, never read as \"everything\".",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "mode": {
                     "description": "\"dry-run\" (default) | \"commit\"",
                     "type": "string"

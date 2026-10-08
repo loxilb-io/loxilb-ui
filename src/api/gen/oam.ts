@@ -983,7 +983,7 @@ export interface paths {
   "/oam/loxilbs/{id}/netlox/": {
     /**
      * Proxy request to LoxiLB instance
-     * @description Forwards HTTP requests to the specified LoxiLB instance
+     * @description Forwards HTTP requests to the specified LoxiLB instance. Authorization depends on the method and on the Gateway path: see docs/proxy-functionality.md. A path with dot segments, empty segments or an encoded separator is refused with 400.
      */
     get: {
       parameters: {
@@ -1033,6 +1033,12 @@ export interface paths {
             "application/json": components["schemas"]["models.ErrorResponse"];
           };
         };
+        /** @description The proxy does not forward this method */
+        405: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
         /** @description Conflict */
         409: {
           content: {
@@ -1067,7 +1073,7 @@ export interface paths {
     };
     /**
      * Proxy request to LoxiLB instance
-     * @description Forwards HTTP requests to the specified LoxiLB instance
+     * @description Forwards HTTP requests to the specified LoxiLB instance. Authorization depends on the method and on the Gateway path: see docs/proxy-functionality.md. A path with dot segments, empty segments or an encoded separator is refused with 400.
      */
     put: {
       parameters: {
@@ -1117,6 +1123,12 @@ export interface paths {
             "application/json": components["schemas"]["models.ErrorResponse"];
           };
         };
+        /** @description The proxy does not forward this method */
+        405: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
         /** @description Conflict */
         409: {
           content: {
@@ -1151,7 +1163,7 @@ export interface paths {
     };
     /**
      * Proxy request to LoxiLB instance
-     * @description Forwards HTTP requests to the specified LoxiLB instance
+     * @description Forwards HTTP requests to the specified LoxiLB instance. Authorization depends on the method and on the Gateway path: see docs/proxy-functionality.md. A path with dot segments, empty segments or an encoded separator is refused with 400.
      */
     post: {
       parameters: {
@@ -1201,6 +1213,12 @@ export interface paths {
             "application/json": components["schemas"]["models.ErrorResponse"];
           };
         };
+        /** @description The proxy does not forward this method */
+        405: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
         /** @description Conflict */
         409: {
           content: {
@@ -1235,7 +1253,7 @@ export interface paths {
     };
     /**
      * Proxy request to LoxiLB instance
-     * @description Forwards HTTP requests to the specified LoxiLB instance
+     * @description Forwards HTTP requests to the specified LoxiLB instance. Authorization depends on the method and on the Gateway path: see docs/proxy-functionality.md. A path with dot segments, empty segments or an encoded separator is refused with 400.
      */
     delete: {
       parameters: {
@@ -1285,6 +1303,12 @@ export interface paths {
             "application/json": components["schemas"]["models.ErrorResponse"];
           };
         };
+        /** @description The proxy does not forward this method */
+        405: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
         /** @description Conflict */
         409: {
           content: {
@@ -1319,7 +1343,7 @@ export interface paths {
     };
     /**
      * Proxy request to LoxiLB instance
-     * @description Forwards HTTP requests to the specified LoxiLB instance
+     * @description Forwards HTTP requests to the specified LoxiLB instance. Authorization depends on the method and on the Gateway path: see docs/proxy-functionality.md. A path with dot segments, empty segments or an encoded separator is refused with 400.
      */
     patch: {
       parameters: {
@@ -1365,6 +1389,12 @@ export interface paths {
         };
         /** @description Not Found */
         404: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description The proxy does not forward this method */
+        405: {
           content: {
             "application/json": components["schemas"]["models.ErrorResponse"];
           };
@@ -1661,7 +1691,11 @@ export interface paths {
   "/oam/snapshots/{sid}/restore": {
     /**
      * Restore a stored snapshot to a gateway
-     * @description Default mode is dry-run: the gateway validates and returns its plan without mutating anything. Commit first takes an automatic pre_restore safety snapshot of the target, then applies. The gateway's response is returned verbatim in gateway_response. Cross-instance restore is allowed and flagged with cross_instance=true.
+     * @description Default mode is dry-run: the gateway validates and returns its plan without mutating anything. Commit first takes an automatic pre_restore safety snapshot of the target (always a full capture), then applies. Cross-instance restore is allowed and flagged with cross_instance=true.
+     *
+     * components limits the restore to the named snapshot domains, which the gateway replaces (it does not merge). Omit it to restore everything the document covers. When present it must name at least one domain; an empty list, a malformed or repeated name, or a domain the document's included_domains does not list is refused with 400 before the gateway is called. Send the same components for the dry-run and for the commit. To undo a selected restore, restore the pre_restore snapshot with the same components.
+     *
+     * Reading the answer: 200 means the gateway answered, whatever it said. gateway_status is the gateway's HTTP status and gateway_response its body verbatim, so a refused or rolled-back restore is a 200 here with the refusal inside. For a commit, read gateway_response.result (ok, rolled-back, ROLLBACK-FAILED) and gateway_response.persisted: a restore can be applied and still report persisted=false. Any other status means OAM stopped before or while reaching the gateway. When the gateway sent Retry-After (for example 503 while another restore holds its configuration gate), it is relayed as this response's Retry-After header and as gateway_retry_after.
      */
     post: {
       parameters: {
@@ -1674,7 +1708,7 @@ export interface paths {
           sid: string;
         };
       };
-      /** @description mode: dry-run (default) | commit; optional target_instance_id */
+      /** @description mode: dry-run (default) | commit; optional target_instance_id; optional components */
       requestBody?: {
         content: {
           "application/json": components["schemas"]["models.RestoreSnapshotRequest"];
@@ -1719,6 +1753,12 @@ export interface paths {
         };
         /** @description Gateway unreachable (connection error passed through verbatim) */
         502: {
+          content: {
+            "application/json": components["schemas"]["models.ErrorResponse"];
+          };
+        };
+        /** @description OAM's gateway service identity is unavailable */
+        503: {
           content: {
             "application/json": components["schemas"]["models.ErrorResponse"];
           };
@@ -1908,12 +1948,678 @@ export interface paths {
       };
     };
   };
+  "/oam/v1/appliance/capabilities": {
+    /**
+     * Appliance capabilities (alpha)
+     * @description For each whole-Appliance action, reports three independent facts: whether the host adapter supports it, whether it can run now (and if not, why), and whether the caller's role may request it. A deployment with no host adapter reports every action as unsupported with HOST_NOT_CONFIGURED. Contract appliance-ops/v1alpha1 — subject to change.
+     */
+    get: {
+      parameters: {
+        header: {
+          /** @description Bearer token */
+          Authorization: string;
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          content: {
+            "application/json": components["schemas"]["appliance.Capabilities"];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description Forbidden */
+        403: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+      };
+    };
+  };
+  "/oam/v1/appliance/operations": {
+    /**
+     * List Appliance operations (alpha)
+     * @description Newest first. `items` is always an array. Pass `next_cursor` back as `cursor` for the next page.
+     */
+    get: {
+      parameters: {
+        query?: {
+          /** @description Page size, 1-100 (default 20) */
+          limit?: number;
+          /** @description next_cursor of the previous page */
+          cursor?: string;
+          /** @description Only operations in this state */
+          state?: string;
+          /** @description Only operations of this type */
+          type?: string;
+        };
+        header: {
+          /** @description Bearer token */
+          Authorization: string;
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          content: {
+            "application/json": components["schemas"]["appliance.OperationList"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description Forbidden */
+        403: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+      };
+    };
+    /**
+     * Plan an Appliance operation (alpha)
+     * @description Validates the request with the host adapter and records the plan. Nothing is executed. Repeating the request with the same Idempotency-Key returns the same operation (200); the same key with a different request is a conflict (409). The caller's role must hold the capability for the operation type. A plan expires 15 minutes after it is made. Contract appliance-ops/v1alpha1 — subject to change.
+     */
+    post: {
+      parameters: {
+        header: {
+          /** @description Bearer token */
+          Authorization: string;
+          /** @description 16-128 printable ASCII characters, unique per intended operation */
+          "Idempotency-Key": string;
+        };
+      };
+      /** @description What to plan */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["appliance.PlanRequest"];
+        };
+      };
+      responses: {
+        /** @description The operation this key already created */
+        200: {
+          content: {
+            "application/json": components["schemas"]["appliance.Operation"];
+          };
+        };
+        /** @description Planned */
+        201: {
+          content: {
+            "application/json": components["schemas"]["appliance.Operation"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description Forbidden */
+        403: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description Conflict */
+        409: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description The host adapter rejected the request */
+        422: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description No host adapter in this deployment */
+        501: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description The host adapter did not answer */
+        502: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+      };
+    };
+  };
+  "/oam/v1/appliance/operations/{operation_id}": {
+    /**
+     * Read an Appliance operation (alpha)
+     * @description Returns one operation. The plan — what it would touch and the artifacts involved — is included only for callers whose role may run that operation type; for others `redacted` is true.
+     */
+    get: {
+      parameters: {
+        header: {
+          /** @description Bearer token */
+          Authorization: string;
+        };
+        path: {
+          /** @description Operation ID */
+          operation_id: string;
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          content: {
+            "application/json": components["schemas"]["appliance.Operation"];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description Forbidden */
+        403: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+      };
+    };
+  };
+  "/oam/v1/appliance/operations/{operation_id}/authorize": {
+    /**
+     * Authorize a destructive Appliance operation (alpha)
+     * @description Verifies the caller's current password and returns a one-use challenge for submitting this operation. The challenge is bound to the operation, its plan, the installation, the caller and the caller's session; it expires after 5 minutes or with the plan, whichever is sooner, and authorizing again replaces it. The operation moves to AWAITING_AUTHORIZATION and occupies the installation until it is submitted, cancelled or expires. Failed passwords count toward the same lockout as failed logins. Operations that do not require reauthentication (backup) are refused with AUTHORIZATION_NOT_REQUIRED.
+     */
+    post: {
+      parameters: {
+        header: {
+          /** @description Bearer token */
+          Authorization: string;
+        };
+        path: {
+          /** @description Operation ID */
+          operation_id: string;
+        };
+      };
+      /** @description The caller's current password */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["appliance.AuthorizeRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          content: {
+            "application/json": components["schemas"]["appliance.Challenge"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description REAUTHENTICATION_FAILED: wrong password */
+        401: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description PERMISSION_DENIED, or REAUTHENTICATION_REQUIRED for a session that predates session identifiers */
+        403: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description OPERATION_CONFLICT, OPERATION_STATE_INVALID or AUTHORIZATION_NOT_REQUIRED */
+        409: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description PLAN_EXPIRED */
+        410: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description TOO_MANY_ATTEMPTS */
+        429: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+      };
+    };
+  };
+  "/oam/v1/appliance/operations/{operation_id}/cancel": {
+    /**
+     * Cancel an Appliance operation (alpha)
+     * @description Before submission cancelling always succeeds. After, the host adapter decides: it refuses once the operation has passed its irreversible phase (`cancellable` false). Cancelling a cancelled operation returns it unchanged.
+     */
+    post: {
+      parameters: {
+        header: {
+          /** @description Bearer token */
+          Authorization: string;
+        };
+        path: {
+          /** @description Operation ID */
+          operation_id: string;
+        };
+      };
+      responses: {
+        /** @description Accepted */
+        202: {
+          content: {
+            "application/json": components["schemas"]["appliance.Operation"];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description Forbidden */
+        403: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description OPERATION_NOT_CANCELLABLE or OPERATION_STATE_INVALID */
+        409: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description The host adapter did not answer */
+        502: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+      };
+    };
+  };
+  "/oam/v1/appliance/operations/{operation_id}/reconcile": {
+    /**
+     * Re-read an Appliance operation from the host adapter (alpha)
+     * @description OAM follows submitted operations on its own; this asks it to read the host adapter's journal for one operation now and returns the result. It never causes anything to be executed twice. If the adapter does not answer, the operation is returned as last known with `stale` true.
+     */
+    post: {
+      parameters: {
+        header: {
+          /** @description Bearer token */
+          Authorization: string;
+        };
+        path: {
+          /** @description Operation ID */
+          operation_id: string;
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          content: {
+            "application/json": components["schemas"]["appliance.Operation"];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description Forbidden */
+        403: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+      };
+    };
+  };
+  "/oam/v1/appliance/operations/{operation_id}/submit": {
+    /**
+     * Submit an Appliance operation for execution (alpha)
+     * @description Hands a planned operation to the host adapter. `plan_hash` must be the plan the caller reviewed. An operation that requires reauthentication must have been authorized and must present its challenge, which is consumed. Only one operation can be active per installation. The answer is 202 with the operation as it stands; follow it with GET. Submitting an operation that was already submitted returns it unchanged. If the host adapter could not be reached the operation stays QUEUED with `stale` true and OAM delivers it when the adapter answers; it is never executed twice.
+     */
+    post: {
+      parameters: {
+        header: {
+          /** @description Bearer token */
+          Authorization: string;
+        };
+        path: {
+          /** @description Operation ID */
+          operation_id: string;
+        };
+      };
+      /** @description The plan being submitted and, when required, its challenge */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["appliance.SubmitRequest"];
+        };
+      };
+      responses: {
+        /** @description Accepted */
+        202: {
+          content: {
+            "application/json": components["schemas"]["appliance.Operation"];
+          };
+        };
+        /** @description INVALID_REQUEST or CHALLENGE_REQUIRED */
+        400: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description PERMISSION_DENIED, CHALLENGE_MISMATCH or REAUTHENTICATION_REQUIRED */
+        403: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description OPERATION_CONFLICT, OPERATION_STATE_INVALID, PLAN_STALE or CHALLENGE_CONSUMED */
+        409: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description PLAN_EXPIRED or CHALLENGE_EXPIRED */
+        410: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+      };
+    };
+  };
+  "/oam/v1/appliance/status": {
+    /**
+     * Appliance status (alpha)
+     * @description Product identity (from the host adapter, when there is one), each component's version with separately observed liveness and readiness, and OAM's database schema version. A component that could not be observed is "unknown" and stale, never ready. Contract appliance-ops/v1alpha1 — subject to change.
+     */
+    get: {
+      parameters: {
+        header: {
+          /** @description Bearer token */
+          Authorization: string;
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          content: {
+            "application/json": components["schemas"]["appliance.Status"];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+        /** @description Forbidden */
+        403: {
+          content: {
+            "application/json": components["schemas"]["appliance.ErrorBody"];
+          };
+        };
+      };
+    };
+  };
 }
 
 export type webhooks = Record<string, never>;
 
 export interface components {
   schemas: {
+    /** @enum {string} */
+    "appliance.Action": "backup" | "restore" | "update" | "rollback" | "reset" | "diagnostics";
+    "appliance.ActionCapability": {
+      action?: components["schemas"]["appliance.Action"];
+      /** @description Available: it can be executed now. */
+      available?: boolean;
+      /** @description Permitted: the caller's role may request it. Independent of the above. */
+      permitted?: boolean;
+      /** @description RequiresReauthentication: executing it needs a fresh password check. */
+      requires_reauthentication?: boolean;
+      /**
+       * @description Supported: the host adapter implements the action in a contract
+       * version OAM speaks.
+       */
+      supported?: boolean;
+      /** @description UnavailableReason is set exactly when Available is false. */
+      unavailable_reason?: components["schemas"]["appliance.UnavailableReason"];
+    };
+    "appliance.AuthorizeRequest": {
+      /**
+       * @description Password is the caller's current password. It is verified and
+       * discarded; it is never stored or logged.
+       */
+      password?: string;
+    };
+    "appliance.Capabilities": {
+      actions?: components["schemas"]["appliance.ActionCapability"][];
+      host_configured?: boolean;
+      host_contract_versions?: string[];
+      /**
+       * @description HostFixture is true when the host adapter declares itself a test
+       * fixture. Nothing a fixture reports describes a real installation.
+       */
+      host_fixture?: boolean;
+      observed_at?: string;
+      schema_version?: string;
+    };
+    "appliance.Challenge": {
+      challenge?: string;
+      expires_at?: string;
+      operation_id?: string;
+      plan_hash?: string;
+    };
+    "appliance.Component": {
+      digest?: string;
+      liveness?: string;
+      name?: string;
+      observed_at?: string;
+      readiness?: string;
+      /** @description Stale: the observation could not be refreshed for this response. */
+      stale?: boolean;
+      version?: string;
+    };
+    "appliance.DatabaseStatus": {
+      adopted?: boolean;
+      applied_at?: string;
+      latest_migration?: string;
+      /**
+       * @description SchemaVersion is 0 when the schema is not tracked (OAM_DB_MIGRATE=off
+       * on a database that was never migrated by the server).
+       */
+      schema_version?: number;
+    };
+    "appliance.ErrorBody": {
+      code?: string;
+      error?: string;
+      operation_id?: string;
+      origin?: string;
+      recovery?: components["schemas"]["appliance.Recovery"];
+      request_id?: string;
+    };
+    "appliance.Operation": {
+      actor?: string;
+      /**
+       * @description Cancellable: a cancel request would be accepted now. Decided by OAM
+       * before submission and by the host adapter after.
+       */
+      cancellable?: boolean;
+      created_at?: string;
+      error_code?: string;
+      error_origin?: string;
+      finished_at?: string;
+      /**
+       * @description HostFixture: the plan came from a fixture host adapter and describes
+       * nothing real.
+       */
+      host_fixture?: boolean;
+      /**
+       * @description HostGeneration is the host journal generation this operation reflects;
+       * 0 until the host has reported on it.
+       */
+      host_generation?: number;
+      id?: string;
+      installation_id?: string;
+      model?: string;
+      note?: string;
+      phase?: string;
+      plan?: components["schemas"]["appliance.Plan"];
+      plan_expires_at?: string;
+      /**
+       * @description PlanHash and Plan are present only for callers permitted to run this
+       * type of operation; Redacted is true when they were withheld.
+       */
+      plan_hash?: string;
+      reconciliation?: string;
+      redacted?: boolean;
+      request_id?: string;
+      requires_reauthentication?: boolean;
+      schema_version?: string;
+      /**
+       * @description Stale: the host could not be read at the last attempt, so State may be
+       * out of date.
+       */
+      stale?: boolean;
+      state?: components["schemas"]["appliance.OperationState"];
+      submitted_at?: string;
+      type?: components["schemas"]["appliance.OperationType"];
+      updated_at?: string;
+    };
+    "appliance.OperationList": {
+      items?: components["schemas"]["appliance.Operation"][];
+      /**
+       * @description NextCursor is passed back as `cursor` for the next page; absent on the
+       * last one.
+       */
+      next_cursor?: string;
+      schema_version?: string;
+    };
+    /** @enum {string} */
+    "appliance.OperationState": "PLANNED" | "AWAITING_AUTHORIZATION" | "QUEUED" | "RUNNING" | "VERIFYING" | "SUCCEEDED" | "FAILED" | "COMPENSATING" | "ROLLED_BACK" | "RECOVERY_REQUIRED" | "CANCELLED";
+    /** @enum {string} */
+    "appliance.OperationType": "backup" | "restore" | "update" | "rollback" | "reset";
+    "appliance.Plan": {
+      affected_resources?: string[];
+      archive_digest?: string;
+      compatibility?: string;
+      current_release_digest?: string;
+      /** @description IrreversibleAfterPhase is the phase after which cancellation is refused. */
+      irreversible_after_phase?: string;
+      target_release_digest?: string;
+    };
+    "appliance.PlanRequest": {
+      /**
+       * @description ArchiveRef names a backup archive the host has admitted. Required for
+       * restore, refused otherwise.
+       */
+      archive_ref?: string;
+      /** @description Note is free text for the audit trail. */
+      note?: string;
+      schema_version?: string;
+      /**
+       * @description TargetReleaseRef names a release the host has admitted. Required for
+       * update, refused otherwise.
+       */
+      target_release_ref?: string;
+      type?: components["schemas"]["appliance.OperationType"];
+    };
+    "appliance.Product": {
+      fixture?: boolean;
+      installation_id?: string;
+      model?: string;
+      release_digest?: string;
+      release_version?: string;
+    };
+    "appliance.Recovery": {
+      action?: string;
+      /** @description OperationID names the operation to wait for, with WAIT_FOR_OPERATION. */
+      operation_id?: string;
+    };
+    "appliance.Status": {
+      components?: components["schemas"]["appliance.Component"][];
+      database?: components["schemas"]["appliance.DatabaseStatus"];
+      product?: components["schemas"]["appliance.Product"];
+      schema_version?: string;
+    };
+    "appliance.SubmitRequest": {
+      /**
+       * @description Challenge is the value Authorize returned. Required for an operation
+       * that requires reauthentication, ignored otherwise.
+       */
+      challenge?: string;
+      /** @description PlanHash is the plan the caller reviewed. */
+      plan_hash?: string;
+    };
+    /** @enum {string} */
+    "appliance.UnavailableReason": "HOST_NOT_CONFIGURED" | "HOST_UNREACHABLE" | "HOST_UNSUPPORTED" | "SCHEMA_MISMATCH" | "OPERATION_IN_PROGRESS" | "RECOVERY_REQUIRED";
     "models.AcknowledgeRequest": {
       user_id: number;
     };
@@ -1998,6 +2704,12 @@ export interface components {
       gateway_version?: string;
       id?: string;
       instance_id?: number;
+      /**
+       * @description LastRestoreComponents is the domain selection of the most recent
+       * restore attempt; absent when it restored the whole document. Like the
+       * response, only populated on the single-snapshot GET.
+       */
+      last_restore_components?: string[];
       /**
        * @description LastRestoreResponse is the full gateway response JSON of the most
        * recent restore attempt (the audit record). Only populated on the
@@ -2090,8 +2802,15 @@ export interface components {
       total_pages?: number;
     };
     "models.RestoreOutcome": {
+      /** @description the selection sent to the gateway; absent = whole document */
+      components?: string[];
       cross_instance?: boolean;
       gateway_response?: Record<string, never>;
+      /**
+       * @description GatewayRetryAfter is the gateway's Retry-After header, when it sent
+       * one; the handler relays it as the response's own Retry-After.
+       */
+      gateway_retry_after?: string;
       gateway_status?: number;
       /** @description restore target */
       instance_id?: number;
@@ -2100,6 +2819,14 @@ export interface components {
       snapshot_id?: string;
     };
     "models.RestoreSnapshotRequest": {
+      /**
+       * @description Components limits the restore to the named snapshot domains (for
+       * example ["auditsink"]). The gateway wipes and applies those domains
+       * only; it replaces their state, it does not merge. Absent restores
+       * everything the document covers. When present it must name at least
+       * one domain: an empty list is refused, never read as "everything".
+       */
+      components?: string[];
       /** @description "dry-run" (default) | "commit" */
       mode?: string;
       /**
