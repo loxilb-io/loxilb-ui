@@ -108,6 +108,25 @@ export function AuditComplianceSinkSection({instance, canWrite, onChanged}: {ins
 				{(sink, {stale}) => {
 					if (!sink) return null;
 					const enabled = sink.enabled === true;
+					const controls = (
+						<Stack direction="row" spacing={1} sx={{mt: 1.5, flexWrap: 'wrap'}}>
+							<Button variant="outlined" onClick={() => void refetch()} disabled={query.isFetching}>
+								{t('Refresh')}
+							</Button>
+							{canWrite && (
+								<>
+									<Button variant="contained" onClick={() => setEditing(namedSinkForm('', sink))} disabled={stale || query.isFetching}>
+										{enabled ? t('Change') : t('Configure')}
+									</Button>
+									{enabled && (
+										<Button variant="outlined" color="warning" onClick={handleDisable} disabled={stale || query.isFetching}>
+											{t('Stop')}
+										</Button>
+									)}
+								</>
+							)}
+						</Stack>
+					);
 					return (
 						<Stack spacing={1.5}>
 							{enabled ? (
@@ -119,6 +138,7 @@ export function AuditComplianceSinkSection({instance, canWrite, onChanged}: {ins
 									<StatRow label={t('Records sent shortened')} value={count(sink.truncated)} />
 									<StatRow label={t('Failed submissions')} value={count(sink.write_errors)} />
 									<StatRow label={t('Last error')} value={sink.last_error || t('None')} />
+									{controls}
 								</PanelPaper>
 							) : (
 								<Alert severity="info">{t('No compliance sink is configured: no record leaves the gateway in full, and the trail is local only.')}</Alert>
@@ -128,18 +148,7 @@ export function AuditComplianceSinkSection({instance, canWrite, onChanged}: {ins
 									{t('The counters are since the sink was last saved. Records written to the socket is not a delivery count: the protocol carries no acknowledgement.')}
 								</Typography>
 							)}
-							{canWrite ? (
-								<Stack direction="row" spacing={1}>
-									<Button variant="contained" onClick={() => setEditing(namedSinkForm('', sink))} disabled={stale}>
-										{enabled ? t('Change') : t('Configure')}
-									</Button>
-									{enabled && (
-										<Button variant="outlined" color="warning" onClick={handleDisable} disabled={stale}>
-											{t('Stop')}
-										</Button>
-									)}
-								</Stack>
-							) : null}
+							{!enabled && controls}
 						</Stack>
 					);
 				}}
@@ -195,17 +204,23 @@ function NamedSinkCard(props: {name: string; query: UseQueryResult<IAuditNamedSi
 						<StatRow label={t('Last error')} value={sink.last_error || t('None')} />
 					</>
 				)}
-			</PanelPaper>
-			{props.canWrite && (
-				<Stack direction="row" spacing={1}>
-					<Button size="small" variant="outlined" onClick={() => sink && props.onEdit(sink)} disabled={!sink || query.isError}>
-						{t('Change')}
+				<Stack direction="row" spacing={1} sx={{mt: 1.5, flexWrap: 'wrap'}} role="group" aria-label={name}>
+					<Button size="small" variant="outlined" onClick={() => void query.refetch()} disabled={query.isFetching}>
+						{t('Refresh')}
 					</Button>
-					<Button size="small" variant="outlined" color="warning" onClick={props.onDelete}>
-						{t('Delete')}
-					</Button>
+					{props.canWrite && (
+						<>
+							<Button size="small" variant="outlined" onClick={() => sink && props.onEdit(sink)} disabled={!sink || query.isError || query.isFetching}>
+								{t('Change')}
+							</Button>
+							<Button size="small" variant="outlined" color="warning" onClick={props.onDelete} disabled={!sink || query.isError || query.isFetching}>
+								{t('Delete')}
+							</Button>
+						</>
+					)}
 				</Stack>
-			)}
+			</PanelPaper>
+
 		</Stack>
 	);
 }

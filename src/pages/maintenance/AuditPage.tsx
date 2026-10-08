@@ -60,7 +60,7 @@ export default function AuditPage() {
 			<Typography variant="h6" component="h2">
 				{t('Audit Trail')}
 			</Typography>
-			<Button variant="outlined" onClick={refresh} disabled={refreshing} sx={{alignSelf: 'flex-start'}}>
+			<Button data-testid="audit-refresh-all" variant="outlined" onClick={refresh} disabled={refreshing} sx={{alignSelf: 'flex-start'}}>
 				{t('Refresh')}
 			</Button>
 			<AuditPathsNote />

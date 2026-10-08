@@ -4,7 +4,10 @@ Open an AI Gateway instance and choose **Maintenance → Audit Trail**.
 Administrators can change the audit policy and collectors; operators can read
 these settings. Use **Refresh** to read the selected instance's policy,
 compliance collector, named collectors, and audit status again. The page does
-not poll configuration while a form is being edited.
+not poll configuration while a form is being edited. Each collector card also
+has a **Refresh** button that rereads only that collector. **Change**, **Delete**,
+and **Stop** stay inside their collector card and are disabled while its read
+is in progress or its current settings cannot be read.
 
 A successful write is followed by a configuration read. The result distinguishes
 matching settings, different settings, an unreadable readback, and a change with
