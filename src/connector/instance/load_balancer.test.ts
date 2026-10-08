@@ -2,7 +2,7 @@ import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {IServiceConfiguration} from 'types/load_balancer';
 import {IInstance} from 'types/oam';
 import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
-import {query_get_load_balancer_config_all, request_create_load_balancer_config, request_delete_lb_by_full_key, withoutBackendKey} from './load_balancer';
+import {query_get_load_balancer_config_all, query_get_load_balancer_config_by_id, request_create_load_balancer_config, request_delete_lb_by_full_key, withoutBackendKey} from './load_balancer';
 
 vi.mock('../fetcher/fetcher_inst', () => ({
 	DELETE_INST: vi.fn(),
@@ -222,5 +222,45 @@ describe('load-balancer read: backend client private key', () => {
 		const kept = withoutBackendKey(ruleWith({...backend, client_key_data: ''}));
 		expect((kept.serviceArguments as {mtls_backend?: unknown}).mtls_backend).toEqual(backend);
 		expect(JSON.stringify(kept)).not.toContain('client_key_data');
+	});
+});
+
+describe('one rule by its gateway ID', () => {
+	const get = vi.mocked(GET_INST);
+
+	beforeEach(() => {
+		get.mockReset();
+	});
+
+	it('reads the rule from the by-ID path, with the ID encoded', async () => {
+		const rule = {...baseConfiguration(), serviceArguments: {...baseConfiguration().serviceArguments, id: 'lb 1'}};
+		get.mockResolvedValue({code: 200, data: rule, message: ''});
+		expect(await query_get_load_balancer_config_by_id(instance, 'lb 1')).toEqual(rule);
+		expect(get).toHaveBeenCalledWith(instance, '/config/loadbalancer/id/lb%201');
+	});
+
+	it('drops a backend client key the gateway should not have served, as the list read does', async () => {
+		const rule = baseConfiguration();
+		(rule.serviceArguments as any).mtls_backend = {client_cert_id: 'c1', client_key_data: 'not-for-the-ui'};
+		get.mockResolvedValue({code: 200, data: rule, message: ''});
+		const got = await query_get_load_balancer_config_by_id(instance, 'lb-1');
+		expect((got?.serviceArguments as any).mtls_backend).toEqual({client_cert_id: 'c1'});
+	});
+
+	it('answers null for a rule the gateway does not hold', async () => {
+		get.mockResolvedValue({code: 404, data: {code: 404, message: 'Resource not found'}, message: 'Not Found'});
+		expect(await query_get_load_balancer_config_by_id(instance, 'gone')).toBeNull();
+	});
+
+	it('throws for any other refusal and for a body that is not a rule', async () => {
+		get.mockResolvedValue({code: 503, data: {code: 503, message: 'store unavailable'}, message: ''});
+		await expect(query_get_load_balancer_config_by_id(instance, 'lb-1')).rejects.toThrow();
+		get.mockResolvedValue({code: 200, data: [], message: ''});
+		await expect(query_get_load_balancer_config_by_id(instance, 'lb-1')).rejects.toThrow();
+	});
+
+	it('sends nothing for an ID that cannot be a path segment', async () => {
+		for (const id of ['', 'a/b', 'a?b', 'a#b']) await expect(query_get_load_balancer_config_by_id(instance, id)).rejects.toThrow();
+		expect(get).not.toHaveBeenCalled();
 	});
 });

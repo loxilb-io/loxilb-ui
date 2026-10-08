@@ -1,7 +1,7 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {IInstance} from 'types/oam';
 import {DELETE_INST, GET_INST, PATCH_INST, POST_INST} from '../fetcher/fetcher_inst';
-import {query_get_ratelimit_defaults, query_get_ratelimit_defaults_for, query_get_user_ratelimit, query_get_user_ratelimits, request_create_apikey, request_delete_ratelimit_defaults, request_delete_user_ratelimit, request_patch_apikey, request_set_ratelimit_defaults, request_set_tenant_ratelimit, request_set_user_ratelimit} from './ai';
+import {query_get_apikey, query_get_ratelimit_defaults, query_get_ratelimit_defaults_for, query_get_user_ratelimit, query_get_user_ratelimits, request_create_apikey, request_delete_ratelimit_defaults, request_delete_user_ratelimit, request_patch_apikey, request_set_ratelimit_defaults, request_set_tenant_ratelimit, request_set_user_ratelimit} from './ai';
 
 vi.mock('../fetcher/fetcher_inst', () => ({
 	DELETE_INST: vi.fn(),
@@ -594,5 +594,43 @@ describe('rate-limit defaults wire contract (Stage 4.2b)', () => {
 		const rows = await query_get_ratelimit_defaults_for(instance, ['svc-1', ' svc-1 ', '', 'svc-absent']);
 		expect(rows).toEqual([{scope: 'rule', rule_ident: 'svc-1', default_user_rps: 3}]);
 		expect(get).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe('one API key by its ID', () => {
+	const get = vi.mocked(GET_INST);
+
+	beforeEach(() => {
+		get.mockReset();
+	});
+
+	it('reads the key from its own path, with the ID encoded', async () => {
+		get.mockResolvedValue({code: 200, data: {key_id: 'k 1', tenant_id: 'tenant-a', enabled: true}, message: ''});
+		expect(await query_get_apikey(instance, 'k 1')).toEqual({key_id: 'k 1', tenant_id: 'tenant-a', enabled: true});
+		expect(get).toHaveBeenCalledWith(instance, '/config/ai/apikey/k%201');
+	});
+
+	it('answers null for a key the gateway does not hold', async () => {
+		get.mockResolvedValue({code: 404, data: {code: 404, message: 'Resource not found'}, message: 'Not Found'});
+		expect(await query_get_apikey(instance, 'gone')).toBeNull();
+	});
+
+	it('throws for any other refusal, so a failed read is never an empty key', async () => {
+		for (const code of [401, 403, 500, 503]) {
+			get.mockResolvedValue({code, data: {code, message: 'no'}, message: 'no'});
+			await expect(query_get_apikey(instance, 'k1')).rejects.toThrow();
+		}
+	});
+
+	it('throws for a 200 whose body is not a key', async () => {
+		for (const data of [null, [], 'ok']) {
+			get.mockResolvedValue({code: 200, data, message: ''});
+			await expect(query_get_apikey(instance, 'k1')).rejects.toThrow();
+		}
+	});
+
+	it('sends nothing for an ID that cannot be a path segment', async () => {
+		for (const id of ['', 'a/b', 'a?b', 'a#b', 'a\\b']) await expect(query_get_apikey(instance, id)).rejects.toThrow();
+		expect(get).not.toHaveBeenCalled();
 	});
 });

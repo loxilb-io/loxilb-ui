@@ -20,6 +20,7 @@
 // appeared and the operator was told "Submitted" about a completed delete.
 //---------------------------------------------------------
 import {describe, expect, it} from 'vitest';
+import {apiKeyCreateDiff} from './confirmPredicates';
 import {IServiceConfiguration} from 'types/load_balancer';
 import {IEndpointItem} from 'types/endpoint';
 import {
@@ -263,5 +264,66 @@ describe('JWT profile is confirmed by value', () => {
 	it('a delete is confirmed by the exact name being absent, not by a similar one', () => {
 		expect(jwtProfileGone('keycloak')([{name: 'keycloak-2'}, {name: 'Keycloak'}])).toBe(true);
 		expect(jwtProfileGone('keycloak')([{name: 'keycloak'}])).toBe(false);
+	});
+});
+
+describe('a new API key is compared with its own read, field by field', () => {
+	const asked = {
+		tenant_id: 'tenant-a',
+		name: 'ci',
+		allowed_models: ['llama-70b', 'qwen'],
+		rate_limit_rps: 10,
+		burst_size: 20,
+		tokens_per_min: 1000,
+		expires_at: '2027-01-01T00:00:00.000Z',
+		enabled: true,
+	};
+	const served = {key_id: 'k1', ...asked, created_at: '2026-10-08T00:00:00Z'};
+
+	it('finds no difference when every field reads back as sent', () => {
+		expect(apiKeyCreateDiff(asked, served)).toEqual([]);
+	});
+
+	it('names each field that reads back differently, and only those', () => {
+		expect(apiKeyCreateDiff(asked, {...served, tenant_id: 'tenant-b'})).toEqual(['tenant_id']);
+		expect(apiKeyCreateDiff(asked, {...served, name: 'other'})).toEqual(['name']);
+		expect(apiKeyCreateDiff(asked, {...served, allowed_models: ['llama-70b']})).toEqual(['allowed_models']);
+		expect(apiKeyCreateDiff(asked, {...served, rate_limit_rps: 0})).toEqual(['rate_limit_rps']);
+		expect(apiKeyCreateDiff(asked, {...served, burst_size: undefined})).toEqual(['burst_size']);
+		expect(apiKeyCreateDiff(asked, {...served, tokens_per_min: 999})).toEqual(['tokens_per_min']);
+		expect(apiKeyCreateDiff(asked, {...served, expires_at: undefined})).toEqual(['expires_at']);
+		expect(apiKeyCreateDiff(asked, {...served, enabled: false})).toEqual(['enabled']);
+		expect(apiKeyCreateDiff(asked, {...served, name: '', enabled: false})).toEqual(['name', 'enabled']);
+	});
+
+	it('does not hold an omitted zero, name, model list or expiry against the gateway', () => {
+		// The form leaves a zero limit, a blank name, no models and no expiry out
+		// of the request, and the summary leaves the same things out of its answer.
+		expect(apiKeyCreateDiff({tenant_id: 'tenant-a', enabled: true}, {tenant_id: 'tenant-a', enabled: true})).toEqual([]);
+		expect(apiKeyCreateDiff({tenant_id: 'tenant-a', enabled: true}, {tenant_id: 'tenant-a', enabled: true, name: '', allowed_models: null, rate_limit_rps: 0, burst_size: 0, tokens_per_min: 0})).toEqual([]);
+	});
+
+	it('reads `enabled` left out of the request as enabled', () => {
+		expect(apiKeyCreateDiff({tenant_id: 'tenant-a'}, {tenant_id: 'tenant-a', enabled: true})).toEqual([]);
+		expect(apiKeyCreateDiff({tenant_id: 'tenant-a'}, {tenant_id: 'tenant-a', enabled: false})).toEqual(['enabled']);
+		expect(apiKeyCreateDiff({tenant_id: 'tenant-a', enabled: false}, {tenant_id: 'tenant-a', enabled: false})).toEqual([]);
+	});
+
+	it('compares an expiry as a time, to the second, not as text', () => {
+		expect(apiKeyCreateDiff(asked, {...served, expires_at: '2027-01-01T09:00:00+09:00'})).toEqual([]);
+		expect(apiKeyCreateDiff({...asked, expires_at: '2027-01-01T00:00:00.400Z'}, {...served, expires_at: '2027-01-01T00:00:00Z'})).toEqual([]);
+		expect(apiKeyCreateDiff(asked, {...served, expires_at: '2027-01-01T00:00:01Z'})).toEqual(['expires_at']);
+	});
+
+	it('reads the Unix epoch as no expiry, which is how the gateway stores it', () => {
+		expect(apiKeyCreateDiff({...asked, expires_at: '1970-01-01T00:00:00.000Z'}, {...served, expires_at: undefined})).toEqual([]);
+	});
+
+	it('reports an expiry that is not a time as a difference', () => {
+		expect(apiKeyCreateDiff(asked, {...served, expires_at: 'never'})).toEqual(['expires_at']);
+	});
+
+	it('keeps the spaces of a tenant ID, which the gateway stores as sent', () => {
+		expect(apiKeyCreateDiff({tenant_id: ' tenant-a '}, {tenant_id: 'tenant-a', enabled: true})).toEqual(['tenant_id']);
 	});
 });
