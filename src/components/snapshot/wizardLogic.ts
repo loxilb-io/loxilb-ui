@@ -30,13 +30,67 @@ const hasErrors = (gw: IGatewayRestoreResult): boolean => (gw.errors?.length ?? 
 // not record the request. Neither says anything about the snapshot.
 const isBusyStatus = (status: number | undefined): boolean => status === 409 || status === 503;
 
-export type TDryRunVerdict = 'pending' | 'oam-error' | 'pass' | 'refused' | 'busy' | 'unreadable';
+export type TDryRunVerdict = 'pending' | 'oam-error' | 'pass' | 'refused' | 'busy' | 'unreadable' | 'other-domains';
+
+//---------------------------------------------------------
+// Restoring selected domains.
+//
+// The domains a snapshot covers are not listed anywhere the UI can read, so
+// they are taken from the plan of a dry-run of the whole document: one row per
+// covered domain. A selection is then dry-run again and committed with the
+// same list.
+//---------------------------------------------------------
+
+/** The domains a dry-run's plan lists, in the gateway's order, each once. */
+export function planDomains(outcome: IRestoreOutcomeParsed | null): string[] {
+	const plan = asRestoreResult(outcome?.gateway_response)?.plan;
+	if (!Array.isArray(plan)) return [];
+	const seen = new Set<string>();
+	for (const item of plan) {
+		const name = item?.domain;
+		if (typeof name === 'string' && name !== '') seen.add(name);
+	}
+	return Array.from(seen);
+}
+
+/**
+ * What to send for the boxes that are ticked. `all` sends no list, which is
+ * the whole document. `none` is never sent: the gateway reads an empty list
+ * as every domain, the opposite of what an operator who cleared every box
+ * asked for.
+ */
+export type TRestoreSelection = {kind: 'all'} | {kind: 'some'; components: string[]} | {kind: 'none'};
+
+export function restoreSelection(domains: readonly string[], checked: ReadonlySet<string>): TRestoreSelection {
+	// A plan with no rows offers nothing to choose from: the whole document.
+	if (domains.length === 0) return {kind: 'all'};
+	const components = domains.filter(d => checked.has(d));
+	if (components.length === 0) return {kind: 'none'};
+	return components.length === domains.length ? {kind: 'all'} : {kind: 'some', components};
+}
+
+const sameSet = (a: readonly string[], b: readonly string[]): boolean => a.length === b.length && a.every(x => b.includes(x));
+
+/**
+ * Whether an answer is about the domains that were sent, and no others. A
+ * backend that does not know `components` drops the field and answers for the
+ * whole document with a 200, so both the selection OAM says it forwarded and
+ * the domains in the gateway's plan must be the ones asked for.
+ */
+export function answersSelection(outcome: IRestoreOutcomeParsed | null, sent: readonly string[] | undefined): boolean {
+	if (sent === undefined) return true;
+	if (!sameSet(outcome?.components ?? [], sent)) return false;
+	return sameSet(planDomains(outcome), sent);
+}
 
 // Commit is allowed ONLY on `pass`: the gateway answered 200 with a dry-run
 // result that says compatible, says ok, carries a plan and no errors. The
 // dry-run is the one check before a configuration wipe, so an answer that
 // does not positively pass never enables it.
-export function classifyDryRun(outcome: IRestoreOutcomeParsed | null, oamError: string | null): TDryRunVerdict {
+//
+// `sent` is the selection the dry-run was asked for. A dry-run that passed for
+// other domains than those is `other-domains`: it verified something else.
+export function classifyDryRun(outcome: IRestoreOutcomeParsed | null, oamError: string | null, sent?: readonly string[]): TDryRunVerdict {
 	if (oamError !== null) return 'oam-error';
 	if (outcome === null) return 'pending';
 	const gw = asRestoreResult(outcome.gateway_response);
@@ -46,12 +100,17 @@ export function classifyDryRun(outcome: IRestoreOutcomeParsed | null, oamError: 
 	}
 	if (outcome.gateway_status !== 200 || gw.compatible === false || hasErrors(gw)) return 'refused';
 	const passed = gw.mode === 'dry-run' && gw.compatible === true && gw.result === 'ok' && Array.isArray(gw.plan);
-	return passed ? 'pass' : 'unreadable';
+	if (!passed) return 'unreadable';
+	return answersSelection(outcome, sent) ? 'pass' : 'other-domains';
 }
 
-export function canContinueToCommit(outcome: IRestoreOutcomeParsed | null, oamError: string | null, loading: boolean): boolean {
-	return !loading && classifyDryRun(outcome, oamError) === 'pass';
+export function canContinueToCommit(outcome: IRestoreOutcomeParsed | null, oamError: string | null, loading: boolean, sent?: readonly string[]): boolean {
+	return !loading && classifyDryRun(outcome, oamError, sent) === 'pass';
 }
+
+/** A commit that changed the instance, or may have. Each can be undone from the pre-restore snapshot. */
+export const commitChangedInstance = (branch: TCommitBranch): boolean =>
+	branch === 'ok' || branch === 'ok-not-durable' || branch === 'ok-durability-unreported' || branch === 'rollback-failed';
 
 export type TCommitBranch =
 	| 'oam-error'

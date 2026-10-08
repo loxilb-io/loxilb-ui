@@ -42,7 +42,10 @@
 //
 //   LB rule create / update / delete      GET /config/loadbalancer/all
 //   endpoint create / delete              GET /config/endpoint/all
-//   API key create / patch / delete       GET /config/ai/apikey
+//   API key create                        GET /config/ai/apikey/{key_id} — that
+//                                         key only, field by field; then the
+//                                         list once
+//   API key patch / delete                GET /config/ai/apikey
 //   tenant quota upsert                   GET /config/ai/tenant/ratelimit/{tenant_id}
 //                                         — that tenant only; the table's own
 //                                         read of the tenants already on screen
@@ -60,7 +63,7 @@
 // observes the data plane: a confirmed write is stored configuration, not an
 // installed policy and not a served request.
 //---------------------------------------------------------
-import {ITenantRateLimitMod, IUserRateLimitMod, normalizeTenantRateLimit, normalizeUserRateLimit} from 'types/ai';
+import {ITenantRateLimitMod, IUserRateLimitMod, apiKeyExpiry, normalizeTenantRateLimit, normalizeUserRateLimit} from 'types/ai';
 import {IJWTAuthProfileEntry, JWT_PROFILE_DEFAULTS} from 'types/ai_jwt';
 import {IEndpointItem} from 'types/endpoint';
 import {canonicalLBRuleIdentity} from 'types/lb_identity';
@@ -169,6 +172,47 @@ export const apiKeyAppeared =
 	(keyId: string) =>
 	(rows: {key_id?: string}[]): boolean =>
 		rows.some(r => r.key_id === keyId);
+
+/**
+ * What a new API key reads back differently from what was asked for: the
+ * names of the fields that differ, empty when none does.
+ *
+ * Every field of the create body is compared, since a create asserts all of
+ * them, each the way the summary serves it:
+ *   - a zero limit, an empty name and an empty model list can all be absent;
+ *   - `enabled` left out of the request means enabled;
+ *   - an expiry left out, or the Unix epoch, means no expiry, and the summary
+ *     serves no expiry as the year-1 zero time rather than leaving the field
+ *     out (`apiKeyExpiry`); a stored expiry is compared to the second (how
+ *     exactly the store keeps a fraction of a second was not read, so one is
+ *     not held against it).
+ * The secret is not compared: no read returns it.
+ */
+export const API_KEY_CREATE_FIELDS = ['tenant_id', 'name', 'allowed_models', 'rate_limit_rps', 'burst_size', 'tokens_per_min', 'expires_at', 'enabled'] as const;
+export type ApiKeyCreateField = (typeof API_KEY_CREATE_FIELDS)[number];
+
+type ApiKeyAsked = {tenant_id?: string; name?: string; allowed_models?: string[]; rate_limit_rps?: number; burst_size?: number; tokens_per_min?: number; expires_at?: string; enabled?: boolean | null};
+type ApiKeyServed = {tenant_id?: string; name?: string; allowed_models?: string[] | null; rate_limit_rps?: number | null; burst_size?: number | null; tokens_per_min?: number | null; expires_at?: string | null; enabled?: boolean};
+
+// Whole seconds since the epoch; 0 for no expiry. NaN for text that is no time.
+const expirySeconds = (value: string | null | undefined): number => {
+	const expiry = apiKeyExpiry(value);
+	return expiry === undefined ? 0 : Math.floor(Date.parse(expiry) / 1000);
+};
+
+export function apiKeyCreateDiff(asked: ApiKeyAsked, served: ApiKeyServed): ApiKeyCreateField[] {
+	const same: Record<ApiKeyCreateField, boolean> = {
+		tenant_id: (asked.tenant_id ?? '') === (served.tenant_id ?? ''),
+		name: (asked.name ?? '') === (served.name ?? ''),
+		allowed_models: (asked.allowed_models ?? []).join(',') === (served.allowed_models ?? []).join(','),
+		rate_limit_rps: (asked.rate_limit_rps ?? 0) === (served.rate_limit_rps ?? 0),
+		burst_size: (asked.burst_size ?? 0) === (served.burst_size ?? 0),
+		tokens_per_min: (asked.tokens_per_min ?? 0) === (served.tokens_per_min ?? 0),
+		expires_at: expirySeconds(asked.expires_at) === expirySeconds(served.expires_at),
+		enabled: (asked.enabled ?? true) === (served.enabled !== false),
+	};
+	return API_KEY_CREATE_FIELDS.filter(field => !same[field]);
+}
 
 export const apiKeysGone =
 	(deletedKeyIds: string[]) =>

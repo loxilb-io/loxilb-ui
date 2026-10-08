@@ -16,6 +16,19 @@ export type IApiKeyCreateResponse = GwSchema<'ApiKeyCreateResponse'>;
 // GET /config/ai/apikey list element
 export type IApiKeySummary = GwSchema<'ApiKeySummary'>;
 
+/**
+ * The expiry of a key as served, or `undefined` for a key that does not
+ * expire. The summary always carries `expires_at`: a key with no expiry reads
+ * back as the year-1 zero time (`0001-01-01T00:00:00.000Z`), not as an absent
+ * field, and the create handler stores the Unix epoch as no expiry too. So
+ * any time at or before the epoch is "never".
+ */
+export function apiKeyExpiry(expires_at: string | null | undefined): string | undefined {
+	if (!expires_at) return undefined;
+	const at = Date.parse(expires_at);
+	return !isNaN(at) && at <= 0 ? undefined : expires_at;
+}
+
 // POST /config/ai/tenant/ratelimit body (upsert)
 export type ITenantRateLimitMod = GwSchema<'TenantRateLimitMod'>;
 

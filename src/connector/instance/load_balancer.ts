@@ -138,6 +138,20 @@ export async function query_get_load_balancer_config_all(instance: IInstance): P
 	return ((resp.data?.lbAttr ?? []) as IServiceConfiguration[]).map(withoutBackendKey);
 }
 
+/**
+ * One rule by the gateway's opaque rule ID (`serviceArguments.id` in the
+ * list), or `null` when the gateway holds none of that ID.
+ */
+export async function query_get_load_balancer_config_by_id(instance: IInstance, id: string): Promise<IServiceConfiguration | null> {
+	if (id === '' || unsendableInPath(id)) throw new Error('This rule ID cannot be sent in a request path.');
+	const resp = await GET_INST<GwGetResp<'/config/loadbalancer/id/{id}'>>(instance, `/config/loadbalancer/id/${encodeURIComponent(id)}`);
+	if (resp.code === 404) return null;
+	assertOk(resp, 'Get Load Balancer By ID');
+	const data: unknown = resp.data;
+	if (typeof data !== 'object' || data === null || Array.isArray(data)) throw new Error('The load balancer answer is not a rule.');
+	return withoutBackendKey(data as IServiceConfiguration);
+}
+
 export async function request_create_load_balancer_config(instance: IInstance, data: IServiceConfiguration, flavor: InstanceFlavor): Promise<OpResult> {
 	// Project FIRST. Gateway-only form state is outside the OSS contract, so it
 	// must neither reach loxilb nor make an otherwise valid OSS create fail

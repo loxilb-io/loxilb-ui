@@ -161,7 +161,8 @@ test.describe('@gw Snapshots page (admin)', () => {
 		// Step 1: dry-run auto-runs; the plan must include the LB to apply.
 		const wizard = page.getByRole('dialog', {name: /Restore Snapshot/});
 		await expect(wizard.getByText('Dry-run passed — the snapshot is applicable')).toBeVisible({timeout: 20_000});
-		await expect(wizard.getByRole('cell', {name: 'loadbalancer'})).toBeVisible();
+		// exact: the row's tick box cell is named "Restore loadbalancer".
+		await expect(wizard.getByRole('cell', {name: 'loadbalancer', exact: true})).toBeVisible();
 		await wizard.getByRole('button', {name: 'Continue to Restore'}).click();
 
 		// Step 2: typed confirm — wrong text keeps Restore Now disabled.
@@ -347,6 +348,37 @@ test.describe('@gw Snapshots page (admin)', () => {
 		await expect(wizard.getByText(/Restore succeeded|Restore applied|Restore failed|did not complete|outcome unconfirmed/)).toBeVisible({timeout: 60_000});
 		expect(commits, 'double-click must not double-commit').toHaveLength(1);
 		await wizard.getByRole('button', {name: 'Close'}).click();
+	});
+
+	test('11. a selection of domains gets its own dry-run from the live gateway, for those domains only', async ({page}) => {
+		// Dry-runs only: nothing is restored. What is sent is read off the wire,
+		// and the answer has to be for the one domain that stayed ticked.
+		await openPage(page);
+		await takeSnapshotViaUI(page, 'e2e-spec-selected');
+		await selectSnapRow(page, 'e2e-spec-selected');
+		await page.getByRole('button', {name: 'Restore…'}).click();
+
+		const wizard = page.getByRole('dialog', {name: /Restore Snapshot/});
+		await expect(wizard.getByText('Dry-run passed — the snapshot is applicable')).toBeVisible({timeout: 20_000});
+		const boxes = wizard.getByRole('checkbox', {name: /^Restore /});
+		const count = await boxes.count();
+		expect(count).toBeGreaterThan(1);
+		for (let i = 0; i < count; i++) {
+			const name = await boxes.nth(i).getAttribute('aria-label');
+			if (name !== 'Restore loadbalancer') await boxes.nth(i).uncheck();
+		}
+		await expect(wizard.getByLabel('Restore loadbalancer')).toBeChecked();
+
+		const sent = page.waitForRequest(r => r.method() === 'POST' && /\/oam\/snapshots\/.*\/restore/.test(r.url()));
+		await wizard.getByRole('button', {name: 'Dry-run Selected Domains'}).click();
+		expect((await sent).postDataJSON()).toEqual({mode: 'dry-run', components: ['loadbalancer']});
+
+		await expect(wizard.getByText('Dry-run of the selected domains: loadbalancer')).toBeVisible();
+		// Two plans are on screen now: the whole document's and the selection's.
+		await expect(wizard.getByText('Dry-run passed — the snapshot is applicable')).toHaveCount(2, {timeout: 20_000});
+		await expect(wizard.getByRole('table', {name: 'Restore plan'}).nth(1).getByRole('row')).toHaveCount(2);
+		await expect(wizard.getByRole('button', {name: 'Continue to Restore'})).toBeEnabled();
+		await wizard.getByRole('button', {name: 'Cancel'}).click();
 	});
 
 	test('7. legacy config-management page stays dead', async ({page}) => {

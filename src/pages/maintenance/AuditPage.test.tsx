@@ -121,6 +121,17 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+describe('AuditPage — what the page is about', () => {
+	it('says which of the three paths it sets, for an administrator and for an operator', () => {
+		render(<AuditPage />);
+		expect(screen.getByTestId('audit-paths').textContent).toMatch(/This page sets the third only\./);
+		cleanup();
+		state.isAdmin = false;
+		render(<AuditPage />);
+		expect(screen.getByTestId('audit-paths').textContent).toMatch(/Audit records go from the audit files on the gateway to the sinks\./);
+	});
+});
+
 describe('AuditPage — policy', () => {
 	it('shows the six values, absent as 0 and the prune count as the 1 the gateway uses', () => {
 		render(<AuditPage />);

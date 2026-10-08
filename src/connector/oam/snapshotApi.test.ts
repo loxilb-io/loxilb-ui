@@ -109,3 +109,32 @@ describe('request_restore_snapshot (the 200-with-failure contract)', () => {
 		expect(res.rawDetail).toMatch(/Failed to fetch/);
 	});
 });
+
+describe('request_restore_snapshot with selected domains', () => {
+	const sentBody = () => JSON.parse(String((global.fetch as Mock).mock.calls[0][1]?.body));
+
+	it('sends the selection as `components`, for the dry-run and for the commit', async () => {
+		for (const mode of ['dry-run', 'commit'] as const) {
+			(global.fetch as Mock).mockClear();
+			mockFetch(JSON.stringify({mode, gateway_status: 200, gateway_response: {mode, result: 'ok'}, components: ['firewall', 'auditsink']}));
+			const res = await request_restore_snapshot('s1', mode, undefined, ['firewall', 'auditsink']);
+			expect(res.status).toBe('confirmed');
+			expect(sentBody()).toEqual({mode, components: ['firewall', 'auditsink']});
+		}
+	});
+
+	it('sends no `components` at all for the whole document', async () => {
+		mockFetch(JSON.stringify({mode: 'dry-run', gateway_status: 200, gateway_response: {mode: 'dry-run', result: 'ok'}}));
+		await request_restore_snapshot('s1', 'dry-run');
+		expect('components' in sentBody()).toBe(false);
+	});
+
+	it('does not send an empty selection: the gateway would read it as every domain', async () => {
+		for (const mode of ['dry-run', 'commit'] as const) {
+			const res = await request_restore_snapshot('s1', mode, undefined, []);
+			expect(res.status).toBe('invalid');
+			expect(res.code).toBe('snapshot.restore.client_empty_selection');
+		}
+		expect(global.fetch).not.toHaveBeenCalled();
+	});
+});

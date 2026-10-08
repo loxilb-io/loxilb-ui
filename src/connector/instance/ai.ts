@@ -31,6 +31,22 @@ export async function query_get_apikey_all(instance: IInstance, tenant_id?: stri
 }
 
 /**
+ * One API key by its ID, or `null` when the gateway holds none of that ID.
+ * This is the read a create is checked against: it names the key that was
+ * written and nothing else.
+ */
+export async function query_get_apikey(instance: IInstance, key_id: string): Promise<IApiKeySummary | null> {
+	if (key_id === '' || unsendableInPath(key_id)) throw new Error('This API key ID cannot be sent in a request path.');
+	const resp = await GET_INST<GwGetResp<'/config/ai/apikey/{key_id}'>>(instance, `/config/ai/apikey/${encodeURIComponent(key_id)}`);
+	if (resp.code === 404) return null;
+	assertOk(resp, 'Get API Key');
+	// Never pass a non-object through (a license-gate body, an array).
+	const data: unknown = resp.data;
+	if (typeof data !== 'object' || data === null || Array.isArray(data)) throw new Error('The API key answer is not a key.');
+	return data as IApiKeySummary;
+}
+
+/**
  * Create a new API key for a tenant ( batch 2 — OpResult).
  * Generated mode returns plaintext only in this response. Imported mode sends
  * caller-supplied material once and the producer returns an empty raw_key.

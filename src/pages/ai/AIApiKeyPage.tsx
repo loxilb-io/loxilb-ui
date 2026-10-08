@@ -22,15 +22,16 @@ import {apiKeyAppeared, apiKeyPatchApplied, apiKeysGone} from 'hooks/query/confi
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {t} from 'i18next';
 import React, {Fragment, useRef, useState} from 'react';
-import {IApiKeyCreateRequest, IApiKeyCreateResponse, IApiKeyPatch, IApiKeySummary, apiKeyPatchIsEmpty} from 'types/ai';
+import {IApiKeyCreateRequest, IApiKeyCreateResponse, IApiKeyPatch, IApiKeySummary, apiKeyExpiry, apiKeyPatchIsEmpty} from 'types/ai';
 import {toPageState} from 'components/state/pageState';
+import {ApiKeyCreateReadback, ApiKeyCreateReadbackNote, readBackCreatedApiKey} from './apiKeyCreateReadback';
 
 //---------------------------------------------------------
 // Functional Components
 //---------------------------------------------------------
 
 // The plaintext key exists ONLY in this popup — it cannot be fetched again.
-function RawKeyPanel(props: {created: IApiKeyCreateResponse}) {
+function RawKeyPanel(props: {created: IApiKeyCreateResponse; readback: ApiKeyCreateReadback}) {
 	const {created} = props;
 	const [copied, setCopied] = useState(false);
 
@@ -51,15 +52,17 @@ function RawKeyPanel(props: {created: IApiKeyCreateResponse}) {
 					</IconButton>
 				</Tooltip>
 			</Stack>
+			<ApiKeyCreateReadbackNote readback={props.readback} />
 		</Stack>
 	);
 }
 
-function ImportedKeyPanel(props: {created: IApiKeyCreateResponse}) {
+function ImportedKeyPanel(props: {created: IApiKeyCreateResponse; readback: ApiKeyCreateReadback}) {
 	return (
 		<Stack spacing={2}>
 			<Alert severity="success">{t('The existing API key was registered. Its secret is not returned or stored by this UI.')}</Alert>
 			{props.created.key_id && <SingleTextField label={t('Key ID')} value={props.created.key_id} />}
+			<ApiKeyCreateReadbackNote readback={props.readback} />
 		</Stack>
 	);
 }
@@ -84,7 +87,7 @@ function DetailPanel(props: {data: IApiKeySummary}) {
 				</ValueBunch>
 				<ValueBunch name={t('Lifecycle')}>
 					<SingleTextField label={t('Created At')} value={data.created_at} />
-					<SingleTextField label={t('Expires At')} value={data.expires_at || t('Never')} />
+					<SingleTextField label={t('Expires At')} value={apiKeyExpiry(data.expires_at) ?? t('Never')} />
 				</ValueBunch>
 			</Stack>
 		</SubTitlePannel>
@@ -144,12 +147,15 @@ export default function AIApiKeyPage() {
 				formRef.current = null;
 				const res = await request_create_apikey(inst, request);
 				if (res.status === 'confirmed' && res.data) {
+					// What was stored is read from the key itself, before the
+					// dialog opens: the answer to the create does not carry it.
+					const readback = res.data.raw_key || imported ? await readBackCreatedApiKey(inst, res.data.key_id, request) : 'unreadable';
 					if (imported) {
 						// persistent: the key material is shown exactly once — a stray
 						// Escape/backdrop click must not dismiss it before it is copied.
-						openPopUp(t('API Key Imported'), <ImportedKeyPanel created={res.data} />, t('OK'), undefined, undefined, undefined, {persistent: true});
+						openPopUp(t('API Key Imported'), <ImportedKeyPanel created={res.data} readback={readback} />, t('OK'), undefined, undefined, undefined, {persistent: true});
 					} else if (res.data.raw_key) {
-						openPopUp(t('API Key Created'), <RawKeyPanel created={res.data} />, t('OK'), undefined, undefined, undefined, {persistent: true});
+						openPopUp(t('API Key Created'), <RawKeyPanel created={res.data} readback={readback} />, t('OK'), undefined, undefined, undefined, {persistent: true});
 					} else {
 						showAddError('AI API key', t('The Gateway did not return the one-time generated key. The key cannot be recovered; delete the metadata and create a new key.'));
 						return;

@@ -3,6 +3,7 @@
 //---------------------------------------------------------
 import CircleIcon from '@mui/icons-material/Circle';
 import {Box, Divider, Stack, Typography} from '@mui/material';
+import {OamLogScopeNote} from 'components/audit/ScopeNotes';
 import ArchivedLogCard from 'components/card/ArchivedLogCard';
 import AuditWriterSection from 'components/observability/AuditWriterPanel';
 import SingleTextBox from 'components/element/SingleTextBox';
@@ -91,6 +92,7 @@ export default function SystemPage() {
 
 				<Divider />
 
+				<OamLogScopeNote />
 				<LogTable
 					data={log_list ?? []}
 					selected_rows={selected_rows}

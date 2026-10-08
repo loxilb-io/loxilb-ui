@@ -2,6 +2,7 @@
 // Imports
 //---------------------------------------------------------
 import {Box, Divider, Stack, Typography} from '@mui/material';
+import {InstanceLogScopeNote} from 'components/audit/ScopeNotes';
 import ArchivedLogCard from 'components/card/ArchivedLogCard';
 import ScrollableBox from 'components/layout/ScrollableBox';
 import LogConsole from 'components/log/LogConsole';
@@ -23,6 +24,7 @@ export default function LogPage() {
 		<ScrollableBox>
 			<Stack position="relative" id="fixed-container" width="100%" height="100%" spacing={3} padding="16px">
 				<Typography variant="h5" component="h2">{t('Instance Logs')}</Typography>
+				<InstanceLogScopeNote />
 
 				<LogConsole {...paging} archives={archives} archiveInfo={log_archives?.archive_info} />
 
