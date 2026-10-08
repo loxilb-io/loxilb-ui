@@ -1415,5 +1415,15 @@
 	"On an existing rule a blank number is not sent and the rule keeps the value it has. Enter 0 to return a field to the gateway default (its launch environment, else the product default). A selector set to \"Gateway default\" returns to that default.": "既存のルールでは、空欄の数値は送信されず、ルールは現在の値を保持します。フィールドをゲートウェイの既定値（起動環境の設定、なければ製品の既定値）に戻すには 0 を入力してください。セレクターを「ゲートウェイの既定値」にすると、その既定値に戻ります。",
 	"A blank field is not sent, and the gateway default applies (its launch environment, else the product default). 0 is sent and selects the same default: it does not mean unlimited or none.": "空欄のフィールドは送信されず、ゲートウェイの既定値（起動環境の設定、なければ製品の既定値）が適用されます。0 は送信され、同じ既定値を選択します。無制限や「なし」を意味するものではありません。",
 	"The mode set here is the rule's own and comes before the gateway-wide setting: a rule can enforce, observe or switch the gate off whatever LLB_FC_MODE says.": "ここで設定するモードはこのルール自身のもので、ゲートウェイ全体の設定より優先されます。LLB_FC_MODE の値にかかわらず、ルールはゲートを enforce、observe、off のいずれにもできます。",
-	"The capacity gate is off on every pool: nothing is bounded, and its counters stay at zero by construction. It is switched on per rule with the rule's Admission Mode, or for every rule that declares none with the gateway's LLB_FC_MODE setting (observe or enforce).": "すべてのプールでキャパシティゲートはオフです。何も制限されず、カウンターは構造上ゼロのままです。ルールのアドミッションモードでルールごとに有効にするか、モードを宣言していないすべてのルールに対してゲートウェイの LLB_FC_MODE 設定（observe または enforce）で有効にします。"
+	"The capacity gate is off on every pool: nothing is bounded, and its counters stay at zero by construction. It is switched on per rule with the rule's Admission Mode, or for every rule that declares none with the gateway's LLB_FC_MODE setting (observe or enforce).": "すべてのプールでキャパシティゲートはオフです。何も制限されず、カウンターは構造上ゼロのままです。ルールのアドミッションモードでルールごとに有効にするか、モードを宣言していないすべてのルールに対してゲートウェイの LLB_FC_MODE 設定（observe または enforce）で有効にします。",
+	"Try again in {{seconds}} s.": "{{seconds}} 秒後に再試行してください。",
+	"The gateway cannot run a restore right now (HTTP {{code}})": "ゲートウェイは現在リストアを実行できません（HTTP {{code}}）",
+	"The dry-run answer could not be read": "ドライランの応答を読み取れませんでした",
+	"Nothing was verified, so the restore cannot continue.": "何も検証されていないため、リストアを続行できません。",
+	"Restore applied, but not saved for restart": "リストアは適用されましたが、再起動用には保存されていません",
+	"Restore applied; the gateway did not say whether it was saved for restart": "リストアは適用されましたが、ゲートウェイは再起動用に保存したかどうかを報告していません",
+	"The snapshot is live on {{name}} now, but the gateway could not write it to its boot configuration. A restart brings back the configuration from before this restore.": "スナップショットは現在 {{name}} に適用されていますが、ゲートウェイはそれを起動構成に書き込めませんでした。再起動すると、このリストア前の構成に戻ります。",
+	"The snapshot is live on {{name}} now. This gateway did not report whether it wrote the result to its boot configuration, so do not assume it survives a restart.": "スナップショットは現在 {{name}} に適用されています。このゲートウェイは結果を起動構成に書き込んだかどうかを報告していないため、再起動後も維持されるとは想定しないでください。",
+	"Restore outcome unconfirmed (gateway HTTP {{code}})": "リストアの結果を確認できません（ゲートウェイ HTTP {{code}}）",
+	"The answer does not say clearly whether the snapshot was applied. Read the configuration of {{name}} before doing anything else, and do not run the restore again until you have.": "この応答では、スナップショットが適用されたかどうかがはっきりしません。他の操作を行う前に {{name}} の構成を確認し、確認するまではリストアを再実行しないでください。"
 }

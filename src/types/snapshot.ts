@@ -5,8 +5,10 @@
 // here restates a server schema. The one exception is IGatewayRestoreResult:
 // OAM passes the gateway's restore response through verbatim as opaque JSON
 // (`RestoreOutcome.gateway_response`), so its inner shape cannot come from the
-// OAM spec; it mirrors the gateway swagger's RestoreResult definition and is
-// only used to render that pass-through blob.
+// OAM spec. It follows what the gateway serialises, which is its restore
+// engine's own result and not the swagger RestoreResult model: `plan` and
+// `errors` are always sent and are `null` when empty, `compatible` is always
+// sent, and `result` is left out when the pipeline stopped before APPLY.
 //---------------------------------------------------------
 import type {OamSchema} from 'api';
 
@@ -32,10 +34,20 @@ export interface IGatewayRestoreResult {
 	schema_version?: string;
 	snapshot_gateway_version?: string;
 	current_gateway_version?: string;
-	plan?: IGatewayRestorePlanItem[];
-	errors?: string[];
-	/** ok, rolled-back, or ROLLBACK-FAILED; empty when the pipeline stopped before APPLY. */
+	plan?: IGatewayRestorePlanItem[] | null;
+	/**
+	 * Not only failures: a commit that applied but could not be written to the
+	 * boot configuration answers `result: "ok"` with the reason here.
+	 */
+	errors?: string[] | null;
+	/** ok, rolled-back, or ROLLBACK-FAILED; absent when the pipeline stopped before APPLY. */
 	result?: string;
+	/**
+	 * Sent on a commit that answered `ok`, and only there: whether the applied
+	 * configuration was also written to the boot configuration. `false` is sent
+	 * explicitly — the restore is live and a restart undoes it.
+	 */
+	persisted?: boolean;
 	pre_restore_snapshot_persisted?: string;
 	/**
 	 * Non-fatal findings the gateway reports alongside a result — including a
