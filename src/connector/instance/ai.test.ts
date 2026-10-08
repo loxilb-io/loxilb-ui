@@ -360,8 +360,16 @@ describe('API key patch wire contract', () => {
 
 	it('percent-encodes the key id into the path', async () => {
 		patch.mockResolvedValue({code: 204, data: null, message: ''});
-		await request_patch_apikey(instance, 'key/../evil id', {rate_limit_rps: 1});
-		expect(patch).toHaveBeenCalledWith(instance, '/config/ai/apikey/key%2F..%2Fevil%20id', {rate_limit_rps: 1});
+		await request_patch_apikey(instance, 'key..evil id&x=1', {rate_limit_rps: 1});
+		expect(patch).toHaveBeenCalledWith(instance, '/config/ai/apikey/key..evil%20id%26x%3D1', {rate_limit_rps: 1});
+	});
+
+	// An encoded "/" is refused by the management backend, which forwards
+	// nothing: the id never reaches the gateway, encoded or not.
+	it('does not send a key id that holds a path separator', async () => {
+		const result = await request_patch_apikey(instance, 'key/../evil id', {rate_limit_rps: 1});
+		expect(result.code).toBe('ai.apikey.patch.client_invalid_path');
+		expect(patch).not.toHaveBeenCalled();
 	});
 
 	it('degrades a thrown transport error instead of escaping', async () => {
@@ -477,9 +485,15 @@ describe('user rate-limit wire contract', () => {
 
 	it('deletes by tenant and user, encoded', async () => {
 		del.mockResolvedValue({code: 204, data: null, message: ''});
-		const result = await request_delete_user_ratelimit(instance, 't/x', 'u x');
+		const result = await request_delete_user_ratelimit(instance, 't&x', 'u x');
 		expect(result.status).toBe('confirmed');
-		expect(del).toHaveBeenCalledWith(instance, '/config/ai/user/ratelimit/t%2Fx/u%20x');
+		expect(del).toHaveBeenCalledWith(instance, '/config/ai/user/ratelimit/t%26x/u%20x');
+	});
+
+	it('does not send a tenant or user that holds a path separator', async () => {
+		expect((await request_delete_user_ratelimit(instance, 't/x', 'u')).code).toBe('ai.user_ratelimit.delete.client_invalid_path');
+		expect((await request_delete_user_ratelimit(instance, 't', 'u/x')).code).toBe('ai.user_ratelimit.delete.client_invalid_path');
+		expect(del).not.toHaveBeenCalled();
 	});
 });
 
