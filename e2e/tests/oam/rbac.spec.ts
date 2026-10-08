@@ -124,9 +124,13 @@ test.describe('RBAC — viewer and instance logs', () => {
 		await page.goto(`instance/status/logs?name=${instName}`);
 		await expect(page.getByTestId('role-denied')).toBeVisible({timeout: 20_000});
 		await expect(page.getByRole('heading', {name: 'Instance Logs'})).toHaveCount(0);
-		// The menu is rendered from the same role: no Logs entry to click.
-		await expect(page.getByRole('link', {name: 'Logs', exact: true})).toHaveCount(0);
-		await expect(page.getByRole('button', {name: 'Logs', exact: true})).toHaveCount(0);
+		// The menu is rendered from the same role: Status is there, Logs is not.
+		// (The breadcrumb still names the page; it is not the menu.)
+		const menu = page.getByRole('navigation', {name: 'Main menu'});
+		// The group opens by itself only around an entry the role has.
+		await menu.getByRole('button', {name: 'Status', exact: true}).click();
+		await expect(menu.getByText('Process', {exact: true})).toBeVisible();
+		await expect(menu.getByText('Logs', {exact: true})).toHaveCount(0);
 		expect(reads, 'a viewer must not send log reads the backend refuses').toEqual([]);
 	});
 
@@ -146,6 +150,9 @@ test.describe('RBAC — operator', () => {
 		await page.goto(`instance/status/logs?name=${instName}`);
 		await expect(page.getByRole('heading', {name: 'Instance Logs'})).toBeVisible({timeout: 20_000});
 		await expect(page.getByTestId('role-denied')).toHaveCount(0);
+		// The same locator the viewer case asserts is absent, so that case
+		// cannot pass on a menu that never shows the entry.
+		await expect(page.getByRole('navigation', {name: 'Main menu'}).getByText('Logs', {exact: true})).toBeVisible();
 		expect((await logRead).status()).toBe(200);
 	});
 
