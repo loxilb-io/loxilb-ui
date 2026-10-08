@@ -11,6 +11,7 @@
 import {Alert, Divider, Stack, Typography} from '@mui/material';
 import {AuditComplianceSinkSection, AuditNamedSinksSection} from 'components/audit/AuditSinkSections';
 import AuditPolicySection from 'components/audit/AuditPolicySection';
+import {AuditPathsNote} from 'components/audit/ScopeNotes';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useRole} from 'hooks/query/oamHooks';
 import {useGatewayAuditRest} from 'hooks/query/statusHook';
@@ -44,6 +45,7 @@ export default function AuditPage() {
 			<Typography variant="h6" component="h2">
 				{t('Audit Trail')}
 			</Typography>
+			<AuditPathsNote />
 			{!is_admin && (
 				<Alert severity="info" data-testid="audit-read-only">
 					{t('Changing what the audit trail keeps or where it is sent needs the administrator role. You can read the settings.')}
