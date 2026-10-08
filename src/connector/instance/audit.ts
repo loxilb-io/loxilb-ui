@@ -12,17 +12,26 @@
 import type {AuditComplianceSinkWrite, AuditNamedSinkWrite, AuditPolicyValues, IAuditNamedSink, IAuditPolicy, IAuditRotateResult} from 'types/audit_config';
 import type {IAuditSink} from 'types/audit_status';
 import {IInstance} from 'types/oam';
-import {assertOk} from '../fetcher/fetcher_base';
+import {ApiError, assertOk, SimpleResponse} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST, PUT_INST} from '../fetcher/fetcher_inst';
 import {OpResult} from '../fetcher/opResult';
 import {runOp} from '../fetcher/opResultAdapter';
 import {pathRefusal, unsendableInPath} from '../fetcher/pathSegment';
 
+// A read must contain a JSON object. In particular null or no body is not
+// the gateway's explicit {} answer, and cannot confirm a sink was stopped.
+function auditObject<T>(resp: SimpleResponse<T>, operation: string): T {
+	assertOk(resp, operation);
+	if (resp.code !== 200 || resp.data === null || typeof resp.data !== 'object' || Array.isArray(resp.data)) {
+		throw new ApiError(`${operation}: the response did not contain a configuration object.`, resp.code, resp);
+	}
+	return resp.data;
+}
+
 /** `{}` is an answer: a gateway with no audit writer has no policy to report. */
 export async function query_get_audit_policy(instance: IInstance): Promise<IAuditPolicy> {
 	const resp = await GET_INST<IAuditPolicy>(instance, `/audit/policy`);
-	assertOk(resp, 'Get Audit Policy');
-	return (resp.data ?? {}) as IAuditPolicy;
+	return auditObject(resp, 'Get Audit Policy');
 }
 
 /** Replaces the whole policy: `values` carries all six fields, zeros included. */
@@ -37,8 +46,7 @@ export async function request_rotate_audit_segment(instance: IInstance): Promise
 /** `{}` is an answer: no compliance sink is configured. */
 export async function query_get_audit_sink(instance: IInstance): Promise<IAuditSink> {
 	const resp = await GET_INST<IAuditSink>(instance, `/audit/sink`);
-	assertOk(resp, 'Get Audit Sink');
-	return (resp.data ?? {}) as IAuditSink;
+	return auditObject(resp, 'Get Audit Sink');
 }
 
 export async function request_set_audit_sink(instance: IInstance, body: AuditComplianceSinkWrite): Promise<OpResult> {
@@ -57,8 +65,7 @@ export async function request_disable_audit_sink(instance: IInstance): Promise<O
 export async function query_get_audit_named_sink(instance: IInstance, name: string): Promise<IAuditNamedSink | null> {
 	const resp = await GET_INST<IAuditNamedSink>(instance, `/audit/sinks/${encodeURIComponent(name)}`);
 	if (resp.code === 404) return null;
-	assertOk(resp, 'Get Audit Named Sink');
-	return (resp.data ?? {}) as IAuditNamedSink;
+	return auditObject(resp, 'Get Audit Named Sink');
 }
 
 /** Creates the sink or replaces it whole; its counters start again either way. */

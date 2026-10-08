@@ -8,7 +8,9 @@
 // same page without its buttons.
 //
 // The trail's health (writer, heartbeat, losses) stays on the System page.
-import {Alert, Divider, Stack, Typography} from '@mui/material';
+import {useQueryClient} from '@tanstack/react-query';
+import {useState} from 'react';
+import {Alert, Button, Divider, Stack, Typography} from '@mui/material';
 import {AuditComplianceSinkSection, AuditNamedSinksSection} from 'components/audit/AuditSinkSections';
 import AuditPolicySection from 'components/audit/AuditPolicySection';
 import {AuditPathsNote} from 'components/audit/ScopeNotes';
@@ -21,6 +23,8 @@ import {namedSinkNames} from 'types/audit_status';
 export default function AuditPage() {
 	const inst = useInstanceFromURL();
 	const {is_admin} = useRole();
+	const queryClient = useQueryClient();
+	const [refreshing, setRefreshing] = useState(false);
 	// Rendered behind the flavor guard, which is the gate this read needs.
 	// /audit/sink has its own read in the compliance section.
 	const status = useGatewayAuditRest(inst, {readSink: false});
@@ -40,11 +44,25 @@ export default function AuditPage() {
 
 	const ok = read?.kind === 'ok' ? read.status : undefined;
 	const onChanged = () => void status.refetch();
+	const refresh = async () => {
+		setRefreshing(true);
+		try {
+			await Promise.allSettled([
+				status.refetch(),
+				queryClient.refetchQueries({type: 'active', predicate: query => query.queryKey[0] === 'instance' && query.queryKey[1] === 'audit' && query.queryKey[3] === inst.id}),
+			]);
+		} finally {
+			setRefreshing(false);
+		}
+	};
 	return (
 		<Stack spacing={3} padding={2} maxWidth={760}>
 			<Typography variant="h6" component="h2">
 				{t('Audit Trail')}
 			</Typography>
+			<Button data-testid="audit-refresh-all" variant="outlined" onClick={refresh} disabled={refreshing} sx={{alignSelf: 'flex-start'}}>
+				{t('Refresh')}
+			</Button>
 			<AuditPathsNote />
 			{!is_admin && (
 				<Alert severity="info" data-testid="audit-read-only">

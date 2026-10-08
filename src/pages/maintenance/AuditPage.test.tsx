@@ -24,6 +24,7 @@ type Q = Record<string, unknown>;
 
 const state = vi.hoisted(() => ({
 	isAdmin: true,
+	refetchQueries: vi.fn(),
 	popups: [] as Popup[],
 	status: {} as Q,
 	statusRefetches: 0,
@@ -44,6 +45,8 @@ const state = vi.hoisted(() => ({
 		getNamed: vi.fn(),
 	},
 }));
+
+vi.mock('@tanstack/react-query', async importOriginal => ({...(await importOriginal<object>()), useQueryClient: () => ({refetchQueries: state.refetchQueries})}));
 
 vi.mock('hooks/instanceHook', () => ({useInstanceFromURL: () => ({id: 5, name: 'gw'})}));
 vi.mock('hooks/query/oamHooks', () => ({useRole: () => ({is_admin: state.isAdmin})}));
@@ -484,5 +487,80 @@ describe('AuditPage — gateway without the audit API', () => {
 		render(<AuditPage />);
 		expect(screen.getByText('This gateway has no audit API, so there is nothing to configure here.')).toBeTruthy();
 		expect(screen.queryByTestId('audit-policy')).toBeNull();
+	});
+});
+
+
+it('Refresh reads status and only this instance active audit configuration', async () => {
+	render(<AuditPage />);
+	const before = state.statusRefetches;
+	fireEvent.click(screen.getByTestId('audit-refresh-all'));
+	await waitFor(() => expect(state.statusRefetches).toBe(before + 1));
+	const options = state.refetchQueries.mock.calls.at(-1)![0];
+	expect(options.type).toBe('active');
+	expect(options.predicate({queryKey: ['instance', 'audit', 'policy', 5]})).toBe(true);
+	expect(options.predicate({queryKey: ['instance', 'audit', 'sinks', 5, 'edr']})).toBe(true);
+	expect(options.predicate({queryKey: ['instance', 'audit', 'policy', 6]})).toBe(false);
+	expect(options.predicate({queryKey: ['instance', 'loadbalancer', 5]})).toBe(false);
+	await waitFor(() => expect((screen.getByTestId('audit-refresh-all') as HTMLButtonElement).disabled).toBe(false));
+});
+
+describe('collector-specific controls', () => {
+	it('refreshes only the selected named collector for an operator', async () => {
+		state.isAdmin = false;
+		state.status = loaded({
+			kind: 'ok',
+			status: {available: true, sinks: [{name: 'edr'}, {name: 'lake'}]},
+		});
+		state.named.edr = loaded(EDR);
+		state.named.lake = loaded({...EDR, name: 'lake'});
+		render(<AuditPage />);
+		fireEvent.click(
+			within(section('audit-named-sink-edr')).getByRole('button', {
+				name: 'Refresh',
+			}),
+		);
+		await waitFor(() => expect(state.namedRefetches).toEqual(['edr']));
+		expect(state.api.putNamed).not.toHaveBeenCalled();
+		expect(state.api.deleteNamed).not.toHaveBeenCalled();
+	});
+
+	it.each(['failed', 'fetching', 'absent'])('blocks changes and deletion when the named read is %s', (condition) => {
+		state.status = loaded({
+			kind: 'ok',
+			status: {available: true, sinks: [{name: 'edr'}]},
+		});
+		state.named.edr = {
+			...loaded(condition === 'absent' ? null : EDR),
+			isError: condition === 'failed',
+			isFetching: condition === 'fetching',
+		};
+		render(<AuditPage />);
+		const card = section('audit-named-sink-edr');
+		for (const label of ['Change', 'Delete']) {
+			const control = within(card).getByRole('button', {
+				name: label,
+			}) as HTMLButtonElement;
+			expect(control.disabled).toBe(true);
+			fireEvent.click(control);
+		}
+		expect(state.popups).toEqual([]);
+		expect(dialog()).toBeNull();
+		expect(state.api.deleteNamed).not.toHaveBeenCalled();
+	});
+
+	it('keeps named actions in the same panel as the collector name', () => {
+		state.status = loaded({
+			kind: 'ok',
+			status: {available: true, sinks: [{name: 'edr'}]},
+		});
+		state.named.edr = loaded(EDR);
+		render(<AuditPage />);
+		const panel = within(section('audit-named-sink-edr')).getByRole('heading', {
+			name: 'edr',
+		}).parentElement!;
+		expect(within(panel).getByRole('button', {name: 'Change'})).toBeTruthy();
+		expect(within(panel).getByRole('button', {name: 'Delete'})).toBeTruthy();
+		expect(within(panel).getByRole('button', {name: 'Refresh'})).toBeTruthy();
 	});
 });
