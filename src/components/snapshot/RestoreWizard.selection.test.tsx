@@ -159,6 +159,18 @@ describe('a selection', () => {
 	});
 });
 
+describe('a partial snapshot with every included domain selected', () => {
+	it('names only the domains reported by the dry-run in the confirmation', async () => {
+		api.request_restore_snapshot.mockImplementation(async (_sid: string, mode: 'dry-run' | 'commit', _t?: number, components?: readonly string[]) => answer(mode, components, {plan: [PLAN[2]]}));
+		mount();
+		await screen.findByText('Dry-run passed — the snapshot is applicable');
+		fireEvent.click(button('Continue to Restore'));
+		expect(screen.getByText(/This replaces these domains on "gw-1" with what snapshot "nightly" holds: auditsink\./)).toBeTruthy();
+		expect(screen.queryByText(/This wipes the live configuration/)).toBeNull();
+		expect(calls()).toEqual([{sid: 's1', mode: 'dry-run', components: undefined}]);
+	});
+});
+
 describe('bulk domain selection', () => {
 	it('clears all domains without sending, then dry-runs and commits auditsink only', async () => {
 		mount();

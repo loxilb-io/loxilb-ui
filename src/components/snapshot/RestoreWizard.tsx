@@ -661,15 +661,10 @@ export default function RestoreWizard(props: RestoreWizardProps) {
 					<DialogContent dividers>
 						<Stack spacing={2}>
 							<Alert severity="warning">
-								{components === undefined
-									? t(
-											'This wipes the live configuration of "{{instance}}" and applies snapshot "{{snapshot}}". A pre-restore snapshot is taken automatically before anything is changed.',
-											{instance: instanceName, snapshot: snapshot.name},
-										)
-									: t(
-											'This replaces these domains on "{{instance}}" with what snapshot "{{snapshot}}" holds: {{domains}}. Other domains are not changed. A pre-restore snapshot of the whole configuration is taken automatically before anything is changed.',
-											{instance: instanceName, snapshot: snapshot.name, domains: components.join(', ')},
-										)}
+								{t(
+									'This replaces these domains on "{{instance}}" with what snapshot "{{snapshot}}" holds: {{domains}}. Other domains are not changed. A pre-restore snapshot of the whole configuration is taken automatically before anything is changed.',
+									{instance: instanceName, snapshot: snapshot.name, domains: (components ?? domains).join(', ')},
+								)}
 							</Alert>
 							{restoresAuditSinks && (
 								<Alert severity="warning">

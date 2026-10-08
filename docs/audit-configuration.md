@@ -39,3 +39,8 @@ dry-run, clear the header checkbox **Select all restore domains** and tick
 Domains**, review its result, and confirm that only auditsink is listed before
 committing. Undo retains the same domain selection. This replaces the sink
 configuration; policy values and certificate files are separate.
+
+The confirmation names the domains reported by the dry-run, even when every
+domain in that plan is selected. A partial snapshot that covers only auditsink
+does not replace unrelated configuration merely because its single checkbox
+is selected. Review the named domains before confirming the instance.
