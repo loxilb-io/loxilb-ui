@@ -10,6 +10,7 @@ import {OpResult} from '../fetcher/opResult';
 import {fromNetworkError, fromSimpleResponse} from '../fetcher/opResultAdapter';
 import {STATUS_LOCALE_KEYS} from '../fetcher/opResultCodes';
 import type {GwGetResp} from 'api';
+import {pathRefusal, unsendableInPath} from '../fetcher/pathSegment';
 
 //---------------------------------------------------------
 // AI API Keys (/config/ai/apikey)
@@ -49,6 +50,7 @@ export async function request_create_apikey(instance: IInstance, data: IApiKeyCr
  * Permanently delete an API key by its ID.
  */
 export async function request_delete_apikey(instance: IInstance, key_id: string): Promise<OpResult> {
+	if (unsendableInPath(key_id)) return pathRefusal('ai.apikey.delete');
 	try {
 		return fromSimpleResponse(await DELETE_INST(instance, `/config/ai/apikey/${encodeURIComponent(key_id)}`), 'ai.apikey.delete');
 	} catch (error) {
@@ -95,6 +97,7 @@ export async function request_delete_apikey(instance: IInstance, key_id: string)
  * the UI cannot produce that case — do not relax the projection.
  */
 export async function request_patch_apikey(instance: IInstance, key_id: string, patch: IApiKeyPatch): Promise<OpResult> {
+	if (unsendableInPath(key_id)) return pathRefusal('ai.apikey.patch');
 	// Pre-lookup class, member 1: an empty or whitespace-only identifier is
 	// refused by the gateway before it consults anything.
 	if (key_id.trim().length === 0) {
@@ -260,6 +263,7 @@ export async function request_set_user_ratelimit(instance: IInstance, data: IUse
  * this is the sanctioned way to "remove limits" rather than storing zeros.
  */
 export async function request_delete_user_ratelimit(instance: IInstance, tenant_id: string, user_id: string): Promise<OpResult> {
+	if (unsendableInPath(tenant_id, user_id)) return pathRefusal('ai.user_ratelimit.delete');
 	try {
 		return fromSimpleResponse(
 			await DELETE_INST(instance, `/config/ai/user/ratelimit/${encodeURIComponent(tenant_id)}/${encodeURIComponent(user_id)}`),

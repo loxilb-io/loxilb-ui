@@ -7,6 +7,7 @@ import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
 import {OpResult} from '../fetcher/opResult';
 import {runOp} from '../fetcher/opResultAdapter';
 import type {GwGetResp, GwSchema} from 'api';
+import {pathRefusal, unsendableInPath} from '../fetcher/pathSegment';
 
 //---------------------------------------------------------
 // API Caller Functions
@@ -47,6 +48,7 @@ export async function request_delete_defined_set(
 	definesetType: 'prefix' | 'neighbor' | 'aspath' | 'community' | 'extcommunity' | 'largecommunity',
 	typeName: string,
 ): Promise<OpResult> {
+	if (unsendableInPath(typeName)) return pathRefusal('bgp.delete_defined_set');
 	return runOp('bgp.delete_defined_set', () => DELETE_INST(instance, `/config/bgp/policy/definedsets/${definesetType}/${typeName}`));
 }
 
@@ -62,6 +64,7 @@ export async function request_create_bgp_policy_definition(instance: IInstance, 
 }
 
 export async function request_delete_bgp_policy_definition(instance: IInstance, policyName: string): Promise<OpResult> {
+	if (unsendableInPath(policyName)) return pathRefusal('bgp.delete_bgp_policy_definition');
 	return runOp('bgp.delete_bgp_policy_definition', () => DELETE_INST(instance, `/config/bgp/policy/definitions/${policyName}`));
 }
 

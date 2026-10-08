@@ -13,6 +13,7 @@ import {fromNetworkError, fromSimpleResponse} from '../fetcher/opResultAdapter';
 import {STATUS_LOCALE_KEYS} from '../fetcher/opResultCodes';
 import {DELETE_INST, GET_INST, PATCH_INST, POST_INST} from '../fetcher/fetcher_inst';
 import type {GwGetResp} from 'api';
+import {pathRefusal, unsendableInPath} from '../fetcher/pathSegment';
 
 //---------------------------------------------------------
 // Helper Functions
@@ -196,6 +197,7 @@ export async function request_patch_load_balancer_config(
  * every mode. Prefer this whenever the rule has a name.
  */
 export async function request_delete_lb_by_name(instance: IInstance, name: string): Promise<OpResult> {
+	if (unsendableInPath(name)) return pathRefusal('lb.delete');
 	try {
 		return fromSimpleResponse(await DELETE_INST(instance, `/config/loadbalancer/name/${encodeURIComponent(name)}`), 'lb.delete');
 	} catch (error) {

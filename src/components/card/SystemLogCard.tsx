@@ -7,15 +7,37 @@
 //---------------------------------------------------------
 import ScrollableBox from 'components/layout/ScrollableBox';
 import LogConsole from 'components/log/LogConsole';
-import {Stack} from '@mui/material';
+import {Stack, Typography} from '@mui/material';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useInstanceLogArchives} from 'hooks/query/instanceHook';
+import {useRole} from 'hooks/query/oamHooks';
 import {useInstanceLogPaging} from 'hooks/useInstanceLogPaging';
+import {useTranslation} from 'react-i18next';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
+// The log is served to operators and administrators only. For any other role
+// the console is not mounted at all: its two reads would be refused on every
+// poll, and the card would be a permanent error on a dashboard that is fine.
 export default function SystemLogCard() {
+	const {t} = useTranslation();
+	const {role, can_read_instance_logs} = useRole();
+	// Role not known yet: send nothing rather than a request that may be refused.
+	if (role === null) return null;
+	if (!can_read_instance_logs) {
+		return (
+			<Stack data-testid="system-log-not-permitted" role="status" width="100%" height="100%" alignItems="center" justifyContent="center" padding="16px" className="no-drag">
+				<Typography variant="body2" color="text.secondary" sx={{textAlign: 'center'}}>
+					{t('Instance logs are available to operators and administrators.')}
+				</Typography>
+			</Stack>
+		);
+	}
+	return <SystemLogConsole />;
+}
+
+function SystemLogConsole() {
 	const inst = useInstanceFromURL();
 	const paging = useInstanceLogPaging(inst);
 	const {data: log_archives} = useInstanceLogArchives(inst);

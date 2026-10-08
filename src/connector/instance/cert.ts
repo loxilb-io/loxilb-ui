@@ -7,6 +7,7 @@ import {IInstance} from 'types/oam';
 import {DELETE_INST, GET_INST, POST_INST, PUT_INST} from '../fetcher/fetcher_inst';
 import {OpResult} from '../fetcher/opResult';
 import {fromNetworkError, fromSimpleResponse, runOp} from '../fetcher/opResultAdapter';
+import {pathRefusal, unsendableInPath} from '../fetcher/pathSegment';
 
 //---------------------------------------------------------
 // Inline-PEM certificate store (/config/cert, certId-keyed)
@@ -34,11 +35,13 @@ export function createdCertId(result: OpResult<unknown>): string {
 
 /** Rotation: swap new PEM material under the SAME certId. */
 export async function request_rotate_cert_pem(instance: IInstance, certId: string, data: ICert): Promise<OpResult> {
+	if (unsendableInPath(certId)) return pathRefusal('cert.rotate_cert_pem');
 	return runOp('cert.rotate_cert_pem', () => PUT_INST(instance, `/config/cert/${encodeURIComponent(certId)}`, data));
 }
 
 /** Delete the managed material and unregister its derived hostnames. */
 export async function request_delete_cert_pem(instance: IInstance, certId: string): Promise<OpResult> {
+	if (unsendableInPath(certId)) return pathRefusal('cert.delete_cert_pem');
 	return runOp('cert.delete_cert_pem', () => DELETE_INST(instance, `/config/cert/${encodeURIComponent(certId)}`));
 }
 
@@ -101,6 +104,7 @@ export function summarizeCert(certId: string, read: CertRead): ICertSummary {
 type RawLookup = {kind: 'found'; read: CertRead} | {kind: 'absent'} | {kind: 'error'; result: OpResult};
 
 async function read_cert(instance: IInstance, certId: string, op: string): Promise<RawLookup> {
+	if (unsendableInPath(certId)) return {kind: 'error', result: pathRefusal(op)};
 	try {
 		const resp = await GET_INST<CertRead>(instance, `/config/cert/${encodeURIComponent(certId)}`);
 		if (resp.code === 200) return {kind: 'found', read: resp.data ?? {}};

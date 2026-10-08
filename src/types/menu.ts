@@ -12,6 +12,7 @@ import WysiwygIcon from '@mui/icons-material/Wysiwyg';
 import SecurityIcon from '@mui/icons-material/Security';
 import {SvgIconTypeMap} from '@mui/material';
 import {OverridableComponent} from '@mui/material/OverridableComponent';
+import {LOG_READER_ROLES} from 'types/role';
 import type {InstanceFeature, InstanceFlavor} from 'api/capabilities';
 
 //---------------------------------------------------------
@@ -262,6 +263,7 @@ export const MENU_LIST: IMenuItem[] = [
 			{
 				name: 'Logs',
 				path: 'logs',
+				roles: LOG_READER_ROLES,
 			},
 		],
 	},

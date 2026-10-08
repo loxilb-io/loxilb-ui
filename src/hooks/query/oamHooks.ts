@@ -6,6 +6,7 @@ import {query_get_ha_state_all} from 'connector/instance/status';
 import {query_get_instance_list, query_get_log_archives, query_get_me, query_get_oam_logs} from 'connector/oam/oam';
 import {useCallback, useMemo} from 'react';
 import {useQueryOAMData} from './common';
+import {LOG_READER_ROLES, TUserRole} from 'types/role';
 
 //---------------------------------------------------------
 // Functions
@@ -69,7 +70,7 @@ export function useMyInfo() {
 //---------------------------------------------------------
 // Role / capabilities (RBAC, docs/SECURITY_RBAC_PLAN.md §5)
 //---------------------------------------------------------
-export type TUserRole = 'admin' | 'operator' | 'viewer';
+export type {TUserRole} from 'types/role';
 
 // Maps a backend role onto the 3-role model ('user' is the legacy alias of
 // operator). Exported for non-hook contexts.
@@ -93,6 +94,9 @@ export function useRole() {
 		is_operator: role === 'operator',
 		is_viewer: role === 'viewer',
 		can_write_gateway: role === 'admin' || role === 'operator',
+		// The management backend serves an instance's process log and its
+		// archives to operators and administrators only (LOG_READER_ROLES).
+		can_read_instance_logs: role !== null && LOG_READER_ROLES.includes(role),
 		can_manage_users: role === 'admin',
 		can_manage_instances: role === 'admin',
 		can_manage_config: role === 'admin',

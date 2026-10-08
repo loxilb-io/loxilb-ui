@@ -24,7 +24,8 @@ import {theme_config} from 'theme';
 
 import Layout from 'components/layout/Layout';
 import NavLayout from 'components/layout/NavLayout';
-import {RequireAuth, RequireFeature} from 'components/layout/RouteGuards';
+import {RequireAuth, RequireFeature, RequireRoles} from 'components/layout/RouteGuards';
+import {LOG_READER_ROLES} from 'types/role';
 import RouteTitle from 'components/layout/RouteTitle';
 import ScrollToTop from 'components/layout/ScrollToTop';
 import PopUp from 'components/modal/PopUp';
@@ -216,7 +217,7 @@ export default function App() {
 										<Route path="fs" element={<FileSystemPage />} />
 										<Route path="ha" element={<HAPage />} />
 										<Route path="process" element={<ProcessPage />} />
-										<Route path="logs" element={<LogPage />} />
+										<Route path="logs" element={<RequireRoles roles={LOG_READER_ROLES}><LogPage /></RequireRoles>} />
 									</Route>
 									<Route path="maintenance" element={<Outlet />}>
 										<Route path="operator" element={<RequireFeature flavor="inference-gateway"><MaintenancePage /></RequireFeature>} />

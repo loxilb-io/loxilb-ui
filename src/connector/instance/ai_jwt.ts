@@ -8,6 +8,7 @@ import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
 import {OpResult} from '../fetcher/opResult';
 import {fromNetworkError, fromSimpleResponse} from '../fetcher/opResultAdapter';
 import type {GwGetResp} from 'api';
+import {pathRefusal, unsendableInPath} from '../fetcher/pathSegment';
 
 //---------------------------------------------------------
 // AI JWT auth profiles (/config/ai/jwtauthprofile)
@@ -67,6 +68,7 @@ export async function request_upsert_jwtauthprofile(instance: IInstance, data: I
  * every rule first" is only actionable once the operator knows which rules.
  */
 export async function request_delete_jwtauthprofile(instance: IInstance, name: string): Promise<OpResult> {
+	if (unsendableInPath(name)) return pathRefusal('ai.jwtprofile.delete');
 	try {
 		return fromSimpleResponse(await DELETE_INST(instance, `/config/ai/jwtauthprofile/${encodeURIComponent(name)}`), 'ai.jwtprofile.delete');
 	} catch (error) {

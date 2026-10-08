@@ -21,6 +21,7 @@ import {assertOk} from '../fetcher/fetcher_base';
 import {DELETE_INST, GET_INST, POST_INST, PUT_INST} from '../fetcher/fetcher_inst';
 import {OpResult} from '../fetcher/opResult';
 import {runOp} from '../fetcher/opResultAdapter';
+import {pathRefusal, unsendableInPath} from '../fetcher/pathSegment';
 
 //---------------------------------------------------------
 // Global configuration (/config/ipsec)
@@ -60,11 +61,13 @@ export async function request_create_ipsec_tunnel(instance: IInstance, data: IIP
  * (the gateway keeps the stored one).
  */
 export async function request_update_ipsec_tunnel(instance: IInstance, name: string, data: IIPsecTunnelMod): Promise<OpResult> {
+	if (unsendableInPath(name)) return pathRefusal('ipsec.update_ipsec_tunnel');
 	return runOp('ipsec.update_ipsec_tunnel', () => PUT_INST(instance, `/config/ipsec/tunnels/${encodeURIComponent(name)}`, data));
 }
 
 /** Initiate (ipsec up), terminate (ipsec down), or restart the tunnel connection. */
 export async function request_ipsec_tunnel_action(instance: IInstance, name: string, action: IIPsecTunnelAction): Promise<OpResult> {
+	if (unsendableInPath(name)) return pathRefusal(`ipsec.tunnel_${action}`);
 	return runOp(`ipsec.tunnel_${action}`, () => POST_INST(instance, `/config/ipsec/tunnels/${encodeURIComponent(name)}/action`, {action}));
 }
 
@@ -80,6 +83,7 @@ export async function query_get_ipsec_tunnel_peerconfig(instance: IInstance, nam
 }
 
 export async function request_delete_ipsec_tunnel(instance: IInstance, name: string): Promise<OpResult> {
+	if (unsendableInPath(name)) return pathRefusal('ipsec.delete_ipsec_tunnel');
 	return runOp('ipsec.delete_ipsec_tunnel', () => DELETE_INST(instance, `/config/ipsec/tunnels/${encodeURIComponent(name)}`));
 }
 
@@ -115,6 +119,7 @@ export async function request_upload_ipsec_certificate(instance: IInstance, data
 }
 
 export async function request_delete_ipsec_certificate(instance: IInstance, name: string): Promise<OpResult> {
+	if (unsendableInPath(name)) return pathRefusal('ipsec.delete_ipsec_certificate');
 	return runOp('ipsec.delete_ipsec_certificate', () => DELETE_INST(instance, `/config/ipsec/certificates/${encodeURIComponent(name)}`));
 }
 
@@ -143,5 +148,6 @@ export async function request_upload_ipsec_ca_certificate(instance: IInstance, d
 }
 
 export async function request_delete_ipsec_ca_certificate(instance: IInstance, name: string): Promise<OpResult> {
+	if (unsendableInPath(name)) return pathRefusal('ipsec.delete_ipsec_ca_certificate');
 	return runOp('ipsec.delete_ipsec_ca_certificate', () => DELETE_INST(instance, `/config/ipsec/ca-certificates/${encodeURIComponent(name)}`));
 }
