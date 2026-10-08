@@ -9,7 +9,7 @@
 //---------------------------------------------------------
 import {describe, expect, it} from 'vitest';
 import {IRestoreOutcomeParsed} from 'types/snapshot';
-import {asRestoreResult, canContinueToCommit, classifyCommitResult, classifyDryRun} from './wizardLogic';
+import {answersSelection, asRestoreResult, canContinueToCommit, classifyCommitResult, classifyDryRun, commitChangedInstance, planDomains, restoreSelection} from './wizardLogic';
 
 const outcome = (gateway_status: number, gateway_response: unknown, extra: Partial<IRestoreOutcomeParsed> = {}): IRestoreOutcomeParsed =>
 	({gateway_status, gateway_response, ...extra}) as IRestoreOutcomeParsed;
@@ -143,5 +143,105 @@ describe('classifyCommitResult', () => {
 		expect(classifyCommitResult(outcome(200, {}), null)).toBe('unconfirmed');
 		expect(classifyCommitResult(outcome(500, {code: 500, message: 'Internal service error', result: 'restore engine: boom'}), null)).toBe('unconfirmed');
 		expect(classifyCommitResult(null, null)).toBe('unconfirmed');
+	});
+});
+
+//---------------------------------------------------------
+// Restoring selected domains. The gateway reads an empty `components` as every
+// domain (its handler drops empty names and the engine then takes the whole
+// document), and a backend that does not know the field ignores it behind a
+// 200. Both would restore more than the operator selected.
+//---------------------------------------------------------
+const FULL_PLAN = [
+	{domain: 'loadbalancer', to_delete: 1, to_apply: 3},
+	{domain: 'firewall', to_delete: 0, to_apply: 2},
+	{domain: 'auditsink', to_delete: 2, to_apply: 1},
+];
+const dryRunOf = (domains: string[], components?: string[]) =>
+	outcome(200, {...passed, plan: FULL_PLAN.filter(p => domains.includes(p.domain))}, components ? {components} : {});
+const fullDryRun = dryRunOf(['loadbalancer', 'firewall', 'auditsink']);
+
+describe('planDomains', () => {
+	it('lists the domains of the plan in the order the gateway gave them', () => {
+		expect(planDomains(fullDryRun)).toEqual(['loadbalancer', 'firewall', 'auditsink']);
+	});
+
+	it('lists nothing for a null plan, an error envelope, or no answer', () => {
+		expect(planDomains(outcome(200, {...passed, plan: null}))).toEqual([]);
+		expect(planDomains(outcome(409, BUSY))).toEqual([]);
+		expect(planDomains(null)).toEqual([]);
+	});
+
+	it('skips a row with no name and lists a repeated name once', () => {
+		const plan = [{domain: 'firewall'}, {to_apply: 1}, {domain: ''}, {domain: 'firewall'}];
+		expect(planDomains(outcome(200, {...passed, plan}))).toEqual(['firewall']);
+	});
+});
+
+describe('restoreSelection', () => {
+	const domains = ['loadbalancer', 'firewall', 'auditsink'];
+
+	it('sends no list when every domain is ticked', () => {
+		expect(restoreSelection(domains, new Set(domains))).toEqual({kind: 'all'});
+	});
+
+	it('sends the ticked domains in plan order', () => {
+		expect(restoreSelection(domains, new Set(['auditsink', 'loadbalancer']))).toEqual({kind: 'some', components: ['loadbalancer', 'auditsink']});
+	});
+
+	it('is `none`, never an empty list, when nothing is ticked', () => {
+		expect(restoreSelection(domains, new Set())).toEqual({kind: 'none'});
+		expect(restoreSelection(domains, new Set(['not-in-plan']))).toEqual({kind: 'none'});
+	});
+
+	it('is the whole document when the plan lists no domain to choose from', () => {
+		expect(restoreSelection([], new Set())).toEqual({kind: 'all'});
+	});
+});
+
+describe('a dry-run of selected domains', () => {
+	const sent = ['firewall', 'auditsink'];
+
+	it('passes when OAM forwarded that selection and the plan is for it', () => {
+		const o = dryRunOf(sent, ['auditsink', 'firewall']);
+		expect(answersSelection(o, sent)).toBe(true);
+		expect(classifyDryRun(o, null, sent)).toBe('pass');
+		expect(canContinueToCommit(o, null, false, sent)).toBe(true);
+	});
+
+	it('does not pass when the backend ignored the selection and answered for the whole document', () => {
+		// What an OAM older than the `components` field answers: 200, a passed
+		// dry-run, no `components`, every domain in the plan.
+		expect(classifyDryRun(fullDryRun, null, sent)).toBe('other-domains');
+		expect(canContinueToCommit(fullDryRun, null, false, sent)).toBe(false);
+	});
+
+	it('does not pass when OAM echoes the selection but the gateway planned other domains', () => {
+		expect(classifyDryRun(dryRunOf(['loadbalancer', 'firewall', 'auditsink'], sent), null, sent)).toBe('other-domains');
+		expect(classifyDryRun(dryRunOf(['firewall'], sent), null, sent)).toBe('other-domains');
+	});
+
+	it('does not pass when the plan is right but OAM reports another selection', () => {
+		expect(classifyDryRun(dryRunOf(sent, ['firewall']), null, sent)).toBe('other-domains');
+	});
+
+	it('stays refused when the gateway refused the selection', () => {
+		const refused = outcome(400, {mode: 'dry-run', compatible: true, plan: null, errors: ['snapshot: component "bgp" is not covered by this document']}, {components: ['bgp']});
+		expect(classifyDryRun(refused, null, ['bgp'])).toBe('refused');
+	});
+
+	it('asks nothing of a whole-document dry-run', () => {
+		expect(answersSelection(fullDryRun, undefined)).toBe(true);
+		expect(classifyDryRun(fullDryRun, null)).toBe('pass');
+	});
+});
+
+describe('commitChangedInstance', () => {
+	it('is true for every branch that applied, and for a failed rollback', () => {
+		for (const b of ['ok', 'ok-not-durable', 'ok-durability-unreported', 'rollback-failed'] as const) expect(commitChangedInstance(b)).toBe(true);
+	});
+
+	it('is false when nothing was changed or nothing is known', () => {
+		for (const b of ['oam-error', 'rolled-back', 'incomplete', 'unconfirmed'] as const) expect(commitChangedInstance(b)).toBe(false);
 	});
 });

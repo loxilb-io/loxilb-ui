@@ -12,6 +12,7 @@ import {ISnapshot, ISnapshotList, ISnapshotSchedule, IRestoreOutcomeParsed} from
 import {assertOk, DOWNLOAD_FILE_STREAM, DownloadProgress} from '../fetcher/fetcher_base';
 import {OpResult} from '../fetcher/opResult';
 import {fromNetworkError, fromSimpleResponse} from '../fetcher/opResultAdapter';
+import {STATUS_LOCALE_KEYS} from '../fetcher/opResultCodes';
 import {DELETE_OAM, GET_OAM, PATCH_OAM, POST_OAM, PUT_OAM, UPLOAD_FILE_OAM} from '../fetcher/fetcher_oam';
 import {getApiBaseUrl} from 'utils/apiProxy';
 
@@ -86,13 +87,22 @@ export async function request_restore_snapshot(
 	sid: string,
 	mode: 'dry-run' | 'commit',
 	targetInstanceId?: number,
+	// The domains to restore; leave out for the whole document.
+	components?: readonly string[],
 ): Promise<RestoreCallResult> {
 	// A dry-run validates and plans; it changes nothing, so losing its answer
 	// is an outage to retry. A commit that lost its answer may have restored.
 	const kind = mode === 'dry-run' ? 'read' : 'mutation';
+	// An empty selection is not sent. OAM refuses one, but the gateway behind
+	// it reads an empty list as "every domain", so this must not depend on
+	// which of the two answers.
+	if (components !== undefined && components.length === 0) {
+		return {status: 'invalid', code: 'snapshot.restore.client_empty_selection', localeKey: STATUS_LOCALE_KEYS.invalid, retryable: false};
+	}
 	try {
-		const body: {mode: string; target_instance_id?: number} = {mode};
+		const body: {mode: string; target_instance_id?: number; components?: string[]} = {mode};
 		if (targetInstanceId !== undefined) body.target_instance_id = targetInstanceId;
+		if (components !== undefined) body.components = [...components];
 		const resp = await POST_OAM<OamPostResp<'/oam/snapshots/{sid}/restore'>>(`/snapshots/${sid}/restore`, body);
 		const res = fromSimpleResponse(resp, 'snapshot.restore', kind) as RestoreCallResult;
 		// A confirmed restore call MUST carry the outcome object — the wizard
