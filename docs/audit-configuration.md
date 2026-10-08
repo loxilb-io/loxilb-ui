@@ -31,3 +31,11 @@ collector storage. Compare new source records with the receiver's stored records
 and check framing and parsing errors before accepting delivery. The current
 producer contracts provide no dedicated collector connection-test operation;
 configuration saving is not a connection test.
+
+For a collector-only snapshot restore, select the snapshot under
+**Maintenance → Snapshots** and open **Restore…**. After the whole-document
+dry-run, clear the header checkbox **Select all restore domains** and tick
+**auditsink**. An empty selection cannot be sent. Run **Dry-run Selected
+Domains**, review its result, and confirm that only auditsink is listed before
+committing. Undo retains the same domain selection. This replaces the sink
+configuration; policy values and certificate files are separate.
