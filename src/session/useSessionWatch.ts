@@ -15,6 +15,7 @@
 // server: a 401 still ends the session no matter what these timers believe.
 //---------------------------------------------------------
 import {useEffect} from 'react';
+import {request_logout} from 'connector/oam/oam';
 import {ACTIVITY_EVENTS, IDLE_LIMIT_MS} from './sessionPolicy';
 import {msUntilProactiveLogout, terminateSession} from './session';
 
@@ -26,20 +27,35 @@ export function useSessionWatch(): void {
 		// must not arm an idle timer against an empty session.
 		if (!localStorage.getItem(TOKEN_KEY)) return;
 
-		const timers: ReturnType<typeof setTimeout>[] = [];
+		const token = localStorage.getItem(TOKEN_KEY)!;
+		let ended = false;
+		let deadline = Date.now() + IDLE_LIMIT_MS;
 		let idleTimer: ReturnType<typeof setTimeout> | undefined;
-
-		const armIdle = () => {
-			if (idleTimer !== undefined) clearTimeout(idleTimer);
-			idleTimer = setTimeout(() => void terminateSession('idle'), IDLE_LIMIT_MS);
-			timers.push(idleTimer);
+		let expiryTimer: ReturnType<typeof setTimeout> | undefined;
+		const ownsSession = () => !ended && localStorage.getItem(TOKEN_KEY) === token;
+		const endIdle = () => {
+			if (!ownsSession()) return;
+			ended = true;
+			// Capture and dispatch revocation before local teardown. keepalive
+			// preserves delivery through navigation; a stalled request must not
+			// hold the unattended console open.
+			void request_logout();
+			void terminateSession('idle');
 		};
-
-		// A tab restored from the background may have been away longer than the
-		// idle budget while its timer was throttled, so re-arming on return is
-		// the conservative reading of "activity", not a free extension.
+		const scheduleIdle = () => {
+			if (idleTimer !== undefined) clearTimeout(idleTimer);
+			if (!ownsSession()) return;
+			const remaining = deadline - Date.now();
+			if (remaining <= 0) endIdle();
+			else idleTimer = setTimeout(scheduleIdle, remaining);
+		};
+		const onActivity = () => {
+			if (!ownsSession()) return;
+			deadline = Date.now() + IDLE_LIMIT_MS;
+			scheduleIdle();
+		};
 		const onVisible = () => {
-			if (document.visibilityState === 'visible') armIdle();
+			if (document.visibilityState === 'visible') scheduleIdle();
 		};
 
 		// Another tab logging out clears the token; this tab follows rather than
@@ -47,13 +63,18 @@ export function useSessionWatch(): void {
 		const onStorage = (event: StorageEvent) => {
 			if (event.storageArea !== localStorage) return;
 			if (event.key !== null && event.key !== TOKEN_KEY) return;
-			if (localStorage.getItem(TOKEN_KEY)) return;
+			const current = localStorage.getItem(TOKEN_KEY);
+			if (current) {
+				if (current !== token) window.location.reload();
+				return;
+			}
 			void terminateSession('logout');
 		};
 
-		const token = localStorage.getItem(TOKEN_KEY)!;
 		try {
-			timers.push(setTimeout(() => void terminateSession('expired'), msUntilProactiveLogout(token)));
+			expiryTimer = setTimeout(() => {
+				if (ownsSession()) void terminateSession('expired');
+			}, msUntilProactiveLogout(token));
 		} catch {
 			// An unreadable `exp` means the session has no knowable lifetime.
 			// The login path refuses such tokens; one already installed (an
@@ -62,14 +83,15 @@ export function useSessionWatch(): void {
 			void terminateSession('expired');
 		}
 
-		armIdle();
-		ACTIVITY_EVENTS.forEach(name => window.addEventListener(name, armIdle, {passive: true}));
+		scheduleIdle();
+		ACTIVITY_EVENTS.forEach(name => window.addEventListener(name, onActivity, {passive: true}));
 		document.addEventListener('visibilitychange', onVisible);
 		window.addEventListener('storage', onStorage);
 
 		return () => {
-			timers.forEach(clearTimeout);
-			ACTIVITY_EVENTS.forEach(name => window.removeEventListener(name, armIdle));
+			if (idleTimer !== undefined) clearTimeout(idleTimer);
+			if (expiryTimer !== undefined) clearTimeout(expiryTimer);
+			ACTIVITY_EVENTS.forEach(name => window.removeEventListener(name, onActivity));
 			document.removeEventListener('visibilitychange', onVisible);
 			window.removeEventListener('storage', onStorage);
 		};
