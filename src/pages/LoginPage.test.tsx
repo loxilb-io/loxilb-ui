@@ -97,6 +97,19 @@ describe('LoginPage message mapping', () => {
 		expect(localStorage.getItem('access_token')).toBe(VALID_TOKEN);
 	});
 
+	it.each(['uc6-recovery', '1ops', 'op.example', '운영자', 'ab'])('submits existing account %s without applying account-creation rules', async username => {
+		mockFetchByUrl(() => new Response(JSON.stringify({id: 2, token: VALID_TOKEN}), {status: 200, headers: {'Content-Type': 'application/json'}}));
+		render(<LoginPage />);
+		const user = userEvent.setup();
+		await user.type(screen.getByLabelText(new RegExp(i18n.t('Username'))), username);
+		await user.type(screen.getByLabelText(new RegExp(i18n.t('Password'))), 'Str0ng!pass1');
+		await user.click(screen.getByRole('button', {name: i18n.t('Login')}));
+		await waitFor(() => expect(moveForced).toHaveBeenCalledWith('/instance'));
+		const loginCalls = (global.fetch as Mock).mock.calls.filter(([url]) => String(url).endsWith('/login'));
+		expect(loginCalls).toHaveLength(1);
+		expect(JSON.parse(loginCalls[0][1].body)).toEqual({username, password: 'Str0ng!pass1'});
+	});
+
 	it('refuses a token whose lifetime it cannot read, rather than starting an unbounded session', async () => {
 		// without a readable `exp` there is no basis for a proactive
 		// logout, so the session would run until some request happened to
