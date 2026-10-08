@@ -25,8 +25,12 @@ afterEach(() => {
 const SECRET_WARN = 'inbound secrets re-encrypted under this node secret';
 const DEP_WARN = 'optional dependency kv-model-profile not verified';
 
+// The gateway pairs each result with one status (ok → 200, rolled-back → 500,
+// none → 400); a success is also `persisted`.
 function outcomeOf(gw: Partial<IRestoreOutcomeParsed['gateway_response']>): IRestoreOutcomeParsed {
-	return {gateway_status: 200, gateway_response: {mode: 'commit', errors: [], ...gw}} as IRestoreOutcomeParsed;
+	const gateway_status = gw?.result === 'ok' ? 200 : gw?.result ? 500 : 400;
+	const persisted = gw?.result === 'ok' ? {persisted: true} : {};
+	return {gateway_status, gateway_response: {mode: 'commit', compatible: true, plan: [], errors: null, ...persisted, ...gw}} as IRestoreOutcomeParsed;
 }
 
 describe('a successful restore that the gateway qualified', () => {
@@ -69,8 +73,14 @@ describe('warnings on the failure branches', () => {
 		expect(screen.getByText(DEP_WARN)).toBeTruthy();
 	});
 
-	it('survives an unrecognised result, where the gateway may have said nothing else', () => {
+	it('survives a restore that stopped before APPLY, where the gateway may have said nothing else', () => {
 		render(<CommitResult outcome={outcomeOf({result: '', warnings: [SECRET_WARN]})} oamError={null} instanceName="gw-1" />);
+		expect(screen.getByText(SECRET_WARN)).toBeTruthy();
+	});
+
+	it('survives an answer that cannot be confirmed', () => {
+		const o = {...outcomeOf({result: 'ok', warnings: [SECRET_WARN]}), gateway_status: 500};
+		render(<CommitResult outcome={o} oamError={null} instanceName="gw-1" />);
 		expect(screen.getByText(SECRET_WARN)).toBeTruthy();
 	});
 });
