@@ -60,6 +60,7 @@ import {snapshotOpErrorText} from './snapshotOpError';
 interface IDomainChoice {
 	checked: ReadonlySet<string>;
 	onToggle: (domain: string) => void;
+	onSelectAll?: (selected: boolean) => void;
 }
 
 function PlanTable(props: {plan: IGatewayRestoreResult['plan']; choice?: IDomainChoice}) {
@@ -71,7 +72,19 @@ function PlanTable(props: {plan: IGatewayRestoreResult['plan']; choice?: IDomain
 			<Table size="small" aria-label={t('Restore plan')}>
 				<TableHead>
 					<TableRow>
-						{choice && <TableCell padding="checkbox">{t('Restore')}</TableCell>}
+						{choice && (
+							<TableCell padding="checkbox">
+								{choice.onSelectAll ? (
+									<Checkbox
+										size="small"
+										checked={plan.filter(p => p.domain).every(p => choice.checked.has(p.domain!))}
+										indeterminate={plan.some(p => p.domain && choice.checked.has(p.domain)) && plan.some(p => p.domain && !choice.checked.has(p.domain))}
+										onChange={(_, selected) => choice.onSelectAll!(selected)}
+										inputProps={{'aria-label': t('Select all restore domains')}}
+									/>
+								) : t('Restore')}
+							</TableCell>
+						)}
 						<TableCell>{t('Domain')}</TableCell>
 						<TableCell align="right">{t('To Delete')}</TableCell>
 						<TableCell align="right">{t('To Apply')}</TableCell>
@@ -599,7 +612,7 @@ export default function RestoreWizard(props: RestoreWizardProps) {
 									</Typography>
 								</Alert>
 							)}
-							{dryRunOutcome !== null && <DryRunResult outcome={dryRunOutcome} choice={{checked, onToggle: handleToggle}} />}
+							{dryRunOutcome !== null && <DryRunResult outcome={dryRunOutcome} choice={{checked, onToggle: handleToggle, onSelectAll: selected => setChecked(new Set(selected ? domains : []))}} />}
 							{domains.length > 0 && (
 								<Typography variant="body2" color="text.secondary">
 									{t('Every ticked domain is replaced with what the snapshot holds; it is not merged. Clear a domain to leave it as it is on the instance. A selection gets its own dry-run before it can be restored.')}
@@ -648,15 +661,10 @@ export default function RestoreWizard(props: RestoreWizardProps) {
 					<DialogContent dividers>
 						<Stack spacing={2}>
 							<Alert severity="warning">
-								{components === undefined
-									? t(
-											'This wipes the live configuration of "{{instance}}" and applies snapshot "{{snapshot}}". A pre-restore snapshot is taken automatically before anything is changed.',
-											{instance: instanceName, snapshot: snapshot.name},
-										)
-									: t(
-											'This replaces these domains on "{{instance}}" with what snapshot "{{snapshot}}" holds: {{domains}}. Other domains are not changed. A pre-restore snapshot of the whole configuration is taken automatically before anything is changed.',
-											{instance: instanceName, snapshot: snapshot.name, domains: components.join(', ')},
-										)}
+								{t(
+									'This replaces these domains on "{{instance}}" with what snapshot "{{snapshot}}" holds: {{domains}}. Other domains are not changed. A pre-restore snapshot of the whole configuration is taken automatically before anything is changed.',
+									{instance: instanceName, snapshot: snapshot.name, domains: (components ?? domains).join(', ')},
+								)}
 							</Alert>
 							{restoresAuditSinks && (
 								<Alert severity="warning">

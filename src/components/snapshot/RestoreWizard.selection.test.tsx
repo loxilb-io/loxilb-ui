@@ -159,6 +159,55 @@ describe('a selection', () => {
 	});
 });
 
+describe('a partial snapshot with every included domain selected', () => {
+	it('names only the domains reported by the dry-run in the confirmation', async () => {
+		api.request_restore_snapshot.mockImplementation(async (_sid: string, mode: 'dry-run' | 'commit', _t?: number, components?: readonly string[]) => answer(mode, components, {plan: [PLAN[2]]}));
+		mount();
+		await screen.findByText('Dry-run passed — the snapshot is applicable');
+		fireEvent.click(button('Continue to Restore'));
+		expect(screen.getByText(/This replaces these domains on "gw-1" with what snapshot "nightly" holds: auditsink\./)).toBeTruthy();
+		expect(screen.queryByText(/This wipes the live configuration/)).toBeNull();
+		expect(calls()).toEqual([{sid: 's1', mode: 'dry-run', components: undefined}]);
+	});
+});
+
+describe('bulk domain selection', () => {
+	it('clears all domains without sending, then dry-runs and commits auditsink only', async () => {
+		mount();
+		await screen.findByText('Dry-run passed — the snapshot is applicable');
+		const all = screen.getByLabelText('Select all restore domains') as HTMLInputElement;
+		expect(all.checked).toBe(true);
+		fireEvent.click(all);
+		for (const d of ['loadbalancer', 'firewall', 'auditsink']) expect(box(d).checked).toBe(false);
+		expect(button('Continue to Restore').disabled).toBe(true);
+		expect(calls()).toHaveLength(1);
+		fireEvent.click(box('auditsink'));
+		expect(all.getAttribute('data-indeterminate')).toBe('true');
+		expect(screen.queryByRole('button', {name: 'Continue to Restore'})).toBeNull();
+		fireEvent.click(button('Dry-run Selected Domains'));
+		await waitFor(() => expect(button('Continue to Restore').disabled).toBe(false));
+		await confirmAndCommit();
+		expect(calls()).toEqual([
+			{sid: 's1', mode: 'dry-run', components: undefined},
+			{sid: 's1', mode: 'dry-run', components: ['auditsink']},
+			{sid: 's1', mode: 'commit', components: ['auditsink']},
+		]);
+	});
+
+	it('selects the current plan from a partial selection and clears a completed selective dry-run', async () => {
+		mount();
+		await screen.findByText('Dry-run passed — the snapshot is applicable');
+		fireEvent.click(box('loadbalancer'));
+		fireEvent.click(button('Dry-run Selected Domains'));
+		await waitFor(() => expect(button('Continue to Restore').disabled).toBe(false));
+		fireEvent.click(screen.getByLabelText('Select all restore domains'));
+		for (const d of ['loadbalancer', 'firewall', 'auditsink']) expect(box(d).checked).toBe(true);
+		fireEvent.click(screen.getByLabelText('Select all restore domains'));
+		expect(button('Continue to Restore').disabled).toBe(true);
+		expect(calls()).toHaveLength(2);
+	});
+});
+
 describe('the audit sinks', () => {
 	const NOTE = 'This restore includes the audit sinks';
 
