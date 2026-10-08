@@ -11,7 +11,6 @@ import {styled} from '@mui/material/styles';
 import {t} from 'i18next';
 import {useState} from 'react';
 import {ILoginRequest} from 'types/user';
-import {validate_username} from 'connector/user';
 
 //---------------------------------------------------------
 // Styled Components
@@ -43,16 +42,13 @@ export default function AuthForm({onSubmit, loading, error, disabled = false}: I
 	const [errors, setErrors] = useState<{username?: string; password?: string}>({});
 	const [touched, setTouched] = useState<{username?: boolean; password?: boolean}>({});
 
-	// Login only checks presence + username format; the backend is the
-	// authority on credential correctness. Password-strength rules live on the
+	// Login checks presence only; provisioned accounts may predate the
+	// creation form rules. OAM is the authority on credential correctness. Password-strength rules live on the
 	// admin create-user form, not here.
 	const validateForm = (): boolean => {
 		const newErrors: {username?: string; password?: string} = {};
 		if (!formData.username.trim()) {
 			newErrors.username = t('Username is required');
-		} else {
-			const usernameValidation = validate_username(formData.username);
-			if (!usernameValidation.isValid) newErrors.username = usernameValidation.message;
 		}
 		if (!formData.password) newErrors.password = t('Password is required');
 		setErrors(newErrors);
