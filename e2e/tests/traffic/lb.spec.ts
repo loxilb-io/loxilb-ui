@@ -402,14 +402,14 @@ test.describe('LB Rule page CRUD', () => {
 		await expandSection(page, AIGW);
 		await selectOption(page, 'Data-plane Credential Policy', 'Disabled (strip header)');
 		await dialogButton(page, 'Update').click();
-		await expect(dialogTitle(page, 'Re-create listener')).toBeVisible();
+		await expect(dialogTitle(page, 'Rebuild endpoint pool')).toBeVisible();
 		await expect(dialog(page).getByText(/serviceArguments\.api_key_auth/)).toBeVisible();
 		// Nothing was written while the question stands.
 		list = await (await gw('GET', `${LB_PATH}/all`)).json();
 		expect((list.lbAttr ?? []).find((rule: any) => rule.serviceArguments?.name === name)?.serviceArguments?.api_key_auth).toBe('required');
 
-		await dialogButton(page, 'Re-create listener').click();
-		await expect(dialog(page).getByText('Listener re-created. The rule reads back with the submitted values.')).toBeVisible({timeout: 20_000});
+		await dialogButton(page, 'Rebuild endpoint pool').click();
+		await expect(dialog(page).getByText('Endpoint pool rebuilt. The rule reads back with the submitted values.')).toBeVisible({timeout: 20_000});
 		await dialogButton(page, 'OK').click();
 		expect(patchRequests).toBe(0);
 		expect(deleteRequests).toBe(0);
@@ -446,9 +446,9 @@ test.describe('LB Rule page CRUD', () => {
 			const eps = await expandSection(page, ENDPOINTS);
 			await field(page, 'Target Port', eps).first().fill(port);
 			await dialogButton(page, 'Update').click();
-			await expect(dialogTitle(page, 'Re-create listener')).toBeVisible();
-			await dialogButton(page, 'Re-create listener').click();
-			await expect(dialog(page).getByText('Listener re-created. The rule reads back with the submitted values.')).toBeVisible({timeout: 20_000});
+			await expect(dialogTitle(page, 'Rebuild endpoint pool')).toBeVisible();
+			await dialogButton(page, 'Rebuild endpoint pool').click();
+			await expect(dialog(page).getByText('Endpoint pool rebuilt. The rule reads back with the submitted values.')).toBeVisible({timeout: 20_000});
 			await dialogButton(page, 'OK').click();
 		};
 
