@@ -12,7 +12,7 @@
 // sends 2, matching the cicd original and real TLS+mTLS behavior.
 //---------------------------------------------------------
 import {test} from '../../../fixtures';
-import {fullproxyVip, activeInstance, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
+import {activeInstance, frontendMtlsCaPath, fullproxyVip, sweepFirewallRules, sweepLbRules} from '../../../helpers/api';
 import {cleanupLbByName, LbRecipe, runLbScenario} from '../_recipes';
 
 // A fullproxy rule is a listener the gateway binds, so its VIP is an address
@@ -30,7 +30,7 @@ const recipe: LbRecipe = {
 	host: FP_VIP,
 	mtls: {
 		clientCertMode: 'required',
-		clientCaPath: '/opt/loxilb/cert/client_ca.crt',
+		clientCaPath: frontendMtlsCaPath(),
 		requireClientCn: true,
 		clientCnPattern: '*.internal.corp.com',
 	},

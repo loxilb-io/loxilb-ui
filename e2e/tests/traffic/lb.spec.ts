@@ -18,9 +18,9 @@
 //---------------------------------------------------------
 import {Locator, Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {activeInstance, fullproxyVip, gatewayKvExactReadiness, gw, KvExactReadiness, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
+import {activeInstance, fullproxyVip, gatewayKvExactReadiness, gw, gwJson, KvExactReadiness, sweepFirewallRules, sweepLbRules} from '../../helpers/api';
 import {confirmDelete, dialog, dialogButton, dialogTitle, expectErrorAndDismiss, expectSuccessAndDismiss, openToolbarDialog, selectOption} from '../../helpers/dialogs';
-import {refreshUntilGone, refreshUntilRow, rowByText, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
+import {refreshUntilGone, refreshUntilRow, rowByText, rowIdsByText, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 import {lbRuleRowId} from '../../../src/types/lb_identity';
 
 // A fullproxy rule is a listener the gateway binds, so its VIP is an address
@@ -571,6 +571,15 @@ test.describe('LB Rule page CRUD', () => {
 	});
 
 	test('C-lists: secondaryIPs[2] + allowedSources[2]', async ({page}) => {
+		// Source checks are carried by the first 29 rule slots only, and the
+		// gateway hands the slot out. On a gateway whose next slot is past
+		// them no request body can create this rule (412), so the case has
+		// nothing to say there; what the page shows then is the subject of
+		// lb-source-budget.
+		const caps = await gwJson<{capabilities?: {name: string; ready: boolean; reason?: string}[]}>('/status/capabilities').catch(() => undefined);
+		const budget = caps?.capabilities?.find(capability => capability.name === 'lb_allowed_sources');
+		test.skip(budget?.ready === false, `this gateway cannot give a new rule source checks: ${budget?.reason ?? 'no reason reported'}`);
+
 		await openAddDialog(page);
 		await fillBasics(page, 'e2e-lb-lists', '203.0.113.56', '8087');
 
@@ -797,7 +806,10 @@ test.describe('LB Rule page CRUD', () => {
 
 		await toolbarButton(page, 'Refresh').click();
 		await showAllRows(page);
-		await expect(rowByText(page, '203.0.113.75')).toHaveCount(2);
+		// Two rows, each under its own id: counted over the whole page, since
+		// the grid renders only the rows near the viewport.
+		await expect.poll(async () => (await rowIdsByText(page, '203.0.113.75')).sort(), {timeout: 20_000}).toEqual([lbRuleRowId(modelPeer), lbRuleRowId(plainPeer)].sort());
+		await rowByStableId(page, lbRuleRowId(modelPeer)).scrollIntoViewIfNeeded();
 		await rowByStableId(page, lbRuleRowId(modelPeer)).getByRole('checkbox').check();
 		const modelDeletes = await captureLbDeletes(page, async () => {
 			await toolbarButton(page, 'Delete').click();

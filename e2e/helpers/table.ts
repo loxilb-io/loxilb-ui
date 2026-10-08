@@ -46,14 +46,20 @@ export function rowByText(page: Page, text: string | RegExp): Locator {
 }
 
 /**
- * The grid defaults to 5 rows/page; widen so row lookups and multi-select
- * see everything on one page.
+ * Widens the grid to its largest page size, so row lookups and multi-select
+ * see as much as one page can hold.
+ *
+ * The largest size the table offers, not a fixed one: the testbed holds rules
+ * of its own beside the fixtures, and a fixed 25 put a fixture on a second
+ * page once it held more than that — the row was on the gateway and not in
+ * the DOM. A list longer than the largest size still needs a filter or
+ * `refreshUntilRow`.
  */
 export async function showAllRows(page: Page): Promise<void> {
 	const pager = grid(page).getByRole('combobox', {name: /rows per page/i});
 	if ((await pager.count()) === 0) return;
 	await pager.click();
-	await page.getByRole('option', {name: '25'}).click();
+	await page.getByRole('option').last().click();
 }
 
 /**
@@ -70,6 +76,42 @@ export async function scrollGridToBottom(page: Page): Promise<void> {
 		el.scrollTop = el.scrollHeight;
 	});
 	await page.waitForTimeout(150); // let virtualization render the newly-visible rows
+}
+
+/**
+ * The `data-id` of every row on the CURRENT grid page that matches `text`,
+ * each once. The page is scanned top to bottom, because the grid keeps only
+ * the rows near the viewport in the DOM: a count taken without scrolling is a
+ * count of what happens to be rendered. The grid is left where the LAST match
+ * rendered, so a follow-up action on it finds it.
+ */
+export async function rowIdsByText(page: Page, text: string | RegExp): Promise<string[]> {
+	const ids = new Set<string>();
+	const collect = async () => {
+		const found = await rowByText(page, text).evaluateAll(rows => rows.map(row => row.getAttribute('data-id') ?? ''));
+		found.forEach(id => ids.add(id));
+		return found.length > 0;
+	};
+	const scroller = grid(page).locator('.MuiDataGrid-virtualScroller');
+	if ((await scroller.count()) === 0) {
+		await collect();
+		return [...ids];
+	}
+	const {scrollHeight, clientHeight} = await scroller.evaluate(el => ({scrollHeight: el.scrollHeight, clientHeight: el.clientHeight}));
+	const step = Math.max(120, Math.floor(clientHeight * 0.8));
+	let lastMatch = 0;
+	for (let top = 0; top <= scrollHeight; top += step) {
+		await scroller.evaluate((el, t) => {
+			el.scrollTop = t;
+		}, top);
+		await page.waitForTimeout(100);
+		if (await collect()) lastMatch = top;
+	}
+	await scroller.evaluate((el, t) => {
+		el.scrollTop = t;
+	}, lastMatch);
+	await page.waitForTimeout(100);
+	return [...ids];
 }
 
 /** Scrolls the CURRENT grid page top→bottom in overlapping steps until a row
@@ -92,8 +134,8 @@ async function scanCurrentPage(page: Page, text: string | RegExp): Promise<boole
 
 /**
  * Reveals a row matching `text`, returning whether it was found. Covers BOTH
- * virtualization (scroll scan) and pagination: showAllRows caps at 25
- * rows/page (the DataTable's largest page size), and on the live testbed a
+ * virtualization (scroll scan) and pagination: showAllRows stops at the
+ * DataTable's largest page size, and on the live testbed a
  * table can outgrow that mid-run — e.g. the route table gains gateway
  * auto-created /32s from earlier LB specs, pushing a seeded row onto page 2
  * where the old single-page scan could never see it. Walks the pager from the
