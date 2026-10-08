@@ -37,11 +37,11 @@ describe('snapshot mutations return OpResult', () => {
 		expect(res.data).toBeUndefined();
 	});
 
-	it('D10: OAM unreachable → mapped retryable unavailable that still never rejects', async () => {
+	it('D10: OAM unreachable → outcome unknown, and it still never rejects', async () => {
 		(global.fetch as Mock).mockRejectedValue(new TypeError('Failed to fetch'));
 		const res: any = await request_take_snapshot(1, {name: 'x'});
-		expect(res.status).toBe('unavailable');
-		expect(res.retryable).toBe(true);
+		expect(res.status).toBe('unknown');
+		expect(res.retryable).toBe(false);
 		// Raw transport detail is diagnostics-only.
 		expect(res.rawDetail).toContain('Failed to fetch');
 	});
@@ -94,6 +94,23 @@ describe('request_restore_snapshot keeps the 200-with-failure-outcome contract',
 	it('never rejects on network failure (wizard §9.3 case 3 stays fixed)', async () => {
 		(global.fetch as Mock).mockRejectedValue(new TypeError('Failed to fetch'));
 		const res: any = await request_restore_snapshot('s1', 'commit');
-		expect(res.status).toBe('unavailable');
+		expect(res.status).toBe('unknown');
+		expect(res.retryable).toBe(false);
+	});
+
+	// A dry-run changes nothing, so its lost answer is an outage to retry —
+	// "check whether it was applied" would send the operator looking for a
+	// restore that was never asked for.
+	it('a dry-run that lost its answer is unavailable and retryable, by throw and by 502/504', async () => {
+		(global.fetch as Mock).mockRejectedValue(new TypeError('Failed to fetch'));
+		const thrown: any = await request_restore_snapshot('s1', 'dry-run');
+		expect(thrown.status).toBe('unavailable');
+		expect(thrown.retryable).toBe(true);
+		for (const status of [502, 504]) {
+			mockFetch(JSON.stringify({error: 'Request to LoxiLB instance timed out'}), status);
+			expect((await request_restore_snapshot('s1', 'dry-run')).status).toBe('unavailable');
+			mockFetch(JSON.stringify({error: 'Request to LoxiLB instance timed out'}), status);
+			expect((await request_restore_snapshot('s1', 'commit')).status).toBe('unknown');
+		}
 	});
 });

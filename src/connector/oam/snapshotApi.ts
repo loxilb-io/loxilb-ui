@@ -87,11 +87,14 @@ export async function request_restore_snapshot(
 	mode: 'dry-run' | 'commit',
 	targetInstanceId?: number,
 ): Promise<RestoreCallResult> {
+	// A dry-run validates and plans; it changes nothing, so losing its answer
+	// is an outage to retry. A commit that lost its answer may have restored.
+	const kind = mode === 'dry-run' ? 'read' : 'mutation';
 	try {
 		const body: {mode: string; target_instance_id?: number} = {mode};
 		if (targetInstanceId !== undefined) body.target_instance_id = targetInstanceId;
 		const resp = await POST_OAM<OamPostResp<'/oam/snapshots/{sid}/restore'>>(`/snapshots/${sid}/restore`, body);
-		const res = fromSimpleResponse(resp, 'snapshot.restore') as RestoreCallResult;
+		const res = fromSimpleResponse(resp, 'snapshot.restore', kind) as RestoreCallResult;
 		// A confirmed restore call MUST carry the outcome object — the wizard
 		// renders gateway_status/gateway_response from it. A bodyless 200 is
 		// not a usable outcome.
@@ -100,7 +103,7 @@ export async function request_restore_snapshot(
 		}
 		return res;
 	} catch (e) {
-		return fromNetworkError('snapshot.restore', e);
+		return fromNetworkError('snapshot.restore', e, kind);
 	}
 }
 

@@ -67,7 +67,7 @@ describe('maintenance writes', () => {
 
 	it('does not throw when the gateway cannot be reached', async () => {
 		(global.fetch as Mock).mockRejectedValue(new TypeError('Failed to fetch'));
-		expect((await request_leave_maintenance(INST)).status).toBe('unavailable');
+		expect((await request_leave_maintenance(INST)).status).toBe('unknown');
 	});
 });
 

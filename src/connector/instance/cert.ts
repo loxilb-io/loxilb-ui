@@ -108,9 +108,9 @@ async function read_cert(instance: IInstance, certId: string, op: string): Promi
 		// the route, not about the certificate.
 		const origin = resp.headers?.get('X-Loxi-Error-Origin')?.trim().toLowerCase();
 		if (resp.code === 404 && origin !== 'oam') return {kind: 'absent'};
-		return {kind: 'error', result: fromSimpleResponse(resp, op)};
+		return {kind: 'error', result: fromSimpleResponse(resp, op, 'read')};
 	} catch (error) {
-		return {kind: 'error', result: fromNetworkError(op, error)};
+		return {kind: 'error', result: fromNetworkError(op, error, 'read')};
 	}
 }
 

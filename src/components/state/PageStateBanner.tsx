@@ -15,6 +15,7 @@ import {Alert, AlertTitle, Box, Button} from '@mui/material';
 import {useTranslation} from 'react-i18next';
 import {STATUS_LOCALE_KEYS} from 'connector/fetcher/opResultCodes';
 import {OpResult} from 'connector/fetcher/opResult';
+import {retryAfterText} from 'connector/fetcher/opResultText';
 import {PageDataState} from './pageState';
 
 export interface PageStateBannerProps {
@@ -34,6 +35,12 @@ export interface PageStateBannerProps {
  */
 function specificDetail(result: OpResult): string | undefined {
 	return result.localeKey === STATUS_LOCALE_KEYS[result.status] ? undefined : result.localeKey;
+}
+
+/** The wait the server named, with its leading space — or nothing. */
+function wait(result: OpResult): string {
+	const sentence = retryAfterText(result);
+	return sentence ? ` ${sentence}` : '';
 }
 
 export default function PageStateBanner({state, name, onRetry, emptyMessage}: PageStateBannerProps) {
@@ -69,6 +76,7 @@ export default function PageStateBanner({state, name, onRetry, emptyMessage}: Pa
 					time: new Date(state.fetchedAt).toLocaleTimeString(),
 				})}
 				{detail ? ` ${t(detail)}` : ''}
+				{wait(state.failure)}
 				{state.failure.correlationId ? ` ${t('Reference: {{id}}', {id: state.failure.correlationId})}` : ''}
 			</Alert>
 		);
@@ -97,6 +105,7 @@ export default function PageStateBanner({state, name, onRetry, emptyMessage}: Pa
 		>
 			{headline}
 			{detail ? ` ${t(detail)}` : ''}
+			{wait(result)}
 			{result.correlationId ? ` ${t('Reference: {{id}}', {id: result.correlationId})}` : ''}
 		</Alert>
 	);

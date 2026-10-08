@@ -33,10 +33,18 @@ export interface SimpleResponse<T = any> {
 // and a page's error handling can branch on the code.
 export class ApiError extends Error {
 	status: number;
-	constructor(message: string, status: number) {
+	/**
+	 * The body and headers the status came with, when a connector threw this
+	 * for an HTTP answer. A read's failure is mapped from the thrown error, and
+	 * without these it could not tell a named refusal from a bare status or
+	 * read the wait the server asked for.
+	 */
+	response?: Pick<SimpleResponse, 'data' | 'headers'>;
+	constructor(message: string, status: number, response?: Pick<SimpleResponse, 'data' | 'headers'>) {
 		super(message);
 		this.name = 'ApiError';
 		this.status = status;
+		if (response) this.response = {data: response.data, headers: response.headers};
 	}
 }
 
@@ -80,7 +88,7 @@ export function assertOk(resp: SimpleResponse, operation: string): void {
 	// it through turns a failed read into an empty page. The status code is
 	// kept — the server did answer 2xx; it is the body that never arrived.
 	if (resp.code >= 200 && resp.code < 300 && !resp.parse_failed) return;
-	throw new ApiError(createDetailedErrorMessage(resp, operation), resp.code);
+	throw new ApiError(createDetailedErrorMessage(resp, operation), resp.code, resp);
 }
 
 /**
@@ -295,7 +303,7 @@ async function handle_response<T = any>(response: any): Promise<SimpleResponse<T
 			return {
 				code: response.status,
 				data: resp_json,
-				message: response.statusText || resp_json.result,
+				message: response.statusText || resp_json?.result,
 				headers: response.headers
 			};
 		} catch {

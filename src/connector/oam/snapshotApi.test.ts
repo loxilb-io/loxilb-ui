@@ -52,7 +52,8 @@ describe('snapshot mutations (verbatim server errors)', () => {
 	it('request_take_snapshot passes the gateway 502 body through', async () => {
 		mockFetch('{"error":"gateway unreachable: connect: connection refused"}', 502);
 		const res = await request_take_snapshot(1, {name: 'x'});
-		expect(res.status).toBe('unavailable');
+		// "connection refused" is prose; a 502 on a change is unknown whatever it says.
+		expect(res.status).toBe('unknown');
 		expect(res.httpStatus).toBe(502);
 		expect(res.rawDetail).toContain('connection refused');
 	});
@@ -104,7 +105,7 @@ describe('request_restore_snapshot (the 200-with-failure contract)', () => {
 		// the wizard stuck on its non-dismissable committing screen (§9.3 case 3).
 		(global.fetch as Mock).mockRejectedValue(new TypeError('Failed to fetch'));
 		const res = await request_restore_snapshot('s1', 'commit');
-		expect(res.status).toBe('unavailable');
-		if (res.status === 'unavailable') expect(res.rawDetail).toMatch(/Failed to fetch/);
+		expect(res.status).toBe('unknown');
+		expect(res.rawDetail).toMatch(/Failed to fetch/);
 	});
 });

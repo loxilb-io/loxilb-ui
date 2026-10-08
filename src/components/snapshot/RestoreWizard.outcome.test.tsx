@@ -120,3 +120,29 @@ describe('the dry-run panel', () => {
 		expect(screen.queryByText(/compatible/)).toBeNull();
 	});
 });
+
+describe('a commit that produced no outcome object', () => {
+	const UNKNOWN_TEXT = 'No answer came back, so it is not known whether this change was applied.';
+
+	it('is "failed before reaching the gateway" when the backend answered and refused', () => {
+		render(<CommitResult outcome={null} oamError="snapshot integrity check failed" instanceName="gw-1" />);
+		expect(screen.getByText('Restore failed before reaching the gateway')).toBeTruthy();
+		expect(screen.queryByText('Restore outcome unknown')).toBeNull();
+	});
+
+	// A commit that timed out or lost its connection may have restored. Saying
+	// it failed before the gateway invites a second restore on top of the first.
+	it('is "outcome unknown" when no answer came back, and never says it failed', () => {
+		render(<CommitResult outcome={null} oamError={UNKNOWN_TEXT} outcomeUnknown instanceName="gw-1" />);
+		expect(screen.getByText('Restore outcome unknown')).toBeTruthy();
+		expect(screen.getByText(UNKNOWN_TEXT)).toBeTruthy();
+		expect(screen.queryByText(/Restore failed/)).toBeNull();
+		expect(screen.queryByText(/Restore succeeded/)).toBeNull();
+	});
+
+	it('an outcome object is never overridden by the flag', () => {
+		render(<CommitResult outcome={committed(200, {result: 'ok', persisted: true})} oamError={null} outcomeUnknown instanceName="gw-1" />);
+		expect(screen.getByText('Restore succeeded')).toBeTruthy();
+		expect(screen.queryByText('Restore outcome unknown')).toBeNull();
+	});
+});

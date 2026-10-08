@@ -77,6 +77,15 @@ describe('login_user OpResult contract', () => {
 		expect(res.retryable).toBe(true);
 	});
 
+	// A sign-in that lost its answer left nothing to check: it is "try again",
+	// not the "outcome unknown" a lost configuration change gets.
+	it.each([[502], [504]])('a %i on sign-in is unavailable and retryable', async status => {
+		mockFetch(JSON.stringify({error: 'bad gateway'}), {status});
+		const res: any = await login_user(CREDS);
+		expect(res.status).toBe('unavailable');
+		expect(res.retryable).toBe(true);
+	});
+
 	it('raw backend prose is confined to rawDetail, never in localeKey', async () => {
 		mockFetch(JSON.stringify({error: 'pq: connection refused on backend cluster node-3'}), {status: 401});
 

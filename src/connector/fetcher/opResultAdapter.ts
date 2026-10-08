@@ -6,12 +6,63 @@
 // `failed`, never to success. Raw server text goes only into rawDetail.
 
 import {ApiError, isMutationFailure, SimpleResponse} from './fetcher_base';
-import {OpResult} from './opResult';
-import {CONFLICT_KEY, NOT_ENABLED_KEY, PRECONDITION_KEY, RATE_LIMITED_KEY, STATUS_LOCALE_KEYS} from './opResultCodes';
+import {retryAfterSeconds} from 'utils/retryAfter';
+import {OpOrigin, OpResult} from './opResult';
+import {AUDIT_UNAVAILABLE_KEY, CONFLICT_KEY, IDENTITY_UNAVAILABLE_KEY, MAINTENANCE_KEY, NOT_ENABLED_KEY, PRECONDITION_KEY, RATE_LIMITED_KEY, STATUS_LOCALE_KEYS} from './opResultCodes';
 
 // Optional until the frozen error-code contract lands ( external
 // dependency); absent headers simply leave correlationId undefined.
 const CORRELATION_HEADER = 'X-Correlation-Id';
+// Added by the management backend to say who produced a failure. Three states:
+// `gateway`, `oam`, or absent (its own plain session 401s, and backends that
+// predate the marker).
+const ORIGIN_HEADER = 'X-Loxi-Error-Origin';
+
+/**
+ * Whether the request could have changed anything.
+ *
+ * The default everywhere is `mutation`, on purpose. A read wrongly treated as
+ * a change loses a Retry button; a change wrongly treated as a read is told to
+ * "try again" about something that may already have been applied.
+ */
+export type OpKind = 'mutation' | 'read';
+
+function originOf(resp: SimpleResponse): OpOrigin | undefined {
+	const origin = resp.headers?.get?.(ORIGIN_HEADER)?.trim().toLowerCase();
+	return origin === 'gateway' || origin === 'oam' ? origin : undefined;
+}
+
+/**
+ * What a failure carries besides its status: the wait the server named and who
+ * answered. Left out entirely when absent, so a result never holds a wait
+ * nobody asked for.
+ */
+function provenanceOf(resp: SimpleResponse): Pick<OpResult, 'retryAfterSeconds' | 'origin'> {
+	const wait = retryAfterSeconds(resp.headers?.get?.('Retry-After'));
+	const origin = originOf(resp);
+	return {...(wait === null ? {} : {retryAfterSeconds: wait}), ...(origin ? {origin} : {})};
+}
+
+/**
+ * The 503s that name their cause. Neither producer sends a machine code, so
+ * the match is on the field each one fills with a fixed string — the whole
+ * field, never a fragment of the sentence beside it:
+ *   Gateway  `message: "Audit unavailable"`  the audit trail cannot take the record
+ *   Gateway  `message: "Maintenance mode"`   boot replay, restore freeze, operator maintenance
+ *   backend  `error: "Gateway service identity unavailable"`, with its own marker
+ * Anything else — including the bare 503 the audit policy and sink handlers
+ * answer with no body — stays the generic one.
+ */
+function refusal503(resp: SimpleResponse, op: string): Pick<OpResult, 'code' | 'localeKey'> {
+	const d = resp.data as any;
+	const message = text(d?.message);
+	if (message === 'Audit unavailable') return {code: `${op}.audit_unavailable`, localeKey: AUDIT_UNAVAILABLE_KEY};
+	if (message === 'Maintenance mode') return {code: `${op}.maintenance`, localeKey: MAINTENANCE_KEY};
+	if (originOf(resp) === 'oam' && text(d?.error) === 'Gateway service identity unavailable') {
+		return {code: `${op}.identity_unavailable`, localeKey: IDENTITY_UNAVAILABLE_KEY};
+	}
+	return {code: `${op}.unavailable`, localeKey: STATUS_LOCALE_KEYS.unavailable};
+}
 
 function text(v: unknown): string | undefined {
 	return typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined;
@@ -38,7 +89,7 @@ function rawDetailOf(resp: SimpleResponse): string | undefined {
 	return cls || reason || text(resp.message);
 }
 
-export function fromSimpleResponse<T = unknown>(resp: SimpleResponse<T> | null | undefined, op: string): OpResult<T> {
+export function fromSimpleResponse<T = unknown>(resp: SimpleResponse<T> | null | undefined, op: string, kind: OpKind = 'mutation'): OpResult<T> {
 	// Fed garbage (undefined / no numeric code) — a defect upstream, but the
 	// adapter must degrade to `failed`, never throw into a white screen.
 	if (!resp || typeof resp.code !== 'number') {
@@ -46,7 +97,7 @@ export function fromSimpleResponse<T = unknown>(resp: SimpleResponse<T> | null |
 	}
 
 	const correlationId = resp.headers?.get?.(CORRELATION_HEADER) ?? undefined;
-	const common = {correlationId, httpStatus: resp.code, rawDetail: rawDetailOf(resp)};
+	const common = {correlationId, httpStatus: resp.code, rawDetail: rawDetailOf(resp), ...provenanceOf(resp)};
 
 	if (resp.code === 401 || resp.code === 403) {
 		return {status: 'denied', code: `${op}.denied`, localeKey: STATUS_LOCALE_KEYS.denied, retryable: false, ...common};
@@ -99,10 +150,25 @@ export function fromSimpleResponse<T = unknown>(resp: SimpleResponse<T> | null |
 	if (resp.code === 501) {
 		return {status: 'failed', code: `${op}.not_implemented`, localeKey: NOT_ENABLED_KEY, retryable: false, ...common};
 	}
-	// 504 added to the task-doc set (502/503/0): a gateway timeout is the same
-	// operator experience — the service is not answering right now.
-	if (resp.code === 502 || resp.code === 503 || resp.code === 504 || resp.code === 0) {
-		return {status: 'unavailable', code: `${op}.unavailable`, localeKey: STATUS_LOCALE_KEYS.unavailable, retryable: true, ...common};
+	// 503 is "not performed", for a change as much as for a read: the Gateway
+	// and the management backend both answer it before acting.
+	if (resp.code === 503) {
+		return {status: 'unavailable', ...refusal503(resp, op), retryable: true, ...common};
+	}
+	// 502, 504 and 0 are the hop losing the ANSWER. For a read that is an
+	// outage and a retry is harmless. For a change it says nothing about
+	// whether the request arrived: a timed-out create may have created, and a
+	// second one then fails as a duplicate or — for an operation that is not
+	// idempotent — applies twice. So: unknown, no retry, read the state back.
+	//
+	// ⚠️ The backend's 502 body does tell "connection refused" from "reset
+	// after sending", in prose. It is not read. Prose drifts without anything
+	// failing, and the cost of guessing wrong here is a repeated change.
+	if (resp.code === 502 || resp.code === 504 || resp.code === 0) {
+		if (kind === 'read') {
+			return {status: 'unavailable', code: `${op}.unavailable`, localeKey: STATUS_LOCALE_KEYS.unavailable, retryable: true, ...common};
+		}
+		return {status: 'unknown', code: `${op}.outcome_unknown`, localeKey: STATUS_LOCALE_KEYS.unknown, retryable: false, ...common};
 	}
 	if (resp.code >= 200 && resp.code < 300) {
 		// The legacy 200-{result:"fail"} trap, now mandatory for every caller.
@@ -124,7 +190,7 @@ export function fromSimpleResponse<T = unknown>(resp: SimpleResponse<T> | null |
 
 /**
  * Standard wrapper for a single-call mutation: adapter mapping plus the
- * network-throw guarantee (a thrown fetch resolves to `unavailable`, it never
+ * network-throw guarantee (a thrown fetch resolves to `unknown`, it never
  * rejects into the page).
  */
 export async function runOp<T = unknown>(op: string, call: () => Promise<SimpleResponse<T>>): Promise<OpResult<T>> {
@@ -147,25 +213,34 @@ export async function runOp<T = unknown>(op: string, call: () => Promise<SimpleR
  *
  * Anything that is not an ApiError never reached HTTP at all (transport, DNS,
  * abort, a bug throwing inside the connector) and maps to `unavailable`.
+ *
+ * This is the read path, and it says so to the mapping: a read that lost its
+ * answer is an outage to retry, never an "outcome unknown".
  */
 export function fromThrownError(op: string, error: unknown): OpResult<never> {
 	const status = error instanceof ApiError ? error.status : undefined;
 	if (typeof status !== 'number' || !Number.isFinite(status) || (status >= 200 && status < 300)) {
-		return fromNetworkError(op, error);
+		return fromNetworkError(op, error, 'read');
 	}
-	const mapped = fromSimpleResponse<never>({code: status, data: null, message: (error as ApiError).message}, op);
+	const {message, response} = error as ApiError;
+	// The body and headers ride along so a named refusal, the wait and the
+	// origin survive the throw. The diagnostics text stays the connector's own
+	// message, which already names the operation and the status.
+	const mapped = {...fromSimpleResponse<never>({code: status, data: (response?.data ?? null) as never, message, headers: response?.headers}, op, 'read'), rawDetail: message};
 	if (mapped.status !== 'invalid') return mapped;
 	return {...mapped, status: 'failed', code: `${op}.failed`, localeKey: STATUS_LOCALE_KEYS.failed};
 }
 
-/** A thrown fetch (network refusal, DNS, timeout) — there was no HTTP response at all. */
-export function fromNetworkError(op: string, error?: unknown): OpResult<never> {
-	return {
-		status: 'unavailable',
-		code: `${op}.network_error`,
-		localeKey: STATUS_LOCALE_KEYS.unavailable,
-		retryable: true,
-		rawDetail: error instanceof Error ? error.message : undefined,
-	};
+/**
+ * A thrown fetch (network refusal, DNS, timeout) — there was no HTTP response
+ * at all. The browser does not say whether the request left: for a change that
+ * is the same "not known" as a 502, for a read it is an outage.
+ */
+export function fromNetworkError(op: string, error?: unknown, kind: OpKind = 'mutation'): OpResult<never> {
+	const rawDetail = error instanceof Error ? error.message : undefined;
+	if (kind === 'read') {
+		return {status: 'unavailable', code: `${op}.network_error`, localeKey: STATUS_LOCALE_KEYS.unavailable, retryable: true, rawDetail};
+	}
+	return {status: 'unknown', code: `${op}.outcome_unknown`, localeKey: STATUS_LOCALE_KEYS.unknown, retryable: false, rawDetail};
 }
 

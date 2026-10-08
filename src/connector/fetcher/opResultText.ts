@@ -29,13 +29,21 @@ export function isPreconditionFailure(res: Pick<OpResult, 'code'>): boolean {
 }
 
 /**
- * Localized headline for a failed operation, with the gateway's verbatim
- * detail appended for precondition failures only. Every other code renders the
- * mapped message alone, exactly as before.
+ * The wait the server asked for, as a sentence — or nothing. There is no
+ * default: a result with no `retryAfterSeconds` came from a response that
+ * named no wait, and a number made up here would be read as the server's.
  */
-export function opErrorText(res: Pick<OpResult, 'code' | 'localeKey' | 'rawDetail'>): string {
-	const headline = t(res.localeKey);
-	if (!isPreconditionFailure(res)) return headline;
-	const detail = res.rawDetail?.trim();
-	return detail ? `${headline} ${detail}` : headline;
+export function retryAfterText(res: Pick<OpResult, 'retryAfterSeconds'>): string | undefined {
+	const seconds = res.retryAfterSeconds;
+	return typeof seconds === 'number' && seconds > 0 ? t('Try again in {{seconds}} s.', {seconds}) : undefined;
+}
+
+/**
+ * Localized headline for a failed operation, with the gateway's verbatim
+ * detail appended for precondition failures only, and the wait the server
+ * named when it named one. Every other code renders the mapped message alone.
+ */
+export function opErrorText(res: Pick<OpResult, 'code' | 'localeKey' | 'rawDetail' | 'retryAfterSeconds'>): string {
+	const detail = isPreconditionFailure(res) ? res.rawDetail?.trim() : undefined;
+	return [t(res.localeKey), detail, retryAfterText(res)].filter(Boolean).join(' ');
 }

@@ -86,6 +86,14 @@ describe('lookup_cert', () => {
 		expect((await lookup_cert(INST, 'x')).kind).toBe('error');
 	});
 
+	// A lookup changes nothing: a lost answer is an outage, not "unknown".
+	it.each([502, 504])('a %i on a lookup is unavailable and retryable', async status => {
+		mockFetch({error: 'Request to LoxiLB instance timed out'}, status, 'oam');
+		const result = await lookup_cert(INST, 'x');
+		expect(result.kind === 'error' && result.result.status).toBe('unavailable');
+		expect(result.kind === 'error' && result.result.retryable).toBe(true);
+	});
+
 	it('does not read an unreachable gateway as absent, and does not throw', async () => {
 		(global.fetch as Mock).mockRejectedValue(new TypeError('Failed to fetch'));
 		const result = await lookup_cert(INST, 'x');

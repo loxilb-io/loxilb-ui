@@ -84,6 +84,26 @@ describe('GET', () => {
 		expect(resp.data).toBeNull();
 	});
 
+	// `null` is valid JSON and a body Go writes for a nil value. Whether it
+	// parsed used to depend on the HTTP version: HTTP/2 has no reason phrase,
+	// so `statusText` is empty and the fallback read a field of `null`.
+	it.each([
+		['with no reason phrase (HTTP/2)', ''],
+		['with a reason phrase (HTTP/1.1)', 'OK'],
+	])('a JSON null body %s is a parsed null, not a parse failure', async (_name, statusText) => {
+		(global.fetch as Mock).mockResolvedValue(new Response('null', {status: 200, statusText, headers: {'Content-Type': 'application/json'}}));
+		const resp = await GET('http://gw/whatever');
+		expect(resp.code).toBe(200);
+		expect(resp.data).toBeNull();
+		expect(resp.parse_failed).toBeUndefined();
+		expect(() => assertOk(resp, 'Get Thing')).not.toThrow();
+	});
+
+	it.each([['[]'], ['0'], ['false'], ['"text"']])('a JSON %s body with no reason phrase is not a parse failure', async body => {
+		mockFetch(body);
+		expect((await GET('http://gw/whatever')).parse_failed).toBeUndefined();
+	});
+
 	it('attaches the bearer token when one is stored, omits it otherwise', async () => {
 		mockFetch('{}');
 		await GET('http://gw/a');

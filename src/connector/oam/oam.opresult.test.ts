@@ -48,11 +48,11 @@ describe('instance mutations return a discriminated OpResult', () => {
 		expect(res.retryable).toBe(false);
 	});
 
-	it('502 maps to unavailable (retryable)', async () => {
+	it('502 on a delete is outcome unknown: the instance may be gone', async () => {
 		mockFetch(JSON.stringify({error: 'bad gateway'}), {status: 502});
 		const res: any = await request_delete_instance(1);
-		expect(res.status).toBe('unavailable');
-		expect(res.retryable).toBe(true);
+		expect(res.status).toBe('unknown');
+		expect(res.retryable).toBe(false);
 	});
 
 	it('unknown 5xx maps to failed, never success (unknown ⇒ failed rule)', async () => {
