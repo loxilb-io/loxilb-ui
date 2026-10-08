@@ -14,11 +14,8 @@
 # Default owners — the loxilb-ui maintainers, plus the loxilb-devel review
 # account, mirroring loxilb-inference-gateway.
 #
-# loxilb-devel is listed HERE ONLY, by the same decision the gateway records.
-# Because the last matching pattern wins, it is auto-requested for paths no
-# narrower pattern below claims — not for the governance paths, which have
-# their own owner lines. Widen it by adding the handle to those lines too;
-# adding it here again will not do it.
+# Include loxilb-devel in every explicit owner rule so governance and
+# container changes also retain this review account.
 # ---------------------------------------------------------------------------
 *       @backguynn @inhogog2 @loxilb-devel
 
@@ -26,5 +23,5 @@
 # targets (a malicious workflow change can exfiltrate secrets or ship a
 # poisoned release). Call them out explicitly so a review is always required
 # on these paths even if the glob above is ever narrowed.
-/.github/        @backguynn @inhogog2 @NLX-SeokHwanKong
-/Dockerfile      @backguynn @inhogog2 @NLX-SeokHwanKong
+/.github/        @backguynn @inhogog2 @NLX-SeokHwanKong @loxilb-devel
+/Dockerfile      @backguynn @inhogog2 @NLX-SeokHwanKong @loxilb-devel
