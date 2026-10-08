@@ -80,6 +80,22 @@ describe('CertPemForm', () => {
 		fireEvent.click(within(await screen.findByRole('listbox')).getByText(usage));
 	}
 
+	it('keeps complete multiline certificate, key and chain material in the upload request', () => {
+		const onChange = vi.fn();
+		const certificate = CERT.replace('AAAA', Array(40).fill('QUFBQQ==').join('\n'));
+		const key = KEY.replace('AAAA', Array(50).fill('QkJCQg==').join('\n'));
+		const chain = `${certificate}\n${certificate}`;
+		render(<CertPemForm mode="upload" onChange={onChange} />);
+		type('Certificate (PEM)', certificate);
+		type('Private Key (PEM)', key);
+		type('Chain (PEM, optional)', chain);
+		const {isValid, ...material} = last(onChange);
+		expect(isValid).toBe(true);
+		expect(certFormToRequest(material)).toEqual({certPem: certificate, keyPem: key, chainPem: chain});
+		expect((screen.getByLabelText(/^Certificate \(PEM\)/) as HTMLTextAreaElement).value).toBe(certificate);
+		expect((screen.getByLabelText(/^Private Key \(PEM\)/) as HTMLTextAreaElement).value).toBe(key);
+	});
+
 	it('does not offer the choice on a gateway that does not declare usage', () => {
 		const onChange = vi.fn();
 		render(<CertPemForm mode="upload" onChange={onChange} />);

@@ -17,6 +17,7 @@ export default function TextBox(props: {
    label: string;
    multiline?: boolean;
    minRows?: number;
+   maxRows?: number;
    value: string | number | undefined;
    type?: string;
    format?: string;
@@ -26,7 +27,7 @@ export default function TextBox(props: {
    helperText?: string;
    raw?: boolean;
 }) {
-   const {label, multiline, minRows, value, type = 'string', format, disabled, onChange, error, helperText, raw} = props;
+   const {label, multiline, minRows, maxRows, value, type = 'string', format, disabled, onChange, error, helperText, raw} = props;
 
 	const inputType = mapMetaTypeToInputType(type);
 	const max = format ? MAX_VALUE_BY_FORMAT[format] : undefined;
@@ -138,6 +139,7 @@ export default function TextBox(props: {
 	   fullWidth
 	   multiline={multiline}
 	   minRows={minRows}
+	   maxRows={maxRows}
 	   value={displayValue}
 	   type={inputType}
 	   disabled={disabled}

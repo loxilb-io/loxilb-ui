@@ -3,7 +3,7 @@ import SingleTextBox from 'components/element/SingleTextBox';
 import ValueBunch from 'components/element/ValueBunch';
 import KvExactStatusPanel from 'components/panel/KvExactStatusPanel';
 import {t} from 'i18next';
-import {CHWBL_TUNING_FIELDS, effectiveAIHash, isAIService, isChwblSelector, resolveAIEngine, resolveAITopology} from 'types/ai_gateway';
+import {CHWBL_TUNING_FIELDS, FC_FIELDS, effectiveAIHash, isAIService, isChwblSelector, resolveAIEngine, resolveAITopology} from 'types/ai_gateway';
 import {IFcEffective, IServiceArguments} from 'types/load_balancer';
 
 function isSet(value: unknown): boolean {
@@ -41,13 +41,14 @@ function base(effective: IFcEffective, member: FcBaseMember): number {
 // ⚠️ Compact on purpose (observability scope): what is in force and who set
 // it, what the pool holds now, plus the two states an operator must act on.
 // Pool trends, per-tenant and per-endpoint detail stay in Grafana.
-function AdmissionReadBack({effective, pd, readAtMs}: {effective?: IFcEffective; pd: boolean; readAtMs?: number}) {
+function AdmissionReadBack({effective, declared, pd, readAtMs}: {effective?: IFcEffective; declared: boolean; pd: boolean; readAtMs?: number}) {
 	if (!effective) {
 		// Absent is not "off": the gateway reports it only where its data plane
 		// can read the pool state, so say what we know.
 		return (
 			<ValueBunch name={t('Admission Control')}>
 				<Typography variant="body2" color="text.secondary">{t('Not reported by this gateway.')}</Typography>
+				{declared && <Alert severity="warning">{t('The rule declares admission settings, but the gateway has not reported their runtime state. Whether these settings are in force is not known. Check the rule routing and gateway status, then refresh.')}</Alert>}
 			</ValueBunch>
 		);
 	}
@@ -236,7 +237,7 @@ export default function AIGatewayPanel({serviceArguments, readAtMs}: {serviceArg
 				</Grid2>
 			</ValueBunch>
 
-			{isAIService(serviceArguments) && <AdmissionReadBack effective={serviceArguments.fc_effective} pd={topology === 'pd'} readAtMs={readAtMs} />}
+			{isAIService(serviceArguments) && <AdmissionReadBack declared={FC_FIELDS.some(field => serviceArguments[field] !== undefined)} effective={serviceArguments.fc_effective} pd={topology === 'pd'} readAtMs={readAtMs} />}
 
 			{topology === 'pd' && (
 				<ValueBunch name={t('Prefill / Decode Disaggregation')}>
