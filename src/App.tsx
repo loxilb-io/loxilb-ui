@@ -25,7 +25,7 @@ import {theme_config} from 'theme';
 import Layout from 'components/layout/Layout';
 import NavLayout from 'components/layout/NavLayout';
 import {RequireAuth, RequireFeature, RequireRoles} from 'components/layout/RouteGuards';
-import {LOG_READER_ROLES} from 'types/role';
+import {AUDIT_SINK_READER_ROLES, LOG_READER_ROLES} from 'types/role';
 import RouteTitle from 'components/layout/RouteTitle';
 import ScrollToTop from 'components/layout/ScrollToTop';
 import PopUp from 'components/modal/PopUp';
@@ -79,6 +79,7 @@ import HAPage from 'pages/status/HAPage';
 import ProcessPage from 'pages/status/ProcessPage';
 
 import UserManagementPage from 'pages/managers/UserManagementPage';
+import AuditPage from 'pages/maintenance/AuditPage';
 import MaintenancePage from 'pages/maintenance/MaintenancePage';
 import SnapshotPage from 'pages/maintenance/SnapshotPage';
 import AITrafficPage from 'pages/observability/AITrafficPage';
@@ -222,6 +223,7 @@ export default function App() {
 									<Route path="maintenance" element={<Outlet />}>
 										<Route path="operator" element={<RequireFeature flavor="inference-gateway"><MaintenancePage /></RequireFeature>} />
 										<Route path="snapshots" element={<RequireFeature flavor="inference-gateway"><SnapshotPage /></RequireFeature>} />
+										<Route path="audit" element={<RequireFeature flavor="inference-gateway"><RequireRoles roles={AUDIT_SINK_READER_ROLES}><AuditPage /></RequireRoles></RequireFeature>} />
 									</Route>
 									{/* Observability pages are metric-fed and gateway-only at
 									    launch: the flavor guard answers loading/denied/

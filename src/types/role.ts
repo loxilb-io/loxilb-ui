@@ -19,5 +19,9 @@ export const LOG_READER_ROLES: readonly TUserRole[] = ['admin', 'operator'];
  * (`/audit/sink`: its address and last transport error). A viewer is refused
  * with 403; the state of every sink is in `/audit/status`, which every role
  * may read, so a viewer loses the address and the error and nothing else.
+ *
+ * The same two roles read the rest of the audit configuration (`/audit/policy`,
+ * `/audit/sinks/{name}`), so this is also the list for the Audit Trail page's
+ * menu entry and route. Changing any of it is for an administrator alone.
  */
 export const AUDIT_SINK_READER_ROLES: readonly TUserRole[] = ['admin', 'operator'];
