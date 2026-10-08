@@ -181,6 +181,19 @@ export async function gatewayHeldAddress(): Promise<string | undefined> {
 	return undefined;
 }
 
+/**
+ * A CA bundle file on the GATEWAY HOST, for frontend mTLS fixtures.
+ *
+ * Frontend mTLS reads its client CA from a path on the gateway, and a path
+ * that is not there makes the data plane refuse the rule (412). The default
+ * is the file the gateway's own mTLS scenario copies in; a testbed that was
+ * not set up by that scenario names a file it does have in
+ * `E2E_MTLS_CLIENT_CA_PATH`.
+ */
+export function frontendMtlsCaPath(): string {
+	return process.env.E2E_MTLS_CLIENT_CA_PATH || '/opt/loxilb/cert/client_ca.crt';
+}
+
 const GATEWAY_VIP_STATE = path.resolve(__dirname, '../../.auth/gateway-vip.json');
 
 /**
