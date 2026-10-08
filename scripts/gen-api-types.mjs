@@ -20,7 +20,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import YAML from 'yaml';
 import converter from 'swagger2openapi';
-import openapiTS from 'openapi-typescript';
+import openapiTS, {astToString} from 'openapi-typescript';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -37,13 +37,13 @@ for (const {src, out} of SPECS) {
 	const raw = fs.readFileSync(path.join(root, src), 'utf8');
 	const doc = src.endsWith('.json') ? JSON.parse(raw) : YAML.parse(raw);
 	const {openapi} = await converter.convertObj(doc, {patch: true, warnOnly: true, nocert: true});
-	const types = await openapiTS(openapi, {
-		commentHeader:
-			`/**\n` +
-			` * Generated from ${src} by scripts/gen-api-types.mjs — DO NOT EDIT.\n` +
-			` * Regenerate with: npm run gen:api\n` +
-			` */\n\n`,
-	});
+	// Keep optional request fields optional when the backend supplies a default.
+	const ast = await openapiTS(openapi, {defaultNonNullable: false});
+	const types =
+		`/**\n` +
+		` * Generated from ${src} by scripts/gen-api-types.mjs — DO NOT EDIT.\n` +
+		` * Regenerate with: npm run gen:api\n` +
+		` */\n\n` + astToString(ast);
 	const outPath = path.join(root, out);
 	fs.mkdirSync(path.dirname(outPath), {recursive: true});
 	fs.writeFileSync(outPath, types);

@@ -85,7 +85,7 @@ A modern React-based web dashboard for efficiently managing LoxiLB load balancer
 ```
 
 ### Tech Stack
-- **Frontend**: React 18, TypeScript 4.9, Material-UI v6
+- **Frontend**: React 18, TypeScript 5.9, Material-UI v6
 - **State Management**: Recoil, TanStack React Query v5
 - **Routing**: React Router v7
 - **Styling**: Emotion, MUI System
