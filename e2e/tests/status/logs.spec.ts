@@ -64,6 +64,9 @@ test.describe('Logs page (read-only)', () => {
 		// never mistaken for a search of the whole file.
 		await expect(page.getByText(/Filtering \d+ loaded lines/)).toBeVisible();
 
+		// The page says whose log this is, so it is not taken for the audit trail.
+		await expect(page.getByTestId('instance-log-scope')).toContainText('They are not the audit trail');
+
 		// Snapshot the archive list FIRST, then reload so the page's own
 		// /log-archives fetch is at least as fresh as the snapshot — the gateway
 		// rotates loxilbdp-*.log.gz continuously, and comparing an older page

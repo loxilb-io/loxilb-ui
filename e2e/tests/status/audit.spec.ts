@@ -31,6 +31,8 @@ test.describe('@gw System page — audit REST signals (live)', () => {
 		const heading = page.getByRole('heading', {name: 'Gateway audit writer'});
 		const section = heading.locator('xpath=ancestor::div[2]');
 		await expect(section.getByText('Writer', {exact: true})).toBeVisible({timeout: 20_000});
+		// The log on this page is the management service's own, and says so.
+		await expect(page.getByTestId('oam-log-scope')).toContainText('They are not the audit trail of any gateway');
 
 		// Writer running (the metrics row) agrees with the REST writer state.
 		const writer = section.getByText('Writer', {exact: true}).locator('xpath=following-sibling::*[1]');

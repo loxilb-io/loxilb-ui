@@ -147,6 +147,8 @@ test.describe('@gw AI API Key page', () => {
 
 		await toolbarButton(page, 'Refresh').click();
 		await expect(rowByText(page, 'e2e-key').first()).toBeVisible({timeout: 10_000});
+		// The gateway serves "no expiry" as the year-1 zero time; the row must not print it as a date.
+		await expect(rowByText(page, 'e2e-key').first()).not.toContainText('0001-01-01');
 		await expect(rowByText(page, 'e2e-imported-key').first()).toBeVisible({timeout: 10_000});
 		const listed = await (await gw('GET', `${APIKEY_PATH}?tenant_id=e2e-tenant`)).text();
 		expect(listed).not.toContain(importedSecret);
