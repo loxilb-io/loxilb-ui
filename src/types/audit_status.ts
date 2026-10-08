@@ -153,3 +153,22 @@ export function auditRestSignals(read: AuditRestRead | undefined, readFailed = f
 	if (orphaned > 0) signals.orphan = {count: orphaned, eventId: status.last_orphan_event_id || undefined};
 	return signals;
 }
+
+/**
+ * The named sinks the status lists, in the gateway's order. `undefined` when
+ * the status has no `sinks` key: a gateway older than the list cannot say, and
+ * "cannot say" is not "none". `null` is the list of a gateway with no sink.
+ */
+export function namedSinkNames(status: IAuditStatus): string[] | undefined {
+	const listed = (status as {sinks?: unknown}).sinks;
+	if (listed === null) return [];
+	if (!Array.isArray(listed)) return undefined;
+	const names: string[] = [];
+	for (const el of listed) {
+		if (!el || typeof el !== 'object') continue;
+		const sink = el as IAuditSinkStatus;
+		if (sink.compliance === true || !sink.name || sink.name === AUDIT_COMPLIANCE_SINK) continue;
+		if (!names.includes(sink.name)) names.push(sink.name);
+	}
+	return names;
+}

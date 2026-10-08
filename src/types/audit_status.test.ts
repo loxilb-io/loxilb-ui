@@ -6,7 +6,7 @@
 // "no sink configured", which is not a fault, and a configured sink with no
 // `connected` is a sink that is down.
 import {describe, expect, it} from 'vitest';
-import {auditRestSignals} from './audit_status';
+import {auditRestSignals, namedSinkNames} from './audit_status';
 
 const HEALTHY = {available: true, running: true, seq_high: 10551};
 
@@ -146,5 +146,22 @@ describe('auditRestSignals — status.sinks[]', () => {
 			kind: 'ok',
 			sinks: [{name: 'edr', compliance: false, condition: 'stopped', lagDrops: 0, writeErrors: 0}],
 		});
+	});
+});
+
+// The Audit Trail page reads each named sink by name; the names come from here.
+describe('namedSinkNames', () => {
+	it('lists the named sinks in the gateway\'s order and leaves the compliance sink out', () => {
+		expect(namedSinkNames({sinks: [{name: 'compliance', compliance: true}, {name: 'lake'}, {name: 'edr'}]})).toEqual(['lake', 'edr']);
+	});
+
+	it('reads null and [] as no sink, and a missing key as "cannot say"', () => {
+		expect(namedSinkNames({sinks: null as never})).toEqual([]);
+		expect(namedSinkNames({sinks: []})).toEqual([]);
+		expect(namedSinkNames({})).toBeUndefined();
+	});
+
+	it('skips an element with no name, a repeat, and anything that is not an object', () => {
+		expect(namedSinkNames({sinks: [null, {state: 'connected'}, {name: 'edr'}, {name: 'edr'}, {name: 'compliance'}] as never})).toEqual(['edr']);
 	});
 });
