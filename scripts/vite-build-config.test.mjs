@@ -8,7 +8,7 @@ test('production prefix and public settings are preserved without exposing priva
  Object.assign(process.env,{REACT_APP_PUBLIC_URL:'/owned-console',REACT_APP_API_URL:'/owned-api/oam',REACT_APP_VERSION:'test-build',UC6_PRIVATE_PROBE:'never-embed-this-marker'});
  try {
   const {config}=await loadConfigFromFile({command:'build',mode:'production'}, 'vite.config.mts');
-  assert.equal(config.base,'/owned-console/');
+  assert.equal(config.base,'/');
   assert.equal(config.define['process.env.REACT_APP_PUBLIC_URL'],'"/owned-console"');
   assert.equal(config.define['process.env.REACT_APP_API_URL'],'"/owned-api/oam"');
   assert.equal(config.define['process.env.REACT_APP_VERSION'],'"test-build"');

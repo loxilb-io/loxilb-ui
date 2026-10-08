@@ -17,7 +17,8 @@ export default defineConfig(({mode}) => {
  };
  return {
   plugins: [react(), tsconfigPaths()],
-  base: `${publicUrl.replace(/\/$/, '')}/`,
+  // Caddy serves /static from /srv; Router basename is a separate public setting.
+  base: '/',
   define: Object.fromEntries(Object.entries(settings).map(([key, value]) => [`process.env.${key}`, value === undefined ? 'undefined' : JSON.stringify(value)])),
   build: {
    outDir: 'build', sourcemap: false,
