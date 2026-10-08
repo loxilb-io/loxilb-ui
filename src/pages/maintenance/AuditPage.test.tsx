@@ -24,6 +24,7 @@ type Q = Record<string, unknown>;
 
 const state = vi.hoisted(() => ({
 	isAdmin: true,
+	refetchQueries: vi.fn(),
 	popups: [] as Popup[],
 	status: {} as Q,
 	statusRefetches: 0,
@@ -44,6 +45,8 @@ const state = vi.hoisted(() => ({
 		getNamed: vi.fn(),
 	},
 }));
+
+vi.mock('@tanstack/react-query', async importOriginal => ({...(await importOriginal<object>()), useQueryClient: () => ({refetchQueries: state.refetchQueries})}));
 
 vi.mock('hooks/instanceHook', () => ({useInstanceFromURL: () => ({id: 5, name: 'gw'})}));
 vi.mock('hooks/query/oamHooks', () => ({useRole: () => ({is_admin: state.isAdmin})}));
@@ -485,4 +488,19 @@ describe('AuditPage — gateway without the audit API', () => {
 		expect(screen.getByText('This gateway has no audit API, so there is nothing to configure here.')).toBeTruthy();
 		expect(screen.queryByTestId('audit-policy')).toBeNull();
 	});
+});
+
+
+it('Refresh reads status and only this instance active audit configuration', async () => {
+	render(<AuditPage />);
+	const before = state.statusRefetches;
+	fireEvent.click(screen.getByRole('button', {name: 'Refresh'}));
+	await waitFor(() => expect(state.statusRefetches).toBe(before + 1));
+	const options = state.refetchQueries.mock.calls.at(-1)![0];
+	expect(options.type).toBe('active');
+	expect(options.predicate({queryKey: ['instance', 'audit', 'policy', 5]})).toBe(true);
+	expect(options.predicate({queryKey: ['instance', 'audit', 'sinks', 5, 'edr']})).toBe(true);
+	expect(options.predicate({queryKey: ['instance', 'audit', 'policy', 6]})).toBe(false);
+	expect(options.predicate({queryKey: ['instance', 'loadbalancer', 5]})).toBe(false);
+	await waitFor(() => expect((screen.getByRole('button', {name: 'Refresh'}) as HTMLButtonElement).disabled).toBe(false));
 });

@@ -123,3 +123,17 @@ describe('named sink connectors', () => {
 		expect(del).not.toHaveBeenCalled();
 	});
 });
+
+// Missing/unusable reads must never stand in for an empty configuration.
+describe('audit read body integrity', () => {
+	it.each([null, undefined, [], 'unavailable', false, 0])('rejects unusable policy/compliance/named body %j', async data => {
+		for (const read of [() => query_get_audit_policy(instance), () => query_get_audit_sink(instance), () => query_get_audit_named_sink(instance, 'edr')]) {
+			get.mockResolvedValue(resp(200, data));
+			await expect(read()).rejects.toBeInstanceOf(ApiError);
+		}
+	});
+	it('does not accept no-content as a configuration read', async () => {
+		get.mockResolvedValue(resp(204));
+		await expect(query_get_audit_sink(instance)).rejects.toBeInstanceOf(ApiError);
+	});
+});
