@@ -79,6 +79,7 @@ COPY nginx-https.conf.template /etc/nginx/templates/https.conf.template
 COPY nginx-security-headers.conf /etc/nginx/snippets/security-headers.conf
 
 COPY ssl-setup.sh /usr/local/bin/ssl-setup.sh
+COPY nginx-ipv6.sh /usr/local/bin/nginx-ipv6.sh
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/ssl-setup.sh /docker-entrypoint.sh
 

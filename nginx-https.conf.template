@@ -4,7 +4,7 @@
 # Plain-HTTP listener: answers health probes and redirects everything else.
 server {
     listen ${HTTP_PORT};
-    listen [::]:${HTTP_PORT};
+    ${IPV6_HTTP_LISTEN}
     server_name _;
 
     # Redirect responses carry the security set too (no HSTS on plain HTTP —
@@ -33,7 +33,7 @@ server {
 
 server {
     listen ${HTTPS_PORT} ssl;
-    listen [::]:${HTTPS_PORT} ssl;
+    ${IPV6_HTTPS_LISTEN}
     http2 on;
     server_name _;
 
