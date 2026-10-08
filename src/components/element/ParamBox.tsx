@@ -24,6 +24,7 @@ interface ParamBoxProps {
    width?: string;
    multiline?: boolean;
    minRows?: number;
+   maxRows?: number;
    disabled?: boolean;
    onChange: (val: any) => void;
    error?: boolean;
@@ -38,7 +39,7 @@ export function shouldAutoSelectEnumDefault(enumOptions: IEnumItem[], value: unk
 }
 
 export default function ParamBox(props: ParamBoxProps) {
-   const {label, value, param_desc, onChange, width, multiline, minRows, disabled, error, helperText, onValidation, raw} = props;
+   const {label, value, param_desc, onChange, width, multiline, minRows, maxRows, disabled, error, helperText, onValidation, raw} = props;
    const type = param_desc?.type ?? (typeof value === 'number' ? 'integer' : typeof value === 'boolean' ? 'boolean' : 'string');
    const format = param_desc?.format;
    const description = param_desc?.description;
@@ -122,7 +123,7 @@ export default function ParamBox(props: ParamBoxProps) {
 	else if (type === 'macaddress') 
 		return <MACAddressBox label={labelText} value={value} disabled={disabled} onChange={handleChange} error={!!error || showRequiredHelper} helperText={finalHelperText}/>;
 	else
-		return <TextBox label={labelText} value={value} type={type} format={format} disabled={disabled} multiline={multiline} minRows={minRows} onChange={handleChange} error={!!error || showRequiredHelper} helperText={finalHelperText} raw={raw} />;
+		return <TextBox label={labelText} value={value} type={type} format={format} disabled={disabled} multiline={multiline} minRows={minRows} maxRows={maxRows} onChange={handleChange} error={!!error || showRequiredHelper} helperText={finalHelperText} raw={raw} />;
    };
 
    return (

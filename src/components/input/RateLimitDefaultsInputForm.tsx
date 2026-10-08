@@ -163,6 +163,7 @@ export default function RateLimitDefaultsInputForm({onChange, value, identityLoc
 					</TextField>
 					<ParamBox
 						label={t('Service')}
+						helperText={isRule ? t('Enter the service VIP and port, for example 10.10.10.254:18080.') : undefined}
 						value={draft.rule_ident}
 						onChange={update('rule_ident')}
 						// ⚠️ Disabled rather than merely ignored on the global scope:

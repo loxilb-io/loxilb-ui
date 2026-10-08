@@ -77,6 +77,17 @@ describe('AIGatewayPanel admission read-back', () => {
 		expect(screen.getByText('Not reported by this gateway.')).toBeTruthy();
 	});
 
+	it('warns about unverified runtime state when declared settings have no pool readback', () => {
+		render(<AIGatewayPanel serviceArguments={args({fc_mode: 'enforce', fc_max_outstanding: 1})} />);
+		expect(screen.getByRole('alert').textContent).toContain('Whether these settings are in force is not known.');
+		expect(screen.queryByText('Executing Now')).toBeNull();
+	});
+
+	it('does not warn when declared settings have runtime readback', () => {
+		render(<AIGatewayPanel serviceArguments={args({fc_mode: 'observe', fc_effective: healthy})} />);
+		expect(screen.queryByRole('alert')).toBeNull();
+	});
+
 	it('renders no admission section on a rule the gateway keeps no admission pool for', () => {
 		render(<AIGatewayPanel serviceArguments={args({sse_mode: false, api_key_auth: 'disabled', model_name: 'm'})} />);
 		expect(screen.queryByText('Admission Control')).toBeNull();

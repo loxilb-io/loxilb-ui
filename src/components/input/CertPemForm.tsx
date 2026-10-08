@@ -135,6 +135,8 @@ export default function CertPemForm(props: {mode: Mode; usageDeclared?: boolean;
 					value={form.certPem}
 					onChange={handleChange('certPem')}
 					multiline
+					minRows={3}
+					maxRows={6}
 					param_desc={{
 						type: 'string',
 						description: usage === 'ca' ? 'One or more CA certificates in PEM (-----BEGIN CERTIFICATE-----)' : 'Leaf certificate PEM (-----BEGIN CERTIFICATE-----)',
@@ -147,6 +149,8 @@ export default function CertPemForm(props: {mode: Mode; usageDeclared?: boolean;
 						value={form.keyPem}
 						onChange={handleChange('keyPem')}
 						multiline
+						minRows={3}
+						maxRows={6}
 						param_desc={{type: 'string', description: 'Private key PEM — stored 0600, never returned by the API', required: true}}
 					/>
 				)}
@@ -155,6 +159,8 @@ export default function CertPemForm(props: {mode: Mode; usageDeclared?: boolean;
 					value={form.chainPem ?? ''}
 					onChange={handleChange('chainPem')}
 					multiline
+					minRows={2}
+					maxRows={4}
 					param_desc={{type: 'string', description: usage === 'ca' ? 'Further CA certificates of the same bundle' : 'Intermediate CA chain PEM'}}
 				/>
 			</Stack>
