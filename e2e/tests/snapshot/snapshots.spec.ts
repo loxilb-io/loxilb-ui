@@ -342,7 +342,7 @@ test.describe('@gw Snapshots page (admin)', () => {
 			if (r.method() === 'POST' && /\/oam\/snapshots\/.*\/restore/.test(r.url())) commits.push(r.url());
 		});
 		await wizard.getByRole('button', {name: 'Restore Now'}).dblclick();
-		await expect(wizard.getByText(/Restore succeeded|Restore failed|did not complete/)).toBeVisible({timeout: 60_000});
+		await expect(wizard.getByText(/Restore succeeded|Restore applied|Restore failed|did not complete|outcome unconfirmed/)).toBeVisible({timeout: 60_000});
 		expect(commits, 'double-click must not double-commit').toHaveLength(1);
 		await wizard.getByRole('button', {name: 'Close'}).click();
 	});

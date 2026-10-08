@@ -36,7 +36,8 @@ import {request_restore_snapshot} from 'connector/oam/snapshotApi';
 import {t} from 'i18next';
 import React from 'react';
 import {IGatewayRestoreResult, IRestoreOutcomeParsed, ISnapshot, TRestoreWizardStep} from 'types/snapshot';
-import {canContinueToCommit, classifyCommitResult, isDryRunBlocked} from './wizardLogic';
+import {retryAfterSeconds} from 'utils/retryAfter';
+import {asRestoreResult, canContinueToCommit, classifyCommitResult, classifyDryRun, gatewayRefusalText} from './wizardLogic';
 import {snapshotOpErrorText} from './snapshotOpError';
 
 //---------------------------------------------------------
@@ -97,7 +98,7 @@ function WarningList(props: {warnings?: string[]}) {
 	);
 }
 
-function ErrorList(props: {errors?: string[]}) {
+function ErrorList(props: {errors?: string[] | null}) {
 	const errors = props.errors ?? [];
 	if (errors.length === 0) return null;
 	return (
@@ -113,7 +114,83 @@ function ErrorList(props: {errors?: string[]}) {
 	);
 }
 
-// Renders the commit outcome verbatim — the three-way branch of §5.2.
+// The wait the gateway asked for, and only when it asked for one.
+function RetryAfterNote(props: {outcome: IRestoreOutcomeParsed | null}) {
+	const seconds = retryAfterSeconds(props.outcome?.gateway_retry_after);
+	if (seconds === null) return null;
+	return <Typography variant="body2">{t('Try again in {{seconds}} s.', {seconds})}</Typography>;
+}
+
+// A body that is not a restore result: the gateway's sentence when it has
+// one, else the body as it arrived.
+function RawGatewayBody(props: {body: unknown}) {
+	const text = gatewayRefusalText(props.body) ?? JSON.stringify(props.body ?? {}, null, 1);
+	return (
+		<Typography variant="body2" sx={{whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace'}}>
+			{text}
+		</Typography>
+	);
+}
+
+/** Exported for tests: what Step 1 says about a dry-run the gateway answered. */
+export function DryRunResult(props: {outcome: IRestoreOutcomeParsed}) {
+	const {outcome} = props;
+	const verdict = classifyDryRun(outcome, null);
+	const gw = asRestoreResult(outcome.gateway_response);
+	const title =
+		verdict === 'pass'
+			? t('Dry-run passed — the snapshot is applicable')
+			: verdict === 'busy'
+				? t('The gateway cannot run a restore right now (HTTP {{code}})', {code: outcome.gateway_status ?? '?'})
+				: verdict === 'refused'
+					? t('This snapshot cannot be restored')
+					: t('The dry-run answer could not be read');
+	const unverified = verdict === 'unreadable' && <Typography variant="body2">{t('Nothing was verified, so the restore cannot continue.')}</Typography>;
+
+	// The gateway's error envelope, or a body that is no JSON object: there is
+	// no schema, compatibility or plan to report.
+	if (gw === null) {
+		return (
+			<Alert severity="error">
+				<AlertTitle>{title}</AlertTitle>
+				{unverified}
+				<RawGatewayBody body={outcome.gateway_response} />
+				<RetryAfterNote outcome={outcome} />
+			</Alert>
+		);
+	}
+
+	// Only meaningful when the gateway reported both versions (a rejected
+	// document can come back with an empty snapshot_gateway_version).
+	const versionNote =
+		gw.snapshot_gateway_version && gw.current_gateway_version && gw.snapshot_gateway_version !== gw.current_gateway_version
+			? t('Snapshot was taken on gateway {{from}}; the target runs {{to}}.', {from: gw.snapshot_gateway_version, to: gw.current_gateway_version})
+			: null;
+
+	return (
+		<Stack spacing={2}>
+			<Alert severity={verdict === 'pass' ? 'success' : 'error'}>
+				<AlertTitle>{title}</AlertTitle>
+				{unverified}
+				{typeof gw.compatible === 'boolean' && (
+					<Typography variant="body2">
+						{t('Schema')} {gw.schema_version || '?'} · {gw.compatible ? t('compatible') : t('incompatible')}
+					</Typography>
+				)}
+				{versionNote && <Typography variant="body2">{versionNote}</Typography>}
+				{outcome.cross_instance && (
+					<Typography variant="body2">{t('⚠ Cross-instance restore: this snapshot was taken from a different instance.')}</Typography>
+				)}
+				<ErrorList errors={gw.errors} />
+				<WarningList warnings={gw.warnings} />
+				<RetryAfterNote outcome={outcome} />
+			</Alert>
+			<PlanTable plan={gw.plan} />
+		</Stack>
+	);
+}
+
+// Renders the commit outcome verbatim — one panel per §5.2 branch.
 /** Exported for tests: the commit/dry-run outcome rendering is the honesty
  *  surface, so it is asserted directly rather than through the whole wizard. */
 export function CommitResult(props: {outcome: IRestoreOutcomeParsed | null; oamError: string | null; instanceName: string}) {
@@ -131,7 +208,7 @@ export function CommitResult(props: {outcome: IRestoreOutcomeParsed | null; oamE
 		);
 	}
 
-	const gw = outcome?.gateway_response;
+	const gw = asRestoreResult(outcome?.gateway_response);
 
 	if (branch === 'ok') {
 		return (
@@ -140,6 +217,36 @@ export function CommitResult(props: {outcome: IRestoreOutcomeParsed | null; oamE
 				<Typography variant="body2">
 					{t('Snapshot applied to {{name}} and verified by the gateway.', {name: instanceName})}
 				</Typography>
+				<PlanTable plan={gw?.plan} />
+				<ErrorList errors={gw?.errors} />
+				<WarningList warnings={gw?.warnings} />
+			</Alert>
+		);
+	}
+
+	// Applied, but a restart undoes it (or nothing says it will not). The
+	// gateway puts its reason in `errors` while still answering "ok".
+	if (branch === 'ok-not-durable' || branch === 'ok-durability-unreported') {
+		const notDurable = branch === 'ok-not-durable';
+		return (
+			<Alert severity="warning">
+				<AlertTitle>
+					{notDurable
+						? t('Restore applied, but not saved for restart')
+						: t('Restore applied; the gateway did not say whether it was saved for restart')}
+				</AlertTitle>
+				<Typography variant="body2">
+					{notDurable
+						? t(
+								'The snapshot is live on {{name}} now, but the gateway could not write it to its boot configuration. A restart brings back the configuration from before this restore.',
+								{name: instanceName},
+							)
+						: t(
+								'The snapshot is live on {{name}} now. This gateway did not report whether it wrote the result to its boot configuration, so do not assume it survives a restart.',
+								{name: instanceName},
+							)}
+				</Typography>
+				<ErrorList errors={gw?.errors} />
 				<PlanTable plan={gw?.plan} />
 				<WarningList warnings={gw?.warnings} />
 			</Alert>
@@ -177,19 +284,30 @@ export function CommitResult(props: {outcome: IRestoreOutcomeParsed | null; oamE
 		);
 	}
 
-	// The gateway answered but with no recognizable result (e.g. stopped
-	// before APPLY, or a non-JSON body) — show what we actually got, never a
-	// fabricated success.
+	// `incomplete`: the gateway stopped before APPLY or did not start, so
+	// nothing was changed. `unconfirmed`: its status and its body do not agree
+	// on what happened, so neither is repeated as fact. Both show what actually
+	// arrived, never a fabricated success.
+	const unconfirmed = branch === 'unconfirmed';
 	return (
 		<Alert severity="error">
-			<AlertTitle>{t('Restore did not complete (gateway HTTP {{code}})', {code: outcome?.gateway_status ?? '?'})}</AlertTitle>
-			<ErrorList errors={gw?.errors} />
-			<WarningList warnings={gw?.warnings} />
-			{!gw?.errors?.length && (
-				<Typography variant="body2" sx={{whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace'}}>
-					{JSON.stringify(outcome?.gateway_response ?? {}, null, 1)}
+			<AlertTitle>
+				{unconfirmed
+					? t('Restore outcome unconfirmed (gateway HTTP {{code}})', {code: outcome?.gateway_status ?? '?'})
+					: t('Restore did not complete (gateway HTTP {{code}})', {code: outcome?.gateway_status ?? '?'})}
+			</AlertTitle>
+			{unconfirmed && (
+				<Typography variant="body2">
+					{t(
+						'The answer does not say clearly whether the snapshot was applied. Read the configuration of {{name}} before doing anything else, and do not run the restore again until you have.',
+						{name: instanceName},
+					)}
 				</Typography>
 			)}
+			<ErrorList errors={gw?.errors} />
+			<WarningList warnings={gw?.warnings} />
+			{!gw?.errors?.length && <RawGatewayBody body={outcome?.gateway_response} />}
+			<RetryAfterNote outcome={outcome} />
 		</Alert>
 	);
 }
@@ -246,16 +364,7 @@ export default function RestoreWizard(props: RestoreWizardProps) {
 		};
 	}, [open, snapshot.id]);
 
-	const gw = dryRunOutcome?.gateway_response;
-	const dryRunBlocked = isDryRunBlocked(dryRunOutcome, dryRunError);
 	const canContinue = canContinueToCommit(dryRunOutcome, dryRunError, dryRunLoading);
-
-	// Only meaningful when the gateway reported both versions (a rejected
-	// document can come back with an empty snapshot_gateway_version).
-	const versionNote =
-		gw?.snapshot_gateway_version && gw?.current_gateway_version && gw.snapshot_gateway_version !== gw.current_gateway_version
-			? t('Snapshot was taken on gateway {{from}}; the target runs {{to}}.', {from: gw.snapshot_gateway_version, to: gw.current_gateway_version})
-			: null;
 
 	// Ref-guarded: two rapid clicks on "Restore Now" both run before React
 	// re-renders the step, and a doubled commit means a doubled restore plus a
@@ -301,28 +410,7 @@ export default function RestoreWizard(props: RestoreWizardProps) {
 								</Typography>
 							</Alert>
 						)}
-						{dryRunOutcome !== null && (
-							<Stack spacing={2}>
-								<Alert severity={dryRunBlocked ? 'error' : 'success'}>
-									<AlertTitle>
-										{dryRunBlocked ? t('This snapshot cannot be restored') : t('Dry-run passed — the snapshot is applicable')}
-									</AlertTitle>
-									<Typography variant="body2">
-										{t('Schema')} {gw?.schema_version ?? '?'} ·{' '}
-										{gw?.compatible === false ? t('incompatible') : t('compatible')}
-									</Typography>
-									{versionNote && <Typography variant="body2">{versionNote}</Typography>}
-									{dryRunOutcome.cross_instance && (
-										<Typography variant="body2">
-											{t('⚠ Cross-instance restore: this snapshot was taken from a different instance.')}
-										</Typography>
-									)}
-									<ErrorList errors={gw?.errors} />
-									<WarningList warnings={gw?.warnings} />
-								</Alert>
-								<PlanTable plan={gw?.plan} />
-							</Stack>
-						)}
+						{dryRunOutcome !== null && <DryRunResult outcome={dryRunOutcome} />}
 					</DialogContent>
 					<DialogActions>
 						<Button onClick={handleDialogClose}>{t('Cancel')}</Button>
