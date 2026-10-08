@@ -26,7 +26,9 @@ const NO_WRITER = [
 	'loxilb_audit_writer_up 0',
 ].join('\n');
 
-function withWriter(o: {up?: number; beat?: number; written?: Record<string, number>; dropped?: Record<string, number>; writeFailures?: number; restarts?: number; reserve?: number} = {}) {
+type SinkCounters = {poison?: number; lagDrops?: number};
+
+function withWriter(o: {up?: number; beat?: number; written?: Record<string, number>; dropped?: Record<string, number>; writeFailures?: number; restarts?: number; reserve?: number; lostToRetention?: number; sinks?: Record<string, SinkCounters>} = {}) {
 	return [
 		NO_WRITER.replace('loxilb_audit_writer_up 0', `loxilb_audit_writer_up ${o.up ?? 1}`),
 		`loxilb_audit_last_heartbeat_timestamp_seconds ${o.beat ?? 1_790_000_000}`,
@@ -40,6 +42,13 @@ function withWriter(o: {up?: number; beat?: number; written?: Record<string, num
 		'loxilb_audit_records_unattributed_total 0',
 		'loxilb_audit_orphaned_intents_total 0',
 		'loxilb_audit_segments_pruned_total 7',
+		`loxilb_audit_records_lost_to_retention_total ${o.lostToRetention ?? 0}`,
+		// The per-sink families exist for a sink while it is configured.
+		...Object.entries(o.sinks ?? {}).flatMap(([sink, c]) => [
+			`loxilb_audit_sink_connected{sink="${sink}"} 1`,
+			`loxilb_audit_sink_poison_total{sink="${sink}"} ${c.poison ?? 0}`,
+			`loxilb_audit_sink_lag_drops_total{sink="${sink}"} ${c.lagDrops ?? 0}`,
+		]),
 		...AUDIT_STREAMS.map(s => `loxilb_audit_records_written_total{stream="${s}"} ${o.written?.[s] ?? 0}`),
 		...AUDIT_STREAMS.flatMap(s => REASONS.map(r => `loxilb_audit_records_dropped_total{stream="${s}",reason="${r}"} ${o.dropped?.[`${s}/${r}`] ?? 0}`)),
 	].join('\n');
@@ -125,8 +134,32 @@ describe('auditWriter', () => {
 		expect(r.faults).toEqual([]);
 	});
 
-	it('pins the fault set: ten counters, housekeeping excluded', () => {
-		expect(AUDIT_FAULT_COUNTERS).toHaveLength(10);
+	// Pruning is housekeeping; pruning a segment a sink had not been sent is a
+	// loss, and the gateway counts it apart.
+	it('counts records retention deleted before every sink was sent them as a fault', () => {
+		const r = auditWriter(snapshotOf(withWriter({lostToRetention: 40}), 0));
+		if (r.kind !== 'ok') throw new Error(r.kind);
+		expect(r.faults).toEqual([{key: 'loxilb_audit_records_lost_to_retention_total', total: 40}]);
+	});
+
+	it('reports per sink only the losses above zero: a sink that lost nothing adds nothing', () => {
+		const r = auditWriter(snapshotOf(withWriter({sinks: {compliance: {}, edr: {poison: 3}, lake: {lagDrops: 1}, both: {poison: 2, lagDrops: 5}}}), 0));
+		if (r.kind !== 'ok') throw new Error(r.kind);
+		expect(r.sinks).toEqual([
+			{name: 'both', poison: 2, lagDrops: 5},
+			{name: 'edr', poison: 3, lagDrops: 0},
+			{name: 'lake', poison: 0, lagDrops: 1},
+		]);
+	});
+
+	it('reports no sink loss for a gateway with no sink, or one that exports no sink family', () => {
+		const r = auditWriter(snapshotOf(withWriter(), 0));
+		if (r.kind !== 'ok') throw new Error(r.kind);
+		expect(r.sinks).toEqual([]);
+	});
+
+	it('pins the fault set: eleven counters, housekeeping excluded', () => {
+		expect(AUDIT_FAULT_COUNTERS).toHaveLength(11);
 		expect(AUDIT_FAULT_COUNTERS).not.toContain('loxilb_audit_segments_pruned_total');
 		expect(AUDIT_FAULT_COUNTERS).not.toContain('loxilb_audit_delegation_lookups_total');
 	});

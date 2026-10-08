@@ -133,11 +133,15 @@ export const AUDIT_REST_REFETCH_MS = 30_000;
  * when the last observer unmounts, so leaving the page stops the requests.
  *
  * ⚠️ Pass `null` unless the instance is a POSITIVELY identified gateway.
+ *
+ * `readSink` is part of the key: an answer read without /audit/sink must not
+ * be replayed for a role that may read it.
  */
-export function useGatewayAuditRest(instance: IInstance | null) {
+export function useGatewayAuditRest(instance: IInstance | null, opts: {readSink: boolean}) {
+	const {readSink} = opts;
 	return useQuery({
-		queryKey: ['status', 'audit', instance?.id ?? ''],
-		queryFn: () => query_get_audit_rest(instance!),
+		queryKey: ['status', 'audit', instance?.id ?? '', readSink],
+		queryFn: () => query_get_audit_rest(instance!, {readSink}),
 		enabled: !!instance,
 		refetchInterval: AUDIT_REST_REFETCH_MS,
 		retry: (failureCount, error) => !(error instanceof ApiError && [401, 403, 404].includes(error.status)) && failureCount < 3,

@@ -3,9 +3,11 @@
 //---------------------------------------------------------
 // The audit writer section reads Prometheus; the gateway's /audit/status and
 // /audit/sink add only what the metrics cannot say, and only when urgent: a
-// configured sink that is not connected, and the latest orphaned event id. A
+// configured sink that is not sending, and the latest orphaned event id. A
 // healthy answer adds nothing. 403 is a quiet note, 404 (an older gateway) is
-// silence, and the read polls only while the page is open.
+// silence, a read that fails is "unknown", and the read polls only while the
+// page is open. The state of every sink comes from the status, which every
+// role may read; a viewer is never sent to /audit/sink (AUD-E2E-08..10).
 //
 // ⭐ Only /audit/* is intercepted. /version, flavor detection and the metrics
 // scrape stay real, so the section renders exactly as it does on the testbed.
@@ -132,5 +134,69 @@ test.describe('@gw System page — audit REST signals (mock)', () => {
 		// Give any stray timer a real chance to fire before judging silence.
 		await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => resolve(null))));
 		expect(counter.reads).toBe(before);
+	});
+
+	test('AUD-E2E-08: a named sink that stalled is one warning; the connected compliance sink adds nothing', async ({page}) => {
+		await mockAudit(
+			page,
+			{
+				status: 200,
+				body: {
+					...HEALTHY,
+					compliance_sink: true,
+					sinks: [
+						{name: 'compliance', compliance: true, state: 'connected', in_active_segment: true},
+						{name: 'e2e-edr', state: 'stalled', lag_drops: 2},
+					],
+				},
+			},
+			// `connected` here is absent: the list's word decides, not this.
+			{status: 200, body: {enabled: true, address: 'siem.example:6514'}},
+		);
+		const section = await openAuditSection(page);
+		const warning = section.getByRole('alert').filter({hasText: 'Audit sink e2e-edr'});
+		await expect(warning).toHaveCount(1);
+		await expect(warning).toContainText('is stalled: it cannot read its place in the trail and sends nothing until that clears.');
+		await expect(warning).toContainText('Retention removed 2 segments before it had read them');
+		await expect(section.getByText(/compliance audit sink/)).toHaveCount(0);
+		await expect(section.getByText(/sink state is unknown/)).toHaveCount(0);
+	});
+
+	test('AUD-E2E-09: a status read that keeps failing says the sink state is unknown', async ({page, consoleGuard}) => {
+		consoleGuard.allowRequest({status: 500, path: /\/audit\/status$/});
+		const counter = await mockAudit(page, {status: 500, body: {code: 500, message: 'boom'}});
+		const section = await openAuditSection(page);
+		// Three retries at 3 s before the query gives up.
+		await expect(section.getByRole('alert').filter({hasText: "The audit sink state is unknown: the gateway's audit status could not be read."})).toHaveCount(1, {timeout: 30_000});
+		expect(counter.reads).toBeGreaterThan(1);
+	});
+});
+
+test.describe('@gw System page — audit REST signals as a viewer (mock)', () => {
+	test.use({storageState: '.auth/viewer.json'});
+
+	test.beforeAll(async () => {
+		instName = (await activeInstance()).name;
+	});
+
+	test('AUD-E2E-10: a viewer sees the sink that is down and is never sent to /audit/sink', async ({page, consoleGuard}) => {
+		// Not this case's subject: the System page's own log card asks the
+		// management backend for ITS logs, which a viewer is refused. Allowed
+		// by exact path so that nothing under /audit/ can hide behind it.
+		consoleGuard.allowRequest({status: 403, path: /\/oam\/logs(\/archives)?$/});
+		const sinkReads: string[] = [];
+		page.on('request', r => {
+			if (SINK_RE.test(new URL(r.url()).pathname)) sinkReads.push(r.url());
+		});
+		const counter = await mockAudit(page, {
+			status: 200,
+			body: {...HEALTHY, compliance_sink: true, sinks: [{name: 'compliance', compliance: true, state: 'disconnected'}]},
+		});
+		const section = await openAuditSection(page);
+		expect(counter.reads).toBe(1);
+		// No address: that is the part only /audit/sink carries.
+		await expect(section.getByRole('alert').filter({hasText: 'The compliance audit sink is configured but not connected.'})).toHaveCount(1);
+		await expect(section.getByText(/administrator rights/)).toHaveCount(0);
+		expect(sinkReads, 'a viewer must not send the sink read the backend refuses').toEqual([]);
 	});
 });

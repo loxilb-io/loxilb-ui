@@ -290,15 +290,22 @@ export async function query_instance_health(instance: IInstance): Promise<{isHea
  *
  * ⚠️ Call only for a POSITIVELY identified gateway: plain loxilb has no
  * /audit/* and must never see the request.
+ *
+ * ⚠️ `readSink` is the caller's word that the role may read /audit/sink
+ * (AUDIT_SINK_READER_ROLES). The management backend refuses a viewer with
+ * 403, and the state of every sink is in the status, so for a viewer the
+ * request is not sent at all.
  */
-export async function query_get_audit_rest(instance: IInstance): Promise<AuditRestRead> {
+export async function query_get_audit_rest(instance: IInstance, opts: {readSink: boolean}): Promise<AuditRestRead> {
 	const statusResp = await GET_INST<GwGetResp<'/audit/status'>>(instance, `/audit/status`);
 	if (statusResp.code === 403) return {kind: 'forbidden'};
 	if (statusResp.code === 404) return {kind: 'absent'};
 	assertOk(statusResp, 'Get Audit Status');
 	// Only after the status answered: a refusal there would be refused here
 	// too, and a second identical refusal is just more console noise. The sink
-	// read stands on its own: its failure loses the sink signal only.
+	// read stands on its own: its failure loses the compliance sink's address
+	// and last error only.
+	if (!opts.readSink) return {kind: 'ok', status: (statusResp.data ?? {}) as IAuditStatus, sink: undefined};
 	const sinkResp = await GET_INST<GwGetResp<'/audit/sink'>>(instance, `/audit/sink`);
 	const sinkOk = sinkResp.code >= 200 && sinkResp.code < 300 && !sinkResp.parse_failed;
 	return {kind: 'ok', status: (statusResp.data ?? {}) as IAuditStatus, sink: sinkOk ? ((sinkResp.data ?? {}) as IAuditSink) : undefined};

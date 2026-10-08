@@ -22,7 +22,8 @@
 
 //
 // Compact by design: the three urgent alerts, the writer and its liveness,
-// one "dropped since start" line per stream and one fault-counter line. The
+// one "dropped since start" line per stream, one fault-counter line, and one
+// line per sink that lost records for good (poison, retention). The
 // gateway-clock timestamps, written counts and housekeeping counters
 // (retention pruning, originator trust lookups) are not shown.
 
@@ -47,6 +48,9 @@ export const AUDIT_FAMILIES = [
 	'loxilb_audit_reserve_breached',
 	'loxilb_audit_orphaned_intents_total',
 	'loxilb_audit_originator_dropped_total',
+	'loxilb_audit_records_lost_to_retention_total',
+	'loxilb_audit_sink_poison_total',
+	'loxilb_audit_sink_lag_drops_total',
 ] as const;
 
 /** The writer's liveness cadence (gateway pkg/audit DefaultHeartbeatInterval). */
@@ -71,6 +75,9 @@ export const AUDIT_FAULT_COUNTERS = [
 	'loxilb_audit_records_unattributed_total',
 	'loxilb_audit_orphaned_intents_total',
 	'loxilb_audit_originator_dropped_total',
+	// Pruning is housekeeping; this is the part of it that deleted records
+	// before every configured sink had been sent them.
+	'loxilb_audit_records_lost_to_retention_total',
 ] as const;
 
 export interface IAuditStreamDrops {
@@ -90,6 +97,19 @@ export interface IAuditFault {
 	total: number;
 }
 
+/**
+ * What one sink lost for good, since it was configured (a sink configured
+ * again starts its counters again). Only sinks with a loss are reported.
+ */
+export interface IAuditSinkLoss {
+	/** The `sink` label: the sink's name, `compliance` for the compliance sink. */
+	name: string;
+	/** Records passed over because the sink cannot carry them. */
+	poison: number;
+	/** Times retention removed a segment before the sink had read it. */
+	lagDrops: number;
+}
+
 export type AuditWriterReport =
 	| {kind: 'unavailable'}
 	// The gateway exports none of the families: a build without the trail.
@@ -107,9 +127,29 @@ export type AuditWriterReport =
 			faults: IAuditFault[];
 			/** Fault counters the gateway did not export: unknown, never zero. */
 			faultsNotReported: number;
+			/** Sinks with a loss above zero, by name. A gateway that exports no sink family reports none. */
+			sinks: IAuditSinkLoss[];
 	  };
 
 const scalar = (s: IMetricsSnapshot, family: string) => selectScalar(s, family);
+
+// The per-sink families exist for a sink only while it is configured, so an
+// absent series is "no such sink", and there is nothing to call unreported.
+function sinkLosses(snapshot: IMetricsSnapshot): IAuditSinkLoss[] {
+	const byName = new Map<string, IAuditSinkLoss>();
+	const add = (family: string, field: 'poison' | 'lagDrops') => {
+		for (const sample of selectSamples(snapshot, family)) {
+			const name = sample.labels.sink ?? '';
+			if (!Number.isFinite(sample.value) || sample.value <= 0) continue;
+			const loss = byName.get(name) ?? {name, poison: 0, lagDrops: 0};
+			loss[field] += sample.value;
+			byName.set(name, loss);
+		}
+	};
+	add('loxilb_audit_sink_poison_total', 'poison');
+	add('loxilb_audit_sink_lag_drops_total', 'lagDrops');
+	return [...byName.values()].sort((x, y) => (x.name < y.name ? -1 : x.name > y.name ? 1 : 0));
+}
 
 export function auditWriter(snapshot: IMetricsSnapshot | undefined): AuditWriterReport {
 	if (!snapshot || snapshot.failure) return {kind: 'unavailable'};
@@ -144,6 +184,7 @@ export function auditWriter(snapshot: IMetricsSnapshot | undefined): AuditWriter
 		drops,
 		faults,
 		faultsNotReported,
+		sinks: sinkLosses(snapshot),
 	};
 }
 
