@@ -105,8 +105,56 @@ test.describe('RBAC — viewer (read-only everywhere)', () => {
 	});
 });
 
+// The management backend serves an instance's process log and its archives to
+// operators and administrators only. A viewer is not offered the page, is told
+// why on a direct visit, and sends neither read from the page or the dashboard.
+test.describe('RBAC — viewer and instance logs', () => {
+	test.use({storageState: '.auth/viewer.json'});
+
+	function trackLogReads(page: import('@playwright/test').Page): string[] {
+		const urls: string[] = [];
+		page.on('request', r => {
+			if (/\/netlox\/v1\/(logs|log-archives)(\?|\/|$)/.test(r.url())) urls.push(r.url());
+		});
+		return urls;
+	}
+
+	test('viewer: the Logs page says it is not available to the role and reads nothing', async ({page}) => {
+		const reads = trackLogReads(page);
+		await page.goto(`instance/status/logs?name=${instName}`);
+		await expect(page.getByTestId('role-denied')).toBeVisible({timeout: 20_000});
+		await expect(page.getByRole('heading', {name: 'Instance Logs'})).toHaveCount(0);
+		// The menu is rendered from the same role: Status is there, Logs is not.
+		// (The breadcrumb still names the page; it is not the menu.)
+		const menu = page.getByRole('navigation', {name: 'Main menu'});
+		// The group opens by itself only around an entry the role has.
+		await menu.getByRole('button', {name: 'Status', exact: true}).click();
+		await expect(menu.getByText('Process', {exact: true})).toBeVisible();
+		await expect(menu.getByText('Logs', {exact: true})).toHaveCount(0);
+		expect(reads, 'a viewer must not send log reads the backend refuses').toEqual([]);
+	});
+
+	test('viewer: the dashboard log card says who can read logs and reads nothing', async ({page}) => {
+		const reads = trackLogReads(page);
+		await page.goto(`instance/dashboard?name=${instName}`);
+		await expect(page.getByTestId('system-log-not-permitted')).toBeVisible({timeout: 30_000});
+		expect(reads, 'a viewer must not send log reads the backend refuses').toEqual([]);
+	});
+});
+
 test.describe('RBAC — operator', () => {
 	test.use({storageState: '.auth/operator.json'});
+
+	test('operator: the Logs page is offered and reads the log', async ({page}) => {
+		const logRead = page.waitForResponse(r => /\/netlox\/v1\/logs(\?|$)/.test(r.url()) && r.request().method() === 'GET', {timeout: 30_000});
+		await page.goto(`instance/status/logs?name=${instName}`);
+		await expect(page.getByRole('heading', {name: 'Instance Logs'})).toBeVisible({timeout: 20_000});
+		await expect(page.getByTestId('role-denied')).toHaveCount(0);
+		// The same locator the viewer case asserts is absent, so that case
+		// cannot pass on a menu that never shows the entry.
+		await expect(page.getByRole('navigation', {name: 'Main menu'}).getByText('Logs', {exact: true})).toBeVisible();
+		expect((await logRead).status()).toBe(200);
+	});
 
 	test('operator: gateway writes allowed (LB Add control visible)', async ({page}) => {
 		await page.goto(`instance/traffic/lb?name=${instName}`);

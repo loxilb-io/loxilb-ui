@@ -9,6 +9,7 @@ import {OpResult} from '../fetcher/opResult';
 import {runOp} from '../fetcher/opResultAdapter';
 import {STATUS_LOCALE_KEYS} from '../fetcher/opResultCodes';
 import type {GwGetResp} from 'api';
+import {pathRefusal, unsendableInPath} from '../fetcher/pathSegment';
 
 //---------------------------------------------------------
 // API Caller Functions
@@ -41,5 +42,6 @@ export async function request_create_qos_policy(instance: IInstance, data: IPoli
 }
 
 export async function request_delete_qos_policy(instance: IInstance, ident: string): Promise<OpResult> {
+	if (unsendableInPath(ident)) return pathRefusal('qos.delete_qos_policy');
 	return runOp('qos.delete_qos_policy', () => DELETE_INST(instance, `/config/policy/ident/${ident}`));
 }

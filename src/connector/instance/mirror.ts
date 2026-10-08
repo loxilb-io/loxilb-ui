@@ -8,6 +8,7 @@ import {OpResult} from '../fetcher/opResult';
 import {runOp} from '../fetcher/opResultAdapter';
 import { IMirrorAttribute } from 'types/mirror';
 import type {GwGetResp} from 'api';
+import {pathRefusal, unsendableInPath} from '../fetcher/pathSegment';
 
 //---------------------------------------------------------
 // API Caller Functions
@@ -23,5 +24,6 @@ export async function request_create_mirror(instance: IInstance, data: IMirrorAt
 }
 
 export async function request_delete_mirror_by_ident(instance: IInstance, ident: string): Promise<OpResult> {
+	if (unsendableInPath(ident)) return pathRefusal('mirror.delete_mirror_by_ident');
 	return runOp('mirror.delete_mirror_by_ident', () => DELETE_INST(instance, `/config/mirror/ident/${ident}`));
 }
