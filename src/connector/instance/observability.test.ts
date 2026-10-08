@@ -31,6 +31,15 @@ describe('query_get_metrics_snapshot', () => {
 		expect(snap.families.size).toBe(0);
 	});
 
+	// A scrape is a read. A lost answer is an outage the poll retries, never
+	// the "outcome unknown" a lost change gets.
+	it.each([[502], [504]])('a scrape that ends in %i is unavailable and retryable, not unknown', async code => {
+		respond(code, null);
+		const snap = await query_get_metrics_snapshot(instance, 'inference-gateway');
+		expect(snap.failure?.status).toBe('unavailable');
+		expect(snap.failure?.retryable).toBe(true);
+	});
+
 	it('maps a refused scrape (401) to denied — never empty healthy data', async () => {
 		respond(401, null);
 		const snap = await query_get_metrics_snapshot(instance, 'inference-gateway');

@@ -16,6 +16,7 @@ export const STATUS_LOCALE_KEYS: Record<OpStatus, string> = {
 	denied: 'Permission denied',
 	invalid: 'The request was rejected as invalid.',
 	unavailable: 'The service is temporarily unavailable. Please try again later.',
+	unknown: 'No answer came back, so it is not known whether this change was applied. Check the current state before sending it again.',
 	failed: 'The operation could not be completed.',
 };
 
@@ -37,6 +38,19 @@ export const NOT_ENABLED_KEY = 'This feature is not enabled on this instance.';
  * the actionable half; this string exists to say whose problem it is.
  */
 export const PRECONDITION_KEY = 'This gateway is not configured to accept this request. The request is valid; its deployment must change.';
+
+// 503 refusals that name their cause. All three are answered BEFORE the
+// request is acted on, so each says the request was not carried out. The
+// wording fits a read as well as a change: a read can be refused the same way.
+
+/** 503 — the Gateway could not record the request in its audit trail, so it refused it. */
+export const AUDIT_UNAVAILABLE_KEY = 'The gateway refused this request because it cannot write its audit record right now. Nothing was changed.';
+
+/** 503 — boot replay, a restore in progress, or maintenance an operator turned on. */
+export const MAINTENANCE_KEY = 'The gateway is in maintenance mode and is not accepting changes. Nothing was changed.';
+
+/** 503 — the management backend holds no usable credential for this Gateway; the request never left it. */
+export const IDENTITY_UNAVAILABLE_KEY = 'The management service cannot authenticate to this gateway right now, so the request was not sent to it.';
 
 // Login-specific keys. The lockout text deliberately does NOT
 // disclose attempt counts or the retry-after countdown — conservative

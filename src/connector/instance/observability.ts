@@ -29,7 +29,7 @@ export async function query_get_metrics_snapshot(instance: IInstance, flavor: In
 
 	// Any non-200 (503 collection disabled, 401/403, 5xx) is not an exposition.
 	const body = resp.code === 200 && typeof resp.data === 'string' ? resp.data : '';
-	const outcome = fromSimpleResponse(resp, 'observability.scrape');
+	const outcome = fromSimpleResponse(resp, 'observability.scrape', 'read');
 	let failure = outcome.status === 'confirmed' ? undefined : outcome;
 
 	const parsed = parseExposition(body);

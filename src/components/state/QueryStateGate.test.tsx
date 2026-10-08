@@ -72,6 +72,21 @@ describe('the four states an operator must be able to tell apart', () => {
 		expect(onRetry).toHaveBeenCalledTimes(1);
 	});
 
+	it('shows the wait the server named, and none when it named none', () => {
+		const rateLimited = opResult({status: 'denied', localeKey: 'Too many requests. Please try again later.', retryable: true});
+		renderGate({kind: 'denied', result: {...rateLimited, retryAfterSeconds: 1}});
+		expect(document.body.textContent).toContain('Try again in 1 s.');
+		cleanup();
+		renderGate({kind: 'denied', result: rateLimited});
+		expect(document.body.textContent).not.toMatch(/Try again in/);
+	});
+
+	it('a stale table shows the wait too', () => {
+		const failure = opResult({status: 'denied', localeKey: 'Too many requests. Please try again later.', retryable: true, retryAfterSeconds: 1});
+		renderGate({kind: 'stale', rows: ['a'], fetchedAt: FETCHED_AT, failure});
+		expect(document.body.textContent).toContain('Try again in 1 s.');
+	});
+
 	it('failed is announced assertively; the benign states are not', () => {
 		const {unmount} = renderGate({kind: 'failed', result: opResult({})});
 		expect(screen.getByRole('alert')).toBeDefined();

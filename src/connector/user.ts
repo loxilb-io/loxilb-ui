@@ -64,7 +64,7 @@ export async function login_user(credentials: ILoginRequest): Promise<OpResult<I
 	} catch (error) {
 		// Network refusal / DNS / timeout — no HTTP response at all. The page
 		// must render "unavailable", not an unlocalized thrown message.
-		return fromNetworkError('auth.login', error);
+		return fromNetworkError('auth.login', error, 'read');
 	}
 
 	// Login-specific overrides on top of the generic adapter mapping. The
@@ -79,7 +79,9 @@ export async function login_user(credentials: ILoginRequest): Promise<OpResult<I
 		return {...base, status: 'denied', code: 'auth.invalid_credentials', localeKey: LOGIN_INVALID_KEY, retryable: false};
 	}
 
-	const result = fromSimpleResponse(response, 'auth.login') as OpResult<IEnhancedLoginResponse>;
+	// 'read': a sign-in that lost its answer changed nothing the operator has
+	// to check, so it stays "unavailable, try again" rather than "unknown".
+	const result = fromSimpleResponse(response, 'auth.login', 'read') as OpResult<IEnhancedLoginResponse>;
 	if (result.status === 'confirmed' && !result.data?.token) {
 		// A 2xx without a token must never install a session (empty/foreign body).
 		return {...result, status: 'failed', code: 'auth.login.malformed_response', localeKey: LOGIN_FAILED_KEY, data: undefined};

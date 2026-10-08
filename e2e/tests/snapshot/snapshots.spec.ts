@@ -203,9 +203,11 @@ test.describe('@gw Snapshots page (admin)', () => {
 		await wizard.locator('input').fill(instName);
 		await wizard.getByRole('button', {name: 'Restore Now'}).click();
 
-		// The wizard must land on an honest failure — never "Restore succeeded".
-		await expect(wizard.getByText('Restore failed before reaching the gateway')).toBeVisible({timeout: 30_000});
+		// No answer came back, so the wizard does not know what happened: it
+		// says neither "succeeded" nor "failed before reaching the gateway".
+		await expect(wizard.getByText('Restore outcome unknown')).toBeVisible({timeout: 30_000});
 		await expect(wizard.getByText('Restore succeeded')).toHaveCount(0);
+		await expect(wizard.getByText(/Restore failed/)).toHaveCount(0);
 		await wizard.getByRole('button', {name: 'Close'}).click();
 		await page.unroute(/\/oam\/snapshots\/.*\/restore/);
 

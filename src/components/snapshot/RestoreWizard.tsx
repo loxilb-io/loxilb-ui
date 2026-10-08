@@ -193,14 +193,17 @@ export function DryRunResult(props: {outcome: IRestoreOutcomeParsed}) {
 // Renders the commit outcome verbatim — one panel per §5.2 branch.
 /** Exported for tests: the commit/dry-run outcome rendering is the honesty
  *  surface, so it is asserted directly rather than through the whole wizard. */
-export function CommitResult(props: {outcome: IRestoreOutcomeParsed | null; oamError: string | null; instanceName: string}) {
-	const {outcome, oamError, instanceName} = props;
+export function CommitResult(props: {outcome: IRestoreOutcomeParsed | null; oamError: string | null; outcomeUnknown?: boolean; instanceName: string}) {
+	const {outcome, oamError, outcomeUnknown, instanceName} = props;
 	const branch = classifyCommitResult(outcome, oamError);
 
 	if (branch === 'oam-error') {
+		// No outcome object came back. That is "it never reached the gateway"
+		// only when something answered and said so. A commit that timed out or
+		// lost its connection may have restored — do not say it failed.
 		return (
-			<Alert severity="error">
-				<AlertTitle>{t('Restore failed before reaching the gateway')}</AlertTitle>
+			<Alert severity={outcomeUnknown ? 'warning' : 'error'}>
+				<AlertTitle>{outcomeUnknown ? t('Restore outcome unknown') : t('Restore failed before reaching the gateway')}</AlertTitle>
 				<Typography variant="body2" sx={{whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>
 					{oamError}
 				</Typography>
@@ -335,6 +338,7 @@ export default function RestoreWizard(props: RestoreWizardProps) {
 	const [confirmText, setConfirmText] = React.useState('');
 	const [commitOutcome, setCommitOutcome] = React.useState<IRestoreOutcomeParsed | null>(null);
 	const [commitError, setCommitError] = React.useState<string | null>(null);
+	const [commitUnknown, setCommitUnknown] = React.useState(false);
 	const committedRef = React.useRef(false);
 
 	// Step 1 runs automatically on open.
@@ -377,7 +381,10 @@ export default function RestoreWizard(props: RestoreWizardProps) {
 		committedRef.current = true;
 		const res = await request_restore_snapshot(snapshot.id, 'commit');
 		if (res.status === 'confirmed' && res.data) setCommitOutcome(res.data);
-		else setCommitError(snapshotOpErrorText(res));
+		else {
+			setCommitUnknown(res.status === 'unknown');
+			setCommitError(snapshotOpErrorText(res));
+		}
 		setStep('result');
 	};
 
@@ -463,7 +470,7 @@ export default function RestoreWizard(props: RestoreWizardProps) {
 			{step === 'result' && (
 				<>
 					<DialogContent dividers>
-						<CommitResult outcome={commitOutcome} oamError={commitError} instanceName={instanceName} />
+						<CommitResult outcome={commitOutcome} oamError={commitError} outcomeUnknown={commitUnknown} instanceName={instanceName} />
 					</DialogContent>
 					<DialogActions>
 						<Button variant="contained" onClick={handleDialogClose}>

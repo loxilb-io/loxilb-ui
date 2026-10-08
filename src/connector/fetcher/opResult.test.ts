@@ -28,10 +28,12 @@ describe('fromSimpleResponse status mapping', () => {
 		[402, 'denied', '.payment_required', false],
 		[412, 'failed', '.precondition_failed', false],
 		[501, 'failed', '.not_implemented', false],
-		[502, 'unavailable', '.unavailable', true],
+		// A change whose answer was lost may have been applied: see
+		// opResultAdapter.outcome.test.ts for the read side and the 503 kinds.
+		[502, 'unknown', '.outcome_unknown', false],
 		[503, 'unavailable', '.unavailable', true],
-		[504, 'unavailable', '.unavailable', true],
-		[0, 'unavailable', '.unavailable', true],
+		[504, 'unknown', '.outcome_unknown', false],
+		[0, 'unknown', '.outcome_unknown', false],
 	])('HTTP %i → %s', (code, status, codeSuffix, retryable) => {
 		const res = fromSimpleResponse(resp(code, {error: 'server prose'}), 'op');
 		expect(res.status).toBe(status);
@@ -180,8 +182,8 @@ describe('fromSimpleResponse status mapping', () => {
 });
 
 describe('fromNetworkError', () => {
-	it('maps a thrown fetch to retryable unavailable with diagnostics-only detail', () => {
-		const res = fromNetworkError('op', new TypeError('Failed to fetch'));
+	it('maps a thrown read to retryable unavailable with diagnostics-only detail', () => {
+		const res = fromNetworkError('op', new TypeError('Failed to fetch'), 'read');
 		expect(res.status).toBe('unavailable');
 		expect(res.retryable).toBe(true);
 		expect(res.rawDetail).toBe('Failed to fetch');

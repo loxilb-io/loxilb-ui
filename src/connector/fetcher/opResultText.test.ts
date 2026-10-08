@@ -1,7 +1,7 @@
 import {describe, expect, it} from 'vitest';
-import {isPreconditionFailure, opErrorText} from './opResultText';
+import {isPreconditionFailure, opErrorText, retryAfterText} from './opResultText';
 import 'locales/i18n';
-import {CONFLICT_KEY, NOT_ENABLED_KEY, PRECONDITION_KEY} from './opResultCodes';
+import {AUDIT_UNAVAILABLE_KEY, CONFLICT_KEY, MAINTENANCE_KEY, NOT_ENABLED_KEY, PRECONDITION_KEY} from './opResultCodes';
 
 // The gateway's actual sentence on a KV-exact refusal, copied from a live
 // v0.9.8.9-rc.1 response. It names the setting; PRECONDITION_KEY cannot.
@@ -70,5 +70,29 @@ describe('opErrorText', () => {
 			expect(text).not.toMatch(/undefined/);
 			expect(text).toBe(text.trim());
 		}
+	});
+});
+
+describe('the wait the server named', () => {
+	it('is appended when the result carries one', () => {
+		const text = opErrorText({code: 'lb.create.audit_unavailable', localeKey: AUDIT_UNAVAILABLE_KEY, retryAfterSeconds: 5});
+		expect(text).toBe(`${AUDIT_UNAVAILABLE_KEY} Try again in 5 s.`);
+	});
+
+	// Operator maintenance names no wait. A sentence with a number in it would
+	// be read as the Gateway's promise.
+	it.each([
+		['absent', undefined],
+		['zero', 0],
+		['negative', -3],
+		['not a number', Number.NaN],
+	])('nothing is appended when it is %s', (_name, retryAfterSeconds) => {
+		expect(opErrorText({code: 'op.maintenance', localeKey: MAINTENANCE_KEY, retryAfterSeconds})).toBe(MAINTENANCE_KEY);
+		expect(retryAfterText({retryAfterSeconds})).toBeUndefined();
+	});
+
+	it('follows the gateway sentence on a precondition refusal, not replaces it', () => {
+		const text = opErrorText({code: 'lb.create.precondition_failed', localeKey: PRECONDITION_KEY, rawDetail: GW_SENTENCE, retryAfterSeconds: 2});
+		expect(text).toBe(`${PRECONDITION_KEY} ${GW_SENTENCE} Try again in 2 s.`);
 	});
 });
