@@ -7,24 +7,27 @@
 // observability/auditWriter for what each value means and why liveness is
 // judged from our own observations. The gateway's /audit REST read adds only
 // what the metrics cannot say (types/audit_status.ts): a configured sink that
-// is not connected, and the event id of the latest orphaned intent.
+// is not sending, and the event id of the latest orphaned intent. A sink gets
+// one line, joined by name from the status (its state) and the metrics (what
+// it lost for good).
 
 import {Alert, Box, MenuItem, Stack, TextField, Typography} from '@mui/material';
 import type {TFunction} from 'i18next';
 import FreshnessBadge from 'components/observability/FreshnessBadge';
 import {StatRow} from 'components/observability/panelLayout';
 import {useInstanceFlavorResolution} from 'hooks/query/flavorHook';
-import {useInstances} from 'hooks/query/oamHooks';
+import {useInstances, useRole} from 'hooks/query/oamHooks';
 import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
 import {useGatewayAuditRest} from 'hooks/query/statusHook';
 import useLocalStorageState from 'hooks/localStorageHook';
 import {PREFERENCE_KEYS, isStringPreference} from 'preferences';
 import {useMemo, useRef} from 'react';
 import {useTranslation} from 'react-i18next';
-import {AuditWriterReport, HeartbeatLiveness, IAuditStreamDrops, IHeartbeatTrack, auditWriter, heartbeatLiveness, trackHeartbeat} from 'observability/auditWriter';
+import {AuditWriterReport, HeartbeatLiveness, IAuditSinkLoss, IAuditStreamDrops, IHeartbeatTrack, auditWriter, heartbeatLiveness, trackHeartbeat} from 'observability/auditWriter';
 import {isEntryApplicable} from 'observability/capabilityRegistry';
-import {AuditRestSignals, auditRestSignals} from 'types/audit_status';
+import {AUDIT_COMPLIANCE_SINK, AuditRestSignals, IAuditSinkSignal, auditRestSignals} from 'types/audit_status';
 import {IInstance} from 'types/oam';
+import {AUDIT_SINK_READER_ROLES} from 'types/role';
 
 function streamLabel(stream: string, t: TFunction): string {
 	if (stream === 'mgmt') return t('Management');
@@ -55,6 +58,8 @@ function counterLabel(key: string, t: TFunction): string {
 			return t('Orphaned intents from the previous boot');
 		case 'loxilb_audit_originator_dropped_total':
 			return t('Unparseable originator headers dropped');
+		case 'loxilb_audit_records_lost_to_retention_total':
+			return t('Records deleted by retention before every sink was sent them');
 		default:
 			return key;
 	}
@@ -91,25 +96,83 @@ export interface AuditWriterPanelProps {
 
 const ORPHAN_KEY = 'loxilb_audit_orphaned_intents_total';
 
-// The REST facts that need no metrics context: a sink that is down, and the
-// quiet note for a caller who may not read the audit API.
-function SinkAndAccess({rest}: {rest?: AuditRestSignals}) {
-	const {t} = useTranslation();
-	if (rest?.kind === 'forbidden') {
-		return (
-			<Typography variant="body2" color="text.secondary">
-				{t('Audit sink and orphan details need gateway administrator rights.')}
-			</Typography>
-		);
+/** One sink's line: its state from the status, its losses from both sources. */
+interface ISinkLine extends IAuditSinkSignal {
+	poison: number;
+}
+
+// The status lists sinks in the gateway's order (compliance first), so that
+// order is kept; a sink only the metrics name follows. Both sources count
+// retention overtaking a sink, from the same counter read at two moments: the
+// larger is the later, and adding them would count each loss twice.
+function sinkLines(rest: AuditRestSignals | undefined, losses: IAuditSinkLoss[]): ISinkLine[] {
+	const lines: ISinkLine[] = (rest?.kind === 'ok' ? (rest.sinks ?? []) : []).map(s => ({...s, poison: 0}));
+	for (const loss of losses) {
+		const line = lines.find(l => l.name === loss.name);
+		if (line) {
+			line.poison = loss.poison;
+			line.lagDrops = Math.max(line.lagDrops, loss.lagDrops);
+		} else {
+			lines.push({name: loss.name, compliance: loss.name === AUDIT_COMPLIANCE_SINK, lagDrops: loss.lagDrops, poison: loss.poison, writeErrors: 0});
+		}
 	}
-	if (rest?.kind !== 'ok' || !rest.sinkDown) return null;
-	const {address, lastError, writeErrors} = rest.sinkDown;
+	return lines;
+}
+
+function sinkSubject(line: ISinkLine, t: TFunction): string {
+	if (!line.compliance) return t('Audit sink {{name}}', {name: line.name});
+	return line.address ? t('The compliance audit sink {{address}}', {address: line.address}) : t('The compliance audit sink');
+}
+
+function sinkSentence(line: ISinkLine, t: TFunction): string {
+	const sink = sinkSubject(line, t);
+	switch (line.condition) {
+		case 'disconnected':
+			return t('{{sink}} is configured but not connected.', {sink});
+		case 'stalled':
+			return t('{{sink}} is stalled: it cannot read its place in the trail and sends nothing until that clears.', {sink});
+		case 'stopped':
+			return t('{{sink}} is stopped and sends nothing.', {sink});
+		case 'unreported':
+			return t('{{sink}} did not report its state.', {sink});
+		case 'unrecognized':
+			return t('{{sink}} reports the state "{{state}}", which this console does not know.', {sink, state: line.state ?? ''});
+		default:
+			// Sending, by the gateway's word, and still short of records.
+			return t('{{sink}} has not received every record.', {sink});
+	}
+}
+
+function SinkAlert({line}: {line: ISinkLine}) {
+	const {t} = useTranslation();
 	return (
 		<Alert severity="warning">
-			{address ? t('The remote audit sink {{address}} is configured but not connected.', {address}) : t('The remote audit sink is configured but not connected.')}
-			{lastError && <> {t('Last error: {{error}}', {error: lastError})}</>}
-			{writeErrors > 0 && <> {t('{{n}} submissions have failed since it was configured.', {n: writeErrors})}</>}
+			{sinkSentence(line, t)}
+			{line.lastError && <> {t('Last error: {{error}}', {error: line.lastError})}</>}
+			{line.writeErrors > 0 && <> {t('{{n}} submissions have failed since it was configured.', {n: line.writeErrors})}</>}
+			{line.lagDrops > 0 && <> {t('Retention removed {{n}} segments before it had read them; their records never reached it.', {n: line.lagDrops})}</>}
+			{line.poison > 0 && <> {t('{{n}} records were passed over because it cannot carry them; each is named in the trail.', {n: line.poison})}</>}
 		</Alert>
+	);
+}
+
+// The sink lines, then what the REST read could not say: that it failed (the
+// state of every sink is then unknown, which is not the same as fine), or the
+// quiet note for a caller who may not read the audit API.
+function SinkAndAccess({rest, losses}: {rest?: AuditRestSignals; losses: IAuditSinkLoss[]}) {
+	const {t} = useTranslation();
+	return (
+		<>
+			{sinkLines(rest, losses).map(line => (
+				<SinkAlert key={line.name} line={line} />
+			))}
+			{rest?.kind === 'unknown' && <Alert severity="warning">{t("The audit sink state is unknown: the gateway's audit status could not be read.")}</Alert>}
+			{rest?.kind === 'forbidden' && (
+				<Typography variant="body2" color="text.secondary">
+					{t('Audit sink and orphan details need gateway administrator rights.')}
+				</Typography>
+			)}
+		</>
 	);
 }
 
@@ -139,7 +202,7 @@ export function AuditWriterPanel({report, liveness, rest}: AuditWriterPanelProps
 						: t('This gateway does not export audit writer metrics.')}
 				</Typography>
 				{orphan && <OrphanAlert orphan={orphan} />}
-				<SinkAndAccess rest={rest} />
+				<SinkAndAccess rest={rest} losses={[]} />
 			</Stack>
 		);
 	}
@@ -190,7 +253,7 @@ export function AuditWriterPanel({report, liveness, rest}: AuditWriterPanelProps
 			)}
 
 			{orphan && !orphanOnFaultLine && <OrphanAlert orphan={orphan} />}
-			<SinkAndAccess rest={rest} />
+			<SinkAndAccess rest={rest} losses={report.sinks} />
 
 			<Box>
 				<StatRow label={t('Writer')} value={report.up === undefined ? t('N/A') : report.up ? t('Running') : t('Not running')} />
@@ -222,10 +285,13 @@ function GatewayAuditWriter({instance}: {instance: IInstance}) {
 	const beat = healthy ? (report.kind === 'ok' ? report.lastHeartbeatSeconds : undefined) : undefined;
 	const liveness = useHeartbeatLiveness(instance.id, beat, healthy?.receivedAtMs, cadenceMs);
 	// Rendered only for a resolved gateway (PickedInstance), which is the gate
-	// the audit read needs. A read that failed shows nothing rather than the
-	// last answer: these are alerts, and an alert must be about now.
-	const auditRest = useGatewayAuditRest(instance);
-	const rest = useMemo(() => auditRestSignals(auditRest.isError ? undefined : auditRest.data), [auditRest.isError, auditRest.data]);
+	// the audit read needs. A read that failed is "unknown", never the last
+	// answer: these are alerts, and an alert must be about now.
+	// A role that has not resolved may be a viewer, who is refused /audit/sink.
+	const {role} = useRole();
+	const readSink = role !== null && AUDIT_SINK_READER_ROLES.includes(role);
+	const auditRest = useGatewayAuditRest(instance, {readSink});
+	const rest = useMemo(() => auditRestSignals(auditRest.data, auditRest.isError), [auditRest.isError, auditRest.data]);
 	return (
 		<Stack spacing={1}>
 			{snapshot && !snapshot.failure && <FreshnessBadge receivedAtMs={snapshot.receivedAtMs} cadenceMs={cadenceMs} />}

@@ -13,3 +13,11 @@ export type TUserRole = 'admin' | 'operator' | 'viewer';
  * the dashboard card, so they cannot disagree.
  */
 export const LOG_READER_ROLES: readonly TUserRole[] = ['admin', 'operator'];
+
+/**
+ * Roles the management backend lets read the compliance sink's own record
+ * (`/audit/sink`: its address and last transport error). A viewer is refused
+ * with 403; the state of every sink is in `/audit/status`, which every role
+ * may read, so a viewer loses the address and the error and nothing else.
+ */
+export const AUDIT_SINK_READER_ROLES: readonly TUserRole[] = ['admin', 'operator'];

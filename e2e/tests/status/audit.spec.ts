@@ -1,8 +1,8 @@
 //---------------------------------------------------------
 // System page — audit REST signals against the live gateway (AUD-E2E-07).
 //---------------------------------------------------------
-// The page must say what the gateway says: writer running or not, a sink that
-// is configured but down, an orphaned intent. The UI's own /audit/status read
+// The page must say what the gateway says: writer running or not, each sink
+// that is not sending, an orphaned intent. The UI's own /audit/status read
 // must have LANDED before anything is judged — a test that ends before its read
 // answers proves nothing — and the gateway is then asked directly for the
 // answer to compare against.
@@ -36,8 +36,17 @@ test.describe('@gw System page — audit REST signals (live)', () => {
 		const writer = section.getByText('Writer', {exact: true}).locator('xpath=following-sibling::*[1]');
 		await expect(writer).toHaveText(status.running === true ? 'Running' : 'Not running');
 
-		const sinkDown = sink?.enabled === true && sink?.connected !== true;
-		await expect(section.getByText(/is configured but not connected/)).toHaveCount(sinkDown ? 1 : 0);
+		// The state of every sink is in the status list; a gateway older than
+		// the list has only the compliance sink's own record to go by.
+		const listed: {state?: string}[] | undefined = Array.isArray(status.sinks) ? status.sinks : status.sinks === null ? [] : undefined;
+		const disconnected = listed ? listed.filter(s => s?.state === 'disconnected').length : sink?.enabled === true && sink?.connected !== true ? 1 : 0;
+		await expect(section.getByText(/is configured but not connected/)).toHaveCount(disconnected);
+		if (listed) {
+			await expect(section.getByText(/is stalled: it cannot read its place/)).toHaveCount(listed.filter(s => s?.state === 'stalled').length);
+			await expect(section.getByText(/is stopped and sends nothing/)).toHaveCount(listed.filter(s => s?.state === 'stopped').length);
+		}
+		// The read landed with 200, so the state is known.
+		await expect(section.getByText(/sink state is unknown/)).toHaveCount(0);
 
 		if ((status.orphaned_intents ?? 0) > 0 && status.last_orphan_event_id) {
 			await expect(section.getByText(new RegExp(status.last_orphan_event_id))).toBeVisible();

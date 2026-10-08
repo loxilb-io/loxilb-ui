@@ -103,8 +103,10 @@ describe('registry contract against the vendored artifacts', () => {
 		expect(size('panel.workerScrape')).toBe(1);
 		// The collector emits eighteen audit families once a writer exists; 15
 		// since the compact trim, which stopped reading the gateway-clock write
-		// time and the two housekeeping counters.
-		expect(size('panel.auditWriter')).toBe(15);
+		// time and the two housekeeping counters. Three more are the losses a
+		// sink cannot make good: records retention deleted before every sink
+		// was sent them, and per sink the poison and lag-drop counters.
+		expect(size('panel.auditWriter')).toBe(18);
 	});
 });
 

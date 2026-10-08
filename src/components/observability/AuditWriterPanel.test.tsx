@@ -13,7 +13,7 @@ import {cleanup, render, screen} from '@testing-library/react';
 import {PREFERENCE_KEYS} from 'preferences';
 import {AuditWriterReport} from 'observability/auditWriter';
 import {parseExposition} from 'observability/parser';
-import {AuditRestSignals} from 'types/audit_status';
+import {AuditRestSignals, IAuditSinkSignal} from 'types/audit_status';
 import AuditWriterSection, {AuditWriterPanel} from './AuditWriterPanel';
 
 const mocks = vi.hoisted(() => ({
@@ -21,9 +21,10 @@ const mocks = vi.hoisted(() => ({
 	snapshot: vi.fn(),
 	instances: [] as {id: number; name: string}[],
 	auditRest: vi.fn(),
+	role: null as string | null,
 }));
 
-vi.mock('hooks/query/oamHooks', () => ({useInstances: () => ({instance_list: mocks.instances})}));
+vi.mock('hooks/query/oamHooks', () => ({useInstances: () => ({instance_list: mocks.instances}), useRole: () => ({role: mocks.role})}));
 vi.mock('hooks/query/flavorHook', () => ({useInstanceFlavorResolution: mocks.resolution}));
 vi.mock('hooks/query/observabilityHooks', () => ({useMetricsSnapshot: mocks.snapshot}));
 vi.mock('hooks/query/statusHook', () => ({useGatewayAuditRest: mocks.auditRest}));
@@ -38,7 +39,7 @@ const NO_DROPS = [
 ];
 
 function okReport(o: Partial<Extract<AuditWriterReport, {kind: 'ok'}>> = {}): AuditWriterReport {
-	return {kind: 'ok', up: true, reserveBreached: false, lastHeartbeatSeconds: 1_790_000_000, drops: NO_DROPS, faults: [], faultsNotReported: 0, ...o};
+	return {kind: 'ok', up: true, reserveBreached: false, lastHeartbeatSeconds: 1_790_000_000, drops: NO_DROPS, faults: [], faultsNotReported: 0, sinks: [], ...o};
 }
 
 beforeEach(() => {
@@ -48,6 +49,7 @@ beforeEach(() => {
 	mocks.auditRest.mockReset();
 	mocks.auditRest.mockReturnValue({data: undefined, isError: false});
 	mocks.instances = [];
+	mocks.role = 'admin';
 });
 afterEach(cleanup);
 
@@ -168,8 +170,9 @@ describe('AuditWriterSection', () => {
 	});
 
 	// React Query keeps the last good data when a refetch fails. For an alert
-	// that would keep yesterday's "sink down" on screen; a failed read says nothing.
-	it('shows the REST alert while the read succeeds, and drops it once a refetch fails', () => {
+	// that would keep yesterday's "sink down" on screen. A failed read is not
+	// silence either: no alert would read as "every sink is fine".
+	it('shows the REST alert while the read succeeds, and says the sink state is unknown once a refetch fails', () => {
 		mocks.instances = [{id: 2, name: 'gw'}];
 		localStorage.setItem(PREFERENCE_KEYS.systemAuditInstance, JSON.stringify('gw'));
 		mocks.resolution.mockReturnValue({state: 'resolved', flavor: 'inference-gateway'});
@@ -177,12 +180,42 @@ describe('AuditWriterSection', () => {
 		const down = {kind: 'ok', status: {available: true}, sink: {enabled: true, address: 'siem:6514'}};
 		mocks.auditRest.mockReturnValue({data: down, isError: false});
 		const {rerender} = render(<AuditWriterSection />);
-		expect(mocks.auditRest).toHaveBeenCalledWith(expect.objectContaining({name: 'gw'}));
+		expect(mocks.auditRest).toHaveBeenCalledWith(expect.objectContaining({name: 'gw'}), {readSink: true});
 		expect(screen.getByText(/siem:6514 is configured but not connected/)).toBeTruthy();
+		expect(screen.queryByText(/sink state is unknown/)).toBeNull();
 
 		mocks.auditRest.mockReturnValue({data: down, isError: true});
 		rerender(<AuditWriterSection />);
 		expect(screen.queryByText(/is configured but not connected/)).toBeNull();
+		expect(severityOf(/The audit sink state is unknown: the gateway's audit status could not be read\./)).toMatch(/Warning/);
+	});
+
+	// The management backend answers a viewer's /audit/sink with 403, and a
+	// role that has not resolved yet may turn out to be a viewer.
+	it.each([
+		['admin', true],
+		['operator', true],
+		['viewer', false],
+		[null, false],
+	])('asks for /audit/sink as %s: %s', (role, readSink) => {
+		mocks.role = role;
+		mocks.instances = [{id: 2, name: 'gw'}];
+		localStorage.setItem(PREFERENCE_KEYS.systemAuditInstance, JSON.stringify('gw'));
+		mocks.resolution.mockReturnValue({state: 'resolved', flavor: 'inference-gateway'});
+		mocks.snapshot.mockReturnValue({snapshot: undefined, history: [], cadenceMs: 10_000, isLoading: true});
+		render(<AuditWriterSection />);
+		expect(mocks.auditRest).toHaveBeenCalledWith(expect.objectContaining({name: 'gw'}), {readSink});
+	});
+
+	it('shows a viewer the sink that is down from the status alone', () => {
+		mocks.role = 'viewer';
+		mocks.instances = [{id: 2, name: 'gw'}];
+		localStorage.setItem(PREFERENCE_KEYS.systemAuditInstance, JSON.stringify('gw'));
+		mocks.resolution.mockReturnValue({state: 'resolved', flavor: 'inference-gateway'});
+		mocks.snapshot.mockReturnValue({snapshot: undefined, history: [], cadenceMs: 10_000, isLoading: true});
+		mocks.auditRest.mockReturnValue({data: {kind: 'ok', status: {available: true, sinks: [{name: 'compliance', compliance: true, state: 'disconnected'}]}}, isError: false});
+		render(<AuditWriterSection />);
+		expect(severityOf(/^The compliance audit sink is configured but not connected\.$/)).toMatch(/Warning/);
 	});
 });
 
@@ -230,7 +263,11 @@ describe('AuditWriterSection — heartbeat tracking across polls', () => {
 });
 
 describe('AuditWriterPanel — /audit REST signals (urgent only)', () => {
-	const SINK_DOWN: AuditRestSignals = {kind: 'ok', sinkDown: {address: 'siem.example:6514', lastError: 'x509: certificate signed by unknown authority', writeErrors: 4}};
+	const SINK_DOWN: AuditRestSignals = {
+		kind: 'ok',
+		sinks: [{name: 'compliance', compliance: true, condition: 'disconnected', lagDrops: 0, address: 'siem.example:6514', lastError: 'x509: certificate signed by unknown authority', writeErrors: 4}],
+	};
+	const named = (o: Partial<IAuditSinkSignal>): IAuditSinkSignal => ({name: 'edr', compliance: false, lagDrops: 0, writeErrors: 0, ...o});
 
 	// The compactness guard: a healthy REST answer must not grow the panel.
 	it('adds nothing for a healthy REST answer', () => {
@@ -246,7 +283,7 @@ describe('AuditWriterPanel — /audit REST signals (urgent only)', () => {
 		const alerts = screen.getAllByRole('alert');
 		expect(alerts).toHaveLength(1);
 		expect(alerts[0].className).toMatch(/Warning/);
-		expect(alerts[0].textContent).toContain('siem.example:6514 is configured but not connected');
+		expect(alerts[0].textContent).toContain('The compliance audit sink siem.example:6514 is configured but not connected.');
 		expect(alerts[0].textContent).toContain('x509: certificate signed by unknown authority');
 		expect(alerts[0].textContent).toContain('4 submissions have failed');
 	});
@@ -276,5 +313,73 @@ describe('AuditWriterPanel — /audit REST signals (urgent only)', () => {
 		render(<AuditWriterPanel report={okReport()} liveness={{kind: 'advancing'}} rest={{kind: 'forbidden'}} />);
 		expect(screen.getByText('Audit sink and orphan details need gateway administrator rights.')).toBeTruthy();
 		expect(screen.queryByRole('alert')).toBeNull();
+	});
+
+	it.each([
+		['stalled', 'Audit sink edr is stalled: it cannot read its place in the trail and sends nothing until that clears.'],
+		['stopped', 'Audit sink edr is stopped and sends nothing.'],
+		['disconnected', 'Audit sink edr is configured but not connected.'],
+		['unreported', 'Audit sink edr did not report its state.'],
+	] as const)('names a sink that is %s', (condition, sentence) => {
+		render(<AuditWriterPanel report={okReport()} liveness={{kind: 'advancing'}} rest={{kind: 'ok', sinks: [named({condition})]}} />);
+		const alerts = screen.getAllByRole('alert');
+		expect(alerts).toHaveLength(1);
+		expect(alerts[0].className).toMatch(/Warning/);
+		expect(alerts[0].textContent).toBe(sentence);
+	});
+
+	it('quotes a state it does not know instead of calling the sink healthy', () => {
+		render(<AuditWriterPanel report={okReport()} liveness={{kind: 'advancing'}} rest={{kind: 'ok', sinks: [named({condition: 'unrecognized', state: 'draining'})]}} />);
+		expect(screen.getByRole('alert').textContent).toBe('Audit sink edr reports the state "draining", which this console does not know.');
+	});
+
+	it('gives each troubled sink its own warning, in the order the gateway listed them', () => {
+		const sinks = [named({name: 'compliance', compliance: true, condition: 'disconnected', address: 'siem.example:6514'}), named({condition: 'stalled'}), named({name: 'lake', condition: 'stopped'})];
+		render(<AuditWriterPanel report={okReport()} liveness={{kind: 'advancing'}} rest={{kind: 'ok', sinks}} />);
+		expect(screen.getAllByRole('alert').map(a => a.textContent)).toEqual([
+			'The compliance audit sink siem.example:6514 is configured but not connected.',
+			'Audit sink edr is stalled: it cannot read its place in the trail and sends nothing until that clears.',
+			'Audit sink lake is stopped and sends nothing.',
+		]);
+	});
+
+	// Losses the status does not carry (poison) come from the metrics; the two
+	// sources are one line per sink, joined by name, and a loss both report is
+	// said once with the larger count.
+	it('joins the metrics\' per-sink losses to the sink\'s line by name', () => {
+		const report = okReport({sinks: [{name: 'edr', poison: 3, lagDrops: 2}]});
+		render(<AuditWriterPanel report={report} liveness={{kind: 'advancing'}} rest={{kind: 'ok', sinks: [named({condition: 'disconnected', lagDrops: 1})]}} />);
+		const alerts = screen.getAllByRole('alert');
+		expect(alerts).toHaveLength(1);
+		expect(alerts[0].textContent).toBe(
+			'Audit sink edr is configured but not connected. Retention removed 2 segments before it had read them; their records never reached it. 3 records were passed over because it cannot carry them; each is named in the trail.',
+		);
+	});
+
+	it('raises a sink that is connected but lost records, from the metrics alone', () => {
+		const report = okReport({sinks: [{name: 'lake', poison: 1, lagDrops: 0}]});
+		render(<AuditWriterPanel report={report} liveness={{kind: 'advancing'}} rest={{kind: 'ok'}} />);
+		expect(screen.getByRole('alert').textContent).toBe('Audit sink lake has not received every record. 1 records were passed over because it cannot carry them; each is named in the trail.');
+	});
+
+	it('keeps the metrics\' sink losses on screen when the status read failed, beside the unknown state', () => {
+		const report = okReport({sinks: [{name: 'compliance', poison: 0, lagDrops: 4}]});
+		render(<AuditWriterPanel report={report} liveness={{kind: 'advancing'}} rest={{kind: 'unknown'}} />);
+		const texts = screen.getAllByRole('alert').map(a => a.textContent);
+		expect(texts).toEqual([
+			'The compliance audit sink has not received every record. Retention removed 4 segments before it had read them; their records never reached it.',
+			"The audit sink state is unknown: the gateway's audit status could not be read.",
+		]);
+	});
+
+	it('says the sink state is unknown even when the metrics scrape did not answer either', () => {
+		render(<AuditWriterPanel report={{kind: 'unavailable'}} liveness={{kind: 'unknown'}} rest={{kind: 'unknown'}} />);
+		expect(severityOf(/The audit sink state is unknown/)).toMatch(/Warning/);
+	});
+
+	it('labels the retention loss on the fault line', () => {
+		const report = okReport({faults: [{key: 'loxilb_audit_records_lost_to_retention_total', total: 40}]});
+		render(<AuditWriterPanel report={report} liveness={{kind: 'advancing'}} />);
+		expect(screen.getByRole('alert').textContent).toContain('Records deleted by retention before every sink was sent them 40');
 	});
 });
