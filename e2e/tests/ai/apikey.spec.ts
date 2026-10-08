@@ -102,6 +102,8 @@ test.describe('@gw AI API Key page', () => {
 		await field(page, 'Tenant ID').fill('e2e-tenant');
 		await field(page, 'Name').fill('e2e-key');
 		await page.mouse.move(0, 0);
+		// The create is checked against the key's own read, by the ID it answered.
+		const ownRead = page.waitForResponse(r => r.request().method() === 'GET' && new URL(r.url()).pathname.includes(`${APIKEY_PATH}/`));
 		const [req] = await Promise.all([
 			page.waitForRequest(r => r.method() === 'POST' && r.url().endsWith(APIKEY_PATH)),
 			dialogButton(page, 'Add').click(),
@@ -109,11 +111,17 @@ test.describe('@gw AI API Key page', () => {
 		const body = req.postDataJSON();
 		expect(body).toMatchObject({tenant_id: 'e2e-tenant', name: 'e2e-key', enabled: true});
 		expect(body.isValid).toBeUndefined();
-		expect((await req.response())?.status()).toBeLessThan(300);
+		const createResponse = await req.response();
+		expect(createResponse?.status()).toBeLessThan(300);
+		const keyId = (await createResponse!.json()).key_id as string;
+		const read = await ownRead;
+		expect(new URL(read.url()).pathname.endsWith(`${APIKEY_PATH}/${encodeURIComponent(keyId)}`)).toBeTruthy();
+		expect(read.status()).toBe(200);
 
 		// The raw key is shown once, in its own dialog.
 		await expect(dialogTitle(page, 'API Key Created')).toBeVisible();
 		await expect(dialog(page).getByText(/Copy this key now/i)).toBeVisible();
+		await expect(dialog(page).getByText('The gateway reads this key back with the values that were sent.')).toBeVisible();
 		await dialogButton(page, 'OK').click();
 
 		// Import mode sends an operator-provided secret once, but the response and
@@ -134,6 +142,7 @@ test.describe('@gw AI API Key page', () => {
 		expect(await importResponse?.text()).not.toContain(importedSecret);
 		await expect(dialogTitle(page, 'API Key Imported')).toBeVisible();
 		await expect(dialog(page)).not.toContainText(importedSecret);
+		await expect(dialog(page).getByText('The gateway reads this key back with the values that were sent.')).toBeVisible();
 		await dialogButton(page, 'OK').click();
 
 		await toolbarButton(page, 'Refresh').click();

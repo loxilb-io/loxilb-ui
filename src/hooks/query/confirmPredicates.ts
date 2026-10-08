@@ -63,7 +63,7 @@
 // observes the data plane: a confirmed write is stored configuration, not an
 // installed policy and not a served request.
 //---------------------------------------------------------
-import {ITenantRateLimitMod, IUserRateLimitMod, normalizeTenantRateLimit, normalizeUserRateLimit} from 'types/ai';
+import {ITenantRateLimitMod, IUserRateLimitMod, apiKeyExpiry, normalizeTenantRateLimit, normalizeUserRateLimit} from 'types/ai';
 import {IJWTAuthProfileEntry, JWT_PROFILE_DEFAULTS} from 'types/ai_jwt';
 import {IEndpointItem} from 'types/endpoint';
 import {canonicalLBRuleIdentity} from 'types/lb_identity';
@@ -181,9 +181,11 @@ export const apiKeyAppeared =
  * them, each the way the summary serves it:
  *   - a zero limit, an empty name and an empty model list can all be absent;
  *   - `enabled` left out of the request means enabled;
- *   - an expiry left out, or the Unix epoch, means no expiry, and a stored
- *     expiry is compared to the second (how exactly the store keeps a
- *     fraction of a second was not read, so one is not held against it).
+ *   - an expiry left out, or the Unix epoch, means no expiry, and the summary
+ *     serves no expiry as the year-1 zero time rather than leaving the field
+ *     out (`apiKeyExpiry`); a stored expiry is compared to the second (how
+ *     exactly the store keeps a fraction of a second was not read, so one is
+ *     not held against it).
  * The secret is not compared: no read returns it.
  */
 export const API_KEY_CREATE_FIELDS = ['tenant_id', 'name', 'allowed_models', 'rate_limit_rps', 'burst_size', 'tokens_per_min', 'expires_at', 'enabled'] as const;
@@ -193,7 +195,10 @@ type ApiKeyAsked = {tenant_id?: string; name?: string; allowed_models?: string[]
 type ApiKeyServed = {tenant_id?: string; name?: string; allowed_models?: string[] | null; rate_limit_rps?: number | null; burst_size?: number | null; tokens_per_min?: number | null; expires_at?: string | null; enabled?: boolean};
 
 // Whole seconds since the epoch; 0 for no expiry. NaN for text that is no time.
-const expirySeconds = (value: string | null | undefined): number => (value ? Math.floor(Date.parse(value) / 1000) : 0);
+const expirySeconds = (value: string | null | undefined): number => {
+	const expiry = apiKeyExpiry(value);
+	return expiry === undefined ? 0 : Math.floor(Date.parse(expiry) / 1000);
+};
 
 export function apiKeyCreateDiff(asked: ApiKeyAsked, served: ApiKeyServed): ApiKeyCreateField[] {
 	const same: Record<ApiKeyCreateField, boolean> = {

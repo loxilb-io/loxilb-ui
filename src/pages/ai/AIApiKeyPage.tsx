@@ -22,7 +22,7 @@ import {apiKeyAppeared, apiKeyPatchApplied, apiKeysGone} from 'hooks/query/confi
 import {useErrorPopup} from 'hooks/useErrorPopup';
 import {t} from 'i18next';
 import React, {Fragment, useRef, useState} from 'react';
-import {IApiKeyCreateRequest, IApiKeyCreateResponse, IApiKeyPatch, IApiKeySummary, apiKeyPatchIsEmpty} from 'types/ai';
+import {IApiKeyCreateRequest, IApiKeyCreateResponse, IApiKeyPatch, IApiKeySummary, apiKeyExpiry, apiKeyPatchIsEmpty} from 'types/ai';
 import {toPageState} from 'components/state/pageState';
 import {ApiKeyCreateReadback, ApiKeyCreateReadbackNote, readBackCreatedApiKey} from './apiKeyCreateReadback';
 
@@ -87,7 +87,7 @@ function DetailPanel(props: {data: IApiKeySummary}) {
 				</ValueBunch>
 				<ValueBunch name={t('Lifecycle')}>
 					<SingleTextField label={t('Created At')} value={data.created_at} />
-					<SingleTextField label={t('Expires At')} value={data.expires_at || t('Never')} />
+					<SingleTextField label={t('Expires At')} value={apiKeyExpiry(data.expires_at) ?? t('Never')} />
 				</ValueBunch>
 			</Stack>
 		</SubTitlePannel>

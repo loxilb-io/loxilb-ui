@@ -393,3 +393,21 @@ describe('rate-limit defaults contract (Stage 4.2b)', () => {
 		expect(validateRateLimitDefaults(row({default_user_rps: -1}))).not.toEqual([]);
 	});
 });
+
+describe('apiKeyExpiry', () => {
+	it('is undefined for a key that does not expire, however the gateway says so', async () => {
+		const {apiKeyExpiry} = await import('./ai');
+		for (const never of [undefined, null, '', '0001-01-01T00:00:00.000Z', '0001-01-01T00:00:00Z', '1970-01-01T00:00:00Z']) expect(apiKeyExpiry(never)).toBeUndefined();
+	});
+
+	it('keeps a real expiry, past or future, as served', async () => {
+		const {apiKeyExpiry} = await import('./ai');
+		expect(apiKeyExpiry('2027-01-01T00:00:00.000Z')).toBe('2027-01-01T00:00:00.000Z');
+		expect(apiKeyExpiry('2001-01-01T00:00:00Z')).toBe('2001-01-01T00:00:00Z');
+	});
+
+	it('keeps text that is no time, so it is shown and not taken for "never"', async () => {
+		const {apiKeyExpiry} = await import('./ai');
+		expect(apiKeyExpiry('soon')).toBe('soon');
+	});
+});

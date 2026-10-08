@@ -4,7 +4,7 @@
 import {getStableHash} from 'common';
 import DataTable from 'components/table/DataTable';
 import {IDataTableColumnDef} from 'types/global';
-import {IApiKeySummary} from 'types/ai';
+import {IApiKeySummary, apiKeyExpiry} from 'types/ai';
 import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
@@ -42,7 +42,7 @@ export default function ApiKeyTable(props: {
 		allowed_models: (item.allowed_models ?? []).join(', '),
 		rate_limit_rps: item.rate_limit_rps ?? 0,
 		tokens_per_min: item.tokens_per_min ?? 0,
-		expires_at: item.expires_at ?? '',
+		expires_at: apiKeyExpiry(item.expires_at) ?? '',
 		enabled: item.enabled ?? true,
 	}));
 

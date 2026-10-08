@@ -319,6 +319,13 @@ describe('a new API key is compared with its own read, field by field', () => {
 		expect(apiKeyCreateDiff({...asked, expires_at: '1970-01-01T00:00:00.000Z'}, {...served, expires_at: undefined})).toEqual([]);
 	});
 
+	it('reads the year-1 zero time as no expiry: it is what the gateway serves for a key that never expires', () => {
+		// Seen on the live gateway: a create with no expiry reads back with
+		// expires_at "0001-01-01T00:00:00.000Z", not with the field absent.
+		expect(apiKeyCreateDiff({tenant_id: 'tenant-a', enabled: true}, {tenant_id: 'tenant-a', enabled: true, expires_at: '0001-01-01T00:00:00.000Z'})).toEqual([]);
+		expect(apiKeyCreateDiff(asked, {...served, expires_at: '0001-01-01T00:00:00.000Z'})).toEqual(['expires_at']);
+	});
+
 	it('reports an expiry that is not a time as a difference', () => {
 		expect(apiKeyCreateDiff(asked, {...served, expires_at: 'never'})).toEqual(['expires_at']);
 	});

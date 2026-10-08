@@ -457,8 +457,9 @@ export default function RestoreWizard(props: RestoreWizardProps) {
 	// Step 1 runs automatically on open, and again for an undo: a dry-run of
 	// the whole document, whose plan is also the list of domains to choose from.
 	React.useEffect(() => {
-		if (!open || !target.snapshot.id) return;
+		// Bumped first, so closing also drops an answer that is still on its way.
 		const run = ++runRef.current;
+		if (!open || !target.snapshot.id) return;
 		setStep('dry-run');
 		setDryRunLoading(true);
 		setDryRunOutcome(null);
@@ -487,9 +488,6 @@ export default function RestoreWizard(props: RestoreWizardProps) {
 			// deviation; restore panels render gateway output verbatim by design).
 			else setDryRunError(snapshotOpErrorText(res));
 		});
-		return () => {
-			runRef.current++;
-		};
 	}, [open, target]);
 
 	const fullPass = canContinueToCommit(dryRunOutcome, dryRunError, dryRunLoading);
