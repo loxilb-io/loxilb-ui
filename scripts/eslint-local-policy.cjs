@@ -1,8 +1,6 @@
 // Shared lint gate, explicitly installed independently from the app bundler.
 // npm run build also runs this same lint and TypeScript check.
 module.exports = {
-	root: true,
-	extends: ['react-app', 'plugin:jsx-a11y/recommended'],
 	rules: {
 		// The certification evidence procedure treats unexplained console
 		// output as a failure. Survivors need a targeted

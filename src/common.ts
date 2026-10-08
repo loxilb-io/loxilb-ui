@@ -103,7 +103,7 @@ export function clearOldTimeSeriesData() {
 					localStorage.removeItem(key);
 				}
 			}
-		} catch (error) {
+		} catch {
 			// If we can't parse or trim, just remove the key
 			localStorage.removeItem(key);
 		}

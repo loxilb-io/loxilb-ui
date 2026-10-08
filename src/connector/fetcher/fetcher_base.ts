@@ -318,7 +318,7 @@ async function handle_response<T = any>(response: any): Promise<SimpleResponse<T
 				parse_failed: true
 			};
 		}
-	} catch (error) {
+	} catch {
 		// The body stream itself could not be read (cut off mid-transfer, e.g.
 		// a reload aborting it after the headers arrived). For the caller that
 		// is the same as a body that would not parse: flag it, or it reads as

@@ -40,6 +40,9 @@ jobs:
       - name: Lint (zero warnings)
         run: npm run lint
 
+      - name: Lint policy recurrence guards
+        run: npm run test:lint-policy
+
       - name: Locale parity (en/ko/ja)
         run: npm run locale:check
 
