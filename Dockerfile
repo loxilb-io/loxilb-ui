@@ -1,6 +1,6 @@
 # ---- Build stage: compile the React SPA ----
 # Node 22 matches the version CI builds and tests with (.github/workflows/*).
-FROM node:22-alpine AS builder
+FROM node:26-alpine AS builder
 
 WORKDIR /app
 
