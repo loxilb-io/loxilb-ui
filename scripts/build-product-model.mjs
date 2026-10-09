@@ -77,8 +77,9 @@ function main() {
   requireSourceContract(destination,model);
   node(['scripts/check-api-mapping.mjs']);
   node(['node_modules/vitest/vitest.mjs','run','src/api/contract.test.ts','src/api/loxilb-subset.contract.test.ts']);
+  node(['node_modules/eslint/bin/eslint.js','src','--ext','.ts,.tsx','--max-warnings','0']);
   node(['node_modules/typescript/bin/tsc','--noEmit']);
-  node(['node_modules/react-scripts/bin/react-scripts.js','build']);
+  node(['node_modules/vite/bin/vite.js','build','--mode','production']);
   // Bind the emitted bundle to the exact selected producer bytes and generated inputs.
   const artifacts={};
   const walk=directory=>{for(const entry of fs.readdirSync(directory,{withFileTypes:true})) {

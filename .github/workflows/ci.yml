@@ -40,6 +40,9 @@ jobs:
       - name: Lint (zero warnings)
         run: npm run lint
 
+      - name: Lint policy recurrence guards
+        run: npm run test:lint-policy
+
       - name: Locale parity (en/ko/ja)
         run: npm run locale:check
 
@@ -64,6 +67,12 @@ jobs:
           CI: 'true'
           REACT_APP_API_URL: /api/oam
           REACT_APP_PUBLIC_URL: /netlox
+
+      - name: Immutable public upstream archive build (author qualification)
+        # Run the executable path, including the bundler and emitted contract
+        # receipt. These outputs still explicitly report reused dependencies.
+        run: |
+          node scripts/build-product-model.mjs --model general --commit "$(git rev-parse HEAD)" --output "$RUNNER_TEMP/model-general" --dependencies "$GITHUB_WORKSPACE" --apply
 
       - name: No broad-while-unresolved capability fallback (stop-ship guard)
         # The capability surface must fail NARROW: an unresolved/denied
