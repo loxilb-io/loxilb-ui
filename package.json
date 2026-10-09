@@ -83,7 +83,8 @@
 		"e2e-oss": "E2E_FLAVOR=loxilb playwright test --project=oss",
 		"e2e-oss:headed": "E2E_FLAVOR=loxilb playwright test --project=oss --headed",
 		"e2e:selftest": "E2E_NO_WEBSERVER=1 playwright test --project=selftest",
-		"test:build-tools": "node --test scripts/vite-build-config.test.mjs"
+		"test:build-tools": "node --test scripts/vite-build-config.test.mjs",
+		"test:lint-policy": "node --test scripts/eslint-policy.test.mjs"
 	},
 	"browserslist": {
 		"production": [
@@ -114,7 +115,13 @@
 		"vitest": "^4.1.10",
 		"vite": "^8.3.4",
 		"@vitejs/plugin-react": "^6.1.2",
-		"eslint": "^8.57.1",
-		"eslint-config-react-app": "7.0.1"
+		"eslint": "^9.39.5",
+		"@typescript-eslint/parser": "^8.71.1",
+		"@typescript-eslint/eslint-plugin": "^8.71.1",
+		"eslint-plugin-react": "^7.37.5",
+		"eslint-plugin-react-hooks": "^7.1.1",
+		"eslint-plugin-jsx-a11y": "^6.10.2",
+		"eslint-plugin-import": "^2.32.0",
+		"globals": "^17.13.0"
 	}
 }
