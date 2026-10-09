@@ -76,6 +76,9 @@ if [ -n "$HTTPS_REDIRECT_PORT" ]; then
     HTTPS_REDIRECT_PORT=":${HTTPS_REDIRECT_PORT#:}"
 fi
 
+. /usr/local/bin/nginx-ipv6.sh
+configure_ipv6_listeners
+
 export BACKEND_URL BACKEND_HOST FRONTEND_URL PUBLIC_PATH BACKEND_TLS_VERIFY \
        HTTP_PORT HTTPS_PORT HTTPS_REDIRECT_PORT
 
@@ -97,7 +100,7 @@ NAMESERVERS=$(awk '/^nameserver/ { if ($2 ~ /:/) printf "[%s] ", $2; else printf
 printf 'resolver %sipv6=off valid=30s;\nresolver_timeout 5s;\n' "$NAMESERVERS" > /etc/nginx/resolver.conf
 
 # ── Render ───────────────────────────────────────────────────────────────────
-SUBST='${BACKEND_URL} ${BACKEND_HOST} ${FRONTEND_URL} ${PUBLIC_PATH} ${BACKEND_TLS_VERIFY} ${HTTP_PORT} ${HTTPS_PORT} ${HTTPS_REDIRECT_PORT}'
+SUBST='${BACKEND_URL} ${BACKEND_HOST} ${FRONTEND_URL} ${PUBLIC_PATH} ${BACKEND_TLS_VERIFY} ${HTTP_PORT} ${HTTPS_PORT} ${HTTPS_REDIRECT_PORT} ${IPV6_HTTP_LISTEN} ${IPV6_HTTPS_LISTEN}'
 
 render() {
     [ -f "$1" ] || die "template not found: $1 (corrupt image?)"

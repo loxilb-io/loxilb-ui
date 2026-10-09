@@ -24,7 +24,7 @@ ENV NODE_ENV=production
 ARG VERSION=dev
 ENV REACT_APP_VERSION=${VERSION}
 
-# Build-time SPA config baked in by Create React App (it reads REACT_APP_* from
+# Build-time SPA config baked in by Vite (the compatibility map reads REACT_APP_* from
 # the environment). These MUST be set at build time; the app has no runtime
 # config, so an unset value ships a broken bundle. Historically they were only
 # provided by a developer's local .env.local — which is (correctly) excluded
@@ -44,7 +44,7 @@ ARG REACT_APP_PUBLIC_URL=/netlox
 ENV REACT_APP_API_URL=${REACT_APP_API_URL}
 ENV REACT_APP_PUBLIC_URL=${REACT_APP_PUBLIC_URL}
 # CSP: the served pages must need no inline <script> — the certified policy has
-# no script-src 'unsafe-inline', so an inlined CRA runtime chunk would blank
+# no script-src 'unsafe-inline', so an inlined runtime chunk would blank
 # every page. Kept in sync with .env.production (CI has an agreement gate);
 # stated here as well because a build could otherwise silently regress if the
 # dotenv file went missing (dotenv-cli proceeds without it).
@@ -79,6 +79,7 @@ COPY nginx-https.conf.template /etc/nginx/templates/https.conf.template
 COPY nginx-security-headers.conf /etc/nginx/snippets/security-headers.conf
 
 COPY ssl-setup.sh /usr/local/bin/ssl-setup.sh
+COPY nginx-ipv6.sh /usr/local/bin/nginx-ipv6.sh
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/ssl-setup.sh /docker-entrypoint.sh
 

@@ -49,6 +49,9 @@ jobs:
       - name: Unit + backend-contract tests
         run: npm test
 
+      - name: Public build configuration regression
+        run: npm run test:build-tools
+
       - name: Production build (release parity)
         # The exact path releases ship: build:prod with the tracked
         # .env.production, and the same REACT_APP_* values the release
@@ -71,10 +74,9 @@ jobs:
           ! grep -rn "?? 'inference-gateway'" src --include="*.ts" --include="*.tsx"
 
       - name: Build-flag agreement (Dockerfile vs .env.production)
-        # INLINE_RUNTIME_CHUNK=false is load-bearing for the CSP (no
-        # script-src 'unsafe-inline'); it is stated in both the Dockerfile
-        # builder stage and .env.production, and this gate fails the build
-        # the moment the two drift.
+        # Retain the release compatibility flags in both sources. Vite
+        # emits an external runtime and explicitly disables source maps;
+        # the artifact gates below verify the effective output.
         run: |
           grep -q '^ENV INLINE_RUNTIME_CHUNK=false' Dockerfile
           grep -q '^INLINE_RUNTIME_CHUNK=false' .env.production

@@ -12,7 +12,7 @@
  * `--build-arg VERSION` — reports `dev`, which is the honest answer for an
  * untagged build rather than a number it cannot vouch for.
  *
- * Read at module load: Create React App inlines `process.env.REACT_APP_*` at
+ * Read at module load: The public build compatibility map inlines `process.env.REACT_APP_*` at
  * build time, so there is nothing to re-evaluate at runtime.
  */
 const raw = (process.env.REACT_APP_VERSION ?? '').trim();

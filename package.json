@@ -50,7 +50,6 @@
 		"react-i18next": "^14.1.2",
 		"react-query": "^3.39.3",
 		"react-router-dom": "^7.1.1",
-		"react-scripts": "5.0.1",
 		"recoil": "^0.7.7",
 		"typescript": "^4.9.5",
 		"web-vitals": "^2.1.4"
@@ -59,7 +58,6 @@
 		"build:model": "node scripts/build-product-model.mjs",
 		"test:model-tools": "node --test scripts/api-spec-model.test.mjs scripts/build-product-model.test.mjs",
 		"gen:api": "node scripts/gen-api-types.mjs && node scripts/gen-capability-map.mjs && node scripts/gen-metric-manifest.mjs",
-
 		"gen:api:check": "npm run gen:api && git diff --exit-code -- src/api/gen",
 		"api:check-mapping": "node scripts/check-api-mapping.mjs",
 		"api:coverage": "node scripts/check-api-mapping.mjs --coverage",
@@ -75,16 +73,17 @@
 		"typecheck": "tsc --noEmit",
 		"typecheck:e2e": "tsc --noEmit -p e2e/tsconfig.json",
 		"typecheck:all": "npm run typecheck && npm run typecheck:e2e",
-		"start": "REACT_APP_VERSION=${REACT_APP_VERSION:-$npm_package_version} HTTPS=false WDS_SOCKET_PORT=0 HOST=0.0.0.0 dotenv -e .env.development react-scripts start",
-		"build": "REACT_APP_VERSION=${REACT_APP_VERSION:-$npm_package_version} dotenv -e .env.local react-scripts build",
-		"build:dev": "REACT_APP_VERSION=${REACT_APP_VERSION:-$npm_package_version} dotenv -e .env.development react-scripts build",
-		"build:prod": "REACT_APP_VERSION=${REACT_APP_VERSION:-$npm_package_version} dotenv -e .env.production react-scripts build",
+		"start": "vite --host 0.0.0.0 --port ${PORT:-3000}",
+		"build": "npm run lint && npm run typecheck && vite build",
+		"build:dev": "npm run lint && npm run typecheck && vite build --mode development",
+		"build:prod": "npm run lint && npm run typecheck && vite build --mode production",
 		"e2e": "playwright test --project=gw",
 		"e2e:headed": "playwright test --project=gw --headed",
 		"e2e:cicd": "playwright test --project=gw tests/cicd",
 		"e2e-oss": "E2E_FLAVOR=loxilb playwright test --project=oss",
 		"e2e-oss:headed": "E2E_FLAVOR=loxilb playwright test --project=oss --headed",
-		"e2e:selftest": "E2E_NO_WEBSERVER=1 playwright test --project=selftest"
+		"e2e:selftest": "E2E_NO_WEBSERVER=1 playwright test --project=selftest",
+		"test:build-tools": "node --test scripts/vite-build-config.test.mjs"
 	},
 	"browserslist": {
 		"production": [
@@ -112,6 +111,10 @@
 		"playwright": "^1.61.1",
 		"swagger2openapi": "^7.0.8",
 		"vite-tsconfig-paths": "^6.1.1",
-		"vitest": "^4.1.10"
+		"vitest": "^4.1.10",
+		"vite": "^8.3.4",
+		"@vitejs/plugin-react": "^6.1.2",
+		"eslint": "^8.57.1",
+		"eslint-config-react-app": "7.0.1"
 	}
 }

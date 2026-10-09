@@ -6,7 +6,7 @@
 # drift apart.
 server {
     listen ${HTTP_PORT};
-    listen [::]:${HTTP_PORT};
+    ${IPV6_HTTP_LISTEN}
     server_name _;
 
     include /etc/nginx/snippets/app.conf;
