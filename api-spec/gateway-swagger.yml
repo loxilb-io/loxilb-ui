@@ -378,8 +378,11 @@ paths:
     post:
       consumes:
       - application/json
-      description: Authenticates a user and returns a JWT token if the credentials
-        are valid.
+      description: >-
+        Authenticates a Gateway management user and returns an opaque,
+        store-backed session token if the credentials are valid. Send the token
+        as Authorization Bearer. It is separate from an OAM product-login JWT
+        and from inference API keys or data-plane JWT admission profiles.
       parameters:
       - description: User credentials
         in: body
@@ -4795,7 +4798,7 @@ paths:
   '/config/securityrate':
     post:
       summary: Configure unified security rate limiting
-      description: "Replace SYN, connection-SYN, and UDP rate configuration and the security-rate whitelist. Supply all required flags and thresholds; at least one protection must be enabled. Omitted whitelist clears the previous list. Numeric and relational limits are described on the configuration model. Programming is not atomic: errors can follow partial datapath changes. Explicit cookieThreshold zero becomes 50 in the datapath, and cookie telemetry does not implement a SYN-cookie exchange."
+      description: "Replace SYN, connection-SYN, and UDP rate configuration and the security-rate whitelist. Supply all required flags and thresholds; at least one per-source protection or positive aggregate budget must be enabled. Omitted whitelist clears the previous list. Numeric and relational limits are described on the configuration model. Programming is not atomic: errors can follow partial datapath changes. Explicit cookieThreshold zero becomes 50 in the datapath, and cookie telemetry does not implement a SYN-cookie exchange."
       parameters:
         - name: attr
           in: body
@@ -4812,6 +4815,15 @@ paths:
           description: Malformed arguments for API call
           schema:
             $ref: '#/definitions/Error'
+        '422':
+          description: Schema validation rejected the request before datapath mutation
+          schema:
+            type: object
+            properties:
+              code:
+                type: integer
+              message:
+                type: string
         '401':
           description: Invalid authentication credentials
           schema:
@@ -4857,7 +4869,7 @@ paths:
   '/config/securityrate/all':
     get:
       summary: Get unified security rate limiting configuration and statistics
-      description: "Return a single configuration/statistics entry in an array. Configuration reflects the stored control-plane values, which can differ from effective datapath defaults or partially applied updates. Statistics read failures can appear as zeros. uniqueIps is tracking-map occupancy, not a resettable cumulative counter."
+      description: "Return a single configuration/statistics entry in an array. Configuration reflects the stored control-plane values, which can differ from effective datapath defaults or partially applied updates. Statistics read failures return HTTP 500 instead of a zero snapshot. uniqueIps is tracking-map occupancy, not a resettable cumulative counter."
       responses:
         '200':
           description: OK
@@ -4884,7 +4896,7 @@ paths:
   '/config/securityrate/reset':
     put:
       summary: Reset security rate limiting statistics
-      description: "Attempt to reset accumulated SYN, connection-SYN, and UDP statistics counters. Tracking maps and their uniqueIps occupancy are not cleared. Individual counter-write failures are logged but can still result in HTTP 204; success does not prove every counter was reset."
+      description: "Attempt to reset accumulated SYN, connection-SYN, and UDP statistics counters. Tracking maps and their uniqueIps occupancy are not cleared. Counter-write failures return HTTP 500 and may follow partial resets. Only successfully reset counters advance exporter generations. HTTP 204 means all reset writes succeeded; packet processing continues during reset."
       responses:
         '204':
           description: Statistics reset successfully
@@ -9993,23 +10005,27 @@ definitions:
         description: Version of the parity oracle (absent when not declared).
   LoadbalanceStats:
     type: object
-    description: Per-LB statistics quad (Octavia).
+    description: Per-LB statistics quad (Octavia). All four counters are emitted, including zero; a missing rule returns 404.
     properties:
       activeConnections:
         type: integer
         format: uint64
+        x-omitempty: false
         description: Live concurrent-connection count for the rule — the same selector-agnostic live count the connectionLimit gate enforces. Recomputed from the conntrack walk; reset to zero on restart.
       bytesIn:
         type: integer
         format: uint64
+        x-omitempty: false
         description: Real per-direction byte total for the forward CT_DIR_IN (client to VIP request) entries of the rule. NOT a 50/50 heuristic. Reset to zero on restart.
       bytesOut:
         type: integer
         format: uint64
+        x-omitempty: false
         description: Real per-direction byte total for the reverse CT_DIR_OUT (VIP to client response) entries of the rule. Reset to zero on restart.
       totalConnections:
         type: integer
         format: uint64
+        x-omitempty: false
         description: Monotonic cumulative connection count (incremented on first-seen CT for the rule, never decremented). In-memory only, reset to zero on restart.
   L7Rule:
     type: object
@@ -10309,8 +10325,9 @@ definitions:
               rejected. Enforced by the conntrack selector on DNAT-mode rules: once the
               rule's live connection count has reached the ceiling, further SYNs are
               dropped without a reset and without a conntrack entry, and a slot frees
-              when a connection is torn down. A FullProxy rule is not gated by this
-              field, and HTTP/2 streams are not counted as connections.
+              when a connection is torn down. FullProxy listeners enforce the ceiling at
+              accept: excess connections are closed before request processing.
+              HTTP/2 streams are not counted as separate connections.
           annotations:
             type: object
             additionalProperties:
@@ -10928,9 +10945,9 @@ definitions:
             readOnly: true
             description: >-
               The capacity admission gate's resolved state on this rule's model
-              pool, read from the data plane. Present on GET for AI-gateway
-              services (sse_mode, pd_disagg_mode or an api-key policy); ignored on
-              input. mode is off, observe or enforce; the ceilings are the values
+              pool, read from the data plane. Present on GET for installed
+              AI-gateway and modern MCP services; absent when no pool was read.
+              Every numeric value is explicit, including zero. Ignored on input. mode is off, observe or enforce; the ceilings are the values
               in force, the process defaults where the rule declared nothing;
               inflight and queued are live counts; queue_memory_bound_mib is the
               memory the full queue may park (queue_depth x 1 MiB);
@@ -10947,43 +10964,53 @@ definitions:
                   The gate mode in force on the pool (off, observe or enforce).
               max_outstanding:
                 type: integer
+                x-omitempty: false
                 format: int32
                 description: Pool-wide ceiling on executing inference requests; 0 is unlimited.
               ep_max_inflight:
                 type: integer
+                x-omitempty: false
                 format: int32
                 description: Per-endpoint ceiling for the normal role; 0 is unlimited.
               prefill_max_inflight:
                 type: integer
+                x-omitempty: false
                 format: int32
                 description: Per-endpoint ceiling for prefill legs; 0 is unlimited.
               decode_max_inflight:
                 type: integer
+                x-omitempty: false
                 format: int32
                 description: Per-endpoint ceiling for decode legs; 0 is unlimited.
               queue_depth:
                 type: integer
+                x-omitempty: false
                 format: int32
                 description: >-
                   Requests that may wait for a unit; 0 means over a ceiling is refused.
               queue_wait_ms:
                 type: integer
+                x-omitempty: false
                 format: int32
                 description: The wait window in force for a queued request, in milliseconds.
               inflight:
                 type: integer
+                x-omitempty: false
                 format: int32
                 description: Inference requests executing on the pool right now.
               queued:
                 type: integer
+                x-omitempty: false
                 format: int32
                 description: Inference requests waiting for a unit right now.
               queue_memory_bound_mib:
                 type: integer
+                x-omitempty: false
                 format: int64
                 description: Memory the full queue may park, in MiB (queue_depth x 1 MiB, one parked client connection per waiting request).
               telemetry_stale_ms:
                 type: integer
+                x-omitempty: false
                 format: int32
                 description: The P/D scorers' trust window for scraped queue depth, in milliseconds.
               adaptive:
@@ -10991,12 +11018,15 @@ definitions:
                 enum: ["on", "off"]
               warmup_ms:
                 type: integer
+                x-omitempty: false
                 format: int32
               ttft_target_ms:
                 type: integer
+                x-omitempty: false
                 format: int32
               effective_max_outstanding:
                 type: integer
+                x-omitempty: false
                 format: int32
                 description: The service ceiling in force now; below max_outstanding while an adaptive pool is tightened.
               adapt_state:
@@ -11012,14 +11042,17 @@ definitions:
                 description: Why the adaptive ceiling last moved, or why it holds.
               warming_endpoints:
                 type: integer
+                x-omitempty: false
                 format: int32
                 description: Endpoints inside their warm-up window.
               tenant_max_share_pct:
                 type: integer
+                x-omitempty: false
                 format: int32
                 description: The tenant share in force, in percent; 0 or 100 is no share.
               tenants_active:
                 type: integer
+                x-omitempty: false
                 format: int32
                 description: Tenants holding a unit or waiting on the pool now, while it holds tenants to a share.
               expose_headers:
@@ -11251,6 +11284,17 @@ definitions:
               A nonzero declaration requires both
               pd_disagg_mode=true and kvEngineType=sglang; it is rejected on
               other shapes. Zero is accepted on other shapes but has no effect.
+          mcp_protocol_version:
+            type: string
+            x-nullable: false
+            enum: ["", "2026-07-28"]
+            description: >-
+              Explicit stateless MCP transport mode. Omitted or empty on create preserves
+              legacy behavior. Omitted replace preserves the existing value; changing it
+              requires delete and recreate. Requires TCP FullProxy (mode=4), round-robin
+              (sel=0) or weighted round-robin (sel=2), and sockMapMode=off. Session affinity,
+              model routing, P/D disaggregation and KV routing are rejected. Configuration
+              readback does not prove request validation or backend delivery.
           session_header_name:
             type: string
             description: >-
@@ -11634,7 +11678,7 @@ definitions:
 
       allowedSources:
         type: array
-        description: Source-address prefixes associated with the LB source-check path. A nonempty domain list enables source checking; GET returns the stored prefixes. This is an address filter, not projectId-based tenant authorization. Only load-balancer rules in the first 29 rule slots (0-28) can carry source checks - the slot is allocated by the Gateway, not chosen here - so a create or patch carrying allowedSources on a rule allocated a higher slot is refused with 412; GET /status/capabilities reports the slot budget as lb_allowed_sources.
+        description: Source-address prefixes associated with the LB source-check path. A nonempty domain list enables source checking; GET returns the stored prefixes. This is an address filter, not projectId-based tenant authorization. FullProxy rules sharing an address, port and protocol must declare the same normalized source-prefix set (including empty); conflicting creates and updates are rejected with 400 before changing existing policy. Overlapping port ranges must also agree. Deleting one pool preserves the fence required by remaining pools. Only load-balancer rules in the first 29 rule slots (0-28) can carry source checks - the slot is allocated by the Gateway, not chosen here - so a create or patch carrying allowedSources on a rule allocated a higher slot is refused with 412; GET /status/capabilities reports the slot budget as lb_allowed_sources.
         items:
           properties:
             prefix:
@@ -12542,7 +12586,7 @@ definitions:
         description: "TLS SNI for structured HTTPS and TLS-hello probes, and explicit Host for structured HTTPS. For HTTP, explicit Host override is applied only when httpVersion is 1.1."
 
   EndPointHostState:
-    description: "Explicit host-state input. Supply both nonzero epPort and epProto for generated-key targeting, or omit both for host-wide targeting. Custom monitor names cannot be selected by the specific tuple path. Host-wide requests can succeed without matches. epPort narrows to uint16 without full validation; immediate dependent updates are implemented for fullproxy rules, not universally."
+    description: "Explicit host-state input. Supply both nonzero epPort and epProto for generated-key targeting, or omit both for host-wide targeting. epPort is validated in 0..65535 before conversion. Fullproxy dataplane updates respect the selected endpoint port; zero retains all ports on the host. Custom monitor names cannot be selected by the specific tuple path. Host-wide requests can succeed without matches. Immediate dependent updates are implemented for fullproxy rules, not universally."
     type: object
     properties:
       hostName:
@@ -12550,10 +12594,13 @@ definitions:
         description: "Literal endpoint host IP used for monitor matching, not a hostname or CIDR."
       epPort:
         type: integer
-        description: "Nonzero port requires epProto; zero or omission requires epProto empty for host-wide targeting. Conversion to uint16 is not fully validated."
+        minimum: 0
+        maximum: 65535
+        description: "Nonzero port in 1..65535 requires epProto; zero or omission requires epProto empty for host-wide targeting."
       epProto:
         type: string
-        description: "Generated monitor-key probe type; supply together with nonzero epPort or omit both. This selector cannot resolve a custom monitor name and is not a universal transport-protocol selector."
+        enum: ["", "tcp", "udp", "sctp", "http", "https", "ping", "tls-hello", "none"]
+        description: "Generated monitor-key probe type: tcp, udp, sctp, http, https, ping, tls-hello or none. Supply together with nonzero epPort or omit both. This selector cannot resolve a custom monitor name and is not a universal transport-protocol selector."
       state:
         type: string
         description: Host state string ("green", "yellow", "red" )
@@ -12688,7 +12735,7 @@ definitions:
         description: Byte counter (read-only)
 
   SecurityRateConfigMod:
-    description: "Full replacement of rate-limit configuration and security-rate whitelist. All required flags and thresholds must be supplied; schema defaults do not establish omission support. Thresholds are 0..16777216 and UDP bandwidth is 0..4095 MiB/s. Enabled protections require positive applicable thresholds, and enabled SYN protection requires cookieThreshold < synThreshold. At least one protection must be enabled. At most 1024 valid whitelist CIDRs are accepted; omission clears the prior list. Explicit cookieThreshold zero becomes 50 in the datapath. Programming is non-atomic and shares whitelist maps with IP filtering."
+    description: "Full replacement of rate-limit configuration and security-rate whitelist. All required flags and thresholds must be supplied; schema defaults do not establish omission support. Thresholds are 0..16777216 and UDP bandwidth is 0..4095 MiB/s. Enabled protections require positive applicable thresholds, and enabled SYN protection requires cookieThreshold < synThreshold. At least one per-source protection or positive aggregate budget must be enabled. At most 1024 valid whitelist CIDRs are accepted; omission clears the prior list. Explicit cookieThreshold zero becomes 50 in the datapath. Programming is non-atomic and shares whitelist maps with IP filtering."
     type: object
     required:
       - synEnabled
@@ -12700,6 +12747,30 @@ definitions:
       - udpPktThreshold
       - udpBandwidthMB
     properties:
+      aggregateSynThreshold:
+        type: integer
+        format: int64
+        minimum: 0
+        maximum: 16777216
+        description: "Optional Gateway-wide IPv4/IPv6 SYN packet budget per one-second window. Zero or omission disables it independently of per-source flags; trusted whitelist sources bypass it. Budget is shared across listeners and interfaces; it can reject normal tenants before authentication. "
+      aggregateConnRatePerSec:
+        type: integer
+        format: int64
+        minimum: 0
+        maximum: 16777216
+        description: "Optional Gateway-wide IPv4/IPv6 SYN packet budget per one-second window. Zero or omission disables it independently of per-source flags; trusted whitelist sources bypass it. Budget is shared across listeners and interfaces; it can reject normal tenants before authentication. "
+      aggregateUdpPktThreshold:
+        type: integer
+        format: int64
+        minimum: 0
+        maximum: 16777216
+        description: "Optional Gateway-wide IPv4/IPv6 UDP packet budget per one-second window. Zero or omission disables it independently of per-source flags; trusted whitelist sources bypass it. Budget is shared across listeners and interfaces; it can reject normal tenants before authentication. "
+      aggregateUdpBandwidthMB:
+        type: integer
+        format: int64
+        minimum: 0
+        maximum: 4095
+        description: "Optional Gateway-wide IPv4/IPv6 UDP bandwidth budget per one-second window. Zero or omission disables it independently of per-source flags; trusted whitelist sources bypass it. Budget is shared across listeners and interfaces; it can reject normal tenants before authentication. Units are MiB using 1024*1024 bytes."
       synEnabled:
         type: boolean
         description: Enable/disable SYN flood protection (P0-5)
@@ -12741,9 +12812,53 @@ definitions:
         description: "Up to 1024 valid IPv4/IPv6 CIDRs. Omission clears the previous security-rate whitelist. These entries share maps with IP-filter whitelist rules."
 
   SecurityRateEntry:
-    description: "Stored configuration with observed security-rate statistics. GET does not establish effective configuration after defaults or partial programming failures, and statistics failures can appear as zeros. Connection counters concern SYN packets, not completed connections. synCookies is threshold telemetry, not proof of a SYN-cookie exchange. uniqueIps is current tracking-map occupancy and is not cleared by counter reset."
+    description: "Stored configuration with observed security-rate statistics. GET does not establish effective configuration after defaults or partial programming failures, and statistics read failures return an error. Connection counters concern SYN packets, not completed connections. synCookies is threshold telemetry, not proof of a SYN-cookie exchange. uniqueIps is current tracking-map occupancy and is not cleared by counter reset."
     type: object
     properties:
+      unsupportedPacketBlocked:
+        type: integer
+        format: int64
+        description: "IPv6 fragment (including atomic fragment), malformed transport, or bounded header-chain rejection under applicable TCP/UDP rate protection. Whitelisted sources bypass rate protection. Extension chains of up to eight headers are inspected; ESP remains opaque."
+      trackingFailures:
+        type: integer
+        format: int64
+        description: "Source tracking-map insertion errors. Protected SYN or UDP packets fail closed on these errors; ordinary established TCP data is not denied by an insertion error."
+      aggregateSynThreshold:
+        type: integer
+        format: int64
+        minimum: 0
+        maximum: 16777216
+        description: "Optional Gateway-wide IPv4/IPv6 SYN packet budget per one-second window. Zero or omission disables it independently of per-source flags; trusted whitelist sources bypass it. Budget is shared across listeners and interfaces; it can reject normal tenants before authentication. "
+      aggregateConnRatePerSec:
+        type: integer
+        format: int64
+        minimum: 0
+        maximum: 16777216
+        description: "Optional Gateway-wide IPv4/IPv6 SYN packet budget per one-second window. Zero or omission disables it independently of per-source flags; trusted whitelist sources bypass it. Budget is shared across listeners and interfaces; it can reject normal tenants before authentication. "
+      aggregateUdpPktThreshold:
+        type: integer
+        format: int64
+        minimum: 0
+        maximum: 16777216
+        description: "Optional Gateway-wide IPv4/IPv6 UDP packet budget per one-second window. Zero or omission disables it independently of per-source flags; trusted whitelist sources bypass it. Budget is shared across listeners and interfaces; it can reject normal tenants before authentication. "
+      aggregateUdpBandwidthMB:
+        type: integer
+        format: int64
+        minimum: 0
+        maximum: 4095
+        description: "Optional Gateway-wide IPv4/IPv6 UDP bandwidth budget per one-second window. Zero or omission disables it independently of per-source flags; trusted whitelist sources bypass it. Budget is shared across listeners and interfaces; it can reject normal tenants before authentication. Units are MiB using 1024*1024 bytes."
+      aggregateSynBlocked:
+        type: integer
+        format: int64
+        description: "Aggregate budget drops, also included in the corresponding total blocked counter."
+      aggregateConnBlocked:
+        type: integer
+        format: int64
+        description: "Aggregate budget drops, also included in the corresponding total blocked counter."
+      aggregateUdpBlocked:
+        type: integer
+        format: int64
+        description: "Aggregate budget drops, also included in the corresponding total blocked counter."
       synEnabled:
         type: boolean
         description: Whether SYN flood protection is enabled
@@ -13866,9 +13981,9 @@ definitions:
     description: >-
       Successful local-account login returns an opaque random management session
       token, not a JWT containing client-readable identity or role claims. Local
-      account routes require UserServiceEnable. Known logout limitation: its
-      handler forwards the full Authorization header to a raw-token hash lookup,
-      so a successful Bearer logout response is not verified session revocation.
+      account routes require UserServiceEnable. Logout revokes the raw session
+      token after removing the Bearer prefix used by authentication; a revoked
+      token is rejected on subsequent protected management requests.
     properties:
       token:
         type: string
@@ -15957,7 +16072,14 @@ definitions:
       tokens_per_min:
         type: integer
         format: int64
-        description: Stored per-key token-quota metadata; enforcement is not connected in the reviewed token-accounting consumer. Tenant and tenant/model quotas are separate.
+        description: >-
+          Per-key token quota in the supported token-accounting data plane.
+          Positive values participate in admission reservation and usage
+          settlement; nonpositive values leave this dimension unlimited.
+          Insufficient reservation capacity returns 429 token_quota_would_exceed
+          with Retry-After before backend delivery. Tenant, model, user and
+          service quotas are separate dimensions. Readback alone does not prove
+          effective enforcement for a particular service or protocol.
       expires_at:
         type: string
         format: date-time
@@ -15994,7 +16116,9 @@ definitions:
       explicitly serialized; optional zero metadata can be absent. A list without
       nonempty tenant_id returns all keys; viewer authorization is not tenant
       scoped. DELETE permanently removes the key and returns 204, not reversible
-      disabling. Per-key token-quota enforcement is not connected.
+      disabling. Positive per-key token quotas participate in the supported
+      data-plane admission and usage-accounting path; readback alone does not
+      establish effective enforcement for every service or protocol.
     required:
       # enabled must always serialize: a disabled key (enabled=false) is still
       # listed/returned by the management endpoints, and the operator relies on
@@ -16027,7 +16151,11 @@ definitions:
       tokens_per_min:
         type: integer
         format: int64
-        description: Stored metadata, not an enforced per-key token quota in the reviewed consumer. Tenant and tenant/model token limits are separate.
+        description: >-
+          Positive per-key token quota used by the supported data-plane
+          reservation and settlement path; nonpositive means unlimited for this
+          dimension. Other quota dimensions remain separate. Readback is desired
+          configuration, not runtime delivery proof.
       created_at:
         type: string
         format: date-time

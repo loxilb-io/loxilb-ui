@@ -158,6 +158,32 @@ describe('a landed rule write is confirmed despite how the gateway shapes its an
 	});
 });
 
+describe('MCP protocol configuration read-back confirmation', () => {
+	const served = (version?: string) => rule({...servedArgs,
+		...(version === undefined ? {} : {mcp_protocol_version: version})},
+	{endpoints: servedRule.endpoints});
+
+	it('confirms the explicitly selected version returned by the Gateway', () => {
+		expect(lbRuleApplied(sent({mcp_protocol_version: '2026-07-28'}))([served('2026-07-28')])).toBe(true);
+	});
+
+	it.each([undefined, '', '2025-11-25'])('does not confirm modern mode against stale version %s', version => {
+		expect(lbRuleApplied(sent({mcp_protocol_version: '2026-07-28'}))([served(version)])).toBe(false);
+	});
+
+	it('confirms explicit legacy empty against the omitted Gateway value', () => {
+		expect(lbRuleApplied(sent({mcp_protocol_version: ''}))([served()])).toBe(true);
+	});
+
+	it('does not confirm explicit legacy empty against a modern rule', () => {
+		expect(lbRuleApplied(sent({mcp_protocol_version: ''}))([served('2026-07-28')])).toBe(false);
+	});
+
+	it('does not compare an omitted version on a write that preserves existing configuration', () => {
+		expect(lbRuleApplied(sent())([served('2026-07-28')])).toBe(true);
+	});
+});
+
 describe('a rule that is listed but does not hold the submitted values is not confirmed', () => {
 	it.each([
 		['an admission limit', {fc_max_outstanding: 16}],

@@ -94,6 +94,8 @@ export const LB_FIELD_CONFIRMATION: Readonly<Record<string, LBFieldConfirmation>
 	sse_mode: echo,
 	api_key_auth: echo,
 	jwt_auth_profile: echo,
+	// Gateway stores the selected version verbatim; legacy empty is omitted on GET.
+	mcp_protocol_version: echo,
 	max_stream_duration_sec: echo,
 	backend_keepalive_interval_sec: echo,
 	cb_enable: echo,
