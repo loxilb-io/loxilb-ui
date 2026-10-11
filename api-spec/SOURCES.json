@@ -17,9 +17,9 @@
     },
     "repo": "loxilb-inference-gateway",
     "path": "api/swagger.yml + api/swagger-extras.yml",
-    "commit": "3e1d6c23c30d6fb4f1afded6f8f35b1fe5981d13",
+    "commit": "9fb0b4505ea896a598eb8031a0b329c509ef0f22",
     "dirty": false,
-    "note": "clean re-vendor via sync-specs.sh --only gateway from a detached checkout; byte-identical to the recorded commit"
+    "note": "Immutable Git blobs checked against the final UC-8 candidate commit; vendored Swagger bytes and hashes unchanged."
   },
   "oam": {
     "repository": "https://github.com/loxilb-io/loxilb-oam",
