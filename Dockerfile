@@ -61,7 +61,7 @@ FROM nginx:1.29-alpine
 # gettext   — envsubst, which renders the config templates
 # curl      — HEALTHCHECK
 # ca-certs  — verifying the OAM backend's chain when BACKEND_TLS_VERIFY=on
-RUN apk add --no-cache openssl gettext curl ca-certificates
+RUN apk upgrade --no-cache && apk add --no-cache openssl gettext curl ca-certificates
 
 # The stock config serves the nginx welcome page on :80; ours replaces it.
 RUN rm /etc/nginx/conf.d/default.conf
