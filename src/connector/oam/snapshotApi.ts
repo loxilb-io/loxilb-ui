@@ -9,12 +9,25 @@
 //---------------------------------------------------------
 import type {OamGetResp, OamPostResp} from 'api';
 import {ISnapshot, ISnapshotList, ISnapshotSchedule, IRestoreOutcomeParsed} from 'types/snapshot';
-import {assertOk, DOWNLOAD_FILE_STREAM, DownloadProgress} from '../fetcher/fetcher_base';
+import {ApiError, assertOk, DOWNLOAD_FILE_STREAM, DownloadProgress} from '../fetcher/fetcher_base';
 import {OpResult} from '../fetcher/opResult';
 import {fromNetworkError, fromSimpleResponse} from '../fetcher/opResultAdapter';
 import {STATUS_LOCALE_KEYS} from '../fetcher/opResultCodes';
 import {DELETE_OAM, GET_OAM, PATCH_OAM, POST_OAM, PUT_OAM, UPLOAD_FILE_OAM} from '../fetcher/fetcher_oam';
 import {getApiBaseUrl} from 'utils/apiProxy';
+
+// A parsed 2xx is not enough: capture/upload/pin need the snapshot identity.
+// Without it the pre-upgrade flow can skip pinning yet announce success.
+// A change may already have happened, so reconcile it before retrying.
+function isSnapshot(value: unknown): value is ISnapshot {
+	const id = typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as ISnapshot).id : undefined;
+	return typeof id === 'string' && id.trim() !== '';
+}
+
+function snapshotResult(res: SnapshotMutationResult, op: string, expectedId?: string, expectedPinned?: boolean): SnapshotMutationResult {
+	if (res.status !== 'confirmed' || (isSnapshot(res.data) && (expectedId === undefined || res.data.id === expectedId) && (expectedPinned === undefined || res.data.pinned === expectedPinned))) return res;
+	return {...res, status: 'unknown', code: `${op}.malformed_response`, localeKey: STATUS_LOCALE_KEYS.unknown, retryable: false, data: undefined};
+}
 
 //---------------------------------------------------------
 // Reads
@@ -22,7 +35,11 @@ import {getApiBaseUrl} from 'utils/apiProxy';
 export async function query_get_snapshots(instanceId: number, params?: {page?: number; limit?: number}): Promise<ISnapshotList> {
 	const resp = await GET_OAM<OamGetResp<'/oam/instances/{id}/snapshots'>>(`/instances/${instanceId}/snapshots`, params);
 	assertOk(resp, 'Get Snapshots');
-	return (resp.data ?? {data: []}) as ISnapshotList;
+	const list = resp.data;
+	if (!list || !Array.isArray(list.data) || !list.data.every(isSnapshot)) {
+		throw new ApiError('The snapshot list response could not be read', resp.code, resp);
+	}
+	return list as ISnapshotList;
 }
 
 export async function query_get_snapshot(sid: string): Promise<ISnapshot | undefined> {
@@ -54,7 +71,7 @@ export async function request_take_snapshot(
 ): Promise<SnapshotMutationResult> {
 	try {
 		const resp = await POST_OAM<OamPostResp<'/oam/instances/{id}/snapshots'>>(`/instances/${instanceId}/snapshots`, data);
-		return fromSimpleResponse(resp, 'snapshot.take') as SnapshotMutationResult;
+		return snapshotResult(fromSimpleResponse(resp, 'snapshot.take') as SnapshotMutationResult, 'snapshot.take');
 	} catch (e) {
 		return fromNetworkError('snapshot.take', e);
 	}
@@ -70,7 +87,7 @@ export async function request_upload_snapshot(
 		if (meta?.name) extra.name = meta.name;
 		if (meta?.description) extra.description = meta.description;
 		const resp = await UPLOAD_FILE_OAM(`/instances/${instanceId}/snapshots/upload`, file, extra);
-		return fromSimpleResponse(resp, 'snapshot.upload') as SnapshotMutationResult;
+		return snapshotResult(fromSimpleResponse(resp, 'snapshot.upload') as SnapshotMutationResult, 'snapshot.upload');
 	} catch (e) {
 		return fromNetworkError('snapshot.upload', e);
 	}
@@ -122,7 +139,7 @@ export async function request_patch_snapshot(
 	data: {name?: string; description?: string; pinned?: boolean},
 ): Promise<SnapshotMutationResult> {
 	try {
-		return fromSimpleResponse(await PATCH_OAM(`/snapshots/${sid}`, data), 'snapshot.patch') as SnapshotMutationResult;
+		return snapshotResult(fromSimpleResponse(await PATCH_OAM(`/snapshots/${sid}`, data), 'snapshot.patch') as SnapshotMutationResult, 'snapshot.patch', sid, data.pinned);
 	} catch (e) {
 		return fromNetworkError('snapshot.patch', e);
 	}
