@@ -16,14 +16,16 @@ import SettingsBackupRestoreIcon from '@mui/icons-material/SettingsBackupRestore
 import UpgradeIcon from '@mui/icons-material/Upgrade';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import {Alert, Box, Button, Chip, Stack, Typography} from '@mui/material';
-import ParamBox from 'components/element/ParamBox';
+import SnapshotDeleteForm from 'components/input/SnapshotDeleteForm';
 import SnapshotScheduleForm, {IScheduleEntry} from 'components/input/SnapshotScheduleForm';
 import TakeSnapshotForm, {ITakeSnapshotEntry} from 'components/input/TakeSnapshotForm';
 import UploadSnapshotForm, {IUploadSnapshotEntry} from 'components/input/UploadSnapshotForm';
+import SnapshotScopePanel from 'components/snapshot/SnapshotScopePanel';
 import RestoreWizard from 'components/snapshot/RestoreWizard';
 import {snapshotOpErrorText} from 'components/snapshot/snapshotOpError';
 import SnapshotTable from 'components/table/maintenance/SnapshotTable';
 import {
+	query_snapshot_scope,
 	request_delete_snapshot,
 	request_download_snapshot,
 	request_patch_snapshot,
@@ -224,6 +226,19 @@ export default function SnapshotPage() {
 		}
 	};
 
+	const handleScope = async () => {
+		if (!selected?.id || downloading) return;
+		setDownloading(true);
+		try {
+			const scope = await query_snapshot_scope(selected.id);
+			openPopUp(t('Recovery scope'), <SnapshotScopePanel scope={scope} />, t('OK'));
+		} catch {
+			openPopUp(t('Error'), t('Recovery scope could not be read. Retry after checking access and snapshot integrity.'), t('OK'));
+		} finally {
+			setDownloading(false);
+		}
+	};
+
 	const handlePinToggle = async () => {
 		if (!selected?.id) return;
 		const next = !selected.pinned;
@@ -243,23 +258,17 @@ export default function SnapshotPage() {
 		const sid = selected.id;
 		deleteConfirmRef.current = '';
 		const confirm_form = (
-			<Stack spacing={2} key={Date.now()}>
-				<Typography variant="body1">
-					{t('This permanently deletes snapshot "{{name}}" and its stored configuration document. This cannot be undone.', {name: snapName})}
-				</Typography>
-				<ParamBox
-					label={t('Type the snapshot name to confirm')}
-					value={''}
-					onChange={(v: string) => {
-						deleteConfirmRef.current = v;
-						enableYes(v === snapName);
-					}}
-					param_desc={{type: 'string', description: snapName, required: true}}
-				/>
-			</Stack>
+			<SnapshotDeleteForm
+				key={sid}
+				name={snapName}
+				onChange={value => {
+					deleteConfirmRef.current = value;
+					enableYes(value.length > 0 && value === snapName);
+				}}
+			/>
 		);
 		openPopUp(t('WARNING!! Delete Snapshot'), confirm_form, t('Delete'), t('Cancel'), async () => {
-			if (deleteConfirmRef.current !== snapName) return;
+			if (!snapName || deleteConfirmRef.current !== snapName) return;
 			const res = await request_delete_snapshot(sid);
 			reportResult(res, t('Snapshot "{{name}}" deleted.', {name: snapName}));
 		}, true);
@@ -317,6 +326,9 @@ export default function SnapshotPage() {
 						>
 							{t('Restore…')}
 						</Button>
+						<Button variant="outlined" size="small" disabled={!selected || selectedCorrupt || downloading} onClick={handleScope}>
+							{t('Recovery scope')}
+						</Button>
 						<Button variant="outlined" size="small" startIcon={<DownloadIcon />} disabled={!selected || selectedCorrupt || downloading} onClick={handleDownload}>
 							{t('Download')}
 						</Button>
@@ -342,7 +354,7 @@ export default function SnapshotPage() {
 
 				{!isLoading && !isError && snapshots.length === 0 && (
 					<Alert severity="info" sx={{width: '100%'}}>
-						{t('No snapshots yet. A snapshot captures the complete gateway configuration of this instance and can restore it after an upgrade or a bad change.')}
+						{t('No snapshots yet. A snapshot captures supported configuration domains. Databases, certificate files and other external dependencies need separate backups.')}
 					</Alert>
 				)}
 
@@ -363,7 +375,7 @@ export default function SnapshotPage() {
 
 			<Box sx={{mt: 1}}>
 				<Typography variant="caption" color="text.secondary">
-					{t('Snapshots contain the full gateway configuration including IPsec secrets; download and restore are admin-only.')}
+					{t('Snapshots contain supported configuration domains and may contain IPsec secrets. External stores require separate backups; download and restore are admin-only.')}
 				</Typography>
 			</Box>
 
