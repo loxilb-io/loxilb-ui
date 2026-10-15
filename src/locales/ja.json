@@ -1592,5 +1592,14 @@
 	"The log below and the archived logs on this page are the operational logs of the management service (OAM). They are not the audit trail of any gateway.": "下のログとこのページのアーカイブログは、管理サービス（OAM）の運用ログです。いずれのゲートウェイの監査証跡でもありません。",
 	"Three paths are separate. Management requests reach the gateway through OAM. Inference traffic goes from clients through the gateway to the backends. Audit records go from the audit files on the gateway to the sinks. This page sets the third only. A sink that is sending does not prove that a collector received a record, and it does not change what the policy keeps.": "3 つの経路は別々です。管理リクエストは OAM を経由してゲートウェイに届きます。推論トラフィックはクライアントからゲートウェイを経由してバックエンドへ流れます。監査レコードはゲートウェイ上の監査ファイルからシンクへ送られます。このページで設定するのは 3 つ目だけです。シンクが送信中であっても、コレクターがレコードを受信した証明にはならず、ポリシーが保持する内容も変わりません。",
 	"The rule declares admission settings, but the gateway has not reported their runtime state. Whether these settings are in force is not known. Check the rule routing and gateway status, then refresh.": "このルールには実行容量の設定が宣言されていますが、Gateway は実行時の状態を報告していません。この設定が実際に有効かどうかは不明です。ルールのルーティングと Gateway の状態を確認し、更新してください。",
-	"Select all restore domains": "復元ドメインをすべて選択"
+	"Select all restore domains": "復元ドメインをすべて選択",
+	"API key hashes, key policies, quotas and users require a separate database backup. Raw API keys cannot be recovered from hashes. Restoring an old database can reactivate revoked credentials.": "API key hash、キーポリシー、クォータ、ユーザーには別途 DB バックアップが必要です。hash から元の API key は復元できません。古い DB の復元で失効済み認証情報が再有効化される可能性があります。",
+	"Excluded domains": "除外 domain",
+	"External dependencies": "外部依存関係",
+	"Included domains": "含まれる domain",
+	"No snapshots yet. A snapshot captures supported configuration domains. Databases, certificate files and other external dependencies need separate backups.": "Snapshot はありません。対応する設定 domain を保存します。DB、証明書ファイル、その他外部依存関係は別途バックアップが必要です。",
+	"Recovery scope": "復元範囲",
+	"Recovery scope could not be read. Retry after checking access and snapshot integrity.": "復元範囲を読み取れません。権限と Snapshot の整合性を確認して再試行してください。",
+	"Snapshots contain supported configuration domains and may contain IPsec secrets. External stores require separate backups; download and restore are admin-only.": "Snapshot は対応設定 domain を保存し、IPsec の秘密情報を含む場合があります。外部ストアは別途バックアップが必要で、ダウンロードと復元は管理者専用です。",
+	"This reads the stored document. It does not test external stores or confirm a backup of them.": "保存済み文書の範囲です。外部ストアやバックアップの存在は検証しません。"
 }

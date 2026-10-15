@@ -1592,5 +1592,14 @@
 	"The log below and the archived logs on this page are the operational logs of the management service (OAM). They are not the audit trail of any gateway.": "아래 로그와 이 페이지의 아카이브 로그는 관리 서비스(OAM)의 운영 로그입니다. 어떤 게이트웨이의 감사 기록도 아닙니다.",
 	"Three paths are separate. Management requests reach the gateway through OAM. Inference traffic goes from clients through the gateway to the backends. Audit records go from the audit files on the gateway to the sinks. This page sets the third only. A sink that is sending does not prove that a collector received a record, and it does not change what the policy keeps.": "세 경로는 서로 별개입니다. 관리 요청은 OAM을 거쳐 게이트웨이에 도달합니다. 추론 트래픽은 클라이언트에서 게이트웨이를 거쳐 백엔드로 갑니다. 감사 레코드는 게이트웨이의 감사 파일에서 싱크로 갑니다. 이 페이지는 세 번째 경로만 설정합니다. 싱크가 전송 중이라고 해서 수집기가 레코드를 수신했다는 증거는 아니며, 정책이 보관하는 내용도 바뀌지 않습니다.",
 	"The rule declares admission settings, but the gateway has not reported their runtime state. Whether these settings are in force is not known. Check the rule routing and gateway status, then refresh.": "이 규칙에 실행 용량 설정이 선언되어 있지만 Gateway가 실행 상태를 보고하지 않았습니다. 이 설정이 실제 적용 중인지는 알 수 없습니다. 규칙의 라우팅과 Gateway 상태를 확인한 뒤 새로고침하세요.",
-	"Select all restore domains": "모든 복원 도메인 선택"
+	"Select all restore domains": "모든 복원 도메인 선택",
+	"API key hashes, key policies, quotas and users require a separate database backup. Raw API keys cannot be recovered from hashes. Restoring an old database can reactivate revoked credentials.": "API key hash·키 정책·할당량·사용자는 별도 DB 백업이 필요합니다. hash로 원문 API key를 복구할 수 없습니다. 과거 DB를 복원하면 폐기한 인증 정보가 다시 활성화될 수 있습니다.",
+	"Excluded domains": "제외 domain",
+	"External dependencies": "외부 의존성",
+	"Included domains": "포함 domain",
+	"No snapshots yet. A snapshot captures supported configuration domains. Databases, certificate files and other external dependencies need separate backups.": "Snapshot이 없습니다. Snapshot은 지원하는 설정 domain을 저장합니다. DB·인증서 파일·기타 외부 의존성은 별도 백업이 필요합니다.",
+	"Recovery scope": "복구 범위",
+	"Recovery scope could not be read. Retry after checking access and snapshot integrity.": "복구 범위를 읽지 못했습니다. 접근 권한과 Snapshot 무결성을 확인한 뒤 다시 시도하십시오.",
+	"Snapshots contain supported configuration domains and may contain IPsec secrets. External stores require separate backups; download and restore are admin-only.": "Snapshot은 지원 설정 domain을 저장하며 IPsec 비밀정보가 포함될 수 있습니다. 외부 저장소는 별도 백업이 필요하고 다운로드·복원은 관리자 전용입니다.",
+	"This reads the stored document. It does not test external stores or confirm a backup of them.": "저장된 문서의 범위입니다. 외부 저장소의 가용성이나 백업 존재를 검증하지 않습니다."
 }

@@ -1592,5 +1592,14 @@
 	"The log below and the archived logs on this page are the operational logs of the management service (OAM). They are not the audit trail of any gateway.": "The log below and the archived logs on this page are the operational logs of the management service (OAM). They are not the audit trail of any gateway.",
 	"Three paths are separate. Management requests reach the gateway through OAM. Inference traffic goes from clients through the gateway to the backends. Audit records go from the audit files on the gateway to the sinks. This page sets the third only. A sink that is sending does not prove that a collector received a record, and it does not change what the policy keeps.": "Three paths are separate. Management requests reach the gateway through OAM. Inference traffic goes from clients through the gateway to the backends. Audit records go from the audit files on the gateway to the sinks. This page sets the third only. A sink that is sending does not prove that a collector received a record, and it does not change what the policy keeps.",
 	"The rule declares admission settings, but the gateway has not reported their runtime state. Whether these settings are in force is not known. Check the rule routing and gateway status, then refresh.": "The rule declares admission settings, but the gateway has not reported their runtime state. Whether these settings are in force is not known. Check the rule routing and gateway status, then refresh.",
-	"Select all restore domains": "Select all restore domains"
+	"Select all restore domains": "Select all restore domains",
+	"API key hashes, key policies, quotas and users require a separate database backup. Raw API keys cannot be recovered from hashes. Restoring an old database can reactivate revoked credentials.": "API key hashes, key policies, quotas and users require a separate database backup. Raw API keys cannot be recovered from hashes. Restoring an old database can reactivate revoked credentials.",
+	"Excluded domains": "Excluded domains",
+	"External dependencies": "External dependencies",
+	"Included domains": "Included domains",
+	"No snapshots yet. A snapshot captures supported configuration domains. Databases, certificate files and other external dependencies need separate backups.": "No snapshots yet. A snapshot captures supported configuration domains. Databases, certificate files and other external dependencies need separate backups.",
+	"Recovery scope": "Recovery scope",
+	"Recovery scope could not be read. Retry after checking access and snapshot integrity.": "Recovery scope could not be read. Retry after checking access and snapshot integrity.",
+	"Snapshots contain supported configuration domains and may contain IPsec secrets. External stores require separate backups; download and restore are admin-only.": "Snapshots contain supported configuration domains and may contain IPsec secrets. External stores require separate backups; download and restore are admin-only.",
+	"This reads the stored document. It does not test external stores or confirm a backup of them.": "This reads the stored document. It does not test external stores or confirm a backup of them."
 }

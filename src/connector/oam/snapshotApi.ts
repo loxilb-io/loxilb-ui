@@ -7,6 +7,7 @@
 // OpResult ( batch 4) and NEVER reject — a thrown fetch once
 // stranded the restore wizard's non-dismissable committing screen.
 //---------------------------------------------------------
+import {snapshotScope, SnapshotScope} from 'types/snapshot_scope';
 import type {OamGetResp, OamPostResp} from 'api';
 import {ISnapshot, ISnapshotList, ISnapshotSchedule, IRestoreOutcomeParsed} from 'types/snapshot';
 import {ApiError, assertOk, DOWNLOAD_FILE_STREAM, DownloadProgress} from '../fetcher/fetcher_base';
@@ -179,4 +180,12 @@ export async function request_put_snapshot_schedule(
 export async function request_download_snapshot(sid: string, snapshotName: string, onProgress?: (p: DownloadProgress) => void): Promise<void> {
 	const full_url = `${getApiBaseUrl()}/snapshots/${sid}/download`;
 	await DOWNLOAD_FILE_STREAM(full_url, `${snapshotName || sid}.json`, onProgress);
+}
+
+// Uses the existing admin-only, integrity-checked download endpoint. Return
+// only a projection; never put secret-bearing domains in the query cache.
+export async function query_snapshot_scope(sid: string): Promise<SnapshotScope> {
+	const resp = await GET_OAM<unknown>(`/snapshots/${sid}/download`);
+	assertOk(resp, 'Get Snapshot Scope');
+	return snapshotScope(resp.data);
 }
