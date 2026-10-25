@@ -1601,5 +1601,6 @@
 	"Recovery scope could not be read. Retry after checking access and snapshot integrity.": "Recovery scope could not be read. Retry after checking access and snapshot integrity.",
 	"Snapshots contain supported configuration domains and may contain IPsec secrets. External stores require separate backups; download and restore are admin-only.": "Snapshots contain supported configuration domains and may contain IPsec secrets. External stores require separate backups; download and restore are admin-only.",
 	"This reads the stored document. It does not test external stores or confirm a backup of them.": "This reads the stored document. It does not test external stores or confirm a backup of them.",
-	"Accepted {{success}} deletion request(s); {{failed}} failed. Refresh to confirm removal.": "Accepted {{success}} deletion request(s); {{failed}} failed. Refresh to confirm removal."
+	"Accepted {{success}} deletion request(s); {{failed}} failed. Refresh to confirm removal.": "Accepted {{success}} deletion request(s); {{failed}} failed. Refresh to confirm removal.",
+	"Check firewall numeric ranges, IP formats, and SNAT mark constraints.": "Check firewall numeric ranges, IP formats, and SNAT mark constraints."
 }

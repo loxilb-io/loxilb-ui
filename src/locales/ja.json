@@ -1601,5 +1601,6 @@
 	"Recovery scope could not be read. Retry after checking access and snapshot integrity.": "復元範囲を読み取れません。権限と Snapshot の整合性を確認して再試行してください。",
 	"Snapshots contain supported configuration domains and may contain IPsec secrets. External stores require separate backups; download and restore are admin-only.": "Snapshot は対応設定 domain を保存し、IPsec の秘密情報を含む場合があります。外部ストアは別途バックアップが必要で、ダウンロードと復元は管理者専用です。",
 	"This reads the stored document. It does not test external stores or confirm a backup of them.": "保存済み文書の範囲です。外部ストアやバックアップの存在は検証しません。",
-	"Accepted {{success}} deletion request(s); {{failed}} failed. Refresh to confirm removal.": "削除リクエスト{{success}}件を受理し、{{failed}}件が失敗しました。Refreshで削除を確認してください。"
+	"Accepted {{success}} deletion request(s); {{failed}} failed. Refresh to confirm removal.": "削除リクエスト{{success}}件を受理し、{{failed}}件が失敗しました。Refreshで削除を確認してください。",
+	"Check firewall numeric ranges, IP formats, and SNAT mark constraints.": "Firewallの数値範囲、IP形式とSNAT markの制約を確認してください。"
 }

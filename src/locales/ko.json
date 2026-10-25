@@ -1601,5 +1601,6 @@
 	"Recovery scope could not be read. Retry after checking access and snapshot integrity.": "복구 범위를 읽지 못했습니다. 접근 권한과 Snapshot 무결성을 확인한 뒤 다시 시도하십시오.",
 	"Snapshots contain supported configuration domains and may contain IPsec secrets. External stores require separate backups; download and restore are admin-only.": "Snapshot은 지원 설정 domain을 저장하며 IPsec 비밀정보가 포함될 수 있습니다. 외부 저장소는 별도 백업이 필요하고 다운로드·복원은 관리자 전용입니다.",
 	"This reads the stored document. It does not test external stores or confirm a backup of them.": "저장된 문서의 범위입니다. 외부 저장소의 가용성이나 백업 존재를 검증하지 않습니다.",
-	"Accepted {{success}} deletion request(s); {{failed}} failed. Refresh to confirm removal.": "삭제 요청 {{success}}건이 수락됐고 {{failed}}건이 실패했습니다. Refresh로 실제 삭제를 확인하세요."
+	"Accepted {{success}} deletion request(s); {{failed}} failed. Refresh to confirm removal.": "삭제 요청 {{success}}건이 수락됐고 {{failed}}건이 실패했습니다. Refresh로 실제 삭제를 확인하세요.",
+	"Check firewall numeric ranges, IP formats, and SNAT mark constraints.": "Firewall 숫자 범위, IP 형식과 SNAT mark 제약을 확인하세요."
 }
