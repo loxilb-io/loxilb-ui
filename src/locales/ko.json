@@ -1438,7 +1438,6 @@
 	"A blank field is not sent, and the gateway default applies (its launch environment, else the product default). 0 is sent and selects the same default: it does not mean unlimited or none.": "비워 둔 필드는 전송하지 않으며 게이트웨이 기본값(실행 환경 설정, 없으면 제품 기본값)이 적용됩니다. 0은 전송되며 같은 기본값을 선택합니다. 무제한이나 없음을 뜻하지 않습니다.",
 	"The mode set here is the rule's own and comes before the gateway-wide setting: a rule can enforce, observe or switch the gate off whatever LLB_FC_MODE says.": "여기서 설정하는 모드는 이 규칙 자체의 모드이며 게이트웨이 전체 설정보다 우선합니다. LLB_FC_MODE 값과 관계없이 규칙은 게이트를 enforce, observe 또는 off로 둘 수 있습니다.",
 	"The capacity gate is off on every pool: nothing is bounded, and its counters stay at zero by construction. It is switched on per rule with the rule's Admission Mode, or for every rule that declares none with the gateway's LLB_FC_MODE setting (observe or enforce).": "모든 풀에서 용량 게이트가 꺼져 있습니다. 아무것도 제한되지 않으며 카운터는 구조상 0으로 유지됩니다. 규칙의 수용 모드로 규칙별로 켜거나, 모드를 선언하지 않은 모든 규칙에 대해 게이트웨이의 LLB_FC_MODE 설정(observe 또는 enforce)으로 켭니다.",
-	"Try again in {{seconds}} s.": "{{seconds}}초 후에 다시 시도하세요.",
 	"The gateway cannot run a restore right now (HTTP {{code}})": "게이트웨이가 지금은 복원을 실행할 수 없습니다 (HTTP {{code}})",
 	"The dry-run answer could not be read": "드라이런 응답을 읽을 수 없습니다",
 	"Nothing was verified, so the restore cannot continue.": "검증된 것이 없으므로 복원을 계속할 수 없습니다.",
@@ -1601,5 +1600,10 @@
 	"Recovery scope": "복구 범위",
 	"Recovery scope could not be read. Retry after checking access and snapshot integrity.": "복구 범위를 읽지 못했습니다. 접근 권한과 Snapshot 무결성을 확인한 뒤 다시 시도하십시오.",
 	"Snapshots contain supported configuration domains and may contain IPsec secrets. External stores require separate backups; download and restore are admin-only.": "Snapshot은 지원 설정 domain을 저장하며 IPsec 비밀정보가 포함될 수 있습니다. 외부 저장소는 별도 백업이 필요하고 다운로드·복원은 관리자 전용입니다.",
-	"This reads the stored document. It does not test external stores or confirm a backup of them.": "저장된 문서의 범위입니다. 외부 저장소의 가용성이나 백업 존재를 검증하지 않습니다."
+	"This reads the stored document. It does not test external stores or confirm a backup of them.": "저장된 문서의 범위입니다. 외부 저장소의 가용성이나 백업 존재를 검증하지 않습니다.",
+	"Concurrent Connection Limit": "동시 연결 한도",
+	"Header Deadline (ms)": "헤더 대기시간 (ms)",
+	"Blank or 0: unlimited TCP connections. HTTP/2 streams share a connection.": "빈 값 또는 0: TCP 연결 무제한. HTTP/2 스트림은 연결을 공유합니다.",
+	"Blank or 0: 10000 ms to accumulate L7 headers.": "빈 값 또는 0: L7 헤더 누적 대기시간 10000 ms.",
+	"Enter an integer from 0 to 4294967295, or leave blank.": "0부터 4294967295까지 정수를 입력하거나 비워 두세요."
 }

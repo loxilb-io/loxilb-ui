@@ -11,6 +11,7 @@ import {useModelProfiles} from 'hooks/query/queryHooks';
 import {useGatewayCapabilities} from 'hooks/query/statusHook';
 import {t} from 'i18next';
 import {validateBackendTls} from 'types/backend_tls';
+import {validateListenerLimits} from 'types/listener_limits';
 import {circuitBreakerEditSeed, isAIEngineChange, validateAIConfiguration, validateProfileSelection} from 'types/ai_gateway';
 import {lbSourceBudgetNotice, SourceBudgetNotice} from 'types/capability_status';
 import {IServiceConfiguration} from 'types/load_balancer';
@@ -135,6 +136,7 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 		// this entry keeps the submit button off and says why while that
 		// section is folded.
 		const backendTlsIssues = validateBackendTls(sa);
+		if (validateListenerLimits(sa).length > 0) e.listenerLimits = t('Enter an integer from 0 to 4294967295, or leave blank.');
 		if (backendTlsIssues.length > 0) e.backendTls = backendTlsIssues.map(issue => t(issue.message)).join(' ');
 
 		const aiIssues = validateAIConfiguration(formData);

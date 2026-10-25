@@ -16,6 +16,7 @@ import {IEnumItem} from 'types/global';
 import {resolveCircuitBreaker} from 'types/ai_gateway';
 import {backendTlsApplies, backendTlsDeclared, validateBackendTls} from 'types/backend_tls';
 import {IServiceArguments} from 'types/load_balancer';
+import ListenerLimitsForm from './ListenerLimitsForm';
 
 //---------------------------------------------------------
 // Component
@@ -100,6 +101,8 @@ export default function AdvancedSettingsForm(props: {value: IServiceArguments; o
 							   <ParamBox label={t('Mode')} value={value?.mode ?? ''} onChange={handleChange('mode')} param_desc={{...params?.mode, enum: mode_list, description: t('Select a NAT mode.(0-dnat, 1-onearm, 2-fullnat, 3-dsr, 4-fullproxy, 5-hostonearm)')}} />
 							   <ParamBox label={t('Inactive Timeout')} value={value?.inactiveTimeOut ?? 0} onChange={handleChange('inactiveTimeOut')} param_desc={params?.inactiveTimeOut} />
 					   </HorizontalStack>
+
+					   {caps.resolved && caps.flavor === 'inference-gateway' && <ListenerLimitsForm value={value} onChange={onChange} params={params} />}
 
 						<HorizontalStack>
 							<ParamBox label={t('Security')} value={value?.security ?? ''} onChange={handleChange('security')} param_desc={{...params?.security, enum: security_list, description: t('TLS termination mode — only applies to fullproxy (Plain, https, e2ehttps).')}} disabled={value?.mode !== 4 || isEdit} />

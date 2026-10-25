@@ -1438,7 +1438,6 @@
 	"A blank field is not sent, and the gateway default applies (its launch environment, else the product default). 0 is sent and selects the same default: it does not mean unlimited or none.": "A blank field is not sent, and the gateway default applies (its launch environment, else the product default). 0 is sent and selects the same default: it does not mean unlimited or none.",
 	"The mode set here is the rule's own and comes before the gateway-wide setting: a rule can enforce, observe or switch the gate off whatever LLB_FC_MODE says.": "The mode set here is the rule's own and comes before the gateway-wide setting: a rule can enforce, observe or switch the gate off whatever LLB_FC_MODE says.",
 	"The capacity gate is off on every pool: nothing is bounded, and its counters stay at zero by construction. It is switched on per rule with the rule's Admission Mode, or for every rule that declares none with the gateway's LLB_FC_MODE setting (observe or enforce).": "The capacity gate is off on every pool: nothing is bounded, and its counters stay at zero by construction. It is switched on per rule with the rule's Admission Mode, or for every rule that declares none with the gateway's LLB_FC_MODE setting (observe or enforce).",
-	"Try again in {{seconds}} s.": "Try again in {{seconds}} s.",
 	"The gateway cannot run a restore right now (HTTP {{code}})": "The gateway cannot run a restore right now (HTTP {{code}})",
 	"The dry-run answer could not be read": "The dry-run answer could not be read",
 	"Nothing was verified, so the restore cannot continue.": "Nothing was verified, so the restore cannot continue.",
@@ -1601,5 +1600,10 @@
 	"Recovery scope": "Recovery scope",
 	"Recovery scope could not be read. Retry after checking access and snapshot integrity.": "Recovery scope could not be read. Retry after checking access and snapshot integrity.",
 	"Snapshots contain supported configuration domains and may contain IPsec secrets. External stores require separate backups; download and restore are admin-only.": "Snapshots contain supported configuration domains and may contain IPsec secrets. External stores require separate backups; download and restore are admin-only.",
-	"This reads the stored document. It does not test external stores or confirm a backup of them.": "This reads the stored document. It does not test external stores or confirm a backup of them."
+	"This reads the stored document. It does not test external stores or confirm a backup of them.": "This reads the stored document. It does not test external stores or confirm a backup of them.",
+	"Concurrent Connection Limit": "Concurrent Connection Limit",
+	"Header Deadline (ms)": "Header Deadline (ms)",
+	"Blank or 0: unlimited TCP connections. HTTP/2 streams share a connection.": "Blank or 0: unlimited TCP connections. HTTP/2 streams share a connection.",
+	"Blank or 0: 10000 ms to accumulate L7 headers.": "Blank or 0: 10000 ms to accumulate L7 headers.",
+	"Enter an integer from 0 to 4294967295, or leave blank.": "Enter an integer from 0 to 4294967295, or leave blank."
 }

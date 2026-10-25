@@ -4,6 +4,7 @@
 import {InstanceFlavor, stripGatewayOnlyFields} from 'api/capabilities';
 import {serializeAIConfiguration, validateAIConfiguration} from 'types/ai_gateway';
 import {validateBackendTls} from 'types/backend_tls';
+import {validateListenerLimits} from 'types/listener_limits';
 import {IServiceConfiguration} from 'types/load_balancer';
 import {buildLBDeleteKey, buildLBDeletePath} from 'types/lb_identity';
 import {IInstance} from 'types/oam';
@@ -163,7 +164,7 @@ export async function request_create_load_balancer_config(instance: IInstance, d
 	// Keep the client-side matrix and the final wire payload in one pure policy.
 	// Server validation remains authoritative, but known-invalid combinations
 	// must not leave the browser.
-	const aiIssues = [...validateAIConfiguration(projectedData), ...validateBackendTls(projectedData.serviceArguments ?? {})];
+	const aiIssues = [...validateAIConfiguration(projectedData), ...validateBackendTls(projectedData.serviceArguments ?? {}), ...validateListenerLimits(projectedData.serviceArguments ?? {}).map(field => ({field, message: 'Enter an integer from 0 to 4294967295, or leave blank.'}))];
 	if (aiIssues.length > 0) {
 		// Client-side backstop (the form validates inline before this point):
 		// a mapped `invalid`, with the field messages in diagnostics only.

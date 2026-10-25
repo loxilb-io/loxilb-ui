@@ -10,6 +10,7 @@ Releases follow [loxilb-io/loxilb](https://github.com/loxilb-io/loxilb)'s
 ## [Unreleased]
 
 ### Fixed
+- Expose supported full-proxy connection limits and header deadlines with unsigned integer validation. Require KV block confirmation for new or changed KV contracts while preserving unrelated edits.
 - Keep numeric input labels distinct from tooltip descriptions and report validation after rendering.
 - Ignore superseded mutation-result popups after navigation or a newer operation.
 - Preserve unknown API-key enablement and show textual state alongside the indicator.
