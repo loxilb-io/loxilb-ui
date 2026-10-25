@@ -109,6 +109,11 @@
 	"IPs": "IPs",
 	"Inactive Retries": "Inactive Retries",
 	"Inactive Timeout": "Inactive Timeout",
+	"Concurrent Connection Limit": "Concurrent Connection Limit",
+	"Header Deadline (ms)": "Header Deadline (ms)",
+	"Blank or 0: unlimited TCP connections. HTTP/2 streams share a connection.": "Blank or 0: unlimited TCP connections. HTTP/2 streams share a connection.",
+	"Blank or 0: 10000 ms to accumulate L7 headers.": "Blank or 0: 10000 ms to accumulate L7 headers.",
+	"Enter an integer from 0 to 4294967295, or leave blank.": "Enter an integer from 0 to 4294967295, or leave blank.",
 	"Info Rate": "Info Rate",
 	"Instance": "Instance",
 	"Instance Name": "Instance Name",
@@ -1600,10 +1605,5 @@
 	"Recovery scope": "Recovery scope",
 	"Recovery scope could not be read. Retry after checking access and snapshot integrity.": "Recovery scope could not be read. Retry after checking access and snapshot integrity.",
 	"Snapshots contain supported configuration domains and may contain IPsec secrets. External stores require separate backups; download and restore are admin-only.": "Snapshots contain supported configuration domains and may contain IPsec secrets. External stores require separate backups; download and restore are admin-only.",
-	"This reads the stored document. It does not test external stores or confirm a backup of them.": "This reads the stored document. It does not test external stores or confirm a backup of them.",
-	"Concurrent Connection Limit": "Concurrent Connection Limit",
-	"Header Deadline (ms)": "Header Deadline (ms)",
-	"Blank or 0: unlimited TCP connections. HTTP/2 streams share a connection.": "Blank or 0: unlimited TCP connections. HTTP/2 streams share a connection.",
-	"Blank or 0: 10000 ms to accumulate L7 headers.": "Blank or 0: 10000 ms to accumulate L7 headers.",
-	"Enter an integer from 0 to 4294967295, or leave blank.": "Enter an integer from 0 to 4294967295, or leave blank."
+	"This reads the stored document. It does not test external stores or confirm a backup of them.": "This reads the stored document. It does not test external stores or confirm a backup of them."
 }

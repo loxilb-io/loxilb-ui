@@ -109,6 +109,11 @@
 	"IPs": "IP一覧",
 	"Inactive Retries": "非アクティブ再試行回数",
 	"Inactive Timeout": "非アクティブタイムアウト",
+	"Concurrent Connection Limit": "同時接続上限",
+	"Header Deadline (ms)": "ヘッダー待機期限 (ms)",
+	"Blank or 0: unlimited TCP connections. HTTP/2 streams share a connection.": "空欄または0: TCP接続数は無制限。HTTP/2ストリームは接続を共有します。",
+	"Blank or 0: 10000 ms to accumulate L7 headers.": "空欄または0: L7ヘッダー蓄積の待機期限は10000 ms。",
+	"Enter an integer from 0 to 4294967295, or leave blank.": "0から4294967295までの整数を入力するか、空欄にしてください。",
 	"Info Rate": "情報レート",
 	"Instance": "インスタンス",
 	"Instance Name": "インスタンス名",
@@ -1600,10 +1605,5 @@
 	"Recovery scope": "復元範囲",
 	"Recovery scope could not be read. Retry after checking access and snapshot integrity.": "復元範囲を読み取れません。権限と Snapshot の整合性を確認して再試行してください。",
 	"Snapshots contain supported configuration domains and may contain IPsec secrets. External stores require separate backups; download and restore are admin-only.": "Snapshot は対応設定 domain を保存し、IPsec の秘密情報を含む場合があります。外部ストアは別途バックアップが必要で、ダウンロードと復元は管理者専用です。",
-	"This reads the stored document. It does not test external stores or confirm a backup of them.": "保存済み文書の範囲です。外部ストアやバックアップの存在は検証しません。",
-	"Concurrent Connection Limit": "同時接続上限",
-	"Header Deadline (ms)": "ヘッダー待機期限 (ms)",
-	"Blank or 0: unlimited TCP connections. HTTP/2 streams share a connection.": "空欄または0: TCP接続数は無制限。HTTP/2ストリームは接続を共有します。",
-	"Blank or 0: 10000 ms to accumulate L7 headers.": "空欄または0: L7ヘッダー蓄積の待機期限は10000 ms。",
-	"Enter an integer from 0 to 4294967295, or leave blank.": "0から4294967295までの整数を入力するか、空欄にしてください。"
+	"This reads the stored document. It does not test external stores or confirm a backup of them.": "保存済み文書の範囲です。外部ストアやバックアップの存在は検証しません。"
 }

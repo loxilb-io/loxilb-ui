@@ -15,6 +15,7 @@ import {validateListenerLimits} from 'types/listener_limits';
 import {circuitBreakerEditSeed, isAIEngineChange, validateAIConfiguration, validateProfileSelection} from 'types/ai_gateway';
 import {lbSourceBudgetNotice, SourceBudgetNotice} from 'types/capability_status';
 import {IServiceConfiguration} from 'types/load_balancer';
+import {requiresKvBlockConfirmation} from 'types/kv_block_confirmation';
 import {AllowedSourcesListInputForm, SecondaryIPListInputForm} from './IPListInputForm';
 import AdvancedSettingsForm from './subforms/AdvancedSettingsForm';
 import AIGatewaySettingsForm from './subforms/AIGatewaySettingsForm';
@@ -78,6 +79,8 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 		endpoints: initialData?.endpoints || [],
 	});
 	const [blockSizeConfirmed, setBlockSizeConfirmed] = React.useState(false);
+	// Match the form's mount-time seed; parent renders must not reclassify an edit.
+	const originalServiceArguments = React.useRef(initialData?.serviceArguments ? {...initialData.serviceArguments} : undefined).current;
 
 	// Get params for validation (still use useFormWithParams for param definitions)
 	const {params} = useFormWithParams<IServiceConfiguration>('IServiceConfiguration');
@@ -158,7 +161,7 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 		if (aiIssues.length > 0) {
 			e.aiGateway = aiIssues.map(issue => t(issue.message)).join(' ');
 		}
-		if ([1, 3].includes(sa.kvExactMode ?? 0) && !blockSizeConfirmed) {
+		if (requiresKvBlockConfirmation(sa, isEdit ? originalServiceArguments : undefined) && !blockSizeConfirmed) {
 			e.aiGateway = [
 				e.aiGateway,
 				t('Confirm that the KV block/page size matches the live engine before submitting.'),
@@ -166,7 +169,7 @@ export default function LBInputForm({ initialData, isEdit = false, onChange, onV
 		}
 
 		return {errors: e, isValid: Object.keys(e).length === 0};
-	}, [blockSizeConfirmed, formData, initialData?.serviceArguments?.kvEngineType, isEdit, publishedProfiles]);
+	}, [blockSizeConfirmed, formData, initialData?.serviceArguments?.kvEngineType, isEdit, originalServiceArguments, publishedProfiles]);
 
 	// Notify the parent via refs so callback identity does not drive the effect
 	// (another loop source). Runs only when the derived state actually changes.
