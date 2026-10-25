@@ -7,6 +7,10 @@
 // Unified Security Rate Limiting Types (SYN flood + connection rate + UDP flood)
 //---------------------------------------------------------
 export interface ISecurityRateConfigMod {
+	aggregateSynThreshold?: number;
+	aggregateConnRatePerSec?: number;
+	aggregateUdpPktThreshold?: number;
+	aggregateUdpBandwidthMB?: number;
 	synEnabled: boolean;
 	synThreshold: number;
 	cookieThreshold: number;
@@ -19,6 +23,15 @@ export interface ISecurityRateConfigMod {
 }
 
 export interface ISecurityRateEntry {
+	aggregateSynThreshold?: number;
+	aggregateConnRatePerSec?: number;
+	aggregateUdpPktThreshold?: number;
+	aggregateUdpBandwidthMB?: number;
+	aggregateSynBlocked?: number;
+	aggregateConnBlocked?: number;
+	aggregateUdpBlocked?: number;
+	trackingFailures?: number;
+	unsupportedPacketBlocked?: number;
 	synEnabled: boolean;
 	synThreshold: number;
 	cookieThreshold: number;
