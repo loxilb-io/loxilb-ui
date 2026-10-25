@@ -143,10 +143,13 @@ export const StateCellSmall = (params: any) => {
 };
 
 export const OnOffCell = (params: any) => {
-	const cur_color = is_active_status(params.value) ? 'success' : 'error';
+	const reported = typeof params.value === 'boolean';
+	const cur_color = reported ? (params.value ? 'success' : 'error') : 'disabled';
+	const label = t(reported ? (params.value ? 'Enabled' : 'Disabled') : 'Not reported');
 	return (
-		<Box height="100%" display="flex" alignItems="center">
+		<Box height="100%" display="flex" alignItems="center" gap="5px">
 			<CircleIcon color={cur_color} sx={{fontSize: '16px'}} />
+			<Typography variant="body2">{label}</Typography>
 		</Box>
 	);
 };

@@ -277,7 +277,7 @@ export default function DataTable(props: {
 			    collide with the toolbar; the icon data-testids remain the
 			    toolbarButton() locator hook. */}
 			{hideMenuBar === true ? null : (
-				<Box data-table-bar={name} width="100%" height="44px" display="flex" justifyContent="flex-end" alignItems="center" gap="4px" padding="0 8px" bgcolor="grey.100" borderRadius="8px 8px 0 0">
+				<Box data-table-bar={name} width="100%" minHeight="44px" display="flex" flexWrap="wrap" alignItems="center" gap="4px" padding="4px 8px" bgcolor="grey.100" borderRadius="8px 8px 0 0" sx={{justifyContent: {xs: 'flex-start', sm: 'flex-end'}, '& > span': {flexShrink: 0}}}>
 					<Tooltip describeChild title={is_compact ? t('Switch to comfortable rows') : t('Switch to compact rows')} placement="top" arrow>
 						<span>
 							<Button

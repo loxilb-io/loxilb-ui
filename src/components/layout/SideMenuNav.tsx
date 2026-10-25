@@ -1,7 +1,7 @@
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
-import {Box, styled} from '@mui/material';
+import {Box, styled, useMediaQuery, useTheme} from '@mui/material';
 import SideMenu, {SIDE_MENU_RAIL_WIDTH, SIDE_MENU_WIDTH} from 'components/menu/SideMenu';
 import TopNavMenu from 'components/menu/TopNavMenu';
 import useLocalStorageState from 'hooks/localStorageHook';
@@ -41,7 +41,9 @@ const Main = styled(Box, {shouldForwardProp: prop => prop !== 'open'})<{open?: b
 export default function SideMenuNav(props: {children?: ReactNode}) {
 	const {children} = props;
 
-	const [is_open, _] = useLocalStorageState(PREFERENCE_KEYS.sideMenuOpen, DEFAULT_SIDE_MENU_OPEN, isBooleanPreference);
+	const [is_open, set_open] = useLocalStorageState(PREFERENCE_KEYS.sideMenuOpen, DEFAULT_SIDE_MENU_OPEN, isBooleanPreference);
+	const theme = useTheme();
+	const mobile = useMediaQuery(theme.breakpoints.down('sm'));
 	const cur_location = useLocation();
 	const bgcolor = cur_location.pathname.includes('dashboard') ? 'background.default' : 'white';
 
@@ -50,9 +52,9 @@ export default function SideMenuNav(props: {children?: ReactNode}) {
 			<TopNavMenu />
 
 			<Box position="relative" display="flex" width="100%" flexGrow={1}>
-				<SideMenu open={is_open} />
+				<SideMenu open={is_open} mobile={mobile} onClose={() => set_open(false)} />
 
-				<Main open={is_open}>
+				<Main open={is_open && !mobile}>
 					<ScrollableBox bgcolor={bgcolor}>{children}</ScrollableBox>
 				</Main>
 			</Box>

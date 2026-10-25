@@ -18,8 +18,8 @@ export const SIDE_MENU_RAIL_WIDTH = 64;
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function SideMenu(props: {open: boolean}) {
-	const {open} = props;
+export default function SideMenu(props: {open: boolean; mobile?: boolean; onClose?: () => void}) {
+	const {open, mobile = false, onClose} = props;
 	const {t} = useTranslation();
 
 	const inst_name = useInstanceName();
@@ -58,11 +58,12 @@ export default function SideMenu(props: {open: boolean}) {
 	return (
 		<Drawer
 			open
-			variant="persistent"
+			variant={mobile && open ? 'temporary' : 'persistent'}
+			onClose={onClose}
 			sx={{
 				height: '100%',
 				'& .MuiDrawer-paper': {
-					position: 'absolute',
+					position: mobile && open ? 'fixed' : 'absolute',
 					width: `${width}px`,
 					height: '100%',
 					overflowX: 'hidden',

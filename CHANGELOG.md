@@ -9,6 +9,12 @@ Releases follow [loxilb-io/loxilb](https://github.com/loxilb-io/loxilb)'s
 
 ## [Unreleased]
 
+### Fixed
+- Keep numeric input labels distinct from tooltip descriptions and report validation after rendering.
+- Ignore superseded mutation-result popups after navigation or a newer operation.
+- Preserve unknown API-key enablement and show textual state alongside the indicator.
+- Allow table toolbars, mobile navigation and tenant quota panels to fit their contents.
+
 ## [0.9.8.9-rc.1] - 2026-08-28
 
 ### Added

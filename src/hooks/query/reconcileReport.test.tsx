@@ -7,7 +7,7 @@
 // itself failed. The last two must not be merged: "has not appeared" is a
 // statement about state that a failed read never saw.
 //---------------------------------------------------------
-import {act, render} from '@testing-library/react';
+import {act, render, renderHook} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {useEffect} from 'react';
 import {fromQueryRefetch} from 'hooks/query/reconcile';
@@ -109,4 +109,38 @@ describe('a failed list refetch is not evidence', () => {
 		expect(await runReport(refetch, (rows: string[]) => rows.includes('row'))).toBe('pending');
 		expect(openPopUp.mock.calls[0][1]).toBe(NOT_READ);
 	});
+});
+
+
+describe('reporter lifecycle and concurrent operations', () => {
+ it('does not open a popup after its page unmounts during readback', async () => {
+  const hook = renderHook(() => useReconcileReporter());
+  let finish!: (rows: string[]) => void;
+  const pendingRead = new Promise<string[]>(resolve => {finish = resolve;});
+  const operation = hook.result.current.report({refetch: () => pendingRead, confirm: rows => rows.includes('row')}, 'Old saved.');
+  hook.unmount();
+  await act(async () => {finish(['row']); await operation;});
+  expect(openPopUp).not.toHaveBeenCalled();
+ });
+ it('a superseded report cannot overwrite the newer success popup', async () => {
+  const hook = renderHook(() => useReconcileReporter());
+  let finish!: (rows: string[]) => void;
+  const pendingRead = new Promise<string[]>(resolve => {finish = resolve;});
+  const older = hook.result.current.report({refetch: () => pendingRead, confirm: () => true}, 'Old saved.');
+  await act(async () => {await hook.result.current.report({refetch: async () => ['row'], confirm: () => true}, 'New saved.');});
+  await act(async () => {finish(['row']); await older;});
+  expect(openPopUp).toHaveBeenCalledTimes(1);
+  expect(openPopUp.mock.lastCall![1]).toBe('New saved.');
+  hook.unmount();
+ });
+ it('silent reconciliation also cancels an older report popup', async () => {
+  const hook = renderHook(() => useReconcileReporter());
+  let finish!: (rows: string[]) => void;
+  const pendingRead = new Promise<string[]>(resolve => {finish = resolve;});
+  const older = hook.result.current.report({refetch: () => pendingRead, confirm: () => true}, 'Old saved.');
+  await act(async () => {await hook.result.current.reconcile({refetch: async () => []});});
+  await act(async () => {finish(['row']); await older;});
+  expect(openPopUp).not.toHaveBeenCalled();
+  hook.unmount();
+ });
 });
