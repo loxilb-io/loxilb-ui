@@ -2,12 +2,14 @@
 // Imports
 //---------------------------------------------------------
 import {Grid2, Stack} from '@mui/material';
-import {isValidIPAddress, isValidIPAddressCidr} from 'common';
+import {validIPFilterConfig} from 'types/ipfilter_policy';
+import {networkPrefixKey} from 'types/network_prefix';
 import NewBox from 'components/layout/NewBox';
 import ParamBox from 'components/element/ParamBox';
 import {t} from 'i18next';
 import {IIPFilterEntry} from 'types/security';
 import React from 'react';
+import {evaluateNumericField} from './numericField';
 
 //---------------------------------------------------------
 // Functional Component
@@ -18,7 +20,9 @@ interface IPFilterInputFormProps {
 }
 
 export default function IPFilterInputForm(props: IPFilterInputFormProps) {
-	const {onChange} = props;
+	const {onChange, value} = props;
+	const [priorityRaw, setPriorityRaw] = React.useState(String(value?.priority ?? 100));
+	const prioritySpec = {required: true, min: 0, max: 65535};
 
 	const [form, setForm] = React.useState<IIPFilterEntry>({
 		filterType: 'whitelist',
@@ -26,7 +30,9 @@ export default function IPFilterInputForm(props: IPFilterInputFormProps) {
 		zone: 0,
 		priority: 100,
 		action: 'allow',
+		...value,
 	});
+	const invalidCIDR = form.cidr.trim() !== '' && networkPrefixKey(form.cidr) === undefined;
 
 	const handleChange = (field: keyof IIPFilterEntry) => (value: any) => {
 		const newForm = {...form, [field]: value};
@@ -40,28 +46,15 @@ export default function IPFilterInputForm(props: IPFilterInputFormProps) {
 		onChange({...newForm, isValid: validateForm(newForm)});
 	};
 
-	const validateForm = (data: IIPFilterEntry): boolean => {
-		// CIDR is required
-		if (!data.cidr || data.cidr.trim() === '') return false;
+	const validateForm = (data: IIPFilterEntry, raw = priorityRaw): boolean =>
+		evaluateNumericField(raw, prioritySpec).valid && validIPFilterConfig(data);
 
-		// Accept a bare IP or a CIDR, but reject out-of-range octets and
-		// prefixes (the old regex let 999.1.1.1 and /33 through).
-		const cidr = data.cidr.trim();
-		if (!isValidIPAddress(cidr) && !isValidIPAddressCidr(cidr)) return false;
-
-		// Priority should be positive
-		if (data.priority !== undefined && data.priority < 0) return false;
-
-		// Zone should be non-negative
-		if (data.zone !== undefined && data.zone < 0) return false;
-
-		// Whitelist must allow, blacklist must drop (gateway rejects otherwise).
-		const validPairing =
-			(data.filterType === 'whitelist' && data.action === 'allow') ||
-			(data.filterType === 'blacklist' && data.action === 'drop');
-		if (!validPairing) return false;
-
-		return true;
+	const handlePriorityChange = (raw: string) => {
+		setPriorityRaw(raw);
+		const state = evaluateNumericField(raw, prioritySpec);
+		const next = state.parsed === undefined ? form : {...form, priority: state.parsed};
+		if (state.parsed !== undefined) setForm(next);
+		onChange({...next, isValid: validateForm(next, raw)});
 	};
 
 	React.useEffect(() => {
@@ -89,6 +82,8 @@ export default function IPFilterInputForm(props: IPFilterInputFormProps) {
 						label={t('CIDR')}
 						value={form.cidr}
 						onChange={(value: string) => handleChange('cidr')(value)}
+						error={invalidCIDR}
+						helperText={invalidCIDR ? t('Invalid IP address format.') : undefined}
 						param_desc={{
 							type: 'string',
 							description: 'IP address in CIDR notation (e.g., 192.168.1.0/24)',
@@ -112,11 +107,15 @@ export default function IPFilterInputForm(props: IPFilterInputFormProps) {
 
 					<ParamBox
 						label={t('Priority')}
-						value={form.priority?.toString() ?? '100'}
-						onChange={(value: string) => handleChange('priority')(parseInt(value) || 100)}
+						value={priorityRaw}
+						onChange={handlePriorityChange}
+						raw
+						error={!evaluateNumericField(priorityRaw, prioritySpec).valid}
+						helperText={evaluateNumericField(priorityRaw, prioritySpec).error}
 						param_desc={{
 							type: 'integer',
-							description: 'Rule priority (higher = more important)',
+							required: true,
+							description: 'Integer 0..65535. Explicit zero is preserved; a new form starts at 100. Higher values win, whitelist wins ties.',
 						}}
 					/>
 				</Grid2>

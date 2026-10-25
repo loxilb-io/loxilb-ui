@@ -9,6 +9,8 @@ import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
 import {OpResult} from '../fetcher/opResult';
 import {runOp} from '../fetcher/opResultAdapter';
 import type {GwGetResp} from 'api';
+import {validIPFilterConfig, parseIPFilterRows} from 'types/ipfilter_policy';
+import {STATUS_LOCALE_KEYS} from '../fetcher/opResultCodes';
 
 //---------------------------------------------------------
 // API Caller Functions
@@ -16,7 +18,7 @@ import type {GwGetResp} from 'api';
 export async function query_get_ipfilter_all(instance: IInstance): Promise<IIPFilterEntry[]> {
 	const resp = await GET_INST<GwGetResp<'/config/ipfilter/all'>>(instance, `/config/ipfilter/all`);
 	assertOk(resp, 'Get IP Filter');
-	return (resp.data?.ipFilterAttr ?? []) as IIPFilterEntry[];
+	return parseIPFilterRows(resp.data?.ipFilterAttr);
 }
 
 // The gateway only parses CIDR notation, but a bare host IP is a valid filter
@@ -29,6 +31,7 @@ function toHostCidr(cidr: string): string {
 }
 
 export async function request_create_ipfilter_rule(instance: IInstance, data: IIPFilterEntry): Promise<OpResult> {
+	if (!validIPFilterConfig(data)) return {status: 'invalid', code: 'ipfilter.create.client_invalid', retryable: false, localeKey: STATUS_LOCALE_KEYS.invalid};
 	// Explicit payload: the page forwards the form ref verbatim, which also
 	// carries the client-side isValid flag — send only IIPFilterEntry schema
 	// fields (drop isValid + the read-only packets/bytes counters).

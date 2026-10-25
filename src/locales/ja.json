@@ -771,7 +771,7 @@
 	"The gateway refused this request because it cannot write its audit record right now. Nothing was changed.": "ゲートウェイは現在監査記録を書き込めないため、このリクエストを拒否しました。変更は行われていません。",
 	"The gateway is in maintenance mode and is not accepting changes. Nothing was changed.": "ゲートウェイはメンテナンスモードのため、変更を受け付けていません。変更は行われていません。",
 	"The management service cannot authenticate to this gateway right now, so the request was not sent to it.": "管理サービスは現在このゲートウェイに認証できないため、リクエストは送信されませんでした。",
-	"Try again in {{seconds}} s.": "{{seconds}}秒後に再試行してください。",
+	"Try again in {{seconds}} s.": "{{seconds}} 秒後に再試行してください。",
 	"The operation could not be completed.": "操作を完了できませんでした。",
 	"Too many requests. Please try again later.": "リクエストが多すぎます。しばらくしてからもう一度お試しください。",
 	"The request conflicts with an existing item.": "リクエストが既存の項目と競合しています。",
@@ -1438,7 +1438,6 @@
 	"A blank field is not sent, and the gateway default applies (its launch environment, else the product default). 0 is sent and selects the same default: it does not mean unlimited or none.": "空欄のフィールドは送信されず、ゲートウェイの既定値（起動環境の設定、なければ製品の既定値）が適用されます。0 は送信され、同じ既定値を選択します。無制限や「なし」を意味するものではありません。",
 	"The mode set here is the rule's own and comes before the gateway-wide setting: a rule can enforce, observe or switch the gate off whatever LLB_FC_MODE says.": "ここで設定するモードはこのルール自身のもので、ゲートウェイ全体の設定より優先されます。LLB_FC_MODE の値にかかわらず、ルールはゲートを enforce、observe、off のいずれにもできます。",
 	"The capacity gate is off on every pool: nothing is bounded, and its counters stay at zero by construction. It is switched on per rule with the rule's Admission Mode, or for every rule that declares none with the gateway's LLB_FC_MODE setting (observe or enforce).": "すべてのプールでキャパシティゲートはオフです。何も制限されず、カウンターは構造上ゼロのままです。ルールのアドミッションモードでルールごとに有効にするか、モードを宣言していないすべてのルールに対してゲートウェイの LLB_FC_MODE 設定（observe または enforce）で有効にします。",
-	"Try again in {{seconds}} s.": "{{seconds}} 秒後に再試行してください。",
 	"The gateway cannot run a restore right now (HTTP {{code}})": "ゲートウェイは現在リストアを実行できません（HTTP {{code}}）",
 	"The dry-run answer could not be read": "ドライランの応答を読み取れませんでした",
 	"Nothing was verified, so the restore cannot continue.": "何も検証されていないため、リストアを続行できません。",
@@ -1601,5 +1600,6 @@
 	"Recovery scope": "復元範囲",
 	"Recovery scope could not be read. Retry after checking access and snapshot integrity.": "復元範囲を読み取れません。権限と Snapshot の整合性を確認して再試行してください。",
 	"Snapshots contain supported configuration domains and may contain IPsec secrets. External stores require separate backups; download and restore are admin-only.": "Snapshot は対応設定 domain を保存し、IPsec の秘密情報を含む場合があります。外部ストアは別途バックアップが必要で、ダウンロードと復元は管理者専用です。",
-	"This reads the stored document. It does not test external stores or confirm a backup of them.": "保存済み文書の範囲です。外部ストアやバックアップの存在は検証しません。"
+	"This reads the stored document. It does not test external stores or confirm a backup of them.": "保存済み文書の範囲です。外部ストアやバックアップの存在は検証しません。",
+	"Accepted {{success}} deletion request(s); {{failed}} failed. Refresh to confirm removal.": "削除リクエスト{{success}}件を受理し、{{failed}}件が失敗しました。Refreshで削除を確認してください。"
 }
