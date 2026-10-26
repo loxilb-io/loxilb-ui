@@ -52,6 +52,11 @@ for (const vp of VIEWPORTS) {
 				if (p.route === 'observability/persistence') consoleGuard.allowRequest({status: 404, path: /\/netlox\/v1\/diagnostics$/});
 				const inst = await activeInstance();
 				await page.goto(`instance/${p.route}?name=${encodeURIComponent(inst.name)}`);
+				// The temporary phone drawer makes the content inert until dismissed.
+				if (vp.name === 'phone') {
+					await page.locator('.MuiDrawer-paper').last().waitFor({state: 'visible'});
+					await page.keyboard.press('Escape');
+				}
 
 				// ⚠️ This waits for the PAGE'S OWN title, and it must keep doing
 				// so: the assertion's job is to prove the page content mounted

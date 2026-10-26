@@ -172,7 +172,7 @@ test.describe('@gw Strict-rule option matrix — mock contract', () => {
 		expect(body.serviceArguments.kvModelProfile).toBe('llama-both');
 		expect(body.serviceArguments.kvExactApiMode).toBe('both');
 		expect(body.serviceArguments.kvExactMode).toBe(1);
-		expect(world.postBodies()).toHaveLength(1);
+		await expect.poll(() => world.postBodies()).toHaveLength(1);
 	});
 
 	test('MP-E2E-024: model matching is exact and policy-scoped — no substring, no case folding, no alias on base_model_only', async ({page}) => {
@@ -251,7 +251,7 @@ test.describe('@gw Strict-rule option matrix — mock contract', () => {
 		expect(body.serviceArguments.kvExactMode).toBe(3);
 		expect(body.serviceArguments.kvModelProfile).toBe('qwen3-chat');
 		expect(body.serviceArguments.kvExactApiMode).toBe('chat');
-		expect(world.postBodies()).toHaveLength(1);
+		await expect.poll(() => world.postBodies()).toHaveLength(1);
 	});
 
 	test('MP-E2E-026: strict state abandoned in the form never leaks into a plain-routing POST', async ({page}) => {
@@ -279,7 +279,7 @@ test.describe('@gw Strict-rule option matrix — mock contract', () => {
 		expect(Object.prototype.hasOwnProperty.call(body.serviceArguments, 'kvModelProfile')).toBe(false);
 		expect(Object.prototype.hasOwnProperty.call(body.serviceArguments, 'kvExactApiMode')).toBe(false);
 		expect(body.serviceArguments.kvExactMode ?? 0).toBe(0);
-		expect(world.postBodies()).toHaveLength(1);
+		await expect.poll(() => world.postBodies()).toHaveLength(1);
 	});
 
 	test('MP-E2E-027: a newer gateway\'s unknown API surface degrades to the known subset — selectable, no crash', async ({page}) => {
@@ -307,7 +307,7 @@ test.describe('@gw Strict-rule option matrix — mock contract', () => {
 		const body = await submitAndCapture(page);
 		expect(body.serviceArguments.kvModelProfile).toBe('nova-future');
 		expect(body.serviceArguments.kvExactApiMode).toBe('chat');
-		expect(world.postBodies()).toHaveLength(1);
+		await expect.poll(() => world.postBodies()).toHaveLength(1);
 		// consoleGuard (fixture default): any console error from the unknown
 		// fields fails this test on teardown.
 	});
@@ -352,7 +352,7 @@ test.describe('@gw Strict-rule option matrix — mock contract', () => {
 		expect(Object.prototype.hasOwnProperty.call(body.serviceArguments, 'kvModelProfile')).toBe(false);
 		expect(Object.prototype.hasOwnProperty.call(body.serviceArguments, 'kvExactApiMode')).toBe(false);
 		expect(body.serviceArguments.kvExactMode ?? 0).toBe(0);
-		expect(world.postBodies()).toHaveLength(1);
+		await expect.poll(() => world.postBodies()).toHaveLength(1);
 	});
 
 	test('MP-E2E-029: the add dialog is wide with all six sections and fixed actions', async ({page}) => {
@@ -403,7 +403,7 @@ test.describe('@gw Strict-rule option matrix — mock contract', () => {
 		// dropdown's announce shipped level 1 on every fullproxy rule.
 		expect(Object.prototype.hasOwnProperty.call(body.serviceArguments, 'chwbl_prefix_hash_level')).toBe(false);
 		expect(Object.prototype.hasOwnProperty.call(body.serviceArguments, 'chwbl_prefix_hash_flags')).toBe(false);
-		expect(world.postBodies()).toHaveLength(1);
+		await expect.poll(() => world.postBodies()).toHaveLength(1);
 	});
 
 	test('MP-E2E-031: engine × topology sweep — option sets and combo-scoped fields across the full matrix', async ({page}) => {
@@ -527,7 +527,7 @@ test.describe('@gw Strict-rule option matrix — mock contract', () => {
 		expect(sa.max_stream_duration_sec).toBe(600);
 		expect(sa.backend_keepalive_interval_sec).toBe(30);
 		expect(body.endpoints.map((ep: any) => ep.ep_role)).toEqual([1, 2]);
-		expect(world.postBodies()).toHaveLength(1);
+		await expect.poll(() => world.postBodies()).toHaveLength(1);
 	});
 
 	test('MP-E2E-034: CHWBL prefix hash settings are selector-scoped — blocked off chwbl, admitted on it (F-CHWBL)', async ({page}) => {
@@ -557,7 +557,7 @@ test.describe('@gw Strict-rule option matrix — mock contract', () => {
 
 		const body = await submitAndCapture(page);
 		expect(Object.prototype.hasOwnProperty.call(body.serviceArguments, 'chwbl_prefix_hash_level')).toBe(false);
-		expect(world.postBodies()).toHaveLength(1);
+		await expect.poll(() => world.postBodies()).toHaveLength(1);
 	});
 
 	test('MP-E2E-035: converged llama.cpp CHWBL fleet — engine-agnostic method rule with health probes, no strict residue', async ({page}) => {
@@ -609,7 +609,7 @@ test.describe('@gw Strict-rule option matrix — mock contract', () => {
 			expect(ep.weight).toBe(1);
 			expect(ep.targetPort).toBe(8081);
 		}
-		expect(world.postBodies()).toHaveLength(1);
+		await expect.poll(() => world.postBodies()).toHaveLength(1);
 	});
 
 	test('MP-E2E-036: SGLang P/D bootstrap fleet — profile-less KV-exact with the full transport tuple on the wire', async ({page}) => {
@@ -648,7 +648,7 @@ test.describe('@gw Strict-rule option matrix — mock contract', () => {
 		expect(Object.prototype.hasOwnProperty.call(sa, 'kvModelProfile')).toBe(false);
 		expect(Object.prototype.hasOwnProperty.call(sa, 'kvExactApiMode')).toBe(false);
 		expect(body.endpoints.map((ep: any) => ep.ep_role)).toEqual([1, 2]);
-		expect(world.postBodies()).toHaveLength(1);
+		await expect.poll(() => world.postBodies()).toHaveLength(1);
 	});
 
 	test('MP-E2E-037: TRT-LLM role\'d P/D fleet — engine-foreign transport knobs stay off the wire', async ({page}) => {
@@ -676,7 +676,7 @@ test.describe('@gw Strict-rule option matrix — mock contract', () => {
 			expect(Object.prototype.hasOwnProperty.call(sa, key), `${key} must be absent for trtllm`).toBe(false);
 		}
 		expect(body.endpoints.map((ep: any) => ep.ep_role)).toEqual([1, 2]);
-		expect(world.postBodies()).toHaveLength(1);
+		await expect.poll(() => world.postBodies()).toHaveLength(1);
 	});
 
 	test('MP-E2E-038: failover-QA hash-pinned rule — an explicit KV hash override survives to the wire beside probe tuning', async ({page}) => {
@@ -705,7 +705,7 @@ test.describe('@gw Strict-rule option matrix — mock contract', () => {
 		expect(sa.kvWarmupSec).toBe(20);
 		expect(sa.monitor).toBe(true);
 		expect(sa.probeRetries).toBe(1);
-		expect(world.postBodies()).toHaveLength(1);
+		await expect.poll(() => world.postBodies()).toHaveLength(1);
 	});
 
 	test('MP-E2E-039: vLLM NIXL P/D fleet — per-endpoint side-channel ports ride the endpoints, baseline stays cache-blind', async ({page}) => {
@@ -740,7 +740,7 @@ test.describe('@gw Strict-rule option matrix — mock contract', () => {
 		expect(Object.prototype.hasOwnProperty.call(sa, 'kvModelProfile')).toBe(false);
 		expect(body.endpoints.map((ep: any) => ep.ep_role)).toEqual([1, 2]);
 		expect(body.endpoints.map((ep: any) => ep.nixl_port)).toEqual([5601, 5602]);
-		expect(world.postBodies()).toHaveLength(1);
+		await expect.poll(() => world.postBodies()).toHaveLength(1);
 	});
 
 	test('MP-E2E-040: SGLang CONVERGED single-role fleet — kvExactMode 3 with rank fan-out on role-less endpoints', async ({page}) => {
@@ -778,7 +778,7 @@ test.describe('@gw Strict-rule option matrix — mock contract', () => {
 		}
 		expect(body.endpoints).toHaveLength(3);
 		for (const ep of body.endpoints) expect(ep.ep_role ?? 0).toBe(0);
-		expect(world.postBodies()).toHaveLength(1);
+		await expect.poll(() => world.postBodies()).toHaveLength(1);
 	});
 
 	test('MP-E2E-041: vLLM CONVERGED single-role fleet — mode 3 without disaggregation, rank fan-out stays engine-scoped', async ({page}) => {
@@ -803,7 +803,7 @@ test.describe('@gw Strict-rule option matrix — mock contract', () => {
 			expect(Object.prototype.hasOwnProperty.call(sa, key), `${key} must be absent`).toBe(false);
 		}
 		for (const ep of body.endpoints) expect(ep.ep_role ?? 0).toBe(0);
-		expect(world.postBodies()).toHaveLength(1);
+		await expect.poll(() => world.postBodies()).toHaveLength(1);
 	});
 
 	test('MP-E2E-042: TRT-LLM production P/D shape — TLS termination, asymmetric roles, and the full probe block verbatim', async ({page}) => {
@@ -866,6 +866,6 @@ test.describe('@gw Strict-rule option matrix — mock contract', () => {
 			expect(ep.weight).toBe(1);
 			expect(ep.targetPort).toBe(8355);
 		}
-		expect(world.postBodies()).toHaveLength(1);
+		await expect.poll(() => world.postBodies()).toHaveLength(1);
 	});
 });

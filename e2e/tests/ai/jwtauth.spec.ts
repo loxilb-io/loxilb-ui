@@ -449,6 +449,9 @@ test.describe('@gw AI JWT auth profiles', () => {
 		// measurement needs the narrow viewport.
 		await refreshUntilRow(page, wide);
 		await page.setViewportSize({width: 375, height: 812});
+		// Dismiss the temporary navigation drawer before reading its background.
+		await page.locator('.MuiDrawer-paper').last().waitFor({state: 'visible'});
+		await page.keyboard.press('Escape');
 		// The health table renders it as a cell; the profiles DataTable renders
 		// it as text. Targeting the cell asserts the PANEL picked the profile
 		// up, not merely that the grid did.

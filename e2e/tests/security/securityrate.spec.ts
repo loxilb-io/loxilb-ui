@@ -184,7 +184,7 @@ test.describe('@gw Security Rate Limiting page (edit-only)', () => {
 		await dialog(page).getByRole('checkbox', {name: 'Enable SYN Flood Protection'}).click();
 		await dialog(page).getByRole('checkbox', {name: 'Enable Connection Rate Limiting'}).click();
 		expect(await isEventuallyDisabled(configureBtn), 'all protections off must block').toBe(true);
-		await expect(dialog(page).getByText(/At least one protection/)).toBeVisible();
+		await expect(dialog(page).getByText(/Enable at least one per-source protection or a positive aggregate budget/)).toBeVisible();
 
 		// Re-enabling any protection unblocks.
 		await dialog(page).getByRole('checkbox', {name: 'Enable SYN Flood Protection'}).click();
