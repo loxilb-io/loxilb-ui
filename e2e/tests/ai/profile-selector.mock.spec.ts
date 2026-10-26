@@ -174,7 +174,7 @@ test.describe('@gw Model Profile selector — mock contract', () => {
 		expect(typeof body.serviceArguments.kvModelProfile).toBe('string');
 		expect(typeof body.serviceArguments.kvExactApiMode).toBe('string');
 		expect(body.serviceArguments.kvExactMode).toBe(1);
-		expect(world.postBodies()).toHaveLength(1);
+		await expect.poll(() => world.postBodies()).toHaveLength(1);
 	});
 
 	test('MP-E2E-010: a stale selection blocks the POST, keeps the draft, refreshes the registry', async ({page, consoleGuard}) => {

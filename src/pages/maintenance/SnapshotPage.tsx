@@ -56,9 +56,20 @@ export default function SnapshotPage() {
 	const instanceId = inst?.id;
 	const snapshot_query = useSnapshots(instanceId, 1, PAGE_LIMIT);
 	const {data, isError, isLoading} = snapshot_query;
-	const {data: schedule} = useSnapshotSchedule(instanceId);
+	const scheduleQuery = useSnapshotSchedule(instanceId);
+	const {data: schedule} = scheduleQuery;
 	const invalidate = useInvalidateSnapshots(instanceId);
 	const {can_manage_config} = useRole();
+	const snapshotState = toPageState(snapshot_query, {op: 'snapshot.list'});
+	const trustedRead = snapshotState.kind === 'data' || snapshotState.kind === 'empty';
+	const writesReady = can_manage_config && trustedRead;
+	const scheduleState = toPageState(scheduleQuery, {op: 'snapshot.schedule'});
+	const scheduleReady = writesReady && (scheduleState.kind === 'data' || scheduleState.kind === 'empty');
+	// Popups may remain open across a failed refresh; check the current read at submit.
+	const writesReadyRef = useRef(writesReady);
+	writesReadyRef.current = writesReady;
+	const scheduleReadyRef = useRef(scheduleReady);
+	scheduleReadyRef.current = scheduleReady;
 	const {openPopUp, enableYes} = usePopUp();
 
 	const snapshots: ISnapshot[] = data?.data ?? [];
@@ -101,6 +112,7 @@ export default function SnapshotPage() {
 	// Take / Pre-Upgrade / Upload
 	//---------------------------------------------------------
 	const handleTake = () => {
+		if (!writesReady) return;
 		if (!instanceId) return;
 		takeFormRef.current = null;
 		const form = (
@@ -113,6 +125,7 @@ export default function SnapshotPage() {
 			/>
 		);
 		openPopUp('', form, t('Take Snapshot'), t('Cancel'), async () => {
+			if (!writesReadyRef.current) return;
 			if (!takeFormRef.current) return;
 			const {name, description} = takeFormRef.current;
 			const res = await request_take_snapshot(instanceId, {name: name.trim(), description: description.trim() || undefined, trigger_type: 'manual'});
@@ -126,6 +139,7 @@ export default function SnapshotPage() {
 	// is operator-entered and often stale; the initial take uses it only as a
 	// placeholder, then the pin PATCH renames to the authoritative version.
 	const handlePreUpgrade = () => {
+		if (!writesReady) return;
 		if (!instanceId) return;
 		const placeholder = `pre-upgrade-${inst?.version || 'unknown'}`;
 		openPopUp(
@@ -134,6 +148,7 @@ export default function SnapshotPage() {
 			t('Take & Pin'),
 			t('Cancel'),
 			async () => {
+				if (!writesReadyRef.current) return;
 				const res = await request_take_snapshot(instanceId, {
 					name: placeholder,
 					description: t('Automatic pre-upgrade safety snapshot'),
@@ -163,6 +178,7 @@ export default function SnapshotPage() {
 	};
 
 	const handleUpload = () => {
+		if (!writesReady) return;
 		if (!instanceId) return;
 		uploadFormRef.current = null;
 		const form = (
@@ -175,6 +191,7 @@ export default function SnapshotPage() {
 			/>
 		);
 		openPopUp('', form, t('Upload'), t('Cancel'), async () => {
+			if (!writesReadyRef.current) return;
 			if (!uploadFormRef.current?.file) return;
 			const {file, name, description} = uploadFormRef.current;
 			const res = await request_upload_snapshot(instanceId, file, {name: name.trim() || undefined, description: description.trim() || undefined});
@@ -186,6 +203,7 @@ export default function SnapshotPage() {
 	// Schedule
 	//---------------------------------------------------------
 	const handleSchedule = () => {
+		if (!scheduleReady) return;
 		if (!instanceId) return;
 		scheduleFormRef.current = null;
 		const form = (
@@ -203,6 +221,7 @@ export default function SnapshotPage() {
 			/>
 		);
 		openPopUp('', form, t('Save'), t('Cancel'), async () => {
+			if (!scheduleReadyRef.current) return;
 			if (!scheduleFormRef.current) return;
 			const {enabled, interval_hours, retain_count} = scheduleFormRef.current;
 			const res = await request_put_snapshot_schedule(instanceId, {enabled, interval_hours, retain_count});
@@ -214,6 +233,8 @@ export default function SnapshotPage() {
 	// Row actions (single selection)
 	//---------------------------------------------------------
 	const handleDownload = async () => {
+		if (!writesReadyRef.current) return;
+		if (!writesReady) return;
 		if (!selected?.id || downloading) return;
 		setDownloading(true);
 		try {
@@ -227,6 +248,7 @@ export default function SnapshotPage() {
 	};
 
 	const handleScope = async () => {
+		if (!writesReadyRef.current) return;
 		if (!selected?.id || downloading) return;
 		setDownloading(true);
 		try {
@@ -240,6 +262,8 @@ export default function SnapshotPage() {
 	};
 
 	const handlePinToggle = async () => {
+		if (!writesReadyRef.current) return;
+		if (!writesReady) return;
 		if (!selected?.id) return;
 		const next = !selected.pinned;
 		const res = await request_patch_snapshot(selected.id, {pinned: next});
@@ -249,6 +273,7 @@ export default function SnapshotPage() {
 	// Typed-confirm delete (§5.3). Pinned snapshots are blocked here — the UI
 	// mirrors the API's force semantics instead of silently passing force=true.
 	const handleDelete = () => {
+		if (!writesReady) return;
 		if (!selected?.id) return;
 		if (selected.pinned) {
 			openPopUp(t('Pinned snapshot'), t('"{{name}}" is pinned. Unpin it first to delete it.', {name: selected.name}), t('OK'));
@@ -268,6 +293,7 @@ export default function SnapshotPage() {
 			/>
 		);
 		openPopUp(t('WARNING!! Delete Snapshot'), confirm_form, t('Delete'), t('Cancel'), async () => {
+			if (!writesReadyRef.current) return;
 			if (!snapName || deleteConfirmRef.current !== snapName) return;
 			const res = await request_delete_snapshot(sid);
 			reportResult(res, t('Snapshot "{{name}}" deleted.', {name: snapName}));
@@ -293,16 +319,16 @@ export default function SnapshotPage() {
 			<Stack spacing={1} sx={{mb: 1}} width="100%">
 				{can_manage_config && (
 					<Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-						<Button variant="outlined" size="small" startIcon={<AddAPhotoIcon />} onClick={handleTake}>
+						<Button variant="outlined" size="small" startIcon={<AddAPhotoIcon />} disabled={!writesReady} onClick={handleTake}>
 							{t('Take Snapshot')}
 						</Button>
-						<Button variant="outlined" size="small" color="warning" startIcon={<UpgradeIcon />} onClick={handlePreUpgrade}>
+						<Button variant="outlined" size="small" color="warning" startIcon={<UpgradeIcon />} disabled={!writesReady} onClick={handlePreUpgrade}>
 							{t('Pre-Upgrade Snapshot')}
 						</Button>
-						<Button variant="outlined" size="small" startIcon={<UploadFileIcon />} onClick={handleUpload}>
+						<Button variant="outlined" size="small" startIcon={<UploadFileIcon />} disabled={!writesReady} onClick={handleUpload}>
 							{t('Upload')}
 						</Button>
-						<Button variant="outlined" size="small" startIcon={<ScheduleIcon />} onClick={handleSchedule}>
+						<Button variant="outlined" size="small" startIcon={<ScheduleIcon />} disabled={!scheduleReady} onClick={handleSchedule}>
 							{t('Schedule')}
 						</Button>
 					</Stack>
@@ -321,27 +347,27 @@ export default function SnapshotPage() {
 							size="small"
 							color="error"
 							startIcon={<SettingsBackupRestoreIcon />}
-							disabled={!selected || selectedCorrupt}
-							onClick={() => selected && setRestoreTarget(selected)}
+							disabled={!writesReady || !selected || selectedCorrupt}
+							onClick={() => writesReady && selected && setRestoreTarget(selected)}
 						>
 							{t('Restore…')}
 						</Button>
-						<Button variant="outlined" size="small" disabled={!selected || selectedCorrupt || downloading} onClick={handleScope}>
+						<Button variant="outlined" size="small" disabled={!writesReady || !selected || selectedCorrupt || downloading} onClick={handleScope}>
 							{t('Recovery scope')}
 						</Button>
-						<Button variant="outlined" size="small" startIcon={<DownloadIcon />} disabled={!selected || selectedCorrupt || downloading} onClick={handleDownload}>
+						<Button variant="outlined" size="small" startIcon={<DownloadIcon />} disabled={!writesReady || !selected || selectedCorrupt || downloading} onClick={handleDownload}>
 							{t('Download')}
 						</Button>
 						<Button
 							variant="outlined"
 							size="small"
 							startIcon={selected?.pinned ? <BookmarkRemoveIcon /> : <BookmarkAddIcon />}
-							disabled={!selected}
+							disabled={!writesReady || !selected}
 							onClick={handlePinToggle}
 						>
 							{selected?.pinned ? t('Unpin') : t('Pin')}
 						</Button>
-						<Button variant="outlined" size="small" color="warning" disabled={!selected} onClick={handleDelete}>
+						<Button variant="outlined" size="small" color="warning" disabled={!writesReady || !selected} onClick={handleDelete}>
 							{t('Delete')}
 						</Button>
 						{selectedCorrupt && (
@@ -370,7 +396,7 @@ export default function SnapshotPage() {
 				selected_rows={selected_rows}
 				onChangeSelectedRows={set_selected_rows}
 				onRefresh={refreshAll}
-				state={toPageState(snapshot_query, {op: 'snapshot.list'})}
+				state={snapshotState}
 			/>
 
 			<Box sx={{mt: 1}}>

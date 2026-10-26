@@ -136,7 +136,10 @@ test.describe('@gw Snapshots page (admin)', () => {
 		// result type dropped `warnings` entirely (fixed separately).
 		// The versions reviewed above; which one a gateway writes depends on its
 		// build. One that is not listed has not been reviewed.
-		expect(['1.6', '1.7', '1.8', '1.9'], 'snapshot schema version reviewed for this UI').toContain(doc.schema_version);
+		// 2026-10-26: reviewed 1.10 reservation defaults; 1.11 network identity,
+		// JWT priority and objective strictness; 1.12 BGP bindings and priority
+		// bands. See docs/snapshot-schema-review.md for scope and owner tests.
+		expect(['1.6', '1.7', '1.8', '1.9', '1.10', '1.11', '1.12'], 'snapshot schema version reviewed for this UI').toContain(doc.schema_version);
 	});
 
 	test('2. full restore wizard happy path → pre_restore row appears, config restored', async ({page}) => {
@@ -146,10 +149,15 @@ test.describe('@gw Snapshots page (admin)', () => {
 		// the snapshot gate while writing, so a capture or restore — or the
 		// next test's capture — landing in that write is refused with 409.
 		const lb = {
-			serviceArguments: {externalIP: '198.51.100.21', port: 18021, protocol: 'tcp', name: 'e2e-snap-restore-lb'},
+			serviceArguments: {externalIP: '198.51.100.21', port: 18021, protocol: 'tcp', name: 'e2e-snap-restore-lb',
+				ai_default_reservation: 'on', ai_default_max_tokens: 2000, ai_objective_strict: true,
+				fc_wake_policy: 'weighted', fc_band_weights: '8:3:1', fc_band_min_share_pct: '0:20:0',
+				fc_critical_reserve_pct: 10, fc_band_wait_ms: '500:2000:1000', fc_band_queue_pct: '30:50:20',
+				fc_max_queue_depth: 8, fc_max_queue_wait_ms: 2000, fc_shed_queue: 'on', fc_tenant_wake: 'rr', fc_llmd_headers: 'on'},
 			endpoints: [{endpointIP: '198.51.100.13', targetPort: 18021, weight: 1}],
 		};
-		expect((await gwPersisted('POST', '/config/loadbalancer', lb)).ok).toBeTruthy();
+		const created = await gwPersisted('POST', '/config/loadbalancer', lb);
+		expect(created.ok, await created.text()).toBeTruthy();
 
 		await openPage(page);
 		await takeSnapshotViaUI(page, 'e2e-spec-restore');
@@ -181,7 +189,9 @@ test.describe('@gw Snapshots page (admin)', () => {
 		// A pre_restore safety row appeared, and the LB is really back.
 		await refreshUntilRow(page, /pre-restore-/);
 		const lbs = await gwJson<any>('/config/loadbalancer/all');
-		expect((lbs.lbAttr ?? []).some((r: any) => r.serviceArguments?.name === 'e2e-snap-restore-lb')).toBeTruthy();
+		const restored = (lbs.lbAttr ?? []).find((r: any) => r.serviceArguments?.name === 'e2e-snap-restore-lb');
+		expect(restored).toBeTruthy();
+		expect(restored.serviceArguments).toMatchObject(lb.serviceArguments);
 		expect((await gwPersisted('DELETE', '/config/loadbalancer/name/e2e-snap-restore-lb')).ok).toBeTruthy();
 	});
 

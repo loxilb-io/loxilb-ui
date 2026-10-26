@@ -50,9 +50,10 @@ async function expectNoNewViolations(page: import('@playwright/test').Page) {
 }
 
 test.describe('axe route pass (unauthenticated)', () => {
+	// Match the instrumentation-only bypass documented in the authenticated block.
 	// The suite's storageState is authenticated, which makes /login bounce to
 	// /instance mid-analysis — this block runs logged out instead.
-	test.use({storageState: {cookies: [], origins: []}});
+	test.use({storageState: {cookies: [], origins: []}, bypassCSP: true});
 
 	test('login page', async ({page}) => {
 		await page.goto('login');
@@ -62,6 +63,11 @@ test.describe('axe route pass (unauthenticated)', () => {
 });
 
 test.describe('axe route pass', () => {
+	// axe fetches cross-origin stylesheets for analysis. The product's
+	// connect-src intentionally blocks that instrumentation-only request.
+	// Bypass CSP only for these axe contexts; keep the empty violation
+	// baseline and console guard. csp-headers.spec.ts exercises the real policy.
+	test.use({bypassCSP: true});
 	test('instance list', async ({page, consoleGuard}) => {
 		// The instance list health-probes every registered instance; which are
 		// dead is testbed state, not an app defect.
