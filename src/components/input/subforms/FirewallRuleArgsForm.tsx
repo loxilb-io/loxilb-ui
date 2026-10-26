@@ -4,6 +4,7 @@
 import {Stack, Typography} from '@mui/material';
 import protocolList from 'assets/json/protocols.json';
 import ParamBox from 'components/element/ParamBox';
+import UnsignedIntegerField from '../UnsignedIntegerField';
 import HorizontalStack from 'components/layout/HorizontalStack';
 import {t} from 'i18next';
 import {useCallback} from 'react';
@@ -13,14 +14,13 @@ import {IEnumItem} from 'types/global';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-// Exported so FirewallInputForm can gate submit on the same rule (a min>max
-// range passes the gateway, so the form must block it).
+// Shared with FirewallInputForm: omitted bounds are zero on the wire.
+// A minimum above that maximum must block submission.
 export function getPortRangeError(min: number | undefined | null, max: number | undefined | null): string | undefined {
-	if (min == null || max == null) return undefined;
-	return Number(min) > Number(max) ? 'Min port must not exceed max port' : undefined;
+	return Number(min ?? 0) > Number(max ?? 0) ? 'Min port must not exceed max port' : undefined;
 }
 
-export default function FirewallRuleArgsForm(props: {value: IRuleArguments; onChange: (data: IRuleArguments) => void; params?: any}) {
+export default function FirewallRuleArgsForm(props: {value: IRuleArguments; onChange: (data: Partial<IRuleArguments>) => void; params?: any}) {
 	const {value, onChange, params} = props;
 
 	const protocol_list: IEnumItem[] = protocolList;
@@ -28,7 +28,7 @@ export default function FirewallRuleArgsForm(props: {value: IRuleArguments; onCh
 	const srcRangeError = getPortRangeError(value?.minSourcePort, value?.maxSourcePort);
 	const dstRangeError = getPortRangeError(value?.minDestinationPort, value?.maxDestinationPort);
 
-	const handleChange = useCallback((field: keyof IRuleArguments) => (newValue: any) => onChange({...value, [field]: newValue}), [value, onChange]);
+	const handleChange = useCallback((field: keyof IRuleArguments) => (newValue: any) => onChange({[field]: newValue}), [onChange]);
 
 	return (
 		<Stack spacing={2}>
@@ -40,15 +40,8 @@ export default function FirewallRuleArgsForm(props: {value: IRuleArguments; onCh
 			   <ParamBox label={t('Source IP')} value={value?.sourceIP ?? ''} onChange={handleChange('sourceIP')} param_desc={{...params?.sourceIP, type: 'ipaddress_cidr'}} />
 
 				<HorizontalStack>
-				   <ParamBox label={t('Port Min')} value={value?.minSourcePort ?? ''} onChange={handleChange('minSourcePort')} param_desc={{...params?.minSourcePort, type: 'port'}} />
-				   <ParamBox
-					   label={t('Port Max')}
-					   value={value?.maxSourcePort ?? ''}
-					   onChange={handleChange('maxSourcePort')}
-					   param_desc={{...params?.maxSourcePort, type: 'port'}}
-					   error={!!srcRangeError}
-					   helperText={srcRangeError && t(srcRangeError)}
-				   />
+				   <UnsignedIntegerField label={t('Port Min')} value={value?.minSourcePort} onChange={handleChange('minSourcePort')} params={params?.minSourcePort} max={65535} rangeError={srcRangeError ? t(srcRangeError) : undefined} />
+				   <UnsignedIntegerField label={t('Port Max')} value={value?.maxSourcePort} onChange={handleChange('maxSourcePort')} params={params?.maxSourcePort} max={65535} rangeError={srcRangeError ? t(srcRangeError) : undefined} />
 				</HorizontalStack>
 			</HorizontalStack>
 
@@ -61,20 +54,8 @@ export default function FirewallRuleArgsForm(props: {value: IRuleArguments; onCh
 				/>
 
 				<HorizontalStack>
-				   <ParamBox
-					   label={t('Port Min')}
-					   value={value?.minDestinationPort ?? ''}
-					   onChange={handleChange('minDestinationPort')}
-					   param_desc={{...params?.minDestinationPort, type: 'port'}}
-				   />
-				   <ParamBox
-					   label={t('Port Max')}
-					   value={value?.maxDestinationPort ?? ''}
-					   onChange={handleChange('maxDestinationPort')}
-					   param_desc={{...params?.maxDestinationPort, type: 'port'}}
-					   error={!!dstRangeError}
-					   helperText={dstRangeError && t(dstRangeError)}
-				   />
+				   <UnsignedIntegerField label={t('Port Min')} value={value?.minDestinationPort} onChange={handleChange('minDestinationPort')} params={params?.minDestinationPort} max={65535} rangeError={dstRangeError ? t(dstRangeError) : undefined} />
+				   <UnsignedIntegerField label={t('Port Max')} value={value?.maxDestinationPort} onChange={handleChange('maxDestinationPort')} params={params?.maxDestinationPort} max={65535} rangeError={dstRangeError ? t(dstRangeError) : undefined} />
 				</HorizontalStack>
 			</HorizontalStack>
 
@@ -86,7 +67,7 @@ export default function FirewallRuleArgsForm(props: {value: IRuleArguments; onCh
 					param_desc={{...params?.protocol, enum: protocol_list}}
 				/>
 			   <ParamBox label={t('Port Name')} value={value?.portName ?? ''} onChange={handleChange('portName')} param_desc={params?.portName} />
-			   <ParamBox label={t('Preference')} value={value?.preference ?? ''} onChange={handleChange('preference')} param_desc={params?.preference} />
+			   <UnsignedIntegerField label={t('Preference')} value={value?.preference} onChange={handleChange('preference')} params={params?.preference} max={65535} />
 			   <ParamBox
 				   label={t('HW Offload')}
 				   value={value?.hwOffload ?? false}
