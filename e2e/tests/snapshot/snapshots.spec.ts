@@ -153,10 +153,11 @@ test.describe('@gw Snapshots page (admin)', () => {
 				ai_default_reservation: 'on', ai_default_max_tokens: 2000, ai_objective_strict: true,
 				fc_wake_policy: 'weighted', fc_band_weights: '8:3:1', fc_band_min_share_pct: '0:20:0',
 				fc_critical_reserve_pct: 10, fc_band_wait_ms: '500:2000:1000', fc_band_queue_pct: '30:50:20',
-				fc_shed_queue: 'on', fc_tenant_wake: 'rr', fc_llmd_headers: 'on'},
+				fc_max_queue_depth: 8, fc_max_queue_wait_ms: 2000, fc_shed_queue: 'on', fc_tenant_wake: 'rr', fc_llmd_headers: 'on'},
 			endpoints: [{endpointIP: '198.51.100.13', targetPort: 18021, weight: 1}],
 		};
-		expect((await gwPersisted('POST', '/config/loadbalancer', lb)).ok).toBeTruthy();
+		const created = await gwPersisted('POST', '/config/loadbalancer', lb);
+		expect(created.ok, await created.text()).toBeTruthy();
 
 		await openPage(page);
 		await takeSnapshotViaUI(page, 'e2e-spec-restore');
