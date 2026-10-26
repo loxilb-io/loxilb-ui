@@ -1,9 +1,11 @@
+import {useReconcileReporter} from 'hooks/query/reconcileReport';
+import {fromQueryRefetch} from 'hooks/query/reconcile';
+import {firewallRowId, firewallApplied, firewallsAbsent} from 'types/firewall_policy';
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
 import {Stack, RadioGroup, FormControlLabel, Radio, Grid2} from '@mui/material';
 import protocols from 'assets/json/protocols.json';
-import { getStableHash } from 'common';
 // import SingleTextBox from 'components/element/SingleTextBox';
 import SingleTextBox from 'components/element/SingleTextBox';
 import ValueBunch from 'components/element/ValueBunch';
@@ -47,7 +49,7 @@ function OptionPannel(props: {rule: IFirewallRule}) {
 					<SingleTextBox label={t('Min Destination Port')} value={ruleArguments.minDestinationPort != null ? ruleArguments.minDestinationPort.toString() : ''} />
 					<SingleTextBox label={t('Max Destination Port')} value={ruleArguments.maxDestinationPort != null ? ruleArguments.maxDestinationPort.toString() : ''} />
 					<SingleTextBox label={t('Protocol')} value={protocol_name} />
-					<SingleTextBox label={t('Preference')} value={ruleArguments.preference != null ? ruleArguments.preference.toString() : ''} tooltip='User preference for ordering. (Lower value indicates higher priority)' />
+					<SingleTextBox label={t('Preference')} value={ruleArguments.preference != null ? ruleArguments.preference.toString() : ''} tooltip='Rule ordering preference. Verify effective precedence for the target dataplane.' />
 					</Grid2>
 				</ValueBunch>
 
@@ -95,6 +97,7 @@ function OptionPannel(props: {rule: IFirewallRule}) {
 
 export default function FirewallPage() {
 	const inst = useInstanceFromURL();
+	const {report, reconcile} = useReconcileReporter();
 
 	const firewall_query = useFirewallRules(inst);
 	const {data, refetch} = firewall_query;
@@ -107,17 +110,14 @@ export default function FirewallPage() {
    const {openPopUp, enableYes} = usePopUp();
 
    // Hash function for firewall rule — must match FirewallTable's row id.
-   const getHashKey = (item: IFirewallRule) => {
-	   const str = `${item.ruleArguments.portName || ''}_${item.ruleArguments.sourceIP || ''}_${item.ruleArguments.minSourcePort || ''}_${item.ruleArguments.maxSourcePort || ''}_${item.ruleArguments.destinationIP || ''}_${item.ruleArguments.minDestinationPort || ''}_${item.ruleArguments.maxDestinationPort || ''}_${item.ruleArguments.protocol || ''}`;
-		return getStableHash(str);
-   };
+   const getHashKey = firewallRowId;
 
    const instanceRef = useRef<IFirewallRule | null>(null);
 
    // Resolve the selected hashes back to their firewall rules.
    const selectedItems = React.useMemo(
 	   () => selected_rows.map(hash => fw_info.fwAttr.find(attr => getHashKey(attr) === hash)).filter((item): item is IFirewallRule => item != null),
-	   [selected_rows, fw_info.fwAttr],
+	   [selected_rows, fw_info.fwAttr, getHashKey],
    );
    const selectedItem: IFirewallRule | null = selectedItems.length === 1 ? selectedItems[0] : null;
 
@@ -134,21 +134,21 @@ export default function FirewallPage() {
 		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
-			openPopUp(t('Success'), t('Deleted {{count}} item(s) successfully.', {count: results.length}), t('OK'));
+			await report({refetch: fromQueryRefetch(refetch), confirm: firewallsAbsent(selectedItems)}, t('Deleted {{count}} item(s) successfully.', {count: results.length}));
 		} else if (failures.length < results.length) {
-			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: t('{{succeeded}} succeeded, {{failed}} failed. {{error}}', {succeeded: results.length - failures.length, failed: failures.length, error: t(failures[0].localeKey)})}), t('OK'));
+			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: t('Accepted {{success}} deletion request(s); {{failed}} failed. Refresh to confirm removal.', {success: results.length - failures.length, failed: failures.length, error: t(failures[0].localeKey)})}), t('OK'));
 		} else {
 			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: t(failures[0].localeKey)}), t('OK'));
+			await reconcile({refetch: fromQueryRefetch(refetch)});
 			return;
 		}
 		set_selected_rows([]);
-		setTimeout(() => {
-			refetch();
-		}, 1000);
+		if (failures.length > 0) await reconcile({refetch: fromQueryRefetch(refetch), confirm: firewallsAbsent(selectedItems.filter((_item, i) => results[i].status === 'confirmed'))});
 	};
 
 	const handleAdd = () => {
 		if (!inst) return;
+		instanceRef.current = null;
 
 		const input_form = (
 			<FirewallInputForm
@@ -172,11 +172,11 @@ export default function FirewallPage() {
 
 				const res = await request_create_firewall_rule(inst, instanceRef.current);
 				if (res.status === 'confirmed') {
-					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
-					setTimeout(() => {
-						refetch();
-					}, 1000);
-				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: t(res.localeKey)}), t('OK'));
+					await report({refetch: fromQueryRefetch(refetch), confirm: firewallApplied(instanceRef.current)}, t('Added successfully.'));
+				} else {
+					openPopUp(t('Error'), t('Failed to add. {{error}}', {error: t(res.localeKey)}), t('OK'));
+					await reconcile({refetch: fromQueryRefetch(refetch)});
+				}
 			},
 			true,
 		);

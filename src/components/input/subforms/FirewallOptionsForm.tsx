@@ -3,6 +3,7 @@
 //---------------------------------------------------------
 import {Box, Typography} from '@mui/material';
 import ParamBox from 'components/element/ParamBox';
+import UnsignedIntegerField from '../UnsignedIntegerField';
 import HorizontalStack from 'components/layout/HorizontalStack';
 import {t} from 'i18next';
 import {useCallback} from 'react';
@@ -11,10 +12,10 @@ import {IOptions} from 'types/firewall';
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
-export default function FirewallOptionsForm(props: {value: IOptions; onChange: (data: IOptions) => void; params?: any}) {
+export default function FirewallOptionsForm(props: {value: IOptions; onChange: (data: Partial<IOptions>) => void; params?: any}) {
 	const {value, onChange, params} = props;
 
-	const handleChange = useCallback((field: keyof IOptions) => (newValue: any) => onChange({...value, [field]: newValue}), [value, onChange]);
+	const handleChange = useCallback((field: keyof IOptions) => (newValue: any) => onChange({[field]: newValue}), [onChange]);
 
 	return (
 		<Box display="flex" flexDirection="column" gap={2} width="100%">
@@ -46,12 +47,12 @@ export default function FirewallOptionsForm(props: {value: IOptions; onChange: (
 
 			<HorizontalStack>
 			   <ParamBox label={t('To IP')} value={value?.toIP ?? ''} onChange={handleChange('toIP')} param_desc={{...params?.toIP, type: 'ipaddress'}} />
-			   <ParamBox label={t('To Port')} value={value?.toPort ?? ''} onChange={handleChange('toPort')} param_desc={{...params?.toPort, type: 'port'}} />
+			   <UnsignedIntegerField label={t('To Port')} value={value?.toPort} onChange={handleChange('toPort')} params={params?.toPort} max={65535} />
 			</HorizontalStack>
 
 			<HorizontalStack>
-			   <ParamBox label={t('fwMark')} value={value?.fwMark ?? ''} onChange={handleChange('fwMark')} param_desc={params?.fwMark} />
-			   <ParamBox label={t('Counter')} value={value?.counter ?? ''} onChange={handleChange('counter')} param_desc={params?.counter} />
+			   <UnsignedIntegerField label={t('fwMark')} value={value?.fwMark} onChange={handleChange('fwMark')} params={params?.fwMark} max={4294967295} />
+			   {/* Counter is read-only and appears in the rule table. */}
 			   <ParamBox label={t('On Default')} value={value?.onDefault ?? ''} onChange={handleChange('onDefault')} param_desc={{...params?.onDefault, type: 'boolean'}} />
 			</HorizontalStack>
 		</Box>

@@ -43,7 +43,7 @@ export default function ApiKeyTable(props: {
 		rate_limit_rps: item.rate_limit_rps ?? 0,
 		tokens_per_min: item.tokens_per_min ?? 0,
 		expires_at: apiKeyExpiry(item.expires_at) ?? '',
-		enabled: item.enabled ?? true,
+		enabled: item.enabled,
 	}));
 
 	return (

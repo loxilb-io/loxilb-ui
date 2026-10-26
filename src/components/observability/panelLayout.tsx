@@ -9,9 +9,9 @@
 import {Box, Paper, Typography} from '@mui/material';
 import {ReactNode} from 'react';
 
-export function PanelPaper({title, children}: {title: string; children: ReactNode}) {
+export function PanelPaper({title, children, fillHeight = true}: {title: string; children: ReactNode; fillHeight?: boolean}) {
 	return (
-		<Paper elevation={0} sx={{border: '1px solid', borderColor: 'divider', p: 2, height: '100%'}}>
+		<Paper elevation={0} sx={{border: '1px solid', borderColor: 'divider', p: 2, height: fillHeight ? '100%' : 'auto'}}>
 			{/* h2 for the same reason as SubTitleBar: MUI maps `subtitle1` onto
 			    <h6>, which would skip four levels below the page's h1. */}
 			<Typography variant="subtitle1" component="h2" sx={{mb: 1.5, fontWeight: 600}}>

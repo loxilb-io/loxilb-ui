@@ -140,6 +140,8 @@ export default function SettingsPanel(props: {serviceArguments: IServiceArgument
 					<SingleTextBox label={t('Egress')} value={serviceArguments.egress} tooltip='Flag to indicate an egress rule'/>
 					<SingleTextBox label={t('Operation')} value={serviceArguments.oper} tooltip='End-point specific op (0-create, 1-attachEP, 2-detachEP)'/>
 					<SingleTextBox label={t('Inactive Timeout')} value={inactiveTimeOutValue} tooltip='Value for inactive timeout seconds' />
+					{serviceArguments.connectionLimit !== undefined && <SingleTextBox label={t('Concurrent Connection Limit')} value={serviceArguments.connectionLimit ?? 0} />}
+					{serviceArguments.timeoutTcpInspect !== undefined && <SingleTextBox label={t('Header Deadline (ms)')} value={serviceArguments.timeoutTcpInspect || 10000} />}
 				</Grid2>
 			</ValueBunch>
 

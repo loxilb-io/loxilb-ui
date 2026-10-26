@@ -53,6 +53,8 @@ export interface IServiceArguments {
 
 	externalIP: string;
 	inactiveTimeOut: number;
+	connectionLimit?: number;		// concurrent TCP connections; 0 / absent = unlimited
+	timeoutTcpInspect?: number;		// L7 header accumulation deadline in ms; 0 = 10000 ms
 	port: number;
 	protocol: string;
 	privateIP?: string;
@@ -87,7 +89,7 @@ export interface IServiceArguments {
 	cb_enable?: boolean;			// per-endpoint circuit breaker; fullproxy only. Absent on create = gateway default (on for P/D, else off); absent on read-back = off
 
 	// NOTE: Octavia lifecycle/limit fields (id, adminStateUp, projectId,
-	// connectionLimit, annotations, timeoutMember*, timeoutTcpInspect) are
+	// annotations, timeoutMember*) are
 	// intentionally EXCLUDED — unstable in the gateway (see gap doc §4).
 
 	// --- AI gateway: model routing / tracing ---

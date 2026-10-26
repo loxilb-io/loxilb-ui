@@ -161,9 +161,9 @@ describe('CHWBL ring tuning controls', () => {
 	});
 
 	// The description is the control's tooltip, which MUI also exposes as the
-	// aria-label of the wrapped element — readable without hovering.
+	// description of the wrapped element — readable without hovering.
 	it('describes replication as a per-endpoint count under chwbl and a total budget under WRR-hash', () => {
-		const described = (text: string) => document.querySelector(`[aria-label^="${text}"]`) !== null;
+		const described = (text: string) => document.querySelector(`[title^="${text}"]`) !== null;
 
 		renderForm(args({sel: 8}));
 		expect(described('Virtual nodes per endpoint')).toBe(true);
