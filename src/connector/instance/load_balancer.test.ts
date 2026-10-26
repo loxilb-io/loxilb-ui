@@ -34,6 +34,25 @@ describe('load-balancer AI wire boundary', () => {
 		post.mockResolvedValue({code: 200, data: null, message: ''});
 	});
 
+	it.each(['connectionLimit', 'timeoutTcpInspect'] as const)('rejects invalid %s before the wire call', async field => {
+		for (const value of [-1, 1.5, NaN, Infinity, 4294967296]) {
+			const data = baseConfiguration();
+			data.serviceArguments[field] = value;
+			expect((await request_create_load_balancer_config(instance, data, 'inference-gateway')).status).toBe('invalid');
+			expect(post).not.toHaveBeenCalled();
+		}
+	});
+
+	it.each([0, 4294967295])('preserves listener boundary %i on the wire', async value => {
+		const data = baseConfiguration();
+		data.serviceArguments.connectionLimit = value;
+		data.serviceArguments.timeoutTcpInspect = value;
+		expect((await request_create_load_balancer_config(instance, data, 'inference-gateway')).status).toBe('confirmed');
+		const payload = post.mock.calls[0][2] as IServiceConfiguration;
+		expect(payload.serviceArguments.connectionLimit).toBe(value);
+		expect(payload.serviceArguments.timeoutTcpInspect).toBe(value);
+	});
+
 	it('does not send a known-invalid engine/topology combination', async () => {
 		const data = baseConfiguration();
 		data.serviceArguments.kvEngineType = 'llamacpp';
