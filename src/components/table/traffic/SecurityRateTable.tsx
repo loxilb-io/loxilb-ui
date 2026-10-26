@@ -70,7 +70,7 @@ export default function SecurityRateTable(props: SecurityRateTableProps) {
 					? {
 							title: 'Disable Security Rate Limiting',
 							message:
-								'This disables SYN flood, connection-rate, and UDP flood protection and clears all tracking state. Statistics counters are reset. You can re-enable it anytime via Configure.',
+								'This disables per-source protection and aggregate budgets and clears the whitelist. Existing statistics remain available. You can re-enable protection via Edit.',
 							confirmLabel: 'Disable',
 							tooltip: 'Disable Security Rate Limiting',
 							icon: 'block',

@@ -8,6 +8,8 @@ import {DELETE_INST, GET_INST, POST_INST} from '../fetcher/fetcher_inst';
 import {OpResult} from '../fetcher/opResult';
 import {runOp} from '../fetcher/opResultAdapter';
 import type {GwGetResp} from 'api';
+import {parseFirewallRows, validateFirewallConfig} from 'types/firewall_policy';
+import {STATUS_LOCALE_KEYS} from '../fetcher/opResultCodes';
 
 //---------------------------------------------------------
 // API Caller Functions
@@ -15,11 +17,14 @@ import type {GwGetResp} from 'api';
 export async function query_get_firewall_rules(instance: IInstance): Promise<IFirewallRule[]> {
 	const resp = await GET_INST<GwGetResp<'/config/firewall/all'>>(instance, `/config/firewall/all`);
 	assertOk(resp, 'Get Firewall');
-	return (resp.data?.fwAttr ?? []) as IFirewallRule[];
+	return parseFirewallRows(resp.data?.fwAttr);
 }
 
 export async function request_create_firewall_rule(instance: IInstance, data: IFirewallRule): Promise<OpResult> {
-	return runOp('firewall.create_firewall_rule', () => POST_INST(instance, `/config/firewall`, data));
+	const issues = validateFirewallConfig(data);
+	if (issues.length) return {status: 'invalid', retryable: false, code: 'firewall.create.client_invalid', localeKey: STATUS_LOCALE_KEYS.invalid, rawDetail: issues.join(', ')};
+	const {counter, ...opts} = data.opts;
+	return runOp('firewall.create_firewall_rule', () => POST_INST(instance, `/config/firewall`, {ruleArguments: data.ruleArguments, opts}));
 }
 
 export async function request_delete_all_firewall_rules(instance: IInstance, filter?: IFirewallDeleteFilter): Promise<OpResult> {

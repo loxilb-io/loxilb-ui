@@ -320,8 +320,8 @@ export default function AIGatewaySettingsForm(props: {
 						/>
 						<Typography variant="caption" color="text.secondary">
 							{isEdit
-								? t('Leave unchanged omits the field, which preserves the declared policy — it is not a way back to unmanaged. To stop enforcing, declare Disabled. Disabled admits keyless traffic but strips X-Api-Key. Required validates the key, strips it, and fails closed if the policy store is unavailable.')
-								: t('Unmanaged omits the field and leaves backend X-Api-Key headers untouched. Disabled admits keyless traffic but strips that header. Required validates the key, strips it, and fails closed if the policy store is unavailable.')}
+								? t('Leave unchanged omits the field, which preserves the declared policy — it is not a way back to unmanaged. To stop enforcing, declare Disabled. Disabled admits keyless traffic but strips X-Api-Key. Required validates the key and strips it. Valid cached keys can continue during a policy-store outage until their cache entry expires. A validation that needs the unavailable store fails closed with 503.')
+								: t('Unmanaged omits the field and leaves backend X-Api-Key headers untouched. Disabled admits keyless traffic but strips that header. Required validates the key and strips it. Valid cached keys can continue during a policy-store outage until their cache entry expires. A validation that needs the unavailable store fails closed with 503.')}
 						</Typography>
 
 						{requiresJwtProfile(value.api_key_auth) && (

@@ -8,6 +8,8 @@ import {DELETE_INST, GET_INST, POST_INST, PUT_INST} from '../fetcher/fetcher_ins
 import {OpResult} from '../fetcher/opResult';
 import {runOp} from '../fetcher/opResultAdapter';
 import type {GwGetResp} from 'api';
+import {parseSecurityRateRows, validateSecurityRateConfig} from 'types/security_rate_policy';
+import {STATUS_LOCALE_KEYS} from '../fetcher/opResultCodes';
 
 //---------------------------------------------------------
 // API Caller Functions
@@ -20,7 +22,7 @@ import type {GwGetResp} from 'api';
 export async function query_get_securityrate_all(instance: IInstance): Promise<ISecurityRateEntry[]> {
 	const resp = await GET_INST<GwGetResp<'/config/securityrate/all'>>(instance, `/config/securityrate/all`);
 	assertOk(resp, 'Get Security Rate');
-	return (resp.data?.securityrateAttr ?? []) as ISecurityRateEntry[];
+	return parseSecurityRateRows(resp.data?.securityrateAttr);
 }
 
 /**
@@ -31,9 +33,15 @@ export async function request_configure_securityrate(
 	instance: IInstance,
 	data: ISecurityRateConfigMod,
 ): Promise<OpResult> {
+	const issues = validateSecurityRateConfig(data);
+	if (issues.length > 0) return {status: 'invalid', retryable: false, code: 'securityrate.configure.client_invalid', localeKey: STATUS_LOCALE_KEYS.invalid, rawDetail: issues.join(', ')};
 	// Explicit payload: the page forwards the form ref verbatim, which also
 	// carries the client-side isValid flag — send only ISecurityRateConfigMod fields.
 	const payload: ISecurityRateConfigMod = {
+		...(data.aggregateSynThreshold !== undefined ? {aggregateSynThreshold: data.aggregateSynThreshold} : {}),
+		...(data.aggregateConnRatePerSec !== undefined ? {aggregateConnRatePerSec: data.aggregateConnRatePerSec} : {}),
+		...(data.aggregateUdpPktThreshold !== undefined ? {aggregateUdpPktThreshold: data.aggregateUdpPktThreshold} : {}),
+		...(data.aggregateUdpBandwidthMB !== undefined ? {aggregateUdpBandwidthMB: data.aggregateUdpBandwidthMB} : {}),
 		synEnabled: data.synEnabled,
 		synThreshold: data.synThreshold,
 		cookieThreshold: data.cookieThreshold,
@@ -48,7 +56,8 @@ export async function request_configure_securityrate(
 }
 
 /**
- * Disable all security rate limiting and clear tracking state
+ * Disable source and aggregate rate limiting and clear the whitelist.
+ * Existing counters remain; resetting statistics is a separate operation.
  * Disables SYN flood, connection rate, and UDP flood protection
  */
 export async function request_disable_securityrate(instance: IInstance): Promise<OpResult> {

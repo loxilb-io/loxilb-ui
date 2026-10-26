@@ -10,6 +10,7 @@ import {IFirewallRule} from 'types/firewall';
 import FirewallOptionsForm from './subforms/FirewallOptionsForm';
 import FirewallRuleArgsForm, {getPortRangeError} from './subforms/FirewallRuleArgsForm';
 import React from 'react';
+import {validateFirewallConfig} from 'types/firewall_policy';
 
 //---------------------------------------------------------
 // Functional Component
@@ -23,7 +24,7 @@ export default function FirewallInputForm(props: FirewallInputFormProps) {
 	const {onChange, onValidation} = props;
 	const {form, params, handleChange, errors, isValid} = useFormWithParams<IFirewallRule>('IFirewallRule');
 
-	// Gateway accepts min>max port ranges, so the form must block them.
+	// Omitted port bounds are zero on the wire; reject min>max before submit.
 	const ra = form?.ruleArguments;
 	const opts = form?.opts;
 	const portRangesValid =
@@ -58,10 +59,24 @@ export default function FirewallInputForm(props: FirewallInputFormProps) {
 	const srcIpValid = !ra?.sourceIP || isValidIPAddress(ra.sourceIP) || isValidIPAddressCidr(ra.sourceIP);
 	const dstIpValid = !ra?.destinationIP || isValidIPAddress(ra.destinationIP) || isValidIPAddressCidr(ra.destinationIP);
 	const toIpValid = !form?.opts?.toIP || isValidIPAddress(form.opts.toIP);
+	const contractValid = !!form && validateFirewallConfig(form).length === 0;
 	const formValid =
-		isValid && portRangesValid && srcIpValid && dstIpValid && toIpValid && verdictValid && snatValid && hasMatchCriteria;
+		contractValid && isValid && portRangesValid && srcIpValid && dstIpValid && toIpValid && verdictValid && snatValid && hasMatchCriteria;
 
-	// Notify parent of validation state and form data
+	// Delta merges preserve rapid sibling edits and mount-time enum defaults.
+ const draft = React.useRef(form);
+ draft.current = form;
+ const changeArgs = (delta: Partial<IFirewallRule['ruleArguments']>) => {
+  const next = {...draft.current?.ruleArguments, ...delta};
+  draft.current = {...draft.current!, ruleArguments: next} as IFirewallRule;
+  handleChange('ruleArguments')(next);
+ };
+ const changeOptions = (delta: Partial<IFirewallRule['opts']>) => {
+  const next = {...draft.current?.opts, ...delta};
+  draft.current = {...draft.current!, opts: next} as IFirewallRule;
+  handleChange('opts')(next);
+ };
+ // Notify parent of validation state and form data
 	React.useEffect(() => {
 		if (form) {
 			onChange({ ...form, isValid: formValid, errors });
@@ -76,14 +91,15 @@ export default function FirewallInputForm(props: FirewallInputFormProps) {
 	const blockingReasons: string[] = [];
 	if (!hasMatchCriteria) blockingReasons.push(t('Specify at least a Source or Destination IP (use 0.0.0.0/0 for an explicit catch-all).'));
 	if (!verdictValid) blockingReasons.push(t('Choose only one action — Allow, Drop, Redirect, Trap and Do SNAT are mutually exclusive.'));
+	if (!contractValid && hasMatchCriteria && verdictValid && snatValid) blockingReasons.push(t('Check firewall numeric ranges, IP formats, and SNAT mark constraints.'));
 	if (!snatValid) blockingReasons.push(t('Do SNAT requires a valid To IP.'));
 
 	if (!form) return null;
 	return (
 		<NewBox item_name={t('Firewall Rule')}>
-		   <FirewallRuleArgsForm value={form?.ruleArguments ?? {}} onChange={handleChange('ruleArguments')} params={params?.ruleArguments} />
+		   <FirewallRuleArgsForm value={form?.ruleArguments ?? {}} onChange={changeArgs} params={params?.ruleArguments} />
 		   <Divider />
-		   <FirewallOptionsForm value={form?.opts ?? {}} onChange={handleChange('opts')} params={params?.opts} />
+		   <FirewallOptionsForm value={form?.opts ?? {}} onChange={changeOptions} params={params?.opts} />
 		   {blockingReasons.length > 0 && (
 			   <Alert severity="warning" sx={{mt: 1}}>
 				   {blockingReasons.map(r => (

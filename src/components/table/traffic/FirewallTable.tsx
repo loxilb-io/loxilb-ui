@@ -1,8 +1,8 @@
+import {firewallRowId} from 'types/firewall_policy';
 //---------------------------------------------------------
 // Imports
 //---------------------------------------------------------
 import protocols from 'assets/json/protocols.json';
-import { getStableHash } from 'common';
 import DataTable from 'components/table/DataTable';
 import {IFirewallRules} from 'types/firewall';
 import {IDataTableColumnDef, IEnumItem} from 'types/global';
@@ -45,17 +45,14 @@ export default function FirewallTable(props: {data: IFirewallRules; selected_row
 	];
 
    // Hash function for firewall rule
-   const getHashKey = (item: any) => {
-	   const str = `${item.ruleArguments.portName || ''}_${item.ruleArguments.sourceIP || ''}_${item.ruleArguments.minSourcePort || ''}_${item.ruleArguments.maxSourcePort || ''}_${item.ruleArguments.destinationIP || ''}_${item.ruleArguments.minDestinationPort || ''}_${item.ruleArguments.maxDestinationPort || ''}_${item.ruleArguments.protocol || ''}`;
-	   return getStableHash(str);
-   };
+   const getHashKey = firewallRowId;
 
    const rows = data.fwAttr
 	   ? (() => {
 		   const sorted = [...data.fwAttr].sort((a, b) => getHashKey(a) - getHashKey(b));
 		   return sorted.map(item => {
-			   const protocol_id: number = item.ruleArguments.protocol;
-			   const protocol_name = protocol_list.find(p => p.id === protocol_id)?.name || 'Unknown';
+			   const protocol_id: number = item.ruleArguments.protocol ?? 0;
+			   const protocol_name = protocol_list.find(p => p.id === protocol_id)?.name || (protocol_id === 0 ? 'Any (0)' : 'Unknown');
 			   const minSourcePort = item.ruleArguments.minSourcePort ? item.ruleArguments.minSourcePort.toString() : '';
 			   const maxSourcePort = item.ruleArguments.maxSourcePort ? item.ruleArguments.maxSourcePort.toString() : '';
 			   const minDestinationPort = item.ruleArguments.minDestinationPort ? item.ruleArguments.minDestinationPort.toString() : '';
@@ -69,7 +66,7 @@ export default function FirewallTable(props: {data: IFirewallRules; selected_row
 				   destinationIP: item.ruleArguments.destinationIP,
 				   destinationPort: `${minDestinationPort}-${maxDestinationPort}`,
 				   protocol: protocol_name,
-				   preference: item.ruleArguments.preference ? item.ruleArguments.preference.toString() : '',
+				   preference: item.ruleArguments.preference?.toString() ?? '0',
 				   counter: item.opts.counter ? item.opts.counter : '',
 				   _uniqueKey: getHashKey(item),
 			   };
