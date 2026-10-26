@@ -5,22 +5,24 @@ import {Alert, Grid2, Stack, Switch, FormControlLabel, Divider} from '@mui/mater
 import NewBox from 'components/layout/NewBox';
 import ParamBox from 'components/element/ParamBox';
 import {evaluateNumericField, NumericFieldSpec} from 'components/input/numericField';
+import {validateSecurityRateConfig} from 'types/security_rate_policy';
 import {t} from 'i18next';
 import {ISecurityRateConfigMod} from 'types/security';
 import React from 'react';
+import {validGatewayCidr} from 'types/network_prefix';
 
 //---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
 interface SecurityRateInputFormProps {
 	value?: ISecurityRateConfigMod;
+	supportsAggregate?: boolean;
 	onChange: (data: ISecurityRateConfigMod & {isValid?: boolean}) => void;
 }
 
-// Per-field defaults. The gateway omits false booleans (omitempty), so an
-// existing config loaded for edit can arrive missing e.g. udpEnabled — merge
-// each field over these defaults rather than taking `value` wholesale, or the
-// POST drops the missing keys and the gateway 422s.
+// Defaults scaffold a NEW configuration. GET omits zero values; editing an
+// existing row must preserve its omitted flags/thresholds as false/zero.
+// Every required POST field is still materialized explicitly.
 const DEFAULT_FORM: ISecurityRateConfigMod = {
 	synEnabled: true,
 	synThreshold: 100,
@@ -35,19 +37,23 @@ const DEFAULT_FORM: ISecurityRateConfigMod = {
 
 function withDefaults(value?: ISecurityRateConfigMod): ISecurityRateConfigMod {
 	return {
-		synEnabled: value?.synEnabled ?? DEFAULT_FORM.synEnabled,
-		synThreshold: value?.synThreshold ?? DEFAULT_FORM.synThreshold,
-		cookieThreshold: value?.cookieThreshold ?? DEFAULT_FORM.cookieThreshold,
-		connRateEnabled: value?.connRateEnabled ?? DEFAULT_FORM.connRateEnabled,
-		ratePerSec: value?.ratePerSec ?? DEFAULT_FORM.ratePerSec,
+		synEnabled: value ? Boolean(value.synEnabled) : DEFAULT_FORM.synEnabled,
+		synThreshold: value ? value.synThreshold ?? 0 : DEFAULT_FORM.synThreshold,
+		cookieThreshold: value ? value.cookieThreshold ?? 0 : DEFAULT_FORM.cookieThreshold,
+		connRateEnabled: value ? Boolean(value.connRateEnabled) : DEFAULT_FORM.connRateEnabled,
+		ratePerSec: value ? value.ratePerSec ?? 0 : DEFAULT_FORM.ratePerSec,
 		udpEnabled: value?.udpEnabled ?? DEFAULT_FORM.udpEnabled,
-		udpPktThreshold: value?.udpPktThreshold ?? DEFAULT_FORM.udpPktThreshold,
-		udpBandwidthMB: value?.udpBandwidthMB ?? DEFAULT_FORM.udpBandwidthMB,
+		udpPktThreshold: value ? value.udpPktThreshold ?? 0 : DEFAULT_FORM.udpPktThreshold,
+		udpBandwidthMB: value ? value.udpBandwidthMB ?? 0 : DEFAULT_FORM.udpBandwidthMB,
 		whitelistIps: value?.whitelistIps ?? DEFAULT_FORM.whitelistIps,
+		aggregateSynThreshold: value?.aggregateSynThreshold ?? 0,
+		aggregateConnRatePerSec: value?.aggregateConnRatePerSec ?? 0,
+		aggregateUdpPktThreshold: value?.aggregateUdpPktThreshold ?? 0,
+		aggregateUdpBandwidthMB: value?.aggregateUdpBandwidthMB ?? 0,
 	};
 }
 
-type NumericRateField = 'synThreshold' | 'cookieThreshold' | 'ratePerSec' | 'udpPktThreshold' | 'udpBandwidthMB';
+type NumericRateField = 'synThreshold' | 'cookieThreshold' | 'ratePerSec' | 'udpPktThreshold' | 'udpBandwidthMB' | 'aggregateSynThreshold' | 'aggregateConnRatePerSec' | 'aggregateUdpPktThreshold' | 'aggregateUdpBandwidthMB';
 type RateRaws = Record<NumericRateField, string>;
 
 function rawsFrom(v: ISecurityRateConfigMod): RateRaws {
@@ -57,11 +63,20 @@ function rawsFrom(v: ISecurityRateConfigMod): RateRaws {
 		ratePerSec: String(v.ratePerSec),
 		udpPktThreshold: String(v.udpPktThreshold),
 		udpBandwidthMB: String(v.udpBandwidthMB),
+		aggregateSynThreshold: String(v.aggregateSynThreshold ?? 0),
+		aggregateConnRatePerSec: String(v.aggregateConnRatePerSec ?? 0),
+		aggregateUdpPktThreshold: String(v.aggregateUdpPktThreshold ?? 0),
+		aggregateUdpBandwidthMB: String(v.aggregateUdpBandwidthMB ?? 0),
 	};
 }
 
 export default function SecurityRateInputForm(props: SecurityRateInputFormProps) {
-	const {onChange, value} = props;
+	const {onChange, value, supportsAggregate = false} = props;
+	// Legacy instances must not receive fields that their schema does not support.
+	const reportChange = (data: ISecurityRateConfigMod & {isValid?: boolean}) => {
+		const {aggregateSynThreshold, aggregateConnRatePerSec, aggregateUdpPktThreshold, aggregateUdpBandwidthMB, ...legacy} = data;
+		onChange(supportsAggregate ? {...legacy, aggregateSynThreshold, aggregateConnRatePerSec, aggregateUdpPktThreshold, aggregateUdpBandwidthMB} : legacy);
+	};
 
 	const [form, setForm] = React.useState<ISecurityRateConfigMod>(withDefaults(value));
 
@@ -75,7 +90,7 @@ export default function SecurityRateInputForm(props: SecurityRateInputFormProps)
 	const handleChange = (field: keyof ISecurityRateConfigMod) => (value: any) => {
 		const newForm = {...form, [field]: value};
 		setForm(newForm);
-		onChange({...newForm, isValid: validateForm(newForm) && allRawsValid(raws)});
+		reportChange({...newForm, isValid: validateForm(newForm) && allRawsValid(raws)});
 	};
 
 	// Gateway upper bounds (securityrate.go): PPS thresholds cap at 2^24 and
@@ -91,6 +106,10 @@ export default function SecurityRateInputForm(props: SecurityRateInputFormProps)
 		ratePerSec: {required: true, min: 0, max: PPS_MAX},
 		udpPktThreshold: {required: true, min: 0, max: PPS_MAX},
 		udpBandwidthMB: {required: true, min: 0, max: UDP_BW_MAX},
+		aggregateSynThreshold: {required: true, min: 0, max: PPS_MAX},
+		aggregateConnRatePerSec: {required: true, min: 0, max: PPS_MAX},
+		aggregateUdpPktThreshold: {required: true, min: 0, max: PPS_MAX},
+		aggregateUdpBandwidthMB: {required: true, min: 0, max: UDP_BW_MAX},
 	};
 
 	const allRawsValid = (r: RateRaws): boolean =>
@@ -104,7 +123,7 @@ export default function SecurityRateInputForm(props: SecurityRateInputFormProps)
 		// is unreachable while invalid because isValid gates the submit.
 		const newForm = state.parsed !== undefined ? {...form, [field]: state.parsed} : form;
 		if (state.parsed !== undefined) setForm(newForm);
-		onChange({...newForm, isValid: validateForm(newForm) && allRawsValid(newRaws)});
+		reportChange({...newForm, isValid: validateForm(newForm) && allRawsValid(newRaws)});
 	};
 
 	const numericFieldProps = (field: NumericRateField) => {
@@ -122,17 +141,11 @@ export default function SecurityRateInputForm(props: SecurityRateInputFormProps)
 		(data.udpEnabled && (data.udpPktThreshold <= 0 || data.udpBandwidthMB <= 0));
 
 	const allProtectionsDisabled = (data: ISecurityRateConfigMod): boolean =>
-		!data.synEnabled && !data.connRateEnabled && !data.udpEnabled;
+		!data.synEnabled && !data.connRateEnabled && !data.udpEnabled &&
+		!(supportsAggregate && [data.aggregateSynThreshold, data.aggregateConnRatePerSec, data.aggregateUdpPktThreshold, data.aggregateUdpBandwidthMB].some(n => (n ?? 0) > 0));
 
-	const validateForm = (data: ISecurityRateConfigMod): boolean => {
-		if (data.synEnabled && data.cookieThreshold >= data.synThreshold) return false;
-		if (data.synThreshold < 0 || data.cookieThreshold < 0 || data.ratePerSec < 0 || data.udpPktThreshold < 0 || data.udpBandwidthMB < 0) return false;
-		if (data.synThreshold > PPS_MAX || data.cookieThreshold > PPS_MAX || data.ratePerSec > PPS_MAX || data.udpPktThreshold > PPS_MAX) return false;
-		if (data.udpBandwidthMB > UDP_BW_MAX) return false;
-		if (hasZeroThreshold(data)) return false;
-		if (allProtectionsDisabled(data)) return false;
-		return true;
-	};
+	const validateForm = (data: ISecurityRateConfigMod): boolean =>
+		!allProtectionsDisabled(data) && validateSecurityRateConfig(data).length === 0;
 
 	const handleWhitelistChange = (value: string) => {
 		setWhitelistInput(value);
@@ -152,7 +165,7 @@ export default function SecurityRateInputForm(props: SecurityRateInputFormProps)
 	}, [value]);
 
 	React.useEffect(() => {
-		onChange({...form, isValid: validateForm(form)});
+		reportChange({...form, isValid: validateForm(form) && allRawsValid(raws)});
 	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
 	}, []);
 
@@ -175,7 +188,7 @@ export default function SecurityRateInputForm(props: SecurityRateInputFormProps)
 							<ParamBox
 								label={t('Cookie Threshold')}
 								{...numericFieldProps('cookieThreshold')}
-								param_desc={{type: 'integer', description: 'Enable SYN cookies above this rate (must be < synThreshold)', required: true}}
+								param_desc={{type: 'integer', description: 'SYN threshold telemetry, not a SYN-cookie exchange. Must be below SYN Threshold. Explicit zero becomes 50 in the datapath.', required: true}}
 							/>
 						</Grid2>
 					)}
@@ -194,7 +207,7 @@ export default function SecurityRateInputForm(props: SecurityRateInputFormProps)
 							<ParamBox
 								label={t('Rate Per Second')}
 								{...numericFieldProps('ratePerSec')}
-								param_desc={{type: 'integer', description: 'Maximum new connections per second per IP', required: true}}
+								param_desc={{type: 'integer', description: 'Maximum SYN packets per second per source IP, not completed connections.', required: true}}
 							/>
 						</Grid2>
 					)}
@@ -216,9 +229,9 @@ export default function SecurityRateInputForm(props: SecurityRateInputFormProps)
 								param_desc={{type: 'integer', description: 'Maximum UDP packets per second per IP', required: true}}
 							/>
 							<ParamBox
-								label={t('UDP Bandwidth (MB/s)')}
+								label={t('UDP Bandwidth (MiB/s)')}
 								{...numericFieldProps('udpBandwidthMB')}
-								param_desc={{type: 'integer', description: 'Maximum UDP bandwidth in MB per second per IP', required: true}}
+								param_desc={{type: 'integer', description: 'Maximum UDP bandwidth in MiB per second per source IP (1 MiB = 1048576 bytes).', required: true}}
 							/>
 						</Grid2>
 					)}
@@ -230,15 +243,30 @@ export default function SecurityRateInputForm(props: SecurityRateInputFormProps)
 					<Alert severity="warning">{t('Every enabled protection needs a threshold greater than zero.')}</Alert>
 				)}
 				{allProtectionsDisabled(form) && (
-					<Alert severity="warning">{t('At least one protection (SYN Flood, Connection Rate, or UDP Flood) must be enabled. Use Disable to turn protection off entirely.')}</Alert>
+					<Alert severity="warning">{t('Enable at least one per-source protection or a positive aggregate budget. Use Disable to turn protection off entirely.')}</Alert>
+				)}
+				{supportsAggregate && (
+					<Stack spacing={2}>
+						<Alert severity="info">{t('Aggregate budgets apply across listeners and interfaces before authentication. Zero disables that budget. Whitelisted sources bypass rate protection.')}</Alert>
+						<Grid2 container spacing={2}>
+							{([
+								['aggregateSynThreshold', 'Aggregate SYN Packets/s'],
+								['aggregateConnRatePerSec', 'Aggregate Connection SYN Packets/s'],
+								['aggregateUdpPktThreshold', 'Aggregate UDP Packets/s'],
+								['aggregateUdpBandwidthMB', 'Aggregate UDP Bandwidth (MiB/s)'],
+							] as const).map(([field, label]) => <ParamBox key={field} label={t(label)} {...numericFieldProps(field)} param_desc={{type: 'integer', required: true}} />)}
+						</Grid2>
+					</Stack>
 				)}
 
 				{/* Whitelist IPs */}
 				<ParamBox
 					label={t('Whitelist IPs (comma-separated)')}
 					value={whitelistInput}
+					error={(form.whitelistIps ?? []).length > 1024 || !(form.whitelistIps ?? []).every(validGatewayCidr)}
+					helperText={t('Enter at most 1024 IPv4 or IPv6 CIDRs. Empty clears the previous whitelist.')}
 					onChange={handleWhitelistChange}
-					param_desc={{type: 'string', description: 'IP addresses to bypass all rate limiting (comma-separated)'}}
+					param_desc={{type: 'string', description: 'CIDRs bypassing security-rate checks; shared maps with IP Filter whitelist. Empty clears the previous list.'}}
 				/>
 			</Stack>
 		</NewBox>

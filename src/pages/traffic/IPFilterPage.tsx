@@ -19,6 +19,9 @@ import {Fragment, useRef, useState, useMemo} from 'react';
 import React from 'react';
 import {IIPFilterEntry} from 'types/security';
 import {toPageState} from 'components/state/pageState';
+import {useReconcileReporter} from 'hooks/query/reconcileReport';
+import {fromQueryRefetch} from 'hooks/query/reconcile';
+import {ipFilterApplied, ipFiltersAbsent} from 'types/ipfilter_policy';
 
 //---------------------------------------------------------
 // Detail Panel Component
@@ -47,7 +50,7 @@ function DetailPanel(props: {entry: IIPFilterEntry}) {
 						<Grid2 container spacing={2}>
 							<SingleTextBox label={t('CIDR')} value={entry.cidr} tooltip="IP address in CIDR notation" />
 							<SingleTextBox label={t('Priority')} value={entry.priority?.toString() ?? '100'} tooltip="Higher value = more important" />
-							<SingleTextBox label={t('Security Zone')} value={entry.zone?.toString() ?? '0'} tooltip="0 = all zones" />
+							<SingleTextBox label={t('Security Zone')} value={entry.zone?.toString() ?? '0'} tooltip="XDP IP filtering is zone-less; 0 is the only supported value." />
 						</Grid2>
 					</ValueBunch>
 				</Stack>
@@ -61,6 +64,7 @@ function DetailPanel(props: {entry: IIPFilterEntry}) {
 //---------------------------------------------------------
 export default function IPFilterPage() {
 	const inst = useInstanceFromURL();
+	const {report, reconcile} = useReconcileReporter();
 	const ipfilter_query = useIPFilterRules(inst);
 	const {data, refetch} = ipfilter_query;
 	// eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
@@ -104,22 +108,23 @@ export default function IPFilterPage() {
 		const failures = results.filter(res => res.status !== 'confirmed');
 
 		if (failures.length === 0) {
-			openPopUp(t('Success'), t('Deleted {{count}} rule(s) successfully.', {count: selectedItems.length}), t('OK'));
+			await report({refetch: fromQueryRefetch(refetch), confirm: ipFiltersAbsent(selectedItems)}, t('Deleted {{count}} rule(s) successfully.', {count: selectedItems.length}));
 			set_selected_rows([]);
-			setTimeout(() => refetch(), 1000);
 		} else if (failures.length < results.length) {
 			// Partial success
-			openPopUp(t('Warning'), t('{{success}} succeeded, {{failed}} failed.', {success: results.length - failures.length, failed: failures.length}), t('OK'));
+			openPopUp(t('Warning'), t('Accepted {{success}} deletion request(s); {{failed}} failed. Refresh to confirm removal.', {success: results.length - failures.length, failed: failures.length}), t('OK'));
 			set_selected_rows([]);
-			setTimeout(() => refetch(), 1000);
+			await reconcile({refetch: fromQueryRefetch(refetch), confirm: ipFiltersAbsent(selectedItems.filter((_item, i) => results[i].status === 'confirmed'))});
 		} else {
 			// All failed
 			openPopUp(t('Error'), t('Failed to delete. {{error}}', {error: t(failures[0].localeKey)}), t('OK'));
+			await reconcile({refetch: fromQueryRefetch(refetch)});
 		}
 	};
 
 	const handleAdd = () => {
 		if (!inst) return;
+		formRef.current = null;
 
 		const input_form = (
 			<IPFilterInputForm
@@ -141,8 +146,7 @@ export default function IPFilterPage() {
 
 				const res = await request_create_ipfilter_rule(inst, formRef.current);
 				if (res.status === 'confirmed') {
-					openPopUp(t('Success'), t('IP filter rule added successfully.'), t('OK'));
-					setTimeout(() => refetch(), 1000);
+					await report({refetch: fromQueryRefetch(refetch), confirm: ipFilterApplied(formRef.current)}, t('IP filter rule added successfully.'));
 				} else {
 					openPopUp(t('Error'), t('Failed to add. {{error}}', {error: t(res.localeKey)}), t('OK'));
 				}
