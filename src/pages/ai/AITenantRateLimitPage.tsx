@@ -551,7 +551,7 @@ export default function AITenantRateLimitPage() {
 			</Stack>
 
 			{quotaApplicable && (
-				<PanelPaper title={t('Token-quota utilization')}>
+				<PanelPaper title={t('Token-quota utilization')} fillHeight={false}>
 					<TokenQuotaPanel
 						report={quota.report}
 						limitResolvesByScope={quota.limitResolvesByScope}

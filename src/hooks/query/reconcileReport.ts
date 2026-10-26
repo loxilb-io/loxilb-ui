@@ -7,7 +7,7 @@
 // wording exists once instead of eleven times.
 //---------------------------------------------------------
 import {t} from 'i18next';
-import {useCallback} from 'react';
+import {useCallback, useEffect, useRef} from 'react';
 import {usePopUp} from 'hooks/popupHook';
 import {ReconcileOutcome, ReconcileSpec, useReconciler} from './reconcile';
 
@@ -29,12 +29,25 @@ import {ReconcileOutcome, ReconcileSpec, useReconciler} from './reconcile';
  */
 export function useReconcileReporter() {
 	const {openPopUp} = usePopUp();
-	const reconcile = useReconciler();
+	const reconcileRaw = useReconciler();
+	const mounted = useRef(true);
+	const generation = useRef({value: 0});
+	useEffect(() => {
+		mounted.current = true;
+		const lifetime = generation.current;
+		return () => {mounted.current = false; lifetime.value++;};
+	}, []);
+
+	const reconcile = useCallback(async function reconcile<T>(spec: ReconcileSpec<T>): Promise<ReconcileOutcome> {
+		generation.current.value++;
+		return reconcileRaw(spec);
+	}, [reconcileRaw]);
 
 	const report = useCallback(
 		async function report<T>(spec: ReconcileSpec<T>, confirmedMessage: string): Promise<ReconcileOutcome> {
+			const current = ++generation.current.value;
 			let lastReadFailed = false;
-			const outcome = await reconcile({
+			const outcome = await reconcileRaw({
 				...spec,
 				refetch: async () => {
 					try {
@@ -47,12 +60,15 @@ export function useReconcileReporter() {
 					}
 				},
 			});
+			// A cancelled poll still resolves as pending. It must not resurrect
+			// a popup on another page or overwrite a newer operation's result.
+			if (!mounted.current || current !== generation.current.value) return outcome;
 			if (outcome === 'confirmed') openPopUp(t('Success'), confirmedMessage, t('OK'));
 			else if (lastReadFailed) openPopUp(t('Submitted'), t('The gateway accepted the change, but it could not be read back to confirm it. Refresh to check again.'), t('OK'));
 			else openPopUp(t('Submitted'), t('The gateway accepted the change, but it has not appeared yet. Refresh to check again.'), t('OK'));
 			return outcome;
 		},
-		[openPopUp, reconcile],
+		[openPopUp, reconcileRaw],
 	);
 
 	// Both come from ONE reconciler instance, so a mutation reported with a

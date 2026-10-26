@@ -266,5 +266,5 @@ export default function useFormWithParams<T>(paramType: string, onChange?: (data
 
    return is_fetched
 	   ? {form, params, handleChange, handleObjectChange, errors, isValid}
-	   : {form: undefined, params: undefined, handleChange: () => {}, handleObjectChange: () => {}, errors: {}, isValid: false};
+	   : {form: undefined, params: undefined, handleChange: () => () => {}, handleObjectChange: () => {}, errors: {}, isValid: false};
 }

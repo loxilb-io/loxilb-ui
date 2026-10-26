@@ -7,7 +7,7 @@ import IPAddressCidrBox from 'components/element/IPAddressNetBox';
 import PortBox from 'components/element/PortBox';
 import TextBox from 'components/element/TextBox';
 import TextBoxArray from 'components/element/TextBoxArray';
-import {useMemo, useEffect} from 'react';
+import {useMemo, useEffect, useRef} from 'react';
 import {IEnumItem, IPostParamFieldDesc} from 'types/global';
 import DropDownSelectBox from './DropDownSelectBox';
 import MACAddressBox from './MACAddressBox';
@@ -53,14 +53,14 @@ export default function ParamBox(props: ParamBoxProps) {
    const finalHelperText = showRequiredHelper ? 'Required' : helperText;
 
    const handleChange = (newValue: any) => onChange(newValue);
+   const validationRef = useRef(onValidation);
+   validationRef.current = onValidation;
+   const valid = !(!!error || showRequiredHelper);
+   useEffect(() => {validationRef.current?.(valid);}, [valid]);
 
    const enumOptions: IEnumItem[] = useMemo<IEnumItem[]>(() => {
       	const value_list = param_desc?.enum as string[] | IEnumItem[] | undefined;
 
-		// Notify parent about validation state (for popup dialog control)
-		if (onValidation) {
-			onValidation(!(!!error || showRequiredHelper));
-		}
 		const result: IEnumItem[] = [];
 		if (!value_list || value_list.length === 0) return [];
 		else if (typeof value_list[0] === 'string' || typeof value_list[0] === 'number') {
@@ -84,8 +84,7 @@ export default function ParamBox(props: ParamBoxProps) {
 		}
 
 		return result;
-   // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally frozen: widening this list changes refetch/render behavior; verify at runtime before changing
-   }, [param_desc?.enum, required]);
+   }, [param_desc?.enum]);
 
    // If enumOptions exist and value is empty/undefined, default to first option
    const effectiveValue = useMemo(() => {
@@ -127,7 +126,7 @@ export default function ParamBox(props: ParamBoxProps) {
    };
 
    return (
-      <Tooltip title={description ?? ''} arrow placement="top" leaveDelay={0} disableInteractive>
+      <Tooltip title={description ?? ''} describeChild arrow placement="top" leaveDelay={0} disableInteractive>
          <Box width={width || '100%'}>{renderInput()}</Box>
       </Tooltip>
    );
