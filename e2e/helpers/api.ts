@@ -680,13 +680,6 @@ export const DEAD_INSTANCE_PROBE: RequestAllowance[] = [502, 504].map(status => 
 /** BGP reads answer 403 "loxilb BGP mode is disabled" on a gateway without BGP (measured live). */
 export const BGP_DISABLED: RequestAllowance = {status: 403, path: /\/netlox\/v1\/config\/bgp\//};
 
-/**
- * ⚠️ A GATEWAY DEFECT, not a contract: with no BFD session running,
- * `NetBFDGet` returns "bfd session not running" and the handler serves the
- * empty list as `500 Internal service error`, not `200 {Attr: []}`. Remove
- * this once the gateway answers an empty list.
- */
-export const BFD_NONE_RUNNING_500: RequestAllowance = {status: 500, path: /\/netlox\/v1\/config\/bfd\/all$/};
 
 /**
  * Signing out clears the token before it navigates away (`terminateSession`);

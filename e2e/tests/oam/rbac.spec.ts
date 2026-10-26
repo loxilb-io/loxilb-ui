@@ -11,7 +11,7 @@
 // real boundary.
 //---------------------------------------------------------
 import {expect, test} from '../../fixtures';
-import {activeInstance, AIManagementReadiness, aiNotReadyAllowance, BFD_NONE_RUNNING_500, BGP_DISABLED, gatewayAIManagementReadiness, RATELIMIT_DEFAULTS_ABSENT} from '../../helpers/api';
+import {activeInstance, AIManagementReadiness, aiNotReadyAllowance, BGP_DISABLED, gatewayAIManagementReadiness, RATELIMIT_DEFAULTS_ABSENT} from '../../helpers/api';
 
 let instName: string;
 test.beforeAll(async () => {
@@ -57,10 +57,10 @@ test.describe('RBAC — viewer (read-only everywhere)', () => {
 	for (const route of MUTABLE_ROUTES) {
 		test(`viewer: ${route} exposes no mutation controls or requests`, async ({page, consoleGuard}) => {
 			// Only the reads these routes are KNOWN to fail, each for its reason:
-			// the defaults ladder's "no row", BFD with no session running (a
-			// gateway defect), BGP disabled, and an unready AI management API.
+			// the defaults ladder's "no row", BGP disabled, and an unready
+			// AI management API. Idle BFD reads must succeed without an allowance.
 			// Anything else a viewer's read hits is a finding.
-			for (const a of [RATELIMIT_DEFAULTS_ABSENT, BFD_NONE_RUNNING_500, BGP_DISABLED]) consoleGuard.allowRequest(a);
+			for (const a of [RATELIMIT_DEFAULTS_ABSENT, BGP_DISABLED]) consoleGuard.allowRequest(a);
 			const notReady = aiNotReadyAllowance(readiness);
 			if (notReady) consoleGuard.allowRequest(notReady);
 
