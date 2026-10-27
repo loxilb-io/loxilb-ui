@@ -10,6 +10,7 @@
 import {expect, test} from '../../fixtures';
 import {activeInstance, gwJson} from '../../helpers/api';
 import {grid, rowByText, toolbarButton} from '../../helpers/table';
+import {toggleProcessSelection} from '../../helpers/processSelection';
 
 let instName: string;
 
@@ -32,7 +33,7 @@ test.describe('Process page (read-only)', () => {
 	test('F-STATUS-4: selecting a process row shows the detail panel without crashing', async ({page}) => {
 		const loxilbRow = grid(page).locator('.MuiDataGrid-row').filter({has: page.locator('.MuiDataGrid-cell', {hasText: /^loxilb$/})});
 		await expect(loxilbRow).toHaveCount(1);
-		await loxilbRow.getByRole('checkbox').check();
+		await toggleProcessSelection(page, loxilbRow, true);
 
 		// Detail panel groups render (the page did not fall into the error
 		// boundary). consoleGuard (auto) fails the test if the render loop returns.
@@ -41,9 +42,9 @@ test.describe('Process page (read-only)', () => {
 		await expect(page.getByText('Memory Status')).toBeVisible();
 
 		// Toggling selection off/on must stay stable too.
-		await loxilbRow.getByRole('checkbox').uncheck();
+		await toggleProcessSelection(page, loxilbRow, false);
 		await expect(page.getByText('Resource Usage')).toHaveCount(0);
-		await loxilbRow.getByRole('checkbox').check();
+		await toggleProcessSelection(page, loxilbRow, true);
 		await expect(page.getByText('Resource Usage')).toBeVisible();
 	});
 });
