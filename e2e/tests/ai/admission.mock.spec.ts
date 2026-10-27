@@ -82,10 +82,14 @@ function aiRule(over: Record<string, unknown> = {}) {
 	};
 }
 
-async function mockRuleList(page: Page, rules: unknown[]): Promise<void> {
-	await page.route(LB_ALL_RE, (route: Route) =>
-		route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({lbAttr: rules})}),
-	);
+/** Stubs the rule list; `served()` counts the reads this stub answered. */
+async function mockRuleList(page: Page, rules: unknown[]): Promise<{served: () => number}> {
+	let served = 0;
+	await page.route(LB_ALL_RE, (route: Route) => {
+		served += 1;
+		return route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({lbAttr: rules})});
+	});
+	return {served: () => served};
 }
 
 /** Records every LB write; answers each with `status` (a create gets the success envelope). */
@@ -202,8 +206,13 @@ test.describe('@gw AI admission control — mock contract', () => {
 	// its first tab, so a multi-row walk tests the tab strip, not the read-back.
 	async function openAIDetail(page: Page, rule: ReturnType<typeof aiRule>): Promise<void> {
 		await page.unroute(LB_ALL_RE);
-		await mockRuleList(page, [rule]);
+		const list = await mockRuleList(page, [rule]);
 		await page.goto(`instance/traffic/lb?name=${instName}`);
+		// The list is persisted with a 5 s staleTime, so a reload soon after the
+		// previous one renders that page's rules without asking. Refresh forces
+		// the read, and the row is looked for only once this stub answered it.
+		await page.getByRole('button', {name: 'Refresh Load Balancer'}).click();
+		await expect.poll(list.served).toBeGreaterThan(0);
 		await rowByText(page, rule.serviceArguments.name as string).click();
 		await page.getByRole('tab', {name: 'AI Gateway'}).click();
 	}
