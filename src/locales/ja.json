@@ -1784,5 +1784,5 @@
 	"standard (default)": "standard（既定）",
 	"{{configured}} (runs {{effective}})": "{{configured}}（実行: {{effective}}）",
 	"{{name}} is not listed any more. The list has been read again.": "{{name}} はもう一覧にありません。一覧を再読み込みしました。",
-	"{{pct}}% ({{units}} units)": "{{pct}}%（{{units}} 単位）"
+	"{{pct}}% (units: {{units}})": "{{pct}}%（{{units}} 単位）"
 }

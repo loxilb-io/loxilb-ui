@@ -1784,5 +1784,5 @@
 	"standard (default)": "standard (default)",
 	"{{configured}} (runs {{effective}})": "{{configured}} (runs {{effective}})",
 	"{{name}} is not listed any more. The list has been read again.": "{{name}} is not listed any more. The list has been read again.",
-	"{{pct}}% ({{units}} units)": "{{pct}}% ({{units}} units)"
+	"{{pct}}% (units: {{units}})": "{{pct}}% (units: {{units}})"
 }

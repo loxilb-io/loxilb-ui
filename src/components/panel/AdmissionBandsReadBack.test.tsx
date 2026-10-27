@@ -51,12 +51,17 @@ describe('priority bands', () => {
 		expect(valueOf('Shed Queue')).toBe('off (environment)');
 		expect(valueOf('In-band Order')).toBe('rr (default)');
 		expect(valueOf('Weights in Use')).toBe('Yes');
-		expect(valueOf('Critical Reserve')).toBe('10% (1 units)');
+		expect(valueOf('Critical Reserve')).toBe('10% (units: 1)');
 		const table = screen.getByRole('table', {name: 'Priority band state'});
 		const rows = within(table).getAllByRole('row');
 		expect(rows.map(row => within(row).queryAllByRole('rowheader')[0]?.textContent).filter(Boolean)).toEqual(['Critical', 'Standard', 'Sheddable']);
 		expect(within(table).getAllByRole('columnheader').map(cell => cell.textContent)).toEqual(['Band', 'Executing', 'Waiting', 'Wait (ms)', 'Queue share (%)', 'Floor (%)', 'Floor (units)', 'Weight', 'Weight (%)']);
 		expect(screen.queryByRole('alert')).toBeNull();
+	});
+
+	it('words the critical reserve so one unit and several both read correctly', () => {
+		render(<AdmissionBandsReadBack effective={{...bands, bands: {...bands.bands, critical_reserve_units: 3}}} />);
+		expect(valueOf('Critical Reserve')).toBe('10% (units: 3)');
 	});
 
 	it('keeps an explicit 0 and shows an unreported member as –', () => {

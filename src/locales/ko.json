@@ -1784,5 +1784,5 @@
 	"standard (default)": "standard (기본값)",
 	"{{configured}} (runs {{effective}})": "{{configured}} (실행: {{effective}})",
 	"{{name}} is not listed any more. The list has been read again.": "{{name}}이(가) 더 이상 목록에 없습니다. 목록을 다시 읽었습니다.",
-	"{{pct}}% ({{units}} units)": "{{pct}}% ({{units}} 단위)"
+	"{{pct}}% (units: {{units}})": "{{pct}}% ({{units}} 단위)"
 }

@@ -134,7 +134,7 @@ export function PriorityBandsReadBack({effective}: {effective: IFcEffective}) {
 						label={t('Critical Reserve')}
 						value={bands?.critical_reserve_pct === undefined && bands?.critical_reserve_units === undefined
 							? NOT_REPORTED
-							: t('{{pct}}% ({{units}} units)', {pct: shown(bands?.critical_reserve_pct), units: shown(bands?.critical_reserve_units)})}
+							: t('{{pct}}% (units: {{units}})', {pct: shown(bands?.critical_reserve_pct), units: shown(bands?.critical_reserve_units)})}
 						tooltip={t('Units of the ceiling in force no other band may take, even when critical is idle. The only true reservation.')}
 					/>
 				</Grid2>
