@@ -157,7 +157,7 @@ function modelQuotas(rows: readonly ModelQuotaRow[] | null | undefined, keepRemo
 	return out;
 }
 
-type ServedTenantRateLimit = {tenant_id?: string; rps?: number | null; tokens_per_min?: number | null; burst_pct?: number | null; model_limits?: ModelQuotaRow[] | null};
+type ServedTenantRateLimit = {tenant_id?: string; rps?: number | null; tokens_per_min?: number | null; burst_pct?: number | null; model_limits?: ModelQuotaRow[] | null; priority_class?: string | null; default_objective?: string | null; allowed_objectives?: string[] | null};
 type ServedUserRateLimit = {tenant_id?: string; user_id?: string; rps?: number | null; burst_size?: number | null; tokens_per_min?: number | null; model_limits?: ModelQuotaRow[] | null};
 
 //---------------------------------------------------------
@@ -188,11 +188,24 @@ export const apiKeyAppeared =
  *     not held against it).
  * The secret is not compared: no read returns it.
  */
-export const API_KEY_CREATE_FIELDS = ['tenant_id', 'name', 'allowed_models', 'rate_limit_rps', 'burst_size', 'tokens_per_min', 'expires_at', 'enabled'] as const;
+export const API_KEY_CREATE_FIELDS = ['tenant_id', 'name', 'allowed_models', 'rate_limit_rps', 'burst_size', 'tokens_per_min', 'expires_at', 'enabled', 'priority_class', 'default_objective', 'allowed_objectives'] as const;
 export type ApiKeyCreateField = (typeof API_KEY_CREATE_FIELDS)[number];
 
-type ApiKeyAsked = {tenant_id?: string; name?: string; allowed_models?: string[]; rate_limit_rps?: number; burst_size?: number; tokens_per_min?: number; expires_at?: string; enabled?: boolean | null};
-type ApiKeyServed = {tenant_id?: string; name?: string; allowed_models?: string[] | null; rate_limit_rps?: number | null; burst_size?: number | null; tokens_per_min?: number | null; expires_at?: string | null; enabled?: boolean};
+type PriorityAsked = {priority_class?: string | null; default_objective?: string | null; allowed_objectives?: string[] | null};
+type ApiKeyAsked = {tenant_id?: string; name?: string; allowed_models?: string[]; rate_limit_rps?: number; burst_size?: number; tokens_per_min?: number; expires_at?: string; enabled?: boolean | null} & PriorityAsked;
+type ApiKeyServed = {tenant_id?: string; name?: string; allowed_models?: string[] | null; rate_limit_rps?: number | null; burst_size?: number | null; tokens_per_min?: number | null; expires_at?: string | null; enabled?: boolean} & PriorityAsked;
+
+/**
+ * The request-priority fields, compared the way an identity reads them back:
+ * an unset class or default reads as absent or '', an empty allowance as
+ * absent, [] or null. Only the fields `asked` names are compared.
+ */
+export function samePriorityFields(asked: PriorityAsked, served: PriorityAsked | null | undefined): boolean {
+	if (asked.priority_class !== undefined && (asked.priority_class ?? '') !== (served?.priority_class ?? '')) return false;
+	if (asked.default_objective !== undefined && (asked.default_objective ?? '') !== (served?.default_objective ?? '')) return false;
+	if (asked.allowed_objectives !== undefined && (asked.allowed_objectives ?? []).join(',') !== (served?.allowed_objectives ?? []).join(',')) return false;
+	return true;
+}
 
 // Whole seconds since the epoch; 0 for no expiry. NaN for text that is no time.
 const expirySeconds = (value: string | null | undefined): number => {
@@ -210,6 +223,10 @@ export function apiKeyCreateDiff(asked: ApiKeyAsked, served: ApiKeyServed): ApiK
 		tokens_per_min: (asked.tokens_per_min ?? 0) === (served.tokens_per_min ?? 0),
 		expires_at: expirySeconds(asked.expires_at) === expirySeconds(served.expires_at),
 		enabled: (asked.enabled ?? true) === (served.enabled !== false),
+		// A create asserts all three: one left out of the body is unset.
+		priority_class: (asked.priority_class ?? '') === (served.priority_class ?? ''),
+		default_objective: (asked.default_objective ?? '') === (served.default_objective ?? ''),
+		allowed_objectives: (asked.allowed_objectives ?? []).join(',') === (served.allowed_objectives ?? []).join(','),
 	};
 	return API_KEY_CREATE_FIELDS.filter(field => !same[field]);
 }
@@ -249,6 +266,10 @@ export const tenantRateLimitApplied =
 		if (!sameCount(want.tokens_per_min, served.tokens_per_min)) return false;
 		if (!sameCount(want.burst_pct, served.burst_pct)) return false;
 
+		// The priority fields are written only when sent (omitted keeps the
+		// stored value), so only the ones this write named are compared.
+		if (!samePriorityFields(submitted, served)) return false;
+
 		const servedQuota = modelQuotas(served.model_limits);
 		// Rows are applied in order and the last one wins, so the last row for
 		// a model is the one that was asked for.
@@ -275,8 +296,8 @@ export const tenantRateLimitApplied =
  * left unchanged, so comparing them would test someone else's state.
  */
 export const apiKeyPatchApplied =
-	(keyId: string, patch: {allowed_models?: string[]; enabled?: boolean; rate_limit_rps?: number; burst_size?: number; tokens_per_min?: number}) =>
-	(rows: {key_id?: string; allowed_models?: string[] | null; enabled?: boolean; rate_limit_rps?: number | null; burst_size?: number | null; tokens_per_min?: number | null}[]): boolean => {
+	(keyId: string, patch: {allowed_models?: string[]; enabled?: boolean; rate_limit_rps?: number; burst_size?: number; tokens_per_min?: number} & PriorityAsked) =>
+	(rows: ({key_id?: string; allowed_models?: string[] | null; enabled?: boolean; rate_limit_rps?: number | null; burst_size?: number | null; tokens_per_min?: number | null} & PriorityAsked)[]): boolean => {
 		const row = rows.find(r => r.key_id === keyId);
 		if (!row) return false;
 
@@ -293,7 +314,7 @@ export const apiKeyPatchApplied =
 			if (patch.allowed_models.join(',') !== (row.allowed_models ?? []).join(',')) return false;
 		}
 
-		return true;
+		return samePriorityFields(patch, row);
 	};
 
 //---------------------------------------------------------
@@ -438,6 +459,8 @@ function effectiveJwtProfile(profile: IJWTAuthProfileEntry): string {
 		profile.default_tenant ?? '',
 		profile.forward_identity === true,
 		profile.authorization_passthrough === true,
+		// Unset is no cap from the profile; it reads back absent.
+		profile.priority_class ?? '',
 	]);
 }
 
@@ -452,6 +475,32 @@ export const jwtProfileApplied =
 
 /** No profile is listed under exactly this name. Absence IS the confirmation. */
 export const jwtProfileGone =
+	(name: string) =>
+	(rows: {name?: string}[]): boolean =>
+		!rows.some(r => r.name === name);
+
+//---------------------------------------------------------
+// AI objectives (gateway 9f5017e2)
+//---------------------------------------------------------
+// POST replaces by name, so a write is confirmed by value on the list: the
+// name is there with the priority and the service set that were sent. An
+// empty service list reads back absent or null (every service).
+
+type ObjectiveRow = {name?: string; priority?: number | null; services?: string[] | null};
+
+const sameServiceSet = (asked: readonly string[] | null | undefined, served: readonly string[] | null | undefined): boolean =>
+	sortedList(asked) === sortedList(served);
+
+/** The objective reads back under its name with the priority and services sent. */
+export const objectiveApplied =
+	(submitted: ObjectiveRow) =>
+	(rows: ObjectiveRow[]): boolean => {
+		const row = rows.find(r => r.name === submitted.name);
+		return row !== undefined && (row.priority ?? 0) === (submitted.priority ?? 0) && sameServiceSet(submitted.services, row.services);
+	};
+
+/** No objective is listed under exactly this name. */
+export const objectiveGone =
 	(name: string) =>
 	(rows: {name?: string}[]): boolean =>
 		!rows.some(r => r.name === name);

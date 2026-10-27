@@ -141,12 +141,12 @@ export interface paths {
         };
         /**
          * Download a complete instance snapshot
-         * @description Returns a versioned, checksummed snapshot document using schema 1.5. Supported snapshot domains exclude some runtime-only state and externally stored secrets. Replaces deprecated /config/export. Response carries Content-Disposition and X-Snapshot-Checksum headers.
+         * @description Returns a versioned, checksummed snapshot document using schema 1.12. Supported snapshot domains exclude some runtime-only state and externally stored secrets. Replaces deprecated /config/export. Response carries Content-Disposition and X-Snapshot-Checksum headers.
          */
         get: {
             parameters: {
                 query?: {
-                    /** @description Comma-separated domains (endpoint, loadbalancer, kvexactbinding, l7policy, firewall, policy, mirror, session, sessionulcl, ipfilter, securityrate, bfd, bgp, ipsec, cors, tracing, cert). Omitted or empty selection captures all supported domains. Inspect included_domains and excluded_domains for actual coverage; certificate material and OTLP header values remain external. */
+                    /** @description Comma-separated domains (endpoint, jwtauthprofile, halfclose, netidentity, loadbalancer, kvexactbinding, l7policy, firewall, policy, mirror, session, sessionulcl, ipfilter, securityrate, bfd, bgp, bgppolicyassignment, ipsec, cors, tracing, cert, auditsink). Omitted or empty selection captures all supported domains. Inspect included_domains and excluded_domains for actual coverage; certificate material and OTLP header values remain external. */
                     components?: string;
                 };
                 header?: never;
@@ -476,6 +476,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Write outcome unknown (result store_outcome_unknown). The statement was handed to the management credential store and the store did not answer within the operation budget; the store may still apply it when it resumes. Not a 503: nothing says the write did not happen. Read the resource back before deciding whether to retry. */
+                504: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -536,6 +545,15 @@ export interface paths {
                     };
                 };
                 503: components["responses"]["ManagementStoreUnavailable"];
+                /** @description Write outcome unknown (result store_outcome_unknown). The statement was handed to the management credential store and the store did not answer within the operation budget; the store may still apply it when it resumes. Not a 503: nothing says the write did not happen. Read the resource back before deciding whether to retry. */
+                504: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -689,6 +707,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Write outcome unknown (result store_outcome_unknown). The statement was handed to the management credential store and the store did not answer within the operation budget; the store may still apply it when it resumes. Not a 503: nothing says the write did not happen. Read the resource back before deciding whether to retry. */
+                504: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -751,6 +778,15 @@ export interface paths {
                     };
                 };
                 503: components["responses"]["ManagementStoreUnavailable"];
+                /** @description Write outcome unknown (result store_outcome_unknown). The statement was handed to the management credential store and the store did not answer within the operation budget; the store may still apply it when it resumes. Not a 503: nothing says the write did not happen. Read the resource back before deciding whether to retry. */
+                504: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         post?: never;
@@ -791,6 +827,15 @@ export interface paths {
                     };
                 };
                 503: components["responses"]["ManagementStoreUnavailable"];
+                /** @description Write outcome unknown (result store_outcome_unknown). The statement was handed to the management credential store and the store did not answer within the operation budget; the store may still apply it when it resumes. Not a 503: nothing says the write did not happen. Read the resource back before deciding whether to retry. */
+                504: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         options?: never;
@@ -7367,7 +7412,7 @@ export interface paths {
         };
         /**
          * Get a process based on CPU usage info in the device
-         * @description Returns Linux process observations assembled from top, with CPU and memory percentages from ps. Values depend on command availability and output format; the current parser incompletely handles failed or short command output.
+         * @description Read Linux procfs directly without top or ps. CPUUsage is cumulative user plus system CPU time divided by elapsed process lifetime, as a percentage that can exceed 100 for multithreaded processes. MemoryUsage is resident bytes divided by MemTotal. Virtual, resident and shared sizes are decimal KiB strings; CPU time is minutes:seconds.centiseconds. Command is the kernel comm name (normally limited to 15 bytes), with embedded whitespace preserved. Effective UID uses the first matching passwd entry or its numeric value. Rows sort by displayed CPU usage descending, then PID ascending. Exited, inaccessible and malformed individual PID records are skipped; reads are not an atomic snapshot. Missing or invalid global procfs data, or no readable processes, returns 500 with a generic collection-failure response, never a message-inferred 400/404 or fabricated healthy empty list.
          */
         get: {
             parameters: {
@@ -7397,7 +7442,7 @@ export interface paths {
                     };
                 };
                 403: components["responses"]["ManagementForbidden"];
-                /** @description Internal service error */
+                /** @description Internal service error, including missing or invalid global process data or no readable processes */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -12291,7 +12336,7 @@ export interface paths {
         };
         /**
          * Get BFD session inforrmation in the device
-         * @description Return BFD sessions when the cluster BFD running flag is set. Current IPv6 host/port parsing can corrupt readback. A session accepted for asynchronous creation may not yet appear; the global running flag can also become inconsistent after deletion.
+         * @description Return the initialized BFD session table. No configured sessions (including keepalive disabled or after deleting the last session) returns 200 with Attr: []. BGP-only mode returns 400 and an uninitialized BFD subsystem returns 503. Current IPv6 host/port parsing can corrupt readback.
          */
         get: {
             parameters: {
@@ -12313,6 +12358,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description BFD is unavailable in BGP-only mode */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Invalid authentication credentials */
                 401: {
                     headers: {
@@ -12332,7 +12386,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Maintenance mode */
+                /** @description Maintenance mode or BFD subsystem unavailable */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -12362,7 +12416,7 @@ export interface paths {
         put?: never;
         /**
          * Create vlan interface in the device
-         * @description Create or update a BFD session for an existing cluster instance. New sessions require a valid remote address, interval at least 100000 microseconds, and retryCount greater than zero; first setup also validates source IP. Existing-session zero interval/retryCount preserves that value, while unchanged submissions conflict and source-IP changes are not applied. Interval narrows from uint64 to uint32. First creation is asynchronous and can fail after HTTP success.
+         * @description Create or update a BFD session for an existing cluster instance. New sessions require a valid remote address, interval at least 100000 microseconds, and retryCount greater than zero; first setup also validates source IP. Existing-session zero interval/retryCount preserves that value, while unchanged submissions conflict and source-IP changes are not applied. Interval narrows from uint64 to uint32. First creation is asynchronous and can fail after HTTP success. BGP-only mode returns 400; an uninitialized BFD subsystem returns 503.
          */
         post: {
             parameters: {
@@ -12387,7 +12441,7 @@ export interface paths {
                         "application/json": components["schemas"]["OperationResult"];
                     };
                 };
-                /** @description Malformed arguments for API call */
+                /** @description Malformed arguments for API call or BFD unavailable in BGP-only mode */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -12441,7 +12495,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Maintenance mode */
+                /** @description Maintenance mode or BFD subsystem unavailable */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -12470,7 +12524,7 @@ export interface paths {
         post?: never;
         /**
          * Delete a BFD session
-         * @description Request deletion of a BFD session by remote IP. Supply an existing instance explicitly; omission does not default to the default instance. Safety limitation: instance existence is checked but session ownership is not, and successful deletion clears a global running flag even if other sessions remain. Do not assume instance-scoped isolation or complete BFD shutdown.
+         * @description Request deletion of a BFD session by remote IP. Supply an existing instance explicitly; omission does not default to the default instance. Successful deletion retains the keepalive running hint while any sessions remain and clears it only after the last session is removed. Safety limitation: instance existence is checked but session ownership is not; do not assume instance-scoped isolation or complete BFD shutdown. BGP-only mode returns 400; an uninitialized BFD subsystem returns 503.
          */
         delete: {
             parameters: {
@@ -12496,7 +12550,7 @@ export interface paths {
                         "application/json": components["schemas"]["OperationResult"];
                     };
                 };
-                /** @description Malformed arguments for API call */
+                /** @description Malformed arguments for API call or BFD unavailable in BGP-only mode */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -12550,7 +12604,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Maintenance mode */
+                /** @description Maintenance mode or BFD subsystem unavailable */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -14074,7 +14128,7 @@ export interface paths {
         put?: never;
         /**
          * Create a new API key
-         * @description Creates a new API key for a tenant. The raw key is returned ONLY in this response.
+         * @description Creates a new API key for a tenant. The raw key is returned ONLY in this response. A create is not idempotent by itself: an answer lost to a store stall (504) may have left an enabled key whose secret nobody holds, and a blind retry creates a second one. Send client_op_id (or the Idempotency-Key header) and a retry converges on one row per (tenant_id, client_op_id): while the key has never authenticated the secret is minted again and delivered with the same key_id and reused=true; once it has, the retry answers 409 api_key_already_delivered naming the key_id. The row's other fields are the first request's.
          */
         post: operations["postConfigAiApikey"];
         delete?: never;
@@ -14430,6 +14484,94 @@ export interface paths {
          * @description Removes the named profile. A profile referenced by any LB rule is not deletable (409); detach it from every rule first.
          */
         delete: operations["deleteConfigAiJwtauthprofileName"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/config/ai/netidentity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List network-identity bindings
+         * @description Returns every network-identity binding in name order, as stored: enumerated fields spelled out, addresses and services in their canonical form.
+         */
+        get: operations["getConfigAiNetidentityAll"];
+        put?: never;
+        /**
+         * Create or replace a network-identity binding
+         * @description Binds the requests that reach AI services from a network to a tenant. Posting an existing name replaces the binding. A binding applies from the next request, on connections that are already open as well. It is refused with 409 when another binding matches the same source on the same service as specifically and names another tenant. A binding is the configuration of the node it is posted to: it is not replicated to a high-availability peer.
+         */
+        post: operations["postConfigAiNetidentity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/config/ai/netidentity/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a network-identity binding
+         * @description Removes the named binding. Requests from its network are decided without it from the next request.
+         */
+        delete: operations["deleteConfigAiNetidentityName"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/config/ai/objective": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List objectives
+         * @description Returns every objective in name order, read from the AI key store (source store). While the store does not answer, returns the objectives this gateway applies instead: the last it read from the store in this process (source store, with the time of that read), or the last-known-good file it started from (source lkg, with the time the store had answered with them). 503 only when the store does not answer and the gateway has applied nothing yet.
+         */
+        get: operations["getConfigAiObjectiveAll"];
+        put?: never;
+        /**
+         * Create or replace an objective
+         * @description An objective is a named priority a request can ask for with the x-llm-d-inference-objective header, or get as its tenant's or key's default. A positive priority is the critical class, a negative one sheddable, zero standard. Posting an existing name replaces the objective. Objectives live in the AI key store, so every gateway that shares the store applies a change within one refresh interval (LLB_AI_OBJECTIVE_REFRESH_SEC, default 10 s), this one at once. Without a key store, or while it does not answer, the call is refused with 503 and nothing changes.
+         */
+        post: operations["postConfigAiObjective"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/config/ai/objective/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete an objective
+         * @description Removes the named objective. A tenant or key that still names it keeps the name; a request that asks for it is then treated as one that asked for an unknown objective.
+         */
+        delete: operations["deleteConfigAiObjectiveName"];
         options?: never;
         head?: never;
         patch?: never;
@@ -14979,7 +15121,7 @@ export interface components {
              * @enum {string}
              */
             kind: "FORWARD" | "REDIRECT" | "REJECT";
-            /** @description Target within the listener's base endpoint pool. With no references the resolver returns the base pool; with references it constructs a subset using RR or WRR selection. Implementation warnings: poolId is not used to resolve an independent pool, and allocation failure can return the whole base pool instead of the subset. The fallback is a safety defect, not a promised routing policy. */
+            /** @description Target within the listener's base endpoint pool. With no references the request is selected as the base pool selects. With references it selects only among the referenced members of the base pool, round-robin, or weighted round-robin when the references' weights differ, skipping members that are down or circuit-broken; no copy of the pool is made, so member health and per-member accounting are the base pool's. On an AI-gateway pool the request passes the pool's capacity gate. Implementation warning: poolId is not used to resolve an independent pool. */
             forward?: {
                 /**
                  * Format: uint32
@@ -15038,11 +15180,54 @@ export interface components {
         L7PolicyGetEntry: {
             l7policyAttr?: components["schemas"]["L7Policy"][];
         };
+        /** @description One priority band of a model pool as the capacity gate holds it, read back in fc_effective.bands. */
+        FcBandEffective: {
+            /**
+             * Format: int32
+             * @description Service units the band holds right now.
+             */
+            inflight?: number;
+            /**
+             * Format: int32
+             * @description Requests of the band waiting right now.
+             */
+            queued?: number;
+            /**
+             * Format: int32
+             * @description The band's configured wait window in milliseconds; 0 is the queue's (queue_wait_ms). A window above queue_wait_ms runs at queue_wait_ms.
+             */
+            wait_ms?: number;
+            /**
+             * Format: int32
+             * @description The most of the queue depth the band may hold, in percent; 0 is the shared depth. A ceiling on the band's own occupancy, not a reservation.
+             */
+            queue_pct?: number;
+            /**
+             * Format: int32
+             * @description The band's floor in percent of the ceiling in force: a guarantee under contention, not a reservation; it binds only while that band has a waiter.
+             */
+            min_share_pct?: number;
+            /**
+             * Format: int32
+             * @description The floor in service units against effective_max_outstanding, as the gate enforces it: rounded up in the band's favour but never to the whole ceiling for a share under 100, and clamped so the floors and the reserve never exceed the ceiling; 0 without a ceiling.
+             */
+            floor_units?: number;
+            /**
+             * Format: int32
+             * @description The band's credits per round under the weighted wake; 0 is not set.
+             */
+            weight?: number;
+            /**
+             * Format: int32
+             * @description The weight's share of the round (the sum of the three weights) in percent, rounded to the nearest; 0 when no weight is set.
+             */
+            weight_pct?: number;
+        };
         /** @description Shared request/readback representation. POST can create or replace an existing rule; PATCH supports only the restricted L4 overlay described on its operation. Create callers must supply serviceArguments and usable endpoints. Implementation warning: the POST handler dereferences serviceArguments without a nil guard, although the shared schema permits its omission for PATCH. Configuration acceptance and GET readback do not establish runtime enforcement. See serviceArguments and endpoints for intake, update and readback gaps. */
         LoadbalanceEntry: {
             /** @description Service configuration. Implementation warnings for this REST representation: POST does not copy adminStateUp or snat into the domain. GET omits privateIP and vip_qos_policy_id. GET/edit/POST is therefore not a lossless configuration round trip. PATCH has a limited overlay and does not update arbitrary properties. Metadata-only POSTs can return an unchanged-rule error before applying metadata; managed is not assigned on the existing-rule update path. FullProxy replacement removes its pool but C retains the listener; reuse does not reliably restore listener arguments or rebuild TLS contexts, so updated TLS/HSTS/timeout settings are not established by stored state. Requested-security fail-closed behavior and LB-resource/listener policy ownership remain unresolved; these defects are not supported fallback or update semantics. */
             serviceArguments?: {
-                /** @description Opaque LB identifier, supplied by the client or minted as UUIDv4 when absent. Collisions with another rule are rejected. The update path can replace an ID when another change is applied; do not assume immutable identity or automatic L7 reference migration. */
+                /** @description Opaque LB identifier, supplied by the client or minted as UUIDv4 when absent. An id already bound to another rule is refused with 400 (lbrule-id conflict). A replace that differs from the stored rule in this field alone rebinds the id to the existing rule in place, without touching the data plane, and answers success; a replace that changes other fields carries the new id along. Do not assume immutable identity or automatic L7 reference migration. */
                 id?: string;
                 /** @description Service lifecycle flag. In the domain, absent/true enables new selection and false pauses new selection while retaining members. Implementation gap: POST drops this property, so false does not create a paused rule. The restricted L4 PATCH path handles explicit changes and GET reports effective state. Source behavior does not prove established-connection preservation. */
                 adminStateUp?: boolean;
@@ -15196,16 +15381,16 @@ export interface components {
                 /** @description Model routing key for the endpoint pool. Empty selects the legacy wildcard pool only when KV Exact is disabled. kvExactMode=1 or 3 requires a non-empty name with a loadable matching tokenizer; a bound kvModelProfile must also admit this name through its alias policy. A family-name match alone does not establish tokenizer, template, or engine compatibility. The server accepts at most 127 UTF-8 bytes and rejects embedded NUL or invalid UTF-8 before changing rule state. This byte limit reserves the terminator in the 128-byte data-plane field; UI validation must count encoded bytes rather than characters. The encoded host/path_prefix/model_name relationship is separately limited to 511 UTF-8 bytes including conditional separators. */
                 model_name?: string;
                 /**
-                 * @description Enable detection of text/event-stream responses and the associated streaming idle-timeout protection. This flag controls Gateway SSE handling, not whether the backend implements an OpenAI API. Active detected streams remain subject to max_stream_duration_sec and the system stream cap; enabling SSE does not make them unbounded.
+                 * @description Enable detection of text/event-stream responses and the associated streaming idle-timeout protection. A rule with pd_disagg_mode always has it, whether or not sse_mode is set. This flag controls Gateway SSE handling, not whether the backend implements an OpenAI API. Active detected streams remain subject to max_stream_duration_sec and the system stream cap; enabling SSE does not make them unbounded.
                  * @default false
                  */
                 sse_mode?: boolean;
                 /**
-                 * @description Data-plane credential enforcement declaration for this service. Omission is a state of its own. OMITTED declares nothing: the service is not marked AI-facing, proxying stays byte-identical, and a backend-owned X-Api-Key header passes through untouched. An explicit "disabled" declares the service AI-facing without enforcement: no key is validated, but X-Api-Key is the gateway's credential namespace and the header is stripped before dispatch. "required" makes the data plane validate the X-Api-Key header against the API-key store before the request reaches a backend, fails closed when the policy cannot be evaluated, and likewise strips the header. "jwt" validates an Authorization Bearer JWT against the service's jwt_auth_profile instead; X-Api-Key is not consulted. "apikey-or-jwt" accepts either credential with a fixed precedence: a present X-Api-Key decides alone (its rejection is final, with no JWT fallback), otherwise a Bearer token decides, and a request carrying neither is refused. Both JWT modes require jwt_auth_profile to name a configured profile. Reading a service back preserves the declaration exactly: an omitted policy reads back with this field absent, never resolved to a value. On a replace of an existing service, omitting this field leaves the declared policy unchanged — it never silently turns enforcement off; to clear a declared policy, send "disabled" explicitly. Independent of sse_mode and pd_disagg_mode, and independent of the management-plane authentication mode.
+                 * @description Data-plane credential enforcement declaration for this service. Omission is a state of its own. OMITTED declares nothing: the service is not marked AI-facing, proxying stays byte-identical, and a backend-owned X-Api-Key header passes through untouched. An explicit "disabled" declares the service AI-facing without enforcement: no key is validated, but X-Api-Key is the gateway's credential namespace and the header is stripped before dispatch. "required" makes the data plane validate the X-Api-Key header against the API-key store before the request reaches a backend, fails closed when the policy cannot be evaluated, and likewise strips the header. "jwt" validates an Authorization Bearer JWT against the service's jwt_auth_profile instead; X-Api-Key is not consulted. "apikey-or-jwt" accepts either credential with a fixed precedence: a present X-Api-Key decides alone (its rejection is final, with no JWT fallback), otherwise a Bearer token decides, and a request carrying neither is refused. Both JWT modes require jwt_auth_profile to name a configured profile. Reading a service back preserves the declaration exactly: an omitted policy reads back with this field absent, never resolved to a value. On a replace of an existing service, omitting this field leaves the declared policy unchanged — it never silently turns enforcement off; to clear a declared policy, send "disabled" explicitly. Independent of sse_mode and pd_disagg_mode, and independent of the management-plane authentication mode. Rules that share a listener (address, port and protocol) share its credential policy, because the admission gate runs before a request is matched to a rule by host, path or model: a create or replace whose api_key_auth or jwt_auth_profile differs from the rules already on the listener is refused with 400 (an unset policy and an explicit "disabled" are different values), and a restored configuration is kept whole with the disagreement logged, as for the listener's TLS settings.
                  * @enum {string}
                  */
                 api_key_auth?: "disabled" | "required" | "jwt" | "apikey-or-jwt";
-                /** @description Name of the JWT auth profile (config/ai/jwtauthprofile) that decides this service's Bearer arm. Required by, and only valid with, api_key_auth "jwt" and "apikey-or-jwt"; a create or replace naming a profile that is not configured is rejected. On a replace, omitting this field preserves the existing reference, in lockstep with api_key_auth's replace semantics. While a service references a profile, deleting that profile is refused. */
+                /** @description Name of the JWT auth profile (config/ai/jwtauthprofile) that decides this service's Bearer arm. Required by, and only valid with, api_key_auth "jwt" and "apikey-or-jwt"; a create or replace naming a profile that is not configured is rejected. On a replace, omitting this field preserves the existing reference, in lockstep with api_key_auth's replace semantics. While a service references a profile, deleting that profile is refused. Rules that share a listener must name the same profile; a disagreement is refused like a differing api_key_auth. */
                 jwt_auth_profile?: string;
                 /**
                  * Format: int32
@@ -15330,6 +15515,56 @@ export interface components {
                  * @enum {string}
                  */
                 fc_expose_headers?: "on" | "off" | "inherit";
+                /**
+                 * @description Which priority band a freed service unit wakes when requests of several bands wait (critical, standard, sheddable: the class the request's objective resolved to). Bands act only with fc_mode enforce, below the ceiling every band is admitted at once, and HTTP/2 streams and P/D role legs never queue (for them the band decides the refusal only). strict wakes the highest band with a runnable waiter: while higher-band demand keeps the ceiling full, a lower band is admitted zero requests, and each waiter is refused when its band's wait window ends. weighted is a deficit round robin by fc_band_weights: each band with a runnable waiter gets its weight in credits per round, the highest band with credit left is served first, one wake costs one credit, and a band with no runnable waiter forfeits its turn; over whole rounds the wake-ups split exactly as the weights do (8:3:1 is 8 critical, 3 standard, 1 sheddable in every 12). The share is of admissions, not of tokens or latency, and a floor is served before the round. weighted needs every weight at least 1 (400 otherwise). inherit, or omitted on create, runs on the process default (LLB_FC_WAKE_POLICY, else strict). Refused (400) beside sockMapMode both or request on a rule that is not an AI-gateway service, as is every band knob other than its default. Such a rule that INHERITS weighted (or another band setting it would be refused for declaring) runs every band knob at its default instead, logs one warning at apply time and reads back fc_effective.wake_policy_effective with band_fallback_reason; so does weighted without a weight for every band. A change of policy starts a new round and loses no waiter. Replace and null semantics as fc_mode.
+                 * @enum {string}
+                 */
+                fc_wake_policy?: "strict" | "weighted" | "inherit";
+                /** @description The weighted wake's weights, written critical:standard:sheddable (for example 8:3:1): three whole numbers, each 1 to 62, at most 64 together, or 0:0:0 for none (a zero weight beside non-zero ones is refused, 400). Each is the band's credits per round. Declared under strict they are stored and reported as not in use in fc_effective, so a later switch to weighted finds them. A change of weights starts a new round. Not three whole numbers separated by ':' is refused (400). 0:0:0 resets to none; omitted on a replace keeps the stored value; explicit JSON null is rejected. */
+                fc_band_weights?: string;
+                /** @description Each band's floor, critical:standard:sheddable, in percent of the service ceiling in force (rounded up to whole units, and following the adaptive ceiling). A floor is a guarantee under contention, not a reservation: it binds only while that band has a waiter, so with no demand in the band the other bands take every unit. When a unit frees, the highest-ranked band that is below its floor and has a runnable waiter takes it; when no band is below its floor, the wake policy chooses. HTTP/2 streams and role legs never wait, so on a service that carries only HTTP/2 a floor never binds. Each 0 to 100, at most 100 together (400 naming fc_band_min_share_pct). 0:0:0 (the default) is no floor. A floor is independent of the wake policy and of the weights. Replace and null semantics as fc_band_weights. */
+                fc_band_min_share_pct?: string;
+                /**
+                 * Format: int32
+                 * @description The only true reservation: the percent of the ceiling in force (rounded up to whole units) that no other band may take, even when critical is idle. It holds on HTTP/2 and role legs as well, which never wait. Together with the standard and sheddable entries of fc_band_min_share_pct at most 100 (400 naming fc_critical_reserve_pct); the critical entry of fc_band_min_share_pct is a separate floor, and critical holds the larger of the two. 0 or omitted on create is none. Replace and null semantics as fc_max_outstanding.
+                 * @default 0
+                 */
+                fc_critical_reserve_pct?: number;
+                /** @description Each band's wait window, critical:standard:sheddable, in milliseconds, each 0 to 3600000. A band's window is a cap inside the rule's window (fc_max_queue_wait_ms), never above it: a larger value runs at the rule's window, and 0 is the rule's window. A waiter whose window ends is answered 504 admission_queue_timeout. 0:0:0 (the default) resets every band to the queue's window. Replace and null semantics as fc_band_weights. */
+                fc_band_wait_ms?: string;
+                /** @description The most of the queue depth each band may hold, critical:standard:sheddable, in percent, rounded up to whole waiters and at least one; 0 is the shared depth. It bounds that band's own occupancy of fc_max_queue_depth and is a ceiling, not a reservation: what a band does not use stays open to every other band, and the queue as a whole never holds more than fc_max_queue_depth. A band at its share is refused with 429 admission_capacity (reason queue_full); nobody is evicted to make room for it. At most 100 together when all three are non-zero. 0:0:0 (the default) is no share. Replace and null semantics as fc_band_weights. */
+                fc_band_queue_pct?: string;
+                /**
+                 * @description off refuses a sheddable request at the ceiling at once with 429 admission_shed; on lets it wait in its band, and when the queue is full an arriving request of any higher band (standard or critical) evicts the youngest sheddable waiter, which is answered 429 admission_shed. on is refused (400) while the queue depth in force (fc_max_queue_depth, else LLB_FC_MAX_QUEUE_DEPTH) is 0. inherit, or omitted on create, runs on the process default (LLB_FC_SHED_QUEUE, else off). Replace and null semantics as fc_mode.
+                 * @enum {string}
+                 */
+                fc_shed_queue?: "on" | "off" | "inherit";
+                /**
+                 * @description The order inside one band. fifo wakes the oldest runnable waiter and does not tell tenants apart; rr rotates across the tenants with a runnable waiter in the band, oldest first inside one tenant, each band keeping its own place in the rotation. rr needs no fc_tenant_max_share_pct. inherit, or omitted on create, runs on the process default (LLB_FC_TENANT_WAKE, else fifo). Replace and null semantics as fc_mode.
+                 * @enum {string}
+                 */
+                fc_tenant_wake?: "fifo" | "rr" | "inherit";
+                /**
+                 * @description on: adds x-llm-d-request-dropped-reason to the admission refusals (HTTP/1.1 answers and HTTP/2 stream refusals); lets a valid x-llm-d-inference-ttl on an HTTP/1.1 request (Go duration syntax, positive, held at one day) shorter than the window that applies shorten that request's wait, never extend it, where a wait the client's TTL ended is answered 429 admission_ttl_expired and a wait a window of the rule ended stays 504 admission_queue_timeout; and forwards the gateway's resolved values in x-llm-d-inference-objective (the class the request was admitted as) and x-llm-d-inference-fairness-id (the authenticated tenant, none for a request without one), removing the client's copy of either name and of the deprecated x-gateway-inference-* names, on HTTP/1.1 and HTTP/2 alike (on a chunked HTTP/1.1 request the copies are removed and nothing is written; HTTP/2 streams never wait, so the TTL does not apply to them). off leaves all of it out: the TTL header is ignored and every header is forwarded as sent. inherit, or omitted on create, runs on the process default (LLB_FC_LLMD_HEADERS, else off). Replace and null semantics as fc_mode.
+                 * @enum {string}
+                 */
+                fc_llmd_headers?: "on" | "off" | "inherit";
+                /**
+                 * @description Whether a request that declares no completion ceiling (no max_tokens or max_completion_tokens, or a value that is not a positive whole number: negative, 0, a string, a float, an object or an array) reserves a default number of completion tokens against the token quotas at admission. off reserves the prompt estimate alone, so leaving the field out is the cheaper choice at admission. on reserves ai_default_max_tokens beside the prompt estimate, as a claim each quota bucket may shrink: it is cut to what the bucket can hold beside the prompt estimate and to what is left of it, down to nothing, and it is never the reason a request is refused - only the prompt estimate and a declared ceiling are. A request admitted with less than the default is counted in fc_effective.reservation_clamped_burst or reservation_clamped_budget and in loxilb_ai_reservation_clamped_total, by reason: burst (the default is more than a bucket can ever hold beside the prompt) or budget (the bucket's budget was already taken). The claim is released when the response is settled, as a declared ceiling's is. Nothing is written into the forwarded request, and a declared ceiling is never replaced. inherit, or omitted on create, runs on the process default (LLB_AI_DEFAULT_RESERVATION, else off). Replace and null semantics as fc_mode; a replace that changes nothing else applies in place, to requests admitted from then on. Read back only when declared; what is in force is fc_effective.default_reservation. The gate reserves before a rule is selected by host, path or model, so the value is per listener: on a VIP and port that several rules share, the value of the rule installed first on it is the one in force for all of them (api_key_auth is read per listener too, but a disagreeing api_key_auth or jwt_auth_profile is refused rather than warned about; see api_key_auth). Declare the same value on each. A rule applied on a VIP and port whose rules resolve to different values is accepted, and the reply and the log carry a warning that names the value in effect; fc_effective shows that value on every rule.
+                 * @enum {string}
+                 */
+                ai_default_reservation?: "on" | "off" | "inherit";
+                /**
+                 * Format: int32
+                 * @description The default reservation in tokens, used while ai_default_reservation is in force as on. 0 or omitted leaves the process default (LLB_AI_DEFAULT_MAX_TOKENS) in force, else the built-in 512, which is an estimate of a typical completion and not a measured one; at most 100000000. Changeable at runtime by a replace POST (the stored value is kept when omitted, an explicit 0 resets to the process default). Explicit JSON null is rejected. The value in force and its source are read back in fc_effective.
+                 * @default 0
+                 */
+                ai_default_max_tokens?: number;
+                /**
+                 * @description What happens to a request that names, with the x-llm-d-inference-objective header, an objective it may not use (unknown, not for this service, or above what the request gets without a hint and not in its tenant's allowed_objectives). false (the default) - the request falls to its default objective and is admitted; the record says the objective was denied. true - the request is refused with 403 objective_not_allowed. Stored on any rule; it has an effect only where the admission gate runs (an AI-gateway service) and while a class is configured. The admission gate reads it per listener, as api_key_auth: declare the same value on each rule of a VIP and port. Changeable at runtime by a replace POST (the stored value is kept when omitted). Explicit JSON null is rejected.
+                 * @default false
+                 */
+                ai_objective_strict?: boolean;
                 /** @description The capacity admission gate's resolved state on this rule's model pool, read from the data plane. Present on GET for installed AI-gateway and modern MCP services; absent when no pool was read. Every numeric value is explicit, including zero. Ignored on input. mode is off, observe or enforce; the ceilings are the values in force, the process defaults where the rule declared nothing; inflight and queued are live counts; queue_memory_bound_mib is the memory the full queue may park (queue_depth x 1 MiB); telemetry_stale_ms is the P/D scorers' trust window; source names where each value in force came from (rule, env or default); effective_max_outstanding is the service ceiling in force now (the adaptive one while the pool adapts), adapt_state and adapt_reason say where it stands and why, warming_endpoints counts endpoints inside their warm-up window. */
                 readonly fc_effective?: {
                     /** @description The gate mode in force on the pool (off, observe or enforce). */
@@ -15421,10 +15656,134 @@ export interface components {
                      */
                     tenants_active?: number;
                     /**
+                     * Format: int32
+                     * @description Tenants the pool tracks by name at once for the tenant share; tenants past it share one budget. Fixed when the pool is created (LLB_FC_TENANT_SLOTS).
+                     */
+                    tenant_slots?: number;
+                    /**
                      * @description Whether admitted responses carry the admission headers.
                      * @enum {string}
                      */
                     expose_headers?: "on" | "off";
+                    /**
+                     * @description The wake policy as configured, by the rule or inherited (source.wake_policy); wake_policy_effective is the one the gate runs. strict - while higher-band demand keeps the ceiling full, a lower band is admitted zero requests; each waiter is refused when its band's wait window ends. weighted - a deficit round robin: while several bands have waiters, each receives its weight's share of wake-ups, exactly over whole rounds (8:3:1 is 8, 3, 1 in every 12); the share is of admissions, not of tokens, GPU time or latency. No band is promoted because it has waited long.
+                     * @enum {string}
+                     */
+                    wake_policy?: "strict" | "weighted";
+                    /**
+                     * @description The wake policy the gate runs. Differs from wake_policy only when band_fallback_reason is not none.
+                     * @enum {string}
+                     */
+                    wake_policy_effective?: "strict" | "weighted";
+                    /** @description true when wake_policy_effective is weighted and the weights decide the wake; declared weights are stored but not in use otherwise. */
+                    weights_in_use?: boolean;
+                    /**
+                     * @description As configured: whether a sheddable request at the ceiling waits in its band instead of 429 admission_shed.
+                     * @enum {string}
+                     */
+                    shed_queue?: "on" | "off";
+                    /**
+                     * @description The shed queue the gate runs.
+                     * @enum {string}
+                     */
+                    shed_queue_effective?: "on" | "off";
+                    /**
+                     * @description The order inside one band, as configured (fifo, or rr across tenants).
+                     * @enum {string}
+                     */
+                    tenant_wake?: "fifo" | "rr";
+                    /**
+                     * @description The order inside one band the gate runs (fifo, or rr across tenants).
+                     * @enum {string}
+                     */
+                    tenant_wake_effective?: "fifo" | "rr";
+                    /**
+                     * @description Why the gate runs band settings other than the configured ones: a combination the API refuses a rule to declare, reached by inheriting the environment (LLB_FC_*) or by a restore replay, runs on the defaults and is logged once at apply time. sockmap_request - sockMapMode request or both on a rule that is not an AI-gateway service: every band knob at its default (the request direction never reaches the gate). zero_weight - weighted with a zero weight: strict. no_queue - shed queue on with no queue depth: off. none - the configuration runs as configured.
+                     * @enum {string}
+                     */
+                    band_fallback_reason?: "none" | "sockmap_request" | "zero_weight" | "no_queue";
+                    /**
+                     * @description Whether refusals carry x-llm-d-request-dropped-reason and x-llm-d-inference-ttl may shorten a wait.
+                     * @enum {string}
+                     */
+                    llmd_headers?: "on" | "off";
+                    /** @description true when any band knob in force differs from its default. */
+                    bands_configured?: boolean;
+                    /** @description Each priority band's live counts and the knobs in force (after any fallback). min_share_pct and floor_units are the floor alone; the critical reserve is reported beside the bands. */
+                    bands?: {
+                        /**
+                         * Format: int32
+                         * @description The critical reserve in percent of the ceiling in force - units no other band may take, even when critical is idle.
+                         */
+                        critical_reserve_pct?: number;
+                        /**
+                         * Format: int32
+                         * @description The reserve in service units against effective_max_outstanding, as the gate enforces it; 0 without a ceiling.
+                         */
+                        critical_reserve_units?: number;
+                        critical?: components["schemas"]["FcBandEffective"];
+                        standard?: components["schemas"]["FcBandEffective"];
+                        sheddable?: components["schemas"]["FcBandEffective"];
+                    };
+                    /**
+                     * @description Whether a request without a declared max_tokens that routes to this rule reserves a default for its completion. Each rule of a VIP and port has its own value - the gate takes it from the rule the request's host, path and model select.
+                     * @enum {string}
+                     */
+                    default_reservation?: "on" | "off";
+                    /**
+                     * Format: int32
+                     * @description The default reservation in tokens in force for requests that route to this rule; 0 while default_reservation is off.
+                     */
+                    default_max_tokens?: number;
+                    /**
+                     * Format: int64
+                     * @description Requests admitted with less than default_max_tokens reserved, since the process started, because default_max_tokens beside the prompt is more than a quota bucket can ever hold, so the request is clamped on an idle bucket too. A configuration to fix - lower the default or raise the quota or its burst. A request this applies to is counted here whatever the budgets held. Counted per service - every model pool of the same VIP and port reads the same number. Never a refusal.
+                     */
+                    reservation_clamped_burst?: number;
+                    /**
+                     * Format: int64
+                     * @description Requests admitted with less than default_max_tokens reserved, since the process started, because the bucket's budget was already taken by other claims or by spend. Transient - it passes as the window refills. Counted per service, as reservation_clamped_burst. Never a refusal.
+                     */
+                    reservation_clamped_budget?: number;
+                    /**
+                     * Format: int64
+                     * @description The minute (Unix time divided by 60) the reservation_held_* fields below are a reading of. A token reservation belongs to the minute it was made in and does not outlive it - a request that ended without settling leaves its claim until the minute turns, and no longer. Compare two readings only when this value is the same in both.
+                     */
+                    reservation_epoch?: number;
+                    /**
+                     * Format: int64
+                     * @description How many token reservations are held right now on the quota buckets this service's requests reserve on, counted one per request and bucket - a request holds one claim on every quota bucket that applies to it (tenant, tenant and model, user, user and model, key, service), so one in-flight request on three buckets is three claims. Zero exactly when nothing is held. It is a count of claims and says nothing about tokens - the tokens each bucket holds are in reservation_held. A tenant's bucket is shared by every service the tenant uses, and its claims are counted on each of them. Read from the quota store's own counters. Management read-back only - not exported as a metric.
+                     */
+                    reservation_held_claims?: number;
+                    /** @description true when reservation_held does not list every bucket holding a reservation - more than 64 hold one, or the service has reserved on more buckets than the gateway tracks for it (4096). reservation_held_claims covers the tracked buckets in either case. */
+                    reservation_held_truncated?: boolean;
+                    /** @description The quota buckets holding reserved tokens right now, largest first, at most 64. Empty when nothing is held. A bucket not listed holds nothing unless reservation_held_truncated is true. */
+                    reservation_held?: {
+                        /**
+                         * @description Which quota the bucket belongs to - the tenant's, the tenant's for one model, a user's, a user's for one model, an API key's own, or the service's shared keyless quota.
+                         * @enum {string}
+                         */
+                        kind?: "tenant" | "tenant_model" | "user" | "user_model" | "key" | "service";
+                        /** @description The bucket's key in the quota store. It is built from identifiers only (tenant, user, model, key id, service) and never holds a credential. */
+                        bucket?: string;
+                        /**
+                         * Format: int64
+                         * @description Tokens reserved on the bucket and not yet settled.
+                         */
+                        tokens?: number;
+                    }[];
+                    /**
+                     * @description Where the objectives and the tenant and key classes this gateway is applying came from. store - the AI key store answered the last read. lkg - the store has not answered since the gateway started and the last-known-good file (aigw-lkg.json under the configuration path) is being served; writes are refused with 503 meanwhile and loxilb_ai_class_config_lkg_intervals_total counts. none - nothing was read (no store configured, or a store that has not answered and no file); every request is standard. The same value on every rule - it is the gateway's, not the rule's.
+                     * @enum {string}
+                     */
+                    config_source?: "store" | "lkg" | "none";
+                    /** @description Whether the AI key store answered the gateway's latest read of it, whatever config_source says (a configuration read earlier stays in force through an outage). Absent when no key store is configured. The gateway's, the same on every rule. */
+                    store_reachable?: boolean | null;
+                    /**
+                     * Format: date-time
+                     * @description When a read of the AI key store last answered in this process. A gateway started from the last-known-good file shows, until the store answers, the read that last CHANGED that file: the store may have answered later with nothing changed (the file is written only on a change). Absent when neither happened or no key store is configured.
+                     */
+                    store_last_read?: string | null;
                     /** @description Where each value in force came from: rule (the rule's own declaration), env (the process environment, LLB_FC_*) or default (the product default). */
                     source?: {
                         /** @enum {string} */
@@ -15453,6 +15812,28 @@ export interface components {
                         tenant_max_share_pct?: "rule" | "env" | "default";
                         /** @enum {string} */
                         expose_headers?: "rule" | "env" | "default";
+                        /** @enum {string} */
+                        default_reservation?: "rule" | "env" | "default";
+                        /** @enum {string} */
+                        default_max_tokens?: "rule" | "env" | "default";
+                        /** @enum {string} */
+                        wake_policy?: "rule" | "env" | "default";
+                        /** @enum {string} */
+                        band_weights?: "rule" | "env" | "default";
+                        /** @enum {string} */
+                        band_min_share_pct?: "rule" | "env" | "default";
+                        /** @enum {string} */
+                        critical_reserve_pct?: "rule" | "env" | "default";
+                        /** @enum {string} */
+                        band_wait_ms?: "rule" | "env" | "default";
+                        /** @enum {string} */
+                        band_queue_pct?: "rule" | "env" | "default";
+                        /** @enum {string} */
+                        shed_queue?: "rule" | "env" | "default";
+                        /** @enum {string} */
+                        tenant_wake?: "rule" | "env" | "default";
+                        /** @enum {string} */
+                        llmd_headers?: "rule" | "env" | "default";
                     };
                 };
                 /**
@@ -17147,7 +17528,7 @@ export interface components {
             /** @description Whether eBGP multihop is enabled for this neighbor */
             multiHop?: boolean;
         };
-        /** @description BGP startup input, not an atomic general replacement. Local ASN narrows to uint32 and listenPort to uint16; omitted or zero listenPort selects 179. SetNextHopSelf is a case-sensitive wire field and triggers additional policy setup. Failure can occur after partial startup or policy creation. */
+        /** @description BGP startup input, not an atomic general replacement. An identical running core is reused and SetNextHopSelf is reconciled. Changes to a running ASN/router ID/listen port are refused with 400; use a scoped snapshot replacement, which prepares the speaker before LB re-application. Local ASN narrows to uint32 and listenPort to uint16; omitted or zero listenPort selects 179. SetNextHopSelf is a case-sensitive wire field and triggers additional policy setup. Failure can occur after partial startup or policy creation. */
         BGPGlobalConfig: {
             /** @description BGP Router ID */
             routerId: string;
@@ -17191,6 +17572,8 @@ export interface components {
             buildInfo?: string;
             /** @description Product identifier for API flavor detection. This gateway reports "loxilb-inference-gateway"; upstream loxilb (and gateway builds predating the field) omit it, which clients treat as plain loxilb. */
             product?: string;
+            /** @description Gateway-only capabilities this build implements, as stable tokens a controller checks before it sends the matching rule fields; absent on builds that predate the field. "api_key_auth": the serviceArguments api_key_auth credential-policy declaration is accepted and enforced. "jwt_auth_profile": the Bearer arm (api_key_auth "jwt" and "apikey-or-jwt") and the jwt_auth_profile reference are accepted and enforced. The REST layer ignores fields it does not know, so a build without a token would install a rule WITHOUT that policy and report success: a controller that does not find the token for a field it needs must not send the rule. */
+            features?: string[];
         };
         /** @description BFD session input for an existing cluster instance. New sessions require interval >= 100000 microseconds and retryCount > 0. Interval narrows from uint64 to uint32 without an upper-bound check. On an existing session, zero interval/retryCount preserves the current value, source-IP changes are not applied, and an unchanged request conflicts. Initial setup can return success before asynchronous creation fails. */
         BfdEntry: {
@@ -18727,6 +19110,74 @@ export interface components {
             forward_identity?: boolean;
             /** @description Leave the client Authorization header on the upstream request instead of stripping it after verification. Default false. */
             authorization_passthrough?: boolean;
+            /**
+             * @description The highest priority class a request admitted by this profile's tokens may have. It can only lower what the tenant allows (a tenant that sets no class allows standard). Omitted means no cap from the profile.
+             * @enum {string}
+             */
+            priority_class?: "standard" | "critical" | "sheddable";
+        };
+        /** @description A named request priority. name is 1 to 63 characters of letters, digits, '-', '_' and '.', compared exactly (case-sensitive), and must not begin with tier:. services limits the objective to the listed services ("VIP:port"); empty or omitted means every service. priority is a signed integer - positive is the critical class, negative sheddable, zero standard; the order between two objectives of the same class is not kept. */
+        AIObjectiveEntry: {
+            /** @description Name of the objective, as a request's header names it */
+            name: string;
+            /** @description Services the objective applies to, as "VIP:port"; at most 256. Empty means all */
+            services?: string[];
+            /**
+             * Format: int32
+             * @description The priority a request with this objective has
+             */
+            priority?: number;
+            /**
+             * Format: date-time
+             * @description When the objective was last written. Ignored on input
+             */
+            readonly updated_at?: string;
+        };
+        /** @description A network-identity binding: the tenant of the requests that reach an AI service from a network. A cidr match says where a request came from; it does not prove who sent it, and any host that can send from the range is attributed to the tenant. Use it for limits, fairness and records, never in place of a credential. An ingress_if match is as strong as the network boundary behind the interface. Where several bindings match a request, an ingress_if match wins over a cidr match, the longest prefix wins among cidr matches, and a binding that names the service wins over one that names none. */
+        NetIdentityEntry: {
+            /** @description Binding name, 1 to 63 characters of letters, digits, '-', '_' and '.', starting with a letter or digit. It is what request records carry. */
+            name: string;
+            /** @description The source the binding applies to. Exactly one of cidr, ingress_if, vlan, vni and ipsec_tunnel. All but cidr match on the interface the connection arrived on. */
+            match: {
+                /** @description IPv4 networks in a.b.c.d/len form, without host bits, that the socket peer of the request is in. At most 256. */
+                cidr?: string[];
+                /** @description Name of the interface the connection arrived on, at most 15 characters: the logical device, which for a tagged VLAN is its bridge (vlan<id>), for a VXLAN its device (vxlan<vni>) and for an IPsec tunnel its VTI. The name is stored, never an index, so an interface that is removed and created again keeps its binding. A name that does not exist on the node is accepted with a warning in the reply and matches nothing until it exists; an interface that is removed later is logged and matches nothing until it is back. The interface is that of the connection's first packet and holds for the life of the connection. */
+                ingress_if?: string;
+                /** @description A VLAN ID. Another spelling of ingress_if: the VLAN's bridge interface on this node, vlan<id>. */
+                vlan?: number;
+                /** @description A VXLAN network identifier. Another spelling of ingress_if: the interface vxlan<vni> on this node. */
+                vni?: number;
+                /** @description Name of an IPsec tunnel configured on this node (/config/ipsec/tunnel). Another spelling of ingress_if: the tunnel's VTI interface, vti<mark>. A tunnel that is not configured, or has no mark, is accepted with a warning and matches nothing until it has one. */
+                ipsec_tunnel?: string;
+            };
+            /** @description The AI services the binding applies to, each as VIP:port (IPv4). Empty or omitted applies it to every AI service. A service does not have to exist yet. At most 256. */
+            services?: string[];
+            /** @description The tenant a matching request is attributed to, 1 to 127 bytes. The same namespace as API-key and JWT tenants: its limits are the ones configured for that tenant. */
+            tenant: string;
+            /** @description The models a request admitted or held by this binding may name, compared exactly. Empty or omitted allows any. At most 256. */
+            allowed_models?: string[];
+            /**
+             * @description advisory (default): a request that presents a credential is decided by it and the binding is only noted. strict: a credential whose tenant is not the binding's is refused with 403 network_tenant_mismatch, and the model must also pass allowed_models. In both, a request with no credential on a service that does not require one is admitted as the binding's tenant.
+             * @enum {string}
+             */
+            enforce?: "advisory" | "strict";
+            /**
+             * @description none (default): the binding never stands in for a credential. network: on a service that requires a credential, a request that presents none is admitted as the binding's tenant. Accepted with an interface match only (ingress_if, vlan, vni or ipsec_tunnel); refused with a cidr match. Also refused when a named service has a rule that is not an AI-gateway service and runs sockMapMode request or both: the gateway does not see every request on it.
+             * @enum {string}
+             */
+            credential?: "none" | "network";
+            /** @description Forward the request's tenant upstream as X-Auth-Tenant, and its user as X-Auth-User when it has one, on a request whose source matched this binding. Needs a non-empty services list, and is refused without one. The services the binding names then also drop every header whose name starts with X-Auth- that a client sends, on every request and whatever the rule's api_key_auth, whether or not the request's source matched a binding. A service no such binding applies to is unchanged. The identity is injected only on an AI-gateway service, where the admission gate decides it, and not into a chunked HTTP/1.1 request. Refused when a service the binding names has a rule that is not an AI-gateway service and runs sockMapMode request or both: the gateway does not see every request on it. Such a rule is refused in turn while the binding exists. Default false. */
+            forward_identity?: boolean;
+            /**
+             * @description The highest priority class a request the binding names the tenant of may have. It can only lower what the tenant allows (a tenant that sets no class allows standard). Default standard - a binding that should not cap its requests says critical.
+             * @enum {string}
+             */
+            priority_class?: "standard" | "critical" | "sheddable";
+            /**
+             * @description What the binding's services do with a request while the binding lookup itself cannot answer (an internal fault, counted in loxilb_ai_netid_resolver_faults_total). neutral (default): the request is decided as if the service had no binding - it is never admitted by its network, and a valid credential is not refused, so a strict binding is not enforced during the fault. closed: every request the lookup would have decided is refused with 503 netid_unavailable until it answers again. The setting is per service in effect, not per binding: a service fails closed when any binding that applies to it says closed, whether that binding names the service or names none, and then it does so for every source. When the bindings that apply to a service disagree, the reply to the POST is "Success; warning: fail_mode: ..." and names them.
+             * @enum {string}
+             */
+            fail_mode?: "neutral" | "closed";
         };
         /** @description Management creation of a data-plane credential; management authorization and data-plane enforcement are separate. Protection requires a service requiring API-key authentication. Quotas lack complete nonnegative/range validation. Whitespace-only tenant IDs are rejected but surrounding spaces are retained. Empty allowed_models permits all models; otherwise matching is exact. Embedded commas do not round-trip as one model identifier. */
         ApiKeyCreateRequest: {
@@ -18760,13 +19211,26 @@ export interface components {
             expires_at?: string;
             /** @description Whether the API key is active. Absent = enabled (optional, nullable to distinguish unset). */
             enabled?: boolean | null;
+            /** @description Optional idempotency handle, at most 128 printable non-space ASCII characters, unique per tenant (a UUID the client minted for this create). A retry carrying the same value converges on the row the first request created instead of making a second key: while that key has never authenticated, its secret is minted again and delivered with the same key_id (reused=true); once it has, 409 api_key_already_delivered. Also accepted as the Idempotency-Key header. Absent, the create behaves as before and a retry after a 504 must first read the listing back. */
+            client_op_id?: string;
+            /**
+             * @description The highest priority class a request with this key may have. It can only lower what the key's tenant allows (a tenant that sets no class allows standard). Omitted means no cap from the key.
+             * @enum {string}
+             */
+            priority_class?: "standard" | "critical" | "sheddable";
+            /** @description The objective a request with this key gets when it names none, or one it may not use. Counts only when the tenant's allowed_objectives hold it. */
+            default_objective?: string;
+            /** @description The objectives a request with this key may ask for by header, and the body tiers (tier:priority, tier:fast, tier:flex) it may ask for by service_tier, out of the ones its tenant allows; at most 64. Empty means the key narrows nothing. The list governs raises only: a hint at or below what the request gets without one needs no entry. */
+            allowed_objectives?: string[];
         };
-        /** @description HTTP 201 creation result. key_id is the management handle. raw_key contains a secret only for generated credentials and is currently empty for imports. Protect generated secrets from logs; subsequent reads expose metadata only. */
+        /** @description HTTP 201 creation result. key_id is the management handle. raw_key contains a secret only for generated credentials and is currently empty for imports. Protect generated secrets from logs; subsequent reads expose metadata only. reused=true says a retry with the same client_op_id converged on the row an earlier request created: same key_id, a new secret, the earlier secret no longer authenticates. */
         ApiKeyCreateResponse: {
             /** @description Generated plaintext credential returned only at creation; currently an empty string, not omission, when the caller imported api_key. */
             raw_key: string;
             /** @description Unique identifier of the created API key */
             key_id: string;
+            /** @description True when this answer is a retry's, converged on the row an earlier request with the same client_op_id created; the secret in raw_key is new and the one that answer carried no longer authenticates. */
+            reused?: boolean;
         };
         /** @description Metadata, not effective service-enforcement status. enabled=false is explicitly serialized; optional zero metadata can be absent. A list without nonempty tenant_id returns all keys; viewer authorization is not tenant scoped. DELETE permanently removes the key and returns 204, not reversible disabling. Positive per-key token quotas participate in the supported data-plane admission and usage-accounting path; readback alone does not establish effective enforcement for every service or protocol. */
         ApiKeySummary: {
@@ -18805,8 +19269,19 @@ export interface components {
             expires_at?: string;
             /** @description Whether this key is currently active */
             enabled: boolean;
+            /** @description The idempotency handle the create carried, when it carried one. It is how a key left by a create whose answer was lost (504) is found in the listing and reconciled. */
+            client_op_id?: string;
+            /**
+             * @description The highest priority class a request with this key may have. It can only lower what the key's tenant allows (a tenant that sets no class allows standard). Omitted means no cap from the key.
+             * @enum {string}
+             */
+            priority_class?: "standard" | "critical" | "sheddable";
+            /** @description The objective a request with this key gets when it names none, or one it may not use. Counts only when the tenant's allowed_objectives hold it. */
+            default_objective?: string;
+            /** @description The objectives a request with this key may ask for by header, and the body tiers (tier:priority, tier:fast, tier:flex) it may ask for by service_tier, out of the ones its tenant allows; at most 64. Empty means the key narrows nothing. The list governs raises only: a hint at or below what the request gets without one needs no entry. */
+            allowed_objectives?: string[];
         };
-        /** @description POST replaces aggregate rps, tokens_per_min, and burst_pct; omission becomes zero, not preservation. Supplied model_limits are individual upserts or removals; omitted/empty model_limits preserves existing model rows. Aggregate and model writes are sequential, not one transaction, so failure can leave partial changes. Blank identifiers and malformed model entries are not consistently rejected as 400. Configuration alone does not enable enforcement on a service. */
+        /** @description POST replaces aggregate rps, tokens_per_min, and burst_pct; omission becomes zero, not preservation. Supplied model_limits are individual upserts or removals; omitted/empty model_limits preserves existing model rows. The aggregate row and the model rows are written in one transaction: the body is applied whole or not at all, and a 504 (outcome unknown) means the whole body may land. Blank identifiers and malformed model entries are not consistently rejected as 400. Configuration alone does not enable enforcement on a service. The class fields (priority_class, default_objective, allowed_objectives) are written by their own statement and only when the body names one of them, so a POST of limits leaves the tenant's class as it is. A body that names a class field and carries no limit (rps, tokens_per_min and burst_pct absent or zero, no model_limits) writes the class only and leaves the limits as they are. */
         TenantRateLimitMod: {
             /** @description Tenant identifier */
             tenant_id: string;
@@ -18827,6 +19302,12 @@ export interface components {
             burst_pct?: number;
             /** @description Per-model token quotas for the tenant */
             model_limits?: components["schemas"]["TenantModelRateLimit"][];
+            /** @description The highest priority class a request of this tenant may have: standard, critical or sheddable. Omitted leaves the stored value; an empty string clears it, and a tenant that sets no class is held at standard. */
+            priority_class?: string | null;
+            /** @description The objective a request of this tenant gets when it names none, or one it may not use. Omitted leaves the stored value; an empty string clears it. */
+            default_objective?: string | null;
+            /** @description The objectives a request of this tenant may raise itself to with the x-llm-d-inference-objective header, and the body tiers it may raise itself to by service_tier, named tier:priority, tier:fast and tier:flex; at most 64. Omitted leaves the stored list; an empty array clears it, and then only a hint at or below what the request gets without one is honoured (the list governs raises only). */
+            allowed_objectives?: string[];
         };
         /** @description A nonempty model is required by the handler despite the schema's optional property. Storage rejects '|' in tenant/model names. Zero, including an omitted tokens_per_min, removes the model quota. Negative values currently also remove it; that is not an approved negative-quota policy. Repeated model entries are applied in order, with the last successful write winning. */
         TenantModelRateLimit: {
@@ -18859,6 +19340,12 @@ export interface components {
             burst_pct?: number;
             /** @description Per-model token quotas for the tenant */
             model_limits?: components["schemas"]["TenantModelRateLimit"][];
+            /** @description The highest priority class a request of this tenant may have; absent when none is set, which holds the tenant at standard */
+            priority_class?: string;
+            /** @description The objective a request of this tenant gets when it names none, or one it may not use */
+            default_objective?: string;
+            /** @description The objectives a request of this tenant may raise itself to by header, and the body tiers (tier:priority, tier:fast, tier:flex); a hint at or below what the request gets without one needs no entry */
+            allowed_objectives?: string[];
             /**
              * Format: date-time
              * @description Timestamp of the last rate limit update
@@ -21282,7 +21769,10 @@ export interface operations {
     postConfigAiApikey: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Same meaning as client_op_id in the body; the body field wins when both are sent. At most 128 printable non-space ASCII characters. */
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -21292,7 +21782,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Created */
+            /** @description Created (reused=true when a retry converged on the row an earlier request with the same client_op_id created) */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -21328,7 +21818,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description Imported API key is already registered */
+            /** @description Imported API key is already registered; or, with a client_op_id, the key this operation created has already authenticated (code api_key_already_delivered, the key_id in the result): its secret is not delivered again. Delete and recreate the key to issue a new one. A concurrent create carrying the same client_op_id is also 409: read the key back. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -21348,6 +21838,15 @@ export interface operations {
             };
             /** @description Management credential store or API-key store unavailable */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Write outcome unknown (code ai_key_store_outcome_unknown). The statement was handed to the API-key store and the store did not answer within the operation budget; the store may still apply it when it resumes. Not a 503: nothing says the write did not happen. Read the resource back (GET, filtering the listing by tenant_id and matching client_op_id) before deciding whether to retry; a blind retry without a client_op_id can create a second row, a retry with the same client_op_id converges on one. */
+            504: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -21489,6 +21988,15 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+            /** @description Write outcome unknown (code ai_key_store_outcome_unknown). The statement was handed to the API-key store and the store did not answer within the operation budget; the store may still apply it when it resumes. Not a 503: nothing says the write did not happen. Read the resource back (GET) before deciding whether to retry; a blind retry of a non-idempotent write can create a second row. */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     patchConfigAiApikeyKeyID: {
@@ -21545,6 +22053,15 @@ export interface operations {
                 };
             };
             503: components["responses"]["ManagementStoreUnavailable"];
+            /** @description Write outcome unknown (code ai_key_store_outcome_unknown). The statement was handed to the API-key store and the store did not answer within the operation budget; the store may still apply it when it resumes. Not a 503: nothing says the write did not happen. Read the resource back (GET) before deciding whether to retry; a blind retry of a non-idempotent write can create a second row. */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     postConfigAiTenantRatelimit: {
@@ -21605,6 +22122,15 @@ export interface operations {
             };
             /** @description Management credential store or API-key store unavailable */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Write outcome unknown (code ai_key_store_outcome_unknown). The statement was handed to the API-key store and the store did not answer within the operation budget; the store may still apply it when it resumes. Not a 503: nothing says the write did not happen. Read the resource back (GET) before deciding whether to retry; a blind retry of a non-idempotent write can create a second row. */
+            504: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -21740,6 +22266,15 @@ export interface operations {
             };
             /** @description Management credential store or API-key store unavailable */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Write outcome unknown (code ai_key_store_outcome_unknown). The statement was handed to the API-key store and the store did not answer within the operation budget; the store may still apply it when it resumes. Not a 503: nothing says the write did not happen. Read the resource back (GET) before deciding whether to retry; a blind retry of a non-idempotent write can create a second row. */
+            504: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -21944,6 +22479,15 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+            /** @description Write outcome unknown (code ai_key_store_outcome_unknown). The statement was handed to the API-key store and the store did not answer within the operation budget; the store may still apply it when it resumes. Not a 503: nothing says the write did not happen. Read the resource back (GET) before deciding whether to retry; a blind retry of a non-idempotent write can create a second row. */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     postConfigAiRatelimitDefaults: {
@@ -22004,6 +22548,15 @@ export interface operations {
             };
             /** @description Management credential store or API-key store unavailable */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Write outcome unknown (code ai_key_store_outcome_unknown). The statement was handed to the API-key store and the store did not answer within the operation budget; the store may still apply it when it resumes. Not a 503: nothing says the write did not happen. Read the resource back (GET) before deciding whether to retry; a blind retry of a non-idempotent write can create a second row. */
+            504: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -22144,6 +22697,15 @@ export interface operations {
             };
             /** @description Management credential store or API-key store unavailable */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Write outcome unknown (code ai_key_store_outcome_unknown). The statement was handed to the API-key store and the store did not answer within the operation budget; the store may still apply it when it resumes. Not a 503: nothing says the write did not happen. Read the resource back (GET) before deciding whether to retry; a blind retry of a non-idempotent write can create a second row. */
+            504: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -22700,6 +23262,394 @@ export interface operations {
             };
             /** @description Maintenance mode */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getConfigAiNetidentityAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        netIdentityAttr?: components["schemas"]["NetIdentityEntry"][];
+                    };
+                };
+            };
+            /** @description Invalid authentication credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            403: components["responses"]["ManagementForbidden"];
+            /** @description Internal service error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Maintenance mode */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    postConfigAiNetidentity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Attributes of the network-identity binding */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NetIdentityEntry"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationResult"];
+                };
+            };
+            /** @description Malformed arguments for API call */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Invalid authentication credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            403: components["responses"]["ManagementForbidden"];
+            /** @description Resource Conflict. Another binding maps the same source on the same service to another tenant */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal service error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Maintenance mode */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deleteConfigAiNetidentityName: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Name of the network-identity binding */
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationResult"];
+                };
+            };
+            /** @description Invalid authentication credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            403: components["responses"]["ManagementForbidden"];
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal service error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Maintenance mode */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getConfigAiObjectiveAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        objectiveAttr?: components["schemas"]["AIObjectiveEntry"][];
+                        /**
+                         * @description Where the list came from: store (the key store answered) or lkg (the last-known-good file this gateway started from, while the store has not answered since)
+                         * @enum {string}
+                         */
+                        source?: "store" | "lkg";
+                        /**
+                         * Format: date-time
+                         * @description When the key store answered with this list: now for a list read now, earlier for an applied list served during an outage
+                         */
+                        source_timestamp?: string;
+                        /** @description Whether the key store answered this request's read of it: false during an outage, whatever source says */
+                        store_reachable?: boolean;
+                        /**
+                         * Format: date-time
+                         * @description When a read of the key store last answered: now when it answered this one; during an outage, the last read in this process. A gateway started from the last-known-good file shows the read that last CHANGED that file (the store may have answered later with nothing changed). Absent when neither happened
+                         */
+                        store_last_read?: string | null;
+                    };
+                };
+            };
+            /** @description Invalid authentication credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            403: components["responses"]["ManagementForbidden"];
+            /** @description Internal service error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Maintenance mode, no AI key store configured, or the store does not answer and nothing was applied yet */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    postConfigAiObjective: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Attributes of the objective */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AIObjectiveEntry"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationResult"];
+                };
+            };
+            /** @description Malformed arguments for API call */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Invalid authentication credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            403: components["responses"]["ManagementForbidden"];
+            /** @description Internal service error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Maintenance mode, no AI key store configured (ai_key_store_unconfigured), or the store does not answer (ai_key_store_unavailable) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Write outcome unknown (code ai_key_store_outcome_unknown). The statement was handed to the API-key store and the store did not answer within the operation budget; the store may still apply it when it resumes. Not a 503: nothing says the write did not happen. Read the resource back (GET) before deciding whether to retry; a blind retry of a non-idempotent write can create a second row. */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deleteConfigAiObjectiveName: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Name of the objective */
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationResult"];
+                };
+            };
+            /** @description Invalid authentication credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            403: components["responses"]["ManagementForbidden"];
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal service error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Maintenance mode, no AI key store configured, or the store does not answer */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Write outcome unknown (code ai_key_store_outcome_unknown). The statement was handed to the API-key store and the store did not answer within the operation budget; the store may still apply it when it resumes. Not a 503: nothing says the write did not happen. Read the resource back (GET) before deciding whether to retry; a blind retry of a non-idempotent write can create a second row. */
+            504: {
                 headers: {
                     [name: string]: unknown;
                 };

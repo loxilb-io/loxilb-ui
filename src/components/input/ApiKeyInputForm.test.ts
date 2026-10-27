@@ -45,3 +45,18 @@ describe('imported API key validation', () => {
 		expect(apiKeyFormToRequest(form({mode: 'import', api_key: 'too-short'}))).not.toHaveProperty('api_key');
 	});
 });
+
+describe('request priority on a key create (gateway 9f5017e2)', () => {
+	it('sends no priority field when none is set: no cap from the key', () => {
+		const body = apiKeyFormToRequest(form({priority: {priority_class: '', default_objective: '', allowed_objectives: ''}}));
+		expect('priority_class' in body || 'default_objective' in body || 'allowed_objectives' in body).toBe(false);
+	});
+
+	it('sends the set priority fields', () => {
+		expect(apiKeyFormToRequest(form({priority: {priority_class: 'sheddable', default_objective: 'batch', allowed_objectives: 'batch, tier:flex'}}))).toMatchObject({
+			priority_class: 'sheddable',
+			default_objective: 'batch',
+			allowed_objectives: ['batch', 'tier:flex'],
+		});
+	});
+});

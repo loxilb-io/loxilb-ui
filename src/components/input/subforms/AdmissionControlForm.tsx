@@ -6,7 +6,7 @@ import HorizontalStack from 'components/layout/HorizontalStack';
 import {evaluateNumericField} from 'components/input/numericField';
 import {t} from 'i18next';
 import {useCallback, useState} from 'react';
-import {FC_FIELDS, FC_NUMERIC_MAX, FcNumericField} from 'types/ai_gateway';
+import {FC_EDITABLE_FIELDS, FC_NUMERIC_MAX, FcNumericField} from 'types/ai_gateway';
 import {IEnumItem} from 'types/global';
 import {IServiceArguments} from 'types/load_balancer';
 
@@ -60,7 +60,9 @@ export default function AdmissionControlForm(props: {
 	const {value, onChange, pdTopology, isEdit, declared} = props;
 	const [text, setText] = useState(() => initialText(value));
 	// Open when the rule already declares something, so an edit shows it.
-	const [open, setOpen] = useState(() => FC_FIELDS.some(field => value[field] !== undefined && value[field] !== ''));
+	// Opens on what this form edits; a band setting made with loxicmd has no
+	// control here, so it does not open an empty section.
+	const [open, setOpen] = useState(() => FC_EDITABLE_FIELDS.some(field => value[field] !== undefined && value[field] !== ''));
 
 	const numeric = useCallback(
 		(field: FcNumericField) => (raw: string) => {

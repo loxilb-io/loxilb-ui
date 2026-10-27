@@ -7,7 +7,9 @@ import ParamBox from 'components/element/ParamBox';
 import {evaluateNumericField} from 'components/input/numericField';
 import {t} from 'i18next';
 import React from 'react';
+import PriorityClassFields from 'components/input/subforms/PriorityClassFields';
 import {IApiKeyPatch, IApiKeySummary, apiKeyPatchIsEmpty, validateApiKeyPatch} from 'types/ai';
+import {hasPrioritySettings, IAIObjectiveEntry, IPriorityDraft, priorityChangedFields, priorityDraftFrom} from 'types/ai_priority';
 
 //---------------------------------------------------------
 // Edit an existing API key (Stage 4.1)
@@ -52,6 +54,8 @@ export interface IApiKeyPatchFormState {
 	// Comma-separated in the form, exactly as the create form does it.
 	allowed_models: string;
 	enabled: boolean;
+	// Request priority as read; a changed field is sent, an emptied one clears.
+	priority?: IPriorityDraft;
 }
 
 // The gateway rejects nothing here, but `min: 0` keeps a negative off the wire
@@ -79,6 +83,7 @@ export function apiKeyPatchFormInitialState(current: IApiKeySummary): IApiKeyPat
 		allowed_models: modelsToText(current.allowed_models),
 		// `enabled` is the one field the summary always serializes.
 		enabled: current.enabled !== false,
+		priority: priorityDraftFrom(current),
 	};
 }
 
@@ -119,6 +124,8 @@ export function apiKeyPatchFromForm(form: IApiKeyPatchFormState, current: IApiKe
 	// survive this comparison when the key currently has a restriction.
 	if (models.join(',') !== storedModels.join(',')) patch.allowed_models = models;
 
+	if (form.priority) Object.assign(patch, priorityChangedFields(form.priority, current, 'key'));
+
 	return patch;
 }
 
@@ -130,6 +137,9 @@ function changedFieldLabels(patch: IApiKeyPatch): string[] {
 	if (patch.rate_limit_rps !== undefined) labels.push(t('Requests per second'));
 	if (patch.burst_size !== undefined) labels.push(t('Burst size'));
 	if (patch.tokens_per_min !== undefined) labels.push(t('Tokens per minute'));
+	if (patch.priority_class !== undefined) labels.push(t('Priority Class'));
+	if (patch.default_objective !== undefined) labels.push(t('Default Objective'));
+	if (patch.allowed_objectives !== undefined) labels.push(t('Allowed Objectives'));
 	return labels;
 }
 
@@ -139,9 +149,11 @@ function changedFieldLabels(patch: IApiKeyPatch): string[] {
 interface ApiKeyPatchFormProps {
 	current: IApiKeySummary;
 	onChange: (data: IApiKeyPatch & {isValid?: boolean}) => void;
+	/** The objectives as read, for the priority group's hints; undefined when unreadable. */
+	objectives?: readonly IAIObjectiveEntry[];
 }
 
-export default function ApiKeyPatchForm({current, onChange}: ApiKeyPatchFormProps) {
+export default function ApiKeyPatchForm({current, onChange, objectives}: ApiKeyPatchFormProps) {
 	const [form, setForm] = React.useState<IApiKeyPatchFormState>(() => apiKeyPatchFormInitialState(current));
 
 	const patch = apiKeyPatchFromForm(form, current);
@@ -230,6 +242,15 @@ export default function ApiKeyPatchForm({current, onChange}: ApiKeyPatchFormProp
 						param_desc={{type: 'integer', description: 'LLM tokens per minute allowed on this key. 0 is an explicit "no per-key token quota". The quota is charged after a response is served, so a charge that puts the bucket in debt denies the NEXT request rather than truncating the one in flight. Lowering it does not re-price spend already charged.'}}
 					/>
 				</Grid2>
+
+				<PriorityClassFields
+					scope="key"
+					value={form.priority ?? priorityDraftFrom(current)}
+					onChange={next => push({...form, priority: next})}
+					objectives={objectives}
+					defaultOpen={hasPrioritySettings(current)}
+					isEdit
+				/>
 
 				{/* The honest read-back: exactly what the request will name. */}
 				<Typography variant="body2" color={isValid ? 'text.secondary' : 'text.disabled'}>

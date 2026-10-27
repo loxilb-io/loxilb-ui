@@ -153,6 +153,46 @@ describe('axe: observability building blocks', () => {
 	});
 });
 
+describe('axe: gateway contract sync read-backs', () => {
+	// Two tables of their own (bands, reserved buckets) with row and column
+	// headers, plus the class-source alerts.
+	it('band, reservation and class-source read-back has no violations', async () => {
+		const AdmissionBandsReadBack = (await import('components/panel/AdmissionBandsReadBack')).default;
+		const {container} = render(
+			<AdmissionBandsReadBack
+				effective={{
+					mode: 'enforce',
+					wake_policy: 'weighted',
+					wake_policy_effective: 'strict',
+					band_fallback_reason: 'zero_weight',
+					bands: {critical_reserve_pct: 10, critical_reserve_units: 1, critical: {inflight: 1, weight: 0}, standard: {inflight: 2}, sheddable: {}},
+					default_reservation: 'on',
+					default_max_tokens: 512,
+					reservation_held: [{kind: 'tenant', bucket: 'tenant:acme', tokens: 10}],
+					reservation_held_truncated: true,
+					config_source: 'lkg',
+					store_reachable: false,
+				}}
+			/>,
+		);
+		await expectNoViolations(container);
+	});
+});
+
+describe('axe: QoS signal panels', () => {
+	it('band outcome and log loss tables have no violations', async () => {
+		const {BandOutcomesPanel, LogLossPanel} = await import('components/observability/QosSignalPanels');
+		const ok = {kind: 'ok', perSecond: 1, intervalMs: 10_000} as const;
+		const {container} = render(
+			<div>
+				<BandOutcomesPanel report={{kind: 'ok', intervalMs: 10_000, services: [{service: '10.0.0.1:443', bands: [{band: 'critical', outcomes: {admitted: ok, shed: ok, expired: ok, cancelled: ok}, parks: {kind: 'insufficient-samples'}}]}]}} />
+				<LogLossPanel report={{kind: 'ok', dropping: true, everDropped: true, intervalMs: 10_000, levels: [{level: 'info', total: 3, rate: ok}]}} />
+			</div>,
+		);
+		await expectNoViolations(container);
+	});
+});
+
 describe('axe gate self-test', () => {
 	it('detects an injected violation (gate is red-capable)', async () => {
 		// An image without alt text is a bread-and-butter axe finding; if this

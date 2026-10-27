@@ -86,6 +86,16 @@ export const MENU_LIST: IMenuItem[] = [
 				name: 'JWT Auth Profiles',
 				path: 'jwtauth',
 			},
+			// Named request priorities (loxilb-igw only, like the whole group).
+			{
+				name: 'Objectives',
+				path: 'objectives',
+			},
+			// Read-only: bindings are made with loxicmd or the API.
+			{
+				name: 'Network Identities',
+				path: 'netidentity',
+			},
 			{
 				name: 'Model Profiles',
 				path: 'profiles',

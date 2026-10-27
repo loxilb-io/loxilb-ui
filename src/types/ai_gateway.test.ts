@@ -1,6 +1,13 @@
 import {describe, expect, it} from 'vitest';
 import {
+	AI_ADMISSION_FIELDS,
+	canonicalBandTriple,
 	CHWBL_TUNING_FIELDS,
+	CLI_ONLY_SERVICE_ARGUMENTS,
+	FC_CLI_ONLY_FIELDS,
+	FC_EDITABLE_FIELDS,
+	isCliOnlyServiceArgument,
+	isResetBandTriple,
 	declaredChwblTuningFields,
 	circuitBreakerEditSeed,
 	declaredFcFields,
@@ -592,7 +599,19 @@ describe('admission validation (mirrors the gateway refusals)', () => {
 	});
 
 	it('lists every writable spec field and nothing read-only', () => {
+		// 13 with a form control + 9 band knobs set only with loxicmd/API
+		// (gateway 9f5017e2).
 		expect([...FC_FIELDS].sort()).toEqual([
+			'fc_adaptive', 'fc_band_min_share_pct', 'fc_band_queue_pct', 'fc_band_wait_ms', 'fc_band_weights',
+			'fc_critical_reserve_pct', 'fc_decode_max_inflight', 'fc_ep_max_inflight', 'fc_expose_headers', 'fc_llmd_headers',
+			'fc_max_outstanding', 'fc_max_queue_depth', 'fc_max_queue_wait_ms', 'fc_mode', 'fc_prefill_max_inflight',
+			'fc_shed_queue', 'fc_telemetry_stale_ms', 'fc_tenant_max_share_pct', 'fc_tenant_wake', 'fc_ttft_target_ms',
+			'fc_wake_policy', 'fc_warmup_ms',
+		]);
+	});
+
+	it('keeps the editable admission fields the 13 the form has controls for', () => {
+		expect([...FC_EDITABLE_FIELDS].sort()).toEqual([
 			'fc_adaptive', 'fc_decode_max_inflight', 'fc_ep_max_inflight', 'fc_expose_headers', 'fc_max_outstanding', 'fc_max_queue_depth',
 			'fc_max_queue_wait_ms', 'fc_mode', 'fc_prefill_max_inflight', 'fc_telemetry_stale_ms', 'fc_tenant_max_share_pct',
 			'fc_ttft_target_ms', 'fc_warmup_ms',
@@ -676,5 +695,100 @@ describe('circuit breaker resolution', () => {
 		expect(circuitBreakerEditSeed({mode: 0})).toEqual({});
 		expect(circuitBreakerEditSeed({mode: 0, cb_enable: true})).toEqual({});
 		expect(circuitBreakerEditSeed(undefined)).toEqual({});
+	});
+});
+
+describe('expert admission arguments are CLI/API-only (D-01)', () => {
+	const twelve = [
+		'fc_wake_policy', 'fc_band_weights', 'fc_band_min_share_pct', 'fc_band_queue_pct', 'fc_band_wait_ms',
+		'fc_critical_reserve_pct', 'fc_shed_queue', 'fc_tenant_wake', 'fc_llmd_headers',
+		'ai_default_reservation', 'ai_default_max_tokens', 'ai_objective_strict',
+	];
+
+	it('is exactly the reviewed twelve, split nine fc_* and three ai_*', () => {
+		expect([...CLI_ONLY_SERVICE_ARGUMENTS].sort()).toEqual([...twelve].sort());
+		expect(FC_CLI_ONLY_FIELDS.every(field => field.startsWith('fc_'))).toBe(true);
+		expect(AI_ADMISSION_FIELDS.every(field => field.startsWith('ai_'))).toBe(true);
+		expect(FC_CLI_ONLY_FIELDS).toHaveLength(9);
+		expect(AI_ADMISSION_FIELDS).toHaveLength(3);
+		for (const field of twelve) expect(isCliOnlyServiceArgument(field), field).toBe(true);
+		expect(isCliOnlyServiceArgument('fc_mode')).toBe(false);
+	});
+
+	it('never overlaps the editable admission fields', () => {
+		for (const field of CLI_ONLY_SERVICE_ARGUMENTS) expect(FC_EDITABLE_FIELDS, field).not.toContain(field);
+	});
+
+	it('is never offered as a control even when the live /meta declares all of it', () => {
+		const everything = Object.fromEntries([...FC_FIELDS, ...AI_ADMISSION_FIELDS].map(field => [field, {type: 'string'}]));
+		const offered = declaredFcFields(everything);
+		for (const field of CLI_ONLY_SERVICE_ARGUMENTS) expect(offered.has(field as keyof IServiceArguments), field).toBe(false);
+		expect([...offered].sort()).toEqual([...FC_EDITABLE_FIELDS].sort());
+	});
+
+	const readBack: Partial<IServiceArguments> = {
+		sse_mode: true,
+		fc_mode: 'enforce',
+		fc_wake_policy: 'weighted',
+		fc_band_weights: '8:3:1',
+		fc_band_min_share_pct: '10:0:0',
+		fc_band_queue_pct: '50:30:20',
+		fc_band_wait_ms: '0:2000:500',
+		fc_critical_reserve_pct: 10,
+		fc_shed_queue: 'off',
+		fc_tenant_wake: 'rr',
+		fc_llmd_headers: 'on',
+		ai_default_reservation: 'on',
+		ai_default_max_tokens: 2048,
+		ai_objective_strict: false,
+	};
+
+	it('carries every read-back value through an unrelated edit unchanged', () => {
+		const wire = serializeAIConfiguration(configuration({...readBack, max_stream_duration_sec: 120})).serviceArguments as unknown as Record<string, unknown>;
+		for (const field of twelve) expect(wire[field], field).toEqual((readBack as Record<string, unknown>)[field]);
+	});
+
+	it('keeps an explicit false and drops only nothing', () => {
+		const wire = serializeAIConfiguration(configuration({sse_mode: true, ai_objective_strict: false, ai_default_reservation: '' as never, fc_band_weights: ''})).serviceArguments;
+		expect(wire.ai_objective_strict).toBe(false);
+		expect('ai_default_reservation' in wire).toBe(false);
+		expect('fc_band_weights' in wire).toBe(false);
+	});
+
+	it('does not send them where no admission pool reads them', () => {
+		const notAI = serializeAIConfiguration(configuration({...readBack, sse_mode: false})).serviceArguments as unknown as Record<string, unknown>;
+		for (const field of twelve) expect(field in notAI, field).toBe(false);
+		const notFullproxy = serializeAIConfiguration(configuration({...readBack, mode: 0})).serviceArguments as unknown as Record<string, unknown>;
+		for (const field of twelve) expect(field in notFullproxy, field).toBe(false);
+	});
+
+	it('a fresh AI rule does not introduce any of them', () => {
+		const wire = serializeAIConfiguration(configuration({sse_mode: true})).serviceArguments as unknown as Record<string, unknown>;
+		for (const field of twelve) expect(field in wire, field).toBe(false);
+	});
+
+	it('treats inherit and a reset triple off fullproxy as no AI setting', () => {
+		expect(issueFields(configuration({mode: 0, fc_wake_policy: 'inherit', fc_band_weights: '0:0:0', ai_default_reservation: 'inherit'}))).toEqual([]);
+		expect(issueFields(configuration({mode: 0, fc_wake_policy: 'strict'}))).toEqual(['mode']);
+		expect(issueFields(configuration({mode: 0, ai_default_max_tokens: 512}))).toEqual(['mode']);
+	});
+});
+
+describe('band triples as the gateway reads them back', () => {
+	it('canonicalises whole numbers and reads the reset value as nothing', () => {
+		expect(canonicalBandTriple('8:3:1')).toBe('8:3:1');
+		expect(canonicalBandTriple('08:03:01')).toBe('8:3:1');
+		expect(canonicalBandTriple('0:0:0')).toBeUndefined();
+		expect(canonicalBandTriple('00:0:000')).toBeUndefined();
+		expect(canonicalBandTriple('')).toBeUndefined();
+		expect(canonicalBandTriple(undefined)).toBeUndefined();
+		expect(isResetBandTriple('0:0:0')).toBe(true);
+		expect(isResetBandTriple('0:0:1')).toBe(false);
+	});
+
+	it('leaves a value the gateway refuses as given, so it never matches by accident', () => {
+		expect(canonicalBandTriple('8:3')).toBe('8:3');
+		expect(canonicalBandTriple('8:-3:1')).toBe('8:-3:1');
+		expect(canonicalBandTriple('8: 3:1')).toBe('8: 3:1');
 	});
 });

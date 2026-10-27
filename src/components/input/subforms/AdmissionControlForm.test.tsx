@@ -12,7 +12,7 @@ import 'locales/i18n';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {cleanup, render, screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import {FC_FIELDS} from 'types/ai_gateway';
+import {CLI_ONLY_SERVICE_ARGUMENTS, FC_FIELDS} from 'types/ai_gateway';
 import {IServiceArguments} from 'types/load_balancer';
 import AdmissionControlForm from './AdmissionControlForm';
 
@@ -153,5 +153,21 @@ describe('AdmissionControlForm', () => {
 		expect(screen.queryByLabelText('Admission Mode')).toBeNull();
 		expect(screen.queryByLabelText('Adaptive Ceiling')).toBeNull();
 		expect(screen.queryByLabelText('Admission Response Headers')).toBeNull();
+	});
+
+	it('has no control for a CLI-only argument, even with every field declared', async () => {
+		renderForm(args(), {declared: [...FC_FIELDS, ...CLI_ONLY_SERVICE_ARGUMENTS] as (keyof IServiceArguments)[]});
+		await expand();
+		const withAll = screen.getAllByRole('textbox').length + screen.queryAllByRole('combobox').length;
+		cleanup();
+		renderForm(args(), {declared: FC_FIELDS.filter(field => !(CLI_ONLY_SERVICE_ARGUMENTS as readonly string[]).includes(field))});
+		await expand();
+		expect(screen.getAllByRole('textbox').length + screen.queryAllByRole('combobox').length).toBe(withAll);
+		for (const field of CLI_ONLY_SERVICE_ARGUMENTS) expect(document.querySelector(`[name="${field}"]`), field).toBeNull();
+	});
+
+	it('does not open on a band setting made with loxicmd alone', () => {
+		renderForm(args({fc_band_weights: '8:3:1', fc_wake_policy: 'weighted'}), {isEdit: true});
+		expect(screen.queryByRole('textbox', {name: 'Max Outstanding'})).toBeNull();
 	});
 });

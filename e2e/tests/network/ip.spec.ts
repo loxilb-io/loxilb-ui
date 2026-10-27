@@ -9,9 +9,10 @@
 //---------------------------------------------------------
 import {Page} from '@playwright/test';
 import {expect, test} from '../../fixtures';
-import {activeInstance, gwJson, isDocAddr, sweepIpAddresses} from '../../helpers/api';
+import {activeInstance, gwJson, isDocAddr, primaryNetworkDevice, sweepIpAddresses} from '../../helpers/api';
 import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, openToolbarDialog} from '../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../helpers/form';
+import {IpAttr, uniqueAddressOf} from '../../helpers/networkDevice';
 import {refreshUntilGone, refreshUntilRow, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 
 const V4_PATH = '/config/ipv4address';
@@ -48,9 +49,13 @@ test.describe('IPv4 address page (edit-is-create)', () => {
 	test.beforeAll(async () => {
 		instName = (await activeInstance()).name;
 		await sweepIpAddresses('ipv4');
-		// Pick the edit-target row from the live address table: a non-loopback
-		// device with a real (non-doc-range) primary address that is UNIQUE
-		// across the table.
+		// The device is the shared primaryNetworkDevice, never a pick of this
+		// spec's own. On a host-network gateway the secondary address and its
+		// delete land on the host, and a picker that skipped only lo once chose
+		// another workload's Docker bridge and removed its gateway address.
+		//
+		// The edit-target row is that device's real (non-doc-range) address
+		// that is UNIQUE across the address table.
 		//
 		// Uniqueness is not a nicety. The grid is addressed by row text, so an
 		// address carried by several devices resolves to several rows and
@@ -62,20 +67,10 @@ test.describe('IPv4 address page (edit-is-create)', () => {
 		// list interfaces in, so the spec passed or failed by luck; it failed in
 		// the AFTER-run and passed in isolation minutes later, with the
 		// same 7 bridges present both times.
-		const data = await gwJson<{ipAttr?: Array<{dev: string; ipAddress?: string[]}>}>(`${V4_PATH}/all`);
-		const attrs = data.ipAttr ?? [];
-		const bareAddrs = attrs.flatMap(a => (a.ipAddress ?? []).map(cidr => cidr.split('/')[0]));
-		const occurrences = (ip: string) => bareAddrs.filter(a => a === ip).length;
-		for (const attr of attrs) {
-			if (attr.dev === 'lo') continue;
-			const primary = (attr.ipAddress ?? []).find(cidr => !isDocAddr(cidr) && occurrences(cidr.split('/')[0]) === 1);
-			if (primary) {
-				BASE_DEV = attr.dev;
-				BASE_IP = primary.split('/')[0];
-				break;
-			}
-		}
-		expect(BASE_DEV, 'testbed must expose a non-lo device whose IPv4 address is unique across the address table').toBeTruthy();
+		BASE_DEV = await primaryNetworkDevice();
+		const data = await gwJson<{ipAttr?: IpAttr[]}>(`${V4_PATH}/all`);
+		BASE_IP = uniqueAddressOf(data.ipAttr ?? [], BASE_DEV, isDocAddr) ?? '';
+		expect(BASE_IP, `primary network device ${BASE_DEV} must hold an IPv4 address unique across the address table`).toBeTruthy();
 	});
 
 	test.afterEach(async () => {

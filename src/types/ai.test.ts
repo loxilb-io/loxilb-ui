@@ -144,7 +144,7 @@ describe('tenant per-model quota contract', () => {
 //---------------------------------------------------------
 
 describe('API key patch contract', () => {
-	it('carries FIVE patchable fields, not the three rate-limit ones the brief names', () => {
+	it('carries the patchable fields the gateway names, not just the three rate-limit ones', () => {
 		// `allowed_models` and `enabled` patch on the same call and share the
 		// same presence rules. Dropping either from this list would make
 		// `apiKeyPatchIsEmpty` answer "nothing asked" for a real change and the
@@ -159,8 +159,19 @@ describe('API key patch contract', () => {
 		// (which would otherwise answer 503), which is the live proof that the
 		// nonempty-patch check runs BEFORE the store and key are consulted —
 		// i.e. that such a 400 really does not mean the key exists.
-		expect(API_KEY_PATCH_FIELDS).toHaveLength(5);
-		expect([...API_KEY_PATCH_FIELDS]).toEqual(['allowed_models', 'enabled', 'rate_limit_rps', 'burst_size', 'tokens_per_min']);
+		//
+		// Gateway 9f5017e2 adds the three request-priority fields to the same
+		// guard (api/restapi/handler/ai_apikey.go, "no patchable field
+		// supplied: … tokens_per_min, priority_class, default_objective,
+		// allowed_objectives"), in this order.
+		expect(API_KEY_PATCH_FIELDS).toHaveLength(8);
+		expect([...API_KEY_PATCH_FIELDS]).toEqual(['allowed_models', 'enabled', 'rate_limit_rps', 'burst_size', 'tokens_per_min', 'priority_class', 'default_objective', 'allowed_objectives']);
+	});
+
+	it('counts a priority field emptied to clear it as a change', () => {
+		expect(apiKeyPatchIsEmpty({priority_class: ''})).toBe(false);
+		expect(apiKeyPatchIsEmpty({allowed_objectives: []})).toBe(false);
+		expect(apiKeyPatchIsEmpty({default_objective: ''})).toBe(false);
 	});
 
 	describe('the "nothing asked" class', () => {

@@ -625,7 +625,7 @@ paths:
         of the generated specification.
         Omitted or null fields remain unchanged; an explicit empty allowed_models
         array removes the model restriction and allows all models subject to other
-        controls. A body naming NONE of the five patchable fields is rejected 400
+        controls. A body naming NONE of the eight patchable fields is rejected 400
         and changes nothing: an empty object, a top-level null, a body whose only
         members are unrecognized names, and a body whose patchable members are
         all explicitly null are every one of them in that class. Note the
@@ -669,7 +669,7 @@ paths:
           required: true
           description: >
             Fields to update, with independent presence semantics. No single
-            field is individually required, but AT LEAST ONE of the five must be
+            field is individually required, but AT LEAST ONE of the eight must be
             present: a body naming none of them is refused 400 (see the
             operation description for the full class, and for what the earlier
             204 meant). An absent body fails JSON decoding. Unknown fields are
@@ -733,6 +733,32 @@ paths:
                   denies the NEXT request rather than truncating the one in
                   flight. Lowering the value does not retroactively re-price spend
                   that has already been charged.
+              priority_class:
+                type: string
+                enum: ["", standard, critical, sheddable]
+                description: >
+                  The highest priority class a request with this key may have.
+                  Omitted or null leaves the stored value unchanged; an empty
+                  string clears it (no cap from the key). It can only lower what
+                  the key's tenant allows.
+              default_objective:
+                type: string
+                description: >
+                  The objective a request with this key gets when it names none.
+                  Omitted or null leaves the stored value unchanged; an empty
+                  string clears it.
+              allowed_objectives:
+                type: array
+                items:
+                  type: string
+                description: >
+                  The objectives a request with this key may ask for by header,
+                  out of the ones its tenant allows; at most 64. Omitted or null
+                  leaves the stored list unchanged; an empty array clears it.
+                  The list governs raises only: a hint at or below what the
+                  request gets without one needs no entry.
+                  The three class fields are written by one statement of their
+                  own, after the other fields.
       responses:
         '204':
           description: >
@@ -747,7 +773,7 @@ paths:
             Two classes reach this status and they differ in what they imply.
             Refused BEFORE the key is looked up: empty/whitespace-only key_id,
             a body that fails JSON decoding (including an incompatible field
-            type), and a body naming none of the five patchable fields — an
+            type), and a body naming none of the eight patchable fields — an
             empty object, a top-level null, an all-null body, or a body whose
             only members are unrecognized names. That last group answered 204 in
             earlier builds. Nothing is changed in this class and the key is
@@ -790,6 +816,18 @@ paths:
           schema:
             # The raw arm writes {"error": ...} via writeKeyStoreFailure
             # (api/restapi/handler/ai_apikey.go), which is SimpleError.
+            $ref: '#/definitions/SimpleError'
+        '504':
+          description: >-
+            Write outcome unknown (SimpleError with error equal to
+            ai_key_store_outcome_unknown). The statement was handed to the
+            API-key store and the store did not answer within the operation
+            budget; the store may still apply it when it resumes. Not a 503:
+            nothing says the write did not happen. Read the key back (GET)
+            before deciding whether to retry.
+          schema:
+            # Same raw arm as the 503 above: writeKeyStoreFailure writes
+            # {"error": ...}.
             $ref: '#/definitions/SimpleError'
 
 definitions:

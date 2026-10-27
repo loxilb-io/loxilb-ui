@@ -638,7 +638,7 @@ export interface paths {
         head?: never;
         /**
          * Update an AI gateway API key
-         * @description Updates the allowed model list, the enabled flag, and/or the three rate-limit fields of an existing API key. Only the PATCH method on this path is handled by the middleware; the other API key operations are part of the generated specification. Omitted or null fields remain unchanged; an explicit empty allowed_models array removes the model restriction and allows all models subject to other controls. A body naming NONE of the five patchable fields is rejected 400 and changes nothing: an empty object, a top-level null, a body whose only members are unrecognized names, and a body whose patchable members are all explicitly null are every one of them in that class. Note the interaction with the null rule above: a null field is left unchanged, but a body in which EVERY patchable field is null has asked for nothing and is refused rather than accepted as a no-op. An explicit empty allowed_models array is not in this class — it is a present field that clears the restriction. This is a deliberate change from an earlier build that answered 204 for such a body. That 204 asserted two things that were not true — that a misspelled field name had been applied, and (since PATCH's 204 asserts the resource exists) that the key existed, which was never checked on that path. A client that relied on the old status to mean "key present, nothing to change" must now distinguish 400 (nothing was asked for) from 404 (the key is absent), and can obtain the old meaning by naming a field with its current value. Implementation limitations: allowed_models and enabled use separate SQL statements without a transaction. If the second update fails, the first can remain committed and cache invalidation is skipped. A failure does not establish rollback; re-read state before declaring the final outcome. A concurrent deletion after lookup is not checked through affected-row counts. Successful updates evict local cached views synchronously; peer invalidation is best-effort, not cluster-wide acknowledgment. Model strings are stored as comma-separated text without lossless array encoding or item validation (see allowed_models). Direct cross-origin browser PATCH is also limited by the current CORS method list, which omits PATCH. Atomic updates, strict body/model validation, and CORS support require implementation changes; these descriptions do not supply those guarantees.
+         * @description Updates the allowed model list, the enabled flag, and/or the three rate-limit fields of an existing API key. Only the PATCH method on this path is handled by the middleware; the other API key operations are part of the generated specification. Omitted or null fields remain unchanged; an explicit empty allowed_models array removes the model restriction and allows all models subject to other controls. A body naming NONE of the eight patchable fields is rejected 400 and changes nothing: an empty object, a top-level null, a body whose only members are unrecognized names, and a body whose patchable members are all explicitly null are every one of them in that class. Note the interaction with the null rule above: a null field is left unchanged, but a body in which EVERY patchable field is null has asked for nothing and is refused rather than accepted as a no-op. An explicit empty allowed_models array is not in this class — it is a present field that clears the restriction. This is a deliberate change from an earlier build that answered 204 for such a body. That 204 asserted two things that were not true — that a misspelled field name had been applied, and (since PATCH's 204 asserts the resource exists) that the key existed, which was never checked on that path. A client that relied on the old status to mean "key present, nothing to change" must now distinguish 400 (nothing was asked for) from 404 (the key is absent), and can obtain the old meaning by naming a field with its current value. Implementation limitations: allowed_models and enabled use separate SQL statements without a transaction. If the second update fails, the first can remain committed and cache invalidation is skipped. A failure does not establish rollback; re-read state before declaring the final outcome. A concurrent deletion after lookup is not checked through affected-row counts. Successful updates evict local cached views synchronously; peer invalidation is best-effort, not cluster-wide acknowledgment. Model strings are stored as comma-separated text without lossless array encoding or item validation (see allowed_models). Direct cross-origin browser PATCH is also limited by the current CORS method list, which omits PATCH. Atomic updates, strict body/model validation, and CORS support require implementation changes; these descriptions do not supply those guarantees.
          */
         patch: {
             parameters: {
@@ -650,7 +650,7 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            /** @description Fields to update, with independent presence semantics. No single field is individually required, but AT LEAST ONE of the five must be present: a body naming none of them is refused 400 (see the operation description for the full class, and for what the earlier 204 meant). An absent body fails JSON decoding. Unknown fields are still ignored rather than refused, and trailing JSON values are not checked — so a request whose ONLY member is misspelled is refused by the nonempty-patch rule rather than by name validation, and a request that misspells one field while naming another is accepted with the misspelling silently dropped. A strict-object policy that would reject the second case remains unresolved. */
+            /** @description Fields to update, with independent presence semantics. No single field is individually required, but AT LEAST ONE of the eight must be present: a body naming none of them is refused 400 (see the operation description for the full class, and for what the earlier 204 meant). An absent body fails JSON decoding. Unknown fields are still ignored rather than refused, and trailing JSON values are not checked — so a request whose ONLY member is misspelled is refused by the nonempty-patch rule rather than by name validation, and a request that misspells one field while naming another is accepted with the misspelling silently dropped. A strict-object policy that would reject the second case remains unresolved. */
             requestBody: {
                 content: {
                     "application/json": {
@@ -664,6 +664,15 @@ export interface paths {
                         burst_size?: number;
                         /** @description LLM tokens per minute allowed on this key. Omitted or null leaves the stored value unchanged; 0 is an explicit "no per-key token quota". The quota is enforced post-hoc: a response is charged after it is served, and a charge that puts the bucket in debt denies the NEXT request rather than truncating the one in flight. Lowering the value does not retroactively re-price spend that has already been charged. */
                         tokens_per_min?: number;
+                        /**
+                         * @description The highest priority class a request with this key may have. Omitted or null leaves the stored value unchanged; an empty string clears it (no cap from the key). It can only lower what the key's tenant allows.
+                         * @enum {string}
+                         */
+                        priority_class?: "" | "standard" | "critical" | "sheddable";
+                        /** @description The objective a request with this key gets when it names none. Omitted or null leaves the stored value unchanged; an empty string clears it. */
+                        default_objective?: string;
+                        /** @description The objectives a request with this key may ask for by header, out of the ones its tenant allows; at most 64. Omitted or null leaves the stored list unchanged; an empty array clears it. The list governs raises only: a hint at or below what the request gets without one needs no entry. The three class fields are written by one statement of their own, after the other fields. */
+                        allowed_objectives?: string[];
                     };
                 };
             };
@@ -675,7 +684,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Two classes reach this status and they differ in what they imply. Refused BEFORE the key is looked up: empty/whitespace-only key_id, a body that fails JSON decoding (including an incompatible field type), and a body naming none of the five patchable fields — an empty object, a top-level null, an all-null body, or a body whose only members are unrecognized names. That last group answered 204 in earlier builds. Nothing is changed in this class and the key is never consulted, so 400 must not be read as "the key exists". Raised AFTER the lookup: a field value the store rejects as invalid. Because allowed_models/enabled and the rate-limit fields are written by separate statements without a transaction, such a 400 can follow a committed first update, exactly as the 500 case describes. Do not infer from 400 alone that the key is unchanged; re-read state. */
+                /** @description Two classes reach this status and they differ in what they imply. Refused BEFORE the key is looked up: empty/whitespace-only key_id, a body that fails JSON decoding (including an incompatible field type), and a body naming none of the eight patchable fields — an empty object, a top-level null, an all-null body, or a body whose only members are unrecognized names. That last group answered 204 in earlier builds. Nothing is changed in this class and the key is never consulted, so 400 must not be read as "the key exists". Raised AFTER the lookup: a field value the store rejects as invalid. Because allowed_models/enabled and the rate-limit fields are written by separate statements without a transaction, such a 400 can follow a committed first update, exactly as the 500 case describes. Do not infer from 400 alone that the key is unchanged; re-read state. */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -722,6 +731,15 @@ export interface paths {
                 };
                 /** @description Management credential store unavailable (ManagementError), or API-key store unconfigured/unavailable (SimpleError with error equal to ai_key_store_unconfigured or ai_key_store_unavailable). The reference covers both envelope shapes. Unclassified database statement errors can instead return 500; not every database outage is normalized to 503. */
                 503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SimpleError"];
+                    };
+                };
+                /** @description Write outcome unknown (SimpleError with error equal to ai_key_store_outcome_unknown). The statement was handed to the API-key store and the store did not answer within the operation budget; the store may still apply it when it resumes. Not a 503: nothing says the write did not happen. Read the key back (GET) before deciding whether to retry. */
+                504: {
                     headers: {
                         [name: string]: unknown;
                     };

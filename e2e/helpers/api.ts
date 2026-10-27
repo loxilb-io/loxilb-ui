@@ -9,6 +9,7 @@ import path from 'path';
 import {buildLBDeleteKey, buildLBDeletePath} from '../../src/types/lb_identity';
 import type {RequestAllowance} from './consoleGuard';
 import {KvExactReadiness, kvExactVerdictFromCapabilities, kvExactVerdictFromRefusal} from './kvExactVerdict';
+import {pickPrimaryNetworkDevice, PortAttr} from './networkDevice';
 
 // Re-exported so the specs keep importing the readiness type from the helper
 // they already use; the decision itself lives in ./kvExactVerdict so the
@@ -306,24 +307,8 @@ export async function waitForAutoPersistIdle(): Promise<void> {
  * falling back to an loxilb-owned virtual interface.
  */
 export async function primaryNetworkDevice(): Promise<string> {
-	const data = await gwJson<{
-		portAttr?: Array<{
-			portName?: string;
-			portNo?: number;
-			portSoftwareInformation?: {portActive?: boolean; portType?: number};
-		}>;
-	}>('/config/port/all');
-	const blocked = /^(?:lo|llb|vlan|vxlan|ipip|wg|utun|docker|br-)/i;
-	const candidates = (data.portAttr ?? [])
-		.filter(port => port.portName && !blocked.test(port.portName))
-		.sort((a, b) => {
-			const active = Number(Boolean(b.portSoftwareInformation?.portActive)) - Number(Boolean(a.portSoftwareInformation?.portActive));
-			if (active) return active;
-			const physical = Number(b.portSoftwareInformation?.portType === 1) - Number(a.portSoftwareInformation?.portType === 1);
-			if (physical) return physical;
-			return (a.portNo ?? Number.MAX_SAFE_INTEGER) - (b.portNo ?? Number.MAX_SAFE_INTEGER);
-		});
-	const device = candidates[0]?.portName;
+	const data = await gwJson<{portAttr?: PortAttr[]}>('/config/port/all');
+	const device = pickPrimaryNetworkDevice(data.portAttr ?? []);
 	if (!device) throw new Error('The selected instance exposes no usable data-plane network device');
 	return device;
 }

@@ -334,3 +334,27 @@ describe('a new API key is compared with its own read, field by field', () => {
 		expect(apiKeyCreateDiff({tenant_id: ' tenant-a '}, {tenant_id: 'tenant-a', enabled: true})).toEqual(['tenant_id']);
 	});
 });
+
+describe('request priority is confirmed by value (gateway 9f5017e2)', () => {
+	it('a tenant write compares only the priority fields it sent', () => {
+		const sent = {tenant_id: 'acme', rps: 0, tokens_per_min: 0, burst_pct: 0, priority_class: 'critical'};
+		expect(tenantRateLimitApplied(sent)({tenant_id: 'acme', priority_class: 'critical', default_objective: 'gold'})).toBe(true);
+		expect(tenantRateLimitApplied(sent)({tenant_id: 'acme'})).toBe(false);
+		const cleared = {tenant_id: 'acme', rps: 0, tokens_per_min: 0, burst_pct: 0, allowed_objectives: [] as string[]};
+		expect(tenantRateLimitApplied(cleared)({tenant_id: 'acme', allowed_objectives: null})).toBe(true);
+	});
+
+	it('a key create asserts all three, unset reading back absent', () => {
+		const asked = {tenant_id: 'acme', priority_class: 'critical'};
+		expect(apiKeyCreateDiff(asked, {tenant_id: 'acme', priority_class: 'critical'})).toEqual([]);
+		expect(apiKeyCreateDiff(asked, {tenant_id: 'acme'})).toEqual(['priority_class']);
+		expect(apiKeyCreateDiff({tenant_id: 'acme'}, {tenant_id: 'acme', allowed_objectives: ['gold']})).toEqual(['allowed_objectives']);
+	});
+
+	it('a JWT profile replace compares its class, unset equal to absent', () => {
+		const sent = {name: 'realm-a', issuer: 'https://idp', priority_class: 'sheddable' as const};
+		expect(jwtProfileApplied(sent)([{name: 'realm-a', issuer: 'https://idp', priority_class: 'sheddable'}])).toBe(true);
+		expect(jwtProfileApplied(sent)([{name: 'realm-a', issuer: 'https://idp'}])).toBe(false);
+		expect(jwtProfileApplied({name: 'realm-a', issuer: 'https://idp'})([{name: 'realm-a', issuer: 'https://idp'}])).toBe(true);
+	});
+});

@@ -28,6 +28,7 @@
 // to the inference gateway only; upstream loxilb is a different server and
 // keeps the identity-only predicate.
 //---------------------------------------------------------
+import {canonicalBandTriple} from 'types/ai_gateway';
 import {IServiceConfiguration} from 'types/load_balancer';
 
 /** How one `serviceArguments` field takes part in the confirmation. */
@@ -46,6 +47,12 @@ export type LBFieldConfirmation =
 	| {kind: 'members'; members: readonly string[]}
 	/** Applied by the tuple PATCH but not stored by a POST. */
 	| {kind: 'patch-only'}
+	/**
+	 * A band triple, critical:standard:sheddable. The gateway parses whole
+	 * numbers and formats them back without leading zeros, and reads the reset
+	 * value 0:0:0 as nothing.
+	 */
+	| {kind: 'triple'}
 	/** Never compared; `why` is the reason. */
 	| {kind: 'skip'; why: string};
 
@@ -115,6 +122,10 @@ export const LB_FIELD_CONFIRMATION: Readonly<Record<string, LBFieldConfirmation>
 	fc_warmup_ms: echo,
 	fc_ttft_target_ms: echo,
 	fc_tenant_max_share_pct: echo,
+	// 0 resets and reads back omitted; false reads back omitted.
+	fc_critical_reserve_pct: echo,
+	ai_default_max_tokens: echo,
+	ai_objective_strict: echo,
 	backend_ca_cert_id: echo,
 	backend_client_cert_id: echo,
 	backend_tls_server_name: echo,
@@ -132,6 +143,19 @@ export const LB_FIELD_CONFIRMATION: Readonly<Record<string, LBFieldConfirmation>
 	fc_mode: {kind: 'echo', absentAs: 'inherit'},
 	fc_adaptive: {kind: 'echo', absentAs: 'inherit'},
 	fc_expose_headers: {kind: 'echo', absentAs: 'inherit'},
+	// Expert arguments (CLI-only, carried through an edit as read). Traced at
+	// gateway 9f5017e2: fcRuleCfg.toServ writes the process default as "",
+	// and the reservation switch is read back only when declared.
+	fc_wake_policy: {kind: 'echo', absentAs: 'inherit'},
+	fc_shed_queue: {kind: 'echo', absentAs: 'inherit'},
+	fc_tenant_wake: {kind: 'echo', absentAs: 'inherit'},
+	fc_llmd_headers: {kind: 'echo', absentAs: 'inherit'},
+	ai_default_reservation: {kind: 'echo', absentAs: 'inherit'},
+	// FcBandTripleFormat: canonical numbers, 0:0:0 read back as nothing.
+	fc_band_weights: {kind: 'triple'},
+	fc_band_min_share_pct: {kind: 'triple'},
+	fc_band_queue_pct: {kind: 'triple'},
+	fc_band_wait_ms: {kind: 'triple'},
 	backend_protocol: {kind: 'echo', absentAs: 'http1', fullproxyOnly: true},
 	sockMapMode: {kind: 'echo', absentAs: 'off', fullproxyOnly: true},
 	half_close_mode: {kind: 'echo', absentAs: 'inherit', fullproxyOnly: true},
@@ -251,6 +275,8 @@ function sameArguments(want: Loose, got: Loose, write: 'post' | 'patch'): boolea
 				// false` asks for verification to be off.
 				if (asked === undefined || asked === null || typeof asked !== 'object') return true;
 				return rule.members.every(member => !(member in (asked as Loose)) || sameValue((asked as Loose)[member], (served as Loose | undefined)?.[member]));
+			case 'triple':
+				return canonicalBandTriple(asked) === canonicalBandTriple(served);
 			case 'echo': {
 				if ('fullproxyOnly' in rule && !fullproxy) return true;
 				if (!('absentAs' in rule)) return sameValue(asked, served);

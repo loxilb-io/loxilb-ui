@@ -306,3 +306,30 @@ describe('source prefixes are compared as the network the gateway stores', () =>
 		expect(canonicalSourcePrefix(written)).toBe(stored);
 	});
 });
+
+describe('expert admission arguments carried through an edit are confirmed as the gateway returns them', () => {
+	it('confirms a band triple read back canonically, and a reset triple read back as nothing', () => {
+		const served = rule({...servedArgs, fc_band_weights: '8:3:1'}, {endpoints: servedRule.endpoints});
+		expect(lbRuleApplied(sent({fc_band_weights: '08:3:1'}))([served])).toBe(true);
+		expect(lbRuleApplied(sent({fc_band_wait_ms: '0:0:0'}))([servedRule])).toBe(true);
+	});
+
+	it('does not confirm a triple the rule does not hold', () => {
+		expect(lbRuleApplied(sent({fc_band_weights: '8:3:1'}))([servedRule])).toBe(false);
+		const served = rule({...servedArgs, fc_band_weights: '8:3:1'}, {endpoints: servedRule.endpoints});
+		expect(lbRuleApplied(sent({fc_band_weights: '8:3:2'}))([served])).toBe(false);
+	});
+
+	it('confirms inherit against the omitted switch and a real off against off', () => {
+		expect(lbRuleApplied(sent({fc_wake_policy: 'inherit', fc_shed_queue: 'inherit', ai_default_reservation: 'inherit'}))([servedRule])).toBe(true);
+		const served = rule({...servedArgs, fc_shed_queue: 'off'}, {endpoints: servedRule.endpoints});
+		expect(lbRuleApplied(sent({fc_shed_queue: 'off'}))([served])).toBe(true);
+		expect(lbRuleApplied(sent({fc_shed_queue: 'off'}))([servedRule])).toBe(false);
+	});
+
+	it('confirms an explicit false against an omitted one, and catches a true left in place', () => {
+		expect(lbRuleApplied(sent({ai_objective_strict: false}))([servedRule])).toBe(true);
+		const served = rule({...servedArgs, ai_objective_strict: true}, {endpoints: servedRule.endpoints});
+		expect(lbRuleApplied(sent({ai_objective_strict: false}))([served])).toBe(false);
+	});
+});

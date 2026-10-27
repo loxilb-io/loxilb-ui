@@ -51,8 +51,44 @@ const FC_NUMERIC_FIELDS = Object.keys(FC_NUMERIC_MAX) as FcNumericField[];
 const FC_MODES = ['off', 'observe', 'enforce', 'inherit'] as const;
 const FC_ADAPTIVE = ['on', 'off', 'inherit'] as const;
 
-/** Writable admission fields. fc_effective is read-only and not among them. */
-export const FC_FIELDS: readonly (keyof IServiceArguments)[] = ['fc_mode', 'fc_adaptive', 'fc_expose_headers', ...FC_NUMERIC_FIELDS];
+/**
+ * The admission (`fc_*`) arguments set only with loxicmd or the API: the
+ * priority bands and their knobs. They have no form control at all, whatever
+ * the live `/meta` declares; the UI carries a read-back value through an edit
+ * unchanged and shows what is in force from `fc_effective`.
+ */
+export const FC_CLI_ONLY_FIELDS = [
+	'fc_wake_policy', 'fc_band_weights', 'fc_band_min_share_pct',
+	'fc_band_queue_pct', 'fc_band_wait_ms', 'fc_critical_reserve_pct',
+	'fc_shed_queue', 'fc_tenant_wake', 'fc_llmd_headers',
+] as const satisfies readonly (keyof IServiceArguments)[];
+
+/**
+ * Admission-related AI arguments outside the `fc_*` family: the default
+ * completion-token reservation and strict objective handling. Same rule as
+ * FC_CLI_ONLY_FIELDS: no form control, preserved through an edit.
+ */
+export const AI_ADMISSION_FIELDS = ['ai_default_reservation', 'ai_default_max_tokens', 'ai_objective_strict'] as const satisfies readonly (keyof IServiceArguments)[];
+
+/** Expert service arguments the UI never edits: set with loxicmd or the API only. */
+export const CLI_ONLY_SERVICE_ARGUMENTS = [...FC_CLI_ONLY_FIELDS, ...AI_ADMISSION_FIELDS] as const satisfies readonly (keyof IServiceArguments)[];
+
+const CLI_ONLY: ReadonlySet<string> = new Set(CLI_ONLY_SERVICE_ARGUMENTS);
+
+/** Admission fields the form has a control for. */
+export const FC_EDITABLE_FIELDS: readonly (keyof IServiceArguments)[] = ['fc_mode', 'fc_adaptive', 'fc_expose_headers', ...FC_NUMERIC_FIELDS];
+
+/**
+ * Every writable admission (`fc_*`) argument the UI handles: the editable ones
+ * and the CLI-only ones it carries unchanged. fc_effective is read-only and not
+ * among them. Being listed here is serializer support, not a form control.
+ */
+export const FC_FIELDS: readonly (keyof IServiceArguments)[] = [...FC_EDITABLE_FIELDS, ...FC_CLI_ONLY_FIELDS];
+
+/** Whether the field is set only with loxicmd or the API, never by a UI control. */
+export function isCliOnlyServiceArgument(field: string): boolean {
+	return CLI_ONLY.has(field);
+}
 
 /**
  * The admission fields this instance's gateway declares in its own `/meta`.
@@ -65,7 +101,7 @@ export const FC_FIELDS: readonly (keyof IServiceArguments)[] = ['fc_mode', 'fc_a
  * `serviceArguments` field map; a field it omits is not offered.
  */
 export function declaredFcFields(params: Record<string, unknown> | undefined): ReadonlySet<keyof IServiceArguments> {
-	return new Set(FC_FIELDS.filter(field => params?.[field] !== undefined));
+	return new Set(FC_EDITABLE_FIELDS.filter(field => params?.[field] !== undefined));
 }
 
 /** Fields that act only on a P/D pool (prefill/decode legs, the P/D scorers). */
@@ -114,12 +150,33 @@ export function declaredChwblTuningFields(params: Record<string, unknown> | unde
 	return new Set(CHWBL_TUNING_FIELDS.filter(field => params?.[field] !== undefined));
 }
 
+/**
+ * A band triple the gateway reads as its reset value: three zeros. It is
+ * parsed as whole numbers, so 00:0:0 is the same triple.
+ */
+export function isResetBandTriple(value: unknown): boolean {
+	return typeof value === 'string' && /^\d+:\d+:\d+$/.test(value) && value.split(':').every(part => Number(part) === 0);
+}
+
+/**
+ * A band triple as the gateway reads it back: whole numbers without leading
+ * zeros, and the reset value (0:0:0 or empty) as nothing. Anything the gateway
+ * would refuse is returned as given, so it never compares equal by accident.
+ */
+export function canonicalBandTriple(value: unknown): string | undefined {
+	if (value === undefined || value === null || value === '') return undefined;
+	if (typeof value !== 'string' || !/^\d+:\d+:\d+$/.test(value)) return String(value);
+	if (isResetBandTriple(value)) return undefined;
+	return value.split(':').map(part => String(Number(part))).join(':');
+}
+
 /** A form value that stands for "nothing declared": omitted on the wire. */
 function isFcBlank(value: unknown): boolean {
 	return value === undefined || value === null || value === '';
 }
 
 const AI_ONLY_FIELDS: readonly (keyof IServiceArguments)[] = [
+	...AI_ADMISSION_FIELDS,
 	'model_name',
 	'api_key_auth',
 	'jwt_auth_profile',
@@ -310,7 +367,9 @@ export function validateAIConfiguration(configuration: IServiceConfiguration): A
 				!(field === 'kvBlockSize' && value === 16) &&
 				!(field === 'kvZmqPort' && value === 5557) &&
 				!(field === 'kvDpRankCount' && value === 1) &&
-				!((field === 'fc_mode' || field === 'fc_adaptive' || field === 'fc_expose_headers') && value === 'inherit');
+				// "inherit" and a 0:0:0 band triple are the gateway's own default,
+				// not a setting: carrying one off fullproxy declares nothing.
+				!((field.startsWith('fc_') || field.startsWith('ai_')) && (value === 'inherit' || isResetBandTriple(value)));
 		});
 		if (active) issues.push({field: 'mode', message: 'AI Gateway routing requires full-proxy mode.'});
 		return issues;
@@ -500,9 +559,12 @@ function omitFields(args: IServiceArguments, fields: readonly (keyof IServiceArg
 function serializeAdmissionFields(args: IServiceArguments, topology: AITopology): IServiceArguments {
 	// No admission pool, no effect: the gateway stores the fields but no gate
 	// reads them. Sending them would make a rule look configured when it is not.
-	if (!isAIService(args)) return omitFields(args, FC_FIELDS);
+	if (!isAIService(args)) return omitFields(args, [...FC_FIELDS, ...AI_ADMISSION_FIELDS]);
 	let result = {...args};
-	for (const field of FC_FIELDS) {
+	// The CLI-only fields have no control, so they arrive only as a read-back
+	// carried through the edit. An explicit false (ai_objective_strict) or 0 is
+	// still a value; only nothing is omitted.
+	for (const field of [...FC_FIELDS, ...AI_ADMISSION_FIELDS]) {
 		if (isFcBlank(result[field])) delete result[field];
 	}
 	if (topology !== 'pd') result = omitFields(result, FC_PD_ONLY_FIELDS);

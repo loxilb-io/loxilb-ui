@@ -28,6 +28,8 @@ import {
 	normalizeJWTAuthProfile,
 	validateJWTAuthProfile,
 } from 'types/ai_jwt';
+import PriorityClassFields from 'components/input/subforms/PriorityClassFields';
+import {isPriorityClass, priorityDraftFrom} from 'types/ai_priority';
 
 export interface IJWTProfileFormState {
 	name: string;
@@ -49,6 +51,10 @@ export interface IJWTProfileFormState {
 	default_tenant: string;
 	forward_identity: boolean;
 	authorization_passthrough: boolean;
+	// '' = unset (no cap from the profile). Carried from the entry on an edit:
+	// the POST replaces the whole entry, so a class set with loxicmd would be
+	// cleared by an edit that did not send it.
+	priority_class: string;
 }
 
 // Blank everywhere it means "default". Never pre-fill a default as a literal
@@ -63,6 +69,7 @@ export const INITIAL_JWT_FORM: IJWTProfileFormState = {
 	default_tenant: '',
 	forward_identity: false,
 	authorization_passthrough: false,
+	priority_class: '',
 };
 
 const SEC_SPEC = {required: false, min: 0};
@@ -93,6 +100,7 @@ export function jwtProfileToForm(entry: IJWTAuthProfileEntry): IJWTProfileFormSt
 		default_tenant: entry.default_tenant ?? '',
 		forward_identity: entry.forward_identity ?? false,
 		authorization_passthrough: entry.authorization_passthrough ?? false,
+		priority_class: entry.priority_class ?? '',
 	};
 }
 
@@ -121,10 +129,12 @@ export function jwtProfileFormToEntry(form: IJWTProfileFormState): IJWTAuthProfi
 		...(form.default_tenant.trim().length > 0 && {default_tenant: form.default_tenant.trim()}),
 		forward_identity: form.forward_identity,
 		authorization_passthrough: form.authorization_passthrough,
+		...(isPriorityClass(form.priority_class) && {priority_class: form.priority_class}),
 	});
 }
 
 export function isJWTProfileFormValid(form: IJWTProfileFormState): boolean {
+	if (form.priority_class !== '' && !isPriorityClass(form.priority_class)) return false;
 	if (!evaluateNumericField(form.leeway_sec, SEC_SPEC).valid) return false;
 	if (!evaluateNumericField(form.refresh_sec, SEC_SPEC).valid) return false;
 	return validateJWTAuthProfile(jwtProfileFormToEntry(form)).isValid;
@@ -308,6 +318,13 @@ export default function JWTAuthProfileInputForm(props: Props) {
 						</Stack>
 					</AccordionDetails>
 				</Accordion>
+				<PriorityClassFields
+					scope="jwt"
+					value={{...priorityDraftFrom(null), priority_class: form.priority_class}}
+					onChange={next => set('priority_class')(next.priority_class)}
+					defaultOpen={form.priority_class !== ''}
+					isEdit={isEdit}
+				/>
 			</Stack>
 		</NewBox>
 	);

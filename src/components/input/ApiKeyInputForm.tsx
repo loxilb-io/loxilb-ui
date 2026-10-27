@@ -11,7 +11,9 @@ import ParamBox from 'components/element/ParamBox';
 import {evaluateNumericField} from 'components/input/numericField';
 import dayjs from 'dayjs';
 import {t} from 'i18next';
+import PriorityClassFields from 'components/input/subforms/PriorityClassFields';
 import {IApiKeyCreateRequest} from 'types/ai';
+import {IAIObjectiveEntry, IPriorityDraft, priorityCreateFields, priorityDraftFrom, validatePriorityDraft} from 'types/ai_priority';
 import React from 'react';
 
 //---------------------------------------------------------
@@ -20,6 +22,8 @@ import React from 'react';
 interface ApiKeyInputFormProps {
 	onChange: (data: IApiKeyCreateRequest & {isValid?: boolean}) => void;
 	onDispose?: () => void;
+	/** The objectives as read, for the priority group's hints; undefined when unreadable. */
+	objectives?: readonly IAIObjectiveEntry[];
 }
 
 export interface IApiKeyFormState {
@@ -36,6 +40,8 @@ export interface IApiKeyFormState {
 	tokens_per_min: string;
 	expires_at: string;
 	enabled: boolean;
+	// Request priority; unset fields are omitted, which is "no cap" on a key.
+	priority?: IPriorityDraft;
 }
 
 // 0 = unlimited/default, enforced BY OMISSION in the request (key spread only
@@ -105,11 +111,12 @@ export function apiKeyFormToRequest(form: IApiKeyFormState): IApiKeyCreateReques
 		...(tpm !== undefined && tpm > 0 && {tokens_per_min: tpm}),
 		...(expiryValid && {expires_at: new Date(expiryTrim).toISOString()}),
 		enabled: form.enabled,
+		...(form.priority ? (priorityCreateFields(form.priority, 'key') as Pick<IApiKeyCreateRequest, 'priority_class' | 'default_objective' | 'allowed_objectives'>) : {}),
 	};
 }
 
 export default function ApiKeyInputForm(props: ApiKeyInputFormProps) {
-	const {onChange, onDispose} = props;
+	const {onChange, onDispose, objectives} = props;
 
 	const [form, setForm] = React.useState<IApiKeyFormState>(INITIAL_FORM);
 	const [showImportedKey, setShowImportedKey] = React.useState(false);
@@ -132,6 +139,7 @@ export default function ApiKeyInputForm(props: ApiKeyInputFormProps) {
 		if (!evaluateNumericField(data.burst_size, RATE_FIELD_SPEC).valid) return false;
 		if (!evaluateNumericField(data.tokens_per_min, RATE_FIELD_SPEC).valid) return false;
 		if (expiryError(data.expires_at) !== undefined) return false;
+		if (data.priority && validatePriorityDraft(data.priority, 'key').length > 0) return false;
 		return true;
 	};
 
@@ -271,6 +279,13 @@ export default function ApiKeyInputForm(props: ApiKeyInputFormProps) {
 						label={t('Enabled')}
 					/>
 				</Grid2>
+
+				<PriorityClassFields
+					scope="key"
+					value={form.priority ?? priorityDraftFrom(null)}
+					onChange={handleChange('priority')}
+					objectives={objectives}
+				/>
 			</Stack>
 		</NewBox>
 	);
