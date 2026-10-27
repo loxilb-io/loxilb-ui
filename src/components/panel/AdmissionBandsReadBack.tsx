@@ -223,6 +223,13 @@ export function ReservationReadBack({effective}: {effective: IFcEffective}) {
 	);
 }
 
+/** A gateway timestamp as a local date and time; one that does not parse is shown as sent. */
+function localDateTime(value: unknown): string {
+	if (typeof value !== 'string' || value === '') return NOT_REPORTED;
+	const date = new Date(value);
+	return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+
 export function ClassConfigSourceReadBack({effective}: {effective: IFcEffective}) {
 	const e = effective as Effective;
 	if (!hasAny(e, CONFIG_MEMBERS)) return null;
@@ -242,7 +249,7 @@ export function ClassConfigSourceReadBack({effective}: {effective: IFcEffective}
 				<Grid2 container spacing={2}>
 					<SingleTextBox label={t('Applied From')} value={named(CONFIG_SOURCES, configSource)} tooltip={t('Where the objectives and the tenant and key classes in force came from. The same on every rule. Nothing read means every request is standard; it does not say the store is healthy.')} />
 					<SingleTextBox label={t('Key Store Reachable')} value={shown(reachable)} tooltip={t('Whether the key store answered the gateway\'s latest read. Not reported when no key store is configured.')} />
-					<SingleTextBox label={t('Last Store Read')} value={typeof lastRead === 'string' && lastRead !== '' ? lastRead : NOT_REPORTED} tooltip={t('When a read of the key store last answered in this process.')} />
+					<SingleTextBox label={t('Last Store Read')} value={localDateTime(lastRead)} tooltip={t('When a read of the key store last answered in this process.')} />
 				</Grid2>
 			</Stack>
 		</ValueBunch>

@@ -138,10 +138,22 @@ describe('class configuration source', () => {
 		expect(screen.getByRole('alert').textContent).toContain('did not answer the latest read');
 	});
 
+	it('shows the last store read as a local date and time, not the raw timestamp', () => {
+		render(<AdmissionBandsReadBack effective={{...legacy, config_source: 'store', store_reachable: true, store_last_read: '2026-10-27T03:00:00Z'}} />);
+		expect(valueOf('Last Store Read')).toBe(new Date('2026-10-27T03:00:00Z').toLocaleString());
+		expect(valueOf('Last Store Read')).not.toBe('2026-10-27T03:00:00Z');
+	});
+
+	it('shows a timestamp that does not parse as the gateway sent it', () => {
+		render(<AdmissionBandsReadBack effective={{...legacy, config_source: 'store', store_last_read: 'not-a-time'}} />);
+		expect(valueOf('Last Store Read')).toBe('not-a-time');
+	});
+
 	it('does not read nothing-read as a healthy store', () => {
 		render(<AdmissionBandsReadBack effective={{...legacy, config_source: 'none'}} />);
 		expect(valueOf('Applied From')).toBe('Nothing read');
 		expect(valueOf('Key Store Reachable')).toBe('–');
+		expect(valueOf('Last Store Read')).toBe('–');
 	});
 });
 
