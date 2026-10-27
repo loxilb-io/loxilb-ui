@@ -84,7 +84,8 @@
 		"e2e-oss:headed": "E2E_FLAVOR=loxilb playwright test --project=oss --headed",
 		"e2e:selftest": "E2E_NO_WEBSERVER=1 playwright test --project=selftest",
 		"test:build-tools": "node --test scripts/vite-build-config.test.mjs",
-		"test:lint-policy": "node --test scripts/eslint-policy.test.mjs"
+		"test:lint-policy": "node --test scripts/eslint-policy.test.mjs",
+		"test:browser-local": "playwright test --config=e2e/local/playwright.config.ts"
 	},
 	"browserslist": {
 		"production": [
