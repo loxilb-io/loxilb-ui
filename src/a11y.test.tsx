@@ -153,6 +153,32 @@ describe('axe: observability building blocks', () => {
 	});
 });
 
+describe('axe: gateway contract sync read-backs', () => {
+	// Two tables of their own (bands, reserved buckets) with row and column
+	// headers, plus the class-source alerts.
+	it('band, reservation and class-source read-back has no violations', async () => {
+		const AdmissionBandsReadBack = (await import('components/panel/AdmissionBandsReadBack')).default;
+		const {container} = render(
+			<AdmissionBandsReadBack
+				effective={{
+					mode: 'enforce',
+					wake_policy: 'weighted',
+					wake_policy_effective: 'strict',
+					band_fallback_reason: 'zero_weight',
+					bands: {critical_reserve_pct: 10, critical_reserve_units: 1, critical: {inflight: 1, weight: 0}, standard: {inflight: 2}, sheddable: {}},
+					default_reservation: 'on',
+					default_max_tokens: 512,
+					reservation_held: [{kind: 'tenant', bucket: 'tenant:acme', tokens: 10}],
+					reservation_held_truncated: true,
+					config_source: 'lkg',
+					store_reachable: false,
+				}}
+			/>,
+		);
+		await expectNoViolations(container);
+	});
+});
+
 describe('axe gate self-test', () => {
 	it('detects an injected violation (gate is red-capable)', async () => {
 		// An image without alt text is a bread-and-butter axe finding; if this

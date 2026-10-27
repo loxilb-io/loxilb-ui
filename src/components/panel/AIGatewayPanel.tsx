@@ -1,6 +1,7 @@
 import {Alert, Grid2, Stack, Typography} from '@mui/material';
 import SingleTextBox from 'components/element/SingleTextBox';
 import ValueBunch from 'components/element/ValueBunch';
+import AdmissionBandsReadBack from 'components/panel/AdmissionBandsReadBack';
 import KvExactStatusPanel from 'components/panel/KvExactStatusPanel';
 import {t} from 'i18next';
 import {CHWBL_TUNING_FIELDS, FC_FIELDS, effectiveAIHash, isAIService, isChwblSelector, resolveAIEngine, resolveAITopology} from 'types/ai_gateway';
@@ -238,6 +239,9 @@ export default function AIGatewayPanel({serviceArguments, readAtMs}: {serviceArg
 			</ValueBunch>
 
 			{isAIService(serviceArguments) && <AdmissionReadBack declared={FC_FIELDS.some(field => serviceArguments[field] !== undefined)} effective={serviceArguments.fc_effective} pd={topology === 'pd'} readAtMs={readAtMs} />}
+			{/* Bands, default reservation and class source: newer fc_effective
+			    members, each block only where the gateway reports it. */}
+			{isAIService(serviceArguments) && <AdmissionBandsReadBack effective={serviceArguments.fc_effective} />}
 
 			{topology === 'pd' && (
 				<ValueBunch name={t('Prefill / Decode Disaggregation')}>
