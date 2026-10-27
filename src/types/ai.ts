@@ -134,8 +134,8 @@ export function validateTenantRateLimit(data: ITenantRateLimitMod): string[] {
 // `api-spec/gateway-swagger-extras.yml`. So this interface IS the UI's copy of
 // that contract; when the extras file moves, move this with it.
 //
-// ⭐⭐ THE FIELD SET IS FIVE, not the three rate-limit fields the task brief
-// names. `allowed_models` and `enabled` are patchable on the same call and
+// ⭐⭐ THE FIELD SET IS EIGHT, not the three rate-limit fields the task brief
+// names: five, plus the three request-priority fields since gateway 9f5017e2. `allowed_models` and `enabled` are patchable on the same call and
 // share the same presence rules, which matters because they are written by a
 // SEPARATE, non-transactional statement (see below).
 //
@@ -164,11 +164,16 @@ export interface IApiKeyPatch {
 	rate_limit_rps?: number;
 	burst_size?: number;
 	tokens_per_min?: number;
+	// Request priority (gateway 9f5017e2). Omitted keeps the stored value; an
+	// empty string or array clears it.
+	priority_class?: '' | 'standard' | 'critical' | 'sheddable';
+	default_objective?: string;
+	allowed_objectives?: string[];
 }
 
 // The five patchable field names, in the contract's own order. Exported so the
 // emptiness check and its tests cannot drift apart from the interface.
-export const API_KEY_PATCH_FIELDS = ['allowed_models', 'enabled', 'rate_limit_rps', 'burst_size', 'tokens_per_min'] as const;
+export const API_KEY_PATCH_FIELDS = ['allowed_models', 'enabled', 'rate_limit_rps', 'burst_size', 'tokens_per_min', 'priority_class', 'default_objective', 'allowed_objectives'] as const;
 
 /**
  * Whether this body asks for nothing, by the gateway's own definition of the
@@ -210,6 +215,20 @@ export function validateApiKeyPatch(patch: IApiKeyPatch): string[] {
 	for (const [field, message] of rateFields) {
 		const value = patch[field];
 		if (value !== undefined && !isNonNegativeSafeInteger(value)) errors.push(message);
+	}
+
+	if (patch.priority_class !== undefined && !['', 'standard', 'critical', 'sheddable'].includes(patch.priority_class)) {
+		errors.push('Priority class must be critical, standard or sheddable.');
+	}
+	if (patch.default_objective !== undefined && patch.default_objective.includes(',')) errors.push('The default objective is one name.');
+	if (patch.allowed_objectives !== undefined) {
+		if (patch.allowed_objectives.length > 64) errors.push('At most 64 allowed objectives.');
+		const seen = new Set<string>();
+		for (const name of patch.allowed_objectives) {
+			if (typeof name !== 'string' || name.trim().length === 0) errors.push('An objective name cannot be empty.');
+			else if (seen.has(name)) errors.push(`Allowed objective ${name} is duplicated.`);
+			else seen.add(name);
+		}
 	}
 
 	const models = patch.allowed_models;

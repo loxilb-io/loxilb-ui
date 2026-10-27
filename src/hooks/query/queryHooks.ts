@@ -3,6 +3,7 @@
 //---------------------------------------------------------
 import {query_get_apikey_all} from 'connector/instance/ai';
 import {query_get_jwtauthprofile_all} from 'connector/instance/ai_jwt';
+import {query_get_netidentities, query_get_objectives} from 'connector/instance/ai_objective';
 import {query_get_bfd_all} from 'connector/instance/bfd';
 import {query_get_conntrack_all} from 'connector/instance/conn_track';
 import {query_get_endpoint_all} from 'connector/instance/endpoint';
@@ -140,6 +141,16 @@ export function useApiKeys(instance: IInstance | null) {
 // keyset health, which the loxilb_ai_jwks_* families answer separately.
 export function useJWTAuthProfiles(instance: IInstance | null) {
 	return useQueryInstanceData(['ai_jwtauthprofiles'], query_get_jwtauthprofile_all, instance);
+}
+
+/** Objectives with their provenance (store / lkg). A route 404 is an error, never an empty list. */
+export function useAIObjectives(instance: IInstance | null) {
+	return useQueryInstanceData(['ai_objectives'], query_get_objectives, instance);
+}
+
+/** Network-identity bindings, read-only. */
+export function useNetIdentities(instance: IInstance | null) {
+	return useQueryInstanceData(['ai_netidentities'], query_get_netidentities, instance);
 }
 
 export function useIPsecConfig(instance: IInstance | null) {

@@ -101,3 +101,19 @@ describe('jwtProfileToForm — the edit round-trip', () => {
 		expect(jwtProfileFormToEntry(filled).model_authz).toBe('claims-required');
 	});
 });
+
+describe('priority class on a JWT profile (gateway 9f5017e2)', () => {
+	it('keeps a class set with loxicmd through an edit: the POST replaces the whole entry', () => {
+		const stored = {name: 'realm-a', issuer: 'https://idp.example.com', priority_class: 'sheddable' as const};
+		expect(jwtProfileFormToEntry(jwtProfileToForm(stored)).priority_class).toBe('sheddable');
+	});
+
+	it('sends no class when unset: no cap from the profile', () => {
+		expect('priority_class' in jwtProfileFormToEntry(filled)).toBe(false);
+	});
+
+	it('refuses a class the gateway does not know', () => {
+		expect(isJWTProfileFormValid({...filled, priority_class: 'gold'})).toBe(false);
+		expect(isJWTProfileFormValid({...filled, priority_class: 'critical'})).toBe(true);
+	});
+});

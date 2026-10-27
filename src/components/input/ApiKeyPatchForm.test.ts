@@ -214,3 +214,32 @@ describe('the gateway read-back after a zero patch (live-observed)', () => {
 		expect(form.enabled).toBe(true);
 	});
 });
+
+describe('request priority on a key edit (gateway 9f5017e2)', () => {
+	const current = key({priority_class: 'critical', default_objective: 'gold', allowed_objectives: ['gold']});
+
+	it('sends nothing for priority fields the operator left alone', () => {
+		expect(apiKeyPatchFromForm(apiKeyPatchFormInitialState(current), current)).toEqual({});
+	});
+
+	it('sends a changed class and only that', () => {
+		const form = apiKeyPatchFormInitialState(current);
+		expect(apiKeyPatchFromForm({...form, priority: {...form.priority!, priority_class: 'standard'}}, current)).toEqual({priority_class: 'standard'});
+	});
+
+	it('clears with an empty string and an empty list', () => {
+		const form = apiKeyPatchFormInitialState(current);
+		expect(apiKeyPatchFromForm({...form, priority: {priority_class: '', default_objective: '', allowed_objectives: ''}}, current)).toEqual({
+			priority_class: '',
+			default_objective: '',
+			allowed_objectives: [],
+		});
+	});
+
+	it('is confirmed when the key reads back the cleared and changed values', () => {
+		const patch = {priority_class: '' as const, allowed_objectives: [] as string[]};
+		expect(apiKeyPatchApplied('key-1', patch)([{key_id: 'key-1', default_objective: 'gold'}])).toBe(true);
+		expect(apiKeyPatchApplied('key-1', patch)([{key_id: 'key-1', priority_class: 'critical'}])).toBe(false);
+		expect(apiKeyPatchApplied('key-1', {default_objective: 'silver'})([{key_id: 'key-1', default_objective: 'gold'}])).toBe(false);
+	});
+});

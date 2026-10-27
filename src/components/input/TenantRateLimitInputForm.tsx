@@ -4,7 +4,9 @@ import ParamBox from 'components/element/ParamBox';
 import NewBox from 'components/layout/NewBox';
 import {t} from 'i18next';
 import React from 'react';
+import PriorityClassFields from 'components/input/subforms/PriorityClassFields';
 import {ITenantModelRateLimit, ITenantRateLimitMod, reconcileTenantModelLimits, validateTenantRateLimit} from 'types/ai';
+import {hasPrioritySettings, IAIObjectiveEntry, IPriorityDraft, IPriorityFields, priorityChangedFields, priorityDraftFrom, validatePriorityDraft} from 'types/ai_priority';
 
 interface ModelLimitDraft {
 	model: string;
@@ -17,11 +19,14 @@ interface TenantRateLimitDraft {
 	tokens_per_min: string;
 	burst_pct: string;
 	model_limits: ModelLimitDraft[];
+	priority: IPriorityDraft;
 }
 
 interface TenantRateLimitInputFormProps {
 	value?: ITenantRateLimitMod;
 	onChange: (data: ITenantRateLimitMod & {isValid?: boolean; errors?: string[]}) => void;
+	/** The objectives as read, for the priority group's hints; undefined when unreadable. */
+	objectives?: readonly IAIObjectiveEntry[];
 }
 
 function draftFromValue(value?: ITenantRateLimitMod): TenantRateLimitDraft {
@@ -34,6 +39,7 @@ function draftFromValue(value?: ITenantRateLimitMod): TenantRateLimitDraft {
 			model: limit.model ?? '',
 			tokens_per_min: limit.tokens_per_min === undefined ? '' : String(limit.tokens_per_min),
 		})),
+		priority: priorityDraftFrom(value),
 	};
 }
 
@@ -43,7 +49,7 @@ export function parseTenantLimitIntegerDraft(raw: string): number | undefined {
 	return Number.isSafeInteger(value) ? value : undefined;
 }
 
-function draftToWire(draft: TenantRateLimitDraft, persistedModelLimits: ITenantModelRateLimit[]): ITenantRateLimitMod {
+function draftToWire(draft: TenantRateLimitDraft, persistedModelLimits: ITenantModelRateLimit[], persistedPriority?: IPriorityFields): ITenantRateLimitMod {
 	const currentModelLimits = draft.model_limits.map(limit => ({
 		model: limit.model.trim(),
 		tokens_per_min: parseTenantLimitIntegerDraft(limit.tokens_per_min),
@@ -54,6 +60,9 @@ function draftToWire(draft: TenantRateLimitDraft, persistedModelLimits: ITenantM
 		tokens_per_min: parseTenantLimitIntegerDraft(draft.tokens_per_min),
 		burst_pct: parseTenantLimitIntegerDraft(draft.burst_pct),
 		model_limits: reconcileTenantModelLimits(currentModelLimits, persistedModelLimits),
+		// Unlike the three limits, these are written only when sent: omitted
+		// keeps the stored value, '' or [] clears it. So only changes travel.
+		...priorityChangedFields(draft.priority, persistedPriority, 'tenant'),
 	};
 }
 
@@ -62,6 +71,7 @@ function validateDraft(draft: TenantRateLimitDraft, wire: ITenantRateLimitMod): 
 	if (parseTenantLimitIntegerDraft(draft.rps) === undefined) errors.push('Tenant RPS must contain digits only.');
 	if (parseTenantLimitIntegerDraft(draft.tokens_per_min) === undefined) errors.push('Tenant tokens per minute must contain digits only.');
 	if (parseTenantLimitIntegerDraft(draft.burst_pct) === undefined) errors.push('Tenant burst percentage must contain digits only.');
+	errors.push(...validatePriorityDraft(draft.priority, 'tenant'));
 	draft.model_limits.forEach((limit, index) => {
 		if (parseTenantLimitIntegerDraft(limit.tokens_per_min) === undefined) {
 			errors.push(`Model quota row ${index + 1} tokens per minute must contain digits only.`);
@@ -70,12 +80,13 @@ function validateDraft(draft: TenantRateLimitDraft, wire: ITenantRateLimitMod): 
 	return Array.from(new Set(errors));
 }
 
-export default function TenantRateLimitInputForm({onChange, value}: TenantRateLimitInputFormProps) {
+export default function TenantRateLimitInputForm({onChange, value, objectives}: TenantRateLimitInputFormProps) {
 	const [draft, setDraft] = React.useState<TenantRateLimitDraft>(() => draftFromValue(value));
 	// Keep the persisted snapshot from the moment this edit form opened. The
 	// gateway needs explicit zero-valued rows for names removed from that set.
 	const persistedModelLimits = React.useRef<ITenantModelRateLimit[]>(value?.model_limits ?? []);
-	const wire = React.useMemo(() => draftToWire(draft, persistedModelLimits.current), [draft]);
+	const persistedPriority = React.useRef<IPriorityFields | undefined>(value);
+	const wire = React.useMemo(() => draftToWire(draft, persistedModelLimits.current, persistedPriority.current), [draft]);
 	const errors = React.useMemo(() => validateDraft(draft, wire), [draft, wire]);
 	const onChangeRef = React.useRef(onChange);
 	onChangeRef.current = onChange;
@@ -178,6 +189,15 @@ export default function TenantRateLimitInputForm({onChange, value}: TenantRateLi
 						{t('Add model quota')}
 					</Button>
 				</Stack>
+
+				<PriorityClassFields
+					scope="tenant"
+					value={draft.priority}
+					onChange={next => setDraft(previous => ({...previous, priority: next}))}
+					objectives={objectives}
+					defaultOpen={hasPrioritySettings(value)}
+					isEdit={!!value}
+				/>
 
 				{errors.length > 0 && <Alert severity="error">{errors.join(' ')}</Alert>}
 			</Stack>

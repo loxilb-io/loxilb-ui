@@ -15,7 +15,7 @@ import ApiKeyTable from 'components/table/ai/ApiKeyTable';
 import {request_create_apikey, request_delete_apikey, request_patch_apikey} from 'connector/instance/ai';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {usePopUp} from 'hooks/popupHook';
-import {useApiKeys} from 'hooks/query/queryHooks';
+import {useAIObjectives, useApiKeys} from 'hooks/query/queryHooks';
 import {fromQueryRefetch} from 'hooks/query/reconcile';
 import {useReconcileReporter} from 'hooks/query/reconcileReport';
 import {apiKeyAppeared, apiKeyPatchApplied, apiKeysGone} from 'hooks/query/confirmPredicates';
@@ -99,6 +99,10 @@ export default function AIApiKeyPage() {
 
 	const apikey_query = useApiKeys(inst);
 	const {data, refetch} = apikey_query;
+	// Hints for the priority group only. A failed read (no key store, an older
+	// gateway) leaves the forms working without them.
+	const {data: objectiveList} = useAIObjectives(inst);
+	const objectives = objectiveList?.objectives;
 	// Defense in depth: even though the connector normalizes to an array, never
 	// spread an unchecked hook result (a gateway 402 body is a non-iterable object).
 	const keys = React.useMemo(() => {
@@ -123,6 +127,7 @@ export default function AIApiKeyPage() {
 		const input_form = (
 			<ApiKeyInputForm
 				key={Date.now()}
+				objectives={objectives}
 				onDispose={() => {
 					formRef.current = null;
 				}}
@@ -184,6 +189,7 @@ export default function AIApiKeyPage() {
 			<ApiKeyPatchForm
 				key={target.key_id}
 				current={target}
+				objectives={objectives}
 				onChange={data => {
 					const {isValid, ...patch} = data;
 					patchRef.current = patch;

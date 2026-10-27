@@ -55,6 +55,12 @@ const fieldLabel = (field: ApiKeyCreateField): string => {
 			return t('Expires At');
 		case 'enabled':
 			return t('Enabled');
+		case 'priority_class':
+			return t('Priority Class');
+		case 'default_objective':
+			return t('Default Objective');
+		case 'allowed_objectives':
+			return t('Allowed Objectives');
 	}
 };
 

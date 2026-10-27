@@ -17,7 +17,7 @@ import {usePopUp} from 'hooks/popupHook';
 import TokenQuotaPanel from 'components/observability/TokenQuotaPanel';
 import {PanelPaper, useObservabilityApplicable} from 'pages/observability/common';
 import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
-import {useApiKeys, useJWTAuthProfiles, useLoadBalancerConfig} from 'hooks/query/queryHooks';
+import {useAIObjectives, useApiKeys, useJWTAuthProfiles, useLoadBalancerConfig} from 'hooks/query/queryHooks';
 import {
 	NO_QUOTA_DEFAULTS,
 	QUOTA_SCOPES,
@@ -51,6 +51,8 @@ export default function AITenantRateLimitPage() {
 
 	const {data: apiKeys, refetch: refetchApiKeys} = useApiKeys(inst);
 	const {data: loadBalancers, refetch: refetchLb} = useLoadBalancerConfig(inst);
+	// Hints for the tenant priority group; the form works without them.
+	const {data: objectiveList} = useAIObjectives(inst);
 	const [extraTenants, setExtraTenants] = useState<string[]>([]);
 
 	const tenants = React.useMemo(() => {
@@ -247,6 +249,7 @@ export default function AITenantRateLimitPage() {
 			<TenantRateLimitInputForm
 				key={Date.now()}
 					value={initial}
+					objectives={objectiveList?.objectives}
 					onChange={data => {
 						const {isValid, errors, ...cleanData} = data;
 						formRef.current = cleanData;
@@ -291,6 +294,10 @@ export default function AITenantRateLimitPage() {
 			tokens_per_min: item.tokens_per_min ?? 0,
 			burst_pct: item.burst_pct ?? 0,
 			model_limits: item.model_limits ?? [],
+			// The priority fields as read, so the form sends only what changes.
+			...(item.priority_class ? {priority_class: item.priority_class} : {}),
+			...(item.default_objective ? {default_objective: item.default_objective} : {}),
+			...(item.allowed_objectives?.length ? {allowed_objectives: item.allowed_objectives} : {}),
 		});
 	};
 
