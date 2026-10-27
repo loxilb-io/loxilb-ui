@@ -478,3 +478,29 @@ export const jwtProfileGone =
 	(name: string) =>
 	(rows: {name?: string}[]): boolean =>
 		!rows.some(r => r.name === name);
+
+//---------------------------------------------------------
+// AI objectives (gateway 9f5017e2)
+//---------------------------------------------------------
+// POST replaces by name, so a write is confirmed by value on the list: the
+// name is there with the priority and the service set that were sent. An
+// empty service list reads back absent or null (every service).
+
+type ObjectiveRow = {name?: string; priority?: number | null; services?: string[] | null};
+
+const sameServiceSet = (asked: readonly string[] | null | undefined, served: readonly string[] | null | undefined): boolean =>
+	sortedList(asked) === sortedList(served);
+
+/** The objective reads back under its name with the priority and services sent. */
+export const objectiveApplied =
+	(submitted: ObjectiveRow) =>
+	(rows: ObjectiveRow[]): boolean => {
+		const row = rows.find(r => r.name === submitted.name);
+		return row !== undefined && (row.priority ?? 0) === (submitted.priority ?? 0) && sameServiceSet(submitted.services, row.services);
+	};
+
+/** No objective is listed under exactly this name. */
+export const objectiveGone =
+	(name: string) =>
+	(rows: {name?: string}[]): boolean =>
+		!rows.some(r => r.name === name);
