@@ -149,6 +149,24 @@ export interface IServiceArguments {
 		fc_warmup_ms?: number;
 		fc_ttft_target_ms?: number;
 		fc_tenant_max_share_pct?: number;
+
+		// --- AI gateway: expert admission arguments (CLI_ONLY_SERVICE_ARGUMENTS) ---
+		// Set with loxicmd or the API, never by a UI control. The UI carries a
+		// value it read back unchanged through an edit so a replace cannot clear
+		// it, and shows what is in force from fc_effective.
+		fc_wake_policy?: GwServiceArguments['fc_wake_policy'];
+		fc_band_weights?: string;			// critical:standard:sheddable; 0:0:0 resets and reads back omitted
+		fc_band_min_share_pct?: string;
+		fc_band_queue_pct?: string;
+		fc_band_wait_ms?: string;
+		fc_critical_reserve_pct?: number;
+		fc_shed_queue?: GwServiceArguments['fc_shed_queue'];
+		fc_tenant_wake?: GwServiceArguments['fc_tenant_wake'];
+		fc_llmd_headers?: GwServiceArguments['fc_llmd_headers'];
+		ai_default_reservation?: GwServiceArguments['ai_default_reservation'];
+		ai_default_max_tokens?: number;
+		ai_objective_strict?: boolean;		// false may read back omitted; an explicit false still travels
+
 		fc_effective?: IFcEffective;		// read-only: the gate's resolved state, never sent
 		half_close_effective?: GwServiceArguments['half_close_effective'];	// read-only: the half-close mode in force, never sent
 		backend_tls_effective?: GwServiceArguments['backend_tls_effective'];	// read-only: the backend TLS policy the listener has installed, never sent

@@ -303,6 +303,36 @@ export const DESC_RUNTIME_TYPES: Readonly<Record<string, RuntimeMetricType>> = {
 	loxilb_proxy_halfclose_hold_refused_total: 'counter',
 	loxilb_proxy_halfclose_hold_spurious_wakeups_total: 'counter',
 	loxilb_proxy_halfclose_accel_skipped_total: 'counter',
+	// Gateway 9f5017e2 collectors, each read from its Collect (not the manifest):
+	// api/prometheus/ai_class_config_metrics.go — CounterValue
+	loxilb_ai_class_config_lkg_intervals_total: 'counter',
+	// api/prometheus/ai_fc_band_metrics.go — CounterValue
+	loxilb_ai_fc_band_total: 'counter',
+	// api/prometheus/ai_admission_metrics.go — GaugeValue (kind=used|max)
+	loxilb_ai_fc_tenant_slots: 'gauge',
+	// api/prometheus/ai_key_lookup_metrics.go — histogram + 2 GaugeValue
+	loxilb_ai_key_store_lookup_seconds: 'histogram',
+	loxilb_ai_key_store_circuit_open: 'gauge',
+	loxilb_ai_key_store_lookup_inflight: 'gauge',
+	// api/prometheus/ai_store_write_metrics.go — CounterValue
+	loxilb_ai_store_write_outcome_unknown_total: 'counter',
+	// api/prometheus/kv_exact_metrics.go — 3 MustNewConstHistogram
+	loxilb_kv_exact_stage_seconds: 'histogram',
+	loxilb_kv_exact_prompt_blocks: 'histogram',
+	loxilb_kv_exact_overlap_blocks: 'histogram',
+	// api/prometheus/log_lines_dropped_metrics.go — CounterValue
+	loxilb_log_lines_dropped_total: 'counter',
+	// api/prometheus/sockproxy_pd_occupancy_metrics.go — 3 GaugeValue
+	loxilb_pd_prefill_inflight: 'gauge',
+	loxilb_pd_decode_inflight: 'gauge',
+	loxilb_pd_parked_connections: 'gauge',
+	// api/prometheus/sockproxy_pool_metrics.go — GaugeValue + CounterValue
+	loxilb_proxy_pools_live: 'gauge',
+	loxilb_proxy_pools_freed_total: 'counter',
+	// api/prometheus/stream_abandon_metrics.go — counter, histogram, gauge
+	loxilb_proxy_stream_abandoned_total: 'counter',
+	loxilb_proxy_stream_abandon_age_seconds: 'histogram',
+	loxilb_proxy_sse_stall_abort_seconds: 'gauge',
 };
 
 const RUNTIME_TYPES: ReadonlySet<string> = new Set(['counter', 'gauge', 'histogram', 'summary', 'untyped']);
