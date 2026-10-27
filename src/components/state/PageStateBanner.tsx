@@ -43,6 +43,15 @@ function wait(result: OpResult): string {
 	return sentence ? ` ${sentence}` : '';
 }
 
+function deniedHeadline(result: OpResult): string {
+	if (result.origin === 'gateway') {
+		if (result.httpStatus === 401) return 'Gateway authentication failed while loading {{name}}. Check the OAM-to-Gateway management credentials.';
+		if (result.httpStatus === 403) return 'Gateway refused access to {{name}}. Check the OAM-to-Gateway management permissions.';
+	}
+	if (result.httpStatus === 401) return 'Authentication failed while loading {{name}}.';
+	return "You don't have permission to view {{name}}.";
+}
+
 export default function PageStateBanner({state, name, onRetry, emptyMessage}: PageStateBannerProps) {
 	const {t} = useTranslation();
 
@@ -86,7 +95,7 @@ export default function PageStateBanner({state, name, onRetry, emptyMessage}: Pa
 	const detail = specificDetail(result);
 	const headline =
 		state.kind === 'denied'
-			? t("You don't have permission to view {{name}}.", {name})
+			? t(deniedHeadline(result), {name})
 			: state.kind === 'unavailable'
 				? t('{{name}} is temporarily unavailable.', {name})
 				: t("Couldn't load {{name}}. The server returned an error.", {name});
