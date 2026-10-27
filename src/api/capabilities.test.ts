@@ -1,7 +1,9 @@
 import {describe, expect, it} from 'vitest';
 import securities from '../assets/json/securities.json';
 import sels from '../assets/json/sels.json';
-import {allowedEnumValues, detectFlavor, hasFeature, hasField, stripGatewayOnlyFields} from './capabilities';
+import {CLI_ONLY_SERVICE_ARGUMENTS} from 'types/ai_gateway';
+import capabilityMap from './gen/loxilb-capability-map.json';
+import {allowedEnumValues, detectFlavor, hasFeature, hasField, hasMethod, stripGatewayOnlyFields} from './capabilities';
 
 // The capability helpers are exercised against the REAL generated map
 // (src/api/gen/loxilb-capability-map.json), not fixtures — these tests double
@@ -104,5 +106,35 @@ describe('stripGatewayOnlyFields', () => {
 		const body = {serviceArguments: {}, endpoints: [], secondaryVIPs: ['1.2.3.4'], offload_state: 'on'};
 		const out = stripGatewayOnlyFields('loxilb', 'LoadbalanceEntry', body);
 		expect(out).toEqual({serviceArguments: {}, endpoints: []});
+	});
+});
+
+// There are two instance types, plain
+// loxilb and loxilb-igw, and every feature of the gateway contract sync is
+// loxilb-igw only. The gate is the exact /version product; no per-feature
+// token is consulted. These pin that the generated map puts each new surface
+// on the gateway side, so a plain loxilb instance never shows or sends it.
+describe('gateway contract sync surfaces are loxilb-igw only (D-03)', () => {
+	const paths: string[] = capabilityMap.gatewayOnlyPaths;
+
+	it('objectives and net identity exist only on the gateway', () => {
+		for (const route of ['/config/ai/objective', '/config/ai/objective/{name}', '/config/ai/netidentity', '/config/ai/netidentity/{name}']) {
+			expect(paths, route).toContain(route);
+		}
+		expect(hasFeature('loxilb', 'ai')).toBe(false);
+		expect(hasFeature('inference-gateway', 'ai')).toBe(true);
+		expect(hasMethod('inference-gateway', 'post', '/config/ai/objective')).toBe(true);
+	});
+
+	it('the expert admission arguments never reach plain loxilb', () => {
+		const args = Object.fromEntries(CLI_ONLY_SERVICE_ARGUMENTS.map(field => [field, 'x']));
+		const stripped = stripGatewayOnlyFields('loxilb', 'LoadbalanceEntry.serviceArguments', {name: 'r', ...args});
+		expect(stripped).toEqual({name: 'r'});
+		for (const field of CLI_ONLY_SERVICE_ARGUMENTS) expect(hasField('loxilb', 'LoadbalanceEntry.serviceArguments', field), field).toBe(false);
+	});
+
+	it('the product id is matched exactly', () => {
+		expect(detectFlavor({product: 'LOXILB-INFERENCE-GATEWAY'})).toBe('loxilb');
+		expect(detectFlavor({product: ' loxilb-inference-gateway'})).toBe('loxilb');
 	});
 });
