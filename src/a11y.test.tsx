@@ -179,6 +179,20 @@ describe('axe: gateway contract sync read-backs', () => {
 	});
 });
 
+describe('axe: QoS signal panels', () => {
+	it('band outcome and log loss tables have no violations', async () => {
+		const {BandOutcomesPanel, LogLossPanel} = await import('components/observability/QosSignalPanels');
+		const ok = {kind: 'ok', perSecond: 1, intervalMs: 10_000} as const;
+		const {container} = render(
+			<div>
+				<BandOutcomesPanel report={{kind: 'ok', intervalMs: 10_000, services: [{service: '10.0.0.1:443', bands: [{band: 'critical', outcomes: {admitted: ok, shed: ok, expired: ok, cancelled: ok}, parks: {kind: 'insufficient-samples'}}]}]}} />
+				<LogLossPanel report={{kind: 'ok', dropping: true, everDropped: true, intervalMs: 10_000, levels: [{level: 'info', total: 3, rate: ok}]}} />
+			</div>,
+		);
+		await expectNoViolations(container);
+	});
+});
+
 describe('axe gate self-test', () => {
 	it('detects an injected violation (gate is red-capable)', async () => {
 		// An image without alt text is a bread-and-butter axe finding; if this

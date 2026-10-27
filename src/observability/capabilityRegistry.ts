@@ -54,7 +54,12 @@ export type ObservabilityEntryId =
 	| 'panel.proxyOverload'
 	| 'panel.workerScrape'
 	// On the OAM-level System page, for a picked gateway instance.
-	| 'panel.auditWriter';
+	| 'panel.auditWriter'
+	// QoS page signals added with gateway 9f5017e2, each on its own so a
+	// build without one family loses that panel only.
+	| 'panel.bandOutcomes'
+	| 'panel.logLoss'
+	| 'panel.proxyPools';
 
 export interface ITopologyInput {
 	gatewayCount: number;
@@ -301,6 +306,21 @@ const entries: readonly IObservabilityEntry[] = [
 		id: 'panel.auditWriter',
 		kind: 'panel', flavor: 'inference-gateway',
 		metricFamilies: AUDIT_FAMILIES, restPaths: [],
+	},
+	{
+		id: 'panel.bandOutcomes',
+		kind: 'panel', flavor: 'inference-gateway',
+		metricFamilies: ['loxilb_ai_fc_band_total'], restPaths: [],
+	},
+	{
+		id: 'panel.logLoss',
+		kind: 'panel', flavor: 'inference-gateway',
+		metricFamilies: ['loxilb_log_lines_dropped_total'], restPaths: [],
+	},
+	{
+		id: 'panel.proxyPools',
+		kind: 'panel', flavor: 'inference-gateway',
+		metricFamilies: ['loxilb_proxy_pools_live', 'loxilb_proxy_pools_freed_total'], restPaths: [],
 	},
 	{
 		id: 'page.aiTraffic',

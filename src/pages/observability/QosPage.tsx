@@ -10,11 +10,14 @@ import {Box, Typography} from '@mui/material';
 import FreshnessBadge from 'components/observability/FreshnessBadge';
 import ObservabilityStateFrame from 'components/observability/ObservabilityStateFrame';
 import PolicerAttachmentPanel from 'components/observability/PolicerAttachmentPanel';
+import {BandOutcomesPanel, LogLossPanel, ProxyPoolsPanel} from 'components/observability/QosSignalPanels';
 import {classifyViewState} from 'components/observability/observabilityState';
 import {useInstanceFromURL} from 'hooks/instanceHook';
 import {useMetricsSnapshot} from 'hooks/query/observabilityHooks';
 import {useQOSPolicies} from 'hooks/query/queryHooks';
 import {policerAttachment} from 'observability/policerAttachment';
+import {bandOutcomes, logLoss, proxyPools} from 'observability/qosSignals';
+import {rateMaxGapMs} from 'observability/snapshotRates';
 import {useCallback, useMemo} from 'react';
 import {useTranslation} from 'react-i18next';
 import {CadenceSelector, PanelPaper, useAbsenceExplanation, useObservabilityApplicable} from './common';
@@ -23,7 +26,17 @@ export default function QosPage() {
 	const {t} = useTranslation();
 	const instance = useInstanceFromURL();
 	const applicable = useObservabilityApplicable('page.qos');
-	const {snapshot, isLoading, cadenceMs, refetch} = useMetricsSnapshot(applicable ? instance : null);
+	// The three signal panels are registered apart from the page: a build
+	// without one family loses that panel, and the policer answer stays.
+	const bandsApplicable = useObservabilityApplicable('panel.bandOutcomes');
+	const logApplicable = useObservabilityApplicable('panel.logLoss');
+	const poolsApplicable = useObservabilityApplicable('panel.proxyPools');
+	const anyApplicable = applicable || bandsApplicable || logApplicable || poolsApplicable;
+	const {snapshot, history, isLoading, cadenceMs, refetch} = useMetricsSnapshot(anyApplicable ? instance : null);
+	const maxGapMs = rateMaxGapMs(cadenceMs);
+	const bands = useMemo(() => bandOutcomes(history, maxGapMs), [history, maxGapMs]);
+	const logs = useMemo(() => logLoss(history, maxGapMs), [history, maxGapMs]);
+	const pools = useMemo(() => proxyPools(history, maxGapMs), [history, maxGapMs]);
 	// Stage 3.5: let the no-data state say WHY, from the manifest contract.
 	const absence = useAbsenceExplanation('page.qos', snapshot);
 
@@ -71,6 +84,27 @@ export default function QosPage() {
 					<PolicerAttachmentPanel report={attachment} />
 				</PanelPaper>
 			</ObservabilityStateFrame>
+
+			{/* Not inside the policer frame: each signal has its own absence. */}
+			{snapshot && !snapshot.failure && (
+				<Box display="flex" flexDirection="column" gap={2} sx={{mt: 2}}>
+					{bandsApplicable && (
+						<PanelPaper title={t('Admission by priority band')}>
+							<BandOutcomesPanel report={bands} />
+						</PanelPaper>
+					)}
+					{logApplicable && (
+						<PanelPaper title={t('Log loss')}>
+							<LogLossPanel report={logs} />
+						</PanelPaper>
+					)}
+					{poolsApplicable && (
+						<PanelPaper title={t('Rule pools')}>
+							<ProxyPoolsPanel report={pools} />
+						</PanelPaper>
+					)}
+				</Box>
+			)}
 		</Box>
 	);
 }

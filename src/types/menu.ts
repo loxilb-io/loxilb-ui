@@ -91,6 +91,11 @@ export const MENU_LIST: IMenuItem[] = [
 				name: 'Objectives',
 				path: 'objectives',
 			},
+			// Read-only: bindings are made with loxicmd or the API.
+			{
+				name: 'Network Identities',
+				path: 'netidentity',
+			},
 			{
 				name: 'Model Profiles',
 				path: 'profiles',
