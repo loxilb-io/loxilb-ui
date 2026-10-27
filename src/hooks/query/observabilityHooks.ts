@@ -4,7 +4,7 @@
 import {useQuery} from '@tanstack/react-query';
 import {InstanceFlavor} from 'api/capabilities';
 import {query_get_metrics_snapshot} from 'connector/instance/observability';
-import {useEffect, useRef} from 'react';
+import {useEffect, useMemo, useRef} from 'react';
 import {
 	DEFAULT_OBSERVABILITY_CADENCE_MS,
 	isObservabilityCadence,
@@ -51,6 +51,7 @@ export const SNAPSHOT_PROJECTION_VERSION = 1;
 // Retained snapshots per hook consumer — enough for rate derivation and a
 // short spark window (6 × 10 s = one minute).
 export const SNAPSHOT_RETENTION = 6;
+const NO_HISTORY: readonly IMetricsSnapshot[] = [];
 
 export interface IMetricsSnapshotQuery {
 	snapshot: IMetricsSnapshot | undefined;
@@ -107,9 +108,23 @@ export function useMetricsSnapshot(instance: IInstance | null): IMetricsSnapshot
 		ringRef.current.entries = [...entries, snapshot].slice(-SNAPSHOT_RETENTION);
 	}, [snapshot, ringKey]);
 
+	// The effect above records the observation only after this render, and a
+	// ref write re-renders nothing. Derive the returned history here so the
+	// render that delivers a snapshot already ends with it; otherwise every
+	// reader of history[last] is one observation behind `snapshot`, and empty
+	// until the next refetch.
+	// `recorded` is the ring's own array: its identity changes only when the
+	// effect replaces it, so it is a stable memo input between observations.
+	const recorded = ringRef.current.key === ringKey ? ringRef.current.entries : NO_HISTORY;
+	const history = useMemo(() => {
+		if (!snapshot) return recorded;
+		if (recorded.length > 0 && recorded[recorded.length - 1].receivedAtMs === snapshot.receivedAtMs) return recorded;
+		return [...recorded, snapshot].slice(-SNAPSHOT_RETENTION);
+	}, [snapshot, recorded]);
+
 	return {
 		snapshot,
-		history: ringRef.current.key === ringKey ? ringRef.current.entries : [],
+		history,
 		isLoading: query.isLoading,
 		flavor,
 		cadenceMs,
