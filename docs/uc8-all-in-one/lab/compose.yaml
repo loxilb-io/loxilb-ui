@@ -1,0 +1,67 @@
+name: ${UC8_PROJECT:-uc8-manual}
+services:
+  postgres:
+    image: ${UC8_POSTGRES_IMAGE:?Set UC8_POSTGRES_IMAGE}
+    env_file: ./private/postgres.env
+    volumes: ["pgdata:/var/lib/postgresql"]
+    networks: [lab]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+  bootstrap:
+    image: ${UC8_POSTGRES_IMAGE:?Set UC8_POSTGRES_IMAGE}
+    depends_on:
+      postgres: {condition: service_healthy}
+    env_file: ./private/bootstrap.env
+    entrypoint: ["/bin/sh", "-ec"]
+    command: ["psql -v ON_ERROR_STOP=1 -q -f /bootstrap/aigw-db-bootstrap.sql"]
+    volumes: ["./aigw-db-bootstrap.sql:/bootstrap/aigw-db-bootstrap.sql:ro"]
+    networks: [lab]
+    restart: "no"
+  gateway:
+    image: ${UC8_GATEWAY_IMAGE:?Set UC8_GATEWAY_IMAGE}
+    privileged: true
+    depends_on:
+      bootstrap: {condition: service_completed_successfully}
+    entrypoint: ["/bin/sh", "-ec"]
+    command: ["exec /root/loxilb-io/loxilb/loxilb -p --sockmapsupport --aikey-db-host=postgres --aikey-db-port=5432 --aikey-db-user=aigwuser --aikey-db-name=loxioam --aikey-db-password-file=/run/uc8/dp-password"]
+    volumes:
+      - "./private/dp-password:/run/uc8/dp-password:ro"
+      - gateway-config:/etc/loxilb
+    networks: [lab]
+  oam:
+    image: ${UC8_OAM_IMAGE:?Set UC8_OAM_IMAGE}
+    depends_on:
+      postgres: {condition: service_healthy}
+    env_file: ./private/oam.env
+    networks: [lab]
+  ui:
+    image: ${UC8_UI_IMAGE:?Set UC8_UI_IMAGE}
+    depends_on: [oam]
+    environment:
+      SSL_MODE: disabled
+      BACKEND_URL: http://oam:8080
+      FRONTEND_URL: http://localhost:${UC8_UI_PORT:-3019}
+    ports: ["127.0.0.1:${UC8_UI_PORT:-3019}:8080"]
+    networks: [lab]
+  backend:
+    image: ${UC8_PYTHON_IMAGE:?Set UC8_PYTHON_IMAGE}
+    command: ["python", "/fixture/backend.py"]
+    volumes: ["./backend.py:/fixture/backend.py:ro"]
+    networks: [lab]
+  backend-other:
+    image: ${UC8_PYTHON_IMAGE:?Set UC8_PYTHON_IMAGE}
+    command: ["python", "/fixture/backend.py"]
+    volumes: ["./backend.py:/fixture/backend.py:ro"]
+    networks: [lab]
+  client:
+    image: ${UC8_PYTHON_IMAGE:?Set UC8_PYTHON_IMAGE}
+    command: ["sleep", "infinity"]
+    networks: [lab]
+networks:
+  lab: {}
+volumes:
+  pgdata: {}
+  gateway-config: {}

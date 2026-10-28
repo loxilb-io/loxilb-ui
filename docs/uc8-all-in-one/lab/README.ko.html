@@ -1,0 +1,83 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LoxiLB UC-8 실습</title><style>
+*{box-sizing:border-box}body{margin:0;color:#173047;background:#f3f6fa;font:16px/1.75 -apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif}header{background:#103450;color:white;padding:24px 36px}header strong{font-size:23px}header span{display:block;color:#c6d9e8;font-size:13px;letter-spacing:.06em}.layout{max-width:1480px;margin:auto;display:grid;grid-template-columns:270px minmax(0,1fr);gap:30px;padding:32px}nav{position:sticky;top:20px;align-self:start;max-height:90vh;overflow:auto;font-size:13px}nav a{display:block;color:#32556e;text-decoration:none;border-left:2px solid #dbe5ed;padding:5px 12px}nav .level-3{padding-left:24px;color:#526775}main{background:white;padding:40px 48px;border:1px solid #dce5ed;border-radius:9px;min-width:0}h1{font-size:32px;line-height:1.35;margin-top:0}h2{color:#103450;border-top:1px solid #dce5ed;padding-top:26px;margin-top:42px}h3{margin-top:28px}a{color:#17658d}table{width:100%;border-collapse:collapse;font-size:14px;margin:20px 0}th{background:#edf3f8;color:#173d59;text-align:left}td,th{padding:10px 12px;border:1px solid #dce5ed;vertical-align:top}pre{background:#132c40;color:#eef6ff;padding:18px;overflow:auto;border-radius:6px;font-size:13px;line-height:1.6}code{font-family:ui-monospace,SFMono-Regular,monospace}p code,td code{background:#edf3f8;padding:2px 4px;overflow-wrap:anywhere}figure{margin:24px 0;padding:12px;background:#f7f9fc;border:1px solid #dce5ed;border-radius:6px}img{display:block;width:100%;height:auto}figcaption{color:#526775;font-size:13px;padding:10px 4px 0}li{margin:5px 0}footer{padding:28px 0;color:#667c8d;font-size:13px}@media(max-width:900px){.layout{display:block;padding:15px}nav{position:static;max-height:230px;margin-bottom:20px}main{padding:22px}h1{font-size:26px}table{display:block;overflow:auto}}@media print{body{background:white;font-size:11pt}header{padding:12px 0;color:#103450;background:white}.layout{display:block;padding:0}nav{display:none}main{border:0;padding:0}figure,table,pre{break-inside:avoid}h2,h3{break-after:avoid}a{color:inherit}img{max-height:20cm;object-fit:contain}footer{display:none}}
+
+main,nav{overflow-wrap:anywhere} pre code{overflow-wrap:normal}</style></head><body><header><strong>LoxiLB · UC-8 공유 추론</strong><span>사용자 실습 · 2026-10-28</span></header><div class="layout"><nav aria-label="목차"><a class="level-2" href="#section-1">준비</a><a class="level-2" href="#section-2">시작</a><a class="level-2" href="#section-3">중지</a><a class="level-3" href="#section-4">실습을 완전히 폐기할 때</a></nav><main><h1>UC-8 all-in-one 실습 환경</h1>
+<p>이 디렉터리를 통째로 전용 Linux 테스트 호스트에 복사해 실행합니다. PostgreSQL, DB bootstrap, Gateway, OAM, UI, 합성 backend 두 개 및 client를 별도 Compose 프로젝트와 네트워크에 만듭니다. GPU나 실제 모델은 사용하지 않습니다. Gateway는 <strong>privileged</strong> 컨테이너로 호스트 커널을 공유합니다. UI는 HTTP이고 호스트 loopback에만 바인딩합니다. 공유·운영 호스트나 신뢰하지 않는 네트워크에는 사용하지 마세요. 비밀 파일과 DB 볼륨은 실습 후에도 남습니다.</p>
+<p><strong>검증 상태:</strong> Gateway <code>554c7932</code>는 cgroup 사전 마운트 우회 없이 동일 컨테이너 재시작 두 번과 두 Required-key 합성 모델 요청을 원격 테스트베드에서 확인했습니다. 최신 패키지의 기본 UI 실습과 정리를 클린 전용 프로젝트에서 리허설했습니다. 이전 <code>031f2aa</code> 패키지에서의 UI·quota·대기열 리허설과는 구분합니다. <a href="../VALIDATION.ko.html">PR #486 검증 기록</a>을 참조하세요.</p>
+<h2 id="section-1">준비</h2>
+<ul>
+<li>Linux Docker Engine, Docker Compose v2, Python 3, OpenSSL, curl, 브라우저; 사용 가능한 이미지 및 관련 Gateway 커널 요구사항. Mac Docker Desktop에서 실행하지 않습니다.</li>
+<li>선택한 <code>UC8_PROJECT</code>와 해당 프로젝트의 볼륨·네트워크가 없어야 합니다. 프로젝트 기본값은 <code>uc8-manual</code>이며 <code>uc8-manual-v2</code>처럼 별도 이름을 지정할 수 있습니다. 이 경로의 <code>.env</code>나 <code>private/</code>가 이미 존재하면 초기화가 중단됩니다. 기존 실습을 삭제하거나 덮어쓰지 않습니다.</li>
+<li>Gateway/OAM/UI의 <strong>서로 호환되는 이미지</strong>를 준비하고 불변 digest를 기록합니다. 이전 QA에서는 로컬 빌드 Gateway <code>031f2aa</code>, OAM <code>f28dda04</code>와 UI 소스 <code>12d5834d942ffab6c9718cac9cb486028c2b08f0</code>로 빌드한 <code>uc8manual-ui:12d5834d</code>, <code>postgres:18.6</code>, <code>python:3.12-slim</code>을 사용했습니다. 초기 <code>latest</code> UI는 Objectives 메뉴가 없어 교체했습니다. 로컬 QA 태그는 외부 레지스트리에서 받을 수 있는 태그라는 뜻이 아닙니다.</li>
+<li>이 <code>aigw-db-bootstrap.sql</code>은 OAM source <code>f28dda04a6795f358c674676f9b810108d2dbf61</code>에서 복사했으며 아래 공개 부모 커밋 <code>46acdf7f</code>의 동일 파일과 일치합니다. Gateway와 SQL 계약을 검토하고 필요한 경우 맞는 버전으로 바꾼 뒤 그 해시를 기록합니다.</li>
+</ul>
+<p>고정 UI source를 직접 빌드할 경우 전용 Linux 호스트에서 다음 예시를 사용합니다. 이 빌드에는 Git, Docker 및 패키지 레지스트리 접근이 필요합니다.</p>
+<pre><code class="language-bash">git clone https://github.com/loxilb-io/loxilb-ui.git ui-source
+git -C ui-source checkout --detach 12d5834d942ffab6c9718cac9cb486028c2b08f0
+docker build -t uc8manual-ui:12d5834d ui-source
+</code></pre>
+<p>아래 빌드 태그는 실습 호스트의 로컬 태그이며 레지스트리에서 자동으로 다운로드되지 않습니다. 기존 QA에 사용한 OAM <code>f28dda04</code>는 2026-10-28 공개 원격 저장소에서 checkout할 수 없어 공개된 부모 <code>46acdf7f</code>로 새로 빌드해 시험했습니다. 다음은 고정 소스로 새 이미지를 준비하는 명령입니다. 시간이 걸리며 네트워크와 충분한 디스크가 필요합니다. <code>git submodule update</code>는 Gateway가 지정한 eBPF 및 그 하위 submodule을 받아야 합니다.</p>
+<pre><code class="language-bash">git clone https://github.com/loxilb-io/loxilb-inference-gateway.git gateway-source
+git -C gateway-source checkout --detach 554c79328fe837ac9fb38766fb9a09c159ce2af7
+git -C gateway-source submodule update --init --recursive
+docker build -f gateway-source/Dockerfile.u24 -t uc8manual-gateway:554c7932 gateway-source
+</code></pre>
+<pre><code class="language-bash">git clone https://github.com/loxilb-io/loxilb-oam.git oam-source
+git -C oam-source checkout --detach 46acdf7ffb74f205161674b6ebc23a008eb1d08f
+cmp aigw-db-bootstrap.sql oam-source/deploy/compose/database/aigw-db-bootstrap.sql
+docker build -t uc8manual-oam:46acdf7f oam-source
+</code></pre>
+<p>2026-10-28 원격 Linux에서 위 세 소스를 새로 clone하여 빌드했고, Docker 빌드 캐시가 사용됐습니다. Gateway는 우회 없는 별도 환경에서 두 Required-key 모델 경로의 재시작 전후 요청을 검증했습니다. 이때 이미지 ID는 다음과 같습니다. 위 명령의 로컬 태그 이름은 검증 당시 이름과 달라도 빌드 명령과 실행에 지정하는 이름이 일치하면 됩니다.</p>
+<table>
+<thead>
+<tr>
+<th>구성</th>
+<th>검증 이미지 ID</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Gateway <code>554c7932</code></td>
+<td><code>sha256:ee8475288310695e55ecc9772c7a85e6d7d8090676853e560a9e984833847c9c</code></td>
+</tr>
+<tr>
+<td>OAM <code>46acdf7f</code></td>
+<td><code>sha256:7e1bf2c016da73fdcd1a9d93a19ec79985a7775d961e5540f61596ab426b7718</code></td>
+</tr>
+<tr>
+<td>UI <code>12d5834d</code></td>
+<td><code>sha256:1ab11a91ef6503eb5b42820675e2bf0d20592f0a501140a88fec3a7d408e6523</code></td>
+</tr>
+</tbody></table>
+<p>소스 커밋은 고정하지만 Dockerfile의 기반 이미지·패키지 등은 변할 수 있으므로 다음 빌드의 이미지 ID가 같다고 보장하지 않습니다. 각 환경에서 새 이미지 ID와 실행 결과를 기록합니다. bootstrap SQL SHA-256은 <code>569d940f0fdd995061b13a51e23434b428266e162e8cf162e5ba74cd1457a2f5</code>입니다. 기존 단계별 스크린샷은 Gateway <code>031f2aa</code> 조합에서 캡처했습니다. 최신 조합의 기본 UI·quota·대기열 및 정리 결과는 <a href="../VALIDATION.ko.html">최신 리허설 기록</a>에 구분해 기록했습니다.</p>
+<h2 id="section-2">시작</h2>
+<p>Linux 호스트의 실습 디렉터리에서 위에서 빌드한 이미지 태그를 지정합니다. 이미지 ID를 기록해 실제 실행한 결과와 연결하세요.</p>
+<pre><code class="language-bash">export UC8_GATEWAY_IMAGE=&#39;uc8manual-gateway:554c7932&#39;
+export UC8_OAM_IMAGE=&#39;uc8manual-oam:46acdf7f&#39;
+export UC8_UI_IMAGE=&#39;uc8manual-ui:12d5834d&#39;
+export UC8_POSTGRES_IMAGE=&#39;postgres:18.6&#39;
+export UC8_PYTHON_IMAGE=&#39;python:3.12-slim&#39;
+export UC8_PROJECT=uc8-manual
+export UC8_UI_PORT=3019
+bash start.sh
+</code></pre>
+<p><code>UC8</code>을 입력하면 전용 네트워크와 컨테이너가 시작됩니다. <code>private/</code>와 <code>.env</code>는 생성된 환경의 상태이며 비밀 파일은 권한 600입니다. <code>status.sh</code>가 Gateway readiness·objective·API key, OAM, 두 backend와 UI에서 모두 200을 확인하지 못하면 다음 단계로 가지 않습니다. status 출력의 Gateway IP와 두 backend IP를 기록합니다. 브라우저로 호스트의 <code>http://localhost:3019/netlox/</code>에 접속합니다. 다른 PC에서 원격 실습을 할 때만 SSH 터널을 사용합니다.</p>
+<pre><code class="language-bash">ssh -N -L 127.0.0.1:3019:127.0.0.1:3019 &lt;실습-호스트&gt;
+</code></pre>
+<p>터널은 실행 중인 SSH 연결이 유지되는 동안만 사용할 수 있습니다. 페이지가 열리지 않으면 원격 호스트에서 <code>bash status.sh</code>를 실행하고 Mac에서 터널을 다시 실행한 뒤 <code>http://localhost:3019/netlox/</code>를 새로 고칩니다. 다른 포트를 선택했다면 SSH 양쪽 포트와 URL도 일치시킵니다.</p>
+<p>초기 ID는 <code>admin</code>, 초기 비밀번호는 서버의 <code>private/admin-password</code>입니다. 첫 UI 접속은 새 관리자 계정과 비밀번호 변경을 요구합니다. 사용자가 직접 변경하고 새 비밀번호를 비밀 저장소에 보관하세요. 초기 파일은 변경 이후 새 비밀번호가 아닙니다. 로그인 정보는 문서와 캡처에 넣지 마세요.</p>
+<p>UI에서 인스턴스를 추가할 때 Gateway 관리 주소는 <strong>OAM 컨테이너에서 접근할 수 있는 Gateway 컨테이너 IP</strong>, 포트 <code>11111</code>, HTTP, API version <code>v1</code>입니다. IP는 <code>bash status.sh</code>의 결과를 사용합니다. 실습 rule의 External IP도 이 Gateway IP, endpoint IP는 Backend IP와 port <code>8080</code>입니다. 고객 환경에서 주소는 실행마다 달라질 수 있습니다. 인스턴스가 Healthy라고 표시되는지 확인하고 실제 데이터 요청은 client 컨테이너에서 별도로 시험합니다.</p>
+<h2 id="section-3">중지</h2>
+<p>매뉴얼의 UI 자원 정리 후 이 디렉터리에서 <code>bash stop.sh</code>를 실행합니다. Compose 프로젝트의 컨테이너와 네트워크를 중지하지만 DB/config 볼륨과 <code>private/</code>를 보존합니다. Gateway <code>554c7932</code>에서는 사전 cgroup 마운트 우회 없이 동일 Gateway 재시작 후 objective와 두 Required-key rule의 요청을 확인했습니다. 다른 설정 조합과 운영 환경의 복구는 별도로 검증해야 합니다. 보존된 데이터를 자동 삭제하거나 다른 프로젝트에 <code>down -v</code>를 실행하지 마세요. 폐기 정책에 따른 삭제 전에는 정확한 볼륨과 비밀 파일의 소유권을 확인합니다.</p>
+<h3 id="section-4">실습을 완전히 폐기할 때</h3>
+<p>이 과정은 <strong>현재 디렉터리의 전용 실습 DB와 Gateway 설정을 영구 삭제</strong>합니다. 보관할 설정이 없고 이 프로젝트가 본인 실습임을 확인한 경우에만 실행합니다. 아래 명령 전에 <code>.env</code>의 프로젝트 이름과 <code>docker compose ps -a</code>에서 대상을 확인하세요. 이름이 예상과 다르거나 공유 환경이면 중단합니다.</p>
+<pre><code class="language-bash">docker compose ps -a
+docker compose down --volumes --remove-orphans
+</code></pre>
+<p>삭제 후 프로젝트 이름을 적어 남은 리소스를 확인합니다. 세 결과가 모두 비어야 합니다. 이미지는 다른 프로젝트에서 사용할 수 있으므로 이 명령은 지우지 않습니다.</p>
+<pre><code class="language-bash">UC8_CLEAN_PROJECT=uc8-manual # .env에 저장된 본인 프로젝트 이름으로 변경
+docker ps -aq --filter &quot;label=com.docker.compose.project=$UC8_CLEAN_PROJECT&quot;
+docker volume ls -q --filter &quot;label=com.docker.compose.project=$UC8_CLEAN_PROJECT&quot;
+docker network ls -q --filter &quot;label=com.docker.compose.project=$UC8_CLEAN_PROJECT&quot;
+</code></pre>
+<p><code>private/</code>에는 관리자 초기 비밀번호와 실습 키가, <code>.env</code>에는 실습 구성값이 남습니다. 필요한 백업을 확인한 뒤 <strong>해당 전용 디렉터리</strong>에서 조직의 비밀 폐기 절차에 따라 삭제합니다. 터널을 실행한 셸은 Ctrl-C로 종료합니다. 소스 빌드 디렉터리와 이미지·빌드 캐시는 별도 보관 또는 폐기 대상입니다.</p>
+<footer>LoxiLB · UC-8 실습</footer></main></div></body></html>
