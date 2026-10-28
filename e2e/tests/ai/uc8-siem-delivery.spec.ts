@@ -25,7 +25,7 @@ test.describe('UC8-LIVE-SIEM: independent TLS receiver',()=>{
   test.setTimeout(150_000);
   ssh('test','!','-e',folder);ssh('mkdir','-m','700',folder);
   ssh('openssl','req','-x509','-newkey','rsa:2048','-nodes','-keyout',`${folder}/server.key`,'-out',`${folder}/server.crt`,'-days','1','-subj',"'/CN=uc8qa-collector'",'-addext',"'subjectAltName=DNS:uc8qa-collector'");
-  execFileSync('ssh',['-o','BatchMode=yes','-o','ConnectTimeout=8',host,`cat > ${folder}/receiver.py`],{input:readFileSync('e2e/fixtures/uc8-syslog-receiver.py','utf8'),timeout:15_000,stdio:['pipe','pipe','pipe']});
+  execFileSync('ssh',['-o','BatchMode=yes','-o','ConnectTimeout=8',host,`cat > ${folder}/receiver.py`],{input:readFileSync('e2e/tests/ai/uc8-syslog-receiver.py','utf8'),timeout:15_000,stdio:['pipe','pipe','pipe']});
   collectorAttempted=true;ssh('docker','run','-d','--name',name,'--label','uc8qa.campaign=20261028','--network','uc8qa-20261028-net','--mount',`type=bind,src=${folder},dst=/fixture,readonly`,'-e',`UC8_REQUEST_ID=${requestId}`,'python:3.12-slim','python','/fixture/receiver.py');
   const ip=ssh('docker','inspect','--format',"'{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'",name).trim();expect(ip).toMatch(/^172\.18\.0\.\d+$/);
   const receipt=()=>JSON.parse(python(client,`import json,urllib.request\nprint(json.dumps(json.load(urllib.request.urlopen('http://${ip}:8081/receipt',timeout=3))))`));
