@@ -113,7 +113,7 @@
 		"playwright": "^1.61.1",
 		"swagger2openapi": "^7.0.8",
 		"vite-tsconfig-paths": "^6.1.1",
-		"vitest": "^4.1.10",
+		"vitest": "^4.1.12",
 		"vite": "^8.3.4",
 		"@vitejs/plugin-react": "^6.1.2",
 		"eslint": "^9.39.5",
