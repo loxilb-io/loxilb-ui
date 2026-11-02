@@ -14,7 +14,7 @@
 # release is bumped in exactly one place. (npm only enforces semver on publish;
 # this package is private, so the four-component form is carried verbatim.)
 #
-#   make version                       # v0.9.8.7
+#   make version                       # v0.9.9.1
 #   make docker-build VERSION=v0.9.8.8 # override for a one-off build
 #
 # Read with sed rather than node: `make docker-build` must work on a host that

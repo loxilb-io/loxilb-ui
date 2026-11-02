@@ -127,7 +127,7 @@ SSL_MODE=enabled                      # disabled | enabled | commercial
 BACKEND_URL=https://oam.example.com:8080
 BACKEND_TLS_VERIFY=off
 FRONTEND_URL=https://ui.example.com
-UI_TAG=v0.9.8.7                       # pin a release; never :latest in production
+UI_TAG=v0.9.9.1                       # pin a release; never :latest in production
 ```
 
 Published host ports: **3000** (HTTP) and **3443** (HTTPS). Inside the

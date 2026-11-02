@@ -13,7 +13,7 @@ NC='\033[0m' # No Color
 # Configuration
 NAMESPACE="loxilb-system"
 APP_NAME="loxilb-ui"
-IMAGE_TAG="${IMAGE_TAG:-latest}"
+IMAGE_TAG="${IMAGE_TAG:-v0.9.9.1}"
 DOMAIN="${DOMAIN:-loxilb-ui.example.com}"
 
 echo -e "${BLUE}🚀 Starting LoxiLB UI deployment...${NC}"

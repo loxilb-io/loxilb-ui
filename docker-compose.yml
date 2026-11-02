@@ -20,7 +20,7 @@
 services:
   loxilb-ui:
     # Pin UI_TAG to an immutable release in .env for anything but a lab.
-    image: ${UI_IMAGE:-ghcr.io/loxilb-io/loxilb-ui}:${UI_TAG:-latest}
+    image: ${UI_IMAGE:-ghcr.io/loxilb-io/loxilb-ui}:${UI_TAG:-v0.9.9.1}
     container_name: loxilb-ui
     ports:
       # host:container — the container listens on unprivileged 8080/8443
