@@ -145,6 +145,7 @@ export default function AIGatewayPanel({serviceArguments, readAtMs}: {serviceArg
 		serviceArguments.kvModelProfile,
 		serviceArguments.kvExactApiMode,
 		serviceArguments.fc_effective,
+		serviceArguments.eppEndpoint,
 	];
 
 	// Ring tuning is rendered on `!== undefined` (a reported `false` or 0 is a
@@ -237,6 +238,19 @@ export default function AIGatewayPanel({serviceArguments, readAtMs}: {serviceArg
 					<SingleTextBox label={t('Backend Keepalive Interval (s)')} value={serviceArguments.backend_keepalive_interval_sec} tooltip={t('Backend socket keepalive interval.')} />
 				</Grid2>
 			</ValueBunch>
+
+			{/* Read-only: the fields are unset on a rule without eppEndpoint and
+			    inert if set, so the block only appears when a picker is in use. */}
+			{serviceArguments.eppEndpoint && (
+				<ValueBunch name={t('Endpoint Picker (EPP)')}>
+					<Grid2 container spacing={2}>
+						<SingleTextBox label={t('EPP Endpoint')} value={serviceArguments.eppEndpoint} tooltip={t('Endpoint Picker that chooses the backend for each request of this rule. Candidates it names must still be endpoints of this rule and pass local health checks.')} />
+						<SingleTextBox label={t('EPP Failure Mode')} value={serviceArguments.eppFailureMode || 'FailClose'} tooltip={t('FailClose answers 503 when the picker cannot answer. FailOpen falls back to the selection method of this rule.')} />
+						<SingleTextBox label={t('EPP Decision Timeout (ms)')} value={serviceArguments.eppTimeoutMs || 3000} tooltip={t('Longest wait for the decision of the picker. 0 or omitted resolves to 3000.')} />
+						<SingleTextBox label={t('EPP Connection')} value={serviceArguments.eppPlaintext ? t('Plaintext') : t('TLS (certificate not verified)')} />
+					</Grid2>
+				</ValueBunch>
+			)}
 
 			{isAIService(serviceArguments) && <AdmissionReadBack declared={FC_FIELDS.some(field => serviceArguments[field] !== undefined)} effective={serviceArguments.fc_effective} pd={topology === 'pd'} readAtMs={readAtMs} />}
 			{/* Bands, default reservation and class source: newer fc_effective

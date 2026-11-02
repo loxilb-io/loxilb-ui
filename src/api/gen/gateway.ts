@@ -15890,6 +15890,25 @@ export interface components {
                  * @default 0
                  */
                 pdBootstrapPort?: number;
+                /** @description gRPC address (host:port) of a Gateway API Inference Extension Endpoint Picker (EPP) that chooses the backend for every request of this fullproxy rule over the Envoy ext_proc protocol, for example pd-disaggregation-epp.llm-d-pd-disaggregation.svc:9002. Empty or omitted keeps the rule's own selection ladder (sel, kvExactMode, ...) and leaves the data path byte-identical to a rule without this field. A nonempty value requires mode=4 (fullproxy) and pd_disagg_mode=false; the rule's own selector remains the FailOpen fallback. Candidates named by the EPP must still be endpoints of this rule and pass loxilb's local health, circuit-breaker and disabled checks. Accepts at most 255 UTF-8 bytes. PATCH does not support this field. */
+                eppEndpoint?: string;
+                /**
+                 * @description What a request does when the EPP cannot answer (submission refused, timeout, gRPC error, NOT_SERVING, or every candidate it named rejected locally). FailClose (default) answers 503 epp_unavailable or 503 epp_no_endpoint; FailOpen falls back to the rule's own selection ladder. Omitted or empty resolves to FailClose. Only meaningful with eppEndpoint; accepted but inert otherwise.
+                 * @default FailClose
+                 * @enum {string}
+                 */
+                eppFailureMode?: "FailOpen" | "FailClose";
+                /**
+                 * Format: int64
+                 * @description Longest wait, in milliseconds, for the EPP's request-phase decision (destination, header and body mutations) before the request is treated as an EPP failure and eppFailureMode applies. The wait starts when the request is submitted and includes connecting to the EPP when no connection is up. Omitted or 0 resolves to 3000. Only meaningful with eppEndpoint; accepted but inert otherwise.
+                 * @default 0
+                 */
+                eppTimeoutMs?: number;
+                /**
+                 * @description true connects to the EPP without TLS. The default (false) uses TLS without certificate verification, matching the insecureSkipVerify DestinationRule the llm-d charts install for the EPP's self-signed certificate. Only meaningful with eppEndpoint; accepted but inert otherwise.
+                 * @default false
+                 */
+                eppPlaintext?: boolean;
                 /**
                  * @description Explicit stateless MCP transport mode. Omitted or empty on create preserves legacy behavior. Omitted replace preserves the existing value; changing it requires delete and recreate. Requires TCP FullProxy (mode=4), round-robin (sel=0) or weighted round-robin (sel=2), and sockMapMode=off. Session affinity, model routing, P/D disaggregation and KV routing are rejected. Configuration readback does not prove request validation or backend delivery.
                  * @enum {string}
@@ -17572,7 +17591,7 @@ export interface components {
             buildInfo?: string;
             /** @description Product identifier for API flavor detection. This gateway reports "loxilb-inference-gateway"; upstream loxilb (and gateway builds predating the field) omit it, which clients treat as plain loxilb. */
             product?: string;
-            /** @description Gateway-only capabilities this build implements, as stable tokens a controller checks before it sends the matching rule fields; absent on builds that predate the field. "api_key_auth": the serviceArguments api_key_auth credential-policy declaration is accepted and enforced. "jwt_auth_profile": the Bearer arm (api_key_auth "jwt" and "apikey-or-jwt") and the jwt_auth_profile reference are accepted and enforced. The REST layer ignores fields it does not know, so a build without a token would install a rule WITHOUT that policy and report success: a controller that does not find the token for a field it needs must not send the rule. */
+            /** @description Gateway-only capabilities this build implements, as stable tokens a controller checks before it sends the matching rule fields; absent on builds that predate the field. "epp": loadbalancer rules accept the Endpoint Picker fields (eppEndpoint, eppFailureMode, eppTimeoutMs, eppPlaintext) and the data plane consults the picker. "api_key_auth": the serviceArguments api_key_auth credential-policy declaration is accepted and enforced. "jwt_auth_profile": the Bearer arm (api_key_auth "jwt" and "apikey-or-jwt") and the jwt_auth_profile reference are accepted and enforced. The REST layer ignores fields it does not know, so a build without a token would install a rule WITHOUT that policy and report success: a controller that does not find the token for a field it needs must not send the rule. */
             features?: string[];
         };
         /** @description BFD session input for an existing cluster instance. New sessions require interval >= 100000 microseconds and retryCount > 0. Interval narrows from uint64 to uint32 without an upper-bound check. On an existing session, zero interval/retryCount preserves the current value, source-IP changes are not applied, and an unchanged request conflicts. Initial setup can return success before asynchronous creation fails. */

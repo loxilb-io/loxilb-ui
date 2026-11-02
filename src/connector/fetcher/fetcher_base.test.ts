@@ -247,6 +247,40 @@ describe('GET', () => {
 		expect(redirectToLogin).not.toHaveBeenCalled();
 	});
 
+	// An OAM whose token store is down cannot say whether a session is valid.
+	// It answers 503 for that reason, so the operator stays signed in and the
+	// next request after the outage decides.
+	const STORE_OUTAGE = '{"error":"Authentication is temporarily unavailable","code":"authentication_unavailable"}';
+
+	it('keeps the session when an OAM route answers 503 during a token-store outage', async () => {
+		beginSession();
+		localStorage.setItem('access_token', 'live-token');
+		(global.fetch as Mock).mockResolvedValueOnce(new Response(STORE_OUTAGE, {status: 503, headers: {'Retry-After': '5'}}));
+
+		const response = await GET('http://oam/oam/users/me');
+		await new Promise(resolve => setTimeout(resolve, 0));
+
+		expect(response.code).toBe(503);
+		expect(global.fetch).toHaveBeenCalledTimes(1);
+		expect(localStorage.getItem('access_token')).toBe('live-token');
+		expect(redirectToLogin).not.toHaveBeenCalled();
+	});
+
+	it('keeps the session when the confirmation probe answers 503 during a token-store outage', async () => {
+		beginSession();
+		localStorage.setItem('access_token', 'live-token');
+		(global.fetch as Mock)
+			.mockResolvedValueOnce(new Response('{}', {status: 401}))
+			.mockResolvedValueOnce(new Response(STORE_OUTAGE, {status: 503}));
+
+		await GET('http://oam/oam/loxilbs/1/netlox/v1/x');
+		await vi.waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+		await new Promise(resolve => setTimeout(resolve, 0));
+
+		expect(localStorage.getItem('access_token')).toBe('live-token');
+		expect(redirectToLogin).not.toHaveBeenCalled();
+	});
+
 	// The verdict is about the token that was sent. If the operator signed in
 	// again while the probe was in flight, the new session must survive it.
 	it('does not end a session that replaced the probed token mid-flight', async () => {

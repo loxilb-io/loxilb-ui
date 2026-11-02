@@ -69,6 +69,9 @@ export type ImplementationStatus =
 	| 'conditional-with-proven-writer'
 	// A writer was located but never verified to fire.
 	| 'writer-mapped'
+	// Reviewed upstream as having no pushed writer to map, e.g. a gauge whose
+	// callback runs at scrape time. Nothing here proves the value.
+	| 'definition-only'
 	// Deny sentinel for an upstream token this build does not know.
 	| 'unknown';
 
@@ -77,6 +80,7 @@ const IMPLEMENTATION_STATUSES: ReadonlySet<string> = new Set([
 	'verified-static',
 	'conditional-with-proven-writer',
 	'writer-mapped',
+	'definition-only',
 ]);
 
 /**

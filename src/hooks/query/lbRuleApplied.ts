@@ -103,6 +103,12 @@ export const LB_FIELD_CONFIRMATION: Readonly<Record<string, LBFieldConfirmation>
 	jwt_auth_profile: echo,
 	// Gateway stores the selected version verbatim; legacy empty is omitted on GET.
 	mcp_protocol_version: echo,
+	// The UI never sets these; a replace carries them as read. The gateway
+	// serializer leaves out an empty, 0 or false value.
+	eppEndpoint: {kind: 'nonzero'},
+	eppFailureMode: {kind: 'nonzero'},
+	eppTimeoutMs: {kind: 'nonzero'},
+	eppPlaintext: {kind: 'nonzero'},
 	max_stream_duration_sec: echo,
 	backend_keepalive_interval_sec: echo,
 	cb_enable: echo,

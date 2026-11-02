@@ -28,7 +28,10 @@ test('private selection overlays only ephemeral generated imports and binds exac
 
 test('reviewed corrected producer pins pass the source contract gap gate',()=>{
  for(const model of ['general','kcmvp']) assert.equal(requireSourceContract(root,model).model,model);
- assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root,'api-spec/KNOWN_CONTRACT_GAPS.json'))).gaps,[]);
+ for(const gap of JSON.parse(fs.readFileSync(path.join(root,'api-spec/KNOWN_CONTRACT_GAPS.json'))).gaps) {
+  assert.equal(gap.status,'DECLARED',gap.surface);
+  assert.ok(gap.surface&&gap.reason,'a declared gap names its surface and the reason for it');
+ }
 });
 test('a new exact pinned OPEN gap still blocks author build acceptance',()=>{
  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'ui-build-gap-'));

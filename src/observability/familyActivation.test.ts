@@ -141,6 +141,11 @@ describe('valueTrust — is a PRESENT value worth trusting?', () => {
 	it('denies an unlisted family', () => {
 		expect(valueTrust('loxilb_not_a_real_family')).toBe('unknown');
 	});
+
+	it('does not vouch for a definition-only family: no writer was ever proven', () => {
+		expect(getManifestFamily('loxilb_ai_epp_inflight')?.implementationStatus).toBe('definition-only');
+		expect(valueTrust('loxilb_ai_epp_inflight')).toBe('unverified');
+	});
 });
 
 describe('explainAbsence — summarising a panel', () => {

@@ -102,6 +102,7 @@ export function valueTrust(name: string): ValueTrust {
 		case 'conditional-with-proven-writer':
 			return 'verified';
 		case 'writer-mapped':
+		case 'definition-only':
 			return 'unverified';
 		case 'unknown':
 			return 'unknown';

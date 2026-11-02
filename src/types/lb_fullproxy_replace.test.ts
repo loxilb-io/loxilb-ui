@@ -131,6 +131,14 @@ describe('the body of a fullproxy replace', () => {
 		expect(body.secondaryIPs).toEqual([]);
 	});
 
+	it('keeps an Endpoint Picker declaration the form does not show', () => {
+		// A replace clears what the body leaves out, so dropping these would turn
+		// an unrelated edit into removing the picker from the rule.
+		const epp = {eppEndpoint: 'picker.example:9002', eppFailureMode: 'FailOpen', eppTimeoutMs: 1500, eppPlaintext: true};
+		const withPicker = {...fresh, serviceArguments: {...fresh.serviceArguments, ...epp}} as IServiceConfiguration;
+		expect(buildFullproxyReplaceBody(withPicker, {argumentsPatch: {max_stream_duration_sec: 900} as any}).serviceArguments).toMatchObject(epp);
+	});
+
 	it('leaves out what the gateway derives or observes', () => {
 		const args = buildFullproxyReplaceBody(fresh, {argumentsPatch: {}}).serviceArguments as unknown as Record<string, unknown>;
 		for (const field of ['id', 'managed', 'fc_effective', 'half_close_effective', 'backend_tls_effective']) expect(args, field).not.toHaveProperty(field);
