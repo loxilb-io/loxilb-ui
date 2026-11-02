@@ -29,7 +29,7 @@
     },
     "repo": "loxilb-oam",
     "path": "docs/swagger.json",
-    "commit": "ece2d64801e7b4091b86ecde7f4779b6e4888ad5",
+    "commit": "d84fb31bd295eceaab6252d096f38e8d1ec7dc6d",
     "dirty": false,
     "note": "vendored verbatim from a clean detached checkout; no source regeneration"
   },
