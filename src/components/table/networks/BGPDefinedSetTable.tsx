@@ -8,6 +8,16 @@ import {IDataTableColumnDef} from 'types/global';
 import {PageDataState} from 'components/state/pageState';
 
 //---------------------------------------------------------
+// Helpers
+//---------------------------------------------------------
+// gobgp spells a mask-length range "21..24"; show it as "21-24". Every
+// separator is replaced, not only the first, so a malformed range never
+// renders half-converted.
+export function formatPrefix(prefix: {ipPrefix: string; masklengthRange: string}): string {
+	return prefix.masklengthRange ? `${prefix.ipPrefix} (${prefix.masklengthRange.replaceAll('..', '-')})` : prefix.ipPrefix;
+}
+
+//---------------------------------------------------------
 // Functional Component
 //---------------------------------------------------------
 export default function BGPDefinedSetTable(props: {data: IDefinedSetsInfo; selected_rows: number[]; onChangeSelectedRows: any; onAdd: any; onDelete: any; state?: PageDataState<unknown>; error?: boolean}) {
@@ -44,7 +54,7 @@ export default function BGPDefinedSetTable(props: {data: IDefinedSetsInfo; selec
 				items
 					.filter(item => item.prefixList && item.prefixList.length > 0)
 					.flatMap(item =>
-						item.prefixList.map(prefix => (prefix.masklengthRange ? `${prefix.ipPrefix} (${prefix.masklengthRange.replace('..', '-')})` : prefix.ipPrefix)),
+						item.prefixList.map(formatPrefix),
 					)
 					.join(', ') || undefined,
 			neighbor:
