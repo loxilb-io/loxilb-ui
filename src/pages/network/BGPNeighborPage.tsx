@@ -73,7 +73,7 @@ export default function BGPNeighborPage() {
 				const res = await request_create_bgp_neighbor(inst, instanceRef.current);
 				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
-				set_selected_rows([]);
+					set_selected_rows([]);
 					refetch();
 				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: t(res.localeKey)}), t('OK'));
 			},

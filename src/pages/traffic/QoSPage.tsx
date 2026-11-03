@@ -91,7 +91,7 @@ export default function QoSPage() {
 				const res = await request_create_qos_policy(inst, instanceRef.current);
 				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
-				set_selected_rows([]);
+					set_selected_rows([]);
 					setTimeout(() => {
 						refetch();
 					}, 1000);

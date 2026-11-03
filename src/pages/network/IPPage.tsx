@@ -136,7 +136,7 @@ export default function IPPage(props: {family?: 'ipv4' | 'ipv6'}) {
 				const res = await request_create_ip(inst, instanceRef.current);
 				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
-				set_selected_rows([]);
+					set_selected_rows([]);
 					setTimeout(() => {
 						refetch();
 					}, 1000);

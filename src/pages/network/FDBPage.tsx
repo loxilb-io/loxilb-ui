@@ -89,7 +89,7 @@ export default function FDBPage() {
 				const res = await request_create_fdb(inst, instanceRef.current);
 				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
-				set_selected_rows([]);
+					set_selected_rows([]);
 					setTimeout(() => {
 						refetch();
 					}, 1000);

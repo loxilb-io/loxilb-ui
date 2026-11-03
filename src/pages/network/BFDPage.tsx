@@ -89,7 +89,7 @@ export default function BFDPage() {
 			   const res = await request_create_bfd(inst, instanceRef.current);
 			   if (res.status === 'confirmed') {
 				   openPopUp(t('Success'), t('Added successfully.'), t('OK'));
-			   set_selected_rows([]);
+				   set_selected_rows([]);
 				   setTimeout(() => {
 						refetch();
 					}, 1000);
