@@ -164,7 +164,10 @@ test.describe('@gw Published Model Profiles — mock contract', () => {
 			'Access-Control-Expose-Headers': 'X-Loxi-Error-Origin',
 		});
 		await page.goto(`instance/ai/profiles?name=${instName}`);
-		await expect(page.getByText(/don't have permission to view/)).toBeVisible({timeout: 20_000});
+		// Since #228 a gateway-origin 401 names the management hop, not the
+		// operator's own permission: it is the OAM-to-Gateway credential.
+		await expect(page.getByText(/Gateway authentication failed while loading/)).toBeVisible({timeout: 20_000});
+		await expect(page.getByText(/don't have permission to view/)).toHaveCount(0);
 		expect(page.url(), 'gateway-origin 401 must not log the session out').toContain('instance/ai/profiles');
 	});
 
