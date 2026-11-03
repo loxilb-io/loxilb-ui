@@ -96,6 +96,7 @@ export default function DeviceNeighborPage() {
 				const res = await request_create_device_neighbor(inst, instanceRef.current);
 				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
+				set_selected_rows([]);
 					setTimeout(() => {
 						refetch();
 					}, 1000);

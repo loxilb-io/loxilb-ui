@@ -209,14 +209,25 @@ export default function DataTable(props: {
 
 	const {openPopUp} = usePopUp();
 
-	// Derive a human-readable label for each selected row from its leftmost data
-	// column, so the confirmation names what's being removed instead of the
+	// Derive a human-readable label for each selected row (leftmost data column
+	// first), so the confirmation names what's being removed instead of the
 	// anonymous "this Item" (which made it easy to confirm a wrong/bulk selection).
-	const labelKey = columns[0]?.data_key;
 	const rowLabel = (v: any): string => {
 		if (v == null) return '';
 		if (typeof v === 'object') return String(v.data ?? v.name ?? v.value ?? '');
 		return String(v);
+	};
+
+	// Every selected row gets a line, so what the dialog lists is what the
+	// pages delete. An empty leftmost cell falls back to the next column that
+	// has text, then to the row id. It never drops the row from the list: a
+	// row missing from the confirmation is still deleted.
+	const deleteLabel = (r: any): string => {
+		for (const col of columns) {
+			const text = rowLabel(r[col.data_key]).trim();
+			if (text.length > 0) return text;
+		}
+		return `ID ${String(r.id)}`;
 	};
 
 	const handleDelete = (e: any) => {
@@ -231,14 +242,13 @@ export default function DataTable(props: {
 		const names = selected_rows
 			.map(id => rows.find(r => r.id === id))
 			.filter(Boolean)
-			.map(r => rowLabel(r[labelKey!]).trim())
-			.filter(n => n.length > 0);
-		const count = selected_rows.length;
+			.map(r => deleteLabel(r));
+		const count = names.length;
 
 		let contents: ReactNode;
-		if (count === 1 && names.length === 1) {
+		if (count === 1) {
 			contents = t('Are you sure you want to delete "{{name}}"? This action cannot be undone.', {name: names[0]});
-		} else if (names.length > 0) {
+		} else if (count > 1) {
 			contents = (
 				<Box>
 					<Typography variant="body1">{t('Are you sure you want to delete these {{count}} items? This action cannot be undone.', {count})}</Typography>

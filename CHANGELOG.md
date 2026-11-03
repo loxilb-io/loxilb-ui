@@ -29,6 +29,7 @@ Releases follow [loxilb-io/loxilb](https://github.com/loxilb-io/loxilb)'s
 - Changing an existing fullproxy rule replaces the whole rule on the Gateway, and the UI says before the write whether the endpoint pool is rebuilt. <!-- OWNER REVIEW PENDING -->
 
 ### Fixed
+- Deleting one address on the IP Address page also deleted the address that had just been edited, which can be the host's management address — a successful Edit or Add left the earlier row selected, so the next Delete sent it too; present since v0.9.8.7 — a successful Add or Edit now clears the selection on every table with bulk delete, and the delete confirmation lists every row that will be deleted. <!-- OWNER REVIEW PENDING -->
 - A sign-in ended a second later — a Gateway 401 relayed by OAM was read as the OAM session ending — the UI now asks OAM before ending a session. <!-- OWNER REVIEW PENDING -->
 - A change that got no answer was shown as an outage to retry, which could repeat it — a lost 502 or 504 answer was read as "not performed" — it now reads as outcome unknown, with no retry offered. <!-- OWNER REVIEW PENDING -->
 - A read whose body was cut off showed an empty page — the failed body was treated as no data — it now shows a failed read. <!-- OWNER REVIEW PENDING -->

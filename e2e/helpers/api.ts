@@ -308,6 +308,16 @@ export async function waitForAutoPersistIdle(): Promise<void> {
  */
 export async function primaryNetworkDevice(): Promise<string> {
 	const data = await gwJson<{portAttr?: PortAttr[]}>('/config/port/all');
+	// E2E_NETWORK_DEVICE pins the device. On a host-network gateway the picked
+	// "primary" port is the bed's management NIC, and every network spec
+	// writes to it. A bed run pins a throwaway dummy interface instead. A pin
+	// the gateway does not list is an error, never a silent fallback to the
+	// management NIC.
+	const pinned = process.env.E2E_NETWORK_DEVICE?.trim();
+	if (pinned) {
+		if (!(data.portAttr ?? []).some(p => p.portName === pinned)) throw new Error(`E2E_NETWORK_DEVICE=${pinned} is not a port of the selected instance`);
+		return pinned;
+	}
 	const device = pickPrimaryNetworkDevice(data.portAttr ?? []);
 	if (!device) throw new Error('The selected instance exposes no usable data-plane network device');
 	return device;

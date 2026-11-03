@@ -296,6 +296,7 @@ export default function LBRulePage() {
 				const res = await request_create_load_balancer_config(inst, submitted, effectiveFlavor);
 				invalidateCapabilities();
 				if (res.status === 'confirmed') {
+					set_selected_rows([]);
 					await report({refetch: fromQueryRefetch(refetch), confirm: confirmRuleWritten(submitted)}, t('Added successfully.'));
 				} else {
 					// Localized mapped message; raw prose stays in diagnostics —
@@ -486,6 +487,7 @@ export default function LBRulePage() {
 							const sent = await request_create_load_balancer_config(inst, upsert, effectiveFlavor);
 							invalidateCapabilities();
 							if (sent.status === 'confirmed') {
+								set_selected_rows([]);
 								await report(
 									{refetch: fromQueryRefetch(refetch), confirm: applied},
 									plan.kind === 'recreate' ? t('Endpoint pool rebuilt. The rule reads back with the submitted values.') : t('Load balancer rule updated successfully.'),
@@ -595,6 +597,7 @@ export default function LBRulePage() {
 				if (res.status === 'confirmed') {
 					// The delete+re-create strategy can move the rule's key, so
 					// confirm against the EDITED identity, not the original row.
+					set_selected_rows([]);
 					await report({refetch: fromQueryRefetch(refetch), confirm}, successText);
 				} else {
 					// Localized mapped message; raw prose stays in diagnostics —

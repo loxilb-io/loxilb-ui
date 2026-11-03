@@ -157,10 +157,15 @@ function AdminUserManagementPanel(props: {
 	);
 	const selectedItem: IUser | null = selectedItems.length === 1 ? selectedItems[0] : null;
 
-	// Expose refetch function to parent via ref
+	// Expose refetch function to parent via ref. The parent calls it after a
+	// create or edit succeeds, so it also drops the selection: a user that was
+	// ticked for Edit must not stay ticked into the next Delete.
 	useEffect(() => {
 		if (refetchRef) {
-			refetchRef.current = refetch;
+			refetchRef.current = () => {
+				set_selected_rows([]);
+				refetch();
+			};
 		}
 	}, [refetch, refetchRef]);
 

@@ -162,6 +162,7 @@ export default function VxLANPage() {
 				const res = await request_create_vxlan(inst, instanceRef.current);
 				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
+				set_selected_rows([]);
 					refetch();
 				} else showAddError('VXLAN', t(res.localeKey));
 			},

@@ -211,6 +211,7 @@ export default function SNICertificatesPage() {
 				const res = await request_register_sni_certificate(inst, formRef.current);
 				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Certificate registered successfully.'), t('OK'));
+				set_selected_rows([]);
 					setTimeout(() => refetch(), 1000);
 				} else {
 					openPopUp(t('Error'), t('Failed to register. {{error}}', {error: sniOpErrorText(res)}), t('OK'));

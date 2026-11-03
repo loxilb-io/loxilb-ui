@@ -52,6 +52,18 @@ vi.mock('hooks/query/oamHooks', async importOriginal => {
 	};
 });
 
+// The delete confirmation is the popup's contents; capture it instead of
+// rendering the app-level dialog host.
+const popups = vi.hoisted(() => [] as {title: string; contents: unknown}[]);
+vi.mock('hooks/popupHook', () => ({
+	usePopUp: () => ({
+		enableYes: () => undefined,
+		openPopUp: (title: string, contents: unknown) => {
+			popups.push({title, contents});
+		},
+	}),
+}));
+
 const FETCHED_AT = new Date('2026-09-01T12:00:00Z').getTime();
 const COLS: IDataTableColumnDef[] = [{data_key: 'name', header: 'Name'}];
 const ROWS = [
@@ -385,5 +397,73 @@ describe('the toolbar names the table it belongs to', () => {
 		// that way, and a toolbar hoisted out of its wrapper would break them
 		// with no other symptom.
 		expect(document.querySelectorAll('[data-table="VLAN Member"] [data-table-bar]')).toHaveLength(1);
+	});
+});
+
+//---------------------------------------------------------
+// The delete confirmation lists every row that will be deleted
+//---------------------------------------------------------
+describe('the delete confirmation names every selected row', () => {
+	const IP_COLS: IDataTableColumnDef[] = [
+		{data_key: 'ipAddress', header: 'IP Addresses'},
+		{data_key: 'dev', header: 'Device'},
+	];
+
+	/** Open the confirmation and render what it would show. */
+	function confirmationText(rows: Record<string, unknown>[], selected: (string | number)[]): string {
+		popups.length = 0;
+		renderTable({columns: IP_COLS, rows, selected_rows: selected});
+		button(/^Delete Widget$/).click();
+		expect(popups).toHaveLength(1);
+		cleanup();
+		const contents = popups[0].contents;
+		if (typeof contents === 'string') return contents;
+		const {container} = render(<>{contents as any}</>);
+		return container.textContent ?? '';
+	}
+
+	it('two selected rows: both are listed, with the count', () => {
+		const text = confirmationText(
+			[
+				{id: 1, ipAddress: '192.168.0.10/24', dev: 'enp0s4'},
+				{id: 2, ipAddress: '203.0.113.30/32', dev: 'enp0s4'},
+			],
+			[1, 2],
+		);
+		expect(text).toContain('these 2 items');
+		expect(text).toContain('192.168.0.10/24');
+		expect(text).toContain('203.0.113.30/32');
+	});
+
+	it('a row with an empty first cell is still listed, by its next column', () => {
+		const text = confirmationText(
+			[
+				{id: 1, ipAddress: '', dev: 'enp0s4'},
+				{id: 2, ipAddress: '203.0.113.30/32', dev: 'enp0s4'},
+			],
+			[1, 2],
+		);
+		// Before: the empty label was dropped and the dialog listed one row
+		// for a delete of two.
+		expect(text).toContain('these 2 items');
+		expect(text).toContain('enp0s4');
+		expect(text).toContain('203.0.113.30/32');
+	});
+
+	it('a row with no text at all is listed by its id rather than left out', () => {
+		const text = confirmationText(
+			[
+				{id: 7, ipAddress: '', dev: ''},
+				{id: 8, ipAddress: '203.0.113.30/32', dev: 'enp0s4'},
+			],
+			[7, 8],
+		);
+		expect(text).toContain('these 2 items');
+		expect(text).toContain('ID 7');
+	});
+
+	it('a single row is named in the sentence itself', () => {
+		const text = confirmationText([{id: 1, ipAddress: '203.0.113.30/32', dev: 'enp0s4'}], [1]);
+		expect(text).toContain('"203.0.113.30/32"');
 	});
 });

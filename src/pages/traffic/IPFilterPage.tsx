@@ -146,6 +146,7 @@ export default function IPFilterPage() {
 
 				const res = await request_create_ipfilter_rule(inst, formRef.current);
 				if (res.status === 'confirmed') {
+					set_selected_rows([]);
 					await report({refetch: fromQueryRefetch(refetch), confirm: ipFilterApplied(formRef.current)}, t('IP filter rule added successfully.'));
 				} else {
 					openPopUp(t('Error'), t('Failed to add. {{error}}', {error: t(res.localeKey)}), t('OK'));

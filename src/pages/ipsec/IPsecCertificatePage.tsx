@@ -61,6 +61,7 @@ export default function IPsecCertificatePage() {
 				const res = await request_upload_ipsec_certificate(inst, certFormRef.current);
 				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Certificate uploaded.'), t('OK'));
+					setSelectedCertRows([]);
 					setTimeout(() => refetchCerts(), 1000);
 				} else showAddError('IPsec certificate', t(res.localeKey));
 			},
@@ -105,6 +106,7 @@ export default function IPsecCertificatePage() {
 				const res = await request_upload_ipsec_ca_certificate(inst, caFormRef.current);
 				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('CA certificate uploaded.'), t('OK'));
+					setSelectedCARows([]);
 					setTimeout(() => refetchCACerts(), 1000);
 				} else showAddError('CA certificate', t(res.localeKey));
 			},

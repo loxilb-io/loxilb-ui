@@ -13,7 +13,7 @@ import {activeInstance, gwJson, isDocAddr, primaryNetworkDevice, sweepIpAddresse
 import {confirmDelete, dialog, dialogButton, expectSuccessAndDismiss, openToolbarDialog} from '../../helpers/dialogs';
 import {field, isEventuallyDisabled} from '../../helpers/form';
 import {IpAttr, uniqueAddressOf} from '../../helpers/networkDevice';
-import {refreshUntilGone, refreshUntilRow, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
+import {refreshUntilGone, refreshUntilRow, rowByText, selectRowByText, showAllRows, toolbarButton} from '../../helpers/table';
 
 const V4_PATH = '/config/ipv4address';
 // The edit-target row (a stable primary address) is DERIVED from the live
@@ -105,15 +105,37 @@ test.describe('IPv4 address page (edit-is-create)', () => {
 
 		await refreshUntilRow(page, NEW_IP);
 
+		// Only the ticked row may be deleted. Any other address DELETE is
+		// refused here before it reaches the gateway: on a host-network gateway
+		// a stray delete removes a host address, and on 2026-11-02 one removed
+		// the bed's management address because the edited row stayed selected.
+		const stray: string[] = [];
+		await page.route(`**${V4_PATH}/**`, route => {
+			const req = route.request();
+			if (req.method() === 'DELETE' && !new URL(req.url()).pathname.includes(`/ipv4address/203.0.113.30/32/dev/${BASE_DEV}`)) {
+				stray.push(new URL(req.url()).pathname);
+				return route.fulfill({status: 500, contentType: 'application/json', body: '{"result":"refused by the E2E guard"}'});
+			}
+			return route.continue();
+		});
+
+		// The Edit must have dropped the selection: the edited row is not ticked.
+		await expect(rowByText(page, BASE_IP).getByRole('checkbox')).not.toBeChecked();
+
 		const deletes = await captureDeletes(page, async () => {
 			await selectRowByText(page, NEW_IP);
 			await toolbarButton(page, 'Delete').click();
+			// The confirmation names exactly the row that will go.
+			await expect(dialog(page)).toContainText(NEW_IP.split('/')[0]);
+			await expect(dialog(page)).not.toContainText(BASE_IP);
 			await confirmDelete(page);
 			await expect(dialog(page).getByText('Deleted 1 item(s) successfully.')).toBeVisible();
 			await dialogButton(page, 'OK').click();
 		});
+		expect(stray, 'a DELETE for a row that was not ticked').toEqual([]);
 		expect(deletes).toHaveLength(1);
 		expect(deletes[0].pathname).toContain(`/ipv4address/203.0.113.30/32/dev/${BASE_DEV}`);
+		await page.unroute(`**${V4_PATH}/**`);
 		await refreshUntilGone(page, NEW_IP);
 	});
 
