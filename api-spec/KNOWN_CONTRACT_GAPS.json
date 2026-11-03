@@ -4,8 +4,8 @@
     {
       "model": "general",
       "producer": "gateway",
-      "producerCommit": "55523449a3cb894f5535034855bceef31d6adf59",
-      "swaggerSha256": "a877290ac906cce5847d9647fe848b3e547f6745ef09fc57725fb42c2ede4945",
+      "producerCommit": "8e45de7283117189a792dec0a2222595ffa98c2a",
+      "swaggerSha256": "91e5c1210193889680cf7c51420873ebe6ba0abc29b6bf96c956dfa0e65cf7e3",
       "surface": "LoadbalanceEntry.serviceArguments eppEndpoint, eppFailureMode, eppTimeoutMs, eppPlaintext (write)",
       "reason": "The rule detail view shows these read-only and a replace carries them as read. The create and edit forms do not offer them, because configuring a picker would be a new UI feature.",
       "status": "DECLARED"
@@ -13,8 +13,8 @@
     {
       "model": "general",
       "producer": "gateway",
-      "producerCommit": "55523449a3cb894f5535034855bceef31d6adf59",
-      "swaggerSha256": "a877290ac906cce5847d9647fe848b3e547f6745ef09fc57725fb42c2ede4945",
+      "producerCommit": "8e45de7283117189a792dec0a2222595ffa98c2a",
+      "swaggerSha256": "91e5c1210193889680cf7c51420873ebe6ba0abc29b6bf96c956dfa0e65cf7e3",
       "surface": "x-loxilb-contract-relations LB-EPP-FULLPROXY, LB-EPP-NO-PD",
       "reason": "The UI cannot set the fields these relations constrain. A violation can only reach the gateway through a change to mode or pd_disagg_mode on a rule that already has a picker, and the gateway refusal is shown through the existing error path.",
       "status": "DECLARED"
@@ -22,8 +22,8 @@
     {
       "model": "general",
       "producer": "gateway",
-      "producerCommit": "55523449a3cb894f5535034855bceef31d6adf59",
-      "swaggerSha256": "a877290ac906cce5847d9647fe848b3e547f6745ef09fc57725fb42c2ede4945",
+      "producerCommit": "8e45de7283117189a792dec0a2222595ffa98c2a",
+      "swaggerSha256": "91e5c1210193889680cf7c51420873ebe6ba0abc29b6bf96c956dfa0e65cf7e3",
       "surface": "GET /version features (token \"epp\")",
       "reason": "The UI gates fields on the capability map generated from the vendored specs and does not read features. No view shows this list, and the UI never sends the picker fields that the token guards.",
       "status": "DECLARED"
@@ -31,8 +31,8 @@
     {
       "model": "general",
       "producer": "gateway",
-      "producerCommit": "55523449a3cb894f5535034855bceef31d6adf59",
-      "swaggerSha256": "a877290ac906cce5847d9647fe848b3e547f6745ef09fc57725fb42c2ede4945",
+      "producerCommit": "8e45de7283117189a792dec0a2222595ffa98c2a",
+      "swaggerSha256": "91e5c1210193889680cf7c51420873ebe6ba0abc29b6bf96c956dfa0e65cf7e3",
       "surface": "metric families loxilb_ai_epp_requests_total, loxilb_ai_epp_candidates_rejected_total, loxilb_ai_epp_duration_seconds, loxilb_ai_epp_inflight, loxilb_ai_epp_pending",
       "reason": "All five are diagnostic. UI observability stays compact and urgent-only, and deep inspection belongs to Grafana and Prometheus, so no panel reads them.",
       "status": "DECLARED"
