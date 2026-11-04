@@ -23,11 +23,11 @@ labels:
       app.kubernetes.io/component: frontend
       app.kubernetes.io/part-of: loxilb
 
-# Pin the release here. It should be a published tag (see
+# The release this tree ships. It must be a published tag (see
 # docs/container-image.md); `latest` is a lab convenience, not production.
 images:
   - name: ghcr.io/loxilb-io/loxilb-ui
-    newTag: latest
+    newTag: v0.9.9.1
 
 # Environment-specific overrides live in overlays/ and use this directory as
 # their base:
@@ -36,6 +36,6 @@ images:
 #   resources: [../../]
 #   images:
 #     - name: ghcr.io/loxilb-io/loxilb-ui
-#       newTag: v0.9.8.7
+#       newTag: v0.9.9.1
 #   patches:
 #     - path: production-patches.yaml

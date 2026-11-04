@@ -197,7 +197,7 @@ export interface paths {
         get?: never;
         /**
          * Acknowledge alert
-         * @description Acknowledges an alert by ID
+         * @description Acknowledges an alert by ID as the authenticated user. Body user_id must match the caller.
          */
         put: {
             parameters: {
@@ -230,6 +230,24 @@ export interface paths {
                 };
                 /** @description Bad Request */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["models.ErrorResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["models.ErrorResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -761,6 +779,15 @@ export interface paths {
                 };
                 /** @description Internal Server Error */
                 500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["models.ErrorResponse"];
+                    };
+                };
+                /** @description Authentication storage unavailable; retry after 5 seconds */
+                503: {
                     headers: {
                         [name: string]: unknown;
                     };

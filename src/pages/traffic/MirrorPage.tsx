@@ -136,6 +136,7 @@ export default function MirrorPage() {
 				const res = await request_create_mirror(inst, instanceRef.current);
 				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
+					set_selected_rows([]);
 					setTimeout(() => {
 						refetch();
 					}, 1000);

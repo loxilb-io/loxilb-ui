@@ -172,6 +172,7 @@ export default function FirewallPage() {
 
 				const res = await request_create_firewall_rule(inst, instanceRef.current);
 				if (res.status === 'confirmed') {
+					set_selected_rows([]);
 					await report({refetch: fromQueryRefetch(refetch), confirm: firewallApplied(instanceRef.current)}, t('Added successfully.'));
 				} else {
 					openPopUp(t('Error'), t('Failed to add. {{error}}', {error: t(res.localeKey)}), t('OK'));

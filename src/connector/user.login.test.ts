@@ -86,6 +86,18 @@ describe('login_user OpResult contract', () => {
 		expect(res.retryable).toBe(true);
 	});
 
+	// OAM's credential store is down: the password was never judged, so this
+	// must not read as a bad password or count as a lockout.
+	it('a 503 from the authentication store is unavailable and retryable, not bad credentials', async () => {
+		mockFetch(JSON.stringify({error: 'Authentication is temporarily unavailable', code: 'authentication_unavailable'}), {status: 503});
+
+		const res: any = await login_user(CREDS);
+		expect(res.status).toBe('unavailable');
+		expect(res.code).not.toBe('auth.invalid_credentials');
+		expect(res.retryable).toBe(true);
+		expect(i18n.t(res.localeKey)).not.toContain('Authentication is temporarily');
+	});
+
 	it('raw backend prose is confined to rawDetail, never in localeKey', async () => {
 		mockFetch(JSON.stringify({error: 'pq: connection refused on backend cluster node-3'}), {status: 401});
 

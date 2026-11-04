@@ -92,6 +92,7 @@ function MemberView(props: {name: string; vid: number; data: IMember[]; refetch:
 				const res = await request_add_vlan_member(inst, vid, instanceRef.current);
 				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
+					set_selected_rows([]);
 					refetch();
 				} else showAddError('VLAN member', t(res.localeKey));
 			},
@@ -187,6 +188,7 @@ export default function VLANPage() {
 				const res = await request_create_vlan(inst, instanceRef.current);
 				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
+					set_selected_rows([]);
 					// Wait 1 second before refetching to allow backend to apply changes
 					setTimeout(() => {
 						refetch();

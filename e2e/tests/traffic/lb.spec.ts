@@ -277,7 +277,10 @@ test.describe('LB Rule page CRUD', () => {
 
 	test('@gw C-adv-l7: fullproxy + host/path/backend-protocol/llm-type', async ({page}) => {
 		await openAddDialog(page);
-		await fillBasics(page, 'e2e-lb-l7', FP_VIP, '8443');
+		// Not 8443: on a converged bed the management edge listens on the
+		// gateway's address at 8443, and the gateway rightly refuses (409) a
+		// second listener there. No other spec uses 8447.
+		await fillBasics(page, 'e2e-lb-l7', FP_VIP, '8447');
 		await expandSection(page, ADVANCED);
 		await selectOption(page, 'Mode', 'fullproxy');
 		await field(page, 'Host').fill('e2e.example.com');

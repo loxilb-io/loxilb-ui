@@ -96,6 +96,11 @@ export interface IServiceArguments {
 	model_name?: string;			// endpoint-pool selector for AI model routing
 	api_key_auth?: ApiKeyAuthPolicy;	// absent = preserve/unmanaged; disabled = strip; required = enforce + strip; jwt / apikey-or-jwt = bearer arm
 	jwt_auth_profile?: string;		// profile name the bearer arm resolves against; required by and only valid with the two JWT modes
+	// Endpoint Picker, read-only in this UI. An empty eppEndpoint keeps the rule's own selection.
+	eppEndpoint?: string;
+	eppFailureMode?: 'FailOpen' | 'FailClose';	// omitted resolves to FailClose
+	eppTimeoutMs?: number;				// 0 or omitted resolves to 3000
+	eppPlaintext?: boolean;				// false uses TLS without certificate verification
 	trace_type?: string;			// tracing catalog name for deep inspection
 	session_header_name?: string;	// header carrying the session key (sel=persist)
 	chwbl_prefix_hash_level?: number;	// CHWBL prefix hash level (sel=8)

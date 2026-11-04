@@ -27,9 +27,8 @@ spec:
     spec:
       containers:
       - name: loxilb-ui
-        # Pin an immutable release tag in production; :latest is a lab
-        # convenience (kustomization.yaml sets the tag).
-        image: ghcr.io/loxilb-io/loxilb-ui:latest
+        # kustomization.yaml sets the tag.
+        image: ghcr.io/loxilb-io/loxilb-ui:v0.9.9.1
         imagePullPolicy: IfNotPresent
 
         # The image's entrypoint renders its nginx configuration from these

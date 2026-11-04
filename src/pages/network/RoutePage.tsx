@@ -99,6 +99,7 @@ export default function RoutePage() {
 					
 					if (res.status === 'confirmed') {
 						openPopUp(t('Success'), t('Added successfully.'), t('OK'));
+						set_selected_rows([]);
 						setTimeout(() => {
 							refetch();
 						}, 1000);

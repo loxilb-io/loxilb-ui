@@ -136,6 +136,7 @@ export default function IPPage(props: {family?: 'ipv4' | 'ipv6'}) {
 				const res = await request_create_ip(inst, instanceRef.current);
 				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
+					set_selected_rows([]);
 					setTimeout(() => {
 						refetch();
 					}, 1000);
@@ -185,6 +186,11 @@ export default function IPPage(props: {family?: 'ipv4' | 'ipv6'}) {
 				// Use same API as create
 				const res = await request_create_ip(inst, updateData);
 				if (res.status === 'confirmed') {
+					// Edit is a create here: the row that was edited stays in the
+					// list. Left selected, it rides along into the next Delete,
+					// and that Delete removes the address the operator edited
+					// instead of only the one they ticked.
+					set_selected_rows([]);
 					openPopUp(t('Success'), t('IP address updated successfully.'), t('OK'));
 					setTimeout(() => {
 						refetch();

@@ -136,6 +136,7 @@ export default function EndpointPage() {
 				const submitted = instanceRef.current;
 				const res = await request_create_endpoint(inst, submitted);
 				if (res.status === 'confirmed') {
+					set_selected_rows([]);
 					await report({refetch: fromQueryRefetch(refetch), confirm: endpointAppeared(submitted)}, t('Added successfully.'));
 				} else showAddError('endpoint', t(res.localeKey));
 			},
@@ -184,6 +185,7 @@ export default function EndpointPage() {
 				const submitted = updateFormRef.current;
 				const res = await request_create_endpoint(inst, submitted);
 				if (res.status === 'confirmed') {
+					set_selected_rows([]);
 					await report({refetch: fromQueryRefetch(refetch), confirm: endpointAppeared(submitted)}, t('Endpoint updated successfully.'));
 				} else {
 					showUpdateError('endpoint', t(res.localeKey));

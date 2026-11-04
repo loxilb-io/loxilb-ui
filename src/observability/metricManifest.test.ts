@@ -113,6 +113,18 @@ import {
 // kv_exact_{stage_seconds,prompt_blocks,overlap_blocks},
 // proxy_stream_abandon_age_seconds). Registry entries for the band-outcome,
 // log-loss and pool families are added with the QoS tiles, not here.
+//
+// 298 (was 293) since the re-vendor to gateway 55523449. The 5 added families
+// are the Endpoint Picker set (`loxilb_ai_epp_*`). Re-verified the same way:
+//   - all 5 are class `default` + packaged and `priority: diagnostic`;
+//   - requests_total and candidates_rejected_total are activation `V` and
+//     duration_seconds is `E`, all three conditional on a rule with an Endpoint
+//     Picker; inflight and pending are `E` with no precondition, because each
+//     is a gauge callback that answers from init;
+//   - inflight and pending introduced the upstream status `definition-only`
+//     (no pushed writer to map). `valueTrust` reads it as unverified;
+//   - no registry entry references them and no panel surfaces them. The
+//     decision is recorded in api-spec/KNOWN_CONTRACT_GAPS.json.
 
 describe('vendored envelope', () => {
 	it('carries UI-owned provenance the upstream artifact lacks', () => {
@@ -130,7 +142,7 @@ describe('vendored envelope', () => {
 describe('gateway scrape applicability (class + packaged)', () => {
 	it('marks exactly the packaged default class as gateway-applicable', () => {
 		const applicable = allManifestFamilies().filter(f => isGatewayScrapeFamily(f.name));
-		expect(applicable).toHaveLength(293);
+		expect(applicable).toHaveLength(298);
 		for (const f of applicable) {
 			expect(f.class).toBe('default');
 			expect(f.packaged).toBe(true);

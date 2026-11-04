@@ -188,7 +188,9 @@ test.describe('the four states, end to end on the Load Balancer page', () => {
 		});
 		await page.goto(lbPage());
 
-		await expect(page.getByText(/permission to view/i)).toBeVisible({timeout: AFTER_RETRIES});
+		// Since #228 the banner names the management hop's credential, which
+		// is what a gateway-origin 401 is about.
+		await expect(page.getByText(/Gateway authentication failed while loading/)).toBeVisible({timeout: AFTER_RETRIES});
 		// The management hop refusing us is not the human's session ending.
 		await expect(page.getByText(/Your session ended/i)).toHaveCount(0);
 		expect(page.url()).not.toMatch(/\/login/);
@@ -204,7 +206,9 @@ test.describe('the four states, end to end on the Load Balancer page', () => {
 		const probe = page.waitForRequest(req => /\/oam\/users\/me$/.test(req.url()) && req.method() === 'GET');
 		await page.goto(lbPage());
 
-		await expect(page.getByText(/permission to view/i)).toBeVisible({timeout: AFTER_RETRIES});
+		// Since #228 a 401 OAM still honours reads as an authentication
+		// failure of that read, not as the operator's permission.
+		await expect(page.getByText(/Authentication failed while loading/)).toBeVisible({timeout: AFTER_RETRIES});
 		await probe;
 		await expect(page.getByText(/Your session ended/i)).toHaveCount(0);
 		expect(page.url()).not.toMatch(/\/login/);

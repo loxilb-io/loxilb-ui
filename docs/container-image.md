@@ -40,12 +40,13 @@ verify it, how to run it standalone, and how to build your own.
 Image tags are the release version, which follows
 [loxilb-io/loxilb](https://github.com/loxilb-io/loxilb): `vMAJOR.MINOR.PATCH`
 with an optional fourth build component. loxilb-ui versions in lockstep with
-loxilb and loxilb-oam — pair `loxilb-ui:v0.9.8.7` with `loxilb-oam:v0.9.8.7`.
+loxilb-inference-gateway and loxilb-oam — pair `loxilb-ui:v0.9.9.1` with
+`loxilb-oam:v0.9.9.1` and `loxilb-inference-gateway:v0.9.9.1`.
 
 | Tag form | Meaning |
 |----------|---------|
-| `v0.9.8.7` | An immutable release. **Use this in production.** |
-| `v0.9.8.7-rc.1`, `-alpha.`, `-beta.` | Prerelease. Published, but does **not** move `:latest`. |
+| `v0.9.9.1` | An immutable release. **Use this in production.** |
+| `v0.9.9.1-rc.1`, `-alpha.`, `-beta.` | Prerelease. Published, but does **not** move `:latest`. |
 | `latest` | The most recent *final* release. Convenient for a lab; untraceable for an upgrade — never pin production to it. |
 
 Publishing is gated: the release job targets the `release` GitHub Environment,
@@ -81,8 +82,8 @@ To confirm which version an image is:
 
 ```bash
 docker inspect -f '{{index .Config.Labels "org.opencontainers.image.version"}}' \
-  ghcr.io/loxilb-io/loxilb-ui:v0.9.8.7
-# v0.9.8.7
+  ghcr.io/loxilb-io/loxilb-ui:v0.9.9.1
+# v0.9.9.1
 ```
 
 The same number is compiled into the bundle and shown under the logo on the
@@ -90,7 +91,7 @@ login page, and the entrypoint prints it at startup:
 
 ```bash
 docker logs loxilb-ui | head -1
-# loxilb-ui v0.9.8.7 — configuring nginx
+# loxilb-ui v0.9.9.1 — configuring nginx
 ```
 
 An image built without a `VERSION` build-arg reports `dev` in all three places.
@@ -98,7 +99,7 @@ An image built without a `VERSION` build-arg reports `dev` in all three places.
 ## Pull and verify
 
 ```bash
-docker pull ghcr.io/loxilb-io/loxilb-ui:v0.9.8.7
+docker pull ghcr.io/loxilb-io/loxilb-ui:v0.9.9.1
 ```
 
 If the pull returns `unauthorized`, the GHCR package is not public from your
@@ -113,15 +114,15 @@ build-provenance and SPDX SBOM attestations. Verify before deploying:
 
 ```bash
 # 1. Signature — proves the image was built by this repo's release workflow.
-cosign verify ghcr.io/loxilb-io/loxilb-ui:v0.9.8.7 \
+cosign verify ghcr.io/loxilb-io/loxilb-ui:v0.9.9.1 \
   --certificate-identity-regexp '^https://github\.com/loxilb-io/loxilb-ui/\.github/workflows/release\.yml@refs/tags/' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 
 # 2. Build provenance (SLSA).
-gh attestation verify oci://ghcr.io/loxilb-io/loxilb-ui:v0.9.8.7 --owner loxilb-io
+gh attestation verify oci://ghcr.io/loxilb-io/loxilb-ui:v0.9.9.1 --owner loxilb-io
 
 # 3. SBOM (SPDX) — also attached to the GitHub Release as sbom.spdx.json.
-gh attestation verify oci://ghcr.io/loxilb-io/loxilb-ui:v0.9.8.7 --owner loxilb-io \
+gh attestation verify oci://ghcr.io/loxilb-io/loxilb-ui:v0.9.9.1 --owner loxilb-io \
   --predicate-type https://spdx.dev/Document
 ```
 
@@ -140,7 +141,7 @@ docker run -d --name loxilb-ui \
   -e SSL_MODE=disabled \
   -e BACKEND_URL=https://oam.example.com:8080 \
   -e FRONTEND_URL=http://localhost:3000 \
-  ghcr.io/loxilb-io/loxilb-ui:v0.9.8.7
+  ghcr.io/loxilb-io/loxilb-ui:v0.9.9.1
 ```
 
 Then open <http://localhost:3000/netlox/>.
@@ -236,7 +237,7 @@ docker run -d --name loxilb-ui \
   -p 3000:8080 -p 3443:8443 \
   -e SSL_MODE=commercial -e HTTPS_REDIRECT_PORT=3443 \
   -v "$PWD/ssl:/etc/nginx/ssl:ro" \
-  ghcr.io/loxilb-io/loxilb-ui:v0.9.8.7
+  ghcr.io/loxilb-io/loxilb-ui:v0.9.9.1
 ```
 
 Certificates persist only as long as the container's writable layer; mount
@@ -249,7 +250,7 @@ Forks, air-gapped builds, and patched releases all build from the same
 
 ```bash
 make docker-build                                       # ghcr.io/loxilb-io/loxilb-ui:<package.json version>
-make docker-build docker-push VERSION=v0.9.8.7          # build, then push (needs docker login)
+make docker-build docker-push VERSION=v0.9.9.1          # build, then push (needs docker login)
 make docker-build IMAGE_NAME=myorg/loxilb-ui REGISTRY=docker.io
 make build-image                                        # local name: loxilb-ui:latest
 ```
@@ -264,7 +265,7 @@ make build-image                                        # local name: loxilb-ui:
 Plain Docker, if you would rather not use Make:
 
 ```bash
-docker build --build-arg VERSION=v0.9.8.7 -t myorg/loxilb-ui:v0.9.8.7 .
+docker build --build-arg VERSION=v0.9.9.1 -t myorg/loxilb-ui:v0.9.9.1 .
 ```
 
 Serving the SPA under a different prefix, or pointing the bundle straight at an
@@ -273,7 +274,7 @@ values:
 
 ```bash
 docker build \
-  --build-arg VERSION=v0.9.8.7 \
+  --build-arg VERSION=v0.9.9.1 \
   --build-arg REACT_APP_PUBLIC_URL=/console \
   --build-arg REACT_APP_API_URL=https://oam.example.com/oam \
   -t myorg/loxilb-ui:console .
@@ -290,7 +291,7 @@ markdown out of the build context.
 Building for a non-amd64 host:
 
 ```bash
-docker buildx build --platform linux/arm64 -t myorg/loxilb-ui:v0.9.8.7-arm64 .
+docker buildx build --platform linux/arm64 -t myorg/loxilb-ui:v0.9.9.1-arm64 .
 ```
 
 This is a supported *build* — it is simply not something the project publishes
@@ -302,11 +303,11 @@ Move the image across the boundary by digest, keeping tags intact:
 
 ```bash
 # On a connected host
-docker pull ghcr.io/loxilb-io/loxilb-ui:v0.9.8.7
-docker save ghcr.io/loxilb-io/loxilb-ui:v0.9.8.7 | gzip > loxilb-ui-v0.9.8.7.tar.gz
+docker pull ghcr.io/loxilb-io/loxilb-ui:v0.9.9.1
+docker save ghcr.io/loxilb-io/loxilb-ui:v0.9.9.1 | gzip > loxilb-ui-v0.9.9.1.tar.gz
 
 # On the air-gapped host
-gunzip -c loxilb-ui-v0.9.8.7.tar.gz | docker load
+gunzip -c loxilb-ui-v0.9.9.1.tar.gz | docker load
 ```
 
 To serve it from an internal registry, retag and push, then override the image
@@ -314,8 +315,8 @@ name where the deployment reads it — `UI_IMAGE` / `UI_TAG` in this repo's
 `.env`, or the same keys in the loxilb-oam bundle's `.env`:
 
 ```bash
-docker tag ghcr.io/loxilb-io/loxilb-ui:v0.9.8.7 registry.internal/loxilb-ui:v0.9.8.7
-docker push registry.internal/loxilb-ui:v0.9.8.7
+docker tag ghcr.io/loxilb-io/loxilb-ui:v0.9.9.1 registry.internal/loxilb-ui:v0.9.9.1
+docker push registry.internal/loxilb-ui:v0.9.9.1
 ```
 
 Verify signatures on the connected side — Cosign and `gh attestation` both need

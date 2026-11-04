@@ -111,7 +111,7 @@ A modern React-based web dashboard for efficiently managing LoxiLB load balancer
 docker run -d --name loxilb-ui -p 3000:8080 \
   -e SSL_MODE=disabled \
   -e BACKEND_URL=https://your-oam-host:8080 \
-  ghcr.io/loxilb-io/loxilb-ui:latest
+  ghcr.io/loxilb-io/loxilb-ui:v0.9.9.1
 
 # Access the application
 # http://localhost:3000/netlox/
@@ -148,7 +148,7 @@ npm start
 > [docs/container-image.md](docs/container-image.md).
 
 The published image is `ghcr.io/loxilb-io/loxilb-ui`, tagged with the release
-version (`v0.9.8.7`, in lockstep with `loxilb` and `loxilb-oam`). Pin a version
+version (`v0.9.9.1`, in lockstep with `loxilb-inference-gateway` and `loxilb-oam`). Pin a version
 tag in production; `:latest` is a lab convenience.
 
 ### Deployment Options
@@ -204,7 +204,7 @@ BACKEND_URL=https://oam.example.com:8080  # nginx proxies /api/oam/* → $BACKEN
 BACKEND_TLS_VERIFY=off                  # on, once the backend has a trusted cert
 FRONTEND_URL=http://localhost:3000
 PUBLIC_PATH=/netlox
-UI_TAG=v0.9.8.7                         # pin a release
+UI_TAG=v0.9.9.1                         # pin a release
 ```
 
 ### Port Configuration

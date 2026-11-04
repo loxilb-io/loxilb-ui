@@ -1,4 +1,49 @@
 {
   "kind": "PinnedProducerContractGaps",
-  "gaps": []
+  "gaps": [
+    {
+      "model": "general",
+      "producer": "gateway",
+      "producerCommit": "5b0ef9a7d8636939d8cd1f96cab3fe3154aaa8ad",
+      "swaggerSha256": "31665d47cc3259c5f8d9a53b672bea0262a4eb9799ad98902e00ffd074e7dfc7",
+      "surface": "LoadbalanceEntry.serviceArguments eppEndpoint, eppFailureMode, eppTimeoutMs, eppPlaintext (write)",
+      "reason": "The rule detail view shows these read-only and a replace carries them as read. The create and edit forms do not offer them, because configuring a picker would be a new UI feature.",
+      "status": "DECLARED"
+    },
+    {
+      "model": "general",
+      "producer": "gateway",
+      "producerCommit": "5b0ef9a7d8636939d8cd1f96cab3fe3154aaa8ad",
+      "swaggerSha256": "31665d47cc3259c5f8d9a53b672bea0262a4eb9799ad98902e00ffd074e7dfc7",
+      "surface": "x-loxilb-contract-relations LB-EPP-FULLPROXY, LB-EPP-PD-FAILOPEN",
+      "reason": "The UI does not evaluate contract relations and cannot set the picker fields they constrain. A violation can only reach the gateway through a change to mode, or to pd_disagg_mode on a rule whose picker failure mode is not FailOpen, and the gateway refusal is shown through the existing error path.",
+      "status": "DECLARED"
+    },
+    {
+      "model": "general",
+      "producer": "gateway",
+      "producerCommit": "5b0ef9a7d8636939d8cd1f96cab3fe3154aaa8ad",
+      "swaggerSha256": "31665d47cc3259c5f8d9a53b672bea0262a4eb9799ad98902e00ffd074e7dfc7",
+      "surface": "GET /version features (token \"epp\")",
+      "reason": "The UI gates fields on the capability map generated from the vendored specs and does not read features. No view shows this list, and the UI never sends the picker fields that the token guards.",
+      "status": "DECLARED"
+    },
+    {
+      "model": "general",
+      "producer": "gateway",
+      "producerCommit": "5b0ef9a7d8636939d8cd1f96cab3fe3154aaa8ad",
+      "swaggerSha256": "31665d47cc3259c5f8d9a53b672bea0262a4eb9799ad98902e00ffd074e7dfc7",
+      "surface": "metric families loxilb_ai_epp_requests_total, loxilb_ai_epp_candidates_rejected_total, loxilb_ai_epp_duration_seconds, loxilb_ai_epp_inflight, loxilb_ai_epp_pending",
+      "reason": "All five are diagnostic. UI observability stays compact and urgent-only, and deep inspection belongs to Grafana and Prometheus, so no panel reads them.",
+      "status": "DECLARED"
+    },
+    {
+      "model": "general",
+      "producer": "oam",
+      "swaggerSha256": "ad68f32609369147239029695223c2642aec72a4ecfa27509cb9cb137a6cc889",
+      "surface": "POST /oam/alerts/{id}/acknowledge (user_id must match the caller; 401 and 403 added)",
+      "reason": "The UI does not call the alert routes, so no view shows or acknowledges an OAM alert and the caller binding has no effect on it.",
+      "status": "DECLARED"
+    }
+  ]
 }

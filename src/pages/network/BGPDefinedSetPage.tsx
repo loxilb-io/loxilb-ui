@@ -153,6 +153,7 @@ export default function BGPDefinedSetPage() {
 				const res = await request_create_defined_set(inst, instanceRef.current);
 				if (res.status === 'confirmed') {
 					openPopUp(t('Success'), t('Added successfully.'), t('OK'));
+					set_selected_rows([]);
 					refetch_data(instanceRef.current.definedType);
 				} else openPopUp(t('Error'), t('Failed to add. {{error}}', {error: t(res.localeKey)}), t('OK'));
 			},
