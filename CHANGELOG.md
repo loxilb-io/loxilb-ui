@@ -5,43 +5,43 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Releases follow [loxilb-io/loxilb](https://github.com/loxilb-io/loxilb)'s
 `vMAJOR.MINOR.PATCH[.BUILD]` scheme, in lockstep with the
-`loxilb-inference-gateway` and `loxilb-oam` release they ship against. <!-- OWNER REVIEW PENDING -->
+`loxilb-inference-gateway` and `loxilb-oam` release they ship against.
 
 ## [Unreleased]
 
-## [0.9.9.1] - 2026-11-02
+## [0.9.9.1] - 2026-11-04
 
 ### Added
-- Lockstep release with `loxilb-inference-gateway` v0.9.9.1 and `loxilb-oam` v0.9.9.1. <!-- OWNER REVIEW PENDING -->
-- The AI Gateway tab of a rule shows its Endpoint Picker (endpoint, failure mode, decision timeout, connection) read-only. <!-- OWNER REVIEW PENDING -->
-- Request priority, objectives and priority bands, admission control on AI rules, and what an admission pool holds now. <!-- OWNER REVIEW PENDING -->
-- JWT auth profiles, per-user and default rate-limit editing, and token-quota utilization. <!-- OWNER REVIEW PENDING -->
-- AI Traffic, Workers, and P/D & KV observability pages, and KV-exact readiness from the Gateway. <!-- OWNER REVIEW PENDING -->
-- Backend TLS verification, client certificates and server name on a rule, certificate lookup by ID, and half-close, CHWBL ring tuning and circuit-breaker settings. <!-- OWNER REVIEW PENDING -->
-- Audit Trail page, operator maintenance mode, selective-domain restore and encrypted external recovery backups. <!-- OWNER REVIEW PENDING -->
-- Management writes are confirmed by the values that read back. <!-- OWNER REVIEW PENDING -->
+- Lockstep release with `loxilb-inference-gateway` v0.9.9.1 and `loxilb-oam` v0.9.9.1.
+- The AI Gateway tab of a rule shows its Endpoint Picker (endpoint, failure mode, decision timeout, connection) read-only.
+- Request priority, objectives and priority bands, admission control on AI rules, and what an admission pool holds now.
+- JWT auth profiles, per-user and default rate-limit editing, and token-quota utilization.
+- AI Traffic, Workers, and P/D & KV observability pages, and KV-exact readiness from the Gateway.
+- Backend TLS verification, client certificates and server name on a rule, certificate lookup by ID, and half-close, CHWBL ring tuning and circuit-breaker settings.
+- Audit Trail page, operator maintenance mode, selective-domain restore and encrypted external recovery backups.
+- Management writes are confirmed by the values that read back.
 
 ### Changed
-- Image defaults in `docker-compose.yml`, `k8s/` and the README quick start are pinned to `v0.9.9.1` instead of `latest`. Set `UI_TAG` or the kustomize `newTag` to run another release. <!-- OWNER REVIEW PENDING -->
-- A restore continues only after a dry run the Gateway answered as passed. An answer that says nothing no longer enables Continue. <!-- OWNER REVIEW PENDING -->
-- Reaching the idle limit now revokes the session on OAM as well as in the browser, and a tab returning from the background no longer extends the limit. <!-- OWNER REVIEW PENDING -->
-- UI observability pages keep to headline and urgent signals. Detail belongs in Grafana and Prometheus. <!-- OWNER REVIEW PENDING -->
-- Changing an existing fullproxy rule replaces the whole rule on the Gateway, and the UI says before the write whether the endpoint pool is rebuilt. <!-- OWNER REVIEW PENDING -->
+- Image defaults in `docker-compose.yml`, `k8s/` and the README quick start are pinned to `v0.9.9.1` instead of `latest`. Set `UI_TAG` or the kustomize `newTag` to run another release.
+- A restore continues only after a dry run the Gateway answered as passed. An answer that says nothing no longer enables Continue.
+- Reaching the idle limit now revokes the session on OAM as well as in the browser, and a tab returning from the background no longer extends the limit.
+- UI observability pages keep to headline and urgent signals. Detail belongs in Grafana and Prometheus.
+- Changing an existing fullproxy rule replaces the whole rule on the Gateway, and the UI says before the write whether the endpoint pool is rebuilt.
 
 ### Fixed
 - Deleting one address on the IP Address page also deleted the address that had just been edited, which can be the host's management address — a successful Edit or Add left the earlier row selected, so the next Delete sent it too; present since v0.9.8.7 — a successful Add or Edit now clears the selection on every table with bulk delete, and the delete confirmation lists every row that will be deleted.
-- A sign-in ended a second later — a Gateway 401 relayed by OAM was read as the OAM session ending — the UI now asks OAM before ending a session. <!-- OWNER REVIEW PENDING -->
-- A change that got no answer was shown as an outage to retry, which could repeat it — a lost 502 or 504 answer was read as "not performed" — it now reads as outcome unknown, with no retry offered. <!-- OWNER REVIEW PENDING -->
-- A read whose body was cut off showed an empty page — the failed body was treated as no data — it now shows a failed read. <!-- OWNER REVIEW PENDING -->
-- An idle or unconfigured gateway showed "Warming up…" or 0 for some metrics — a family that was never exported looked like a missing sample or an empty sum — the panel now says why the family is absent. <!-- OWNER REVIEW PENDING -->
-- A backend client private key could be stored in the browser — a rule read that returned it was written to the persisted query cache — it is now dropped when the rule list is read, and caches from earlier builds are discarded. <!-- OWNER REVIEW PENDING -->
-- A restore could be reported as verified when a restart would undo it — the wizard read only the result and not `persisted` or its errors — it now says what the restore left behind. <!-- OWNER REVIEW PENDING -->
-- A KV-exact rule refused with HTTP 412 lost the form and did not say what to change — the dialog was re-seeded only for some rules and the reason reached diagnostics only — the draft now survives and the Gateway sentence is shown. <!-- OWNER REVIEW PENDING -->
-- A viewer was offered instance logs that always failed — the Logs entry ignored that only operators and administrators can read them — the entry is now hidden for viewers. <!-- OWNER REVIEW PENDING -->
-- Keep numeric input labels distinct from tooltip descriptions and report validation after rendering.
-- Ignore superseded mutation-result popups after navigation or a newer operation.
-- Preserve unknown API-key enablement and show textual state alongside the indicator.
-- Allow table toolbars, mobile navigation and tenant quota panels to fit their contents.
+- A sign-in ended a second later — a Gateway 401 relayed by OAM was read as the OAM session ending — the UI now asks OAM before ending a session.
+- A change that got no answer was shown as an outage to retry, which could repeat it — a lost 502 or 504 answer was read as "not performed" — it now reads as outcome unknown, with no retry offered.
+- A read whose body was cut off showed an empty page — the failed body was treated as no data — it now shows a failed read.
+- An idle or unconfigured gateway showed "Warming up…" or 0 for some metrics — a family that was never exported looked like a missing sample or an empty sum — the panel now says why the family is absent.
+- A backend client private key could be stored in the browser — a rule read that returned it was written to the persisted query cache — it is now dropped when the rule list is read, and caches from earlier builds are discarded.
+- A restore could be reported as verified when a restart would undo it — the wizard read only the result and not `persisted` or its errors — it now says what the restore left behind.
+- A KV-exact rule refused with HTTP 412 lost the form and did not say what to change — the dialog was re-seeded only for some rules and the reason reached diagnostics only — the draft now survives and the Gateway sentence is shown.
+- A viewer was offered instance logs that always failed — the Logs entry ignored that only operators and administrators can read them — the entry is now hidden for viewers.
+- Form fields are named by their label and described by their tooltip, for screen readers.
+- A Success or Submitted popup could appear on another page or replace the result of a newer change — a read-back still running after navigation or a newer change still reported its result — a superseded read-back is now dropped.
+- An API key whose enabled state the Gateway did not report was shown as enabled, by colour alone — a missing value was taken as enabled — the Enabled column now reads Enabled, Disabled or Not reported.
+- On narrow screens, table toolbars wrap and the side menu opens as an overlay that closes when tapped outside; the token-quota utilization panel is as tall as its content.
 
 ## [0.9.8.9-rc.1] - 2026-08-28
 
